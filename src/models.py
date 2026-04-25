@@ -54,6 +54,7 @@ class PaymentStatus(BaseModel):
     month: dt.date
     total_lessons: int
     attended_lessons: int
+    unpaid_lessons: int
     total_fee: int
     paid_amount: int
     balance: int

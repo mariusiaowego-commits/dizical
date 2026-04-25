@@ -30,6 +30,7 @@ class PaymentManager:
         # 统计有效课程（未取消的）
         active_lessons = [l for l in lessons if l.status != LessonStatus.CANCELLED]
         attended_lessons = [l for l in lessons if l.status == LessonStatus.ATTENDED]
+        unpaid_lessons = [l for l in active_lessons if not l.fee_paid]
 
         total_fee = sum(l.fee for l in active_lessons)
         # 计算该月的已缴金额
@@ -49,6 +50,7 @@ class PaymentManager:
             month=dt.date(year, month, 1),
             total_lessons=len(active_lessons),
             attended_lessons=len(attended_lessons),
+            unpaid_lessons=len(unpaid_lessons),
             total_fee=total_fee,
             paid_amount=paid_amount,
             balance=total_fee - paid_amount,
@@ -152,6 +154,19 @@ class PaymentManager:
             return True
 
         return False
+
+    def get_payments(self, year: int, month: int):
+        """
+        获取指定月份的缴费记录
+
+        Args:
+            year: 年份
+            month: 月份
+
+        Returns:
+            缴费记录列表
+        """
+        return self.db.get_payments_by_month(year, month)
 
     def get_reminder_message(self, year: int, month: int) -> str:
         """
