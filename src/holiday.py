@@ -2,6 +2,18 @@ import datetime as dt
 from typing import Optional, Tuple
 import chinese_calendar as cc
 
+# 英文到中文的节假日名称映射
+HOLIDAY_NAME_MAP = {
+    "New Year's Day": "元旦",
+    "Spring Festival": "春节",
+    "Tomb-sweeping Day": "清明节",
+    "Labour Day": "劳动节",
+    "Dragon Boat Festival": "端午节",
+    "National Day": "国庆节",
+    "Mid-autumn Festival": "中秋节",
+    "Anti-Fascist 70th Day": "反法西斯胜利70周年纪念日",
+}
+
 
 class HolidayChecker:
     """中国节假日检测工具"""
@@ -49,15 +61,16 @@ class HolidayChecker:
             check_date: 要检查的日期
 
         Returns:
-            节假日名称，如果不是节假日返回 None
+            节假日名称（中文），如果不是节假日返回 None
         """
         try:
             if not cc.is_holiday(check_date):
                 return None
-            # 获取节假日详情
+            # 获取节假日详情 - 返回 tuple (is_holiday, holiday_name)
             holiday_detail = cc.get_holiday_detail(check_date)
-            if holiday_detail:
-                return holiday_detail.name
+            if holiday_detail and holiday_detail[1]:
+                # 英文转中文
+                return HOLIDAY_NAME_MAP.get(holiday_detail[1], holiday_detail[1])
             return None
         except Exception:
             return None
@@ -95,7 +108,7 @@ class HolidayChecker:
             is_holiday, name = HolidayChecker.check_holiday_status(current)
             if is_holiday and name:
                 holidays[current] = name
-            current = current.replace(day=current.day + 1)
+            current = current + dt.timedelta(days=1)
         return holidays
 
     @staticmethod

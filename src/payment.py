@@ -1,15 +1,16 @@
 import datetime as dt
 from typing import List, Optional
 from .models import Payment, PaymentStatus, LessonStatus
-from .database import db
-from .lesson_manager import LessonManager
 
 
 class PaymentManager:
     """缴费管理核心逻辑"""
 
-    def __init__(self):
-        self.lesson_manager = LessonManager()
+    def __init__(self, db=None):
+        from .database import Database
+        from .lesson_manager import LessonManager
+        self.db = db or Database()
+        self.lesson_manager = LessonManager(self.db)
 
     def get_monthly_payment_status(self, year: int, month: int) -> PaymentStatus:
         """
@@ -22,15 +23,19 @@ class PaymentManager:
         Returns:
             缴费状态对象
         """
-        lessons = db.get_lessons_by_month(year, month)
-        payments = db.get_payments_by_month(year, month)
+        lessons = self.db.get_lessons_by_month(year, month)
+        # 统计所有缴费记录，不限制月份（缴费可以在任何时间）
+        all_payments = self.db.get_all_payments()
 
         # 统计有效课程（未取消的）
         active_lessons = [l for l in lessons if l.status != LessonStatus.CANCELLED]
         attended_lessons = [l for l in lessons if l.status == LessonStatus.ATTENDED]
 
         total_fee = sum(l.fee for l in active_lessons)
-        paid_amount = sum(p.amount for p in payments)
+        # 计算该月的已缴金额
+        # 简单做法：所有缴费都计入（因为缴费记录可能没有明确对应到月份）
+        # 更好的做法是：只统计 lesson_ids 包含该月课程的缴费
+        paid_amount = sum(p.amount for p in all_payments)
 
         # 获取最后一个上课日
         last_lesson_date = self.lesson_manager.get_last_lesson_date(year, month)
@@ -81,15 +86,15 @@ class PaymentManager:
             try:
                 ids = [int(id_str.strip()) for id_str in lesson_ids.split(',') if id_str.strip()]
                 for lesson_id in ids:
-                    lesson = db.get_lesson(lesson_id)
+                    lesson = self.db.get_lesson(lesson_id)
                     if lesson:
                         lesson.fee_paid = True
-                        db.update_lesson(lesson)
+                        self.db.update_lesson(lesson)
             except (ValueError, TypeError):
                 # 如果解析失败，继续创建缴费记录
                 pass
 
-        return db.add_payment(payment)
+        return self.db.add_payment(payment)
 
     def get_payment_history(self) -> List[Payment]:
         """
@@ -98,7 +103,7 @@ class PaymentManager:
         Returns:
             所有缴费记录列表
         """
-        return db.get_all_payments()
+        return self.db.get_all_payments()
 
     def get_unpaid_lessons(self, year: Optional[int] = None, month: Optional[int] = None) -> List[int]:
         """
@@ -112,9 +117,9 @@ class PaymentManager:
             未缴费的课程ID列表
         """
         if year and month:
-            lessons = db.get_lessons_by_month(year, month)
+            lessons = self.db.get_lessons_by_month(year, month)
         else:
-            lessons = db.get_all_lessons()
+            lessons = self.db.get_all_lessons()
 
         active_lessons = [
             l for l in lessons

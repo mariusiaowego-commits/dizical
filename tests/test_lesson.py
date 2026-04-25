@@ -117,7 +117,7 @@ class TestLessonManager(TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.db_path = os.path.join(self.temp_dir, 'test.db')
         self.db = Database(self.db_path)
-        self.manager = LessonManager()
+        self.manager = LessonManager(self.db)
 
     def tearDown(self):
         """清理临时文件"""
@@ -175,8 +175,8 @@ class TestPaymentManager(TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.db_path = os.path.join(self.temp_dir, 'test.db')
         self.db = Database(self.db_path)
-        self.lesson_manager = LessonManager()
-        self.payment_manager = PaymentManager()
+        self.lesson_manager = LessonManager(self.db)
+        self.payment_manager = PaymentManager(self.db)
 
     def tearDown(self):
         """清理临时文件"""
@@ -229,9 +229,9 @@ class TestHolidayChecker(TestCase):
 
     def test_is_workday(self):
         """测试工作日检测"""
-        # 普通周一应该是工作日
-        monday = date(2026, 5, 4)
-        self.assertTrue(HolidayChecker.is_workday(monday))
+        # 普通周三应该是工作日（5月7日周三，不在劳动节假期后）
+        wednesday = date(2026, 5, 6)
+        self.assertTrue(HolidayChecker.is_workday(wednesday))
 
     def test_get_holiday_name(self):
         """测试获取节假日名称"""

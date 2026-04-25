@@ -13,7 +13,9 @@ class LessonManager:
     DEFAULT_TIME = dt.time(17, 15)
     DEFAULT_FEE = 600
 
-    def __init__(self):
+    def __init__(self, db=None):
+        from .database import Database
+        self.db = db or Database()
         self.default_weekday = settings.default_weekday
         self.default_time = self._parse_time(settings.default_time)
         self.default_fee = settings.default_fee
@@ -61,10 +63,9 @@ class LessonManager:
             月度课程计划
         """
         saturdays = self.get_saturdays(year, month)
-        existing_lessons = {l.date: l for l in db.get_lessons_by_month(year, month)}
+        existing_lessons = {l.date: l for l in self.db.get_lessons_by_month(year, month)}
 
         lessons = []
-        holiday_conflicts = 0
 
         for lesson_date in saturdays:
             # 检查是否已存在
@@ -72,8 +73,9 @@ class LessonManager:
                 lessons.append(existing_lessons[lesson_date])
                 continue
 
-            # 检查节假日冲突
+            # 检查节假日冲突 - 只有法定节假日（有名称）才标记冲突，普通周末不算
             is_holiday, holiday_name = HolidayChecker.check_holiday_status(lesson_date)
+            has_holiday_conflict = is_holiday and holiday_name is not None
 
             lesson = Lesson(
                 date=lesson_date,
@@ -81,20 +83,21 @@ class LessonManager:
                 status=LessonStatus.SCHEDULED,
                 fee=self.default_fee,
                 fee_paid=False,
-                is_holiday_conflict=is_holiday,
-                notes=f"节假日冲突: {holiday_name}" if is_holiday and holiday_name else None,
+                is_holiday_conflict=has_holiday_conflict,
+                notes=f"节假日冲突: {holiday_name}" if has_holiday_conflict else None,
             )
 
             if overwrite and lesson_date in existing_lessons:
                 existing = existing_lessons[lesson_date]
                 lesson.id = existing.id
-                lesson = db.update_lesson(lesson)
+                lesson = self.db.update_lesson(lesson)
             else:
-                lesson = db.add_lesson(lesson)
+                lesson = self.db.add_lesson(lesson)
 
             lessons.append(lesson)
-            if is_holiday:
-                holiday_conflicts += 1
+
+        # 统计节假日冲突 - 只有法定节假日（有名称）才算冲突，普通周末不算
+        holiday_conflicts = sum(1 for l in lessons if l.is_holiday_conflict)
 
         return MonthlyLessonPlan(
             year=year,
@@ -119,7 +122,7 @@ class LessonManager:
             创建的课程对象
         """
         # 检查是否已存在
-        existing = db.get_lesson_by_date(lesson_date)
+        existing = self.db.get_lesson_by_date(lesson_date)
         if existing:
             raise ValueError(f"课程已存在: {lesson_date}")
 
@@ -135,7 +138,7 @@ class LessonManager:
             notes=f"节假日冲突: {holiday_name}" if is_holiday and holiday_name else None,
         )
 
-        return db.add_lesson(lesson)
+        return self.db.add_lesson(lesson)
 
     def cancel_lesson(self, lesson_date: dt.date) -> bool:
         """
@@ -147,7 +150,7 @@ class LessonManager:
         Returns:
             是否成功取消
         """
-        return db.cancel_lesson_by_date(lesson_date)
+        return self.db.cancel_lesson_by_date(lesson_date)
 
     def reschedule_lesson(self, from_date: dt.date, to_date: dt.date,
                           to_time: Optional[dt.time] = None) -> Optional[Lesson]:
@@ -162,12 +165,12 @@ class LessonManager:
         Returns:
             更新后的课程对象
         """
-        existing = db.get_lesson_by_date(from_date)
+        existing = self.db.get_lesson_by_date(from_date)
         if not existing:
             return None
 
         # 检查目标日期是否已存在
-        target_existing = db.get_lesson_by_date(to_date)
+        target_existing = self.db.get_lesson_by_date(to_date)
         if target_existing:
             raise ValueError(f"目标日期已存在课程: {to_date}")
 
@@ -182,7 +185,7 @@ class LessonManager:
         else:
             existing.notes = None
 
-        return db.update_lesson(existing)
+        return self.db.update_lesson(existing)
 
     def confirm_attendance(self, lesson_date: dt.date) -> Optional[Lesson]:
         """
@@ -194,12 +197,12 @@ class LessonManager:
         Returns:
             更新后的课程对象
         """
-        existing = db.get_lesson_by_date(lesson_date)
+        existing = self.db.get_lesson_by_date(lesson_date)
         if not existing:
             return None
 
         existing.status = LessonStatus.ATTENDED
-        return db.update_lesson(existing)
+        return self.db.update_lesson(existing)
 
     def get_lessons(self, year: Optional[int] = None, month: Optional[int] = None) -> List[Lesson]:
         """
@@ -213,8 +216,8 @@ class LessonManager:
             课程列表
         """
         if year and month:
-            return db.get_lessons_by_month(year, month)
-        return db.get_all_lessons()
+            return self.db.get_lessons_by_month(year, month)
+        return self.db.get_all_lessons()
 
     def get_last_lesson_date(self, year: int, month: int) -> Optional[dt.date]:
         """
@@ -227,7 +230,7 @@ class LessonManager:
         Returns:
             最后一个上课日，如果没有则返回 None
         """
-        lessons = db.get_lessons_by_month(year, month)
+        lessons = self.db.get_lessons_by_month(year, month)
         active_lessons = [
             l for l in lessons
             if l.status != LessonStatus.CANCELLED
@@ -247,9 +250,9 @@ class LessonManager:
         Returns:
             更新后的课程对象
         """
-        existing = db.get_lesson_by_date(lesson_date)
+        existing = self.db.get_lesson_by_date(lesson_date)
         if not existing:
             return None
 
         existing.fee_paid = paid
-        return db.update_lesson(existing)
+        return self.db.update_lesson(existing)

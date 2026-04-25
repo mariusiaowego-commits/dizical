@@ -80,8 +80,8 @@ class TestPaymentManagerAdvanced(TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.db_path = os.path.join(self.temp_dir, 'test.db')
         self.db = Database(self.db_path)
-        self.lesson_manager = LessonManager()
-        self.payment_manager = PaymentManager()
+        self.lesson_manager = LessonManager(self.db)
+        self.payment_manager = PaymentManager(self.db)
 
     def tearDown(self):
         """清理临时文件"""
