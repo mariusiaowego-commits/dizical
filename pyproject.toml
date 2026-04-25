@@ -1,0 +1,18 @@
+[project]
+name = "dizi-helper"
+version = "0.1.0"
+description = "竹笛学习助手 - 课程管理与缴费记录工具"
+requires-python = ">=3.10"
+authors = [{name = "MTT"}]
+dependencies = []
+
+[project.scripts]
+dizi = "src.cli:app"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
