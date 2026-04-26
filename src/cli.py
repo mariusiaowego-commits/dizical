@@ -421,12 +421,12 @@ app.add_typer(remind_app, name="remind")
 @remind_app.command("monthly")
 def remind_monthly():
     """发送月度课程计划通知"""
-    from .notifier import Notifier
+    from .notifier import TelegramNotifier
 
     today = date.today()
     plan = lesson_manager.generate_monthly_lessons(today.year, today.month)
 
-    notifier = Notifier()
+    notifier = TelegramNotifier()
     notifier.send_monthly_lesson_plan(
         today.year, today.month, plan.lessons,
         plan.total_lessons, plan.holiday_conflicts, plan.total_fee
@@ -437,7 +437,7 @@ def remind_monthly():
 @remind_app.command("weekly")
 def remind_weekly():
     """发送下周上课确认提醒（每周日运行）"""
-    from .notifier import Notifier
+    from .notifier import TelegramNotifier
     from datetime import timedelta
 
     today = date.today()
@@ -455,7 +455,7 @@ def remind_weekly():
         None
     )
 
-    notifier = Notifier()
+    notifier = TelegramNotifier()
 
     if next_saturday_lesson:
         notifier.send_weekly_reminder(next_saturday, next_saturday_lesson.time, has_conflict=False)
@@ -476,7 +476,7 @@ def remind_weekly():
 @remind_app.command("daily")
 def remind_daily():
     """检查并发送当日上课提醒"""
-    from .notifier import Notifier
+    from .notifier import TelegramNotifier
 
     today = date.today()
     lessons = lesson_manager.get_lessons(today.year, today.month)
@@ -486,7 +486,7 @@ def remind_daily():
         console.print(Panel("[yellow]📭 今日无课程安排[/yellow]"))
         return
 
-    notifier = Notifier()
+    notifier = TelegramNotifier()
     notifier.send_daily_reminder(today_lesson.date, today_lesson.time)
     console.print(Panel(f"[green]✅ 已发送今日上课提醒 {today_lesson.time}[/green]"))
 
@@ -494,7 +494,7 @@ def remind_daily():
 @remind_app.command("payment")
 def remind_payment():
     """检查并发送缴费提醒（每月最后一节课当天 + 次月1号二次兜底）"""
-    from .notifier import Notifier
+    from .notifier import TelegramNotifier
     from datetime import timedelta
 
     today = date.today()
@@ -505,7 +505,7 @@ def remind_payment():
         last_month = today.replace(day=1) - timedelta(days=1)
         last_month_status = payment_manager.get_monthly_payment_status(last_month.year, last_month.month)
         if last_month_status.balance > 0:
-            notifier = Notifier()
+            notifier = TelegramNotifier()
             notifier.send_payment_overdue_reminder(
                 last_month.month, last_month_status.balance, last_month_status.unpaid_lessons
             )
@@ -532,7 +532,7 @@ def remind_payment():
 
     # 只有当天是最后一节课才发提醒
     if today == last_lesson_date:
-        notifier = Notifier()
+        notifier = TelegramNotifier()
         notifier.send_payment_reminder(last_lesson_date, status.balance, status.unpaid_lessons)
         console.print(Panel(f"[green]✅ 已发送缴费提醒，待缴: {status.balance} 元[/green]"))
     else:
@@ -549,9 +549,9 @@ app.add_typer(reminders_app, name="reminders")
 @reminders_app.command("check")
 def check_reminders():
     """检查 Reminders 列表中的指令"""
-    from .reminders import RemindersSync
+    from .reminders import RemindersManager
 
-    sync = RemindersSync()
+    sync = RemindersManager()
 
     if not sync.is_available:
         console.print(Panel("[red]❌ remindctl 不可用，请先安装[/red]"))
@@ -578,9 +578,9 @@ def check_reminders():
 @reminders_app.command("sync")
 def sync_reminders():
     """执行 Reminders 指令并标记为已完成"""
-    from .reminders import RemindersSync
+    from .reminders import RemindersManager
 
-    sync = RemindersSync()
+    sync = RemindersManager()
 
     if not sync.is_available:
         console.print(Panel("[red]❌ remindctl 不可用[/red]"))

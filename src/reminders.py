@@ -24,7 +24,35 @@ class RemindersManager:
             list_name: 监控的 Reminder 列表名，默认 'dizi'
         """
         self.list_name = list_name
-        self._check_remindctl()
+        self._available = self._check_remindctl()
+
+    @property
+    def is_available(self) -> bool:
+        """remindctl 是否可用"""
+        return self._available
+
+    def check_new_commands(self) -> List:
+        """获取待执行指令"""
+        return self.get_pending_items()
+
+    def list_exists(self) -> bool:
+        """检查 Reminders 列表是否存在"""
+        try:
+            result = subprocess.run(
+                ["remindctl", "list"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                return False
+            return any(line.strip().startswith(self.list_name) for line in result.stdout.splitlines())
+        except Exception:
+            return False
+
+    def create_list(self) -> bool:
+        """创建 Reminders 列表（实际上 remindctl 不需要预创建，直接用就行）"""
+        return True
 
     def _check_remindctl(self) -> bool:
         """检查 remindctl 是否可用"""
@@ -82,6 +110,9 @@ class RemindersManager:
         except Exception as e:
             logger.error(f"Failed to complete reminder: {e}")
             return False
+
+    # CLI 兼容别名
+    complete_reminder = complete_item
 
     def parse_instruction(self, text: str) -> Tuple[Optional[str], dict]:
         """
