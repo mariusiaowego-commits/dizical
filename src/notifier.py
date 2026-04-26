@@ -113,6 +113,33 @@ class TelegramNotifier:
         message = f"❌ *课程已取消*\n\n📅 {lesson_date} 竹笛课{reason_text}"
         return self.send(message)
 
+    def send_weekly_reminder(self, lesson_date: str, lesson_time: str = "17:15", has_conflict: bool = False) -> bool:
+        """发送下周上课提醒"""
+        conflict_text = "\n⚠️ 注意：当日为节假日，请确认是否上课！" if has_conflict else ""
+        message = f"📅 *下周上课提醒*\n\n📆 日期: {lesson_date}\n⏰ 时间: {lesson_time}{conflict_text}\n\n请确认是否正常上课？"
+        return self.send(message)
+
+    def send_daily_reminder(self, lesson_date: str, lesson_time: str = "17:15") -> bool:
+        """发送当日上课提醒"""
+        message = f"🔔 *今日有竹笛课！*\n\n📅 日期: {lesson_date}\n⏰ 时间: {lesson_time}\n\n记得带上笛子 🎵"
+        return self.send(message)
+
+    def send_monthly_lesson_plan(
+        self, year: int, month: int, lessons: list, total: int, conflicts: int, fee: int
+    ) -> bool:
+        """发送月度课程计划"""
+        lesson_lines = "\n".join([f"• {l.date} {l.time}" for l in lessons[:5]])
+        if len(lessons) > 5:
+            lesson_lines += f"\n• ... 共 {len(lessons)} 节"
+        conflict_text = f"\n⚠️ 节假日冲突: {conflicts} 节" if conflicts else ""
+        message = f"📅 *{year}年{month}月 课程计划*\n\n{lesson_lines}\n\n📚 共 {total} 节{conflict_text}\n💰 学费合计: {fee} 元"
+        return self.send(message)
+
+    def send_payment_overdue_reminder(self, month: int, balance: int, unpaid_lessons: int) -> bool:
+        """发送欠费提醒"""
+        message = f"⚠️ *欠费提醒*\n\n{month}月课程尚有未缴费用：\n💰 欠费金额: *{balance}元*\n📚 未缴课次: {unpaid_lessons} 节\n\n请尽快缴费！"
+        return self.send(message)
+
 
 # 全局单例
 _notifier: Optional[TelegramNotifier] = None
