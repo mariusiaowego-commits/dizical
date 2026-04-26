@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, Annotated
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -15,10 +15,17 @@ console = Console()
 lesson_app = typer.Typer(help="课程管理")
 payment_app = typer.Typer(help="缴费管理")
 stat_app = typer.Typer(help="统计报表")
+practice_app = typer.Typer(help="练习管理")
+remind_app = typer.Typer(help="提醒管理")
+export_app = typer.Typer(help="导出管理")
+
+practice_app.add_typer(remind_app, name="remind")
+practice_app.add_typer(export_app, name="export")
 
 app.add_typer(lesson_app, name="lesson")
 app.add_typer(payment_app, name="payment")
 app.add_typer(stat_app, name="stat")
+app.add_typer(practice_app, name="practice")
 
 lesson_manager = LessonManager()
 payment_manager = PaymentManager()
@@ -664,3 +671,428 @@ def create_note(
 
 if __name__ == "__main__":
     app()
+
+
+# ============== 练习管理命令 ==============
+from . import practice as practice_module
+
+
+@practice_app.command("log")
+def practice_log(
+    ctx: typer.Context,
+    date: str = typer.Option(None, "--date", "-d", help="日期，格式 YYYY-MM-DD，默认今天"),
+    items: Annotated[list[str], typer.Argument(help="练习内容，格式 项目:分钟")] = [],
+):
+    """记录每日练习
+
+    示例:
+        dizical practice log 基本功:20 单吐:15 采茶扑蝶:10
+        dizical practice log --date 2026-04-26 基本功:20
+    """
+    from datetime import date as date_type
+
+    items_list = list(items) + list(ctx.args)
+
+    if date:
+        practice_date = parse_date(date)
+    else:
+        practice_date = date_type.today()
+
+    if not items_list:
+        console.print("[yellow]请提供练习内容，如: dizical practice log '基本功:20 单吐:15'[/yellow]")
+        return
+
+    # 解析 items
+    parsed = []
+    for part in items_list:
+        if ':' in part:
+            item_name, mins = part.split(':', 1)
+            try:
+                minutes = int(mins)
+                parsed.append({'item': item_name.strip(), 'minutes': minutes})
+            except ValueError:
+                console.print(f"[red]❌ 无效时长: {mins}[/red]")
+                return
+
+    if parsed:
+        total = practice_module.save_practice(practice_date, parsed)
+        console.print(f"[green]✅ 已记录 {practice_date} 练习: {total} 分钟[/green]")
+
+
+@practice_app.command("note")
+def practice_note(
+    ctx: typer.Context,
+    date: str = typer.Option(None, "--date", "-d", help="日期，格式 YYYY-MM-DD，默认今天"),
+    note_text: Annotated[list[str], typer.Argument(help="一句话进展描述")] = [],
+):
+    """记录每日一句话进展
+
+    示例:
+        dizical practice note 今天 基本功，纠正吹口位置
+        dizical practice note -d 2026-04-26 采茶扑蝶有突破
+    """
+    from datetime import date as date_type
+
+    note = ' '.join(list(note_text) + list(ctx.args))
+
+    if date:
+        practice_date = parse_date(date)
+    else:
+        practice_date = date_type.today()
+
+    if not note.strip():
+        console.print("[yellow]请提供进展描述[/yellow]")
+        return
+
+    practice_module.save_progress(practice_date, note.strip())
+    console.print(f"[green]✅ 已记录进展: {note.strip()}[/green]")
+
+
+@practice_app.command("assign")
+def practice_assign(
+    ctx: typer.Context,
+    date: str = typer.Option(None, "--date", "-d", help="周开始日期（周一），格式 YYYY-MM-DD"),
+    notes: Optional[str] = typer.Option(None, "--notes", "-n", help="老师补充说明"),
+    items: Annotated[list[str], typer.Argument(help="练习项目和要求，格式 项目:要求")] = [],
+):
+    """录入每周老师要求
+
+    示例:
+        dizical practice assign 单吐练习:♩=82,84,86各两天 回娘家:连线小节♩=78
+        dizical practice assign -d 2026-04-20 单吐练习:♩=82,84,86各两天
+    """
+    items_list = list(items) + list(ctx.args)
+
+    if date:
+        week_start = parse_date(date)
+    else:
+        console.print("[yellow]请提供周开始日期（周一），使用 -d 参数[/yellow]")
+        return
+
+    if not items_list:
+        console.print("[yellow]请提供练习项目和要求，格式 '项目:要求'[/yellow]")
+        return
+
+    parsed = []
+    for part in items_list:
+        if ':' in part:
+            item_name, req = part.split(':', 1)
+            parsed.append({'item': item_name.strip(), 'requirement': req.strip()})
+
+    if parsed:
+        practice_module.save_weekly_assignment(week_start, parsed, notes)
+        console.print(f"[green]✅ 已录入 {week_start} 的每周要求[/green]")
+
+
+@practice_app.command("today")
+def practice_today():
+    """查看/录入今日练习"""
+    from datetime import date as date_type
+
+    today = date_type.today()
+    existing = practice_module.db.get_daily_practice(today)
+
+    if existing:
+        console.print(Panel(f"[blue]📅 {today} 今日练习[/blue]"))
+        console.print(f"总时长: {existing['total_minutes']} 分钟")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("项目")
+        table.add_column("时长")
+        for item in existing['items']:
+            table.add_row(item['item'], f"{item['minutes']} 分钟")
+        console.print(table)
+    else:
+        console.print(Panel(f"[yellow]📅 {today} 今日暂无练习记录[/yellow]"))
+        console.print("使用 'dizical practice log 今天 基本功:20' 来记录")
+
+
+@practice_app.command("thisweek")
+def practice_thisweek():
+    """查看本周练习情况"""
+    from datetime import date as date_type
+
+    today = date_type.today()
+    week_start = practice_module.get_week_start(today)
+    summary = practice_module.get_week_summary(week_start)
+
+    console.print(Panel(f"[blue]📅 {week_start} ~ {summary['week_end']} 本周练习[/blue]"))
+    console.print(f"练习天数: {summary['practice_days']} 天")
+    console.print(f"总时长: {summary['total_minutes']} 分钟")
+
+    if summary['item_totals']:
+        console.print("\n[bold]各项目时长:[/bold]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("项目")
+        table.add_column("时长")
+        for item, minutes in sorted(summary['item_totals'].items(), key=lambda x: -x[1]):
+            table.add_row(item, f"{minutes} 分钟")
+        console.print(table)
+
+    if summary['assignment']:
+        console.print("\n[bold]本周老师要求:[/bold]")
+        for item in summary['assignment']['items']:
+            console.print(f"  • {item['item']}: {item['requirement']}")
+
+
+@practice_app.command("week")
+def practice_week(
+    date_str: str = typer.Argument(..., help="该周任意日期，格式 YYYY-MM-DD"),
+):
+    """查看指定周的练习情况"""
+    week_start = practice_module.get_week_start(parse_date(date_str))
+    summary = practice_module.get_week_summary(week_start)
+
+    console.print(Panel(f"[blue]📅 {week_start} ~ {summary['week_end']} 周练习[/blue]"))
+    console.print(f"练习天数: {summary['practice_days']} 天")
+    console.print(f"总时长: {summary['total_minutes']} 分钟")
+
+    if summary['item_totals']:
+        console.print("\n[bold]各项目时长:[/bold]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("项目")
+        table.add_column("时长")
+        for item, minutes in sorted(summary['item_totals'].items(), key=lambda x: -x[1]):
+            table.add_row(item, f"{minutes} 分钟")
+        console.print(table)
+
+
+@practice_app.command("calendar")
+def practice_calendar(
+    month: Optional[str] = typer.Argument(None, help="月份，格式 YYYY-MM，默认当前月"),
+):
+    """月度练习日历"""
+    import calendar
+
+    if month:
+        year, month_num = parse_month(month)
+    else:
+        today = date.today()
+        year, month_num = today.year, today.month
+
+    cal_data = practice_module.get_practice_calendar(year, month_num)
+
+    console.print(Panel(f"[blue]📅 {year}年{month_num}月 练习日历[/blue]"))
+
+    cal = calendar.Calendar(firstweekday=0)
+    console.print("一  二  三  四  五  六  日")
+
+    week = []
+    for day in cal.itermonthdays(year, month_num):
+        if day == 0:
+            week.append("    ")
+            continue
+
+        day_date = f"{year:04d}-{month_num:02d}-{day:02d}"
+        day_info = cal_data.get(day_date, {})
+
+        if day_info.get('has_practice'):
+            mins = day_info.get('total_minutes', 0)
+            if mins >= 60:
+                day_str = f"[green]{day:2d}●[/green]"
+            else:
+                day_str = f"[green]{day:2d}○[/green]"
+        else:
+            day_str = f"{day:2d}  "
+
+        week.append(day_str)
+
+        if len(week) == 7:
+            console.print("".join(f"{d:<4}" for d in week))
+            week = []
+
+    if week:
+        console.print("".join(f"{d:<4}" for d in week))
+
+    console.print("\n[dim]图例: ● 60+分钟  ○ 有练习  (空白) 无记录[/dim]")
+
+
+@practice_app.command("stats")
+def practice_stats(
+    month: Optional[str] = typer.Argument(None, help="月份，格式 YYYY-MM，默认当前月"),
+):
+    """统计报表"""
+    if month:
+        year, month_num = parse_month(month)
+    else:
+        today = date.today()
+        year, month_num = today.year, today.month
+
+    summary = practice_module.get_month_summary(year, month_num)
+
+    console.print(Panel(f"[blue]📊 {year}年{month_num}月 练习统计[/blue]"))
+    console.print(f"练习天数: {summary['practice_days']} / {summary['total_days']} 天")
+    console.print(f"总时长: {summary['total_minutes']} 分钟 ({summary['total_minutes'] // 60} 小时 {summary['total_minutes'] % 60} 分)")
+
+    if summary['item_totals']:
+        console.print("\n[bold]各项目时长:[/bold]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("项目")
+        table.add_column("时长")
+        table.add_column("占比")
+        total = summary['total_minutes']
+        for item, minutes in sorted(summary['item_totals'].items(), key=lambda x: -x[1]):
+            pct = minutes / total * 100
+            table.add_row(item, f"{minutes} 分钟", f"{pct:.1f}%")
+        console.print(table)
+
+
+@practice_app.command("import")
+def practice_import(
+    csv_path: str = typer.Argument(..., help="CSV 文件路径"),
+):
+    """导入历史练习记录（从 Notion CSV）"""
+    success, failures = practice_module.import_from_csv(csv_path)
+    if success > 0:
+        console.print(f"[green]✅ 成功导入 {success} 天练习记录[/green]")
+    if failures > 0:
+        console.print(f"[yellow]⚠️  {failures} 行导入失败[/yellow]")
+
+
+@practice_app.command("items")
+def practice_items():
+    """查看所有练习项目"""
+    items = practice_module.db.get_practice_items(active_only=False)
+    if items:
+        console.print(Panel("[blue]📋 练习项目库[/blue]"))
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("ID")
+        table.add_column("名称")
+        table.add_column("状态")
+        for item in items:
+            status = "[green]活跃[/green]" if item['is_active'] else "[dim]已停用[/dim]"
+            table.add_row(str(item['id']), item['name'], status)
+        console.print(table)
+    else:
+        console.print("[yellow]暂无练习项目[/yellow]")
+
+
+# ============== 提醒管理命令 ==============
+from .reminders import get_reminders_manager
+from .notifier import get_notifier
+
+
+@remind_app.command("check")
+def reminders_check():
+    """检查并处理待处理的 Reminder 指令"""
+    manager = get_reminders_manager()
+    lesson_mgr = LessonManager()
+    payment_mgr = PaymentManager()
+
+    success, failed = manager.process_pending(lesson_mgr, payment_mgr)
+
+    if success > 0:
+        console.print(f"[green]✅ 成功处理 {success} 条指令[/green]")
+    if failed > 0:
+        console.print(f"[red]❌ 失败 {failed} 条[/red]")
+    if success == 0 and failed == 0:
+        console.print("[yellow]没有待处理的指令[/yellow]")
+
+
+@remind_app.command("list")
+def reminders_list():
+    """列出所有待处理的 Reminder"""
+    manager = get_reminders_manager()
+    items = manager.get_pending_items()
+
+    if not items:
+        console.print("[yellow]没有待处理的提醒[/yellow]")
+        return
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("ID")
+    table.add_column("标题")
+    table.add_column("到期日")
+    for item in items:
+        table.add_row(
+            item.get("id", ""),
+            item.get("title", ""),
+            item.get("due", ""),
+        )
+    console.print(table)
+
+
+@remind_app.command("send")
+def reminders_send(
+    type: str = typer.Argument(..., help="提醒类型: lesson/payment/monthly"),
+    date: Optional[str] = typer.Option(None, "--date", "-d", help="日期"),
+):
+    """手动发送 Telegram 提醒"""
+    notifier = get_notifier()
+    if not notifier.is_configured():
+        console.print("[yellow]Telegram 未配置，跳过发送[/yellow]")
+        return
+
+    if type == "lesson":
+        lesson_date = date or str(date.today())
+        notifier.send_lesson_reminder(lesson_date, "17:15")
+    elif type == "payment":
+        lesson_mgr = LessonManager()
+        payment_mgr = PaymentManager()
+        status = payment_mgr.get_monthly_payment_status(date.today().year, date.today().month)
+        last_date = lesson_mgr.get_last_lesson_date(date.today().year, date.today().month)
+        notifier.send_payment_reminder(status["total_unpaid"], str(last_date))
+    elif type == "monthly":
+        notifier.send_monthly_schedule("本月课程计划已生成")
+    else:
+        console.print(f"[red]未知类型: {type}[/red]")
+        return
+
+    console.print("[green]✅ 提醒已发送[/green]")
+
+
+# ============== 导出管理命令 ==============
+from .obsidian import get_exporter
+
+
+@export_app.command("monthly")
+def export_monthly(
+    year: int = typer.Option(None, "--year", "-y", help="年份，默认今年"),
+    month: int = typer.Option(None, "--month", "-m", help="月份，默认本月"),
+):
+    """导出月度报告到 Obsidian"""
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+
+    exporter = get_exporter()
+    try:
+        file_path = exporter.export_monthly_report(year, month)
+        console.print(f"[green]✅ 月报已导出: {file_path}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ 导出失败: {e}[/red]")
+
+
+@export_app.command("yearly")
+def export_yearly(
+    year: int = typer.Option(None, "--year", "-y", help="年份，默认今年"),
+):
+    """导出年度总结到 Obsidian"""
+    year = year or date.today().year
+
+    exporter = get_exporter()
+    try:
+        file_path = exporter.export_yearly_report(year)
+        console.print(f"[green]✅ 年度总结已导出: {file_path}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ 导出失败: {e}[/red]")
+
+
+@export_app.command("practice")
+def export_practice(
+    week_start: str = typer.Argument(..., help="周开始日期（周一），格式 YYYY-MM-DD"),
+):
+    """导出周练习报告到 Obsidian"""
+    from datetime import datetime as dt
+
+    try:
+        ws = dt.strptime(week_start, "%Y-%m-%d").date()
+    except ValueError:
+        console.print("[red]❌ 日期格式错误，请使用 YYYY-MM-DD[/red]")
+        return
+
+    exporter = get_exporter()
+    try:
+        file_path = exporter.export_weekly_practice_report(ws)
+        console.print(f"[green]✅ 周练习报告已导出: {file_path}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ 导出失败: {e}[/red]")

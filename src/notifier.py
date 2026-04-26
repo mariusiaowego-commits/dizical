@@ -1,151 +1,126 @@
 """
-通知格式化模块
-配合 Hermes Telegram Gateway 使用，输出直接发送到 home channel
+Telegram 通知模块
+封装 python-telegram-bot，支持文本消息、Markdown 格式
 """
+
+import os
+import logging
 from typing import Optional
-from datetime import date
+
+try:
+    from telegram import Bot
+    from telegram.error import TelegramError
+    HAS_TELEGRAM = True
+except ImportError:
+    HAS_TELEGRAM = False
+    Bot = None
+    TelegramError = Exception
+
+logger = logging.getLogger(__name__)
 
 
-class Notifier:
-    """通知格式化器"""
+class TelegramNotifier:
+    """Telegram 通知发送器"""
 
-    def __init__(self):
-        pass
-
-    def format_message(self, text: str) -> str:
-        """格式化消息"""
-        return text
-
-    def send_monthly_lesson_plan(self, year: int, month: int, lessons: list,
-                                 total_lessons: int, holiday_conflicts: int,
-                                 total_fee: int) -> str:
+    def __init__(self, bot_token: Optional[str] = None, chat_id: Optional[str] = None):
         """
-        格式化月度课程计划
+        初始化通知器
+
+        Args:
+            bot_token: Telegram Bot Token，从环境变量或配置读取
+            chat_id: 目标聊天 ID
+        """
+        if bot_token is None:
+            bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        if chat_id is None:
+            chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+
+        self.bot_token = bot_token
+        self.chat_id = chat_id
+        self.bot: Optional[Bot] = None
+
+        if self.bot_token and HAS_TELEGRAM:
+            try:
+                self.bot = Bot(token=self.bot_token)
+            except Exception as e:
+                logger.warning(f"Failed to initialize Telegram bot: {e}")
+
+    def is_configured(self) -> bool:
+        """检查是否已配置"""
+        return bool(self.bot_token and self.chat_id and self.bot is not None)
+
+    def send(
+        self,
+        message: str,
+        parse_mode: str = "Markdown",
+        disable_notification: bool = False,
+    ) -> bool:
+        """
+        发送消息
+
+        Args:
+            message: 消息内容
+            parse_mode: 解析模式，Markdown 或 HTML
+            disable_notification: 静音发送
 
         Returns:
-            格式化后的消息文本，Hermes 会自动发送到 Telegram
+            是否发送成功
         """
-        lines = [
-            f"📅 *{year}年{month}月 课程计划*",
-            f"",
-            f"📚 总课程数: {total_lessons} 节",
-            f"⚠️  节假日冲突: {holiday_conflicts} 节",
-            f"💰 总学费: {total_fee} 元",
-            f"",
-            f"*课程列表:*",
-        ]
+        if not self.is_configured():
+            logger.warning("Telegram not configured, skipping notification")
+            return False
 
-        for lesson in lessons:
-            status_icon = "⚠️ " if lesson.is_holiday_conflict else "✅ "
-            lines.append(f"{status_icon} {lesson.date.strftime('%m-%d')} {lesson.time}")
-
-        lines.extend([
-            f"",
-            f"如有冲突提前调课"
-        ])
-
-        text = "\n".join(lines)
-        print(text)  # Hermes 会捕获输出并发送到 Telegram
-        return text
-
-    def send_weekly_reminder(self, lesson_date, lesson_time, has_conflict: bool = False) -> str:
-        """
-        格式化下周上课确认提醒
-        """
-        # 去掉时间的秒部分
-        time_str = str(lesson_time)[:5]  # 17:15:00 → 17:15
-
-        if has_conflict:
-            text = (
-                f"⚠️ 下周竹笛课冲突\n\n"
-                f"{lesson_date.strftime('%m-%d')} 周六是节假日\n"
-                f"需调课的话，去 Reminders 改就行"
+        try:
+            self.bot.send_message(
+                chat_id=self.chat_id,
+                text=message,
+                parse_mode=parse_mode,
+                disable_notification=disable_notification,
             )
-        else:
-            text = (
-                f"🎵 下周竹笛课\n\n"
-                f"周六 {lesson_date.strftime('%m-%d')} {time_str}\n"
-                f"有变化去 Reminders 改"
-            )
-        print(text)
-        return text
+            logger.info(f"Telegram message sent successfully")
+            return True
+        except TelegramError as e:
+            logger.error(f"Failed to send Telegram message: {e}")
+            return False
 
-    def send_daily_reminder(self, lesson_date: date, lesson_time) -> str:
-        """
-        格式化当日上课提醒
-        """
-        text = (
-            f"🔔 *今日上课提醒*\n"
-            f"\n"
-            f"日期: {lesson_date.strftime('%Y年%m月%d日')}\n"
-            f"时间: {lesson_time}\n"
-            f"\n"
-            f"记得带竹笛和乐谱 🎵"
-        )
-        print(text)
-        return text
+    def send_lesson_reminder(self, lesson_date: str, lesson_time: str) -> bool:
+        """发送上课提醒"""
+        message = f"🎵 *竹笛课提醒*\n\n📅 日期: {lesson_date}\n⏰ 时间: {lesson_time}\n\n请确认是否上课？"
+        return self.send(message)
 
-    def send_payment_reminder(self, due_date: date, amount_due: int,
-                               unpaid_lessons: int) -> str:
-        """
-        格式化缴费提醒
-        """
-        text = (
-            f"💰 该交学费啦\n\n"
-            f"本月还有 {unpaid_lessons} 节课\n"
-            f"应交: {amount_due} 元\n\n"
-            f"月底前记得交一下哈"
-        )
-        print(text)
-        return text
+    def send_payment_reminder(
+        self,
+        amount: int,
+        last_lesson_date: str,
+    ) -> bool:
+        """发送缴费提醒"""
+        message = f"💰 *缴费提醒*\n\n应缴金额: *{amount}元*\n最后上课日: {last_lesson_date}\n\n请在上课时准备好现金缴费。"
+        return self.send(message)
 
-    def send_payment_overdue_reminder(self, month: int, amount_due: int, unpaid_lessons: int) -> str:
-        """
-        格式化上月欠费催缴提醒（次月1号兜底）
-        """
-        text = (
-            f"🔴 *上月欠费提醒*\n"
-            f"\n"
-            f"{month}月还有 {unpaid_lessons} 节课未缴费\n"
-            f"合计: {amount_due} 元\n"
-            f"\n"
-            f"及时缴费"
-        )
-        print(text)
-        return text
+    def send_monthly_schedule(self, schedule_text: str) -> bool:
+        """发送月度课程计划"""
+        message = f"📅 *本月课程计划*\n\n{schedule_text}"
+        return self.send(message)
 
-    def send_payment_confirmation(self, amount: int, payment_date: date) -> str:
-        """
-        格式化缴费确认
-        """
-        text = (
-            f"✅ *缴费确认*\n"
-            f"\n"
-            f"缴费金额: {amount} 元\n"
-            f"缴费日期: {payment_date.strftime('%Y年%m月%d日')}\n"
-            f"\n"
-            f"已收到学费 🎵"
-        )
-        print(text)
-        return text
+    def send_lesson_confirmed(self, lesson_date: str) -> bool:
+        """确认课程"""
+        message = f"✅ *课程已确认*\n\n📅 {lesson_date} 竹笛课"
+        return self.send(message)
 
-    def send_lesson_change_notification(self, action: str, lesson_date: date,
-                                        new_date: Optional[date] = None) -> str:
-        """
-        格式化课程变动通知
-        """
-        if action == "add":
-            text = f"📝 *加课通知*\n\n已添加课程: {lesson_date.strftime('%Y年%m月%d日')}"
-        elif action == "cancel":
-            text = f"❌ *取消课程*\n\n已取消课程: {lesson_date.strftime('%Y年%m月%d日')}"
-        elif action == "reschedule":
-            text = (
-                f"🔄 *调课通知*\n\n"
-                f"原课程: {lesson_date.strftime('%Y年%m月%d日')}\n"
-                f"调整为: {new_date.strftime('%Y年%m月%d日')}"
-            )
-        else:
-            text = f"📋 *课程变动*\n\n{action}: {lesson_date.strftime('%Y年%m月%d日')}"
+    def send_lesson_cancelled(self, lesson_date: str, reason: str = "") -> bool:
+        """取消课程"""
+        reason_text = f"\n原因: {reason}" if reason else ""
+        message = f"❌ *课程已取消*\n\n📅 {lesson_date} 竹笛课{reason_text}"
+        return self.send(message)
 
-        print(text)
-        return text
+
+# 全局单例
+_notifier: Optional[TelegramNotifier] = None
+
+
+def get_notifier() -> TelegramNotifier:
+    """获取全局通知器实例"""
+    global _notifier
+    if _notifier is None:
+        _notifier = TelegramNotifier()
+    return _notifier

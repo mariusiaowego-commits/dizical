@@ -62,9 +62,61 @@ class Database:
                 )
             ''')
 
-            # Create index on lesson date
+            # Practice items table (练习项目库)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS practice_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    is_active BOOLEAN NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            # Weekly assignments table (每周老师要求)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS weekly_assignments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    week_start_date DATE NOT NULL,
+                    items TEXT NOT NULL DEFAULT '[]',
+                    notes TEXT,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(week_start_date)
+                )
+            ''')
+
+            # Daily practices table (每日分项打卡)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS daily_practices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date DATE NOT NULL UNIQUE,
+                    items TEXT NOT NULL DEFAULT '[]',
+                    total_minutes INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            # Daily progress table (每日一句话进展)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS daily_progress (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date DATE NOT NULL UNIQUE,
+                    note TEXT NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            # Create indexes
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_lessons_date ON lessons(date)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_practices_date ON daily_practices(date)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_progress_date ON daily_progress(date)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_assignments_week ON weekly_assignments(week_start_date)
             ''')
 
             conn.commit()
@@ -248,6 +300,140 @@ class Database:
             cursor.execute('SELECT value FROM settings WHERE key = ?', (key,))
             row = cursor.fetchone()
             return row['value'] if row else default
+
+    # Practice item operations
+    def add_practice_item(self, name: str) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO practice_items (name) VALUES (?)
+            ''', (name,))
+            conn.commit()
+            if cursor.rowcount == 0:
+                cursor.execute('SELECT id FROM practice_items WHERE name = ?', (name,))
+                row = cursor.fetchone()
+                return row['id']
+            return cursor.lastrowid
+
+    def get_practice_items(self, active_only: bool = True) -> List[Dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if active_only:
+                cursor.execute('SELECT * FROM practice_items WHERE is_active = 1 ORDER BY name')
+            else:
+                cursor.execute('SELECT * FROM practice_items ORDER BY name')
+            return [dict(row) for row in cursor.fetchall()]
+
+    # Weekly assignment operations
+    def save_weekly_assignment(self, week_start_date: dt.date, items: List[Dict], notes: Optional[str] = None) -> None:
+        import json
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO weekly_assignments (week_start_date, items, notes)
+                VALUES (?, ?, ?)
+            ''', (week_start_date.isoformat(), json.dumps(items, ensure_ascii=False), notes))
+            conn.commit()
+
+    def get_weekly_assignment(self, week_start_date: dt.date) -> Optional[Dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM weekly_assignments WHERE week_start_date = ?', (week_start_date.isoformat(),))
+            row = cursor.fetchone()
+            if row:
+                import json
+                return {
+                    'id': row['id'],
+                    'week_start_date': dt.date.fromisoformat(row['week_start_date']),
+                    'items': json.loads(row['items']),
+                    'notes': row['notes']
+                }
+            return None
+
+    def get_weekly_assignments_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM weekly_assignments
+                WHERE week_start_date >= ? AND week_start_date <= ?
+                ORDER BY week_start_date
+            ''', (start.isoformat(), end.isoformat()))
+            import json
+            return [{
+                'id': row['id'],
+                'week_start_date': dt.date.fromisoformat(row['week_start_date']),
+                'items': json.loads(row['items']),
+                'notes': row['notes']
+            } for row in cursor.fetchall()]
+
+    # Daily practice operations
+    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int) -> None:
+        import json
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO daily_practices (date, items, total_minutes)
+                VALUES (?, ?, ?)
+            ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes))
+            conn.commit()
+
+    def get_daily_practice(self, date: dt.date) -> Optional[Dict]:
+        import json
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM daily_practices WHERE date = ?', (date.isoformat(),))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'id': row['id'],
+                    'date': dt.date.fromisoformat(row['date']),
+                    'items': json.loads(row['items']),
+                    'total_minutes': row['total_minutes']
+                }
+            return None
+
+    def get_daily_practices_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:
+        import json
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM daily_practices
+                WHERE date >= ? AND date <= ?
+                ORDER BY date
+            ''', (start.isoformat(), end.isoformat()))
+            return [{
+                'id': row['id'],
+                'date': dt.date.fromisoformat(row['date']),
+                'items': json.loads(row['items']),
+                'total_minutes': row['total_minutes']
+            } for row in cursor.fetchall()]
+
+    # Daily progress operations
+    def save_daily_progress(self, date: dt.date, note: str) -> None:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO daily_progress (date, note)
+                VALUES (?, ?)
+            ''', (date.isoformat(), note))
+            conn.commit()
+
+    def get_daily_progress(self, date: dt.date) -> Optional[str]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT note FROM daily_progress WHERE date = ?', (date.isoformat(),))
+            row = cursor.fetchone()
+            return row['note'] if row else None
+
+    def get_daily_progress_in_range(self, start: dt.date, end: dt.date) -> Dict[str, str]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT date, note FROM daily_progress
+                WHERE date >= ? AND date <= ?
+                ORDER BY date
+            ''', (start.isoformat(), end.isoformat()))
+            return {dt.date.fromisoformat(row['date']): row['note'] for row in cursor.fetchall()}
 
 
 # Global database instance

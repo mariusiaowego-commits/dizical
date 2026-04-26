@@ -1,242 +1,253 @@
 """
 Apple Reminders 同步模块
-使用 remindctl CLI 进行双向同步和指令解析
+使用 remindctl CLI 监控 dizi 列表，解析自然语言指令
 """
-import json
+
 import os
 import re
-from datetime import date, datetime
-from typing import Optional, Tuple, List
-from subprocess import run, PIPE, CalledProcessError
+import logging
+import subprocess
+import datetime as dt
+from typing import Optional, List, Tuple
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-class ReminderCommand:
-    """解析后的 Reminder 指令"""
-
-    def __init__(self, action: str, **kwargs):
-        self.action = action  # add, cancel, reschedule, payment, none
-        self.date: Optional[date] = kwargs.get('date')
-        self.new_date: Optional[date] = kwargs.get('new_date')
-        self.amount: Optional[int] = kwargs.get('amount')
-        self.notes: str = kwargs.get('notes', '')
-
-    def __repr__(self):
-        return f"ReminderCommand({self.action}, {self.__dict__})"
+logger = logging.getLogger(__name__)
 
 
-class RemindersSync:
-    """Apple Reminders 同步器"""
+class RemindersManager:
+    """Apple Reminders 管理器"""
 
-    def __init__(self, list_name: Optional[str] = None):
-        self.list_name = list_name or os.getenv("REMINDER_LIST_NAME", "dizi")
+    def __init__(self, list_name: str = "dizi"):
+        """
+        初始化
 
-    @property
-    def is_available(self) -> bool:
+        Args:
+            list_name: 监控的 Reminder 列表名，默认 'dizi'
+        """
+        self.list_name = list_name
+        self._check_remindctl()
+
+    def _check_remindctl(self) -> bool:
         """检查 remindctl 是否可用"""
         try:
-            result = run(["remindctl", "status"], capture_output=True, text=True, timeout=5)
-            return result.returncode == 0
-        except (FileNotFoundError, CalledProcessError, TimeoutError):
-            return False
-
-    def _run_command(self, args: List[str]) -> str:
-        """运行 remindctl 命令"""
-        result = run(
-            ["remindctl"] + args,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"remindctl 失败: {result.stderr}")
-        return result.stdout
-
-    def list_exists(self) -> bool:
-        """检查提醒列表是否存在"""
-        try:
-            output = self._run_command(["list"])
-            return self.list_name in output
-        except RuntimeError:
-            return False
-
-    def create_list(self) -> bool:
-        """创建提醒列表"""
-        try:
-            self._run_command(["list", "add", self.list_name])
+            result = subprocess.run(
+                ["which", "remindctl"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                logger.warning("remindctl not found, reminders sync disabled")
+                return False
             return True
-        except RuntimeError:
+        except Exception:
+            logger.warning("remindctl not available")
             return False
 
-    def get_reminders(self, include_completed: bool = False) -> List[dict]:
+    def get_pending_items(self) -> List[dict]:
         """
-        获取列表中的所有提醒
+        获取待处理的 reminder 项
 
         Returns:
-            [{'id': '...', 'title': '...', 'date': '...', 'completed': bool}, ...]
+            [{'id': str, 'title': str, 'notes': str, 'due': str}, ...]
         """
-        args = ["list", self.list_name, "--json"]
-        if include_completed:
-            args.append("--completed")
-
-        output = self._run_command(args)
-        try:
-            return json.loads(output)
-        except json.JSONDecodeError:
+        if not self._check_remindctl():
             return []
 
-    def add_reminder(self, title: str, due_date: Optional[date] = None,
-                      notes: Optional[str] = None) -> str:
+        try:
+            result = subprocess.run(
+                ["remindctl", "list", self.list_name, "--format", "json"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                return []
+
+            import json
+            items = json.loads(result.stdout)
+            return items
+        except Exception as e:
+            logger.error(f"Failed to get reminders: {e}")
+            return []
+
+    def complete_item(self, item_id: str) -> bool:
+        """标记 reminder 为已完成"""
+        try:
+            result = subprocess.run(
+                ["remindctl", "complete", item_id],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.error(f"Failed to complete reminder: {e}")
+            return False
+
+    def parse_instruction(self, text: str) -> Tuple[Optional[str], dict]:
         """
-        添加提醒
+        解析自然语言指令
+
+        Args:
+            text: reminder 文本内容
 
         Returns:
-            提醒 ID
+            (action, params) - action 为 'cancel'/'add'/'payment'/'reschedule'/'confirm'，params 为解析出的参数
         """
-        args = ["add", "--list", self.list_name, title]
-
-        if due_date:
-            args.extend(["--date", due_date.strftime("%Y-%m-%d")])
-        if notes:
-            args.extend(["--notes", notes])
-
-        output = self._run_command(args)
-        # 输出通常包含新创建的提醒信息，解析ID
-        return output.strip()
-
-    def complete_reminder(self, reminder_id: str):
-        """标记提醒为已完成"""
-        self._run_command(["complete", reminder_id])
-
-    def delete_reminder(self, reminder_id: str):
-        """删除提醒"""
-        self._run_command(["delete", reminder_id])
-
-    @staticmethod
-    def parse_date(text: str) -> Optional[date]:
-        """
-        从文本中解析日期，支持以下格式：
-        - YYYY-MM-DD
-        - MM-DD
-        - MM月DD日
-        - 明天 / 后天
-        - 下周一 / 下周六
-        """
-        today = date.today()
-
-        # 完整日期 YYYY-MM-DD
-        match = re.search(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', text)
-        if match:
-            try:
-                return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
-            except ValueError:
-                pass
-
-        # 月份日期 MM-DD 或 MM/DD
-        match = re.search(r'(\d{1,2})[-/](\d{1,2})', text)
-        if match:
-            try:
-                return date(today.year, int(match.group(1)), int(match.group(2)))
-            except ValueError:
-                pass
-
-        # 中文日期: X月X日
-        match = re.search(r'(\d{1,2})月(\d{1,2})日', text)
-        if match:
-            try:
-                return date(today.year, int(match.group(1)), int(match.group(2)))
-            except ValueError:
-                pass
-
-        # 相对日期
-        if '明天' in text:
-            return today.replace(day=today.day + 1) if today.day < 28 else (
-                today.replace(month=today.month + 1, day=1) if today.month < 12 else today.replace(year=today.year + 1, month=1, day=1)
-            )
-        if '后天' in text:
-            return today.replace(day=today.day + 2) if today.day < 27 else (
-                today.replace(month=today.month + 1, day=2) if today.month < 12 else today.replace(year=today.year + 1, month=1, day=2)
-            )
-
-        return None
-
-    @staticmethod
-    def parse_amount(text: str) -> Optional[int]:
-        """从文本中解析金额"""
-        match = re.search(r'(\d+)\s*(?:元|块|钱|缴费)', text)
-        if match:
-            return int(match.group(1))
-
-        # 纯数字
-        match = re.search(r'(\d{3,})', text)
-        if match:
-            return int(match.group(1))
-
-        return None
-
-    def parse_command(self, title: str, notes: str = "") -> ReminderCommand:
-        """
-        解析提醒标题中的指令
-
-        支持的指令:
-        - 取消 + 日期 → 取消课程
-        - 请假 + 日期 → 取消课程
-        - 加课 + 日期 → 添加课程
-        - 缴费 + 金额 → 记录缴费
-        - 改 + 日期 + 到 + 日期 → 调课
-        """
-        full_text = f"{title} {notes}"
-
-        # 缴费
-        if any(keyword in full_text for keyword in ['缴费', '交钱', '已交']):
-            amount = self.parse_amount(full_text)
-            return ReminderCommand('payment', amount=amount, notes=notes)
-
-        # 调课: 改 X到Y
-        if '改' in full_text and ('到' in full_text or '为' in full_text):
-            dates = []
-            text_to_parse = full_text.replace('到', ' ').replace('为', ' ')
-            for _ in range(2):
-                d = self.parse_date(text_to_parse)
-                if d:
-                    dates.append(d)
-                    text_to_parse = text_to_parse.replace(d.strftime("%m-%d"), '')
-                    text_to_parse = text_to_parse.replace(d.strftime("%m月%d日"), '')
-            if len(dates) >= 2:
-                return ReminderCommand('reschedule', date=dates[0], new_date=dates[1], notes=notes)
+        text = text.strip()
 
         # 取消/请假
-        if any(keyword in full_text for keyword in ['取消', '请假', '不上']):
-            d = self.parse_date(full_text)
-            if d:
-                return ReminderCommand('cancel', date=d, notes=notes)
+        if "取消" in text or "请假" in text:
+            date = self._extract_date(text)
+            if date:
+                return "cancel", {"date": date}
+            return "cancel", {}
 
         # 加课
-        if any(keyword in full_text for keyword in ['加课', '加一节']):
-            d = self.parse_date(full_text)
-            if d:
-                return ReminderCommand('add', date=d, notes=notes)
+        if "加课" in text or "新增" in text:
+            date = self._extract_date(text)
+            if date:
+                return "add", {"date": date}
+            return "add", {}
 
-        return ReminderCommand('none', notes=notes)
+        # 缴费
+        if "缴费" in text or "交钱" in text:
+            amount = self._extract_amount(text)
+            return "payment", {"amount": amount}
 
-    def check_new_commands(self) -> List[ReminderCommand]:
-        """检查新的指令（未完成的提醒）"""
-        reminders = self.get_reminders(include_completed=False)
-        commands = []
+        # 确认上课
+        if "确认" in text or "到课" in text or "上课" in text:
+            date = self._extract_date(text)
+            return "confirm", {"date": date}
 
-        for reminder in reminders:
-            if reminder.get('completed', False):
+        # 改时间/调课
+        match = re.search(r"改.*?(\d{1,2})[月/-](\d{1,2})?.?到(\d{1,2})[月/-](\d{1,2})", text)
+        if match:
+            from_date = self._parse_month_day(match.group(1), match.group(2))
+            to_date = self._parse_month_day(match.group(3), match.group(4))
+            return "reschedule", {"from": from_date, "to": to_date}
+
+        return None, {}
+
+    def _extract_date(self, text: str) -> Optional[str]:
+        """提取日期"""
+        year = dt.date.today().year
+
+        # 格式: YYYY-MM-DD, YYYY/MM/DD
+        match = re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", text)
+        if match:
+            return f"{match.group(1)}-{int(match.group(2)):02d}-{int(match.group(3)):02d}"
+
+        # 格式: MM-DD, MM/DD
+        match = re.search(r"(\d{1,2})[-/](\d{1,2})", text)
+        if match:
+            return f"{year}-{int(match.group(1)):02d}-{int(match.group(2)):02d}"
+
+        # 相对日期: 今天, 明天, 后天
+        if "今天" in text:
+            return str(dt.date.today())
+        if "明天" in text:
+            return str(dt.date.today() + dt.timedelta(days=1))
+        if "后天" in text:
+            return str(dt.date.today() + dt.timedelta(days=2))
+
+        return None
+
+    def _extract_amount(self, text: str) -> Optional[int]:
+        """提取金额"""
+        match = re.search(r"(\d+)", text)
+        if match:
+            return int(match.group(1))
+        return None
+
+    def _parse_month_day(self, month: str, day: Optional[str]) -> str:
+        """解析月日"""
+        year = dt.date.today().year
+        m = int(month)
+        if day:
+            d = int(day)
+        else:
+            # 没有日期，默认该月1日
+            d = 1
+        return f"{year}-{m:02d}-{d:02d}"
+
+    def process_pending(self, lesson_manager=None, payment_manager=None) -> Tuple[int, int]:
+        """
+        处理所有待处理的 reminder
+
+        Args:
+            lesson_manager: LessonManager 实例
+            payment_manager: PaymentManager 实例
+
+        Returns:
+            (成功数, 失败数)
+        """
+        items = self.get_pending_items()
+        success = 0
+        failed = 0
+
+        for item in items:
+            action, params = self.parse_instruction(item.get("title", ""))
+
+            if action is None:
                 continue
 
-            title = reminder.get('title', '')
-            notes = reminder.get('notes', '') or ''
+            try:
+                if action == "cancel" and lesson_manager:
+                    date = params.get("date")
+                    if date:
+                        lesson_manager.cancel_lesson(date)
+                        self.complete_item(item["id"])
+                        success += 1
+                        logger.info(f"Cancelled lesson on {date}")
 
-            cmd = self.parse_command(title, notes)
-            if cmd.action != 'none':
-                cmd.reminder_id = reminder.get('id')
-                commands.append(cmd)
+                elif action == "add" and lesson_manager:
+                    date = params.get("date")
+                    if date:
+                        lesson_manager.add_lesson(date)
+                        self.complete_item(item["id"])
+                        success += 1
+                        logger.info(f"Added lesson on {date}")
 
-        return commands
+                elif action == "payment" and payment_manager:
+                    amount = params.get("amount")
+                    if amount:
+                        payment_manager.record_payment(amount)
+                        self.complete_item(item["id"])
+                        success += 1
+                        logger.info(f"Recorded payment {amount}")
+
+                elif action == "confirm" and lesson_manager:
+                    date = params.get("date")
+                    if date:
+                        lesson_manager.confirm_attendance(date)
+                        self.complete_item(item["id"])
+                        success += 1
+                        logger.info(f"Confirmed lesson on {date}")
+
+                elif action == "reschedule" and lesson_manager:
+                    from_date = params.get("from")
+                    to_date = params.get("to")
+                    if from_date and to_date:
+                        lesson_manager.reschedule_lesson(from_date, to_date)
+                        self.complete_item(item["id"])
+                        success += 1
+                        logger.info(f"Rescheduled lesson from {from_date} to {to_date}")
+
+            except Exception as e:
+                logger.error(f"Failed to process action {action}: {e}")
+                failed += 1
+
+        return success, failed
+
+
+# 全局单例
+_manager: Optional[RemindersManager] = None
+
+
+def get_reminders_manager() -> RemindersManager:
+    """获取全局 reminders 管理器实例"""
+    global _manager
+    if _manager is None:
+        list_name = os.getenv("REMINDER_LIST_NAME", "dizi")
+        _manager = RemindersManager(list_name=list_name)
+    return _manager
