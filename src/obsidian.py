@@ -1,232 +1,240 @@
 """
 Obsidian Markdown 导出模块
-将课程记录和缴费历史导出为 Markdown 文件，便于在 Obsidian 中查阅
+将竹笛学习数据导出为 Obsidian 可读的 Markdown 文件
 """
+
 import os
-from datetime import date, datetime
+import datetime as dt
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, List
 
-from dotenv import load_dotenv
-
-from .models import Lesson, Payment
-
-load_dotenv()
+from .database import db
 
 
 class ObsidianExporter:
     """Obsidian Markdown 导出器"""
 
     def __init__(self, base_path: Optional[str] = None):
-        self.base_path = base_path or os.getenv(
-            "OBSIDIAN_PATH",
-            "/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/"
-        )
-        self.dizi_dir = Path(self.base_path) / "dizi-helper"
-        self.dizi_dir.mkdir(parents=True, exist_ok=True)
+        """
+        初始化
 
-    def _format_currency(self, amount: int) -> str:
-        """格式化金额"""
-        return f"{amount} 元"
+        Args:
+            base_path: Obsidian 库路径，默认从环境变量读取
+        """
+        if base_path is None:
+            base_path = os.getenv(
+                "OBSIDIAN_PATH",
+                "/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/",
+            )
+        self.base_path = Path(base_path)
+        self.dizi_path = self.base_path / "dizi-helper"
 
-    def _format_date(self, d: date) -> str:
-        """格式化日期"""
-        return d.strftime("%Y年%m月%d日")
+    def _ensure_dir(self, path: Path) -> None:
+        """确保目录存在"""
+        path.mkdir(parents=True, exist_ok=True)
 
-    def export_monthly_report(self, year: int, month: int,
-                               lessons: List[Lesson],
-                               payments: List[Payment],
-                               total_fee: int,
-                               paid_amount: int) -> str:
+    def export_monthly_report(self, year: int, month: int) -> str:
         """
         导出月度报告
 
         Args:
             year: 年份
             month: 月份
-            lessons: 课程列表
-            payments: 缴费列表
-            total_fee: 总学费
-            paid_amount: 已缴金额
 
         Returns:
-            生成的文件路径
+            导出文件的绝对路径
         """
-        # 统计信息
-        scheduled = sum(1 for l in lessons if l.status == 'scheduled')
-        attended = sum(1 for l in lessons if l.status == 'attended')
-        cancelled = sum(1 for l in lessons if l.status == 'cancelled')
-        balance = total_fee - paid_amount
+        # 获取当月数据
+        lessons = db.get_lessons_by_month(year, month)
+        payments = db.get_payments_by_month(year, month)
+
+        # 过滤已缴费的课程
+        paid_lessons = [l for l in lessons if l.fee_paid]
+        unpaid_lessons = [l for l in lessons if not l.fee_paid]
+
+        total_paid = sum(l.fee for l in paid_lessons)
+        total_unpaid = sum(l.fee for l in unpaid_lessons)
 
         # 生成 Markdown
-        lines = [
-            f"# {year}年{month}月 竹笛学习记录",
-            f"",
-            f"> 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-            f"",
-            f"## 📊 本月统计",
-            f"",
-            f"| 指标 | 数值 |",
-            f"|------|------|",
-            f"| 总课程 | {len(lessons)} 节 |",
-            f"| 已上课 | {attended} 节 |",
-            f"| 待上课 | {scheduled} 节 |",
-            f"| 已取消 | {cancelled} 节 |",
-            f"| 总学费 | {self._format_currency(total_fee)} |",
-            f"| 已缴费 | {self._format_currency(paid_amount)} |",
-            f"| **余额** | **{self._format_currency(balance)}** |",
-            f"",
-            f"## 📅 课程记录",
-            f"",
-            f"| 日期 | 时间 | 状态 | 学费 | 缴费 | 备注 |",
-            f"|------|------|------|------|------|------|",
-        ]
+        month_name = f"{year}年{month:02d}月"
+        file_path = self.dizi_path / f"{year}-{month:02d}-竹笛学习月报.md"
+        self._ensure_dir(file_path.parent)
 
-        status_map = {
-            'scheduled': '📋 已安排',
-            'attended': '✅ 已上课',
-            'cancelled': '❌ 已取消',
-        }
+        content = f"""# {month_name} 竹笛学习月报
 
-        for lesson in sorted(lessons, key=lambda l: l.date):
-            status = status_map.get(lesson.status, str(lesson.status))
-            fee_paid = '✅' if lesson.fee_paid else '❌'
-            notes = []
-            if lesson.is_holiday_conflict:
-                notes.append('⚠️ 节假日冲突')
-            if lesson.notes:
-                notes.append(lesson.notes)
+## 📅 课程统计
 
-            lines.append(
-                f"| {self._format_date(lesson.date)} "
-                f"| {lesson.time} "
-                f"| {status} "
-                f"| {self._format_currency(lesson.fee)} "
-                f"| {fee_paid} "
-                f"| {', '.join(notes)} |"
+| 项目 | 数量 |
+|------|------|
+| 计划课程 | {len(lessons)} 节 |
+| 已上课 | {len([l for l in lessons if l.status.value == 'attended'])} 节 |
+| 已取消 | {len([l for l in lessons if l.status.value == 'cancelled'])} 节 |
+| 已缴费 | {len(paid_lessons)} 节 |
+
+## 💰 缴费情况
+
+| 项目 | 金额 |
+|------|------|
+| 已缴 | {total_paid} 元 |
+| 待缴 | {total_unpaid} 元 |
+
+## 📝 课程详情
+
+"""
+
+        # 课程详情表格
+        content += "| 日期 | 时间 | 状态 | 缴费 | 备注 |\n"
+        content += "|------|------|------|------|------|\n"
+
+        for lesson in sorted(lessons, key=lambda x: x.date):
+            status_icon = {"attended": "✅", "cancelled": "❌", "scheduled": "📅"}.get(
+                lesson.status.value, "📅"
             )
+            paid_icon = "💰" if lesson.fee_paid else "⏳"
+            notes = lesson.notes or ""
+            content += f"| {lesson.date} | {lesson.time} | {status_icon} {lesson.status.value} | {paid_icon} | {notes} |\n"
 
-        lines.extend([
-            f"",
-            f"## 💰 缴费记录",
-            f"",
-            f"| 日期 | 金额 | 备注 |",
-            f"|------|------|------|",
-        ])
-
-        for payment in sorted(payments, key=lambda p: p.payment_date):
-            lines.append(
-                f"| {self._format_date(payment.payment_date)} "
-                f"| {self._format_currency(payment.amount)} "
-                f"| {payment.notes or ''} |"
-            )
-
-        lines.extend([
-            f"",
-            f"## 📝 学习笔记",
-            f"",
-            f"### 练习重点",
-            f"- [ ] ",
-            f"",
-            f"### 曲目进度",
-            f"- [ ] ",
-            f"",
-            f"### 老师点评",
-            f"- ",
-            f"",
-        ])
+        # 缴费历史
+        if payments:
+            content += "\n## 💵 缴费记录\n\n"
+            content += "| 日期 | 金额 | 覆盖课程 | 备注 |\n"
+            content += "|------|------|----------|------|\n"
+            for p in sorted(payments, key=lambda x: x.payment_date):
+                content += f"| {p.payment_date} | {p.amount}元 | {p.lesson_ids} | {p.notes or ''} |\n"
 
         # 写入文件
-        filename = f"{year:04d}-{month:02d}-report.md"
-        filepath = self.dizi_dir / filename
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
+        return str(file_path)
 
-        return str(filepath)
-
-    def export_lesson_note(self, lesson_date: date, content: str = "") -> str:
+    def export_yearly_report(self, year: int) -> str:
         """
-        导出单次课程笔记模板
+        导出年度总结
 
         Args:
-            lesson_date: 课程日期
-            content: 初始内容
+            year: 年份
 
         Returns:
-            生成的文件路径
+            导出文件的绝对路径
         """
-        lines = [
-            f"# {self._format_date(lesson_date)} 竹笛课",
-            f"",
-            f"> 上课时间: {lesson_date.strftime('%Y-%m-%d')}",
-            f"",
-            f"## 📝 课堂内容",
-            f"",
-            f"- 练习重点：",
-            f"- 新学曲目：",
-            f"- 老师指导：",
-            f"",
-            f"## 🎵 课后练习",
-            f"",
-            f"- [ ] 练习 30 分钟/天",
-            f"- [ ] 复习曲目：",
-            f"- [ ] 预习：",
-            f"",
-            f"## 💡 学习笔记",
-            f"",
-            f"{content}",
-        ]
+        # 收集全年数据
+        total_lessons = 0
+        total_attended = 0
+        total_cancelled = 0
+        total_paid = 0
+        monthly_stats = []
 
-        filename = f"{lesson_date.strftime('%Y-%m-%d')}-lesson.md"
-        filepath = self.dizi_dir / "lessons" / filename
-        filepath.parent.mkdir(exist_ok=True)
+        for month in range(1, 13):
+            lessons = db.get_lessons_by_month(year, month)
+            if not lessons:
+                continue
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
+            total_lessons += len(lessons)
+            total_attended += len([l for l in lessons if l.status.value == "attended"])
+            total_cancelled += len([l for l in lessons if l.status.value == "cancelled"])
+            total_paid += sum(l.fee for l in lessons if l.fee_paid)
 
-        return str(filepath)
+            monthly_stats.append(
+                {
+                    "month": month,
+                    "lessons": len(lessons),
+                    "attended": len([l for l in lessons if l.status.value == "attended"]),
+                    "paid": sum(l.fee for l in lessons if l.fee_paid),
+                }
+            )
 
-    def create_index(self) -> str:
+        file_path = self.dizi_path / f"{year}-年度总结.md"
+        self._ensure_dir(file_path.parent)
+
+        content = f"""# {year} 年竹笛学习年度总结
+
+## 📊 年度统计
+
+| 项目 | 数量 |
+|------|------|
+| 计划课程 | {total_lessons} 节 |
+| 实际上课 | {total_attended} 节 |
+| 取消课程 | {total_cancelled} 节 |
+| 已缴学费 | {total_paid} 元 |
+
+## 📈 月度趋势
+
+| 月份 | 课程数 | 上课数 | 已缴 |
+|------|--------|--------|------|
+"""
+
+        for stat in monthly_stats:
+            content += f"| {stat['month']}月 | {stat['lessons']} | {stat['attended']} | {stat['paid']}元 |\n"
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return str(file_path)
+
+    def export_weekly_practice_report(self, week_start: dt.date) -> str:
         """
-        创建索引页面，列出所有月度报告
+        导出周练习报告
+
+        Args:
+            week_start: 周开始日期（周一）
 
         Returns:
-            索引文件路径
+            导出文件的绝对路径
         """
-        # 查找所有报告
-        reports = sorted(self.dizi_dir.glob("????-??-report.md"), reverse=True)
+        from .practice import get_week_practices, get_week_stats
 
-        lines = [
-            f"# 🎵 竹笛学习记录索引",
-            f"",
-            f"> 最后更新: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-            f"",
-            f"## 📁 月度报告",
-            f"",
-        ]
+        practices = get_week_practices(week_start)
+        stats = get_week_stats(week_start)
 
-        for report in reports:
-            year_month = report.stem.replace("-report", "")
-            year, month = year_month.split("-")
-            lines.append(f"- [[{report.name}|{year}年{int(month)}月报告]]")
+        week_end = week_start + dt.timedelta(days=6)
+        file_name = f"practice-{week_start}-to-{week_end}.md"
+        file_path = self.dizi_path / "practice" / file_name
+        self._ensure_dir(file_path.parent)
 
-        lines.extend([
-            f"",
-            f"## 📊 汇总统计",
-            f"",
-            f"- 总报告数: {len(reports)} 个月",
-            f"- 学习时长: 待统计",
-            f"",
-            f"## 🎯 年度目标",
-            f"",
-            f"- [ ] 完成全部练习",
-            f"- [ ] 学会 10 首曲目",
-            f"",
-        ])
+        content = f"""# 🎵 {week_start} ~ {week_end} 练习周报
 
-        filepath = self.dizi_dir / "README.md"
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
+## 📊 本周练习统计
 
-        return str(filepath)
+| 项目 | 数据 |
+|------|------|
+| 练习天数 | {stats['practice_days']} 天 |
+| 总时长 | {stats['total_minutes']} 分钟 |
+| 日均时长 | {stats['avg_minutes']:.0f} 分钟 |
+
+## 📝 每日练习
+
+"""
+
+        daily: List[dict] = practices.get("daily", [])
+        for day_data in daily:
+            content += f"### {day_data['date']}\n\n"
+            content += f"总时长: {day_data['total_minutes']} 分钟\n\n"
+
+            items = day_data.get("items", [])
+            if items:
+                content += "| 项目 | 时长 |\n|------|------|\n"
+                for item in items:
+                    content += f"| {item['item']} | {item['minutes']} 分钟 |\n"
+                content += "\n"
+
+            progress = day_data.get("progress_note")
+            if progress:
+                content += f"📝 进展: {progress}\n\n"
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return str(file_path)
+
+
+# 全局单例
+_exporter: Optional[ObsidianExporter] = None
+
+
+def get_exporter() -> ObsidianExporter:
+    """获取全局导出器实例"""
+    global _exporter
+    if _exporter is None:
+        _exporter = ObsidianExporter()
+    return _exporter
