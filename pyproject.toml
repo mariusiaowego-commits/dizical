@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dizi-helper"
+name = "dizical"
 version = "0.1.0"
 authors = [
   { name="mtt", email="mtt@example.com" }
 ]
-description = "竹笛课程管理 + 缴费提醒 + 统计助手"
+description = "dizi + cal = dizical (笛卡尔) 竹笛课程管理助手"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dizi = "src.cli:app"
+dizical = "src.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
