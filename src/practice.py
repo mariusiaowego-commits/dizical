@@ -159,30 +159,38 @@ def get_month_summary(year: int, month: int) -> Dict:
     }
 
 
-def import_from_csv(csv_path: str, date_column: str = 'Date', items_columns: Optional[List[str]] = None) -> Tuple[int, int]:
+def import_from_csv(csv_path: str, date_column: str = 'Date') -> Tuple[int, int]:
     """
-    从CSV导入练习记录
+    从Notion导出的CSV导入练习记录
     返回: (成功导入天数, 失败行数)
+    
+    CSV格式: Name, Date, 上课, 乐理, 单吐, 基本功, 歌曲-吹, ...
+    日期格式: YYYY/MM/DD (Date列)
+    跳过列: Name(只是展示名), Date, 上课, 乐理
     """
     import csv
     
     success = 0
     failures = 0
     
+    # 跳过这些列（不是练习项目）
+    skip_cols = {'Name', 'Date', '上课', '乐理', 'total', 'Total', 'Σ', '总时长'}
+    
     with open(csv_path, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         
-        for row in reader:
+        for row_num, row in enumerate(reader, start=2):
             try:
-                # 解析日期
+                # 解析日期 - 用 Date 列
                 date_str = row.get(date_column, '').strip()
                 if not date_str:
                     failures += 1
+                    print(f"  Row {row_num}: missing date, skipping")
                     continue
                 
                 # 尝试多种日期格式
                 date = None
-                for fmt in ['%Y/%m/%d', '%Y-%m-%d', '%m/%d', '%Y%m%d']:
+                for fmt in ['%Y/%m/%d', '%Y-%m-%d', '%Y.%m.%d', '%m/%d', '%Y%m%d']:
                     try:
                         date = dt.datetime.strptime(date_str, fmt).date()
                         break
@@ -191,28 +199,37 @@ def import_from_csv(csv_path: str, date_column: str = 'Date', items_columns: Opt
                 
                 if not date:
                     failures += 1
+                    print(f"  Row {row_num}: invalid date '{date_str}', skipping")
                     continue
                 
-                # 收集练习项目
+                # 收集练习项目（跳过特定列）
                 items = []
                 for col, val in row.items():
-                    if col == date_column or col == 'Name' or col == 'total' or col == 'Total' or col == 'Σ':
+                    col_stripped = col.strip()
+                    # 跳过非练习列
+                    if col_stripped in skip_cols:
                         continue
+                    # 跳过空值或0
                     if not val or val.strip() == '' or val.strip() == '0':
                         continue
                     try:
                         minutes = int(float(val.strip()))
                         if minutes > 0:
-                            items.append({'item': col.strip(), 'minutes': minutes})
+                            items.append({'item': col_stripped, 'minutes': minutes})
                     except:
                         continue
                 
                 if items:
                     save_practice(date, items)
                     success += 1
+                    print(f"  Imported: {date} - {len(items)} items")
+                else:
+                    failures += 1
+                    print(f"  Row {row_num}: no valid items, skipping")
                 
             except Exception as e:
                 failures += 1
+                print(f"  Row {row_num}: error {e}, skipping")
                 continue
     
     return success, failures
