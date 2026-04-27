@@ -900,16 +900,14 @@ def practice_calendar(
         day_date = f"{year:04d}-{month_num:02d}-{day:02d}"
         day_info = cal_data.get(day_date, {})
 
-        if day_info.get('has_practice'):
-            # 优先显示进展标记+
-            if day_info.get('progress'):
-                day_str = f"[cyan]{day:2d}+[/cyan]"
+        if day_info.get('progress'):
+            day_str = f"[cyan]{day:2d}+[/cyan]"
+        elif day_info.get('has_practice'):
+            mins = day_info.get('total_minutes', 0)
+            if mins >= 60:
+                day_str = f"[green]{day:2d}*[/green]"
             else:
-                mins = day_info.get('total_minutes', 0)
-                if mins >= 60:
-                    day_str = f"[green]{day:2d}*[/green]"
-                else:
-                    day_str = f"[green]{day:2d}-[/green]"
+                day_str = f"[green]{day:2d}-[/green]"
         else:
             day_str = f"{day:2d}  "
 

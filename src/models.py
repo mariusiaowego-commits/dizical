@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     default_fee: int = 600
     default_time: str = "17:15"
     default_weekday: int = 5  # 0=Monday, 5=Saturday
-    db_path: str = "data/dizi.db"
+    db_path: str = "/Users/mt16/dev/dizical/data/dizi.db"
 
     class Config:
         env_file = ".env"
