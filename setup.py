@@ -15,11 +15,6 @@ setup(
         "python-dotenv>=1.0.0",
         "wcwidth>=0.2.13",
     ],
-    entry_points={
-        "console_scripts": [
-            "dizi=src.cli:app",
-        ],
-    },
     author="mtt",
     description="竹笛课程管理 + 缴费提醒 + 统计助手",
     python_requires=">=3.10",
