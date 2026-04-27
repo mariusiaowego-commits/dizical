@@ -8,7 +8,7 @@ from rich.text import Text
 import wcwidth
 import re as _re
 
-_RICH_TAG = _re.compile(r"\[/?(?:red|green|blue|yellow|magenta|dim|bold)[^\]]*\]")
+_RICH_TAG = _re.compile(r"\[/?(?:red|green|blue|yellow|magenta|dim|bold|cyan)\]")
 from .lesson_manager import LessonManager
 from .payment import PaymentManager
 from .models import LessonStatus
