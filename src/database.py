@@ -67,10 +67,37 @@ class Database:
                 CREATE TABLE IF NOT EXISTS practice_items (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
+                    category_id INTEGER REFERENCES practice_categories(id),
                     is_active BOOLEAN NOT NULL DEFAULT 1,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+
+            # Practice categories table (练习大科目)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS practice_categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            # Insert default categories if empty
+            cursor.execute('SELECT COUNT(*) as cnt FROM practice_categories')
+            if cursor.fetchone()['cnt'] == 0:
+                default_cats = [
+                    ('基本功', 0),
+                    ('唱', 1),
+                    ('分析', 2),
+                    ('小节', 3),
+                    ('句子', 4),
+                    ('全曲', 5),
+                ]
+                cursor.executemany(
+                    'INSERT INTO practice_categories (name, sort_order) VALUES (?, ?)',
+                    default_cats
+                )
 
             # Weekly assignments table (每周老师要求)
             cursor.execute('''
@@ -91,6 +118,7 @@ class Database:
                     date DATE NOT NULL UNIQUE,
                     items TEXT NOT NULL DEFAULT '[]',
                     total_minutes INTEGER NOT NULL DEFAULT 0,
+                    log TEXT,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -104,6 +132,18 @@ class Database:
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+
+            # Migration: add log column if daily_practices doesn't have it
+            cursor.execute("PRAGMA table_info(daily_practices)")
+            columns = [col['name'] for col in cursor.fetchall()]
+            if 'log' not in columns:
+                cursor.execute('ALTER TABLE daily_practices ADD COLUMN log TEXT')
+
+            # Migration: add category_id if practice_items doesn't have it
+            cursor.execute("PRAGMA table_info(practice_items)")
+            item_columns = [col['name'] for col in cursor.fetchall()]
+            if 'category_id' not in item_columns:
+                cursor.execute('ALTER TABLE practice_items ADD COLUMN category_id INTEGER REFERENCES practice_categories(id)')
 
             # Create indexes
             cursor.execute('''
@@ -301,13 +341,51 @@ class Database:
             row = cursor.fetchone()
             return row['value'] if row else default
 
-    # Practice item operations
-    def add_practice_item(self, name: str) -> int:
+    # Practice category operations
+    def add_practice_category(self, name: str, sort_order: int = 99) -> int:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT OR IGNORE INTO practice_items (name) VALUES (?)
-            ''', (name,))
+                INSERT OR IGNORE INTO practice_categories (name, sort_order) VALUES (?, ?)
+            ''', (name, sort_order))
+            conn.commit()
+            if cursor.rowcount == 0:
+                cursor.execute('SELECT id FROM practice_categories WHERE name = ?', (name,))
+                row = cursor.fetchone()
+                return row['id']
+            return cursor.lastrowid
+
+    def get_practice_categories(self) -> List[Dict]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM practice_categories ORDER BY sort_order, name')
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_practice_category(self, cat_id: int, name: str, sort_order: Optional[int] = None) -> None:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if sort_order is not None:
+                cursor.execute('UPDATE practice_categories SET name = ?, sort_order = ? WHERE id = ?',
+                             (name, sort_order, cat_id))
+            else:
+                cursor.execute('UPDATE practice_categories SET name = ? WHERE id = ?', (name, cat_id))
+            conn.commit()
+
+    def delete_practice_category(self, cat_id: int) -> None:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # 先把该分类下的小科目清空分类
+            cursor.execute('UPDATE practice_items SET category_id = NULL WHERE category_id = ?', (cat_id,))
+            cursor.execute('DELETE FROM practice_categories WHERE id = ?', (cat_id,))
+            conn.commit()
+
+    # Practice item operations
+    def add_practice_item(self, name: str, category_id: Optional[int] = None) -> int:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO practice_items (name, category_id) VALUES (?, ?)
+            ''', (name, category_id))
             conn.commit()
             if cursor.rowcount == 0:
                 cursor.execute('SELECT id FROM practice_items WHERE name = ?', (name,))
@@ -319,10 +397,22 @@ class Database:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             if active_only:
-                cursor.execute('SELECT * FROM practice_items WHERE is_active = 1 ORDER BY name')
+                cursor.execute('SELECT pi.*, pc.name as category_name FROM practice_items pi LEFT JOIN practice_categories pc ON pi.category_id = pc.id WHERE pi.is_active = 1 ORDER BY pc.sort_order, pi.name')
             else:
-                cursor.execute('SELECT * FROM practice_items ORDER BY name')
+                cursor.execute('SELECT pi.*, pc.name as category_name FROM practice_items pi LEFT JOIN practice_categories pc ON pi.category_id = pc.id ORDER BY pc.sort_order, pi.name')
             return [dict(row) for row in cursor.fetchall()]
+
+    def update_practice_item_category(self, item_id: int, category_id: Optional[int]) -> None:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE practice_items SET category_id = ? WHERE id = ?', (category_id, item_id))
+            conn.commit()
+
+    def deactivate_practice_item(self, item_id: int) -> None:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE practice_items SET is_active = 0 WHERE id = ?', (item_id,))
+            conn.commit()
 
     # Weekly assignment operations
     def save_weekly_assignment(self, week_start_date: dt.date, items: List[Dict], notes: Optional[str] = None) -> None:
@@ -367,14 +457,14 @@ class Database:
             } for row in cursor.fetchall()]
 
     # Daily practice operations
-    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int) -> None:
+    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None) -> None:
         import json
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT OR REPLACE INTO daily_practices (date, items, total_minutes)
-                VALUES (?, ?, ?)
-            ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes))
+                INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log)
+                VALUES (?, ?, ?, ?)
+            ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log))
             conn.commit()
 
     def get_daily_practice(self, date: dt.date) -> Optional[Dict]:
@@ -388,7 +478,8 @@ class Database:
                     'id': row['id'],
                     'date': dt.date.fromisoformat(row['date']),
                     'items': json.loads(row['items']),
-                    'total_minutes': row['total_minutes']
+                    'total_minutes': row['total_minutes'],
+                    'log': row['log']
                 }
             return None
 
@@ -405,7 +496,8 @@ class Database:
                 'id': row['id'],
                 'date': dt.date.fromisoformat(row['date']),
                 'items': json.loads(row['items']),
-                'total_minutes': row['total_minutes']
+                'total_minutes': row['total_minutes'],
+                'log': row['log']
             } for row in cursor.fetchall()]
 
     # Daily progress operations

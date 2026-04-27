@@ -48,20 +48,66 @@ def parse_practice_input(text: str) -> List[Dict[str, any]]:
     return results
 
 
-def save_practice(date: dt.date, items: List[Dict]) -> int:
+def save_practice(date: dt.date, items: List[Dict], log: Optional[str] = None) -> int:
     """
     保存每日练习记录
     items: [{"item": "基本功", "minutes": 20}, ...]
+    log: 详细练习记录/进展
     返回: 总分钟数
     """
     total = sum(item['minutes'] for item in items)
-    
+
     # 确保所有练习项目都在项目库里
     for item in items:
         db.add_practice_item(item['item'])
-    
-    db.save_daily_practice(date, items, total)
+
+    db.save_daily_practice(date, items, total, log)
     return total
+
+
+def save_log(date: dt.date, log: str) -> None:
+    """保存/追加每日练习详细记录到已存在的打卡记录"""
+    existing = db.get_daily_practice(date)
+    if existing:
+        # 已有打卡，追加 log
+        existing_log = existing.get('log') or ''
+        new_log = f"{existing_log}\n{log}".strip() if existing_log else log
+        db.save_daily_practice(date, existing['items'], existing['total_minutes'], new_log)
+    else:
+        # 没有打卡记录，创建一条仅有 log 的记录
+        db.save_daily_practice(date, [], 0, log)
+
+
+def get_categories() -> List[Dict]:
+    """获取所有大科目"""
+    return db.get_practice_categories()
+
+
+def add_category(name: str, sort_order: int = 99) -> int:
+    """新增大科目"""
+    return db.add_practice_category(name, sort_order)
+
+
+def update_category(cat_id: int, name: str, sort_order: Optional[int] = None) -> None:
+    """更新大科目"""
+    db.update_practice_category(cat_id, name, sort_order)
+
+
+def delete_category(cat_id: int) -> None:
+    """删除大科目（同时清空小科目的归属）"""
+    db.delete_practice_category(cat_id)
+
+
+def set_item_category(item_name: str, category_id: Optional[int]) -> None:
+    """设置小科目归属大科目"""
+    items = db.get_practice_items(active_only=False)
+    for item in items:
+        if item['name'] == item_name:
+            db.update_practice_item_category(item['id'], category_id)
+            return
+    # 不存在则新增
+    new_id = db.add_practice_item(item_name, category_id)
+    return new_id
 
 
 def save_progress(date: dt.date, note: str) -> None:
@@ -238,7 +284,7 @@ def import_from_csv(csv_path: str, date_column: str = 'Date') -> Tuple[int, int]
 def get_practice_calendar(year: int, month: int) -> Dict[str, any]:
     """
     获取月度练习日历数据
-    返回: {日期: {has_practice, total_minutes, items}, ...}
+    返回: {日期: {has_practice, total_minutes, items, log, progress}, ...}
     """
     start_date = dt.date(year, month, 1)
     if month == 12:
@@ -256,6 +302,7 @@ def get_practice_calendar(year: int, month: int) -> Dict[str, any]:
             'has_practice': False,
             'total_minutes': 0,
             'items': [],
+            'log': None,
             'progress': None
         }
         current += dt.timedelta(days=1)
@@ -266,6 +313,7 @@ def get_practice_calendar(year: int, month: int) -> Dict[str, any]:
             calendar[key]['has_practice'] = True
             calendar[key]['total_minutes'] = p['total_minutes']
             calendar[key]['items'] = p['items']
+            calendar[key]['log'] = p.get('log')
     
     for date, note in progress.items():
         key = date.isoformat()

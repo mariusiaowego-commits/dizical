@@ -28,6 +28,10 @@ payment_app = typer.Typer(help="缴费管理")
 stat_app = typer.Typer(help="统计报表")
 practice_app = typer.Typer(help="练习管理")
 remind_app = typer.Typer(help="提醒管理")
+
+# category 子命令组
+practice_category_app = typer.Typer()
+practice_app.add_typer(practice_category_app, name="category", help="大科目管理")
 export_app = typer.Typer(help="导出管理")
 
 practice_app.add_typer(remind_app, name="remind")
@@ -688,6 +692,7 @@ from . import practice as practice_module
 def practice_log(
     ctx: typer.Context,
     date: str = typer.Option(None, "--date", "-d", help="日期，格式 YYYY-MM-DD，默认今天"),
+    log: Optional[str] = typer.Option(None, "--log", "-l", help="详细练习记录/进展"),
     items: Annotated[list[str], typer.Argument(help="练习内容，格式 项目:分钟")] = [],
 ):
     """记录每日练习
@@ -695,6 +700,7 @@ def practice_log(
     示例:
         dizical practice log 基本功:20 单吐:15 采茶扑蝶:10
         dizical practice log --date 2026-04-26 基本功:20
+        dizical practice log --log "今天单吐终于连上了" 基本功:20
     """
     from datetime import date as date_type
 
@@ -704,10 +710,6 @@ def practice_log(
         practice_date = parse_date(date)
     else:
         practice_date = date_type.today()
-
-    if not items_list:
-        console.print("[yellow]请提供练习内容，如: dizical practice log '基本功:20 单吐:15'[/yellow]")
-        return
 
     # 解析 items
     parsed = []
@@ -721,9 +723,15 @@ def practice_log(
                 console.print(f"[red]❌ 无效时长: {mins}[/red]")
                 return
 
-    if parsed:
-        total = practice_module.save_practice(practice_date, parsed)
-        console.print(f"[green]✅ 已记录 {practice_date} 练习: {total} 分钟[/green]")
+    if parsed or log:
+        total = practice_module.save_practice(practice_date, parsed, log=log)
+        msg = f"已记录 {practice_date} 练习: {total} 分钟"
+        if log:
+            msg += f"\n📝 {log}"
+        console.print(f"[green]✅ {msg}[/green]")
+    else:
+        console.print("[yellow]请提供练习内容或记录，如: dizical practice log '基本功:20' --log '今天有进步'[/yellow]")
+        return
 
 
 @practice_app.command("note")
@@ -964,13 +972,76 @@ def practice_items():
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("ID")
         table.add_column("名称")
+        table.add_column("大科目")
         table.add_column("状态")
         for item in items:
             status = "[green]活跃[/green]" if item['is_active'] else "[dim]已停用[/dim]"
-            table.add_row(str(item['id']), item['name'], status)
+            cat = item.get('category_name') or '[dim]-[/dim]'
+            table.add_row(str(item['id']), item['name'], cat, status)
         console.print(table)
     else:
         console.print("[yellow]暂无练习项目[/yellow]")
+
+
+@practice_category_app.command("list")
+def practice_category_list():
+    """查看所有大科目及其小科目"""
+    categories = practice_module.get_categories()
+    items = practice_module.db.get_practice_items(active_only=False)
+
+    console.print(Panel("[blue]🏷️  练习大科目[/blue]"))
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("ID")
+    table.add_column("大科目")
+    table.add_column("小科目")
+    for cat in categories:
+        cat_items = [i['name'] for i in items if i.get('category_id') == cat['id']]
+        sub_items = '、'.join(cat_items) if cat_items else '[dim]无[/dim]'
+        table.add_row(str(cat['id']), cat['name'], sub_items)
+    console.print(table)
+
+
+@practice_category_app.command("add")
+def practice_category_add(
+    name: str = typer.Argument(..., help="大科目名称"),
+    sort_order: int = typer.Option(99, "--order", "-o", help="排序序号，越小越靠前"),
+):
+    """新增大科目"""
+    cat_id = practice_module.add_category(name, sort_order)
+    console.print(f"[green]✅ 已新增大科目: {name} (ID={cat_id})[/green]")
+
+
+@practice_category_app.command("del")
+def practice_category_del(
+    cat_id: int = typer.Argument(..., help="大科目ID"),
+):
+    """删除大科目（不会删除小科目）"""
+    practice_module.delete_category(cat_id)
+    console.print(f"[green]✅ 已删除大科目 ID={cat_id}[/green]")
+
+
+@practice_category_app.command("set-item")
+def practice_category_set_item(
+    item_name: str = typer.Argument(..., help="小科目名称"),
+    category: str = typer.Argument(..., help="大科目名称或 '-' 取消归属"),
+):
+    """设置小科目归属的大科目
+
+    示例:
+        dizical practice category set-item 单吐练习 基本功
+        dizical practice category set-item 采茶扑蝶 -
+    """
+    if category == '-':
+        practice_module.set_item_category(item_name, None)
+        console.print(f"[green]✅ 已取消 {item_name} 的归属[/green]")
+    else:
+        categories = practice_module.get_categories()
+        cat_map = {c['name']: c['id'] for c in categories}
+        if category not in cat_map:
+            console.print(f"[red]❌ 未找到大科目: {category}，可用: {', '.join(cat_map.keys())}[/red]")
+            return
+        practice_module.set_item_category(item_name, cat_map[category])
+        console.print(f"[green]✅ 已将 {item_name} 归属到 {category}[/green]")
 
 
 # ============== 提醒管理命令 ==============

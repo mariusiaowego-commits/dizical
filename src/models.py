@@ -1,6 +1,6 @@
 import datetime as dt
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
@@ -60,6 +60,22 @@ class PaymentStatus(BaseModel):
     balance: int
     last_lesson_date: Optional[dt.date]
     payment_reminder_date: Optional[dt.date]
+
+
+class PracticeCategory(BaseModel):
+    id: Optional[int] = None
+    name: str
+    sort_order: int = 99
+    created_at: Optional[dt.datetime] = None
+
+
+class DailyPracticeLog(BaseModel):
+    id: Optional[int] = None
+    date: dt.date
+    items: List[Dict] = Field(default_factory=list)
+    total_minutes: int = 0
+    log: Optional[str] = None  # 详细练习记录/进展
+    created_at: Optional[dt.datetime] = None
 
 
 class Settings(BaseSettings):
