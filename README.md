@@ -86,7 +86,9 @@ dizical practice items       # 练习项目库
 dizical practice category list  # 大科目列表
 dizical practice category add 气息练习  # 新增大科目
 dizical practice category set-item 单吐练习 基本功  # 归属小科目
-dizical practice import <csv> # 导入CSV
+dizical practice import <csv>             # 导入练习时长CSV
+dizical practice import_logs <csv>       # 批量导入进展log（Date,Log）
+dizical practice import-assignments <csv> # 批量导入每周老师要求（WeekStart,Item,Requirement）
 
 # 同步
 dizical reminders sync        # 同步 Reminders

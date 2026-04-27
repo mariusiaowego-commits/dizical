@@ -205,13 +205,140 @@ def get_month_summary(year: int, month: int) -> Dict:
     }
 
 
+def _parse_date(date_str: str) -> Optional[dt.date]:
+    """解析日期字符串，支持多种格式，统一返回 YYYY-MM-DD"""
+    if not date_str or not date_str.strip():
+        return None
+    date_str = date_str.strip()
+    for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%m/%d', '%Y%m%d']:
+        try:
+            return dt.datetime.strptime(date_str, fmt).date()
+        except:
+            continue
+    return None
+
+
+def import_logs_from_csv(csv_path: str) -> Tuple[int, int]:
+    """
+    从CSV批量导入练习进展log
+    返回: (成功导入条数, 失败行数)
+
+    CSV格式: Date,Log
+    日期格式: YYYY-MM-DD
+    逻辑: 有打卡则追加log，无打卡则新建仅log的记录
+    """
+    import csv
+
+    success = 0
+    failures = 0
+
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                date_str = row.get('Date', '').strip()
+                log = row.get('Log', '').strip()
+
+                if not date_str:
+                    failures += 1
+                    print(f"  Row {row_num}: missing date, skipping")
+                    continue
+
+                date = _parse_date(date_str)
+                if not date:
+                    failures += 1
+                    print(f"  Row {row_num}: invalid date '{date_str}', skipping")
+                    continue
+
+                if not log:
+                    failures += 1
+                    print(f"  Row {row_num}: empty log, skipping")
+                    continue
+
+                save_log(date, log)
+                success += 1
+                print(f"  Imported log: {date.isoformat()}")
+
+            except Exception as e:
+                failures += 1
+                print(f"  Row {row_num}: error {e}, skipping")
+                continue
+
+    return success, failures
+
+
+def import_assignments_from_csv(csv_path: str) -> Tuple[int, int]:
+    """
+    从CSV批量导入每周老师要求
+    返回: (成功导入周数, 失败行数)
+
+    CSV格式: WeekStart,Item,Requirement
+    日期格式: YYYY-MM-DD
+    同一周的多条要求会合并为一条
+    """
+    import csv
+    from collections import defaultdict
+
+    failures = 0
+    # 按周聚合: week_start -> (items, notes)
+    weekly_data: dict = defaultdict(lambda: {'items': [], 'notes': None})
+
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                week_str = row.get('WeekStart', '').strip()
+                item = row.get('Item', '').strip()
+                requirement = row.get('Requirement', '').strip()
+                notes = row.get('Notes', '').strip() or None
+
+                if not week_str:
+                    failures += 1
+                    print(f"  Row {row_num}: missing WeekStart, skipping")
+                    continue
+
+                week_start = _parse_date(week_str)
+                if not week_start:
+                    failures += 1
+                    print(f"  Row {row_num}: invalid WeekStart '{week_str}', skipping")
+                    continue
+
+                if not item or not requirement:
+                    failures += 1
+                    print(f"  Row {row_num}: missing Item or Requirement, skipping")
+                    continue
+
+                weekly_data[week_start]['items'].append({'item': item, 'requirement': requirement})
+                if notes:
+                    weekly_data[week_start]['notes'] = notes
+
+            except Exception as e:
+                failures += 1
+                print(f"  Row {row_num}: error {e}, skipping")
+                continue
+
+    success = 0
+    for week_start, data in sorted(weekly_data.items()):
+        try:
+            save_weekly_assignment(week_start, data['items'], data['notes'])
+            success += 1
+            print(f"  Imported assignment: {week_start.isoformat()} ({len(data['items'])} items)")
+        except Exception as e:
+            failures += 1
+            print(f"  Failed to save {week_start.isoformat()}: {e}")
+
+    return success, failures
+
+
 def import_from_csv(csv_path: str, date_column: str = 'Date') -> Tuple[int, int]:
     """
     从Notion导出的CSV导入练习记录
     返回: (成功导入天数, 失败行数)
-    
+
     CSV格式: Name, Date, 上课, 乐理, 单吐, 基本功, 歌曲-吹, ...
-    日期格式: YYYY/MM/DD (Date列)
+    日期格式: YYYY-MM-DD
     跳过列: Name(只是展示名), Date, 上课, 乐理
     """
     import csv
@@ -234,15 +361,7 @@ def import_from_csv(csv_path: str, date_column: str = 'Date') -> Tuple[int, int]
                     print(f"  Row {row_num}: missing date, skipping")
                     continue
                 
-                # 尝试多种日期格式
-                date = None
-                for fmt in ['%Y/%m/%d', '%Y-%m-%d', '%Y.%m.%d', '%m/%d', '%Y%m%d']:
-                    try:
-                        date = dt.datetime.strptime(date_str, fmt).date()
-                        break
-                    except:
-                        continue
-                
+                date = _parse_date(date_str)
                 if not date:
                     failures += 1
                     print(f"  Row {row_num}: invalid date '{date_str}', skipping")

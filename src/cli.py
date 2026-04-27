@@ -966,6 +966,30 @@ def practice_import(
         console.print(f"[yellow]⚠️  {failures} 行导入失败[/yellow]")
 
 
+@practice_app.command("import_logs")
+def practice_import_logs(
+    csv_path: str = typer.Argument(..., help="CSV 文件路径（Date,Log）"),
+):
+    """批量导入练习进展log（CSV格式：Date,Log）"""
+    success, failures = practice_module.import_logs_from_csv(csv_path)
+    if success > 0:
+        console.print(f"[green]✅ 成功导入 {success} 条进展log[/green]")
+    if failures > 0:
+        console.print(f"[yellow]⚠️  {failures} 行导入失败[/yellow]")
+
+
+@practice_app.command("import-assignments")
+def practice_import_assignments(
+    csv_path: str = typer.Argument(..., help="CSV 文件路径（WeekStart,Item,Requirement）"),
+):
+    """批量导入每周老师要求（CSV格式：WeekStart,Item,Requirement）"""
+    success, failures = practice_module.import_assignments_from_csv(csv_path)
+    if success > 0:
+        console.print(f"[green]✅ 成功导入 {success} 周老师要求[/green]")
+    if failures > 0:
+        console.print(f"[yellow]⚠️  {failures} 行导入失败[/yellow]")
+
+
 @practice_app.command("items")
 def practice_items():
     """查看所有练习项目"""
