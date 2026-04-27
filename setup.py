@@ -13,6 +13,7 @@ setup(
         "chinese-calendar>=1.8.0",
         "python-dateutil>=2.8.2",
         "python-dotenv>=1.0.0",
+        "wcwidth>=0.2.13",
     ],
     entry_points={
         "console_scripts": [

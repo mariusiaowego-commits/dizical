@@ -5,12 +5,23 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
+import wcwidth
+import re as _re
+
+_RICH_TAG = _re.compile(r"\[/?(?:red|green|blue|yellow|magenta|dim|bold)[^\]]*\]")
 from .lesson_manager import LessonManager
 from .payment import PaymentManager
 from .models import LessonStatus
 
 app = typer.Typer(help="🎵 竹笛学习助手 - 课程管理与缴费提醒")
 console = Console()
+
+
+def _pad(text: str, width: int = 4) -> str:
+    """按终端显示宽度对齐（emoji占2列），忽略rich标签"""
+    stripped = _RICH_TAG.sub("", text)
+    visible = wcwidth.wcswidth(stripped)
+    return text + " " * (width - visible)
 
 lesson_app = typer.Typer(help="课程管理")
 payment_app = typer.Typer(help="缴费管理")
@@ -147,11 +158,11 @@ def calendar_view(months: int = typer.Argument(3, help="显示几个月，默认
             week.append(day_str)
 
             if len(week) == 7:
-                console.print("".join(f"{d:<4}" for d in week))
+                console.print("".join(_pad(d) for d in week))
                 week = []
 
         if week:
-            console.print("".join(f"{d:<4}" for d in week))
+            console.print("".join(_pad(d) for d in week))
 
         # 下一个月
         if current.month == 12:
@@ -413,10 +424,6 @@ def yearly_stat():
     console.print(f"❌ 待缴余额: {total_fee - total_paid} 元")
 
 
-# ============== 提醒系统 ==============
-remind_app = typer.Typer(help="提醒通知")
-app.add_typer(remind_app, name="remind")
-
 
 @remind_app.command("monthly")
 def remind_monthly():
@@ -451,7 +458,7 @@ def remind_weekly():
     # 查询下周六的课程
     lessons = lesson_manager.get_lessons(next_saturday.year, next_saturday.month)
     next_saturday_lesson = next(
-        (l for l in lessons if l.date == next_saturday and l.status != 'cancelled'),
+        (l for l in lessons if l.date == next_saturday and l.status != LessonStatus.CANCELLED),
         None
     )
 
@@ -480,7 +487,7 @@ def remind_daily():
 
     today = date.today()
     lessons = lesson_manager.get_lessons(today.year, today.month)
-    today_lesson = next((l for l in lessons if l.date == today and l.status != 'cancelled'), None)
+    today_lesson = next((l for l in lessons if l.date == today and l.status != LessonStatus.CANCELLED), None)
 
     if not today_lesson:
         console.print(Panel("[yellow]📭 今日无课程安排[/yellow]"))
@@ -522,7 +529,7 @@ def remind_payment():
 
     # 找到当月最后一节非取消的课程
     lessons = lesson_manager.get_lessons(today.year, today.month)
-    active_lessons = [l for l in lessons if l.status != 'cancelled']
+    active_lessons = [l for l in lessons if l.status != LessonStatus.CANCELLED]
 
     if not active_lessons:
         console.print(Panel("[yellow]📭 本月无有效课程[/yellow]"))
@@ -533,7 +540,7 @@ def remind_payment():
     # 只有当天是最后一节课才发提醒
     if today == last_lesson_date:
         notifier = TelegramNotifier()
-        notifier.send_payment_reminder(last_lesson_date, status.balance, status.unpaid_lessons)
+        notifier.send_payment_reminder(status.balance, str(last_lesson_date))
         console.print(Panel(f"[green]✅ 已发送缴费提醒，待缴: {status.balance} 元[/green]"))
     else:
         console.print(Panel(
