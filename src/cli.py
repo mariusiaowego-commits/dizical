@@ -921,7 +921,7 @@ def practice_calendar(
     if week:
         console.print("".join(_pad(d) for d in week))
 
-    console.print("\n[dim]图例:[/dim] [cyan]+ 有进展[/cyan] [green]* 60+分钟[/green] [green]- 有练习[/green]  (空白) 无记录")
+    console.print("\n[dim]图例:[/dim] [cyan]+有进展[/cyan] [green]*60+分钟[/green] [green]-有练习[/green]  (空白)无记录")
 
 
 @practice_app.command("stats")
