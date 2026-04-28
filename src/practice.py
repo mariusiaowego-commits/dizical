@@ -125,8 +125,8 @@ def set_item_category(item_name: str, category_id: Optional[int]) -> None:
 
 
 def save_progress(date: dt.date, note: str) -> None:
-    """保存每日一句话进展"""
-    db.save_daily_progress(date, note)
+    """保存每日一句话进展（写入 daily_practices.log）"""
+    db.save_progress_to_log(date, note)
 
 
 def save_weekly_assignment(week_start: dt.date, items: List[Dict], notes: Optional[str] = None) -> None:
@@ -147,7 +147,7 @@ def get_week_summary(week_start: dt.date) -> Dict:
     
     practices = db.get_daily_practices_in_range(week_start, week_end)
     assignment = db.get_weekly_assignment(week_start)
-    progress = db.get_daily_progress_in_range(week_start, week_end)
+    progress = db.get_progress_from_log_in_range(week_start, week_end)
     
     # 汇总各项目时长
     item_totals = {}
@@ -181,8 +181,8 @@ def get_month_summary(year: int, month: int) -> Dict:
         end_date = dt.date(year, month + 1, 1) - dt.timedelta(days=1)
     
     practices = db.get_daily_practices_in_range(start_date, end_date)
-    progress = db.get_daily_progress_in_range(start_date, end_date)
-    
+    progress = db.get_progress_from_log_in_range(start_date, end_date)
+
     # 按项目汇总
     item_totals = {}
     total_minutes = 0
@@ -432,7 +432,7 @@ def get_practice_calendar(year: int, month: int) -> Dict[str, any]:
         end_date = dt.date(year, month + 1, 1) - dt.timedelta(days=1)
     
     practices = db.get_daily_practices_in_range(start_date, end_date)
-    progress = db.get_daily_progress_in_range(start_date, end_date)
+    progress = db.get_progress_from_log_in_range(start_date, end_date)
     
     calendar = {}
     current = start_date

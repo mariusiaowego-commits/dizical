@@ -123,17 +123,7 @@ class Database:
                 )
             ''')
 
-            # Daily progress table (每日一句话进展)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS daily_progress (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date DATE NOT NULL UNIQUE,
-                    note TEXT NOT NULL,
-                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-
-            # Migration: add log column if daily_practices doesn't have it
+            # Create indexes
             cursor.execute("PRAGMA table_info(daily_practices)")
             columns = [col['name'] for col in cursor.fetchall()]
             if 'log' not in columns:
@@ -151,9 +141,6 @@ class Database:
             ''')
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_practices_date ON daily_practices(date)
-            ''')
-            cursor.execute('''
-                CREATE INDEX IF NOT EXISTS idx_progress_date ON daily_progress(date)
             ''')
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_assignments_week ON weekly_assignments(week_start_date)
@@ -506,32 +493,78 @@ class Database:
                 'log': row['log']
             } for row in cursor.fetchall()]
 
-    # Daily progress operations
-    def save_daily_progress(self, date: dt.date, note: str) -> None:
+    # ─── Progress → daily_practices.log ───────────────────────────────────────
+    def save_progress_to_log(self, date: dt.date, note: str) -> None:
+        """
+        将一句话进展追加到 daily_practices.log。
+        有打卡记录 → 追加到 log；无打卡 → 创建仅有 log 的记录。
+        """
+        existing = self.get_daily_practice(date)
+        if existing:
+            existing_log = existing.get('log') or ''
+            new_log = f"{existing_log}\n{note}".strip()
+            self.save_daily_practice(date, existing['items'], existing['total_minutes'], new_log)
+        else:
+            self.save_daily_practice(date, [], 0, note)
+
+    def get_progress_from_log(self, date: dt.date) -> Optional[str]:
+        """读取某日的进展（从 daily_practices.log，取第一条非空行）"""
+        row = self.get_daily_practice(date)
+        if not row or not row.get('log'):
+            return None
+        lines = [l.strip() for l in row['log'].splitlines() if l.strip()]
+        return lines[0] if lines else None
+
+    def get_progress_from_log_in_range(self, start: dt.date, end: dt.date) -> Dict[str, str]:
+        """读取日期区间内所有进展摘要（每天取 log 第一行）"""
+        practices = self.get_daily_practices_in_range(start, end)
+        result = {}
+        for p in practices:
+            log = p.get('log')
+            if log:
+                lines = [l.strip() for l in log.splitlines() if l.strip()]
+                if lines:
+                    result[p['date'].isoformat()] = lines[0]
+        return result
+
+    # ─── 一次性迁移：daily_progress → daily_practices.log ────────────────────
+    def migrate_daily_progress_to_log(self) -> int:
+        """
+        将 daily_progress 表的所有 note 迁移到 daily_practices.log。
+        返回迁移条数。
+        """
+        import json
+        migrated = 0
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO daily_progress (date, note)
-                VALUES (?, ?)
-            ''', (date.isoformat(), note))
+            cursor.execute('SELECT date, note FROM daily_progress ORDER BY date')
+            for row in cursor.fetchall():
+                date = dt.date.fromisoformat(row['date'])
+                note = row['note']
+                if not note:
+                    continue
+                # 读取现有 daily_practice（如果有）
+                cursor2 = conn.cursor()
+                cursor2.execute('SELECT items, total_minutes, log FROM daily_practices WHERE date = ?',
+                                (date.isoformat(),))
+                existing_row = cursor2.fetchone()
+                if existing_row:
+                    items = json.loads(existing_row['items'] or '[]')
+                    total = existing_row['total_minutes'] or 0
+                    existing_log = existing_row['log'] or ''
+                    new_log = f"{existing_log}\n{note}".strip() if existing_log else note
+                    cursor2.execute('''
+                        UPDATE daily_practices SET items=?, total_minutes=?, log=?
+                        WHERE date=?
+                    ''', (json.dumps(items), total, new_log, date.isoformat()))
+                else:
+                    cursor2.execute('''
+                        INSERT INTO daily_practices (date, items, total_minutes, log)
+                        VALUES (?, '[]', 0, ?)
+                    ''', (date.isoformat(), note))
+                migrated += 1
             conn.commit()
-
-    def get_daily_progress(self, date: dt.date) -> Optional[str]:
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT note FROM daily_progress WHERE date = ?', (date.isoformat(),))
-            row = cursor.fetchone()
-            return row['note'] if row else None
-
-    def get_daily_progress_in_range(self, start: dt.date, end: dt.date) -> Dict[str, str]:
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT date, note FROM daily_progress
-                WHERE date >= ? AND date <= ?
-                ORDER BY date
-            ''', (start.isoformat(), end.isoformat()))
-            return {dt.date.fromisoformat(row['date']): row['note'] for row in cursor.fetchall()}
+        return migrated
 
 
 # Global database instance

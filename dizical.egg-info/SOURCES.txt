@@ -18,6 +18,7 @@ src/notifier.py
 src/obsidian.py
 src/payment.py
 src/practice.py
+src/practice_config.py
 src/reminders.py
 tests/__init__.py
 tests/test_holiday.py
