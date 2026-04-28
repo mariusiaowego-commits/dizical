@@ -30,7 +30,7 @@ dizi + cal(endar) = dizical
 - 📊 **可视化课表** - 表格视图 + ASCII 日历视图
 - 📝 **Obsidian 导出** - 自动生成月度学习报告
 - 🎵 **练习追踪** - 打卡、统计、热力图、老师每周要求导入
-- 🏷️ **大科目分类** - 支持大科目/小科目灵活分类管理
+- 🏷️ **大科目/小科目** - 增删改查模式，灵活分类管理，支持模糊匹配打卡
 - 📝 **练习进展记录** - 每次打卡可附上详细练习进展
 
 ## 🚀 Quick Start
@@ -86,6 +86,7 @@ dizical practice items       # 练习项目库
 dizical practice category list  # 大科目列表
 dizical practice category add 气息练习  # 新增大科目
 dizical practice category set-item 单吐练习 基本功  # 归属小科目
+dizical practice config         # 增删改查模式管理大科目/小科目
 dizical practice import <csv>             # 导入练习时长CSV
 dizical practice import_logs <csv>       # 批量导入进展log（Date,Log）
 dizical practice import-assignments <csv> # 批量导入每周老师要求（WeekStart,Item,Requirement）
@@ -99,15 +100,16 @@ dizical obsidian export 4     # 导出4月报告
 
 ```
 src/
-├── cli.py            # CLI 入口
-├── lesson_manager.py # 课程管理
-├── payment.py        # 缴费管理
-├── practice.py       # 练习追踪（打卡/统计/导入）
-├── reminders.py      # Apple Reminders 同步
-├── notifier.py       # 通知格式化
-├── obsidian.py       # Obsidian Markdown 导出
-├── database.py       # SQLite 持久化
-└── models.py         # 数据模型
+├── cli.py              # CLI 入口
+├── lesson_manager.py   # 课程管理
+├── payment.py          # 缴费管理
+├── practice.py         # 练习追踪（打卡/统计/导入）
+├── practice_config.py  # 大科目/小科目增删改查
+├── reminders.py        # Apple Reminders 同步
+├── notifier.py         # 通知格式化
+├── obsidian.py         # Obsidian Markdown 导出
+├── database.py         # SQLite 持久化
+└── models.py           # 数据模型
 ```
 
 ## 📄 License
