@@ -781,8 +781,14 @@ def practice_assign(
     if date:
         week_start = parse_date(date)
     else:
-        console.print("[yellow]请提供周开始日期（周一），使用 -d 参数[/yellow]")
-        return
+        # 自动推算：取最近一次已上课的下一天作为 WeekStart
+        inferred = practice_module.get_last_attended_lesson_date_next()
+        if inferred:
+            week_start = inferred
+            console.print(f"[blue]ℹ️  自动推算 WeekStart: {week_start}（上次课后次日）[/blue]")
+        else:
+            console.print("[yellow]无法推算 WeekStart：请先用 'dizical lesson confirm' 确认上课日期，或使用 -d 指定[/yellow]")
+            return
 
     if not items_list:
         console.print("[yellow]请提供练习项目和要求，格式 '项目:要求'[/yellow]")
@@ -990,6 +996,13 @@ def practice_import_assignments(
         console.print(f"[yellow]⚠️  {failures} 行导入失败[/yellow]")
 
 
+@practice_app.command("config")
+def practice_config():
+    """打开练习配置 TUI（大小科目管理）"""
+    from .practice_config import launch
+    launch()
+
+
 @practice_app.command("items")
 def practice_items():
     """查看所有练习项目"""
@@ -1045,6 +1058,25 @@ def practice_category_del(
     """删除大科目（不会删除小科目）"""
     practice_module.delete_category(cat_id)
     console.print(f"[green]✅ 已删除大科目 ID={cat_id}[/green]")
+
+
+@practice_category_app.command("update")
+def practice_category_update(
+    cat_id: int = typer.Argument(..., help="大科目ID"),
+    name: str = typer.Option(None, "--name", "-n", help="新名称"),
+    sort_order: int = typer.Option(None, "--order", "-o", help="排序序号，越小越靠前"),
+):
+    """更新大科目名称或排序
+
+    示例:
+        dizical practice category update 1 -n 基本功2 -o 1
+        dizical practice category update 3 --name 气息 --order 2
+    """
+    if not name and sort_order is None:
+        console.print("[yellow]请提供 --name 或 --order 参数[/yellow]")
+        return
+    practice_module.update_category(cat_id, name, sort_order)
+    console.print(f"[green]✅ 已更新大科目 ID={cat_id}[/green]")
 
 
 @practice_category_app.command("set-item")

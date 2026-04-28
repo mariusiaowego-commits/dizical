@@ -414,6 +414,12 @@ class Database:
             cursor.execute('UPDATE practice_items SET is_active = 0 WHERE id = ?', (item_id,))
             conn.commit()
 
+    def delete_practice_item(self, item_id: int) -> None:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM practice_items WHERE id = ?', (item_id,))
+            conn.commit()
+
     # Weekly assignment operations
     def save_weekly_assignment(self, week_start_date: dt.date, items: List[Dict], notes: Optional[str] = None) -> None:
         import json

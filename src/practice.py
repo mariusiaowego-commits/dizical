@@ -9,6 +9,20 @@ from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 
 from .database import db
+from .models import LessonStatus
+
+
+def get_last_attended_lesson_date_next() -> Optional[dt.date]:
+    """
+    获取最近一次已上课的下一天（作为 WeekStart）
+    如果没有已上课记录，返回 None
+    """
+    lessons = db.get_all_lessons()
+    attended = [l for l in lessons if l.status == LessonStatus.ATTENDED]
+    if not attended:
+        return None
+    last_lesson = max(attended, key=lambda l: l.date)
+    return last_lesson.date + dt.timedelta(days=1)
 
 
 def get_week_start(date: dt.date) -> dt.date:
@@ -294,16 +308,22 @@ def import_assignments_from_csv(csv_path: str) -> Tuple[int, int]:
                 requirement = row.get('Requirement', '').strip()
                 notes = row.get('Notes', '').strip() or None
 
+                # 如果 WeekStart 为空，自动推算：上次上课的下一天
                 if not week_str:
-                    failures += 1
-                    print(f"  Row {row_num}: missing WeekStart, skipping")
-                    continue
-
-                week_start = _parse_date(week_str)
-                if not week_start:
-                    failures += 1
-                    print(f"  Row {row_num}: invalid WeekStart '{week_str}', skipping")
-                    continue
+                    inferred = get_last_attended_lesson_date_next()
+                    if inferred:
+                        week_start = inferred
+                        print(f"  Row {row_num}: WeekStart empty, auto-inferred to {week_start.isoformat()}")
+                    else:
+                        failures += 1
+                        print(f"  Row {row_num}: no WeekStart and no attended lesson found, skipping")
+                        continue
+                else:
+                    week_start = _parse_date(week_str)
+                    if not week_start:
+                        failures += 1
+                        print(f"  Row {row_num}: invalid WeekStart '{week_str}', skipping")
+                        continue
 
                 if not item or not requirement:
                     failures += 1
