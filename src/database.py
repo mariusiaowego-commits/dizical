@@ -413,6 +413,40 @@ class Database:
             cursor.execute('UPDATE practice_items SET name = ? WHERE id = ?', (name, item_id))
             conn.commit()
 
+    def merge_practice_item(self, from_id: int, to_id: int, from_name: str, to_name: str) -> None:
+        """
+        合并两个小科目：删除 from_id，保留 to_id，
+        同时把所有历史记录里的 from_name 替换为 to_name。
+        """
+        import json
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # 1. 找出所有涉及 from_name 的历史记录
+            cursor.execute('SELECT date, items FROM daily_practices')
+            rows = cursor.fetchall()
+
+            # 2. 逐条检查并更新包含 from_name 的记录
+            for row in rows:
+                date_str, items_json = row['date'], row['items']
+                try:
+                    items = json.loads(items_json)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                changed = False
+                for entry in items:
+                    if isinstance(entry, dict) and entry.get('item') == from_name:
+                        entry['item'] = to_name
+                        changed = True
+                if changed:
+                    cursor.execute(
+                        'UPDATE daily_practices SET items = ? WHERE date = ?',
+                        (json.dumps(items, ensure_ascii=False), date_str)
+                    )
+
+            # 3. 删除被合并的小科目
+            cursor.execute('DELETE FROM practice_items WHERE id = ?', (from_id,))
+            conn.commit()
+
     # Weekly assignment operations
     def save_weekly_assignment(self, week_start_date: dt.date, items: List[Dict], notes: Optional[str] = None) -> None:
         import json

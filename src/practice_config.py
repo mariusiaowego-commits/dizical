@@ -279,9 +279,8 @@ def _item_rename():
         if confirm not in ('y', 'yes'):
             _print("  取消")
             return
-        # 删除已存在的项，保留目标项改名
-        db.delete_practice_item(existing['id'])
-        db.update_practice_item_name(iid, new_name)
+        # 删除已存在的项，保留目标项改名，同时合并历史记录
+        db.merge_practice_item(existing['id'], iid, target['name'], new_name)
         _print(f"  ✅ 「{target['name']}」已合并到「{new_name}」")
     else:
         db.update_practice_item_name(iid, new_name)
