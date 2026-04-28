@@ -366,11 +366,13 @@ def monthly_stat(month: Optional[str] = typer.Argument(None, help="月份，格�
     console.print(f"\n💰 财务统计:")
     console.print(f"  - 费用明细: {payment_status.payment_breakdown}")
     console.print(f"  - 预计缴费: {payment_status.estimated_fee} 元")
-    console.print(f"  - 已缴金额: {payment_status.paid_amount} 元")
+    console.print(f"  - 当月已缴: {payment_status.paid_amount} 元")
     if payment_status.balance > 0:
         console.print(f"  - 待缴余额: [red]{payment_status.balance} 元[/red]")
     else:
         console.print(f"  - 待缴余额: [green]{payment_status.balance} 元[/green]")
+    if payment_status.historical_cumulative_paid > 0:
+        console.print(f"  - 历史累计已缴: {payment_status.historical_cumulative_paid} 元")
 
     if payment_status.last_lesson_date:
         console.print(f"\n📆 最后上课日: {payment_status.last_lesson_date}")

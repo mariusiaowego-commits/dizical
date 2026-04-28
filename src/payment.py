@@ -1,4 +1,5 @@
 import datetime as dt
+import re
 from typing import List, Optional, Dict
 from .models import Payment, PaymentStatus, LessonStatus, settings
 
@@ -13,8 +14,43 @@ class PaymentManager:
         self.lesson_manager = LessonManager(self.db)
 
     def _get_month_payments(self, year: int, month: int) -> List[Payment]:
-        """获取当月缴纳的缴费记录（按 payment_date）"""
-        return self.db.get_payments_by_month(year, month)
+        """
+        获取当月应缴的缴费记录。
+
+        优先按 lesson_ids 关联课程所属月份；无 lesson_ids 则按 payment_date。
+        这样避免「4月缴3月课费」被误归入4月的问题。
+        """
+        all_payments = self.db.get_all_payments()
+        target_month_payments = []
+
+        for p in all_payments:
+            # 优先通过 lesson_ids 关联课程月份
+            if p.lesson_ids:
+                try:
+                    lesson_ids = [int(id_str.strip()) for id_str in p.lesson_ids.split(',') if id_str.strip()]
+                    if lesson_ids:
+                        first_lesson = self.db.get_lesson(lesson_ids[0])
+                        if first_lesson and first_lesson.date.year == year and first_lesson.date.month == month:
+                            target_month_payments.append(p)
+                            continue
+                except (ValueError, TypeError):
+                    pass
+
+            # 无 lesson_ids：优先从 notes 解析月份（如 "3月课费" → 3月）
+            matched = False
+            if p.notes:
+                m = re.search(r'(\d+)月', p.notes)
+                if m:
+                    notes_month = int(m.group(1))
+                    if notes_month == month:
+                        target_month_payments.append(p)
+                        matched = True
+            # 有 notes 但月份不匹配：不归入任何月份（防误归）
+            # 无 notes 且 payment_date 匹配：按日期归类（兼容无备注的新数据）
+            if not matched and not p.notes and p.payment_date.year == year and p.payment_date.month == month:
+                target_month_payments.append(p)
+
+        return target_month_payments
 
     def _get_lesson_fee(self, lesson) -> int:
         """获取课程费用，优先用课程自己的 fee，否则用默认配置"""
@@ -84,6 +120,17 @@ class PaymentManager:
             balance = total_fee - paid_amount
             payment_breakdown = f"{attended_count}节({total_fee})"
 
+        # 历史累计已缴：从去年9月至当月底的所有缴费总额
+        # 用于展示「一开始到现在共缴了多少」
+        START_YEAR, START_MONTH = 2025, 9
+        historical_cumulative_paid = 0
+        for p in self.db.get_all_payments():
+            pym = (p.payment_date.year, p.payment_date.month)
+            sm = (START_YEAR, START_MONTH)
+            em = (year, month)
+            if sm <= pym <= em:
+                historical_cumulative_paid += p.amount
+
         return PaymentStatus(
             month=dt.date(year, month, 1),
             total_lessons=len(lessons),
@@ -93,6 +140,7 @@ class PaymentManager:
             total_fee=total_fee,
             estimated_fee=estimated_fee,
             paid_amount=paid_amount,
+            historical_cumulative_paid=historical_cumulative_paid,
             balance=balance,
             payment_breakdown=payment_breakdown,
             last_lesson_date=last_lesson_date,
