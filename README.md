@@ -32,6 +32,15 @@ dizi + cal(endar) = dizical
 - 🎵 **练习追踪** - 打卡、统计、热力图、老师每周要求导入
 - 🏷️ **大科目/小科目** - 增删改查模式，灵活分类管理，支持模糊匹配打卡
 - 📝 **练习进展记录** - 每次打卡可附上详细练习进展
+- 🎨 **练习月报图片** - 多模板风格可选，AI 生成信息图
+
+## 🎨 练习月报示例
+
+![2026年3月练习月报](docs/2026-03-练习报告示例.jpg)
+
+> 通过 `dizical practice report` 或 alcove profile 的 dizical-report skill 生成
+
+---
 
 ## 🚀 Quick Start
 
@@ -90,6 +99,7 @@ dizical practice config         # 增删改查模式管理大科目/小科目
 dizical practice import <csv>             # 导入练习时长CSV
 dizical practice import_logs <csv>       # 批量导入进展log（Date,Log）
 dizical practice import-assignments <csv> # 批量导入每周老师要求（WeekStart,Item,Requirement）
+dizical practice report -y 2026 -m 3 --style academic  # 生成月报图片
 
 # 同步
 dizical reminders sync        # 同步 Reminders
@@ -105,6 +115,7 @@ src/
 ├── payment.py          # 缴费管理
 ├── practice.py         # 练习追踪（打卡/统计/导入）
 ├── practice_config.py  # 大科目/小科目增删改查
+├── report_templates.py # 月报 prompt 模板系统（多风格）
 ├── reminders.py        # Apple Reminders 同步
 ├── notifier.py         # 通知格式化
 ├── obsidian.py         # Obsidian Markdown 导出
