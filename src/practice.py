@@ -137,8 +137,69 @@ def save_weekly_assignment(week_start: dt.date, items: List[Dict], notes: Option
     # 确保所有练习项目都在项目库里
     for item in items:
         db.add_practice_item(item['item'])
-    
+
     db.save_weekly_assignment(week_start, items, notes)
+
+
+def query_assignments(
+    start: Optional[dt.date] = None,
+    end: Optional[dt.date] = None,
+    weeks: Optional[int] = None,
+) -> List[Dict]:
+    """
+    查询每周老师要求，支持日期范围或过去 N 周。
+
+    返回: [{
+        "week_start": date,
+        "items": [{"item": "...", "requirement": "..."}],
+        "notes": "...",
+        "total_items": N
+    }, ...]
+    """
+    if weeks is not None:
+        end_date = dt.date.today()
+        start_date = end_date - dt.timedelta(weeks=weeks)
+    elif start and end:
+        start_date, end_date = start, end
+    else:
+        # 默认过去 4 周
+        end_date = dt.date.today()
+        start_date = end_date - dt.timedelta(weeks=4)
+
+    return db.get_weekly_assignments_in_range(start_date, end_date)
+
+
+def get_assignments_summary(weeks: int = 4) -> Dict:
+    """
+    汇总过去 N 周的作业要求。
+    返回: {
+        "total_weeks": N,
+        "weeks": [...],  # 每周明细
+        "item_counts": {"项目名": 出现次数},
+        "recent_items": [{"week_start": date, "item": name, "requirement": text}, ...]
+    }
+    """
+    assignments = query_assignments(weeks=weeks)
+
+    item_counts: Dict[str, int] = {}
+    recent_items: List[Dict] = []
+
+    for a in assignments:
+        for it in a['items']:
+            name = it['item']
+            item_counts[name] = item_counts.get(name, 0) + 1
+            recent_items.append({
+                'week_start': a['week_start'],
+                'item': name,
+                'requirement': it['requirement'],
+            })
+
+    return {
+        'total_weeks': len(assignments),
+        'weeks': assignments,
+        'item_counts': item_counts,
+        'recent_items': recent_items,
+    }
 
 
 def get_week_summary(week_start: dt.date) -> Dict:

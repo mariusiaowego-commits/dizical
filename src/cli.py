@@ -814,6 +814,85 @@ def practice_assign(
         console.print(f"[green]✅ 已录入 {week_start} 的每周要求[/green]")
 
 
+@practice_app.command("assignments")
+def practice_assignments(
+    weeks: int = typer.Option(4, "--weeks", "-w", help="过去 N 周"),
+    start: Optional[str] = typer.Option(None, "--start", "-s", help="开始日期 YYYY-MM-DD"),
+    end: Optional[str] = typer.Option(None, "--end", "-e", help="结束日期 YYYY-MM-DD"),
+    item: Optional[str] = typer.Option(None, "--item", "-i", help="只看某个练习项目"),
+):
+    """查询每周老师要求（明细 + 汇总）
+
+    默认显示过去 4 周。支持 --weeks、--start/--end、--item 过滤。
+    """
+    from . import practice as pm
+
+    # 解析日期范围
+    if start and end:
+        start_date = parse_date(start)
+        end_date = parse_date(end)
+        if not start_date or not end_date:
+            console.print("[red]日期格式错误，使用 YYYY-MM-DD[/red]")
+            return
+        assignments = pm.query_assignments(start=start_date, end=end_date)
+    else:
+        assignments = pm.query_assignments(weeks=weeks)
+
+    if not assignments:
+        console.print("[yellow]没有找到老师要求记录[/yellow]")
+        return
+
+    # 按项目过滤
+    if item:
+        filtered: List[Dict] = []
+        for a in assignments:
+            matched = [it for it in a['items'] if item in it['item']]
+            if matched:
+                filtered.append({**a, 'items': matched})
+        assignments = filtered
+        if not assignments:
+            console.print(f"[yellow]没有找到包含「{item}」的记录[/yellow]")
+            return
+
+    # ── 汇总头部 ──
+    total_items = sum(len(a['items']) for a in assignments)
+    date_range = f"{assignments[0]['week_start_date']} ~ {assignments[-1]['week_start_date']}"
+    console.print(f"\n📋 每周老师要求")
+    console.print(f"  范围: {date_range}  ({len(assignments)} 周, {total_items} 条要求)")
+
+    # ── 项目频次汇总 ──
+    item_counts: Dict[str, int] = {}
+    for a in assignments:
+        for it in a['items']:
+            item_counts[it['item']] = item_counts.get(it['item'], 0) + 1
+    if item_counts:
+        console.print(f"\n  📊 项目频次:")
+        for name, cnt in sorted(item_counts.items(), key=lambda x: -x[1]):
+            console.print(f"    {name}: {cnt} 次")
+
+    # ── 每周明细 ──
+    import sys
+    out = lambda msg: sys.stdout.write(msg + '\n')
+
+    out("")
+    out(f"  周起始      项目            要求")
+    out(f"  {'─' * 72}")
+
+    for a in assignments:
+        week_str = a['week_start_date'].isoformat()
+        for idx, it in enumerate(a['items']):
+            req_preview = it['requirement'].strip().replace('\n', ' ')
+            if len(req_preview) > 40:
+                req_preview = req_preview[:40] + '...'
+            out(f"  {week_str}  {it['item']:<12}  {req_preview}")
+        if a.get('notes'):
+            notes_preview = a['notes'].replace('\n', ' ')[:44]
+            out(f"  {' ' * len(week_str)}  {'📝':<12}  {notes_preview}")
+        out("")
+
+    out(f"  💡 补录: dizical practice assign -d {assignments[-1]['week_start_date']} 项目:要求")
+
+
 @practice_app.command("today")
 def practice_today():
     """查看/录入今日练习"""

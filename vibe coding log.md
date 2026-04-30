@@ -1,5 +1,14 @@
 # dizical vibe coding log
 
+## 2026-04-30 (Thu)
+
+### 每周老师要求导入
+- 命令: `dizical practice import-assignments data/imports/import-assignments.csv`
+- 结果: ✅ 17 周全部导入成功
+- CSV 格式: `WeekStart,Item,Requirement,Notes`（日期格式 `YYYY/M/D`）
+
+---
+
 ## 2026-04-28 (Mon)
 
 ### 状态检查
