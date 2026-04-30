@@ -551,10 +551,13 @@ def remind_payment():
         payload = payment_manager.get_payment_reminder_payload(today.year, today.month)
         notifier = TelegramNotifier()
         notifier.send(payload['message'])
+        reason = 'N/A'
+        if '原因：' in payload['message']:
+            reason = payload['message'].split('原因：')[1].split('\n')[0]
         console.print(Panel(
             f"[green]✅ 已发送缴费提醒[/green]\n"
             f"💰 预计缴费: {payload['amount']} 元\n"
-            f"📝 原因: {payload['message'].split('原因：')[1].split('\\n')[0] if '原因：' in payload['message'] else 'N/A'}"
+            f"📝 原因: {reason}"
         ))
     else:
         console.print(Panel(
@@ -1186,6 +1189,59 @@ def practice_items():
         console.print(table)
     else:
         console.print("[yellow]暂无练习项目[/yellow]")
+
+
+@practice_app.command("report")
+def practice_report(
+    ctx: typer.Context,
+    year: int = typer.Option(None, "--year", "-y", help="年份，默认今年"),
+    month: int = typer.Option(None, "--month", "-m", help="月份，默认本月"),
+    style: str = typer.Option("academic", "--style", "-s", help="模板风格（academic/cute/minimal/vintage）"),
+    aspect: str = typer.Option(None, "--aspect", help="图片比例（portrait/landscape/square），覆盖模板默认值"),
+):
+    """
+    生成练习月报图片（调用 Hermes image generation）
+
+    示例:
+        dizical practice report -y 2026 -m 3
+        dizical practice report --style academic
+        dizical practice report -s cute -m 4
+        dizical practice report --style vintage --aspect landscape
+    """
+    from .report_templates import list_templates, get_template, build_prompt
+    import datetime as dt
+
+    today = dt.date.today()
+    year = year or today.year
+    month = month or today.month
+
+    # 列出可用模板
+    templates = list_templates()
+    available = list(templates.keys())
+    if style not in available:
+        console.print(f"[yellow]⚠️  未知风格 '{style}'，可用: {', '.join(available)}[/yellow]")
+        console.print("使用默认 academic...")
+        style = "academic"
+
+    tmpl_info = templates[style]
+    console.print(Panel(f"[blue]练习月报生成中[/blue]\n"
+                        f"📅 {year}年{month}月 | 🎨 {tmpl_info['name']} ({tmpl_info['description']})"))
+
+    # 获取数据
+    data = practice_module.get_month_summary(year, month)
+    if data["total_minutes"] == 0 and not data["item_totals"]:
+        console.print("[yellow]⚠️  当月无练习数据，无法生成报告[/yellow]")
+        return
+
+    # 构建 prompt
+    prompt, default_aspect = build_prompt(year, month, data, template_id=style)
+    aspect_ratio = aspect or default_aspect
+
+    console.print(f"[green]✅ Prompt 构建完成[/green]")
+    console.print(f"   模板: {style} ({tmpl_info['name']})")
+    console.print(f"   比例: {aspect_ratio}")
+    console.print(f"   数据: {data['total_minutes']}分钟 / {data['practice_days']}天")
+    console.print(f"\n[dim]提示：通过 alcove profile 说「生成{year}年{month}月练习报告，使用{style}风格」可自动完成图像生成和保存[/dim]")
 
 
 @practice_category_app.command("list")
