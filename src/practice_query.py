@@ -371,7 +371,8 @@ class PracticeQueryTUI:
     def _hline(self, row: int, col: int, ch: str, attr: int) -> None:
         try:
             a = curses.color_pair(attr)
-            self.stdscr.hline(row, col, ch, self.w - col)
+            # BSD ncurses chtype 仅 4 字节，Unicode 字符无法装入；改用 addstr
+            self.stdscr.addstr(row, col, ch * max(0, self.w - col), a)
         except curses.error:
             pass
 
