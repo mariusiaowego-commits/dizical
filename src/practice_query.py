@@ -47,11 +47,23 @@ def _month_days(year: int, month: int) -> List[dt.date]:
     return days
 
 
-def _render_bar(minutes: int, target: int = 60, width: int = 10) -> str:
-    """渲染进度条 ASCII"""
-    filled = min(minutes, target) * width // target if target else 0
-    bar = '█' * filled + '░' * (width - filled)
-    return bar
+def _render_bar(minutes: int, target: int = 60, width: int = 10) -> Tuple[str, int]:
+    """渲染进度条，返回 (bar_str, color_attr)。bar 形如 [████████░░░░] 80%"""
+    if width <= 0:
+        return '[ ]', Colors.DIM
+    filled = min(minutes, target) * width // target
+    empty = width - filled
+    pct = min(minutes, target) * 100 // target if target else 0
+    exceeded = max(0, minutes - target)
+    # 颜色：未达目标用 HIGHLIGHT，达到/超过目标用 GREEN，超额用 RED
+    if exceeded > 0:
+        color = Colors.RED
+    elif filled == width:
+        color = Colors.GREEN
+    else:
+        color = Colors.HIGHLIGHT
+    bar = '█' * filled + '░' * empty
+    return f'[{bar}] {pct:>3}%', color
 
 
 def _fuzzy_match(text: str, pattern: str) -> bool:
@@ -153,19 +165,19 @@ class PracticeQueryTUI:
 
         # 总时长 + 进度条
         total = p['total_minutes']
-        bar = _render_bar(total, 60, 20)
+        bar_str, bar_color = _render_bar(total, 60, 14)
         self._attr(row, 2, f"总练习: {total} 分钟", Colors.HIGHLIGHT, bold=True)
-        self.stdscr.addstr(row, 22, f"[{bar}]")
+        self.stdscr.addstr(row, 22, bar_str, curses.color_pair(bar_color))
         row += 2
 
         # 各项目
         self._hline(row, 2, '─', Colors.DIM)
         row += 1
         for it in p.get('items', []):
-            bar = _render_bar(it['minutes'], 60, 14)
+            bar_str, bar_color = _render_bar(it['minutes'], 60, 10)
             self.stdscr.addstr(row, 4, f"{it['item']:<8}")
             self.stdscr.addstr(row, 14, f"{it['minutes']:>4}分")
-            self.stdscr.addstr(row, 20, f"[{bar}]")
+            self.stdscr.addstr(row, 20, bar_str, curses.color_pair(bar_color))
             row += 1
 
         # 备注
@@ -225,8 +237,9 @@ class PracticeQueryTUI:
 
             if d['has_practice']:
                 mins = d['total_minutes']
-                bar = _render_bar(mins, 60, 12)
-                self.stdscr.addstr(row, 14, f"{mins:>4}分 [{bar}]")
+                bar_str, bar_color = _render_bar(mins, 60, 10)
+                self.stdscr.addstr(row, 14, f"{mins:>4}分 ", curses.color_pair(Colors.DIM))
+                self.stdscr.addstr(row, 21, bar_str, curses.color_pair(bar_color))
                 items_str = ' '.join(f"{x['item']}{x['minutes']}" for x in d['items'][:4])
                 self.stdscr.addstr(row, 36, f" {items_str[:self.w-38]}")
             else:
