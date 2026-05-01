@@ -915,6 +915,13 @@ def practice_today():
         console.print("使用 'dizical practice log 今天 基本功:20' 来记录")
 
 
+@practice_app.command("query", help="交互式练习查询 TUI")
+def practice_query():
+    """启动交互式练习记录查询界面"""
+    from . import practice_query as pq
+    pq.launch()
+
+
 @practice_app.command("thisweek")
 def practice_thisweek():
     """查看本周练习情况"""
