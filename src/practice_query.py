@@ -48,7 +48,7 @@ def _month_days(year: int, month: int) -> List[dt.date]:
 
 
 def _render_bar(minutes: int, target: int = 60, width: int = 10) -> Tuple[str, int]:
-    """渲染进度条，返回 (bar_str, color_attr)。bar 形如 [████████░░░░] 80%"""
+    """渲染进度条，返回 (bar_str, color_attr)。bar 形如 [████████....] 80%"""
     if width <= 0:
         return '[ ]', Colors.DIM
     filled = min(minutes, target) * width // target
@@ -62,7 +62,7 @@ def _render_bar(minutes: int, target: int = 60, width: int = 10) -> Tuple[str, i
         color = Colors.GREEN
     else:
         color = Colors.HIGHLIGHT
-    bar = '█' * filled + '░' * empty
+    bar = '█' * filled + '.' * empty
     return f'[{bar}] {pct:>3}%', color
 
 

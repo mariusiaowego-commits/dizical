@@ -1020,7 +1020,7 @@ def practice_week(
         for item, mins in sorted(summary['item_totals'].items(), key=lambda x: -x[1]):
             pct_i = mins / total * 100 if total > 0 else 0
             bar_len = int(pct_i / 5)
-            bar = "█" * bar_len + "░" * (20 - bar_len)
+            bar = "█" * bar_len + "." * (20 - bar_len)
             console.print(f"  {item:>6}: {mins:>3}' ({pct_i:>4.1f}%)  {bar}")
 
     # ── 每日详情（有练习或进展的天） ──
@@ -1104,7 +1104,7 @@ def practice_dashboard():
         for item, mins in sorted(summary['item_totals'].items(), key=lambda x: -x[1]):
             pct = mins / total * 100
             bar_len = int(pct / 5)
-            bar = "█" * bar_len + "░" * (20 - bar_len)
+            bar = "█" * bar_len + "." * (20 - bar_len)
             console.print(f"  {item:>8}: {mins:>3}' ({pct:>5.1f}%)  {bar}")
 
     # 近8周趋势
