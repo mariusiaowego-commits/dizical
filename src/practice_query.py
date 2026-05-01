@@ -398,6 +398,8 @@ class PracticeQueryTUI:
                 if m < 1:
                     y -= 1; m = 12
                 self.month_year = (y, m)
+            elif view == 'week':
+                self.week_start -= dt.timedelta(weeks=1)
         elif key in (curses.KEY_DOWN,):
             if view == 'history':
                 self.history_cursor += 1
@@ -407,6 +409,8 @@ class PracticeQueryTUI:
                 if m > 12:
                     y += 1; m = 1
                 self.month_year = (y, m)
+            elif view == 'week':
+                self.week_start += dt.timedelta(weeks=1)
         elif key == ord('/'):
             self._do_search()
         elif key in (ord('h'), ord('H')):
@@ -433,7 +437,7 @@ class PracticeQueryTUI:
         finally:
             curses.noecho()
             curses.curs_set(0)
-            stdscr.nodelay(False)
+            self.stdscr.nodelay(False)
 
 
 def _fmt_week(ws: dt.date) -> str:
