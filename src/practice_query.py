@@ -77,7 +77,7 @@ class PracticeQueryTUI:
         self.h, self.w = stdscr.getmaxyx()
         curses.curs_set(0)
         self.stdscr.keypad(True)
-        self.nodelay(False)
+        self.stdscr.nodelay(False)
 
         self.view_idx = 0          # 0=today 1=week 2=month 3=history
         self.today = dt.date.today()
@@ -432,7 +432,7 @@ class PracticeQueryTUI:
         finally:
             curses.noecho()
             curses.curs_set(0)
-            self.nodelay(False)
+            stdscr.nodelay(False)
 
 
 def _fmt_week(ws: dt.date) -> str:
