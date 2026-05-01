@@ -62,7 +62,7 @@ def _render_bar(minutes: int, target: int = 60, width: int = 10) -> Tuple[str, i
         color = Colors.GREEN
     else:
         color = Colors.HIGHLIGHT
-    bar = '█' * filled + '.' * empty
+    bar = '=' * filled + '.' * empty
     return f'[{bar}] {pct:>3}%', color
 
 
