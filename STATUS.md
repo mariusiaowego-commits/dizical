@@ -1,16 +1,16 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-01 15:21
-**当前阶段**: 功能开发完成，Obsidian 使用指南格式修复完毕，无待提交改动
+**最后更新**: 2026-05-02 22:35
+**当前阶段**: 所有功能已提交并同步，worktree 干净，等待下一步开发任务
 
 ---
 
 ## 📂 项目位置
 
-- **main 分支 (开发中)**: `/Users/mt16/dev/dizical/` (有未提交改动)
-- **hermes 分支 (当前会话)**: `/Users/mt16/dev/dizical/.worktrees/hermes-d81fea2b/`
-- **Git 模式**: worktree 模式，main 分支有未 commit 的 practice_query.py 开发中
-- **remote**: origin/main 无法连接（HTTPS 443 超时，需切 SSH）
+- **main 分支 (生产)**: `/Users/mt16/dev/dizical/`
+- **hermes 分支 (当前会话 worktree)**: `/Users/mt16/dev/dizical/.worktrees/hermes-0d81925f/`
+- **Git 模式**: worktree 模式，hermes/hermes-0d81925f 与 main 完全同步
+- **remote**: origin/main 已切 SSH，正常连接
 
 ---
 
@@ -85,27 +85,19 @@ dizical obsidian export 4          # 导出4月报告
 
 ---
 
-## 🔄 最近提交 (2026-05-01)
-
-| Commit | 内容 |
-|--------|------|
-| `ed31c5a` | Merge branch 'feat/assignments-query' |
-| `8ce16a2` | docs: 添加prompt参数化方案文档和4月练习报告excalidraw草稿 |
-| `fd691b5` | feat: practice assignments 查询每周老师要求（明细+汇总） (#14) |
-
-## 📦 待提交改动（main worktree）
+## 📦 待提交改动
 
 | 文件 | 说明 |
 |------|------|
-| 无 | 所有代码已提交并同步 |
+| 无 | 所有代码已提交并同步，worktree 与 main 完全同步 |
 
-## 🔄 最近提交 (2026-05-01)
+## 🔄 最近提交 (2026-05-02)
 
-|| Commit | 内容 ||
-||--------|------||
-|| `ed31c5a` | Merge branch 'feat/assignments-query' ||
-|| `8ce16a2` | docs: 添加prompt参数化方案文档和4月练习报告excalidraw草稿 ||
-|| `fd691b5` | feat: practice assignments 查询每周老师要求（明细+汇总） (#14) ||
+| Commit | 内容 |
+|--------|------|
+| `3d8eae8` | fix: TUI 进度条 █ → = (macOS BSD curses 无 ACS_BLOCK) |
+| `413bb89` | fix: 恢复 █ 填充符，cli/rich 进度条保持 █，TUI 用 = |
+| `74abed2` | fix: 进度条填充满字符 # → = |
 
 ## 🚀 下一步开发计划
 
