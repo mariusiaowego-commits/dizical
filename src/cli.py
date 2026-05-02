@@ -274,6 +274,45 @@ def confirm_lesson(date_str: str = typer.Argument(..., help="日期，格式 YYY
         console.print(f"[yellow]⚠️  未找到课程: {lesson_date}[/yellow]")
 
 
+@lesson_app.command("stats")
+def lesson_stats(month: Optional[str] = typer.Argument(None, help="月份，格式 YYYY-MM，默认当前月")):
+    """课程统计（课程+缴费汇总）"""
+    if month:
+        year, month_num = parse_month(month)
+    else:
+        today = date.today()
+        year, month_num = today.year, today.month
+
+    lessons = lesson_manager.get_lessons(year, month_num)
+    payment_status = payment_manager.get_monthly_payment_status(year, month_num)
+
+    console.print(Panel(f"[blue]📊 {year}年{month_num}月 统计报表[/blue]"))
+
+    status_counts = {
+        "已安排": len([l for l in lessons if l.status == LessonStatus.SCHEDULED]),
+        "已上课": len([l for l in lessons if l.status == LessonStatus.ATTENDED]),
+        "已取消": len([l for l in lessons if l.status == LessonStatus.CANCELLED]),
+    }
+
+    console.print("📚 课程统计:")
+    for s, count in status_counts.items():
+        console.print(f"  - {s}: {count} 节")
+
+    console.print(f"\n💰 财务统计:")
+    console.print(f"  - 费用明细: {payment_status.payment_breakdown}")
+    console.print(f"  - 预计缴费: {payment_status.estimated_fee} 元")
+    console.print(f"  - 当月已缴: {payment_status.paid_amount} 元")
+    if payment_status.balance > 0:
+        console.print(f"  - 待缴余额: [red]{payment_status.balance} 元[/red]")
+    else:
+        console.print(f"  - 待缴余额: [green]{payment_status.balance} 元[/green]")
+    if payment_status.historical_cumulative_paid > 0:
+        console.print(f"  - 历史累计已缴: {payment_status.historical_cumulative_paid} 元")
+
+    if payment_status.last_lesson_date:
+        console.print(f"\n📆 最后上课日: {payment_status.last_lesson_date}")
+
+
 @payment_app.command("status")
 def payment_status(month: Optional[str] = typer.Argument(None, help="月份，格式 YYYY-MM，默认当前月")):
     """查看缴费状态"""
