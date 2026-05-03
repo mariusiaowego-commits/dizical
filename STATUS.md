@@ -8,8 +8,8 @@
 ## 📂 项目位置
 
 - **main 分支 (生产)**: `/Users/mt16/dev/dizical/`
-- **hermes 分支 (当前会话 worktree)**: `/Users/mt16/dev/dizical/.worktrees/hermes-0d81925f/`
-- **Git 模式**: worktree 模式，hermes/hermes-0d81925f 与 main 完全同步
+- **hermes 分支 (当前会话 worktree)**: `/Users/mt16/dev/dizical/.worktrees/hermes-eb075c87/`
+- **Git 模式**: worktree 模式，hermes/hermes-eb075c87 与 main 完全同步
 - **remote**: origin/main 已切 SSH，正常连接
 
 ---
