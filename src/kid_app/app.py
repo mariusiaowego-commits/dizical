@@ -714,7 +714,7 @@ def practice_page():
     assign_item_names = {}
     if assign and assign.get("items"):
         for a in assign["items"]:
-            assign_item_names[a["item"]] = a.get("requirement", "")
+            assign_item_names[a["item"]] = a.get('requirements') or a.get('requirement', '')
 
     # 建立 practice_item_id → requirement 的映射（精确匹配）
     assign_by_pi_id = {}
@@ -722,7 +722,7 @@ def practice_page():
         for a in assign["items"]:
             pid = a.get("item_id")
             if pid:
-                assign_by_pi_id[pid] = a.get("requirement", "")
+                assign_by_pi_id[pid] = a.get('requirements') or a.get('requirement', '')
 
     def _find_requirement(item_name):
         """精确匹配 name（不用模糊，避免 '长音' 错误匹配 '吸气长音'）"""
