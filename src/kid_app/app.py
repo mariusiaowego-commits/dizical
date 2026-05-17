@@ -714,19 +714,23 @@ def practice_page():
     assign_item_names = {}
     if assign and assign.get("items"):
         for a in assign["items"]:
-            assign_item_names[a["item"]] = a.get('requirements') or a.get('requirement', '')
+            req = a.get('requirements') or a.get('requirement', '')
+            metro = a.get('metronome', '')
+            assign_item_names[a["item"]] = {'req': req, 'metro': metro}
 
-    # 建立 practice_item_id → requirement 的映射（精确匹配）
+    # 建立 practice_item_id → {req, metro} 的映射（精确匹配）
     assign_by_pi_id = {}
     if assign and assign.get("items"):
         for a in assign["items"]:
             pid = a.get("item_id")
             if pid:
-                assign_by_pi_id[pid] = a.get('requirements') or a.get('requirement', '')
+                req = a.get('requirements') or a.get('requirement', '')
+                metro = a.get('metronome', '')
+                assign_by_pi_id[pid] = {'req': req, 'metro': metro}
 
     def _find_requirement(item_name):
         """精确匹配 name（不用模糊，避免 '长音' 错误匹配 '吸气长音'）"""
-        return assign_item_names.get(item_name, "")
+        return assign_item_names.get(item_name, {})
 
     cat_map = {c["id"]: c["name"] for c in categories}
     by_cat = {}
@@ -745,17 +749,21 @@ def practice_page():
             name = it["name"]
             pid = it.get("item_id")
             # 优先用 practice_item_id 精确匹配，fallback 用名称模糊匹配
-            req_text = assign_by_pi_id.get(pid) or _find_requirement(name)
-            has_req = bool(req_text)
+            req_info = assign_by_pi_id.get(pid) or _find_requirement(name)
+            req_text = req_info.get('req', '') if isinstance(req_info, dict) else req_info
+            metro_text = req_info.get('metro', '') if isinstance(req_info, dict) else ''
+            # tooltip 里：速度 + 要求（metronome 已含 ♩= 前缀）
+            combined = (metro_text + '  ' if metro_text else '') + req_text
+            has_req = bool(combined)
             tooltip_html = ""
-            if has_req and req_text:
-                tooltip_html = "<div class='req-tooltip'>" + req_text + "</div>"
+            if has_req and combined:
+                tooltip_html = "<div class='req-tooltip'>" + combined + "</div>"
             wrap_class = "item-btn-wrap" if has_req else ""
             has_req_class = "has-req" if has_req else ""
             items_html += (
                 "<div class='" + wrap_class + "'>"
                 + "<button class='item-btn " + has_req_class + "' data-id='" + str(it["item_id"]) + "' "
-                + "data-req='" + req_text.replace("'", "&#39;") + "' "
+                + "data-req='" + combined.replace("'", "&#39;") + "' "
                 + "onclick=\"selectItem('" + name.replace("'", "\\'") + "', " + str(it["item_id"]) + ")\">"
                 + name + " <span style='font-size:11px;color:rgba(255,255,255,0.6)'>[" + str(it["item_id"]) + "]</span>"
                 + tooltip_html
