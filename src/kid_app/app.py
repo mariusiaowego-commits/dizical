@@ -667,7 +667,8 @@ def prepare_page():
             assign_title = "本周练习安排"
         assign_items_html = ""
         for it in assign["items"]:
-            assign_items_html += f"<li>{it['item']} {it.get('requirement', '')}</li>"
+            req = it.get('requirements') or it.get('requirement', '')
+            assign_items_html += f"<li>{it['item']} {req}</li>"
     else:
         assign_eyebrow  = "本周老师要求"
         assign_title    = "暂无老师要求"
