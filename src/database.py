@@ -575,6 +575,13 @@ class Database:
                 matched = self._match_practice_item_id(it['item'])
                 if matched:
                     it['item_id'] = matched
+            # 规范化字段名：requirement → requirements（避免新旧数据混用）
+            if 'requirement' in it and 'requirements' not in it:
+                it['requirements'] = it.pop('requirement')
+            if 'requirements' not in it:
+                it['requirements'] = ''
+            if 'metronome' not in it:
+                it['metronome'] = ''
 
         # 保留 notes（首次录入时保存，后续追加时保留原有 notes 除非明确传入）
         final_notes = notes if notes is not None else (existing['notes'] if existing else None)
