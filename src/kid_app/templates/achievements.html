@@ -50,11 +50,11 @@
     }
     .week-pct-text { text-align: center; margin-top: 5px; font-size: 13px; color: #7F8C8D; }
 
-    /* ── 卡片2: 练习看板（4格横排） ── */
+    /* ── 卡片2: 练习看板（7格横排） ── */
     .board-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
     }
     .board-cell {
       text-align: center; padding: 12px 6px; border-radius: 14px;
@@ -63,11 +63,17 @@
     .board-cell:nth-child(2) { background: #E8F5E9; }
     .board-cell:nth-child(3) { background: #E3F2FD; }
     .board-cell:nth-child(4) { background: #FCE4EC; }
-    .board-num { font-size: 26px; font-weight: bold; line-height: 1; }
+    .board-cell:nth-child(5) { background: #EDE7F6; }
+    .board-cell:nth-child(6) { background: #FFF8E1; }
+    .board-cell:nth-child(7) { background: #E0F2F1; }
+    .board-num { font-size: 22px; font-weight: bold; line-height: 1; }
     .board-cell:nth-child(1) .board-num { color: #FF6B35; }
     .board-cell:nth-child(2) .board-num { color: #27AE60; }
     .board-cell:nth-child(3) .board-num { color: #1976D2; }
     .board-cell:nth-child(4) .board-num { color: #E91E8C; }
+    .board-cell:nth-child(5) .board-num { color: #7B1FA2; }
+    .board-cell:nth-child(6) .board-num { color: #F57C00; }
+    .board-cell:nth-child(7) .board-num { color: #00796B; }
     .board-label { font-size: 11px; color: #7F8C8D; margin-top: 4px; }
     .board-diff { font-size: 11px; margin-top: 2px; color: #888; }
     .board-diff.up { color: #27AE60; }
@@ -239,6 +245,18 @@
         <div class="board-num">{{month_days}}</div>
         <div class="board-label">本月（天）</div>
         <div class="board-diff {{month_pos}}">{{month_diff}}</div>
+      </div>
+      <div class="board-cell">
+        <div class="board-num">{{total_all_time}}</div>
+        <div class="board-label">总累计</div>
+      </div>
+      <div class="board-cell">
+        <div class="board-num">{{week_peak}}</div>
+        <div class="board-label">最长一周</div>
+      </div>
+      <div class="board-cell">
+        <div class="board-num">{{month_peak}}</div>
+        <div class="board-label">最长一月</div>
       </div>
     </div>
   </div>

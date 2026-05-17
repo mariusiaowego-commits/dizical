@@ -24,7 +24,7 @@ def prepare_page():
     assignment_items = []
     if assignment and assignment.get("items"):
         for item in assignment["items"]:
-            assignment_items.append(f"<li>{item['item']}：{item['requirement']}</li>")
+            assignment_items.append(f"<li>{item['item']}：{item.get('requirements') or item.get('requirement', '')}</li>")
     assignment_html = "\n".join(assignment_items) if assignment_items else "<li>暂无本周要求</li>"
     
     # 分析昨天缺什么

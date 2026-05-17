@@ -18,46 +18,47 @@ import datetime as dt
 DB_PATH = "/Users/mt16/dev/dizical/data/dizi.db"
 
 # ─── achievements 定义数据 ───────────────────────────────────────────────
-# category: display=成果展示型（无achieved状态），milestone=里程碑达成型（有achieved Y/N）
+# category: milestone=里程碑达成型（有achieved Y/N/一次性解锁）,
+#            seasonal=赛季型（固定周期重置统计）
 ACHIEVEMENTS = [
-    # ── 成果展示型（display）────────────────────────────────────────────
+    # ── 赛季型（seasonal）─────────────────────────────────────────────
     {
         "id": "total_60",
-        "name": "变得更强",
+        "name": "小水滴",
         "type": "突破",
-        "category": "display",
-        "stat_logic": "所有 daily_practices.total_minutes 累加",
-        "description": "一屁股坐下去，笛子都认识你了！",
+        "category": "seasonal",
+        "stat_logic": "当月累计练习超过60分钟（自然月）",
+        "description": "小水滴嗒嗒嗒滴了几十天，把大石头滴穿了。你一个月练满60分钟，小水滴\"嗒嗒嗒\"，把60分钟这关也滴穿啦！",
         "display_format": "time_hours_minutes",
         "threshold": 60,
     },
     {
         "id": "week_champ",
-        "name": "巅峰周",
+        "name": "绕梁七日",
         "type": "巅峰",
-        "category": "display",
-        "stat_logic": "历史单周日累计时长最高值",
-        "description": "那一周，你就是时间管理大师！",
+        "category": "seasonal",
+        "stat_logic": "本周（stage_start→stage_end）练习时长超过上周",
+        "description": "古代有个姐姐叫韩娥，她唱歌太好听了，唱完了声音还在房梁上绕了三天才肯走——你练笛子超过上周的自己，说明你的笛声也能绕梁啦！🎵",
         "display_format": "minutes",
         "threshold": None,
     },
     {
         "id": "full_month",
-        "name": "巅峰月",
+        "name": "刮目相看",
         "type": "巅峰",
-        "category": "display",
-        "stat_logic": "历史单月日累计时长最高值",
-        "description": "整月打卡，整条街最亮的笛子就是你！",
+        "category": "seasonal",
+        "stat_logic": "本月练习时长超过上月（自然月）",
+        "description": "古代有个叫吕蒙的大哥哥，没时间读书，后来开始每天读一点点。他的朋友遇到他，说：哇！你已经不是之前那个人！不是以前那个你了！吕蒙说：我们才分别三天，你就要把眼睛好好擦一擦，重新看我了！你的这个月比上个月练得还多——你同学如果上个月遇到你，这个月再听你吹笛子会说：哇！你已经不是那个你了",
         "display_format": "minutes",
         "threshold": None,
     },
     {
         "id": "top1",
-        "name": "最熟悉的你",
+        "name": "情有独钟",
         "type": "突破",
-        "category": "display",
-        "stat_logic": "按 item name 汇总累计时长，取前3名",
-        "description": "你跟这些曲目最熟，它们也最想你！",
+        "category": "seasonal",
+        "stat_logic": "当月练习时长第1名的科目",
+        "description": "古代有个下棋很厉害的人叫奕秋，他教两个小朋友下棋。一个小朋友竖起耳朵认认真真听着；另一个总东张西望，想外面有什么好玩的。最后那个专心的小朋友，下棋越来越厉害，比另一个厉害好多好多。你所有的科目里这个月xxx这个吹得最多！",
         "display_format": "top_items",
         "threshold": None,
     },
