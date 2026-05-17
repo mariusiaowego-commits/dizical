@@ -620,6 +620,7 @@ class Database:
                     'lesson_date': dt.date.fromisoformat(row['lesson_date']),
                     'stage_start': dt.date.fromisoformat(row['stage_start']) if row['stage_start'] else None,
                     'stage_end': dt.date.fromisoformat(row['stage_end']) if row['stage_end'] else None,
+                    'stage_order': row['stage_order'],
                     'items': json.loads(row['items']),
                     'notes': row['notes'],
                     'images': json.loads(row['images']) if row['images'] else []
