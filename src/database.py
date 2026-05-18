@@ -727,11 +727,13 @@ class Database:
                     VALUES (?, ?, ?, ?, ?)
                 ''', (date.isoformat(), json.dumps(merged_items, ensure_ascii=False), merged_total, merged_log, final_practiced))
             else:
-                # 新建记录：为每个 item 分配唯一递增 item_id
+                # 新建记录：先 fuzzy match 到 practice_items.item_id，匹配不到再用顺序号
                 next_id = 1
                 for it in items:
-                    it['item_id'] = next_id
-                    next_id += 1
+                    matched = self._match_practice_item_id(it['item'])
+                    it['item_id'] = matched if matched else next_id
+                    if not matched:
+                        next_id += 1
                 cursor.execute('''
                     INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
                     VALUES (?, ?, ?, ?, ?)
