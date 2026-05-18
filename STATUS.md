@@ -1,12 +1,30 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-14 16:30
-**当前阶段**: behavior_log + report 日历选择 UI + 练习轨迹对比
+**最后更新**: 2026-05-18 09:45
+**当前阶段**: bug 修复 — item_id 错配 + practice_query 作业字段名错误
 
 ## 阶段记录
 
-**今日提交 (2026-05-14)**:
-- `b612c3d` — feat: behavior_log + report UI + calendar selection
+**今日提交 (2026-05-18)**:
+- `05d3e1f` — fix: save_daily_practice else分支也要fuzzy match，避免新建记录时item_id错配
+- `d97cac8` — fix: practice_query作业渲染用requirements而非requirement
+
+**今日完成**:
+- **Bug 1**: `save_daily_practice` else 分支（新建记录时）跳过 fuzzy match，导致 `item_id` 错写为顺序号 1,2,3...；修复：else 分支也先调 `_match_practice_item_id`；修正 6 条历史错配记录（05-12 ~ 05-17）
+- **Bug 2**: `practice_query.py` 作业渲染用 `requirement` 而非 `requirements`（复数），导致本周作业要求显示空白；修复两处：`_draw_homework` line 222 + `_draw_week` line 297
+- `0f3eb6d` — feat(kid-app): behavior_log + report UI + calendar selection
+
+**今日完成**:
+- `src/achievement_definitions.py` 新建（统一 calc_all() 引擎，16KB）
+- badge category 枚举变更：display → seasonal
+- 4 seasonal badge（绕梁七日/刮目相看/情有独钟/小水滴）实时计算
+- Practice board 4格→7格（新增：总累计/最长一周/最长一月）
+- board_label 更名：周冠军→最长一周，月冠军→最长一月
+- `/badges` 双重路由 bug 修复
+- badge 图片 404 双重前缀 bug 修复
+- grade 图片文件名修复（grade_{n}-u.png）
+- 页面标题统一「呦呦成就殿堂」
+- DB 迁移：dizi.db backup + migrate_achievements.py 执行（28 achievements）
 - `2da33a3` — fix: achievements locked card overlay - SVG b-lock sizing + grey mask; badges GSAP entrance; practice items JSON robustness
 - `c9d6c09` — feat: 勋章墙重构 - 音乐之旅成就/弹窗详情/克制标签/简化卡片/解锁排序
 - `b8c11dd` — fix: top2只展示第2名科目/top3只展示第3名科目

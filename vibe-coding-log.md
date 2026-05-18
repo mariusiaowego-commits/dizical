@@ -1,12 +1,40 @@
 # dizical vibe coding log
 
-## 2026-05-14 (Thu) PM — 收尾 + 综合研判
+## 2026-05-18 (Mon) AM — item_id fuzzy match bug + practice_query requirements 字段
 
 ### 本次完成
-- **晨检触发**: `coder-晨检-dev` job `535b73e5b7d9` 今日 10:59 运行，已推送 origin
-- **全面检查**: STATUS.md / DEVELOPMENT_PLAN.md / handoff-2026-05-12+13 / 晨检 cron job 列表
-- **Push 验证**: `git push origin main` → `2159932..6ea730b` 全部推送成功
-- **all_items.png 白边修复**: PIL RGB→RGBA + 阈值>245白色透明化，79.9%像素处理
+- **Bug 1**: `save_daily_practice` else 分支（新建记录）跳过 fuzzy match，`item_id` 错写为顺序号；修复：else 分支也先调 `_match_practice_item_id`；修正 6 条历史错配记录（05-12 ~ 05-17）
+- **Bug 2**: `practice_query.py` 作业渲染读 `requirement` 而非 `requirements`（复数），本周作业要求显示空白；修复两处
+- commit: `05d3e1f` + `d97cac8`，已推送 main
+
+### 根因分析
+- `save_daily_practice` 的 else 分支（无 existing 记录）原设计：为不在 `practice_items` 表的自由科目分配顺序号，但漏掉了「先 fuzzy match 再 fallback」逻辑
+- `practice_query.py` 字段名 `requirements`（复数）是历史设计，`requirement`（单数）是拼写错误
+
+## 2026-05-14 (Thu) PM — behavior_log + report UI
+
+### 本次完成
+- **4.1 后端**: append_behavior_log() + POST /api/log 接收 + /api/practices/{date} 返回
+- **4.2 前端**: 今日跳过前日对比；练习轨迹时间线；逐科目前日对比（总时长+每科+顺序+新科目）
+- **practice**: enterTime 进入时刻记录，三个打卡 fetch 带上 behavior_log
+- **日历选择 UI**: today 青绿圆点角标；选中淡黄背景+橙色数字+左侧竖条；back.out 弹入动效
+- **migrate_behavior_log.py**: DB migration 脚本
+- **PR #29**: feat/behavior-log-and-report-ui → main，9 files
+
+### 技术细节
+- save_daily_practice 的 INSERT OR REPLACE 会覆盖 behavior_log → 改为打卡后追加 append_behavior_log
+- cal-sel-ring 用 transform 导致位置乱跳 → 改用 CSS .selected class + .sel-bar span + GSAP scaleY 动画
+- today::after 角标方案替代背景色（避免被 practice level 背景覆盖）
+- **Bug**: 竖条 stuck 不消失 — GSAP inline transform 覆盖 CSS → 修复：killTweensOf + 手动设 scaleY(0)
+
+### 收尾
+- STATUS.md 更新时间 + 阶段描述
+- handoff-2026-05-14-PM.md 更新
+- **勋章数据库文档**: `tqob/05-Coding/project-dizical/勋章数据库/勋章墙数据库.md`
+  - 表结构 + 28 枚勋章（sort_order 排序）+ `![]|120x120` 图片引用 + 表头字段名
+  - grade 段位表含 `unlocked_template` / `locked_template` 列（统一模板在表下方）
+  - badge_attachments/ 46 个图片附件
+  - 待补：18 枚非 grade 勋章的 placeholder 描述
 
 ### Git Log（本次 session）
 || Commit | 内容 |
