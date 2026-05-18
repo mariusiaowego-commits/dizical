@@ -219,7 +219,7 @@ class PracticeQueryTUI:
             row += 1
             for it in items:
                 item_name = it.get('item', '')
-                requirement = it.get('requirement', '')
+                requirement = it.get('requirements', '')
                 # 大字显示练习项目
                 if item_name:
                     self._attr(row, 4, f"🎯 {item_name}", Colors.HIGHLIGHT, bold=True)
@@ -294,7 +294,7 @@ class PracticeQueryTUI:
             self._attr(row, 4, "📋 本周作业:", Colors.HIGHLIGHT, bold=True)
             row += 1
             for it in assignment.get('items', [])[:5]:
-                self.stdscr.addstr(row, 6, f"• {it['item']}: {it.get('requirement','')[:self.w-10]}")
+                self.stdscr.addstr(row, 6, f"• {it['item']}: {it.get('requirements','')[:self.w-10]}")
                 row += 1
         self._draw_prompt(row, "  [←]今日  [→]月视图  [↑/↓]历史  ")
 
