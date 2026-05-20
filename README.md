@@ -130,16 +130,15 @@ dizical kid start
 
 ### kid-app 截图
 
-<!-- 截图占位，使用方法：替换链接为本地截图路径或上传图床 -->
-<!-- ![prepare 页面](docs/screenshots/prepare.png) -->
-<!-- ![practice 页面](docs/screenshots/practice.png) -->
-<!-- ![achievements 页面](docs/screenshots/achievements.png) -->
-<!-- ![badges 页面](docs/screenshots/badges.png) -->
-<!-- ![report 页面](docs/screenshots/report.png) -->
-<!-- ![praise 页面](docs/screenshots/praise.png) -->
+| prepare 页 | practice 页 |
+|:---------:|:----------:|
+| ![prepare](docs/screenshots/prepare.png) | ![practice](docs/screenshots/practice.png) |
 
-> 📸 截图放在 `docs/screenshots/` 目录下，文件名对应页面名（prepare.png / practice.png 等）
-> 可用 iPad Safari 长按截图，或 macOS Chrome DevTools Device Mode 模拟
+| achievements 页 | badges 页 | report 页 |
+|:---------------:|:---------:|:---------:|
+| ![achievements](docs/screenshots/achievements.png) | ![badges](docs/screenshots/badges.png) | ![report](docs/screenshots/report.png) |
+
+> 📸 截图来源：Chrome DevTools CDP（viewport 默认尺寸）
 
 ---
 
