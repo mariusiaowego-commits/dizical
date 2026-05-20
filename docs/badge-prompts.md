@@ -61,6 +61,16 @@ An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders en
 
 ---
 
+## 闻鸡起舞系列（Early Bird Badges）
+
+|| ID | 名称 | Placeholder | CDN URL |
+|----|------|-------------|---------|
+| early_riser | 闻鸡起舞 | a cute black-haired chibi girl stepping to a rhythmic dance while playing her bamboo flute, alongside a chubby adorable little rooster wearing a golden alarm clock tie who is also dancing on one foot, surrounded by flying golden feathers and sparkling musical notes | https://v3b.fal.media/files/b/0a9af234/avfAV4K00FuzL5Fr6P2rT_po0Od8I3.png |
+| little_chick_commander | 小鸡指挥官 | a cute anime girl with long black hair spinning in a joyful dance with her bamboo flute, while a cheeky little morning chick wearing tiny sunglasses perches on her shoulder, waving a golden conductor baton like a mini maestro | https://v3b.fal.media/files/b/0a9af23b/f_CKEdAAWtjBcEwZ4X4OO_fG0Qt3r2.png |
+| first_to_act | 先声夺人 | a proud chibi girl with long black hair holding her bamboo flute high like a victory torch, standing side-by-side with a spirited tiny rooster crowing happily on top of a perfectly round golden clock face, with explosive coral-pink and gold sparkle particles in the background | https://v3b.fal.media/files/b/0a9af26a/ehPaGGSgKQJdfdl6FoOWr_ymtVtTr8.png |
+
+---
+
 ## 文件位置
 
 - **生图目录**：`src/kid_app/static/badges/`

@@ -303,6 +303,26 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         else:
             return CalcResult(False, 0, None, None, "当月第1科目（暂无数据）")
 
+    # ── early_riser / little_chick_commander / first_to_act ─────
+    # 当月首次打卡(created_at)早于阈值时间
+    if aid in ("early_riser", "little_chick_commander", "first_to_act"):
+        threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
+        threshold = threshold_map[aid]
+        month_start = date(now_year, now_month, 1)
+        cur = conn.execute(
+            "SELECT created_at FROM daily_practices WHERE date >= ? AND date <= ? ORDER BY created_at ASC LIMIT 1",
+            (month_start.isoformat(), today.isoformat()))
+        row = cur.fetchone()
+        if row:
+            from datetime import datetime
+            ts = datetime.fromisoformat(row[0])
+            achieved = ts.hour < threshold
+            cond = f"当月首次打卡{ts.hour}:{ts.minute:02d}，需早于{threshold}:00"
+        else:
+            achieved = False
+            cond = f"当月暂无练习记录，需早于{threshold}:00"
+        return CalcResult(achieved, threshold, None, None, cond)
+
     return CalcResult(False, 0, None, None, "")
 
 
