@@ -1,6 +1,27 @@
 # dizical vibe coding log
 
-## 2026-05-20 (Wed) AM/PM — achievements看板数据修复
+## 2026-05-20 (Wed) PM — 闻鸡起舞系列 badge × 3 新增
+
+### 本次完成
+- **新增 3 个 seasonal badge**：
+  - `early_riser` 闻鸡起舞：当月首次打卡早于 20:00
+  - `little_chick_commander` 小鸡指挥官：当月首次打卡早于 17:00
+  - `first_to_act` 先声夺人：当月首次打卡早于 12:00
+- **计算逻辑**：`achievement_definitions.py` `_calc_seasonal()` 新增分支，用 created_at 时间戳判断
+- **badge URL 映射**：app.py 两处 BADGE_URLS 更新
+- **入库**：achievements + achievement_badges 表，sort_order 29/30/31
+- **图片**：early_bird_A/B/C.png，FAL 生图 + PIL 去背（threshold=200）
+- **docs**：badge-prompts.md 新增闻鸡起舞系列，已同步 Obsidian
+- **FAL CDN 下载速度极慢**（~2-3KB/s），用户手动下载解决
+
+### 验证结果
+- early_riser: achieved=True（首次打卡 14:07 < 20:00）✓
+- little_chick_commander: achieved=True（14:07 < 17:00）✓
+- first_to_act: achieved=False（14:07 ≥ 12:00）✓
+- 三张图片 200 OK，RGBA 白像素=0 ✓
+
+### commit
+待推送
 
 ### 本次完成
 - **连续练习天数**：新增 `_calc_current_streak()` 从昨天倒查（今天没练不影响），当前=13天（5/7起）

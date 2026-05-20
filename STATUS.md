@@ -1,10 +1,18 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-20
-**当前阶段**: achievements 看板数据修复 — 连续天数/环比对比/本月对比逻辑
+**当前阶段**: 新增闻鸡起舞系列 seasonal badge × 3（闻鸡起舞/小鸡指挥官/先声夺人）
 
 ## 阶段记录
 
+**今日收尾 (2026-05-20 PM — 闻鸡起舞系列 badge 新增)**:
+- **新增 3 个 seasonal badge**：early_riser(闻鸡起舞)/little_chick_commander(小鸡指挥官)/first_to_act(先声夺人)
+- **逻辑**：当月首次打卡(created_at)早于阈值时间（20:00/17:00/12:00）即解锁
+- **图片**：early_bird_A/B/C.png（3张）经 PIL 去背处理（threshold=200）
+- **badge URL 映射**：app.py 两处 BADGE_URLS 已更新（milestone 页 + badges 页）
+- **计算逻辑**：`achievement_definitions.py` `_calc_seasonal()` 新增分支
+- **入库**：achievements + achievement_badges 表（sort_order 29/30/31）
+- **docs/badge-prompts.md**：新增闻鸡起舞系列记录，已同步 Obsidian
 **今日收尾 (2026-05-20)**:
 - **Bug**: prepare 页 streak-badge 显示 0 天（今日无练习记录时直接 break）
   - 根因：`streak_days()` 从今天开始查，今天没记录就返回 0

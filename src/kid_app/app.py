@@ -421,6 +421,9 @@ def _milestone_html(category: Optional[str] = None):
         "top1": "/static/badges/top1.png",
         "top2": "/static/badges/top2.png",
         "top3": "/static/badges/top3.png",
+        "early_riser": "/static/badges/early_bird_A.png",
+        "little_chick_commander": "/static/badges/early_bird_B.png",
+        "first_to_act": "/static/badges/early_bird_C.png",
         **{f"grade_{n}": f"/static/badges/grade_{n}-u.png" for n in range(1, 11)},
     }
 
@@ -1050,6 +1053,9 @@ def badges_page():
         "top1": "/static/badges/top1.png",
         "top2": "/static/badges/top2.png",
         "top3": "/static/badges/top3.png",
+        "early_riser": "/static/badges/early_bird_A.png",
+        "little_chick_commander": "/static/badges/early_bird_B.png",
+        "first_to_act": "/static/badges/early_bird_C.png",
         **{f"grade_{n}": f"/static/badges/grade_{n}-u.png" for n in range(1, 11)},
     }
 
