@@ -22,7 +22,7 @@
 - **连续练习天数**：新增 `_calc_current_streak()` 从昨天倒查（今天没练不影响），当前=13天（5/7起）；原 `_calc_max_consecutive_streak()` 保留用于历史最长
 - **本月练习环比**：改用上月同一时间段（4/1-5/20 vs 5/1-5/20），文案"比4月少3天"，`_ring_diff()` 新增 `ref_period` 参数
 - **本周练习环比**：改用 `weekly_assignments.stage_start/stage_end`（stage_order 定位），替代错误的自然周上上周逻辑；当前=2天 vs 上周8天→"比上周少6天"
-- 格5/6 TOP无数据根因：items JSON 中 item_id 使用占位数字(1,2,3...)导致 SQL JOIN 失败，已记录 handoff-dizical-260520-criticalproblem-1.md 待修
+- **格5/6 TOP无数据根因**：items JSON 中 item_id 使用占位数字(1,2,3...)导致 SQL JOIN 失败；修复（dfc18fb）：前端传 item_id 到后端，is_extra 分支不再用 max_id+1 乱写；DB 数据已手工修正 5/18 和 5/19 记录
 - `8c523c2` — fix: _calc_current_streak从昨天倒查；本周/上月对比逻辑修正
 - `d6dff83` — fix: 本周/上周对比改用weekly_assignments stage_order
 - `a9427ef` — fix: 连续天数改用历史最长；本月对比改上月同周期+动态月份名
