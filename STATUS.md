@@ -1,7 +1,7 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-20
-**当前阶段**: 收尾清理 — Git工作区清洁 + badge死代码清理 + 文档同步
+**当前阶段**: P0 Bug修复 — achievements页面500错误（字段名错误）+ practice防提前离开保护
 
 ## 阶段记录
 
@@ -12,6 +12,11 @@
 - pytest 49/49 ✅
 - `05d3e1f` — fix: save_daily_practice else分支也要fuzzy match，避免新建记录时item_id错配
 - `d97cac8` — fix: practice_query作业渲染用requirements而非requirement
+- **P0 Bug**: `achievements_page` 访问 `last_top["items"]` 和 `["date_label"]`，但 `_calc_last_practice_top` 等函数返回扁平字段 `top1_name/top2_name/date`，导致 KeyError 500。修复：`items`→`top1_name/top2_name`，`date_label`→`date`
+- **Bug 2**: `practice.html` finishPending 标记，防止计时结束前误切换页面
+- `50a6ad5` — fix: achievements_page 使用正确的top字段名
+- `8cc3337` — fix: practice页防提前离开保护 - finishPending标记
+- 全部页面 /prepare /practice /report /praise /badges 200 OK，已推送 origin/main
 
 **今日完成**:
 - **Bug 1**: `save_daily_practice` else 分支（新建记录时）跳过 fuzzy match，导致 `item_id` 错写为顺序号 1,2,3...；修复：else 分支也先调 `_match_practice_item_id`；修正 6 条历史错配记录（05-12 ~ 05-17）
