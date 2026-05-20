@@ -611,7 +611,7 @@
       clearInterval(timerInterval);
       started = false;
       timerRunning = false;
-      const finalMins = Math.floor(elapsed / 60);
+      const finalMins = Math.max(1, Math.ceil(elapsed / 60));
       elapsed = 0;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('timer-display').classList.remove('running');
