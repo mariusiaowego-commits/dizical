@@ -882,12 +882,28 @@ def achievements_page():
     yesterday_prev = _calc_yesterday_mins(days_ago=2)  # 前天
 
     week_mins, week_days_count = _calc_week_mins_and_days()
-    # 上上周
-    ws_prev = today - dt.timedelta(days=today.weekday() + 7)
-    we_prev = ws_prev + dt.timedelta(days=6)
-    practices_prev = db.get_daily_practices_in_range(ws_prev, we_prev)
-    week_mins_prev = sum(p.get("total_minutes", 0) for p in practices_prev)
-    week_days_prev = len([p for p in practices_prev if p.get("total_minutes", 0) > 0])
+    # 上周：找上一条 weekly_assignment（stage_order = 当前stage_order - 1）
+    ws_cur, we_cur = _get_current_week_range()
+    # 找当前周的 stage_order
+    conn = db._get_connection()
+    cur_week_row = conn.execute("""
+        SELECT stage_order FROM weekly_assignments
+        WHERE ? BETWEEN stage_start AND stage_end
+        LIMIT 1
+    """, (today.isoformat(),)).fetchone()
+    week_days_prev = 0
+    if cur_week_row:
+        cur_order = cur_week_row[0]
+        prev_week_row = conn.execute("""
+            SELECT stage_start, stage_end FROM weekly_assignments
+            WHERE stage_order = ?
+            LIMIT 1
+        """, (cur_order - 1,)).fetchone()
+        if prev_week_row:
+            ps = dt.date.fromisoformat(prev_week_row[0])
+            pe = dt.date.fromisoformat(prev_week_row[1])
+            practices_prev = db.get_daily_practices_in_range(ps, pe)
+            week_days_prev = len([p for p in practices_prev if p.get("total_minutes", 0) > 0])
 
     month_mins, month_days_count = _calc_month_mins_and_days()
     # 上月同日期范围（4/1-5/20 vs 5/1-5/20）
