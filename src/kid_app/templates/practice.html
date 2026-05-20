@@ -402,6 +402,7 @@
     let timerInterval = null;
     let started = false;
     let timerRunning = false;
+    let finishPending = false;  // 提前结束但未打卡
     let quickDuration = 10;
     let todayDate = "{{today_date}}";
     let enterTime = new Date().toISOString();  // 行为日志：进入时间
@@ -484,7 +485,7 @@
     function setupTimerProtect() {
       document.querySelectorAll('.nav a').forEach(a => {
         a.addEventListener('click', e => {
-          if (!timerRunning) return;
+          if (!timerRunning && !finishPending) return;
           const href = a.getAttribute('href');
           if (!href || href === window.location.pathname) return;
           e.preventDefault();
@@ -493,10 +494,10 @@
         });
       });
       window.addEventListener('beforeunload', e => {
-        if (timerRunning) { e.preventDefault(); e.returnValue = ''; }
+        if (timerRunning || finishPending) { e.preventDefault(); e.returnValue = ''; }
       });
       document.addEventListener('visibilitychange', () => {
-        if (document.hidden && timerRunning) { pendingNav = null; }
+        if (document.hidden && (timerRunning || finishPending)) { pendingNav = null; }
       });
     }
     function closeTimerProtect() {
@@ -505,6 +506,7 @@
     }
     function confirmLeave() {
       timerRunning = false;
+      finishPending = false;
       clearInterval(timerInterval);
       started = false;
       document.getElementById('timerProtectModal').classList.remove('open');
@@ -570,6 +572,7 @@
       clearInterval(timerInterval);
       started = false;
       timerRunning = false;
+      finishPending = false;
       elapsed = 0;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('startBtn').textContent = '开始';
@@ -611,6 +614,7 @@
       clearInterval(timerInterval);
       started = false;
       timerRunning = false;
+      finishPending = true;  // 标记提前结束但未打卡
       const finalMins = Math.max(1, Math.ceil(elapsed / 60));
       elapsed = 0;
       document.getElementById('timer-display').textContent = '00:00';
