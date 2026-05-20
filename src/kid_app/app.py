@@ -2,8 +2,10 @@
 
 import datetime as dt
 import json
+import sqlite3
 import sys
 from pathlib import Path
+from typing import Optional, List, Tuple
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -909,24 +911,24 @@ def achievements_page():
     week_top = _calc_week_top(2)
     month_top = _calc_month_top(2)
 
-    # 拆解为扁平变量
-    last_date = last_top["date_label"]
-    last_top1_name = last_top["items"][0][0] if len(last_top["items"]) > 0 else ""
-    last_top1_mins = last_top["items"][0][1] if len(last_top["items"]) > 0 else 0
-    last_top2_name = last_top["items"][1][0] if len(last_top["items"]) > 1 else ""
-    last_top2_mins = last_top["items"][1][1] if len(last_top["items"]) > 1 else 0
+    # 拆解为扁平变量（_calc_last_practice_top 等返回扁平字段）
+    last_date = last_top["date"]
+    last_top1_name = last_top["top1_name"]
+    last_top1_mins = last_top["top1_mins"]
+    last_top2_name = last_top["top2_name"]
+    last_top2_mins = last_top["top2_mins"]
 
-    week_date = week_top["date_label"]
-    week_top1_name = week_top["items"][0][0] if len(week_top["items"]) > 0 else ""
-    week_top1_mins = week_top["items"][0][1] if len(week_top["items"]) > 0 else 0
-    week_top2_name = week_top["items"][1][0] if len(week_top["items"]) > 1 else ""
-    week_top2_mins = week_top["items"][1][1] if len(week_top["items"]) > 1 else 0
+    week_date = week_top["date"]
+    week_top1_name = week_top["top1_name"]
+    week_top1_mins = week_top["top1_mins"]
+    week_top2_name = week_top["top2_name"]
+    week_top2_mins = week_top["top2_mins"]
 
-    month_date = month_top["date_label"]
-    month_top1_name = month_top["items"][0][0] if len(month_top["items"]) > 0 else ""
-    month_top1_mins = month_top["items"][0][1] if len(month_top["items"]) > 0 else 0
-    month_top2_name = month_top["items"][1][0] if len(month_top["items"]) > 1 else ""
-    month_top2_mins = month_top["items"][1][1] if len(month_top["items"]) > 1 else 0
+    month_date = month_top["date"]
+    month_top1_name = month_top["top1_name"]
+    month_top1_mins = month_top["top1_mins"]
+    month_top2_name = month_top["top2_name"]
+    month_top2_mins = month_top["top2_mins"]
 
     return render(
         "achievements",
