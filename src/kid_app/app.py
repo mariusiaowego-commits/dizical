@@ -44,9 +44,10 @@ def week_start_of(today):
     return today - dt.timedelta(days=today.weekday())
 
 def streak_days():
+    """从昨天往前数，连续每天有练习的天数。今天没练不影响计数。"""
     today = dt.date.today()
     days = 0
-    d = today
+    d = today - dt.timedelta(days=1)  # 从昨天开始，不要求今天必须练
     for _ in range(365):
         p = db.get_daily_practice(d)
         if p and p.get("total_minutes", 0) > 0:

@@ -46,7 +46,8 @@
     }
     .week-bar-fill {
       background: linear-gradient(90deg, #FF6B35, #FF8C5A);
-      height: 100%; border-radius: 12px; transition: width 0.6s ease;
+      height: 100%; border-radius: 12px;
+      width: 0;
     }
     .week-pct-text { text-align: center; margin-top: 5px; font-size: 13px; color: #7F8C8D; }
 
@@ -247,7 +248,7 @@
       <span class="week-sub">{{week_pct_text}}</span>
     </div>
     <div class="week-bar-bg">
-      <div class="week-bar-fill" style="width:{{week_pct}}%;"></div>
+      <div class="week-bar-fill"></div>
     </div>
     <div class="week-pct-text">{{week_pct}}% 完成</div>
   </div>
@@ -300,10 +301,10 @@
         <div class="top-cell">
           <div class="top-date">{{last_date}}</div>
           {% if last_top1_name %}
-          <div class="top-row"><span class="top-name">{{last_top1_name}}</span><span class="top-mins">{{last_top1_mins}}m</span></div>
+          <div class="top-row"><span class="top-name">{{last_top1_name}}</span><span class="top-mins">{{last_top1_mins}}分钟</span></div>
           {% endif %}
           {% if last_top2_name %}
-          <div class="top-row"><span class="top-name">{{last_top2_name}}</span><span class="top-mins">{{last_top2_mins}}m</span></div>
+          <div class="top-row"><span class="top-name">{{last_top2_name}}</span><span class="top-mins">{{last_top2_mins}}分钟</span></div>
           {% endif %}
         </div>
         {% endif %}
@@ -313,10 +314,10 @@
         <div class="top-cell">
           <div class="top-date">本周</div>
           {% if week_top1_name %}
-          <div class="top-row"><span class="top-name">{{week_top1_name}}</span><span class="top-mins">{{week_top1_mins}}m</span></div>
+          <div class="top-row"><span class="top-name">{{week_top1_name}}</span><span class="top-mins">{{week_top1_mins}}分钟</span></div>
           {% endif %}
           {% if week_top2_name %}
-          <div class="top-row"><span class="top-name">{{week_top2_name}}</span><span class="top-mins">{{week_top2_mins}}m</span></div>
+          <div class="top-row"><span class="top-name">{{week_top2_name}}</span><span class="top-mins">{{week_top2_mins}}分钟</span></div>
           {% endif %}
           {% if not week_top1_name %}
           <div class="top-empty">暂无</div>
@@ -328,10 +329,10 @@
         <div class="top-cell">
           <div class="top-date">本月</div>
           {% if month_top1_name %}
-          <div class="top-row"><span class="top-name">{{month_top1_name}}</span><span class="top-mins">{{month_top1_mins}}m</span></div>
+          <div class="top-row"><span class="top-name">{{month_top1_name}}</span><span class="top-mins">{{month_top1_mins}}分钟</span></div>
           {% endif %}
           {% if month_top2_name %}
-          <div class="top-row"><span class="top-name">{{month_top2_name}}</span><span class="top-mins">{{month_top2_mins}}m</span></div>
+          <div class="top-row"><span class="top-name">{{month_top2_name}}</span><span class="top-mins">{{month_top2_mins}}分钟</span></div>
           {% endif %}
           {% if not month_top1_name %}
           <div class="top-empty">暂无</div>
@@ -524,7 +525,14 @@
         { opacity: 1, y: 0, duration: 0.45, stagger: 0.1, ease: "back.out(1.6)" }
       );
 
-      // 拆分已解锁/未解锁到两个网格
+      gsap.fromTo('.week-bar-fill',
+        { width: '0%' },
+        {
+          width: '{{week_pct}}%',
+          duration: 2.5,
+          ease: 'expo.out',
+        }
+      );
       const unlockedGrid = document.getElementById('unlocked-grid');
       const lockedGrid   = document.getElementById('locked-grid');
       const allCards     = unlockedGrid.querySelectorAll('.b-card');

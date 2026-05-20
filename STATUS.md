@@ -6,20 +6,13 @@
 ## 阶段记录
 
 **今日收尾 (2026-05-20)**:
-- Git工作区清理：删除6个废弃文件（PRDs × 2, docs × 1, handoff × 1, backup × 1, pre-badge-refactor × 1）
-- Badge死代码确认：`src/kid_app/app.py` 已无 `_calc_top_items()` / `ACH_DEFS_FULL` 引用（仅残留在废弃备份文件中）
-- `src/cli.py` 改动：practice_query 列显示优化（order_str/requirements/metronome），非badge相关，正常保留
+- **Bug**: prepare 页 streak-badge 显示 0 天（今日无练习记录时直接 break）
+  - 根因：`streak_days()` 从今天开始查，今天没记录就返回 0
+  - 修复：改从昨天开始查，与 achievements 口径一致（当前 13 天）
+- **UI**: achievements 页本周进度条加 GSAP `expo.out` 动画（2.5s，先快后慢）
+  - 修复：删 `style.css` 旧 transition、内联 style 宽度、CSS `width:0` 初始值
+- **UI**: 练习看板 TOP 格单位 `m` → `分钟`（6处）
 - pytest 49/49 ✅
-- `05d3e1f` — fix: save_daily_practice else分支也要fuzzy match，避免新建记录时item_id错配
-- `d97cac8` — fix: practice_query作业渲染用requirements而非requirement
-- **P0 Bug**: `achievements_page` 访问 `last_top["items"]` 和 `["date_label"]`，但 `_calc_last_practice_top` 等函数返回扁平字段 `top1_name/top2_name/date`，导致 KeyError 500。修复：`items`→`top1_name/top2_name`，`date_label`→`date`
-- **Bug 2**: `practice.html` finishPending 标记，防止计时结束前误切换页面
-- `50a6ad5` — fix: achievements_page 使用正确的top字段名
-- `8cc3337` — fix: practice页防提前离开保护 - finishPending标记
-- 全部页面 /prepare /practice /report /praise /badges 200 OK，已推送 origin/main
-- `dfc18fb` — **P0 Fix**: items JSON item_id污染（前端传item_id + 后端验证链 + fuzzy match + DB修正）
-- `e9f36ad` — **P0 Fix**: practice_config 11处 `include_archived=True`（归档科目菜单不可见问题）
-- SSH push 失败根因：SSH agent 无 identities；修复：`ssh-add ~/.ssh/id_ed25519`
 
 **今日(2026-05-20) achievements看板修复**:
 - **连续练习天数**：新增 `_calc_current_streak()` 从昨天倒查（今天没练不影响），当前=13天（5/7起）；原 `_calc_max_consecutive_streak()` 保留用于历史最长
