@@ -62,13 +62,11 @@ def total_practice_minutes():
 
 
 def _calc_max_consecutive_streak():
-    """计算最长连续练习天数（断掉后重新接上也能恢复）"""
+    """计算历史最长连续练习天数（断掉后重新接上也能恢复）"""
     today = dt.date.today()
     practices = db.get_daily_practices_in_range(dt.date(2020, 1, 1), today)
-    # date -> total_minutes
     day_mins = {p["date"]: p.get("total_minutes", 0) for p in practices}
 
-    # 从最早有练习的日期到今天，逐天扫描
     if not day_mins:
         return 0
 
@@ -86,6 +84,29 @@ def _calc_max_consecutive_streak():
             cur_streak = 0
         d += dt.timedelta(days=1)
     return max_streak
+
+
+def _calc_current_streak():
+    """计算最近一次断掉之后的连续练习天数。
+    从最后一次有练习的日期往前倒查，遇0即停。
+    今天没练不影响——以昨天为终点计算。"""
+    today = dt.date.today()
+    practices = db.get_daily_practices_in_range(dt.date(2020, 1, 1), today)
+    day_mins = {p["date"]: p.get("total_minutes", 0) for p in practices}
+
+    if not day_mins:
+        return 0
+
+    # 从昨天开始往前倒查（今天可能没练）
+    d = today - dt.timedelta(days=1)
+    cur_streak = 0
+    while d >= min(day_mins.keys()):
+        if day_mins.get(d, 0) > 0:
+            cur_streak += 1
+            d -= dt.timedelta(days=1)
+        else:
+            break
+    return cur_streak
 
 
 def _calc_peak_week():
@@ -876,8 +897,8 @@ def achievements_page():
     week_pct, week_pct_text = _week_progress()
 
     # ── 卡片2: 练习看板 ────────────────────────────────
-    # 连续练习：使用历史最长连续天数（断过也能恢复）
-    streak = _calc_max_consecutive_streak()
+    # 连续练习：从今天往前倒查，遇0分钟即停
+    streak = _calc_current_streak()
     yesterday_mins = _calc_yesterday_mins()
     yesterday_prev = _calc_yesterday_mins(days_ago=2)  # 前天
 
@@ -958,7 +979,6 @@ def achievements_page():
         streak=str(streak),
         streak_unit="天",
         streak_label="已连续练习",
-        streak_max=f"最长连续{streak}天",
         yesterday_mins=str(yesterday_mins),
         yesterday_unit="分钟",
         yesterday_label="昨天练习",
