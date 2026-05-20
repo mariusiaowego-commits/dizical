@@ -17,6 +17,9 @@
 - `50a6ad5` — fix: achievements_page 使用正确的top字段名
 - `8cc3337` — fix: practice页防提前离开保护 - finishPending标记
 - 全部页面 /prepare /practice /report /praise /badges 200 OK，已推送 origin/main
+- `dfc18fb` — **P0 Fix**: items JSON item_id污染（前端传item_id + 后端验证链 + fuzzy match + DB修正）
+- `e9f36ad` — **P0 Fix**: practice_config 11处 `include_archived=True`（归档科目菜单不可见问题）
+- SSH push 失败根因：SSH agent 无 identities；修复：`ssh-add ~/.ssh/id_ed25519`
 
 **今日(2026-05-20) achievements看板修复**:
 - **连续练习天数**：新增 `_calc_current_streak()` 从昨天倒查（今天没练不影响），当前=13天（5/7起）；原 `_calc_max_consecutive_streak()` 保留用于历史最长
