@@ -47,7 +47,7 @@ def _done():
 def _relation_set():
     """设置归属关系 - 自循环，q 逐层返回"""
     while True:
-        items = db.get_practice_items(active_only=False)
+        items = db.get_practice_items(active_only=False, include_archived=True)
         categories = get_categories()
 
         _banner("归属关系")
@@ -122,7 +122,7 @@ def _relation_set():
 def _do_archive():
     """归档管理 - 自循环，q 退到主菜单"""
     while True:
-        all_items = db.get_practice_items(active_only=False)
+        all_items = db.get_practice_items(active_only=False, include_archived=True)
         archived = [it for it in all_items if it.get('is_archived')]
         cats = {c['id']: c['name'] for c in get_categories()}
 
@@ -159,7 +159,7 @@ def _archive_choose(switch_to: bool):
     state_label = "未归档" if switch_to else "已归档"
 
     while True:
-        all_items = db.get_practice_items(active_only=False)
+        all_items = db.get_practice_items(active_only=False, include_archived=True)
         candidates = [it for it in all_items if bool(it.get('is_archived')) == (not switch_to)]
         cats = {c['id']: c['name'] for c in get_categories()}
 
@@ -201,7 +201,7 @@ def _archive_choose(switch_to: bool):
                 db.unarchive_practice_item(iid)
                 _print(f"  ✅ 「{target['name']}」已取消归档")
 
-        remaining = [it for it in db.get_practice_items(active_only=False) if it.get('is_archived')]
+        remaining = [it for it in db.get_practice_items(active_only=False, include_archived=True) if it.get('is_archived')]
         _print(f"\n  当前已归档 {len(remaining)} 个")
 
         ch = _input("\n  ▶ 回车继续操作，q 返回上级: ").strip()
@@ -217,7 +217,7 @@ def _do_category():
     """大科目管理 - 自循环，q 退到主菜单"""
     while True:
         categories = get_categories()
-        items = db.get_practice_items(active_only=False)
+        items = db.get_practice_items(active_only=False, include_archived=True)
 
         _banner("大科目管理")
 
@@ -402,7 +402,7 @@ def _category_sort():
 def _do_item():
     """小科目管理 - 自循环，q 退到主菜单"""
     while True:
-        items = db.get_practice_items(active_only=False)
+        items = db.get_practice_items(active_only=False, include_archived=True)
         categories = get_categories()
         cat_map = {c['id']: c['name'] for c in categories}
 
@@ -447,7 +447,7 @@ def _item_add():
             _print("  取消")
             continue
         names = [n.strip() for n in raw.replace('、', ',').replace('，', ',').split(',') if n.strip()]
-        existing = {it['name'] for it in db.get_practice_items(active_only=False)}
+        existing = {it['name'] for it in db.get_practice_items(active_only=False, include_archived=True)}
         added = 0
         for name in names:
             if name in existing:
@@ -463,7 +463,7 @@ def _item_add():
 
 def _item_delete():
     while True:
-        items = db.get_practice_items(active_only=False)
+        items = db.get_practice_items(active_only=False, include_archived=True)
         if not items:
             _banner("删除小科目")
             _print("\n  （无小科目）")
@@ -500,7 +500,7 @@ def _item_delete():
 
 def _item_rename():
     while True:
-        items = db.get_practice_items(active_only=False)
+        items = db.get_practice_items(active_only=False, include_archived=True)
         if not items:
             _banner("改名小科目")
             _print("\n  （无小科目）")
@@ -560,7 +560,7 @@ def _item_rename():
 def _show_current():
     """显示当前配置总览（主菜单时调用）"""
     categories = get_categories()
-    items = db.get_practice_items(active_only=False)
+    items = db.get_practice_items(active_only=False, include_archived=True)
     cats = {c['id']: c['name'] for c in categories}
 
     _print("\n─── 大科目 ───")
