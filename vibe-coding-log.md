@@ -1,5 +1,19 @@
 # dizical vibe coding log
 
+## 2026-05-20 (Wed) AM/PM — achievements看板数据修复
+
+### 本次完成
+- **连续练习天数**：新增 `_calc_current_streak()` 从昨天倒查（今天没练不影响），当前=13天（5/7起）
+- **本月练习环比**：改用上月同一时间段，文案"比4月少3天"，`_ring_diff()` 新增 `ref_period` 参数
+- **本周练习环比**：改用 `weekly_assignments.stage_start/stage_end`（stage_order 定位），替代错误的自然周上上周逻辑；当前=2天 vs 上周8天→"比上周少6天"
+- **格5/6 TOP无数据**：items JSON 中 item_id 用占位数字(1,2,3...)导致 SQL JOIN 失败，handoff-dizical-260520-criticalproblem-1.md 已记录
+- commit: `8c523c2`, `d6dff83`, `a9427ef` 已推送 main
+
+### 根因分析
+- `_ring_diff` 硬编码"上周"，月份对比无法动态传入月份名 → 新增 `ref_period` 参数
+- `week_days_prev` 用自然周上上周而非 actual 上周（stage周期）→ 改用 stage_order 定位
+- 格5/6: items 录入时用占位 item_id(1,2,3...) 而非查询真实 ID，JOIN `is_archived=0` 行失败
+
 ## 2026-05-18 (Mon) AM — item_id fuzzy match bug + practice_query requirements 字段
 
 ### 本次完成

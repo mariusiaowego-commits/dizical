@@ -1,7 +1,7 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-20
-**当前阶段**: P0 Bug修复 — achievements页面500错误（字段名错误）+ practice防提前离开保护
+**当前阶段**: achievements 看板数据修复 — 连续天数/环比对比/本月对比逻辑
 
 ## 阶段记录
 
@@ -17,6 +17,15 @@
 - `50a6ad5` — fix: achievements_page 使用正确的top字段名
 - `8cc3337` — fix: practice页防提前离开保护 - finishPending标记
 - 全部页面 /prepare /practice /report /praise /badges 200 OK，已推送 origin/main
+
+**今日(2026-05-20) achievements看板修复**:
+- **连续练习天数**：新增 `_calc_current_streak()` 从昨天倒查（今天没练不影响），当前=13天（5/7起）；原 `_calc_max_consecutive_streak()` 保留用于历史最长
+- **本月练习环比**：改用上月同一时间段（4/1-5/20 vs 5/1-5/20），文案"比4月少3天"，`_ring_diff()` 新增 `ref_period` 参数
+- **本周练习环比**：改用 `weekly_assignments.stage_start/stage_end`（stage_order 定位），替代错误的自然周上上周逻辑；当前=2天 vs 上周8天→"比上周少6天"
+- 格5/6 TOP无数据根因：items JSON 中 item_id 使用占位数字(1,2,3...)导致 SQL JOIN 失败，已记录 handoff-dizical-260520-criticalproblem-1.md 待修
+- `8c523c2` — fix: _calc_current_streak从昨天倒查；本周/上月对比逻辑修正
+- `d6dff83` — fix: 本周/上周对比改用weekly_assignments stage_order
+- `a9427ef` — fix: 连续天数改用历史最长；本月对比改上月同周期+动态月份名
 
 **今日完成**:
 - **Bug 1**: `save_daily_practice` else 分支（新建记录时）跳过 fuzzy match，导致 `item_id` 错写为顺序号 1,2,3...；修复：else 分支也先调 `_match_practice_item_id`；修正 6 条历史错配记录（05-12 ~ 05-17）
