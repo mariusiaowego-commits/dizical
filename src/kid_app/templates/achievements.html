@@ -50,16 +50,22 @@
     }
     .week-pct-text { text-align: center; margin-top: 5px; font-size: 13px; color: #7F8C8D; }
 
-    /* ── 卡片2: 练习看板（7格横排） ── */
+    /* ── 卡片2: 练习看板（iPad横屏优化：2行布局） ── */
     .board-grid {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .board-grid-top {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
     }
     .board-cell {
-      text-align: center; padding: 12px 6px; border-radius: 14px;
+      text-align: center; padding: 14px 8px; border-radius: 16px;
       display: flex; flex-direction: column; align-items: center;
-      justify-content: flex-start; min-height: 90px;
+      justify-content: center; min-height: 100px;
     }
     .board-cell:nth-child(1) { background: #FFF3E0; }
     .board-cell:nth-child(2) { background: #E8F5E9; }
@@ -68,7 +74,7 @@
     .board-cell:nth-child(5) { background: #EDE7F6; }
     .board-cell:nth-child(6) { background: #FFF8E1; }
     .board-cell:nth-child(7) { background: #E0F2F1; }
-    .board-num { font-size: 22px; font-weight: bold; line-height: 1; }
+    .board-num { font-size: 28px; font-weight: bold; line-height: 1; }
     .board-cell:nth-child(1) .board-num { color: #FF6B35; }
     .board-cell:nth-child(2) .board-num { color: #27AE60; }
     .board-cell:nth-child(3) .board-num { color: #1976D2; }
@@ -76,38 +82,28 @@
     .board-cell:nth-child(5) .board-num { color: #7B1FA2; }
     .board-cell:nth-child(6) .board-num { color: #F57C00; }
     .board-cell:nth-child(7) .board-num { color: #00796B; }
-    .board-label { font-size: 11px; color: #7F8C8D; margin-top: 4px; }
-    .board-diff { font-size: 11px; margin-top: 2px; color: #888; }
+    .board-label { font-size: 13px; color: #7F8C8D; margin-top: 6px; font-weight: 500; }
+    .board-diff { font-size: 12px; margin-top: 4px; color: #888; }
     .board-diff.up { color: #27AE60; }
 
-    /* ── TOP项目展示格 ── */
+    /* ── TOP项目展示格（第5-7格） ── */
     .top-cell {
-      padding: 10px 4px 8px;
+      padding: 12px 6px 10px;
       display: flex; flex-direction: column; align-items: center;
-      justify-content: flex-start; gap: 3px; width: 100%;
+      justify-content: flex-start; gap: 5px; width: 100%;
     }
     .top-date {
-      font-size: 10px; font-weight: 600; color: #7B1FA2;
+      font-size: 12px; font-weight: 600; color: #7B1FA2;
       background: rgba(123,31,162,0.10); border-radius: 8px;
-      padding: 1px 5px; margin-bottom: 2px;
+      padding: 2px 8px; margin-bottom: 2px;
     }
     .top-row {
-      display: flex; align-items: center; gap: 2px;
-      font-size: 11px; line-height: 1.2; width: 100%; justify-content: center;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; line-height: 1.3; width: 100%; justify-content: center;
     }
-    .top-name { color: #555; font-weight: 500; }
+    .top-name { color: #555; font-weight: 600; }
     .top-mins { color: #7B1FA2; font-weight: 700; }
-    /* 无数据时 */
-    .top-empty { font-size: 11px; color: #bbb; margin-top: 2px; }
-
-    /* TOP项目样式（后3格） */
-    .board-cell-top { padding: 10px 4px; }
-    .board-date-label { font-size: 11px; font-weight: bold; color: #666; margin-bottom: 4px; }
-    .board-cell:nth-child(5) .board-date-label { color: #7B1FA2; }
-    .board-cell:nth-child(6) .board-date-label { color: #F57C00; }
-    .board-cell:nth-child(7) .board-date-label { color: #00796B; }
-    .board-top-item { font-size: 11px; line-height: 1.3; color: #333; }
-    .board-top-empty { font-size: 11px; color: #bbb; }
+    .top-empty { font-size: 13px; color: #bbb; }
 
     /* ── 成就展示（与badges页面一致的结构） ── */
     .section-header {
@@ -117,24 +113,32 @@
       margin: 18px 0 12px;
     }
     .section-header h3 {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 700;
       color: #333;
     }
     .section-count {
-      font-size: 12px;
+      font-size: 13px;
       color: #fff;
       background: #FF6B35;
       border-radius: 20px;
-      padding: 1px 8px;
+      padding: 2px 10px;
       font-weight: 600;
     }
 
-    /* 2列固定网格 */
+    /* 响应式徽章网格 - iPad横屏用3列+大图 */
     .badge-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    /* 手机竖屏降回2列 */
+    @media (max-width: 640px) {
+      .badge-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .b-img-wrap { width: 100px !important; height: 100px !important; }
+      .b-img { max-width: 100px !important; max-height: 100px !important; }
+      .board-grid { grid-template-columns: repeat(2, 1fr); }
+      .board-grid-top { grid-template-columns: repeat(3, 1fr); }
     }
 
     /* 统一卡片 */
@@ -143,7 +147,7 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
-      padding: 18px 12px 14px;
+      padding: 20px 14px 16px;
       border-radius: 16px;
       cursor: pointer;
       position: relative;
@@ -181,14 +185,14 @@
       background-color: #fffdf8;
     }
 
-    /* 120×120徽章 */
+    /* 徽章尺寸：iPad横屏150px，hover放大 */
     .b-img-wrap {
-      width: 120px; height: 120px;
+      width: 150px; height: 150px;
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .b-img {
-      max-width: 120px; max-height: 120px;
+      max-width: 150px; max-height: 150px;
       width: auto; height: auto;
       filter: drop-shadow(0 4px 10px rgba(180,140,20,0.4));
       transition: filter 0.2s, transform 0.2s;
@@ -199,7 +203,7 @@
     }
 
     .b-name {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: #c8860a;
       margin-bottom: 8px;
@@ -208,13 +212,13 @@
     .b-card.locked .b-name { color: #bbb; }
 
     .b-tag {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 500;
       color: #aaa;
       background: rgba(240,235,225,0.6);
       border: 1px solid rgba(0,0,0,0.07);
       border-radius: 20px;
-      padding: 2px 10px;
+      padding: 2px 12px;
       display: inline-flex; align-items: center;
     }
     .b-tag.突破 { background: rgba(255,210,210,0.5); border-color: rgba(220,120,120,0.25); color: #c0504d; }
@@ -256,7 +260,8 @@
 
   <!-- 卡片2: 练习看板 -->
   <div class="ac-card" id="card-board">
-    <h3 style="font-size:15px;font-weight:bold;color:#333;margin:0 0 10px;">📊 练习看板</h3>
+    <h3 style="font-size:16px;font-weight:bold;color:#333;margin:0 0 10px;">📊 练习看板</h3>
+    <!-- 第一行：连续/昨天/本周/本月 -->
     <div class="board-grid">
       <div class="board-cell">
         <div class="board-num">{{streak}}</div>
@@ -277,6 +282,9 @@
         <div class="board-label">本月（天）</div>
         <div class="board-diff {{month_pos}}">{{month_diff}}</div>
       </div>
+    </div>
+    <!-- 第二行：昨日TOP/本周TOP/本月TOP -->
+    <div class="board-grid-top">
       <!-- 格5: 昨日练习 TOP1/2 -->
       <div class="board-cell">
         {% if last_date == "暂无" %}
