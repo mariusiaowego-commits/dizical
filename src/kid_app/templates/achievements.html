@@ -126,19 +126,11 @@
       font-weight: 600;
     }
 
-    /* 响应式徽章网格 - iPad横屏用3列+大图 */
+    /* 响应式徽章网格 - 自动填充，badge撑满一行 */
     .badge-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 14px;
-    }
-    /* 手机竖屏降回2列 */
-    @media (max-width: 640px) {
-      .badge-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .b-img-wrap { width: 100px !important; height: 100px !important; }
-      .b-img { max-width: 100px !important; max-height: 100px !important; }
-      .board-grid { grid-template-columns: repeat(2, 1fr); }
-      .board-grid-top { grid-template-columns: repeat(3, 1fr); }
     }
 
     /* 统一卡片 */
