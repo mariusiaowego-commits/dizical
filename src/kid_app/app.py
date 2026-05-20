@@ -341,17 +341,16 @@ def _calc_month_mins_and_days():
 
 
 def _ring_diff(current, previous, unit="天"):
-    """计算环比差异文字和方向: (diff_text, is_positive)
-
-    unit: 显示单位，"天"=练习天数，"分"=练习分钟数
-    """
+    """计算环比差异文字（自然中文）: (diff_text, is_positive)"""
     if previous == 0:
         return "", False
     diff = current - previous
     if diff == 0:
         return "与上周持平", False
-    sign = "+" if diff > 0 else ""
-    return f"{sign}{diff}{unit} 比上周", diff > 0
+    if unit == "分":
+        return f"{'比上周多' if diff > 0 else '比上周少'}{abs(diff)}分钟", diff > 0
+    else:
+        return f"{'比上周多' if diff > 0 else '比上周少'}{abs(diff)}天", diff > 0
 
 
 def _milestone_html(category: Optional[str] = None):
