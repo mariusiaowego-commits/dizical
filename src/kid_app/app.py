@@ -340,17 +340,20 @@ def _calc_month_mins_and_days():
     return mins, days
 
 
-def _ring_diff(current, previous, unit="天"):
-    """计算环比差异文字（自然中文）: (diff_text, is_positive)"""
+def _ring_diff(current, previous, unit="天", ref_period="上周"):
+    """计算环比差异文字（自然中文）: (diff_text, is_positive)
+    ref_period: 对比周期文字，默认"上周"；可传"4月"等上月名称
+    """
     if previous == 0:
         return "", False
     diff = current - previous
     if diff == 0:
-        return "与上周持平", False
+        return f"与{ref_period}持平", False
+    direction = "多" if diff > 0 else "少"
     if unit == "分":
-        return f"{'比上周多' if diff > 0 else '比上周少'}{abs(diff)}分钟", diff > 0
+        return f"比{ref_period}{direction}{abs(diff)}分钟", diff > 0
     else:
-        return f"{'比上周多' if diff > 0 else '比上周少'}{abs(diff)}天", diff > 0
+        return f"比{ref_period}{direction}{abs(diff)}天", diff > 0
 
 
 def _milestone_html(category: Optional[str] = None):
@@ -873,7 +876,8 @@ def achievements_page():
     week_pct, week_pct_text = _week_progress()
 
     # ── 卡片2: 练习看板 ────────────────────────────────
-    streak = streak_days()
+    # 连续练习：使用历史最长连续天数（断过也能恢复）
+    streak = _calc_max_consecutive_streak()
     yesterday_mins = _calc_yesterday_mins()
     yesterday_prev = _calc_yesterday_mins(days_ago=2)  # 前天
 
@@ -886,23 +890,22 @@ def achievements_page():
     week_days_prev = len([p for p in practices_prev if p.get("total_minutes", 0) > 0])
 
     month_mins, month_days_count = _calc_month_mins_and_days()
-    # 上月同周期
-    if today.month == 1:
-        month_start_prev = dt.date(today.year - 1, 12, 1)
-    else:
-        month_start_prev = dt.date(today.year, today.month - 1, 1)
-    if today.month == 12:
-        month_end_prev = dt.date(today.year + 1, 1, 1) - dt.timedelta(days=1)
-    else:
-        month_end_prev = dt.date(today.year, today.month, 1) - dt.timedelta(days=1)
-    month_end_prev = min(month_end_prev, today - dt.timedelta(days=28))  # 粗略
+    # 上月同日期范围（4/1-5/20 vs 5/1-5/20）
+    prev_month = today.month - 1 if today.month > 1 else 12
+    prev_year = today.year if today.month > 1 else today.year - 1
+    month_start_prev = dt.date(prev_year, prev_month, 1)
+    month_end_prev = min(today - dt.timedelta(days=28), dt.date(prev_year, prev_month, 1) + dt.timedelta(days=29))
+    # 确保不超出今天所在月的实际范围
+    month_end_prev = min(month_end_prev, dt.date(today.year, today.month, today.day))
     practices_m_prev = db.get_daily_practices_in_range(month_start_prev, month_end_prev)
-    month_mins_prev = sum(p.get("total_minutes", 0) for p in practices_m_prev)
+    month_days_prev = len([p for p in practices_m_prev if p.get("total_minutes", 0) > 0])
 
     # 环比文字
     yd_diff_txt, yd_pos = _ring_diff(yesterday_mins, yesterday_prev, "分")
     wm_diff_txt, wm_pos = _ring_diff(week_days_count, week_days_prev)
-    mm_diff_txt, mm_pos = _ring_diff(month_days_count, len([p for p in practices_m_prev if p.get("total_minutes", 0) > 0]))
+    # 月份对比：用上月月份名称（如"4月"）
+    prev_month_name = f"{prev_month}月"
+    mm_diff_txt, mm_pos = _ring_diff(month_days_count, month_days_prev, ref_period=prev_month_name)
 
     # ── 卡片3: 勋章展示 ────────────────────────────────
     milestone_html = _milestone_html("seasonal")
@@ -939,6 +942,7 @@ def achievements_page():
         streak=str(streak),
         streak_unit="天",
         streak_label="已连续练习",
+        streak_max=f"最长连续{streak}天",
         yesterday_mins=str(yesterday_mins),
         yesterday_unit="分钟",
         yesterday_label="昨天练习",
