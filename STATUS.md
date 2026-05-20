@@ -1,11 +1,15 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-18 09:45
-**当前阶段**: bug 修复 — item_id 错配 + practice_query 作业字段名错误
+**最后更新**: 2026-05-20
+**当前阶段**: 收尾清理 — Git工作区清洁 + badge死代码清理 + 文档同步
 
 ## 阶段记录
 
-**今日提交 (2026-05-18)**:
+**今日收尾 (2026-05-20)**:
+- Git工作区清理：删除6个废弃文件（PRDs × 2, docs × 1, handoff × 1, backup × 1, pre-badge-refactor × 1）
+- Badge死代码确认：`src/kid_app/app.py` 已无 `_calc_top_items()` / `ACH_DEFS_FULL` 引用（仅残留在废弃备份文件中）
+- `src/cli.py` 改动：practice_query 列显示优化（order_str/requirements/metronome），非badge相关，正常保留
+- pytest 49/49 ✅
 - `05d3e1f` — fix: save_daily_practice else分支也要fuzzy match，避免新建记录时item_id错配
 - `d97cac8` — fix: practice_query作业渲染用requirements而非requirement
 

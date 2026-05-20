@@ -1429,7 +1429,7 @@ class _AssignmentsTUI:
 
             prefix = "▶ " if is_selected else "  "
             extra = f"  📷{img_count}" if img_count else ""
-            line = f"{prefix}第{so}课 | {ld} | {stage_str} | {item_count}项{extra}"
+            line = f"{prefix}{order_str} | {ld} | {stage_str} | {item_count}项{extra}"
 
             attr = curses.A_REVERSE if is_selected else curses.A_NORMAL
             try:
@@ -1446,21 +1446,22 @@ class _AssignmentsTUI:
                 if items or notes:
                     buf = io.StringIO()
                     rc = Console(file=buf, force_terminal=False, width=max(w - 8, 40))
-                    rc.print(Panel(f"[bold cyan]第{so}课[/bold cyan]  {a['lesson_date'].strftime('%Y-%m-%d')}  老师要求", expand=False))
+                    rc.print(Panel(f"[bold cyan]{order_str}[/bold cyan]  {a['lesson_date'].strftime('%Y-%m-%d')}  老师要求", expand=False))
 
                     tbl = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
                     tbl.add_column("#", style="dim", width=2, justify="right")
                     tbl.add_column("ID", style="dim", width=5, justify="right")
                     tbl.add_column("练习项", style="bold white", width=14)
-                    tbl.add_column("时长", style="dim", justify="right")
+                    tbl.add_column("速度", style="dim", width=10)
                     tbl.add_column("老师要求", style="italic dim")
 
                     for i, it in enumerate(items, 1):
                         mins = it.get('minutes', 0)
                         mins_str = f"{mins}′" if mins else ""
-                        req = (it.get('requirement') or "").strip().replace('\n', ' ')
+                        req = (it.get('requirements') or "").strip().replace('\n', ' ')
                         item_id = it.get('item_id') or ''
-                        tbl.add_row(str(i), str(item_id), it.get('item', ''), mins_str, req)
+                        metro = it.get('metronome') or ''
+                        tbl.add_row(str(i), str(item_id), it.get('item', ''), metro, req)
 
                     rc.print(tbl)
 

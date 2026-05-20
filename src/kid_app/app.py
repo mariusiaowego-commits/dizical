@@ -137,18 +137,6 @@ def _calc_peak_month():
     return best_mins, best_label
 
 
-def _calc_top_items():
-    """返回 [(item_name, total_mins), ...] 按累计时长降序，取前3"""
-    practices = db.get_daily_practices_in_range(dt.date(2020, 1, 1), dt.date.today())
-    item_mins = {}
-    for p in practices:
-        for it in p.get("items", []):
-            name = it.get("item", "未知")
-            item_mins[name] = item_mins.get(name, 0) + it.get("minutes", 0)
-    sorted_items = sorted(item_mins.items(), key=lambda x: x[1], reverse=True)
-    return sorted_items[:3]
-
-
 def _get_current_week_range():
     """返回当前周（基于最近的 weekly_assignment）的 stage_start, stage_end"""
     today = dt.date.today()
