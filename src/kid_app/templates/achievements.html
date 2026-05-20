@@ -58,6 +58,8 @@
     }
     .board-cell {
       text-align: center; padding: 12px 6px; border-radius: 14px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start; min-height: 90px;
     }
     .board-cell:nth-child(1) { background: #FFF3E0; }
     .board-cell:nth-child(2) { background: #E8F5E9; }
@@ -77,6 +79,26 @@
     .board-label { font-size: 11px; color: #7F8C8D; margin-top: 4px; }
     .board-diff { font-size: 11px; margin-top: 2px; color: #888; }
     .board-diff.up { color: #27AE60; }
+
+    /* ── TOP项目展示格 ── */
+    .top-cell {
+      padding: 10px 4px 8px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start; gap: 3px; width: 100%;
+    }
+    .top-date {
+      font-size: 10px; font-weight: 600; color: #7B1FA2;
+      background: rgba(123,31,162,0.10); border-radius: 8px;
+      padding: 1px 5px; margin-bottom: 2px;
+    }
+    .top-row {
+      display: flex; align-items: center; gap: 2px;
+      font-size: 11px; line-height: 1.2; width: 100%; justify-content: center;
+    }
+    .top-name { color: #555; font-weight: 500; }
+    .top-mins { color: #7B1FA2; font-weight: 700; }
+    /* 无数据时 */
+    .top-empty { font-size: 11px; color: #bbb; margin-top: 2px; }
 
     /* TOP项目样式（后3格） */
     .board-cell-top { padding: 10px 4px; }
@@ -255,32 +277,51 @@
         <div class="board-label">本月（天）</div>
         <div class="board-diff {{month_pos}}">{{month_diff}}</div>
       </div>
-      <div class="board-cell board-cell-top">
-        <div class="board-date-label">{{last_top.date_label}}</div>
-        {% for item in last_top.items %}
-        <div class="board-top-item">{{item[0]}} {{item[1]}}m</div>
-        {% endfor %}
-        {% if not last_top.items %}
-        <div class="board-top-empty">-</div>
+      <!-- 格5: 昨日练习 TOP1/2 -->
+      <div class="board-cell">
+        {% if last_date == "暂无" %}
+        <div class="top-empty">暂无记录</div>
+        {% else %}
+        <div class="top-cell">
+          <div class="top-date">{{last_date}}</div>
+          {% if last_top1_name %}
+          <div class="top-row"><span class="top-name">{{last_top1_name}}</span><span class="top-mins">{{last_top1_mins}}m</span></div>
+          {% endif %}
+          {% if last_top2_name %}
+          <div class="top-row"><span class="top-name">{{last_top2_name}}</span><span class="top-mins">{{last_top2_mins}}m</span></div>
+          {% endif %}
+        </div>
         {% endif %}
       </div>
-      <div class="board-cell board-cell-top">
-        <div class="board-date-label">{{week_top.date_label}}</div>
-        {% for item in week_top.items %}
-        <div class="board-top-item">{{item[0]}} {{item[1]}}m</div>
-        {% endfor %}
-        {% if not week_top.items %}
-        <div class="board-top-empty">-</div>
-        {% endif %}
+      <!-- 格6: 本周练习 TOP1/2 -->
+      <div class="board-cell">
+        <div class="top-cell">
+          <div class="top-date">本周</div>
+          {% if week_top1_name %}
+          <div class="top-row"><span class="top-name">{{week_top1_name}}</span><span class="top-mins">{{week_top1_mins}}m</span></div>
+          {% endif %}
+          {% if week_top2_name %}
+          <div class="top-row"><span class="top-name">{{week_top2_name}}</span><span class="top-mins">{{week_top2_mins}}m</span></div>
+          {% endif %}
+          {% if not week_top1_name %}
+          <div class="top-empty">暂无</div>
+          {% endif %}
+        </div>
       </div>
-      <div class="board-cell board-cell-top">
-        <div class="board-date-label">{{month_top.date_label}}</div>
-        {% for item in month_top.items %}
-        <div class="board-top-item">{{item[0]}} {{item[1]}}m</div>
-        {% endfor %}
-        {% if not month_top.items %}
-        <div class="board-top-empty">-</div>
-        {% endif %}
+      <!-- 格7: 本月练习 TOP1/2 -->
+      <div class="board-cell">
+        <div class="top-cell">
+          <div class="top-date">本月</div>
+          {% if month_top1_name %}
+          <div class="top-row"><span class="top-name">{{month_top1_name}}</span><span class="top-mins">{{month_top1_mins}}m</span></div>
+          {% endif %}
+          {% if month_top2_name %}
+          <div class="top-row"><span class="top-name">{{month_top2_name}}</span><span class="top-mins">{{month_top2_mins}}m</span></div>
+          {% endif %}
+          {% if not month_top1_name %}
+          <div class="top-empty">暂无</div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
