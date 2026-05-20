@@ -25,13 +25,13 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 # ─── 模板渲染 ───────────────────────────────────────────────────────────────
+from jinja2 import Environment, FileSystemLoader
+
+_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
+
 def render(tpl, **kwargs):
-    path = Path(__file__).parent / "templates" / (tpl + ".html")
-    html = path.read_text(encoding="utf-8")
-    for k, v in kwargs.items():
-        placeholder = "{{" + k + "}}"
-        html = html.replace(placeholder, str(v))
-    return html
+    template = _env.get_template(tpl + ".html")
+    return template.render(**kwargs)
 
 # ─── 数据 helpers ───────────────────────────────────────────────────────────
 def child_name():
