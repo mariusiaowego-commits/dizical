@@ -340,16 +340,18 @@ def _calc_month_mins_and_days():
     return mins, days
 
 
-def _ring_diff(current, previous):
-    """计算环比差异文字和方向: (diff_text, is_positive)"""
+def _ring_diff(current, previous, unit="天"):
+    """计算环比差异文字和方向: (diff_text, is_positive)
+
+    unit: 显示单位，"天"=练习天数，"分"=练习分钟数
+    """
     if previous == 0:
         return "", False
     diff = current - previous
     if diff == 0:
         return "与上周持平", False
     sign = "+" if diff > 0 else ""
-    unit = "分" if current < 100 else "天"
-    return f"{sign}{diff}{unit} vs上周", diff > 0
+    return f"{sign}{diff}{unit} 比上周", diff > 0
 
 
 def _milestone_html(category: Optional[str] = None):
@@ -899,7 +901,7 @@ def achievements_page():
     month_mins_prev = sum(p.get("total_minutes", 0) for p in practices_m_prev)
 
     # 环比文字
-    yd_diff_txt, yd_pos = _ring_diff(yesterday_mins, yesterday_prev)
+    yd_diff_txt, yd_pos = _ring_diff(yesterday_mins, yesterday_prev, "分")
     wm_diff_txt, wm_pos = _ring_diff(week_days_count, week_days_prev)
     mm_diff_txt, mm_pos = _ring_diff(month_days_count, len([p for p in practices_m_prev if p.get("total_minutes", 0) > 0]))
 
