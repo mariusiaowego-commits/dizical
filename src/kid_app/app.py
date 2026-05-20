@@ -904,12 +904,12 @@ def achievements_page():
     # ── 卡片3: 勋章展示 ────────────────────────────────
     milestone_html = _milestone_html("seasonal")
 
-    # ── 练习看板后3格：TOP项目展示（扁平变量，避免dict循环问题） ───
+    # ── 练习看板后3格：TOP项目展示 ───────────────────
     last_top = _calc_last_practice_top(2)
     week_top = _calc_week_top(2)
     month_top = _calc_month_top(2)
 
-    # 拆解为扁平变量（模板dict循环容易出bug）
+    # 拆解为扁平变量
     last_date = last_top["date_label"]
     last_top1_name = last_top["items"][0][0] if len(last_top["items"]) > 0 else ""
     last_top1_mins = last_top["items"][0][1] if len(last_top["items"]) > 0 else 0
