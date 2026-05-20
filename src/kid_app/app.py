@@ -176,9 +176,9 @@ def _week_progress():
     return pct, f"{days}/{goal} 天"
 
 
-def _calc_yesterday_mins():
-    yesterday = dt.date.today() - dt.timedelta(days=1)
-    p = db.get_daily_practice(yesterday)
+def _calc_yesterday_mins(days_ago: int = 1):
+    d = dt.date.today() - dt.timedelta(days=days_ago)
+    p = db.get_daily_practice(d)
     return p.get("total_minutes", 0) if p else 0
 
 
@@ -875,7 +875,7 @@ def achievements_page():
     # ── 卡片2: 练习看板 ────────────────────────────────
     streak = streak_days()
     yesterday_mins = _calc_yesterday_mins()
-    yesterday_prev = 0  # 简化：暂无上周数据
+    yesterday_prev = _calc_yesterday_mins(days_ago=2)  # 前天
 
     week_mins, week_days_count = _calc_week_mins_and_days()
     # 上上周
@@ -937,13 +937,21 @@ def achievements_page():
         week_pct=week_pct,
         week_pct_text=week_pct_text,
         streak=str(streak),
+        streak_unit="天",
+        streak_label="已连续练习",
         yesterday_mins=str(yesterday_mins),
+        yesterday_unit="分钟",
+        yesterday_label="昨天练习",
         yesterday_diff=yd_diff_txt,
         yesterday_pos="up" if yd_pos else "",
         week_days=str(week_days_count),
+        week_unit="天",
+        week_label="本周练习",
         week_diff=wm_diff_txt,
         week_pos="up" if wm_pos else "",
         month_days=str(month_days_count),
+        month_unit="天",
+        month_label="本月练习",
         month_diff=mm_diff_txt,
         month_pos="up" if mm_pos else "",
         last_date=last_date,

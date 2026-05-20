@@ -75,6 +75,8 @@
     .board-cell:nth-child(6) { background: #FFF8E1; }
     .board-cell:nth-child(7) { background: #E0F2F1; }
     .board-num { font-size: 28px; font-weight: bold; line-height: 1; }
+    .board-num-row { display: flex; align-items: baseline; gap: 2px; }
+    .board-unit { font-size: 14px; font-weight: 600; color: #aaa; line-height: 1; }
     .board-cell:nth-child(1) .board-num { color: #FF6B35; }
     .board-cell:nth-child(2) .board-num { color: #27AE60; }
     .board-cell:nth-child(3) .board-num { color: #1976D2; }
@@ -256,22 +258,35 @@
     <!-- 第一行：连续/昨天/本周/本月 -->
     <div class="board-grid">
       <div class="board-cell">
-        <div class="board-num">{{streak}}</div>
-        <div class="board-label">连续（天）</div>
+        <div class="board-num-row">
+          <span class="board-num">{{streak}}</span>
+          <span class="board-unit">{{streak_unit}}</span>
+        </div>
+        <div class="board-label">{{streak_label}}</div>
+        <div class="board-diff"></div>
       </div>
       <div class="board-cell">
-        <div class="board-num">{{yesterday_mins}}</div>
-        <div class="board-label">昨天（分）</div>
+        <div class="board-num-row">
+          <span class="board-num">{{yesterday_mins}}</span>
+          <span class="board-unit">{{yesterday_unit}}</span>
+        </div>
+        <div class="board-label">{{yesterday_label}}</div>
         <div class="board-diff {{yesterday_pos}}">{{yesterday_diff}}</div>
       </div>
       <div class="board-cell">
-        <div class="board-num">{{week_days}}</div>
-        <div class="board-label">本周（天）</div>
+        <div class="board-num-row">
+          <span class="board-num">{{week_days}}</span>
+          <span class="board-unit">{{week_unit}}</span>
+        </div>
+        <div class="board-label">{{week_label}}</div>
         <div class="board-diff {{week_pos}}">{{week_diff}}</div>
       </div>
       <div class="board-cell">
-        <div class="board-num">{{month_days}}</div>
-        <div class="board-label">本月（天）</div>
+        <div class="board-num-row">
+          <span class="board-num">{{month_days}}</span>
+          <span class="board-unit">{{month_unit}}</span>
+        </div>
+        <div class="board-label">{{month_label}}</div>
         <div class="board-diff {{month_pos}}">{{month_diff}}</div>
       </div>
     </div>
