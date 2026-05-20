@@ -553,6 +553,17 @@ class Database:
                 best_ratio, best_pid = r, pid
         return best_pid
 
+    def validate_item_id(self, item_id: int, item_name: str) -> int:
+        """验证 item_id 是否合法（存在于 practice_items 且 is_archived=0）。无效则 fuzzy match 修复。"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (item_id,))
+            if cursor.fetchone():
+                return item_id
+            # 无效，fuzzy match 修复
+            matched = self._match_practice_item_id(item_name)
+            return matched if matched else item_id
+
     # Weekly assignment operations
     def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
         import json
@@ -696,6 +707,17 @@ class Database:
                     matched = self._match_practice_item_id(it['item'])
                     if matched:
                         it['item_id'] = matched
+                else:
+                    # 有 item_id 但验证其合法性；无效则 fuzzy match 修复
+                    vid = it['item_id']
+                    cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (vid,))
+                    if not cursor.fetchone():
+                        matched = self._match_practice_item_id(it['item'])
+                        if matched:
+                            it['item_id'] = matched
+                        else:
+                            # fuzzy 失败，清除无效 id，让后续流程重新分配
+                            it.pop('item_id', None)
 
             cursor.execute('SELECT items, log, practiced FROM daily_practices WHERE date = ?', (date.isoformat(),))
             row = cursor.fetchone()

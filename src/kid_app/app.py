@@ -554,13 +554,21 @@ async def api_log(request: Request):
 
         date = dt.date.fromisoformat(date_str) if date_str else dt.date.today()
 
+        # 前端已传 item_id → 直接用；未传则 fuzzy match 回填
+        item_id_from_ui = body.get("item_id")
+        if item_id_from_ui is None:
+            matched = db._match_practice_item_id(item_name)
+            item_id_to_write = matched if matched else 1
+        else:
+            # 前端传了 item_id，验证合法性；无效则 fuzzy match 修复
+            item_id_to_write = db.validate_item_id(item_id_from_ui, item_name)
+
         if is_extra:
             # extra 追加：每次创建独立 item 条目（带唯一 id），不与同名合并
             # 直接操作 DB，绕过 save_daily_practice 的 merge 逻辑
             existing = db.get_daily_practice(date)
             existing_items = existing.get("items", []) if existing else []
-            max_id = max([0] + [it.get('item_id', it.get('id', 0)) for it in existing_items])
-            new_item = {"item_id": max_id + 1, "item": item_name, "minutes": minutes}
+            new_item = {"item_id": item_id_to_write, "item": item_name, "minutes": minutes}
             all_items = existing_items + [new_item]
             total = sum(it.get('minutes', 0) for it in all_items)
             # 直接写 DB，不合并
@@ -575,8 +583,8 @@ async def api_log(request: Request):
             return JSONResponse({"ok": True})
 
         # 正常打卡：直接传给 save_daily_practice，由它处理合并逻辑
-        # 注意：只传 [{item, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
-        items = [{"item": item_name, "minutes": minutes}]
+        # 注意：只传 [{item, item_id, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
+        items = [{"item": item_name, "item_id": item_id_to_write, "minutes": minutes}]
         total = minutes  # save_daily_practice 会重新计算，这里只作返回值参考
         db.save_daily_practice(date, items, total, log_note)
 

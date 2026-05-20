@@ -527,7 +527,7 @@
       let res = await fetch('/api/log', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({date: todayDate, item: selectedItem, minutes: quickDuration, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: quickDuration}]})
+        body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: quickDuration, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: quickDuration}]})
       });
       let json = await res.json();
       if (json.ok) {
@@ -630,7 +630,7 @@
       let res = await fetch('/api/log', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({date: todayDate, item: selectedItem, minutes: finalMins, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]})
+        body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: finalMins, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]})
       });
       let json = await res.json();
       if (json.ok) {
@@ -677,7 +677,7 @@
         let res = await fetch('/api/log', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({date: todayDate, item: selectedItem, minutes: mins, log: '', is_extra: true, behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: mins}]})
+          body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: mins, log: '', is_extra: true, behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: mins}]})
         });
         let json = await res.json();
         if (json.ok) {
