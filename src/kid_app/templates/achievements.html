@@ -78,6 +78,15 @@
     .board-diff { font-size: 11px; margin-top: 2px; color: #888; }
     .board-diff.up { color: #27AE60; }
 
+    /* TOP项目样式（后3格） */
+    .board-cell-top { padding: 10px 4px; }
+    .board-date-label { font-size: 11px; font-weight: bold; color: #666; margin-bottom: 4px; }
+    .board-cell:nth-child(5) .board-date-label { color: #7B1FA2; }
+    .board-cell:nth-child(6) .board-date-label { color: #F57C00; }
+    .board-cell:nth-child(7) .board-date-label { color: #00796B; }
+    .board-top-item { font-size: 11px; line-height: 1.3; color: #333; }
+    .board-top-empty { font-size: 11px; color: #bbb; }
+
     /* ── 成就展示（与badges页面一致的结构） ── */
     .section-header {
       display: flex;
@@ -246,17 +255,32 @@
         <div class="board-label">本月（天）</div>
         <div class="board-diff {{month_pos}}">{{month_diff}}</div>
       </div>
-      <div class="board-cell">
-        <div class="board-num">{{total_all_time}}</div>
-        <div class="board-label">总累计</div>
+      <div class="board-cell board-cell-top">
+        <div class="board-date-label">{{last_top.date_label}}</div>
+        {% for item in last_top.items %}
+        <div class="board-top-item">{{item[0]}} {{item[1]}}m</div>
+        {% endfor %}
+        {% if not last_top.items %}
+        <div class="board-top-empty">-</div>
+        {% endif %}
       </div>
-      <div class="board-cell">
-        <div class="board-num">{{week_peak}}</div>
-        <div class="board-label">最长一周</div>
+      <div class="board-cell board-cell-top">
+        <div class="board-date-label">{{week_top.date_label}}</div>
+        {% for item in week_top.items %}
+        <div class="board-top-item">{{item[0]}} {{item[1]}}m</div>
+        {% endfor %}
+        {% if not week_top.items %}
+        <div class="board-top-empty">-</div>
+        {% endif %}
       </div>
-      <div class="board-cell">
-        <div class="board-num">{{month_peak}}</div>
-        <div class="board-label">最长一月</div>
+      <div class="board-cell board-cell-top">
+        <div class="board-date-label">{{month_top.date_label}}</div>
+        {% for item in month_top.items %}
+        <div class="board-top-item">{{item[0]}} {{item[1]}}m</div>
+        {% endfor %}
+        {% if not month_top.items %}
+        <div class="board-top-empty">-</div>
+        {% endif %}
       </div>
     </div>
   </div>

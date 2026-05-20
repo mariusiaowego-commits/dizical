@@ -227,6 +227,94 @@ def _calc_month_peak():
     return max(month_totals.values()) if month_totals else 0
 
 
+def _calc_top_items(conn: sqlite3.Connection,
+                    start: dt.date,
+                    end: dt.date,
+                    limit: int = 2) -> list[tuple[str, int]]:
+    """指定日期范围内，按科目聚合取前N名"""
+    cur = conn.execute(f"""
+        SELECT pi.name, SUM(json_extract(je.value, '$.minutes')) as m
+        FROM daily_practices dp, json_each(dp.items) je
+        JOIN practice_items pi ON pi.item_id = json_extract(je.value, '$.item_id')
+        WHERE dp.date >= ? AND dp.date <= ?
+        AND pi.is_archived = 0
+        GROUP BY pi.name ORDER BY m DESC LIMIT ?
+    """, (start.isoformat(), end.isoformat(), limit))
+    return [(r[0], int(r[1])) for r in cur.fetchall()]
+
+
+def _calc_last_practice_top(limit: int = 2) -> dict:
+    """最近一次有练习的TOP项目。
+
+    返回 {date, top1_name, top1_mins, top2_name, top2_mins}
+    date: 日期标签文字（昨天/今天/MM-DD）；无可用记录时 date="暂无"，name=""，mins=0
+    """
+    import sqlite3
+    conn = db._get_connection()
+
+    # 找最近一次有练习的日期
+    row = conn.execute("""
+        SELECT date FROM daily_practices
+        WHERE total_minutes > 0
+        ORDER BY date DESC LIMIT 1
+    """).fetchone()
+    if not row:
+        return {"date": "暂无", "top1_name": "", "top1_mins": 0,
+                "top2_name": "", "top2_mins": 0}
+
+    d = dt.date.fromisoformat(row[0])
+    items = _calc_top_items(conn, d, d, limit)  # [(name, mins), ...]
+
+    # 日期标签
+    today = dt.date.today()
+    if d == today - dt.timedelta(days=1):
+        date_label = "昨天"
+    elif d == today:
+        date_label = "今天"
+    else:
+        date_label = d.strftime("%m-%d")
+
+    return {
+        "date": date_label,
+        "top1_name": items[0][0] if len(items) > 0 else "",
+        "top1_mins": items[0][1] if len(items) > 0 else 0,
+        "top2_name": items[1][0] if len(items) > 1 else "",
+        "top2_mins": items[1][1] if len(items) > 1 else 0,
+    }
+
+
+def _calc_week_top(limit: int = 2) -> dict:
+    """本周练习TOP项目。返回 {date, top1_name, top1_mins, top2_name, top2_mins}"""
+    import sqlite3
+    conn = db._get_connection()
+    today = dt.date.today()
+    ws = today - dt.timedelta(days=today.weekday())
+    items = _calc_top_items(conn, ws, today, limit)
+    return {
+        "date": "本周",
+        "top1_name": items[0][0] if len(items) > 0 else "",
+        "top1_mins": items[0][1] if len(items) > 0 else 0,
+        "top2_name": items[1][0] if len(items) > 1 else "",
+        "top2_mins": items[1][1] if len(items) > 1 else 0,
+    }
+
+
+def _calc_month_top(limit: int = 2) -> dict:
+    """本月练习TOP项目。返回 {date, top1_name, top1_mins, top2_name, top2_mins}"""
+    import sqlite3
+    conn = db._get_connection()
+    today = dt.date.today()
+    ms = dt.date(today.year, today.month, 1)
+    items = _calc_top_items(conn, ms, today, limit)
+    return {
+        "date": f"{today.month}月",
+        "top1_name": items[0][0] if len(items) > 0 else "",
+        "top1_mins": items[0][1] if len(items) > 0 else 0,
+        "top2_name": items[1][0] if len(items) > 1 else "",
+        "top2_mins": items[1][1] if len(items) > 1 else 0,
+    }
+
+
 def _calc_week_mins_and_days():
     today = dt.date.today()
     ws = today - dt.timedelta(days=today.weekday())
@@ -816,10 +904,10 @@ def achievements_page():
     # ── 卡片3: 勋章展示 ────────────────────────────────
     milestone_html = _milestone_html("seasonal")
 
-    # ── 练习看板新增3格 ────────────────────────────────
-    total_all_time = _calc_total_all_time()
-    week_peak = _calc_week_peak()
-    month_peak = _calc_month_peak()
+    # ── 练习看板后3格：TOP项目展示 ───────────────────
+    last_top  = _calc_last_practice_top(2)
+    week_top  = _calc_week_top(2)
+    month_top = _calc_month_top(2)
 
     return render(
         "achievements",
@@ -836,9 +924,22 @@ def achievements_page():
         month_days=str(month_days_count),
         month_diff=mm_diff_txt,
         month_pos="up" if mm_pos else "",
-        total_all_time=str(total_all_time),
-        week_peak=str(week_peak),
-        month_peak=str(month_peak),
+        # last top
+        last_date=last_top["date"],
+        last_top1_name=last_top["top1_name"],
+        last_top1_mins=str(last_top["top1_mins"]),
+        last_top2_name=last_top["top2_name"],
+        last_top2_mins=str(last_top["top2_mins"]),
+        # week top
+        week_top1_name=week_top["top1_name"],
+        week_top1_mins=str(week_top["top1_mins"]),
+        week_top2_name=week_top["top2_name"],
+        week_top2_mins=str(week_top["top2_mins"]),
+        # month top
+        month_top1_name=month_top["top1_name"],
+        month_top1_mins=str(month_top["top1_mins"]),
+        month_top2_name=month_top["top2_name"],
+        month_top2_mins=str(month_top["top2_mins"]),
         milestone_html=milestone_html,
     )
 
