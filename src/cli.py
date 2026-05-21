@@ -1928,9 +1928,8 @@ def practice_category_list():
     table.add_column("大科目")
     table.add_column("小科目")
     for cat in categories:
-        cat_items = [i for i in items if i.get('category_id') == cat['id']]
-        cat_items.sort(key=lambda x: x.get('id', 0))
-        sub_items = '、'.join(f"{i['name']}({i['id']})" for i in cat_items) if cat_items else '[dim]无[/dim]'
+        cat_items = sorted((i for i in items if i.get('category_id') == cat['id']), key=lambda x: x.get('item_id', 0))
+        sub_items = '、'.join(f"{i['name']}({i['item_id']})" for i in cat_items) if cat_items else '[dim]无[/dim]'
         table.add_row(str(cat['id']), cat['name'], sub_items)
     console.print(table)
 
