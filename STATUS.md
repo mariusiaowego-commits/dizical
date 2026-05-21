@@ -1,9 +1,16 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-21
-**当前阶段**: modal-box优化（iPad横屏适配）+ badges页空白Bug修复
+**当前阶段**: badges页 BADGE_FILES 补漏 + 服务进程调试
 
 ## 阶段记录
+
+**2026-05-21 PM — badges页图片URL补漏**:
+- **Bug**: `badges_page()` 的 `BADGE_FILES` 漏了 `total_60`/`week_champ`/`full_month`，fallback 到 `medal_badge.png`
+- **修复**: 补入 3 个 key，commit `6e6ba14`
+- **教训**: 两处 `BADGE_FILES`/`BADGE_URLS` 需同步维护，下次加 badge 先检查两处
+- **服务进程陷阱**: 服务跑在 Python 3.12，非 3.14；kill 旧进程后 `lsof -i :8765` 确认新进程
+- `6e6ba14` push to main
 
 **2026-05-21 PM — modal-box优化 + badges/achievements页空白Bug**:
 - **modal-box**: 宽度580px / 图片200px / modal-desc 19px / 关闭按钮恢复右上角圆形

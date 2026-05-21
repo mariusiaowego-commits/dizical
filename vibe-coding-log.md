@@ -1,5 +1,14 @@
 # dizical vibe coding log
 
+## 2026-05-21 PM — badges页图片URL补漏
+
+### `BADGE_FILES` 漏了 3 个 badge
+- **Bug**: `badges_page()` 的 `BADGE_FILES` 漏了 `total_60`/`week_champ`/`full_month`，导致这 3 个 badge 在 badges 页 fallback 到 `medal_badge.png`
+- **根因**: 两处 badge URL 映射（achievements页 BADGE_URLS / badges页 BADGE_FILES）需同步维护，添加新 badge 时容易漏掉其中一处
+- **修复**: `app.py` 第1046行补入 3 个 key，`6e6ba14` push to main
+- **教训**: 添加新 badge 时同步检查两处映射字典，下次加 badge 记得：`/achievements` 的 `BADGE_URLS` + `/badges` 的 `BADGE_FILES`
+- **服务进程陷阱**: kill 旧进程后需 `lsof -i :8765` 确认新进程（服务跑在 Python 3.12）
+
 ## 2026-05-21 (Thu) — modal-box 重构 + badges页空白Bug修复
 
 ### modal-box 优化（iPad mini 7 横屏）

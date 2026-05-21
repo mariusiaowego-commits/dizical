@@ -94,7 +94,7 @@
       filter: drop-shadow(0 4px 8px rgba(180,140,20,0.35));
     }
     .badge-card.locked .b-img {
-      filter: saturate(0) brightness(0.92) drop-shadow(0 2px 5px rgba(0,0,0,0.12));
+      filter: saturate(0.55) brightness(0.85) drop-shadow(0 2px 5px rgba(0,0,0,0.12));
     }
 
     .b-name {
@@ -350,7 +350,7 @@ function openModal(card) {
 
   document.getElementById('modal-img').src = card.dataset.img;
   document.getElementById('modal-img').style.filter =
-    locked ? 'saturate(0) brightness(0.92)' : '';
+    locked ? 'saturate(0.55) brightness(0.85)' : '';
   document.getElementById('modal-name').textContent = card.dataset.name;
   document.getElementById('modal-tag').textContent  = card.dataset.tag;
   document.getElementById('modal-cond').textContent = card.dataset.cond;
