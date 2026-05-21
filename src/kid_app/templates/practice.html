@@ -403,6 +403,7 @@
     let started = false;
     let timerRunning = false;
     let finishPending = false;  // 提前结束但未打卡
+    let submitting = false;  // 防重放：打卡请求进行中
     let quickDuration = 10;
     let todayDate = "{{today_date}}";
     let enterTime = new Date().toISOString();  // 行为日志：进入时间
@@ -625,14 +626,18 @@
     }
 
     async function submitPractice() {
+      if (submitting) return;  // 防重放
+      if (!selectedItem) return;
       let finalMins = parseInt(document.getElementById('confirmMins').textContent) || 0;
-      if (!selectedItem || finalMins === 0) return;
+      if (finalMins === 0) return;
+      submitting = true;
       let res = await fetch('/api/log', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: finalMins, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]})
       });
       let json = await res.json();
+      submitting = false;
       if (json.ok) {
         timerRunning = false;
         fireConfetti();

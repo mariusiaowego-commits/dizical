@@ -776,7 +776,7 @@ class Database:
             else:
                 log_list = []
             log_list.append(entry)
-            # 无记录时 INSERT，有记录时 UPDATE
+            # 用 UPDATE 而非 INSERT OR REPLACE，避免覆盖 items/total_minutes
             cursor.execute('''
                 INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
                 VALUES (?, ?, ?, ?, ?, ?)
