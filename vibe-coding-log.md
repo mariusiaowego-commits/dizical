@@ -1,5 +1,34 @@
 # dizical vibe coding log
 
+## 2026-05-21 (Thu) — modal-box 重构 + badges页空白Bug修复
+
+### modal-box 优化（iPad mini 7 横屏）
+- **宽度**：310px → 420px → 580px（用户要求更宽）
+- **图片**：156px → 200px
+- **文字**：modal-desc 16px → 19px
+- **关闭按钮**：恢复右上角圆形（用户不喜欢底部半圆悬挂样式）
+- **iPad landscape 适配**：`overflow: auto` + `padding: 16px` + 图片 200px，总高度控制在 420px 以内
+
+### badges.html 页面空白 Bug
+- **现象**：Chrome DevTools Elements 面板 `<body>` 无子元素，页面只有背景色
+- **根因**：`</style>` 标签丢失，导致后续所有 HTML 内容被浏览器当成 CSS 文本渲染
+- **错误过程**：多次 patch 改 HTML 时，每次 patch 追加到文件而不是覆盖，产生多个 `<style>` 块、`</style>` 跑到 body 内、重复 CSS 规则
+- **修复**：重写 badges.html 的 CSS/HTML 边界部分，确保 `</style>` 在 `</head>` 前
+- **教训**：HTML 模板结构乱了，curl 验证正确但浏览器显示空白，难以调试
+
+### achievements.html 同样 </style> 丢失
+- **根因**：`</style>` 缺失导致 openModal 变成 CSS 文本，JS 解析出错
+- **修复**：补上 `</style>` 闭合标签
+
+### 调试方法
+- `grep -n "<style\|</style\|</head>\|<body>" file.html` — 定位标签顺序
+- `curl | grep -n "modal-overlay\|</head>\|<body>"` — 验证服务端渲染 HTML
+- `browser_console` 执行 `document.body.innerHTML.length` — 确认 body 有无内容
+- `browser_console` 执行 `typeof openModal` — 确认 JS 函数是否定义
+
+### commit
+- 未 push
+
 ## 2026-05-21 (Thu) — badges页tab分离 + grade名称description更新 + workflow修复
 
 ### 本次完成

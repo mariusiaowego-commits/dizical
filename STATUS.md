@@ -1,11 +1,17 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-21
-**当前阶段**: badges页双tab重构 + grade名称description更新 + workflow修复
+**当前阶段**: modal-box优化（iPad横屏适配）+ badges页空白Bug修复
 
 ## 阶段记录
 
-**2026-05-21 — badges页修复 + grade起名更新**:
+**2026-05-21 PM — modal-box优化 + badges/achievements页空白Bug**:
+- **modal-box**: 宽度580px / 图片200px / modal-desc 19px / 关闭按钮恢复右上角圆形
+- **Bug根因**: `</style>` 标签丢失（patch多次追加导致），后续HTML被浏览器当成CSS文本渲染
+- **badges.html**: 页面空白，`</style>`跑到body内 → 重写CSS/HTML边界部分
+- **achievements.html**: openModal函数变成CSS文本，`typeof openModal === 'undefined'` → 补上`</style>`
+- **教训**: HTML模板结构乱了，curl验证正确但浏览器空白，难以调试
+- 未 push
 - **Bug根因**: 入库脚本 `add_badge_early.py` 把 `type` 字段写成SQL关键字 `'achievement'`，应为分类标签 `'突破'`
 - **Workflow修复**: `docs/badge-workflow.md` 步骤1+步骤4加字段含义注释，防止再犯
 - **页签分离**: badges页 milestone/seasonal 双tab，按已解锁排序，未解锁蒙版透明度调高
