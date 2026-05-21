@@ -27,10 +27,14 @@
 确定：
 - **badge id**：英文+下划线，如 `streak_7`、`total_300`
 - **名称**：中文名
-- **类型**：`milestone` 还是 `seasonal`
-- **分类标签**：突破 / 巅峰 / 段位 / 执着 / 晋级 / 神秘
+- **category**：`milestone` 还是 `seasonal`（数据类型，决定计算方式）
+- **type（分类标签）**：突破 / 巅峰 / 段位 / 执着 / 晋级 / 神秘（决定前端 b-tag 颜色）
 - **解锁条件**：一句话描述
 - **计算逻辑**：基于哪些数据、阈值多少
+
+> ⚠️ **字段含义**：`type` = 前端展示的中文标签，`category` = 数据类型。别混淆！
+> ❌ 错误：`type='achievement'`（这是 SQL 关键字，不是有效标签）
+> ✅ 正确：`type='突破'`，`category='seasonal'`
 
 ---
 
@@ -94,7 +98,9 @@ INSERT INTO achievements
    display_format, threshold, unlocked_template, placeholder,
    locked_template, sort_order)
 VALUES
-  ('<id>', '<名称>', 'achievement', '<milestone|seasonal>',
+  ('<id>', '<名称>', '<分类标签>', '<milestone|seasonal>',
+   --          ↑ 必须填中文标签（突破/巅峰/段位/执着/晋级/神秘）
+   --          ❌ 不要填 'achievement' / 'milestone' / 'seasonal'
    '<简短计算逻辑描述>',
    '<一句话描述>',
    '<显示格式模板>',

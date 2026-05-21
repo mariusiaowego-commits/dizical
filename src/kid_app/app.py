@@ -1035,10 +1035,11 @@ def badges_page():
     # ── 统一 calc_all() ───────────────────────────────────────────
     results = calc_all()   # dict[aid] → CalcResult
 
-    # ── 读 milestone achievements ─────────────────────────────────
+    # ── 读所有需要展示的 achievements（排除神秘/晋级等纯统计类） ──────
     cur = conn.execute(
-        "SELECT id, name, type, description, threshold FROM achievements "
-        "WHERE category = 'milestone' ORDER BY sort_order")
+        "SELECT id, name, type, category, description, threshold FROM achievements "
+        "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
+        "ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
     ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
 
@@ -1069,7 +1070,8 @@ def badges_page():
         badges.append({
             "id": aid,
             "name": ach["name"],
-            "typ": ach["type"],
+            "typ": ach["type"],   # 中文标签（突破/巅峰/执着/段位/晋级）
+            "group": ach["category"],  # milestone / seasonal
             "description": ach["description"],
             "condition": res.condition,
             "achieved": res.achieved,

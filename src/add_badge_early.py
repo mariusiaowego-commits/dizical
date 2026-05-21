@@ -69,7 +69,7 @@ for b in badges:
           (id, name, type, category, stat_logic, description,
            display_format, threshold, unlocked_template, placeholder,
            locked_template, sort_order)
-        VALUES (?, ?, 'achievement', 'seasonal', ?, ?, ?, ?, ?, ?, NULL, ?)
+        VALUES (?, ?, '突破', 'seasonal', ?, ?, ?, ?, ?, ?, NULL, ?)
     """, (
         b["id"], b["name"],
         f"monthly_first_practice_before_{b['threshold']}",

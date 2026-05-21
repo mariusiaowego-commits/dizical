@@ -84,9 +84,9 @@
     .badge-card.locked {
       background: #f9f8f6;
       border-color: #e8e4de;
-      filter: saturate(0.25) brightness(0.9);
+      filter: saturate(0.3) brightness(0.95);
     }
-    .badge-card.locked:hover { filter: saturate(0.4) brightness(0.85); }
+    .badge-card.locked:hover { filter: saturate(0.5) brightness(0.9); }
 
     .b-img {
       width: 100px; height: 100px; object-fit: contain;
@@ -122,6 +122,32 @@
     .badge-card[data-tag="晋级"]   .b-tag { background: rgba(210,250,220,0.5); border-color: rgba(100,200,130,0.25); }
 
     .b-lock { width: 16px; height: 16px; opacity: 0.3; margin-top: 5px; }
+
+    .empty-tip { text-align: center; color: #bbb; padding: 40px 0; font-size: 15px; }
+
+    /* 页签 */
+    #tab-bar {
+      display: flex; gap: 6px;
+      padding: 12px 16px 0;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      border-radius: 14px 14px 0 0;
+      background: rgba(240,235,225,0.6);
+      color: #888;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .tab-btn.active {
+      background: #fff;
+      color: #FF6B35;
+      font-weight: 700;
+    }
+    .tab-btn:active { transform: scale(0.97); }
 
     /* 弹窗 */
     #modal-overlay {
@@ -205,6 +231,8 @@
     <span>已获得 {{earned_count}} / {{total_count}} 枚</span>
   </div>
 
+  <div id="tab-bar"></div>
+
   <div id="app">加载中...</div>
 
   <div id="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -247,6 +275,7 @@ function cardHTML(d) {
     data-desc="${esc(d.description)}"
     data-img="${esc(d.badge_url)}"
     data-date="${d.achieved_at||''}"
+    data-group="${esc(d.group)}"
     data-locked="${d.achieved?'no':'yes'}"
     onclick="openModal(this)">
     <img class="b-img" src="${esc(d.badge_url)}" alt="${esc(d.name)}" onerror="this.style.display='none'">
@@ -256,9 +285,14 @@ function cardHTML(d) {
   </div>`;
 }
 
-function buildUI() {
-  const unlocked = DATA.filter(d => d.achieved);
-  const locked   = DATA.filter(d => !d.achieved);
+const TABS = [
+  { key: 'milestone', label: '🏆 成就' },
+  { key: 'seasonal',  label: '🌟 赛季' },
+];
+
+function buildTab(group) {
+  const unlocked = DATA.filter(d => d.group === group && d.achieved);
+  const locked   = DATA.filter(d => d.group === group && !d.achieved);
   let html = '';
 
   if (unlocked.length) {
@@ -281,8 +315,28 @@ function buildUI() {
       <div class="badge-grid">${locked.map(cardHTML).join('')}</div>
     </div>`;
   }
+  if (!unlocked.length && !locked.length) {
+    html += `<div class="empty-tip">暂无勋章</div>`;
+  }
+  return html;
+}
 
-  document.getElementById('app').innerHTML = html;
+function buildUI() {
+  const tabBar = TABS.map(t =>
+    `<button class="tab-btn" id="tab-${t.key}" onclick="switchTab('${t.key}')">${t.label}</button>`
+  ).join('');
+  document.getElementById('tab-bar').innerHTML = tabBar;
+  switchTab('milestone');
+}
+
+let activeGroup = 'milestone';
+
+function switchTab(group) {
+  activeGroup = group;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.id === `tab-${group}`);
+  });
+  document.getElementById('app').innerHTML = buildTab(group);
 }
 
 function openModal(card) {
