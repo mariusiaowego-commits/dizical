@@ -18,3 +18,4 @@ venv/
 .morning_check.json
 build/
 dizical.egg-info/
+backups/
