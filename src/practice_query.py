@@ -279,7 +279,7 @@ class PracticeQueryTUI:
                 bar_str, bar_color = _render_bar(mins, 60, 10)
                 self.stdscr.addstr(row, 14, f"{mins:>4}分 ", curses.color_pair(Colors.DIM))
                 self.stdscr.addstr(row, 21, bar_str, curses.color_pair(bar_color))
-                items_str = ' '.join(f"{x['item']}({x['item_id']}:{x['minutes']})" for x in d['items'])
+                items_str = ' '.join(f"{x['item']}({x.get('item_id','?')}:{x['minutes']})" for x in d['items'])
                 self.stdscr.addstr(row, 44, f" {items_str[:max(0, self.w-46)]}")
             else:
                 self._attr(row, 14, "  休息", Colors.DIM)
@@ -395,7 +395,7 @@ class PracticeQueryTUI:
             for rec in page:
                 d = rec['date']
                 total = rec['total_minutes']
-                items_str = ' '.join(f"{x['item']}({x['item_id']}:{x['minutes']})" for x in rec.get('items', []))
+                items_str = ' '.join(f"{x['item']}({x.get('item_id','?')}:{x['minutes']})" for x in rec.get('items', []))
                 is_today = (d == self.today)
                 lbl = f"{d.isoformat()}  {total:>4}分"
                 attr = Colors.TODAY if is_today else Colors.HIGHLIGHT if total > 0 else Colors.DIM
