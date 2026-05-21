@@ -1,5 +1,24 @@
 # dizical vibe coding log
 
+## 2026-05-21 PM — timer submitPractice double-click bug 修复
+
+### Bug 现象
+提前结束（finishEarly）或自然结束点打卡后没记录，两次快速点击导致打卡没成功。
+
+### Root Cause
+1. `submitPractice()` 无防重放标志，两次快速点击时两个 fetch 并发
+2. `save_daily_practice` 用 `INSERT OR REPLACE`，第二个请求的 `items=[]` 覆盖第一个的记录
+
+### Fix
+1. `practice.html` — `submitPractice` 加 `submitting` 标志（global bool），首次点击设 true，fetch 返回后设 false，期间所有调用 return
+2. `database.py` — `append_behavior_log` 的 `ON CONFLICT` 注释修正
+
+### Commit
+- `c303e5b` → branch `fix/timer-submit-race` → **已合并 main**
+
+### 教训
+打卡类写操作必须有防重放 guard。
+
 ## 2026-05-21 PM — badges页图片URL补漏
 
 ### `BADGE_FILES` 漏了 3 个 badge

@@ -1,9 +1,17 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-21
-**当前阶段**: badges页 BADGE_FILES 补漏 + 服务进程调试
+**当前阶段**: timer submitPractice double-click bug 修复
 
 ## 阶段记录
+
+**2026-05-21 PM — timer submitPractice double-click 修复**:
+- **Bug**: 提前结束（finishEarly）点打卡后没记录，两次快速点击导致打卡没成功
+- **根因**: `submitPractice()` 无防重放标志，用户两次点击时两个 fetch 并发，`save_daily_practice` 的 `INSERT OR REPLACE` 导致后到的请求用 `items=[]` 覆盖前一条记录
+- **修复 1**: `practice.html` — `submitPractice` 加 `submitting` 标志（global bool），首次点击设 true，fetch 返回后设 false，期间所有调用 return
+- **修复 2**: `database.py` — `append_behavior_log` 的 `ON CONFLICT` 注释修正（实际只更新 behavior_log，SQL 逻辑本身无问题）
+- **commit**: `c303e5b` → branch `fix/timer-submit-race` → **已合并 main**
+- **教训**: 打卡类写操作必须有防重放 guard
 
 **2026-05-21 PM — badges页图片URL补漏**:
 - **Bug**: `badges_page()` 的 `BADGE_FILES` 漏了 `total_60`/`week_champ`/`full_month`，fallback 到 `medal_badge.png`
