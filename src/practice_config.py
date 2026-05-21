@@ -566,9 +566,14 @@ def _show_current():
     _print("\n─── 大科目 ───")
     if categories:
         for c in sorted(categories, key=lambda x: x['sort_order']):
+            _print(f"  [{c['id']}] {c['name']}")
             related = sorted((i for i in items if i.get('category_id') == c['id']), key=lambda x: x.get('item_id', 0))
-            parts = [f"{i['name']}({i['item_id']})" + ("📁" if i.get('is_archived') else "") for i in related]
-            _print(f"  [{c['id']}] {c['name']}  →  {'、'.join(parts) or '（无）'}")
+            if related:
+                for i in related:
+                    tag = "📁" if i.get('is_archived') else ""
+                    _print(f"      [{i['item_id']}] {i['name']} {tag}")
+            else:
+                _print(f"      （无）")
     else:
         _print("  （空）")
 
