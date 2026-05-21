@@ -1045,12 +1045,15 @@ def badges_page():
 
     BADGE_FILES = {
         **{f"streak_{n}": f"/static/badges/streak_{n}.png" for n in [1, 3, 7, 14, 30, 100]},
+        "total_60": "/static/badges/total_60.png",
         "total_300": "/static/badges/total_300.png",
         "total_600": "/static/badges/total_600.png",
         "total_1000": "/static/badges/total_1000.png",
         "first_log": "/static/badges/first_log.png",
         "all_items": "/static/badges/all_items.png",
         "double": "/static/badges/double.png",
+        "week_champ": "/static/badges/week_champ.png",
+        "full_month": "/static/badges/full_month.png",
         "top1": "/static/badges/top1.png",
         "top2": "/static/badges/top2.png",
         "top3": "/static/badges/top3.png",
