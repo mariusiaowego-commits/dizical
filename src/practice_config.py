@@ -6,6 +6,9 @@
 import sys
 from typing import Optional, List, Dict
 
+from rich.console import Console
+from rich.table import Table
+
 from .practice import (
     get_categories,
     add_category,
@@ -14,6 +17,8 @@ from .practice import (
     set_item_category,
     db,
 )
+
+console = Console()
 
 
 def _print(msg: str):
@@ -561,36 +566,39 @@ def _show_current():
     """显示当前配置总览（主菜单时调用）"""
     categories = get_categories()
     items = db.get_practice_items(active_only=False, include_archived=True)
-    cats = {c['id']: c['name'] for c in categories}
 
-    _print("\n─── 大科目 ───")
-    if categories:
-        for c in sorted(categories, key=lambda x: x['sort_order']):
-            _print(f"  [{c['id']}] {c['name']}")
-            related = sorted((i for i in items if i.get('category_id') == c['id']), key=lambda x: x.get('item_id', 0))
-            if related:
-                for i in related:
-                    tag = "📁" if i.get('is_archived') else ""
-                    _print(f"      [{i['item_id']}] {i['name']} {tag}")
-            else:
-                _print(f"      （无）")
-    else:
-        _print("  （空）")
+    # 大科目表格
+    table = Table(show_header=True, header_style="bold cyan", border_style="cyan", box=None, padding=0)
+    table.add_column("ID", style="green", width=4)
+    table.add_column("大科目", style="bold", width=8)
+    table.add_column("小科目", style="white")
 
-    uncategorized = [i for i in items if not i.get('category_id')]
-    _print("\n─── 未归属小科目 ───")
+    for c in sorted(categories, key=lambda x: x['sort_order']):
+        related = sorted((i for i in items if i.get('category_id') == c['id']), key=lambda x: x.get('item_id', 0))
+        if related:
+            sub_parts = '、'.join(f"{i['name']}({i['item_id']})" + ("📁" if i.get('is_archived') else "") for i in related)
+        else:
+            sub_parts = "（无）"
+        table.add_row(str(c['id']), c['name'], sub_parts)
+
+    console.print(table)
+
+    # 未归属小科目
+    uncategorized = sorted((i for i in items if not i.get('category_id')), key=lambda x: x.get('item_id', 0))
+    console.print("\n─── 未归属小科目 ───")
     if uncategorized:
         for it in uncategorized:
-            tag = " 📁" if it.get('is_archived') else ""
-            _print(f"  [{it['item_id']}] {it['name']}{tag}")
+            tag = "📁" if it.get('is_archived') else ""
+            console.print(f"  [{it['item_id']}] {it['name']} {tag}")
     else:
-        _print("  （空）")
+        console.print("  （空）")
 
+    # 已归档小科目
     archived = sorted((i for i in items if i.get('is_archived')), key=lambda x: x.get('item_id', 0))
     if archived:
-        _print(f"\n─── 已归档小科目 ({len(archived)} 个) ───")
+        console.print(f"\n─── 已归档小科目 ({len(archived)} 个) ───")
         for it in archived:
-            _print(f"  [{it['item_id']}] {it['name']}")
+            console.print(f"  [{it['item_id']}] {it['name']}")
 
 
 def _show_menu():
