@@ -574,7 +574,7 @@ def _show_current():
     table.add_column("小科目", style="white")
 
     for c in sorted(categories, key=lambda x: x['sort_order']):
-        related = sorted((i for i in items if i.get('category_id') == c['id']), key=lambda x: x.get('item_id', 0))
+        related = sorted((i for i in items if i.get('category_id') == c['id']), key=lambda x: (x.get('is_archived', 0), x.get('item_id', 0)))
         if related:
             sub_parts = '、'.join(f"[dim]{i['name']}({i['item_id']})[/dim]" if i.get('is_archived') else f"{i['name']}({i['item_id']})" for i in related)
         else:
@@ -584,7 +584,7 @@ def _show_current():
     console.print(table)
 
     # 未归属小科目
-    uncategorized = sorted((i for i in items if not i.get('category_id')), key=lambda x: x.get('item_id', 0))
+    uncategorized = sorted((i for i in items if not i.get('category_id')), key=lambda x: (x.get('is_archived', 0), x.get('item_id', 0)))
     console.print("\n─── 未归属小科目 ───")
     if uncategorized:
         for it in uncategorized:
