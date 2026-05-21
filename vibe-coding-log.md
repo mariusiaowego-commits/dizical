@@ -1,5 +1,20 @@
 # dizical vibe coding log
 
+## 2026-05-21 (Thu) — badges页tab分离 + grade名称description更新 + workflow修复
+
+### 本次完成
+- **页签分离**: badges页 milestone/seasonal 双tab，按已解锁排序
+- **locked蒙版**: saturate 0.25→0.3, brightness 0.9→0.95（更透明）
+- **type字段Bug**: 入库脚本 `add_badge_early.py` 把 `type` 写成 `'achievement'`，应为 `'突破'`
+- **DB修正**: 3个新badge type='突破'；10个grade name+description全更新
+- **Workflow修复**: `docs/badge-workflow.md` 步骤1+步骤4加字段含义注释
+- `312cd38` push to main
+
+### 根因分析
+- 入库脚本照着 workflow 模板写，模板第3个值硬编码 `'achievement'`（SQL关键字），入库脚本没改直接用
+- 教训：workflow 模板里硬编码占位符容易被直接复制粘贴使用，需加注释警示
+- 字段含义混淆：`type`=前端中文标签，`category`=数据类型(milestone/seasonal)
+
 ## 2026-05-20 (Wed) PM — 闻鸡起舞系列 badge × 3 新增
 
 ### 本次完成

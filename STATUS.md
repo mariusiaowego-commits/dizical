@@ -1,7 +1,18 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-20
-**当前阶段**: 新增闻鸡起舞系列 seasonal badge × 3（闻鸡起舞/小鸡指挥官/先声夺人）
+**最后更新**: 2026-05-21
+**当前阶段**: badges页双tab重构 + grade名称description更新 + workflow修复
+
+## 阶段记录
+
+**2026-05-21 — badges页修复 + grade起名更新**:
+- **Bug根因**: 入库脚本 `add_badge_early.py` 把 `type` 字段写成SQL关键字 `'achievement'`，应为分类标签 `'突破'`
+- **Workflow修复**: `docs/badge-workflow.md` 步骤1+步骤4加字段含义注释，防止再犯
+- **页签分离**: badges页 milestone/seasonal 双tab，按已解锁排序，未解锁蒙版透明度调高
+- **DB修正**: 3个新badge `type='achievement'`→`'突破'`
+- **grade名称更新**: 一级→小笛芽/二级→音符精灵/.../十级→天籁笛仙
+- **grade description更新**: 10条长故事文案全部替换
+- `312cd38` push to main
 
 ## 阶段记录
 
