@@ -581,7 +581,7 @@ def _show_current():
     else:
         _print("  （空）")
 
-    archived = [i for i in items if i.get('is_archived')]
+    archived = sorted((i for i in items if i.get('is_archived')), key=lambda x: x.get('item_id', 0))
     if archived:
         _print(f"\n─── 已归档小科目 ({len(archived)} 个) ───")
         for it in archived:
