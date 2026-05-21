@@ -367,7 +367,6 @@
   <!-- 弹窗（照搬 badges 页面） -->
   <div id="modal-overlay" onclick="if(event.target===this)closeModal()">
     <div id="modal-box">
-      <div id="modal-close" onclick="closeModal()">×</div>
       <div id="modal-img-wrap">
         <img id="modal-img" src="" alt="">
       </div>
@@ -378,6 +377,7 @@
       <div id="modal-date"></div>
       <div id="modal-desc"></div>
       <div id="modal-hint"></div>
+      <div id="modal-close" onclick="closeModal()">×</div>
     </div>
   </div>
 
@@ -390,6 +390,7 @@
       z-index: 1000;
       align-items: center; justify-content: center;
       padding: 20px;
+      overflow: visible;
     }
     #modal-overlay.active { display: flex; }
     #modal-box {
@@ -397,39 +398,41 @@
       border-radius: 24px;
       border: 2.5px solid #f0c040;
       box-shadow: 0 12px 40px rgba(0,0,0,0.12);
-      width: 100%; max-width: 310px;
-      padding: 30px 26px 24px;
+      width: 100%; max-width: 420px;
+      padding: 36px 32px 56px;
       display: flex; flex-direction: column; align-items: center;
       position: relative;
     }
     #modal-close {
-      position: absolute; top: -10px; right: -10px;
-      width: 36px; height: 36px;
-      background: #fff; border: 2px solid #f0c040;
-      border-radius: 50%;
-      font-size: 20px; color: #c8860a; line-height: 32px; text-align: center;
+      position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%);
+      width: 48px; height: 48px;
+      background: #fff; border: 2.5px solid #f0c040;
+      border-radius: 50% 50% 0 0;
+      border-bottom: none;
+      font-size: 22px; color: #c8860a; line-height: 44px; text-align: center;
       cursor: pointer; font-weight: 900;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+      transition: transform 0.15s;
     }
-    #modal-close:active { transform: scale(0.9); }
+    #modal-close:active { transform: translateX(-50%) scale(0.9); }
     #modal-img-wrap {
-      width: 156px; height: 156px;
+      width: 200px; height: 200px;
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 18px;
+      margin-bottom: 22px;
       cursor: pointer;
       transition: transform 0.18s ease;
     }
     #modal-img-wrap:hover { transform: scale(1.06) rotate(-2deg); }
     #modal-img-wrap:active { transform: scale(0.97); }
-    #modal-img { width: 156px; height: 156px; object-fit: contain; }
+    #modal-img { width: 200px; height: 200px; object-fit: contain; }
     #modal-name {
-      font-size: 26px; font-weight: 900; color: #c8860a;
-      text-align: center; margin-bottom: 8px; letter-spacing: 0.5px;
+      font-size: 30px; font-weight: 900; color: #c8860a;
+      text-align: center; margin-bottom: 10px; letter-spacing: 0.5px;
     }
     #modal-tag {
-      font-size: 12px; font-weight: 700;
-      color: #ccc; letter-spacing: 0.8px;
-      margin-bottom: 18px;
+      font-size: 13px; font-weight: 700;
+      color: #ccc; letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 20px;
     }
     .modal-divider {
       width: 40px; height: 2px; background: #f0c040;
