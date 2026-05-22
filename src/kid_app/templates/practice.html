@@ -54,10 +54,13 @@
     /* 三栏容器 */
     .timer-layout {
       display: grid;
-      grid-template-columns: 25% 45% 30%;
-      gap: 10px;
+      grid-template-columns: 0.656fr 1.316fr 1.014fr;
+      gap: 8px;
       align-items: stretch;
       margin-bottom: 12px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     .panel {
       border-radius: var(--radius);
@@ -94,6 +97,35 @@
       border: 2px solid #A0D8D0;
     }
     .panel-center h4 { font-size: 14px; color: #2E7D32; margin: 0; display: flex; align-items: center; gap: 6px; }
+    /* 选中科目气泡 */
+    .item-bubble {
+      background: linear-gradient(135deg, #FFE066, #FF9F43);
+      border-radius: 20px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(255,159,67,0.3);
+    }
+    .item-bubble .bubble-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.85);
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .item-bubble .bubble-name {
+      font-size: 16px;
+      color: #fff;
+      font-weight: bold;
+    }
+    @keyframes bubbleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .item-bubble.animate {
+      animation: bubbleFloat 1.8s ease-in-out infinite;
+    }
     .timer-display {
       font-size: 72px; font-weight: bold; text-align: center;
       color: #FF6B6B; letter-spacing: -2px; line-height: 1;
@@ -137,14 +169,7 @@
     .panel-extra {
       background: #F0F9F0;
       border: 2px solid #A0C8A0;
-      padding-right: 30px;
       border-radius: var(--radius);
-    }
-    @media (min-width: 641px) {
-      .panel-extra {
-        margin-right: -16px;
-        border-radius: var(--radius) var(--radius) var(--radius) 0;
-      }
     }
     .panel-extra h4 { font-size: 14px; color: #2E7D32; margin: 0; display: flex; align-items: center; gap: 6px; }
     .extra-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
@@ -238,9 +263,6 @@
       .timer-layout { grid-template-columns: 1fr; }
       .panel-req .req-empty { padding: 20px 0; }
     }
-    @media (min-width: 641px) {
-      .timer-layout { padding-right: 4px; }
-    }
   </style>
 </head>
 <body>
@@ -294,6 +316,11 @@
     <!-- 中栏：计时器 -->
     <div class="panel panel-center">
       <h4>⏱️ 计时器</h4>
+      <!-- 选中科目气泡 -->
+      <div class="item-bubble" id="itemBubble" style="display:none">
+        <span class="bubble-label">当前练习</span>
+        <span class="bubble-name" id="bubbleName"></span>
+      </div>
       <div class="timer-display" id="timer-display">00:00</div>
       <div class="time-btns">
         <button class="time-btn" onclick="setDuration(5)">5分钟</button>
@@ -480,6 +507,16 @@
 
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(reqText || '');
+
+      // 更新选中科目气泡
+      const bubble = document.getElementById('itemBubble');
+      const bubbleName = document.getElementById('bubbleName');
+      bubbleName.textContent = name;
+      bubble.style.display = 'flex';
+      bubble.classList.add('animate');
+      bubble.style.animation = 'none';
+      bubble.offsetHeight;
+      bubble.style.animation = '';
     }
 
     // ── 计时器防跳出 ──
@@ -560,6 +597,17 @@
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(reqText || '');
       document.getElementById('timer-layout').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // 更新选中科目气泡
+      const bubble = document.getElementById('itemBubble');
+      const bubbleName = document.getElementById('bubbleName');
+      bubbleName.textContent = name;
+      bubble.style.display = 'flex';
+      bubble.classList.add('animate');
+      // 重新触发动画
+      bubble.style.animation = 'none';
+      bubble.offsetHeight; // reflow
+      bubble.style.animation = '';
     }
 
     function setDuration(mins) {
@@ -588,6 +636,10 @@
         timerRunning = false;
         document.getElementById('startBtn').textContent = '继续';
       } else {
+        if (!selectedItemId) {
+          alert('请先选择一个科目');
+          return;
+        }
         started = true;
         timerRunning = true;
         document.getElementById('startBtn').textContent = '暂停';
