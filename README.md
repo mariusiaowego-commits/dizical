@@ -246,8 +246,7 @@ src/
     └── templates/    # HTML 模板（GSAP 动画）
 
 data/
-├── dizi.db            # 课程 + 缴费数据
-└── dizical.db         # 练习数据（practice_items / daily_practices）
+└── dizi.db            # 所有数据：课程 + 缴费 + 练习 + 成就
 ```
 
 ---
