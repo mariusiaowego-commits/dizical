@@ -652,6 +652,8 @@
           document.getElementById('confirmArea').classList.remove('show');
           updateReqPanel('');
         }, 2500);
+      } else {
+        alert('打卡失败：' + (json.message || json.error));
       }
     }
 

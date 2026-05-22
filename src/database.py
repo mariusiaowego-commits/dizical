@@ -553,16 +553,14 @@ class Database:
                 best_ratio, best_pid = r, pid
         return best_pid
 
-    def validate_item_id(self, item_id: int, item_name: str) -> int:
-        """验证 item_id 是否合法（存在于 practice_items 且 is_archived=0）。无效则 fuzzy match 修复。"""
+    def validate_item_id(self, item_id: int) -> Optional[int]:
+        """验证 item_id 是否合法（存在于 practice_items 且 is_archived=0）。无效返回 None。"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (item_id,))
             if cursor.fetchone():
                 return item_id
-            # 无效，fuzzy match 修复
-            matched = self._match_practice_item_id(item_name)
-            return matched if matched else item_id
+            return None
 
     # Weekly assignment operations
     def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
@@ -701,23 +699,17 @@ class Database:
             date = dt.date.fromisoformat(date)
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            # 回填 item_id（fuzzy match，精确匹配时不重复查）
+            # BEGIN IMMEDIATE 获取写锁，防止并发覆盖
+            cursor.execute('BEGIN IMMEDIATE')
+
+            # 验证所有 item_id 合法性，无效则抛异常
             for it in items:
-                if 'item_id' not in it:
-                    matched = self._match_practice_item_id(it['item'])
-                    if matched:
-                        it['item_id'] = matched
-                else:
-                    # 有 item_id 但验证其合法性；无效则 fuzzy match 修复
-                    vid = it['item_id']
-                    cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (vid,))
-                    if not cursor.fetchone():
-                        matched = self._match_practice_item_id(it['item'])
-                        if matched:
-                            it['item_id'] = matched
-                        else:
-                            # fuzzy 失败，清除无效 id，让后续流程重新分配
-                            it.pop('item_id', None)
+                vid = it.get('item_id')
+                if vid is None:
+                    raise ValueError(f"科目 {it.get('item')} 缺少 item_id")
+                cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (vid,))
+                if not cursor.fetchone():
+                    raise ValueError(f"科目 ID {vid}（{it.get('item')}）不存在或已归档")
 
             cursor.execute('SELECT items, log, practiced FROM daily_practices WHERE date = ?', (date.isoformat(),))
             row = cursor.fetchone()
@@ -727,48 +719,40 @@ class Database:
                 existing_practiced = row[2] or 'Y'
 
                 # 合并 items：同名累加分钟数，不同则追加
-                # 保留已有 item 的 id，不重复分配
                 for it in items:
                     found = False
                     for ex in existing_items:
-                        if ex.get('item') == it['item'] and ex.get('item') == it['item']:
+                        if ex.get('item') == it['item']:
                             ex['minutes'] += it['minutes']
                             found = True
                             break
                     if not found:
-                        # 新 item：分配递增 id（取现有最大 item_id + 1）
-                        max_id = max([0] + [ei.get('item_id', 0) for ei in existing_items])
-                        it['item_id'] = max_id + 1
                         existing_items.append(it)
                 merged_items = existing_items
                 merged_total = sum(it.get('minutes', 0) for it in merged_items)
                 merged_log = (existing_log + '\n' + log).strip() if log else existing_log
                 final_practiced = 'Y' if merged_total > 0 else existing_practiced
                 cursor.execute('''
-                    INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (date.isoformat(), json.dumps(merged_items, ensure_ascii=False), merged_total, merged_log, final_practiced))
+                    UPDATE daily_practices
+                    SET items = ?, total_minutes = ?, log = ?, practiced = ?
+                    WHERE date = ?
+                ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_log, final_practiced, date.isoformat()))
             else:
-                # 新建记录：先 fuzzy match 到 practice_items.item_id，匹配不到再用顺序号
-                next_id = 1
-                for it in items:
-                    matched = self._match_practice_item_id(it['item'])
-                    it['item_id'] = matched if matched else next_id
-                    if not matched:
-                        next_id += 1
+                # 新建记录
                 cursor.execute('''
-                    INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
+                    INSERT INTO daily_practices (date, items, total_minutes, log, practiced)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log, practiced))
             conn.commit()
 
     def append_behavior_log(self, date: dt.date, entry: Dict) -> None:
-        """追加一条行为日志到当天的 behavior_log JSON 数组（无记录则新建）"""
+        """追加一条行为日志到当天的 behavior_log JSON 数组"""
         import json
         if isinstance(date, str):
             date = dt.date.fromisoformat(date)
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute('BEGIN IMMEDIATE')
             cursor.execute('SELECT behavior_log FROM daily_practices WHERE date = ?', (date.isoformat(),))
             row = cursor.fetchone()
             if row:
@@ -776,12 +760,9 @@ class Database:
             else:
                 log_list = []
             log_list.append(entry)
-            # 用 UPDATE 而非 INSERT OR REPLACE，避免覆盖 items/total_minutes
             cursor.execute('''
-                INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(date) DO UPDATE SET behavior_log = excluded.behavior_log
-            ''', (date.isoformat(), '[]', 0, '', 'Y', json.dumps(log_list, ensure_ascii=False)))
+                UPDATE daily_practices SET behavior_log = ? WHERE date = ?
+            ''', (json.dumps(log_list, ensure_ascii=False), date.isoformat()))
             conn.commit()
 
     @staticmethod

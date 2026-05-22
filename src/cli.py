@@ -1037,14 +1037,17 @@ def practice_log(
     ctx: typer.Context,
     date: str = typer.Option(None, "--date", "-d", help="日期，格式 YYYY-MM-DD，默认今天"),
     log: Optional[str] = typer.Option(None, "--log", "-l", help="详细练习记录/进展"),
-    items: Annotated[list[str], typer.Argument(help="练习内容，格式 项目:分钟")] = [],
+    items: Annotated[list[str], typer.Argument(help="练习内容，格式 item_id:分钟")] = [],
 ):
-    """记录每日练习（支持模糊匹配，防止误建小科目）
+    """记录每日练习（必须使用 item_id）
 
     示例:
-        dizical practice log 基本功:20 单吐:15 采茶扑蝶:10
-        dizical practice log --date 2026-04-26 基本功:20
-        dizical practice log --log "今天单吐终于连上了" 基本功:20
+        dizical practice log 1034:20 1003:15 1004:10
+        dizical practice log --date 2026-04-26 1034:20
+        dizical practice log --log "今天单吐终于连上了" 1003:15
+
+    录入前可查看本周/历史练习要求中的 item_id：
+        dizical practice assign --show-items
     """
     import datetime as dt
 
@@ -1053,82 +1056,90 @@ def practice_log(
     if date:
         practice_date = parse_date(date)
     else:
-        # 默认今天（与 practice today 行为一致）
         practice_date = dt.date.today()
 
-    # 解析 items（支持空格分隔 或 逗号分隔）
-    # 格式: "单吐练习:7 回娘家:4" 或 "单吐练习:7，回娘家:4"
-    raw_parts = ' '.join(items_list) if items_list else ''
-    # 先把逗号统一替换为空格（中文逗号、英文逗号）
+    # ── 录入前先展示推荐 item_id（本周 + 历史练习要求）───────────────
+    today = dt.date.today()
+    current_week_start = today - dt.timedelta(days=today.weekday())
+    last_week_start = current_week_start - dt.timedelta(days=7)
+
+    this_week_assign = db.get_weekly_assignment_for_week(today)
+    last_week_assign = db.get_weekly_assignment_for_week(last_week_start)
+
+    recommended_ids = set()
+    assign_items = []
+    for assign in [this_week_assign, last_week_assign]:
+        if assign and assign.get('items'):
+            for it in assign['items']:
+                iid = it.get('item_id')
+                if iid:
+                    recommended_ids.add(iid)
+                    assign_items.append({'item_id': iid, 'item': it.get('item') or it.get('name', '?'),
+                                         'requirements': it.get('requirements') or it.get('requirement', '')})
+
+    shown = []
+    # 展示推荐练习
+    if assign_items:
+        console.print("\n[bold cyan]📋 练习要求中的科目：[/bold cyan]")
+        for it in assign_items:
+            if it['item_id'] not in shown:
+                shown.append(it['item_id'])
+                req_preview = it['requirements'][:30] + '...' if len(it['requirements']) > 30 else it['requirements']
+                console.print(f"  [yellow]{it['item_id']}[/yellow]  {it['item']}  [dim]{req_preview}[/dim]")
+
+    # 如果有遗漏的活跃科目也展示
+    all_items = db.get_practice_items(active_only=True)
+    shown_ids = set(shown)
+    other_items = [it for it in all_items if it['item_id'] not in shown_ids]
+    if other_items:
+        console.print("\n[bold cyan]📚 其他活跃科目：[/bold cyan]")
+        for it in other_items:
+            console.print(f"  [yellow]{it['item_id']}[/yellow]  {it['name']}")
+
+    console.print()
+
+    # ── 解析输入（必须是 item_id:分钟）─────────────────────────────
+    if not items_list and not log:
+        console.print("[yellow]请提供练习内容，格式: item_id:分钟[/yellow]")
+        console.print("[dim]示例: dizical practice log 1034:20 1003:15[/dim]")
+        return
+
+    raw_parts = ' '.join(items_list)
     raw_parts = raw_parts.replace('，', ' ').replace(',', ' ')
     all_parts = raw_parts.split()
 
     parsed = []
+    invalid_entries = []
     for part in all_parts:
         if ':' in part:
-            item_name, mins = part.split(':', 1)
+            item_id_str, mins = part.split(':', 1)
             try:
+                item_id = int(item_id_str.strip())
                 minutes = int(mins)
-                parsed.append({'item': item_name.strip(), 'minutes': minutes})
+                # 严格验证 item_id 必须存在
+                if not db.validate_item_id(item_id):
+                    invalid_entries.append((item_id_str.strip(), f"item_id {item_id} 不存在或已归档"))
+                    continue
+                parsed.append({'item_id': item_id, 'minutes': minutes})
             except ValueError:
-                console.print(f"[red]❌ 无效时长: {mins}[/red]")
-                return
+                invalid_entries.append((item_id_str.strip(), "item_id 必须是整数"))
+                continue
 
-    if not parsed and not log:
-        console.print("[yellow]请提供练习内容或记录，如: dizical practice log '基本功:20' --log '今天有进步'[/yellow]")
+    if invalid_entries:
+        for entry, reason in invalid_entries:
+            console.print(f"[red]❌ 「{entry}:??」— {reason}[/red]")
+        console.print("[yellow]使用 dizical practice log 查看可用 item_id[/yellow]")
         return
 
-    # ── Phase 2: 模糊匹配 + 确认拦截 ────────────────────────────────
-    resolved_items = []
-    for entry in parsed:
-        raw_name = entry['item']
-        # 精确匹配 → 直接收录
-        all_items = db.get_practice_items(active_only=False)
-        exact = next((it['name'] for it in all_items if it['name'] == raw_name), None)
-        if exact:
-            resolved_items.append({'item': exact, 'minutes': entry['minutes']})
-            continue
+    if not parsed and not log:
+        console.print("[yellow]请提供练习内容，格式: item_id:分钟[/yellow]")
+        return
 
-        # 模糊匹配
-        similar = practice_module.find_similar_items(raw_name)
-        if not similar:
-            # 无相似 → 直接新建
-            resolved_items.append({'item': raw_name, 'minutes': entry['minutes']})
-            continue
+    # ── 写入 DB ────────────────────────────────────────────────────
+    # 构建带 item_id 和 item_name 的 items 列表
+    item_map = {it['item_id']: it['name'] for it in all_items}
+    resolved_items = [{'item_id': p['item_id'], 'item': item_map.get(p['item_id'], '?'), 'minutes': p['minutes']} for p in parsed]
 
-        # 有相似 → 打印候选并等待用户选择
-        console.print(f"\n[yellow]未找到完全匹配的小科目「{raw_name}」。[/yellow]")
-        console.print("以下小科目与你的输入相似：")
-        for i, (iid, name, score) in enumerate(similar[:5], 1):
-            label = "高" if score >= 0.8 else "中" if score >= 0.5 else "低"
-            console.print(f"  [{i}] {name} [dim]#{iid}[/dim]（相似度：{label}）")
-        console.print(f"  [{len(similar)+1}] 新建小科目「{raw_name}（item_id=?）」")
-
-        choice = None
-        while choice is None:
-            user_input = console.input("\n请选择 [1-{}/Enter取消]: ".format(len(similar)+1))
-            if user_input.strip() == "":
-                console.print("[dim]已取消本次录入[/dim]")
-                return
-            try:
-                idx = int(user_input.strip())
-                if 1 <= idx <= len(similar) + 1:
-                    choice = idx
-                else:
-                    console.print(f"[red]请输入 1~{len(similar)+1} 或直接回车[/red]")
-            except ValueError:
-                console.print(f"[red]请输入数字 1~{len(similar)+1} 或直接回车[/red]")
-
-        if choice <= len(similar):
-            resolved_name = similar[choice - 1][1]
-            console.print(f"[dim]  → 关联已有科目：{resolved_name}[/dim]")
-        else:
-            resolved_name = raw_name
-            console.print(f"[dim]  → 新建科目：{resolved_name}[/dim]")
-
-        resolved_items.append({'item': resolved_name, 'minutes': entry['minutes']})
-
-    # 写入 DB
     total = practice_module.save_practice(practice_date, resolved_items, log=log)
     msg = f"已记录 {practice_date} 练习: {total} 分钟"
     if log:

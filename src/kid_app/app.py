@@ -558,37 +558,18 @@ async def api_log(request: Request):
 
         date = dt.date.fromisoformat(date_str) if date_str else dt.date.today()
 
-        # 前端已传 item_id → 直接用；未传则 fuzzy match 回填
-        item_id_from_ui = body.get("item_id")
-        if item_id_from_ui is None:
-            matched = db._match_practice_item_id(item_name)
-            item_id_to_write = matched if matched else 1
-        else:
-            # 前端传了 item_id，验证合法性；无效则 fuzzy match 修复
-            item_id_to_write = db.validate_item_id(item_id_from_ui, item_name)
+        item_id = body.get("item_id")
 
         if is_extra:
-            # extra 追加：每次创建独立 item 条目（带唯一 id），不与同名合并
-            # 直接操作 DB，绕过 save_daily_practice 的 merge 逻辑
-            existing = db.get_daily_practice(date)
-            existing_items = existing.get("items", []) if existing else []
-            new_item = {"item_id": item_id_to_write, "item": item_name, "minutes": minutes}
-            all_items = existing_items + [new_item]
-            total = sum(it.get('minutes', 0) for it in all_items)
-            # 直接写 DB，不合并
-            import sqlite3
-            conn = sqlite3.connect('/Users/mt16/dev/dizical/data/dizi.db')
-            conn.execute('''
-                INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (date.isoformat(), json.dumps(all_items, ensure_ascii=False), total, '', 'Y'))
-            conn.commit()
-            conn.close()
+            # extra 追加：创建独立 item 条目，通过 save_daily_practice 合并
+            # 同名 item 累加分钟数；不同 item 追加
+            items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
+            db.save_daily_practice(date, items, minutes, '')
             return JSONResponse({"ok": True})
 
         # 正常打卡：直接传给 save_daily_practice，由它处理合并逻辑
         # 注意：只传 [{item, item_id, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
-        items = [{"item": item_name, "item_id": item_id_to_write, "minutes": minutes}]
+        items = [{"item": item_name, "item_id": item_id, "minutes": minutes}]
         total = minutes  # save_daily_practice 会重新计算，这里只作返回值参考
         db.save_daily_practice(date, items, total, log_note)
 
