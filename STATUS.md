@@ -1,7 +1,33 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-21
-**当前阶段**: timer submitPractice double-click bug 修复
+**最后更新**: 2026-05-22
+**当前阶段**: 三栏布局 grid overflow 修复 + box-shadow
+
+## 阶段记录
+
+**2026-05-22 — 三栏布局 grid overflow 修复**:
+- **Bug**: `grid-template-columns: 22% 44% 34%` + `gap: 8px` = 总宽 1264px > 容器 1248px，`panel-extra` 溢出 16px，视觉上右栏右侧被切
+- **根因**: CSS Grid 百分比是相对于不含 gap 的容器计算，gap 是额外叠加
+- **修复**: 改用 fr 单位 `0.656fr 1.316fr 1.014fr`，fr 从容器中先扣 gap 再分配
+- **附加**: 三栏加 `box-shadow: 0 2px 8px rgba(0,0,0,0.10)` 增加立体感
+- **commit**: `05e6ad4` + `606ac05` → branch `fix/daily-practice-log` → **已合并 main**
+
+**2026-05-22 — practice log 数据溯源表**:
+- 新增 `practice_audit_log` 表（channel/method/input_items/result_items/total_minutes/session_id/error/timestamp）
+- `save_daily_practice` 加 source 参数 `(channel, method)` 区分来源
+- 4 个调用点全部加 source：kid_app timer/extra、CLI、internal
+- commit `e913f16` → **已合并 main**
+
+**2026-05-22 — 修复练习日志 fuzzy match + 并发覆盖问题**:
+- `validate_item_id` 移除 fuzzy match，只认 item_id
+- `save_daily_practice` 加 `BEGIN IMMEDIATE` 事务锁 + UPDATE 逻辑（不再 INSERT OR REPLACE）
+- `append_behavior_log` 加事务锁 + UPDATE 逻辑
+- CLI 重写：强制 item_id，录入前展示推荐科目列表
+- 计时器未选科目禁止开始（和 extra 一致）
+- 撤回前后端 409 验证逻辑
+- commit `72044bf` → **已合并 main**
+
+**2026-05-21 PM — timer submitPractice double-click bug 修复**:
 
 ## 阶段记录
 
