@@ -1223,3 +1223,8 @@ def praise_page():
         unlocked=unlocked,
         daily_praise=daily_praise,
     )
+
+
+# ─── 注册配置管理台路由 ─────────────────────────────────────────────────────
+from src.kid_app.routes.config import router as config_router
+app.include_router(config_router)

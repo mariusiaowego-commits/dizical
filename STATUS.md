@@ -1,9 +1,22 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-22
-**当前阶段**: 三栏布局 grid overflow 修复 + box-shadow
+**当前阶段**: 练习科目配置管理台 Phase 1 MVP
 
 ## 阶段记录
+
+**2026-05-22 — 练习科目配置管理台 Phase 1 MVP**:
+- **需求**: 将 CLI TUI 的 practice_config 功能迁移到 Web 界面，家长在 iPad/Mac 上直接操作
+- **架构**: 新增 `/config` 配置主页 + `/config/practice` 练习科目配置页
+- **API**: `/config/api/practice/categories` (大科目CRUD) + `/config/api/practice/items` (小科目CRUD) + 归属关系 + 归档管理
+- **UI**: Master-Detail 布局（左侧大科目列表 + 右侧小科目列表），PIN 验证保护
+- **动效**: GSAP 入场动画 + back.out 刹车感 + 下拉菜单 + 行内编辑
+- **可扩展性**: 预留通知配置、缴费配置模块入口
+- **文件**:
+  - `src/kid_app/routes/config.py` - 配置路由模块（API + 页面）
+  - `src/kid_app/templates/config.html` - 配置主页模板
+  - `src/kid_app/templates/config-practice.html` - 练习科目配置页模板
+- **测试**: 页面 200 OK，大科目选择、搜索过滤、归属变更功能正常
 
 **2026-05-22 — 三栏布局 grid overflow 修复**:
 - **Bug**: `grid-template-columns: 22% 44% 34%` + `gap: 8px` = 总宽 1264px > 容器 1248px，`panel-extra` 溢出 16px，视觉上右栏右侧被切

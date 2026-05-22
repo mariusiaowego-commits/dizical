@@ -1,5 +1,59 @@
 # dizical vibe coding log
 
+## 2026-05-22 — 练习科目配置管理台 Phase 1 MVP
+
+### 需求
+将 CLI TUI 的 practice_config 功能迁移到 Web 界面，家长在 iPad/Mac 上直接操作练习科目配置。
+
+### 架构设计
+- **页面路由**: `/config` 配置主页 + `/config/practice` 练习科目配置页
+- **API 命名空间**: `/config/api/practice/*`，可扩展到通知配置、缴费配置
+- **UI 布局**: Master-Detail（左侧大科目列表 260px + 右侧小科目列表自适应）
+- **PIN 验证**: 复用现有 `/api/verify-pin` 端点
+
+### 文件清单
+- `src/kid_app/routes/config.py` - 配置路由模块（14KB，API + 页面路由）
+- `src/kid_app/templates/config.html` - 配置主页模板（11KB，卡片列表 + PIN 验证）
+- `src/kid_app/templates/config-practice.html` - 练习科目配置页模板（37KB，Master-Detail 布局）
+
+### API 端点
+- `GET /config/api/practice/categories` - 获取所有大科目（含统计）
+- `POST /config/api/practice/categories` - 新增大科目
+- `PUT /config/api/practice/categories/{id}` - 改名/排序
+- `DELETE /config/api/practice/categories/{id}` - 删除大科目（清空归属）
+- `PUT /config/api/practice/categories/order` - 批量排序
+- `GET /config/api/practice/items` - 获取所有小科目
+- `POST /config/api/practice/items` - 新增小科目
+- `PUT /config/api/practice/items/{id}/rename` - 改名小科目
+- `DELETE /config/api/practice/items/{id}` - 删除小科目
+- `PUT /config/api/practice/items/{id}/category` - 设置归属
+- `POST /config/api/practice/items/{id}/archive` - 归档
+- `POST /config/api/practice/items/{id}/unarchive` - 取消归档
+
+### UI 特性
+- GSAP 入场动画（back.out 刹车感 + stagger）
+- 下拉菜单选择归属（点击外部自动关闭）
+- 行内编辑科目名称（blur/Enter 保存，Escape 取消）
+- 搜索过滤（实时过滤 + 自动展开匹配分组）
+- Toast 提示（成功/错误反馈）
+
+### 可扩展性设计
+- 配置主页预留通知配置、缴费配置模块入口
+- API 命名空间 `/config/api/*` 可扩展
+- 组件可复用（手风琴、行内编辑、下拉选择）
+
+### 测试结果
+- `/config` 页面 200 OK
+- `/config/practice` 页面 200 OK
+- 大科目选择功能正常
+- 搜索过滤功能正常
+- 归属变更功能正常
+
+### commit
+- 待提交
+
+---
+
 ## 2026-05-22 — 三栏布局 grid overflow 修复 + box-shadow
 
 ### Bug

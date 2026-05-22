@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>配置管理台 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .config-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── 顶部导航 ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.6);
+      transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+      background: rgba(255,255,255,0.9);
+      transform: translateX(-2px);
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-title .icon {
+      font-size: 32px;
+    }
+
+    /* ── PIN 验证覆盖层 ── */
+    .pin-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(245, 230, 211, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    .pin-box {
+      background: white;
+      border-radius: 28px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .pin-box h2 {
+      font-size: 24px;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+
+    .pin-box p {
+      color: #7F8C8D;
+      font-size: 16px;
+      margin: 0 0 24px;
+    }
+
+    .pin-input {
+      width: 100%;
+      padding: 16px;
+      font-size: 24px;
+      text-align: center;
+      border: 2px solid #E0E0E0;
+      border-radius: 16px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      letter-spacing: 8px;
+    }
+
+    .pin-input:focus {
+      border-color: var(--sage);
+    }
+
+    .pin-error {
+      color: #FF6B6B;
+      font-size: 14px;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    .pin-submit {
+      margin-top: 20px;
+      padding: 14px 32px;
+      font-size: 18px;
+      font-weight: 600;
+      background: var(--sage);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    .pin-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(168, 213, 186, 0.4);
+    }
+
+    .pin-submit:active {
+      transform: scale(0.96);
+    }
+
+    /* ── 配置卡片网格 ── */
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .config-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .config-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--sage);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s ease;
+    }
+
+    .config-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .config-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    }
+
+    .config-card:active {
+      transform: scale(0.98);
+    }
+
+    .config-card[data-color="rose"]::before { background: var(--rose); }
+    .config-card[data-color="lavender"]::before { background: var(--lavender); }
+
+    .card-icon {
+      font-size: 48px;
+      line-height: 1;
+    }
+
+    .card-content {
+      flex: 1;
+    }
+
+    .card-content h3 {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+
+    .card-content p {
+      font-size: 14px;
+      color: #7F8C8D;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .card-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--sage);
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .config-card[data-color="rose"] .card-link { color: var(--rose); }
+    .config-card[data-color="lavender"] .card-link { color: var(--lavender); }
+
+    .card-link .arrow {
+      transition: transform 0.2s ease;
+    }
+
+    .config-card:hover .card-link .arrow {
+      transform: translateX(4px);
+    }
+
+    /* ── 底部信息 ── */
+    .footer-info {
+      margin-top: 48px;
+      text-align: center;
+      color: #7F8C8D;
+      font-size: 14px;
+    }
+
+    .footer-info a {
+      color: var(--sage);
+      text-decoration: none;
+    }
+
+    .footer-info a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PIN 验证覆盖层 -->
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-box">
+      <h2>🔐 管理台验证</h2>
+      <p>请输入管理员 PIN 码</p>
+      <input type="password" class="pin-input" id="pinInput" maxlength="8" placeholder="••••" autocomplete="off" inputmode="numeric">
+      <div class="pin-error" id="pinError"></div>
+      <button class="pin-submit" id="pinSubmit">验证</button>
+    </div>
+  </div>
+
+  <!-- 主内容 -->
+  <div class="config-container" id="mainContent" style="display: none;">
+    
+    <!-- 顶部导航 -->
+    <div class="top-bar">
+      <a href="/prepare" class="back-link">
+        <span>←</span>
+        <span>返回练习</span>
+      </a>
+      <div class="page-title">
+        <span class="icon">⚙️</span>
+        <span>配置管理台</span>
+      </div>
+    </div>
+
+    <!-- 配置卡片网格 -->
+    <div class="config-grid">
+      
+      <!-- 练习科目配置 -->
+      <a href="/config/practice" class="config-card" data-color="sage">
+        <div class="card-icon">🎵</div>
+        <div class="card-content">
+          <h3>练习科目配置</h3>
+          <p>管理大科目、小科目、归属关系、归档。支持增删改查和排序。</p>
+        </div>
+        <div class="card-link">
+          <span>进入配置</span>
+          <span class="arrow">→</span>
+        </div>
+      </a>
+
+      <!-- 通知配置（Phase 2） -->
+      <div class="config-card" data-color="rose" style="opacity: 0.6; cursor: not-allowed;">
+        <div class="card-icon">🔔</div>
+        <div class="card-content">
+          <h3>通知配置</h3>
+          <p>提醒时间、通知渠道、消息模板。即将推出...</p>
+        </div>
+        <div class="card-link">
+          <span>即将推出</span>
+          <span class="arrow">→</span>
+        </div>
+      </div>
+
+      <!-- 缴费配置（Phase 2） -->
+      <div class="config-card" data-color="lavender" style="opacity: 0.6; cursor: not-allowed;">
+        <div class="card-icon">💰</div>
+        <div class="card-content">
+          <h3>缴费配置</h3>
+          <p>学费标准、缴费周期、提醒规则。即将推出...</p>
+        </div>
+        <div class="card-link">
+          <span>即将推出</span>
+          <span class="arrow">→</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 底部信息 -->
+    <div class="footer-info">
+      <p>dizical 竹笛课程管理助手 · <a href="/prepare">返回练习首页</a></p>
+    </div>
+
+  </div>
+
+  <script>
+    // PIN 验证逻辑
+    const pinOverlay = document.getElementById('pinOverlay');
+    const pinInput = document.getElementById('pinInput');
+    const pinSubmit = document.getElementById('pinSubmit');
+    const pinError = document.getElementById('pinError');
+    const mainContent = document.getElementById('mainContent');
+
+    // 检查是否设置了 PIN
+    const hasPin = {{ pin_locked | default('false') }};
+    
+    if (!hasPin) {
+      // 没有设置 PIN，直接显示主内容
+      pinOverlay.style.display = 'none';
+      mainContent.style.display = 'block';
+      initAnimations();
+    }
+
+    // 验证 PIN
+    async function verifyPin() {
+      const pin = pinInput.value.trim();
+      if (!pin) {
+        pinError.textContent = '请输入 PIN 码';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+
+        const data = await response.json();
+        if (data.ok) {
+          // 验证成功
+          gsap.to(pinOverlay, {
+            opacity: 0,
+            duration: 0.3,
+            onComplete: () => {
+              pinOverlay.style.display = 'none';
+              mainContent.style.display = 'block';
+              initAnimations();
+            }
+          });
+        } else {
+          // 验证失败
+          pinError.textContent = 'PIN 不对哦，再试一次 😊';
+          pinInput.value = '';
+          pinInput.focus();
+          
+          // 抖动动画
+          gsap.to(pinBox, {
+            x: -10,
+            duration: 0.05,
+            repeat: 5,
+            yoyo: true,
+            ease: 'power2.inOut',
+            onComplete: () => gsap.set(pinBox, { x: 0 })
+          });
+        }
+      } catch (err) {
+        pinError.textContent = '验证失败，请重试';
+      }
+    }
+
+    // 绑定事件
+    pinSubmit.addEventListener('click', verifyPin);
+    pinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') verifyPin();
+    });
+
+    // 入场动画
+    function initAnimations() {
+      gsap.fromTo('.config-card', 
+        { opacity: 0, y: 30 },
+        { 
+          opacity: 1, 
+          y: 0, 
+          duration: 0.5, 
+          stagger: 0.12, 
+          ease: 'back.out(1.6)' 
+        }
+      );
+
+      gsap.fromTo('.top-bar', 
+        { opacity: 0, y: -20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+      );
+
+      gsap.fromTo('.footer-info', 
+        { opacity: 0 },
+        { opacity: 1, duration: 0.5, delay: 0.6 }
+      );
+    }
+
+    // 自动聚焦 PIN 输入框
+    if (hasPin) {
+      setTimeout(() => pinInput.focus(), 100);
+    }
+  </script>
+
+</body>
+</html>
