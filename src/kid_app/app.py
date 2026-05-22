@@ -1178,51 +1178,9 @@ async def api_verify_pin(request: Request):
 
 @app.get("/praise", response_class=HTMLResponse)
 def praise_page():
-    # 获取当前成就数据
-    today = dt.date.today()
-    streak = streak_days()
-    total_mins = total_practice_minutes()
-    ws = week_start_of(today)
-    week_prac = db.get_daily_practices_in_range(ws, today)
-    week_mins = sum(p["total_minutes"] for p in week_prac)
-    week_days = len([p for p in week_prac if p.get("total_minutes", 0) > 0])
-
-    # 当前解锁的徽章
-    unlocked = []
-    if streak >= 3:
-        unlocked.append({"type": "fire", "label": f"🔥 {streak}天连续", "desc": "坚持练习"})
-    if streak >= 7:
-        unlocked.append({"type": "star7", "label": "⭐ 7天连续达成", "desc": "超棒毅力"})
-    if total_mins >= 60:
-        unlocked.append({"type": "medal", "label": "🏅 练习达人", "desc": "累计60分钟+"})
-    if week_mins >= 60:
-        unlocked.append({"type": "weekstar", "label": "⭐ 本周之星", "desc": "本周60分钟+"})
-
-    # 预设表扬语
-    PRAISE_MSGS = [
-        "太棒了！今天的你比昨天更好！🌟",
-        "坚持就是胜利，你是最棒的！💪",
-        "笛声悠扬，继续加油！🎵",
-        "认真练习的样子真美！✨",
-        "今天的进步爸爸都看到了！👍",
-        "音乐小达人就是你！🥁",
-        "练完就可以开心去玩啦！🎮",
-    ]
-    import random
-    seed = today.year * 10000 + today.month * 100 + today.day
-    random.seed(seed)
-    daily_praise = random.choice(PRAISE_MSGS)
-    random.seed()  # 恢复随机种子
-
-    return render(
-        "praise",
-        child_name=child_name(),
-        pin_locked="true" if get_setting("dad_pin") else "false",
-        PIN_OVERLAY_DISPLAY="display:flex" if get_setting("dad_pin") else "display:none",
-        PRAISE_CONTENT_DISPLAY="display:block" if not get_setting("dad_pin") else "display:none",
-        unlocked=unlocked,
-        daily_praise=daily_praise,
-    )
+    # 重定向到配置管理台
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/config", status_code=302)
 
 
 # ─── 注册配置管理台路由 ─────────────────────────────────────────────────────
