@@ -508,8 +508,10 @@
     // ── 初始化 ────────────────────────────────────────────────────────────
     // 检查是否已验证PIN
     const savedPin = localStorage.getItem('config_pin');
-    if (!savedPin && {{ pin_locked | default('false') }}) {
-      // 没有保存的PIN且需要PIN验证，跳转到配置主页
+    const needsPin = '{{ pin_locked | default("false") }}' === 'true';
+    
+    if (needsPin && !savedPin) {
+      // 需要PIN但没有保存的PIN，跳转到配置主页进行验证
       window.location.href = '/config';
     } else {
       loadBlessPool();

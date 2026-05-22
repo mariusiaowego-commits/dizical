@@ -364,11 +364,11 @@
     const pinError = document.getElementById('pinError');
     const mainContent = document.getElementById('mainContent');
 
-    // 检查是否设置了 PIN
-    const hasPin = {{ pin_locked | default('false') }};
+    // 检查是否已验证过PIN（从localStorage）
+    const savedPin = localStorage.getItem('config_pin');
     
-    if (!hasPin) {
-      // 没有设置 PIN，直接显示主内容
+    if (savedPin) {
+      // 已验证过，直接显示主内容
       pinOverlay.style.display = 'none';
       mainContent.style.display = 'block';
       initAnimations();
