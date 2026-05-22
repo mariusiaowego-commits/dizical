@@ -1,9 +1,15 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-22
-**当前阶段**: 练习科目配置管理台 Phase 1 MVP
+**当前阶段**: 练习科目配置管理台 Phase 1 MVP ✅ 已合并 main
 
 ## 阶段记录
+
+**2026-05-22 — 配置台 PIN 验证逻辑修复**:
+- **Bug**: Jinja2 模板 `{{ pin_locked | default('false') }}` 输出字符串 `'false'`，在 JavaScript 中是真值
+- **修复**: 改为 `'{{ pin_locked | default("false") }}' === 'true'` 严格比较
+- **逻辑**: 配置台始终显示 PIN 验证界面，验证成功后保存到 localStorage
+- **commit**: `2b302d9` → **已合并 main**
 
 **2026-05-22 — 练习科目配置管理台 Phase 1 MVP**:
 - **需求**: 将 CLI TUI 的 practice_config 功能迁移到 Web 界面，家长在 iPad/Mac 上直接操作
