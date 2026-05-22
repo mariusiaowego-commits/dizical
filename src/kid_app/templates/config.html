@@ -321,8 +321,21 @@
         </div>
       </div>
 
+      <!-- 表扬配置 -->
+      <a href="/config/praise" class="config-card" data-color="lavender">
+        <div class="card-icon">💬</div>
+        <div class="card-content">
+          <h3>表扬配置</h3>
+          <p>管理表扬祝福语池，配置每日随机展示的鼓励文案。</p>
+        </div>
+        <div class="card-link">
+          <span>进入配置</span>
+          <span class="arrow">→</span>
+        </div>
+      </a>
+
       <!-- 缴费配置（Phase 2） -->
-      <div class="config-card" data-color="lavender" style="opacity: 0.6; cursor: not-allowed;">
+      <div class="config-card" data-color="rose" style="opacity: 0.6; cursor: not-allowed;">
         <div class="card-icon">💰</div>
         <div class="card-content">
           <h3>缴费配置</h3>
@@ -378,7 +391,9 @@
 
         const data = await response.json();
         if (data.ok) {
-          // 验证成功
+          // 验证成功，保存PIN到localStorage
+          localStorage.setItem('config_pin', pin);
+          
           gsap.to(pinOverlay, {
             opacity: 0,
             duration: 0.3,

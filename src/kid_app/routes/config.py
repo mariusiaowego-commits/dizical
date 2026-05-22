@@ -84,6 +84,16 @@ def config_practice():
     )
 
 
+@router.get("/praise", response_class=HTMLResponse)
+def config_praise():
+    """表扬配置页"""
+    from src.kid_app.app import render, get_setting
+    return render(
+        "config-praise",
+        pin_locked="true" if get_setting("dad_pin") else "false"
+    )
+
+
 # ─── API: 大科目 CRUD ───────────────────────────────────────────────────────
 
 @router.get("/api/practice/categories")

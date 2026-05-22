@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>表扬配置 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .config-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── 顶部导航 ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.6);
+      transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+      background: rgba(255,255,255,0.9);
+      transform: translateX(-2px);
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-title .icon {
+      font-size: 32px;
+    }
+
+    /* ── 卡片 ── */
+    .config-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    .config-card h3 {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .config-card p {
+      font-size: 14px;
+      color: #7F8C8D;
+      margin: 0 0 20px;
+    }
+
+    /* ── 祝福语列表 ── */
+    .bless-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 500px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding-right: 8px;
+    }
+
+    .bless-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--cream);
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .bless-item:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .bless-item .bless-text {
+      flex: 1;
+      font-size: 15px;
+    }
+
+    .bless-item .bless-main {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .bless-item .bless-accent {
+      color: var(--lavender);
+      font-weight: 700;
+    }
+
+    .bless-item .delete-btn {
+      padding: 8px 14px;
+      background: rgba(255, 107, 107, 0.1);
+      color: #FF6B6B;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .bless-item .delete-btn:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    .bless-item .delete-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* ── 添加表单 ── */
+    .add-form {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .add-form input {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 2px solid rgba(0,0,0,0.08);
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s ease;
+      background: rgba(0,0,0,0.02);
+    }
+
+    .add-form input:focus {
+      border-color: var(--lavender);
+      background: white;
+      box-shadow: 0 4px 16px rgba(197, 184, 217, 0.2);
+    }
+
+    .add-form input::placeholder {
+      color: #B0B0B0;
+    }
+
+    .add-btn {
+      padding: 14px 24px;
+      background: var(--lavender);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .add-btn:hover {
+      box-shadow: 0 4px 16px rgba(197, 184, 217, 0.4);
+    }
+
+    .add-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ── 统计 ── */
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-item {
+      padding: 12px 20px;
+      background: var(--cream);
+      border-radius: 14px;
+      font-size: 14px;
+      color: #7F8C8D;
+    }
+
+    .stat-item .stat-num {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--text);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* ── 预览 ── */
+    .preview-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .preview-section h3 {
+      margin-bottom: 16px;
+    }
+
+    .preview-banner {
+      background: linear-gradient(135deg, #FF6B6B, #FF8C5A);
+      color: white;
+      border-radius: 24px;
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(255,107,107,0.3);
+    }
+
+    .preview-banner .msg {
+      font-size: 28px;
+      line-height: 1.4;
+      font-family: 'ZCOOL KuaiLe', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .preview-banner .child {
+      font-size: 18px;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+
+    .refresh-btn {
+      margin-top: 16px;
+      padding: 12px 24px;
+      background: rgba(0,0,0,0.06);
+      color: var(--text);
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .refresh-btn:hover {
+      background: rgba(0,0,0,0.1);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 16px 28px;
+      border-radius: 16px;
+      background: var(--text);
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      background: var(--sage);
+    }
+
+    .toast.error {
+      background: #FF6B6B;
+    }
+
+    /* ── 空状态 ── */
+    .empty-state {
+      text-align: center;
+      padding: 32px;
+      color: #7F8C8D;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      font-size: 15px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="config-container">
+    
+    <!-- 顶部导航 -->
+    <div class="top-bar">
+      <a href="/config" class="back-link">
+        <span>←</span>
+        <span>返回配置台</span>
+      </a>
+      <div class="page-title">
+        <span class="icon">💬</span>
+        <span>表扬配置</span>
+      </div>
+    </div>
+
+    <!-- 祝福语管理 -->
+    <div class="config-card">
+      <h3>📝 祝福语池</h3>
+      <p>管理每日随机展示的鼓励文案，每次打开表扬页会随机展示一条。</p>
+
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-num" id="poolCount">0</span>
+          祝福语总数
+        </div>
+      </div>
+
+      <div class="bless-list" id="blessList">
+        <!-- 动态渲染 -->
+      </div>
+
+      <div class="add-form">
+        <input type="text" id="newMain" placeholder="主标题，如：吹笛真棒">
+        <input type="text" id="newAccent" placeholder="高亮词，如：为你鼓掌👏">
+        <button class="add-btn" id="addBtn">➕ 添加</button>
+      </div>
+    </div>
+
+    <!-- 预览 -->
+    <div class="config-card preview-section">
+      <h3>👁️ 预览效果</h3>
+      <p>以下是当前祝福语的随机展示效果。</p>
+
+      <div class="preview-banner" id="previewBanner">
+        <div class="msg" id="previewMsg">加载中...</div>
+        <div class="child">—— YoYo 的专属表扬 🌟</div>
+      </div>
+
+      <button class="refresh-btn" id="refreshBtn">🔄 换一条</button>
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let currentPool = [];
+
+    // ── 加载祝福语池 ──────────────────────────────────────────────────────
+    async function loadBlessPool() {
+      try {
+        const res = await fetch('/api/bless-pool');
+        const data = await res.json();
+        currentPool = data.pool || [];
+        renderBlessList();
+        refreshPreview();
+      } catch (err) {
+        showToast('error', '加载失败');
+      }
+    }
+
+    // ── 渲染列表 ──────────────────────────────────────────────────────────
+    function renderBlessList() {
+      const list = document.getElementById('blessList');
+      const count = document.getElementById('poolCount');
+      count.textContent = currentPool.length;
+
+      if (currentPool.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            <p>还没有祝福语，快来添加吧！</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = currentPool.map((item, i) => `
+        <div class="bless-item" data-index="${i}">
+          <div class="bless-text">
+            <span class="bless-main">${item.main}</span>
+            <span class="bless-accent"> · ${item.accent}</span>
+          </div>
+          <button class="delete-btn" onclick="deleteBlessItem(${i})">删除</button>
+        </div>
+      `).join('');
+
+      // 入场动画
+      gsap.fromTo('.bless-item', 
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.3, stagger: 0.05, ease: 'back.out(1.4)' }
+      );
+    }
+
+    // ── 添加祝福语 ────────────────────────────────────────────────────────
+    async function addBlessItem() {
+      const mainInput = document.getElementById('newMain');
+      const accentInput = document.getElementById('newAccent');
+      const main = mainInput.value.trim();
+      const accent = accentInput.value.trim();
+
+      if (!main || !accent) {
+        showToast('error', '请填写主标题和高亮词');
+        return;
+      }
+
+      currentPool.push({ main, accent });
+      await saveBlessPool();
+      mainInput.value = '';
+      accentInput.value = '';
+      mainInput.focus();
+    }
+
+    // ── 删除祝福语 ────────────────────────────────────────────────────────
+    async function deleteBlessItem(index) {
+      currentPool.splice(index, 1);
+      await saveBlessPool();
+    }
+
+    // ── 保存到服务器 ──────────────────────────────────────────────────────
+    async function saveBlessPool() {
+      try {
+        const pin = localStorage.getItem('config_pin') || '';
+        const res = await fetch('/api/bless-pool', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin, pool: currentPool })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          renderBlessList();
+          showToast('success', '保存成功');
+        } else {
+          showToast('error', data.error || '保存失败');
+        }
+      } catch (err) {
+        showToast('error', '保存失败');
+      }
+    }
+
+    // ── 预览 ──────────────────────────────────────────────────────────────
+    function refreshPreview() {
+      const msg = document.getElementById('previewMsg');
+      if (currentPool.length === 0) {
+        msg.textContent = '还没有祝福语哦～';
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * currentPool.length);
+      const item = currentPool[randomIndex];
+      msg.textContent = `${item.main} ${item.accent}`;
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────
+    function showToast(type, message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ── 事件绑定 ──────────────────────────────────────────────────────────
+    document.getElementById('addBtn').addEventListener('click', addBlessItem);
+    
+    document.getElementById('newAccent').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addBlessItem();
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', refreshPreview);
+
+    // ── 初始化 ────────────────────────────────────────────────────────────
+    // 检查是否已验证PIN
+    const savedPin = localStorage.getItem('config_pin');
+    if (!savedPin && {{ pin_locked | default('false') }}) {
+      // 没有保存的PIN且需要PIN验证，跳转到配置主页
+      window.location.href = '/config';
+    } else {
+      loadBlessPool();
+    }
+
+    // 入场动画
+    gsap.fromTo('.config-card', 
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.45, stagger: 0.12, ease: 'back.out(1.6)' }
+    );
+
+    gsap.fromTo('.top-bar', 
+      { opacity: 0, y: -20 },
+      { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+    );
+  </script>
+
+</body>
+</html>

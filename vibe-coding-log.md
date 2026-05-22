@@ -1,5 +1,17 @@
 # dizical vibe coding log
 
+## 2026-05-22 — 表扬页改为配置台入口
+
+### 变更
+- `/praise` 路由重定向到 `/config`
+- 底部导航栏「表扬」改为「配置」（achievements/practice/report 三页）
+- 配置台入口现在位于底部导航栏最后一个位置
+
+### commit
+- `da6174e` - refactor: 表扬页改为配置台入口
+
+---
+
 ## 2026-05-22 — 练习科目配置管理台 Phase 1 MVP
 
 ### 需求
