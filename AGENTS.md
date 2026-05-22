@@ -6,19 +6,23 @@
 `/Users/mt16/dev/dizical`
 
 ## 技术栈
-- Python 3.14
-- SQLite (dizical.db)
-- Web UI (iPad friendly)
+- Python 3.12（服务运行在此版本）
+- SQLite (`dizi.db` + `dizical.db`)
+- Web UI (iPad friendly, 1024×768)
+
+## 数据库
+- **dizi.db**（课程/缴费）：`lessons`, `payments`, `achievements`, `achievement_badges`
+- **dizical.db**（练习）：`practice_items`, `practice_categories`, `daily_practices`, `weekly_assignments`, `practice_audit_log`
 
 ## 关键数据模型
-- `lesson.status=attended` 不一定有 `daily_practice` 记录
-- DB `items` 是 JSON，改记录直接 UPDATE 整个 record 更安全
+- `daily_practices.items` 是 JSON，修改用 UPDATE 整个 record 替换
+- `practice_audit_log` 记录所有写操作的来源 (channel/method)
 
 ## 部署信息
-- dizical-kid deployed to `~/Library/Python/3.14/bin` (copied from hermes profile path, not pip reinstalled)
-- Service runs on port 8765
-- Full kid-friendly iPad web UI: prepare/practice/achievements/report/praise pages
-- commit 8eae04a pushed to main
+- Service: `uvicorn src.kid_app.app:app --host 0.0.0.0 --port 8765`（Python 3.12）
+- 端口：8765，本地 `http://localhost:8765`，iPad `http://172.20.10.3:8765`
+- Kid-app UI：prepare/practice/achievements/report/praise pages
+- practice 页三栏布局：`grid-template-columns: 0.656fr 1.316fr 1.014fr`（不能用百分比+gap，会溢出）
 
 ## 用户偏好
 - 偏好通知简洁，不用客气话
@@ -39,6 +43,7 @@
 □ handoff-YYYY-MM-DD.md — 完整记录含待办清单，写入项目根目录
 □ image-gen.md — 生图 CDN URL + 本地路径追加到 Obsidian tqob/00-Artifacts/
 □ Git — 测通后 add → commit → feature branch → PR（未测不推）
+□ Git push — 代理挂了就改 HTTPS：`git config --local remote.origin.pushurl https://github.com/mariusiaowego-commits/dizical.git`
 □ README — 本次改动需要同步更新文档
 □ 服务验证 — curl 两个页面确认 200 OK
 □ 用户确认 — 展示最终结果

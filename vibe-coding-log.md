@@ -1,5 +1,19 @@
 # dizical vibe coding log
 
+## 2026-05-22 — 三栏布局 grid overflow 修复 + box-shadow
+
+### Bug
+- `grid-template-columns: 22% 44% 34%` + `gap: 8px` 溢出 16px，右栏被切
+- 根因：CSS Grid 百分比不含 gap 计算，`100% + gap` 总宽超容器
+
+### 修复
+- fr 单位 `0.656fr 1.316fr 1.014fr`，自动扣 gap
+- 三栏加 `box-shadow: 0 2px 8px rgba(0,0,0,0.10)`
+
+### 另记
+- SSH proxy `127.0.0.1:6789` 挂了导致 `git push origin` 失败，改 pushurl HTTPS 绕过
+- git remote set-url 对已有 remote 的 pushurl 不生效，需 `git config --local remote.origin.pushurl`
+
 ## 2026-05-21 PM — timer submitPractice double-click bug 修复
 
 ### Bug 现象
