@@ -47,7 +47,7 @@
 □ README — 本次改动需要同步更新文档
 □ 服务验证 — curl 两个页面确认 200 OK
 □ 用户确认 — 展示最终结果
-□ Wiki沉淀 — 发现新模式/踩坑记录/项目惯例，同步到 hermes-base/projects/
+□ Wiki沉淀 — 发现新模式/踩坑记录/项目惯例，同步到 hermes-base/projects/project-dizical
 ```
 
 ## 收尾文档

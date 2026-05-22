@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>练习科目配置 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+      --sidebar-width: 260px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .config-layout {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── 左侧边栏 ── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: white;
+      border-right: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .sidebar-header h2 {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-header .back-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #7F8C8D;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-header .back-link:hover {
+      background: rgba(0,0,0,0.04);
+      color: var(--text);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .category-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+    }
+
+    .category-item:hover {
+      background: rgba(168, 213, 186, 0.15);
+    }
+
+    .category-item.active {
+      background: var(--sage);
+      color: white;
+      box-shadow: 0 4px 16px rgba(168, 213, 186, 0.4);
+    }
+
+    .category-item .cat-name {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .category-item .cat-count {
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.06);
+      color: #7F8C8D;
+    }
+
+    .category-item.active .cat-count {
+      background: rgba(255,255,255,0.3);
+      color: white;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: rgba(0,0,0,0.08);
+      margin: 12px 8px;
+    }
+
+    .sidebar-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #7F8C8D;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 16px 4px;
+    }
+
+    .add-category-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 2px dashed rgba(0,0,0,0.15);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 15px;
+      color: #7F8C8D;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .add-category-btn:hover {
+      border-color: var(--sage);
+      color: var(--sage);
+      background: rgba(168, 213, 186, 0.1);
+    }
+
+    .add-category-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ── 右侧主内容区 ── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .content-header {
+      padding: 24px 32px 16px;
+      background: white;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-header h1 {
+      font-size: 22px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .content-header .cat-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+
+    .action-btn.primary {
+      background: var(--sage);
+      color: white;
+    }
+
+    .action-btn.primary:hover {
+      box-shadow: 0 4px 16px rgba(168, 213, 186, 0.4);
+    }
+
+    .action-btn.secondary {
+      background: rgba(0,0,0,0.06);
+      color: var(--text);
+    }
+
+    .action-btn.secondary:hover {
+      background: rgba(0,0,0,0.1);
+    }
+
+    .action-btn.danger {
+      background: #FFE5E5;
+      color: #FF6B6B;
+    }
+
+    .action-btn.danger:hover {
+      background: #FFD0D0;
+    }
+
+    .search-bar {
+      padding: 16px 32px;
+      background: white;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 14px;
+      border: 2px solid rgba(0,0,0,0.08);
+      font-size: 16px;
+      outline: none;
+      transition: all 0.2s ease;
+      background: rgba(0,0,0,0.02);
+    }
+
+    .search-input:focus {
+      border-color: var(--sage);
+      background: white;
+      box-shadow: 0 4px 16px rgba(168, 213, 186, 0.2);
+    }
+
+    .search-input::placeholder {
+      color: #B0B0B0;
+    }
+
+    .content-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 32px;
+    }
+
+    /* ── 小科目列表 ── */
+    .items-section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #7F8C8D;
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      background: white;
+      border-radius: 16px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .item-row:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    .item-row::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--sage);
+      border-radius: 16px 0 0 16px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .item-row:hover::before {
+      opacity: 1;
+    }
+
+    .item-row.archived {
+      opacity: 0.6;
+      background: #F8F8F8;
+    }
+
+    .item-row.archived::before {
+      background: #B0B0B0;
+    }
+
+    .item-info {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .item-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .item-name:hover {
+      background: rgba(168, 213, 186, 0.2);
+    }
+
+    .item-id {
+      font-size: 13px;
+      color: #7F8C8D;
+      padding: 4px 10px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 8px;
+      font-family: monospace;
+    }
+
+    .item-category {
+      font-size: 13px;
+      color: var(--sage);
+      padding: 4px 12px;
+      background: rgba(168, 213, 186, 0.15);
+      border-radius: 20px;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .item-row:hover .item-actions {
+      opacity: 1;
+    }
+
+    .item-action-btn {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      background: rgba(0,0,0,0.06);
+      color: #7F8C8D;
+    }
+
+    .item-action-btn:hover {
+      background: rgba(0,0,0,0.1);
+      color: var(--text);
+    }
+
+    .item-action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .item-action-btn.archive {
+      background: rgba(232, 180, 188, 0.2);
+      color: var(--rose);
+    }
+
+    .item-action-btn.archive:hover {
+      background: rgba(232, 180, 188, 0.4);
+    }
+
+    .item-action-btn.unarchive {
+      background: rgba(168, 213, 186, 0.2);
+      color: var(--sage);
+    }
+
+    .item-action-btn.unarchive:hover {
+      background: rgba(168, 213, 186, 0.4);
+    }
+
+    .item-action-btn.delete {
+      background: rgba(255, 107, 107, 0.1);
+      color: #FF6B6B;
+    }
+
+    .item-action-btn.delete:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    .add-item-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px 20px;
+      border-radius: 16px;
+      border: 2px dashed rgba(0,0,0,0.12);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 15px;
+      color: #7F8C8D;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .add-item-btn:hover {
+      border-color: var(--sage);
+      color: var(--sage);
+      background: rgba(168, 213, 186, 0.1);
+    }
+
+    .add-item-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ── 下拉选择归属 ── */
+    .category-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+      padding: 8px;
+      min-width: 200px;
+      z-index: 100;
+      display: none;
+    }
+
+    .category-dropdown.show {
+      display: block;
+    }
+
+    .category-option {
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .category-option:hover {
+      background: rgba(168, 213, 186, 0.15);
+    }
+
+    .category-option.selected {
+      background: var(--sage);
+      color: white;
+    }
+
+    .category-option .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--sage);
+    }
+
+    /* ── 内联编辑 ── */
+    .inline-edit {
+      padding: 6px 10px;
+      font-size: 16px;
+      font-weight: 600;
+      border: 2px solid var(--sage);
+      border-radius: 8px;
+      outline: none;
+      background: white;
+      min-width: 120px;
+    }
+
+    /* ── 弹窗 ── */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-box {
+      background: white;
+      border-radius: 28px;
+      padding: 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .modal-box h3 {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 12px;
+    }
+
+    .modal-box p {
+      font-size: 15px;
+      color: #7F8C8D;
+      margin: 0 0 24px;
+      line-height: 1.6;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 2px solid rgba(0,0,0,0.1);
+      font-size: 16px;
+      outline: none;
+      transition: all 0.2s ease;
+      margin-bottom: 20px;
+    }
+
+    .modal-input:focus {
+      border-color: var(--sage);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .modal-btn {
+      padding: 12px 28px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .modal-btn:active {
+      transform: scale(0.96);
+    }
+
+    .modal-btn.primary {
+      background: var(--sage);
+      color: white;
+    }
+
+    .modal-btn.primary:hover {
+      box-shadow: 0 4px 16px rgba(168, 213, 186, 0.4);
+    }
+
+    .modal-btn.secondary {
+      background: rgba(0,0,0,0.06);
+      color: var(--text);
+    }
+
+    .modal-btn.secondary:hover {
+      background: rgba(0,0,0,0.1);
+    }
+
+    .modal-btn.danger {
+      background: #FF6B6B;
+      color: white;
+    }
+
+    .modal-btn.danger:hover {
+      box-shadow: 0 4px 16px rgba(255, 107, 107, 0.4);
+    }
+
+    /* ── Toast 提示 ── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 16px 28px;
+      border-radius: 16px;
+      background: var(--text);
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      background: var(--sage);
+    }
+
+    .toast.error {
+      background: #FF6B6B;
+    }
+
+    /* ── 空状态 ── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: #7F8C8D;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      font-size: 15px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="config-layout">
+    
+    <!-- 左侧边栏 -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <a href="/config" class="back-link">
+          <span>←</span>
+          <span>返回配置台</span>
+        </a>
+        <h2>
+          <span>🎵</span>
+          <span>大科目</span>
+        </h2>
+      </div>
+      
+      <div class="sidebar-content">
+        <div class="category-list" id="categoryList">
+          <!-- 动态渲染 -->
+        </div>
+        
+        <button class="add-category-btn" id="addCategoryBtn">
+          <span>+</span>
+          <span>新增大科目</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 右侧主内容区 -->
+    <div class="main-content">
+      <div class="content-header">
+        <h1 id="contentTitle">
+          <span>📁</span>
+          <span>选择一个大科目</span>
+        </h1>
+        <div class="cat-actions" id="catActions" style="display: none;">
+          <button class="action-btn secondary" id="renameCatBtn">
+            <span>✏️</span>
+            <span>改名</span>
+          </button>
+          <button class="action-btn danger" id="deleteCatBtn">
+            <span>🗑️</span>
+            <span>删除</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 搜索小科目名称或 ID...">
+      </div>
+
+      <div class="content-body" id="contentBody">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">👈</div>
+          <p>请从左侧选择一个大科目查看小科目</p>
+        </div>
+        
+        <div id="itemsContainer" style="display: none;">
+          <div class="items-section">
+            <div class="section-title" id="activeItemsTitle">活跃小科目</div>
+            <div class="items-list" id="activeItemsList">
+              <!-- 动态渲染 -->
+            </div>
+            <button class="add-item-btn" id="addItemBtn">
+              <span>+</span>
+              <span>新增小科目</span>
+            </button>
+          </div>
+
+          <div class="items-section" id="uncategorizedSection" style="display: none;">
+            <div class="section-title">❓ 未归属小科目</div>
+            <div class="items-list" id="uncategorizedList">
+              <!-- 动态渲染 -->
+            </div>
+          </div>
+
+          <div class="items-section" id="archivedSection" style="display: none;">
+            <div class="section-title">📦 已归档小科目</div>
+            <div class="items-list" id="archivedList">
+              <!-- 动态渲染 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 弹窗：新增/改名 -->
+  <div class="modal-overlay" id="inputModal">
+    <div class="modal-box">
+      <h3 id="inputModalTitle">新增大科目</h3>
+      <p id="inputModalDesc">请输入大科目名称</p>
+      <input type="text" class="modal-input" id="inputModalInput" placeholder="输入名称...">
+      <div class="modal-actions">
+        <button class="modal-btn secondary" id="inputModalCancel">取消</button>
+        <button class="modal-btn primary" id="inputModalConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：确认删除 -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <h3 id="confirmModalTitle">确认删除</h3>
+      <p id="confirmModalDesc">确定要删除吗？此操作不可撤销。</p>
+      <div class="modal-actions">
+        <button class="modal-btn secondary" id="confirmModalCancel">取消</button>
+        <button class="modal-btn danger" id="confirmModalConfirm">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── 状态管理 ──────────────────────────────────────────────────────────────
+    let state = {
+      categories: [],
+      selectedCatId: null,
+      items: [],
+      filteredItems: []
+    };
+
+    // ── API 调用 ──────────────────────────────────────────────────────────────
+    async function fetchCategories() {
+      const res = await fetch('/config/api/practice/categories');
+      const data = await res.json();
+      state.categories = data.categories || [];
+      renderCategories();
+    }
+
+    async function fetchItems() {
+      const res = await fetch('/config/api/practice/items?include_archived=true');
+      const data = await res.json();
+      state.items = data.items || [];
+      filterAndRenderItems();
+    }
+
+    async function createCategory(name) {
+      const res = await fetch('/config/api/practice/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', `大科目「${name}」已创建`);
+        await fetchCategories();
+        selectCategory(data.id);
+      } else {
+        showToast('error', data.error || '创建失败');
+      }
+      return data;
+    }
+
+    async function updateCategory(catId, name) {
+      const res = await fetch(`/config/api/practice/categories/${catId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已改名');
+        await fetchCategories();
+      } else {
+        showToast('error', data.error || '改名失败');
+      }
+      return data;
+    }
+
+    async function deleteCategory(catId) {
+      const res = await fetch(`/config/api/practice/categories/${catId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已删除');
+        state.selectedCatId = null;
+        await fetchCategories();
+        await fetchItems();
+        renderContentHeader();
+      } else {
+        showToast('error', data.error || '删除失败');
+      }
+      return data;
+    }
+
+    async function createItem(name, categoryId) {
+      const res = await fetch('/config/api/practice/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, category_id: categoryId })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', `小科目「${name}」已创建`);
+        await fetchItems();
+      } else {
+        showToast('error', data.error || '创建失败');
+      }
+      return data;
+    }
+
+    async function renameItem(itemId, name) {
+      const res = await fetch(`/config/api/practice/items/${itemId}/rename`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已改名');
+        await fetchItems();
+      } else {
+        showToast('error', data.error || '改名失败');
+      }
+      return data;
+    }
+
+    async function deleteItem(itemId) {
+      const res = await fetch(`/config/api/practice/items/${itemId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已删除');
+        await fetchItems();
+      } else {
+        showToast('error', data.error || '删除失败');
+      }
+      return data;
+    }
+
+    async function setItemCategory(itemId, categoryId) {
+      const res = await fetch(`/config/api/practice/items/${itemId}/category`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category_id: categoryId })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已更新归属');
+        await fetchItems();
+      } else {
+        showToast('error', data.error || '更新失败');
+      }
+      return data;
+    }
+
+    async function archiveItem(itemId) {
+      const res = await fetch(`/config/api/practice/items/${itemId}/archive`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已归档');
+        await fetchItems();
+      } else {
+        showToast('error', data.error || '归档失败');
+      }
+      return data;
+    }
+
+    async function unarchiveItem(itemId) {
+      const res = await fetch(`/config/api/practice/items/${itemId}/unarchive`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('success', '已取消归档');
+        await fetchItems();
+      } else {
+        showToast('error', data.error || '取消归档失败');
+      }
+      return data;
+    }
+
+    // ── 渲染函数 ──────────────────────────────────────────────────────────────
+    function renderCategories() {
+      const list = document.getElementById('categoryList');
+      const totalActive = state.categories.reduce((sum, cat) => sum + cat.active_count, 0);
+      
+      list.innerHTML = `
+        <div class="category-item ${state.selectedCatId === null ? 'active' : ''}" 
+             data-id="all"
+             onclick="selectCategory(null)">
+          <div class="cat-name">
+            <span>📋 全部</span>
+          </div>
+          <div class="cat-count">${totalActive}</div>
+        </div>
+      ` + state.categories.map(cat => `
+        <div class="category-item ${state.selectedCatId === cat.id ? 'active' : ''}" 
+             data-id="${cat.id}"
+             onclick="selectCategory(${cat.id})">
+          <div class="cat-name">
+            <span>${cat.name}</span>
+          </div>
+          <div class="cat-count">${cat.active_count}</div>
+        </div>
+      `).join('');
+
+      // 入场动画
+      gsap.fromTo('.category-item', 
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.3, stagger: 0.05, ease: 'back.out(1.4)' }
+      );
+    }
+
+    function renderContentHeader() {
+      const title = document.getElementById('contentTitle');
+      const actions = document.getElementById('catActions');
+      
+      if (state.selectedCatId === null) {
+        title.innerHTML = '<span>📋</span><span>全部小科目</span>';
+        actions.style.display = 'none';
+        return;
+      }
+      
+      if (state.selectedCatId) {
+        const cat = state.categories.find(c => c.id === state.selectedCatId);
+        if (cat) {
+          title.innerHTML = `<span>📁</span><span>${cat.name}</span>`;
+          actions.style.display = 'flex';
+          return;
+        }
+      }
+      
+      title.innerHTML = '<span>📁</span><span>选择一个大科目</span>';
+      actions.style.display = 'none';
+    }
+
+    function filterAndRenderItems() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      
+      let filtered = state.items;
+      if (query) {
+        filtered = state.items.filter(item => 
+          item.name.toLowerCase().includes(query) || 
+          String(item.item_id).includes(query)
+        );
+      }
+
+      // 按状态分组
+      const categorized = filtered.filter(i => 
+        !i.is_archived && i.category_id && 
+        (!state.selectedCatId || i.category_id === state.selectedCatId)
+      );
+      const uncategorized = filtered.filter(i => !i.is_archived && !i.category_id);
+      const archived = filtered.filter(i => i.is_archived);
+
+      // 渲染活跃小科目
+      const activeList = document.getElementById('activeItemsList');
+      const activeTitle = document.getElementById('activeItemsTitle');
+      
+      if (state.selectedCatId) {
+        activeTitle.textContent = `活跃小科目 (${categorized.length})`;
+        activeList.innerHTML = categorized.map(item => renderItemRow(item)).join('');
+      } else {
+        activeTitle.textContent = `所有活跃小科目 (${categorized.length + uncategorized.length})`;
+        activeList.innerHTML = [...categorized, ...uncategorized].map(item => renderItemRow(item)).join('');
+      }
+
+      // 渲染未归属
+      const uncategorizedSection = document.getElementById('uncategorizedSection');
+      const uncategorizedList = document.getElementById('uncategorizedList');
+      if (!state.selectedCatId && uncategorized.length > 0) {
+        uncategorizedSection.style.display = 'block';
+        uncategorizedList.innerHTML = uncategorized.map(item => renderItemRow(item)).join('');
+      } else {
+        uncategorizedSection.style.display = 'none';
+      }
+
+      // 渲染已归档
+      const archivedSection = document.getElementById('archivedSection');
+      const archivedList = document.getElementById('archivedList');
+      if (archived.length > 0) {
+        archivedSection.style.display = 'block';
+        archivedList.innerHTML = archived.map(item => renderItemRow(item)).join('');
+      } else {
+        archivedSection.style.display = 'none';
+      }
+
+      // 显示内容容器
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('itemsContainer').style.display = 'block';
+
+      // 入场动画
+      gsap.fromTo('.item-row', 
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.3, stagger: 0.04, ease: 'back.out(1.2)' }
+      );
+    }
+
+    function renderItemRow(item) {
+      const catName = item.category_name || '未归属';
+      const isArchived = item.is_archived;
+      
+      return `
+        <div class="item-row ${isArchived ? 'archived' : ''}" data-id="${item.item_id}">
+          <div class="item-info">
+            <span class="item-name" onclick="startEditItemName(${item.item_id}, '${item.name}')">${item.name}</span>
+            <span class="item-id">${item.item_id}</span>
+            ${!isArchived && !state.selectedCatId ? `<span class="item-category">${catName}</span>` : ''}
+          </div>
+          <div class="item-actions">
+            ${!isArchived ? `
+              <button class="item-action-btn" onclick="showCategoryDropdown(${item.item_id}, ${item.category_id})">
+                归属
+              </button>
+              <button class="item-action-btn archive" onclick="archiveItem(${item.item_id})">
+                📦 归档
+              </button>
+            ` : `
+              <button class="item-action-btn unarchive" onclick="unarchiveItem(${item.item_id})">
+                📤 取消归档
+              </button>
+            `}
+            <button class="item-action-btn delete" onclick="confirmDeleteItem(${item.item_id}, '${item.name}')">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── 交互函数 ──────────────────────────────────────────────────────────────
+    function selectCategory(catId) {
+      state.selectedCatId = catId;
+      renderCategories();
+      renderContentHeader();
+      filterAndRenderItems();
+    }
+
+    function startEditItemName(itemId, currentName) {
+      const row = document.querySelector(`.item-row[data-id="${itemId}"]`);
+      const nameEl = row.querySelector('.item-name');
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'inline-edit';
+      input.value = currentName;
+      
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+      
+      gsap.fromTo(input, 
+        { scale: 0.95, borderColor: 'transparent' },
+        { scale: 1, borderColor: '#a8d5ba', duration: 0.2, ease: 'back.out(2)' }
+      );
+      
+      const save = async () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          await renameItem(itemId, newName);
+        } else {
+          await fetchItems();
+        }
+      };
+      
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          input.blur();
+        } else if (e.key === 'Escape') {
+          input.value = currentName;
+          input.blur();
+        }
+      });
+    }
+
+    function showCategoryDropdown(itemId, currentCatId) {
+      // 移除已有的下拉菜单
+      document.querySelectorAll('.category-dropdown').forEach(el => el.remove());
+      
+      const row = document.querySelector(`.item-row[data-id="${itemId}"]`);
+      const btn = row.querySelector('.item-action-btn');
+      const rect = btn.getBoundingClientRect();
+      
+      const dropdown = document.createElement('div');
+      dropdown.className = 'category-dropdown show';
+      
+      dropdown.innerHTML = `
+        <div class="category-option ${!currentCatId ? 'selected' : ''}" 
+             onclick="setItemCategory(${itemId}, null)">
+          <span class="color-dot" style="background: #B0B0B0"></span>
+          <span>未归属</span>
+        </div>
+        ${state.categories.map(cat => `
+          <div class="category-option ${cat.id === currentCatId ? 'selected' : ''}" 
+               onclick="setItemCategory(${itemId}, ${cat.id})">
+            <span class="color-dot"></span>
+            <span>${cat.name}</span>
+          </div>
+        `).join('')}
+      `;
+      
+      // 使用fixed定位，根据按钮位置计算
+      dropdown.style.position = 'fixed';
+      dropdown.style.top = `${rect.bottom + 8}px`;
+      dropdown.style.left = `${rect.left}px`;
+      document.body.appendChild(dropdown);
+      
+      // 点击外部关闭
+      const close = (e) => {
+        if (!dropdown.contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', close);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', close), 10);
+    }
+
+    function confirmDeleteItem(itemId, name) {
+      showModal('confirm', {
+        title: '确认删除',
+        desc: `确定要删除小科目「${name}」吗？<br><br>历史打卡记录将保留，但无法显示科目名。`,
+        onConfirm: () => deleteItem(itemId)
+      });
+    }
+
+    // ── 弹窗管理 ──────────────────────────────────────────────────────────────
+    let modalCallback = null;
+
+    function showModal(type, options) {
+      const overlay = type === 'input' ? document.getElementById('inputModal') : document.getElementById('confirmModal');
+      
+      if (type === 'input') {
+        document.getElementById('inputModalTitle').textContent = options.title;
+        document.getElementById('inputModalDesc').textContent = options.desc;
+        document.getElementById('inputModalInput').value = options.value || '';
+        document.getElementById('inputModalInput').placeholder = options.placeholder || '输入名称...';
+        modalCallback = options.onConfirm;
+      } else {
+        document.getElementById('confirmModalTitle').textContent = options.title;
+        document.getElementById('confirmModalDesc').innerHTML = options.desc;
+        modalCallback = options.onConfirm;
+      }
+      
+      overlay.classList.add('show');
+      gsap.fromTo(overlay.querySelector('.modal-box'), 
+        { scale: 0.8, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.25, ease: 'back.out(1.5)' }
+      );
+      
+      if (type === 'input') {
+        setTimeout(() => document.getElementById('inputModalInput').focus(), 100);
+      }
+    }
+
+    function hideModal(type) {
+      const overlay = type === 'input' ? document.getElementById('inputModal') : document.getElementById('confirmModal');
+      gsap.to(overlay.querySelector('.modal-box'), {
+        scale: 0.8,
+        opacity: 0,
+        duration: 0.2,
+        onComplete: () => overlay.classList.remove('show')
+      });
+      modalCallback = null;
+    }
+
+    // ── Toast 提示 ────────────────────────────────────────────────────────────
+    function showToast(type, message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    // ── 事件绑定 ──────────────────────────────────────────────────────────────
+    document.getElementById('addCategoryBtn').addEventListener('click', () => {
+      showModal('input', {
+        title: '新增大科目',
+        desc: '请输入大科目名称',
+        placeholder: '例如：基本功、唱、分析...',
+        onConfirm: (name) => createCategory(name)
+      });
+    });
+
+    document.getElementById('renameCatBtn').addEventListener('click', () => {
+      const cat = state.categories.find(c => c.id === state.selectedCatId);
+      if (cat) {
+        showModal('input', {
+          title: '改名大科目',
+          desc: `当前名称：${cat.name}`,
+          value: cat.name,
+          onConfirm: (name) => updateCategory(state.selectedCatId, name)
+        });
+      }
+    });
+
+    document.getElementById('deleteCatBtn').addEventListener('click', () => {
+      const cat = state.categories.find(c => c.id === state.selectedCatId);
+      if (cat) {
+        showModal('confirm', {
+          title: '确认删除',
+          desc: `确定要删除大科目「${cat.name}」吗？<br><br>该操作仅清空归属关系，不删除小科目。`,
+          onConfirm: () => deleteCategory(state.selectedCatId)
+        });
+      }
+    });
+
+    document.getElementById('addItemBtn').addEventListener('click', () => {
+      showModal('input', {
+        title: '新增小科目',
+        desc: state.selectedCatId 
+          ? `将归属到「${state.categories.find(c => c.id === state.selectedCatId)?.name}」`
+          : '新增后可设置归属',
+        placeholder: '例如：单吐练习、长音练习...',
+        onConfirm: (name) => createItem(name, state.selectedCatId)
+      });
+    });
+
+    // 弹窗按钮
+    document.getElementById('inputModalConfirm').addEventListener('click', () => {
+      const value = document.getElementById('inputModalInput').value.trim();
+      if (value && modalCallback) {
+        modalCallback(value);
+        hideModal('input');
+      }
+    });
+
+    document.getElementById('inputModalCancel').addEventListener('click', () => hideModal('input'));
+
+    document.getElementById('inputModalInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('inputModalConfirm').click();
+      } else if (e.key === 'Escape') {
+        hideModal('input');
+      }
+    });
+
+    document.getElementById('confirmModalConfirm').addEventListener('click', () => {
+      if (modalCallback) {
+        modalCallback();
+        hideModal('confirm');
+      }
+    });
+
+    document.getElementById('confirmModalCancel').addEventListener('click', () => hideModal('confirm'));
+
+    // 搜索
+    document.getElementById('searchInput').addEventListener('input', () => {
+      filterAndRenderItems();
+    });
+
+    // 点击弹窗外部关闭
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          const type = overlay.id === 'inputModal' ? 'input' : 'confirm';
+          hideModal(type);
+        }
+      });
+    });
+
+    // ── 初始化 ────────────────────────────────────────────────────────────────
+    async function init() {
+      await fetchCategories();
+      await fetchItems();
+      
+      // 入场动画
+      gsap.fromTo('.sidebar', 
+        { x: -260, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }
+      );
+      
+      gsap.fromTo('.main-content', 
+        { opacity: 0 },
+        { opacity: 1, duration: 0.5, delay: 0.2 }
+      );
+    }
+
+    init();
+  </script>
+
+</body>
+</html>
