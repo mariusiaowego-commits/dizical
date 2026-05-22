@@ -1137,6 +1137,9 @@
       document.querySelectorAll('.category-dropdown').forEach(el => el.remove());
       
       const row = document.querySelector(`.item-row[data-id="${itemId}"]`);
+      const btn = row.querySelector('.item-action-btn');
+      const rect = btn.getBoundingClientRect();
+      
       const dropdown = document.createElement('div');
       dropdown.className = 'category-dropdown show';
       
@@ -1155,8 +1158,11 @@
         `).join('')}
       `;
       
-      row.style.position = 'relative';
-      row.appendChild(dropdown);
+      // 使用fixed定位，根据按钮位置计算
+      dropdown.style.position = 'fixed';
+      dropdown.style.top = `${rect.bottom + 8}px`;
+      dropdown.style.left = `${rect.left}px`;
+      document.body.appendChild(dropdown);
       
       // 点击外部关闭
       const close = (e) => {
