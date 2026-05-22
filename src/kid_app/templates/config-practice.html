@@ -957,7 +957,18 @@
     // ── 渲染函数 ──────────────────────────────────────────────────────────────
     function renderCategories() {
       const list = document.getElementById('categoryList');
-      list.innerHTML = state.categories.map(cat => `
+      const totalActive = state.categories.reduce((sum, cat) => sum + cat.active_count, 0);
+      
+      list.innerHTML = `
+        <div class="category-item ${state.selectedCatId === null ? 'active' : ''}" 
+             data-id="all"
+             onclick="selectCategory(null)">
+          <div class="cat-name">
+            <span>📋 全部</span>
+          </div>
+          <div class="cat-count">${totalActive}</div>
+        </div>
+      ` + state.categories.map(cat => `
         <div class="category-item ${state.selectedCatId === cat.id ? 'active' : ''}" 
              data-id="${cat.id}"
              onclick="selectCategory(${cat.id})">
@@ -978,6 +989,12 @@
     function renderContentHeader() {
       const title = document.getElementById('contentTitle');
       const actions = document.getElementById('catActions');
+      
+      if (state.selectedCatId === null) {
+        title.innerHTML = '<span>📋</span><span>全部小科目</span>';
+        actions.style.display = 'none';
+        return;
+      }
       
       if (state.selectedCatId) {
         const cat = state.categories.find(c => c.id === state.selectedCatId);
