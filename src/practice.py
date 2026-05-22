@@ -169,16 +169,18 @@ def resolve_practice_item(item_name: str) -> Tuple[bool, str]:
     return False, item_name  # 调用方应根据 similar 决定是否弹窗
 
 
-def save_practice(date: dt.date, items: List[Dict], log: Optional[str] = None) -> int:
+def save_practice(date: dt.date, items: List[Dict], log: Optional[str] = None,
+                 channel: Optional[str] = None, method: Optional[str] = None) -> int:
     """
     保存每日练习记录
     items: [{"item": "基本功", "minutes": 20}, ...]
     log: 详细练习记录/进展
+    channel/method: 溯源用，CLI 调用时传 ('cli', 'cli_log')
     返回: 总分钟数
     """
     total = sum(item['minutes'] for item in items)
-
-    db.save_daily_practice(date, items, total, log)
+    db.save_daily_practice(date, items, total, log,
+                           channel=channel, method=method)
     return total
 
 

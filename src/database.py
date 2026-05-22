@@ -103,7 +103,23 @@ class Database:
                     default_cats
                 )
 
-            # Weekly assignments table (每周老师要求)
+            # Daily practice audit log（数据溯源）
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS practice_audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel TEXT NOT NULL,
+                    method TEXT NOT NULL,
+                    practice_date DATE NOT NULL,
+                    input_items JSON,
+                    result_items JSON,
+                    total_minutes INTEGER,
+                    session_id TEXT,
+                    error TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_date ON practice_audit_log(practice_date)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_channel ON practice_audit_log(channel)')
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS weekly_assignments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -693,10 +709,12 @@ class Database:
             } for row in cursor.fetchall()]
 
     # Daily practice operations
-    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y') -> None:
+    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y',
+                            channel: Optional[str] = None, method: Optional[str] = None, session_id: Optional[str] = None) -> None:
         import json
         if isinstance(date, str):
             date = dt.date.fromisoformat(date)
+        input_items = list(items)  # 原始输入，用于 audit log
         with self._get_connection() as conn:
             cursor = conn.cursor()
             # BEGIN IMMEDIATE 获取写锁，防止并发覆盖
@@ -737,12 +755,38 @@ class Database:
                     SET items = ?, total_minutes = ?, log = ?, practiced = ?
                     WHERE date = ?
                 ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_log, final_practiced, date.isoformat()))
+                audit_items = merged_items
+                audit_total = merged_total
             else:
                 # 新建记录
                 cursor.execute('''
                     INSERT INTO daily_practices (date, items, total_minutes, log, practiced)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log, practiced))
+                audit_items = items
+                audit_total = total_minutes
+            conn.commit()
+
+        # audit log 写在事务外（事务已提交，不会被回滚）
+        if channel and method:
+            self.log_practice_audit(channel, method, date, input_items, audit_items, audit_total, session_id=session_id)
+
+    def log_practice_audit(self, channel: str, method: str, practice_date: dt.date,
+                           input_items: List[Dict], result_items: List[Dict],
+                           total_minutes: int, error: Optional[str] = None,
+                           session_id: Optional[str] = None) -> None:
+        """写一条练习录入审计日志（数据溯源用）"""
+        import json
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO practice_audit_log
+                (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (channel, method, practice_date.isoformat(),
+                  json.dumps(input_items, ensure_ascii=False),
+                  json.dumps(result_items, ensure_ascii=False),
+                  total_minutes, error, session_id))
             conn.commit()
 
     def append_behavior_log(self, date: dt.date, entry: Dict) -> None:
@@ -820,7 +864,8 @@ class Database:
                 conn.commit()
         else:
             new_total = sum(it.get("minutes", 0) for it in new_items)
-            self.save_daily_practice(date, new_items, new_total, existing.get("log"))
+            self.save_daily_practice(date, new_items, new_total, existing.get("log"),
+                                   channel='internal', method='remove_record')
 
     def get_daily_practice(self, date: dt.date) -> Optional[Dict]:
         import json
@@ -869,9 +914,11 @@ class Database:
         if existing:
             existing_log = existing.get('log') or ''
             new_log = f"{existing_log}\n{note}".strip()
-            self.save_daily_practice(date, existing['items'], existing['total_minutes'], new_log)
+            self.save_daily_practice(date, existing['items'], existing['total_minutes'], new_log,
+                                   channel='internal', method='note')
         else:
-            self.save_daily_practice(date, [], 0, note, practiced='N')
+            self.save_daily_practice(date, [], 0, note, practiced='N',
+                                   channel='internal', method='note')
 
     def get_progress_from_log(self, date: dt.date) -> Optional[str]:
         """读取某日的进展（从 daily_practices.log，取第一条非空行）"""

@@ -564,14 +564,16 @@ async def api_log(request: Request):
             # extra 追加：创建独立 item 条目，通过 save_daily_practice 合并
             # 同名 item 累加分钟数；不同 item 追加
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
-            db.save_daily_practice(date, items, minutes, '')
+            db.save_daily_practice(date, items, minutes, '',
+                                   channel='kid_app', method='extra')
             return JSONResponse({"ok": True})
 
         # 正常打卡：直接传给 save_daily_practice，由它处理合并逻辑
         # 注意：只传 [{item, item_id, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
         items = [{"item": item_name, "item_id": item_id, "minutes": minutes}]
         total = minutes  # save_daily_practice 会重新计算，这里只作返回值参考
-        db.save_daily_practice(date, items, total, log_note)
+        db.save_daily_practice(date, items, total, log_note,
+                               channel='kid_app', method='timer')
 
         # 打卡成功后，追加行为日志（在 save_daily_practice 之后）
         for entry in behavior_entries:

@@ -1140,7 +1140,8 @@ def practice_log(
     item_map = {it['item_id']: it['name'] for it in all_items}
     resolved_items = [{'item_id': p['item_id'], 'item': item_map.get(p['item_id'], '?'), 'minutes': p['minutes']} for p in parsed]
 
-    total = practice_module.save_practice(practice_date, resolved_items, log=log)
+    total = practice_module.save_practice(practice_date, resolved_items, log=log,
+                                        channel='cli', method='cli_log')
     msg = f"已记录 {practice_date} 练习: {total} 分钟"
     if log:
         msg += f"\n📝 {log}"
