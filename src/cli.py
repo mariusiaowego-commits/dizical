@@ -30,11 +30,14 @@ def _visual_width(line: str) -> int:
     """计算一行去掉rich标签后的显示宽度"""
     return wcwidth.wcswidth(_RICH_TAG.sub("", line))
 
+# curses.A_ITALIC 在部分平台/curses build 缺失，安全回退
+_A_ITALIC = getattr(curses, 'A_ITALIC', 0)
+
 # Rich 标签 → curses 属性映射（ANSI code → curses attr）
 _RICH_STYLE_MAP = {
     "bold": curses.A_BOLD,
     "dim": curses.A_DIM,
-    "italic": curses.A_ITALIC,
+    "italic": _A_ITALIC,
     "reverse": curses.A_REVERSE,
     "cyan": 1,   # 用 color_pair(1)
     "yellow": 2, # 用 color_pair(2)
@@ -79,7 +82,7 @@ def _render_rich_line(line: str, stdscr, row: int, col: int, w: int) -> None:
                 elif p == '2':
                     attr |= curses.A_DIM
                 elif p == '3':
-                    attr |= curses.A_ITALIC
+                    attr |= _A_ITALIC
                 elif p == '7':
                     attr |= curses.A_REVERSE
                 elif p in ('30', '36') and '36' in code:
@@ -1023,9 +1026,6 @@ def create_note(
     console.print(Panel(f"[green]✅ 已创建课程笔记[/green]"))
     console.print(f"📄 文件: {filepath}")
 
-
-if __name__ == "__main__":
-    app()
 
 
 # ============== 练习管理命令 ==============
@@ -2417,3 +2417,6 @@ def backup_list():
     """列出所有备份"""
     info = backup_info()
     console.print(Panel(info, title="数据库备份状态"))
+
+if __name__ == "__main__":
+    app()
