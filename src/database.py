@@ -570,10 +570,10 @@ class Database:
         return best_pid
 
     def validate_item_id(self, item_id: int) -> Optional[int]:
-        """验证 item_id 是否合法（存在于 practice_items 且 is_archived=0）。无效返回 None。"""
+        """验证 item_id 是否合法（存在于 practice_items，含归档）。无效返回 None。"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (item_id,))
+            cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ?', (item_id,))
             if cursor.fetchone():
                 return item_id
             return None
