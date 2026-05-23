@@ -725,9 +725,9 @@ class Database:
                 vid = it.get('item_id')
                 if vid is None:
                     raise ValueError(f"科目 {it.get('item')} 缺少 item_id")
-                cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ? AND is_archived = 0', (vid,))
+                cursor.execute('SELECT item_id FROM practice_items WHERE item_id = ?', (vid,))
                 if not cursor.fetchone():
-                    raise ValueError(f"科目 ID {vid}（{it.get('item')}）不存在或已归档")
+                    raise ValueError(f"科目 ID {vid}（{it.get('item')}）不存在")
 
             cursor.execute('SELECT items, log, practiced FROM daily_practices WHERE date = ?', (date.isoformat(),))
             row = cursor.fetchone()
