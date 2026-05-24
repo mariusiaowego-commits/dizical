@@ -263,6 +263,13 @@
       margin: 20px 0;
     }
 
+    .blindbox-badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+
     .blindbox-badge {
       width: 220px;
       height: 220px;
@@ -680,26 +687,26 @@
     });
 
     // ── 盲盒动效 ─────────────────────────────────────────────────
-    const badge = document.getElementById('today-badge');
-    if (badge) {
-      const checkinDays = parseInt(badge.dataset.checkinDays) || 0;
-      
+    // 盲盒动效
+    const blindboxBadges = document.querySelectorAll('.blindbox-badge');
+    if (blindboxBadges.length > 0) {
       // 入场动画
-      gsap.fromTo(badge, 
+      gsap.fromTo(blindboxBadges, 
         { scale: 0.8, opacity: 0, y: 20 },
-        { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }
+        { scale: 1, opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'back.out(1.7)' }
       );
       
-      // 如果已解锁，播放解锁动画
-      if (badge.classList.contains('unlocked')) {
-        gsap.to(badge, {
-          rotation: 5,
-          duration: 0.3,
-          yoyo: true,
-          repeat: 3,
-          ease: 'power2.inOut'
-        });
-        
+      // 检查是否有今日未解锁的badge
+      const todayBadge = document.querySelector('.blindbox-badge.today');
+      if (todayBadge) {
+        // 今日未解锁，播放呼吸动效（CSS已处理）
+      }
+      
+      // 获取打卡天数
+      const progressEl = document.querySelector('.blindbox-progress');
+      if (progressEl) {
+        const checkinText = progressEl.textContent;
+        const checkinDays = parseInt(checkinText) || 0;
         // 触发庆祝特效
         triggerCelebration(checkinDays);
       }

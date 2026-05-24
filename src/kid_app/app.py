@@ -537,11 +537,15 @@ def _daily_blindbox_html():
     """, (stage_start_str, stage_end_str))
     checkin_days = cur.fetchone()[0]
 
-    # 判断今天是否已打卡
+    # 查询每一天是否已打卡
+    checked_days = set()
     cur = conn.execute("""
-        SELECT 1 FROM daily_practices WHERE date = ? LIMIT 1
-    """, (today.isoformat(),))
-    today_checked = cur.fetchone() is not None
+        SELECT DISTINCT date 
+        FROM daily_practices 
+        WHERE date >= ? AND date <= ?
+    """, (stage_start_str, stage_end_str))
+    for row in cur.fetchall():
+        checked_days.add(row[0])
 
     # 图片映射
     DAILY_CHECKIN_IMAGES = {
@@ -587,15 +591,43 @@ def _daily_blindbox_html():
         7: "完成今日练习即可解锁",
     }
 
-    today_image = DAILY_CHECKIN_IMAGES.get(stage_day, "")
-    today_name = DAILY_CHECKIN_NAMES.get(stage_day, "")
-    today_desc = DAILY_CHECKIN_DESCS.get(stage_day, "")
-    today_cond = DAILY_CHECKIN_CONDS.get(stage_day, "")
-    checked_class = "unlocked" if today_checked else "locked"
-    today_class = "today" if not today_checked else ""
-    locked_flag = "no" if today_checked else "yes"
-
     import html as _html
+
+    # 生成所有badge的HTML
+    badges_html = ""
+    for day in range(1, stage_day + 1):
+        day_date = stage_start + dt.timedelta(days=day - 1)
+        day_date_str = day_date.isoformat()
+        is_checked = day_date_str in checked_days
+        is_today = day == stage_day
+
+        image = DAILY_CHECKIN_IMAGES.get(day, "")
+        name = DAILY_CHECKIN_NAMES.get(day, "")
+        desc = DAILY_CHECKIN_DESCS.get(day, "")
+        cond = DAILY_CHECKIN_CONDS.get(day, "")
+
+        checked_class = "unlocked" if is_checked else "locked"
+        today_class = "today" if is_today and not is_checked else ""
+        locked_flag = "no" if is_checked else "yes"
+
+        badges_html += f"""
+        <div class="blindbox-badge {checked_class} {today_class} b-card" 
+             data-id="daily_checkin_{day}"
+             data-name="{_html.escape(name)}"
+             data-tag="突破"
+             data-cond="{_html.escape(cond)}"
+             data-desc="{_html.escape(desc)}"
+             data-img="{_html.escape(image)}"
+             data-locked="{locked_flag}"
+             onclick="openModal(this)">
+          <img src="{image}" alt="{name}" class="blindbox-img">
+          <div class="blindbox-day-label">第{day}天</div>
+        </div>
+        """
+
+    # 判断今天是否已打卡
+    today_checked = today.isoformat() in checked_days
+
     html = f"""
     <div class="ac-card" id="card-daily-blindbox">
       <div class="blindbox-header">
@@ -607,20 +639,8 @@ def _daily_blindbox_html():
         <span>Stage {stage_order} · 第{stage_day}天</span>
       </div>
       
-      <div class="blindbox-badge-container">
-        <div class="blindbox-badge {checked_class} {today_class} b-card" id="today-badge" 
-             data-checkin-days="{checkin_days}"
-             data-id="daily_checkin_{stage_day}"
-             data-name="{_html.escape(today_name)}"
-             data-tag="突破"
-             data-cond="{_html.escape(today_cond)}"
-             data-desc="{_html.escape(today_desc)}"
-             data-img="{_html.escape(today_image)}"
-             data-locked="{locked_flag}"
-             onclick="openModal(this)">
-          <img src="{today_image}" alt="{today_name}" class="blindbox-img">
-          <div class="blindbox-day-label">第{stage_day}天</div>
-        </div>
+      <div class="blindbox-badges-grid">
+        {badges_html}
       </div>
       
       <div class="blindbox-hint">
