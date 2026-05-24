@@ -565,11 +565,37 @@ def _daily_blindbox_html():
         7: "🗺️ 终极神话",
     }
 
+    # 盲盒描述
+    DAILY_CHECKIN_DESCS = {
+        1: "ok哥每天赶海第一件事不是看潮水，是看桶——今天桶空着，大海准备了什么？他刚弯腰，一只粉色河豚\"噗\"地蹦进桶里，气得圆滚滚的，像个生气的汤圆。ok哥说：\"哟，这河豚气鼓鼓的，跟我周一早上不想起床的样子一模一样！\"你周一打卡，河豚就是你的开工信号——它虽然气鼓鼓的，但它来了，就说明大海今天给你留了惊喜！",
+        2: "ok哥最爱的词就是\"爆桶\"——桶装满了叫爆桶，桶装太满了也叫爆桶，桶里跳出一只大螃蟹还叫爆桶。今天他从沙子里拽出一只拳头大的红螃蟹，螃蟹死活不肯松钳，一夹——正好夹住YoYo的笛梢！YoYo使劲拔笛子，螃蟹使劲夹笛子，ok哥在旁边不帮忙，光顾着喊：\"大货！大货！别动让我拍！\"你周二打卡，这只螃蟹就是你的——它夹着你的笛子不放，就像你坚持练笛不放弃一样！",
+        3: "ok哥抓过无数海鲜，但章鱼是他一生的对手。上次他抓了一只，章鱼八条腿分别吸在他的帽子、眼镜、桶、YoYo的笛子上，还剩三条腿悠闲地给自己扇风。ok哥说：\"这哥们比我还能抓——它把我抓住了！\"你周三打卡，章鱼就是你的\"周中恶魔\"——练笛练到周三最累了，这只章鱼就像你的疲惫，缠着你不放，但你看ok哥笑成那样，就知道其实它也是你的开心果！",
+        4: "赶海最浪漫的时刻不是抓到大货，是你在海边捡到一枚海螺，贴到耳朵上——\"呜——\"，里面好像藏着整片大海的声音。ok哥说：\"我赶海十几年，海螺听过无数，但没有一个像今天这枚——它里面传出来的不是海浪声，是笛声！\"他把海螺递给YoYo，YoYo贴到耳朵上，里面飘出了彩虹色的乐谱。你周四打卡，这枚极光海螺就是你的回声——你吹进去的每一个音符，大海都记住了！",
+        5: "周五了！ok哥说：\"赶海一整周，今天该开大奖了！\"他一铲子下去，沙子里蹦出一个金灿灿的宝箱，打开一看——不是金币，不是珍珠，是一枚比脸还大的黄金海星和一本发光的乐谱！ok哥愣了一秒，然后对着镜头比了个\"OK\"：\"收货！比爆桶还爽！\"你周五打卡，放学了大解放，宝箱为你打开，这周最亮的奖励归你！",
+        6: "ok哥赶海赶了一周，今晚他决定来点不一样的——夜赶海！手电筒一开，海面突然浮起一只半透明的魔鬼鱼，浑身发着梦幻紫光，像一片会飞的光。ok哥说：\"我赶海这么多年，夜光的见过不少，但会跟着笛声游的我头一回见！\"YoYo开始吹笛，魔鬼鱼真的跟着笛声的节奏游。你周六打卡，夜光魔鬼鱼为你亮起来——周末的夜晚，笛声和荧光交织，这是属于你的深海演唱会！",
+        7: "ok哥换上了他的船长服——虽然这衣服他自己都忘了什么时候买的，但他说：\"大结局必须有仪式感！\"海浪突然退去，沙滩上浮现出一个蓝色光环，一条由海水聚成的小神龙从光环中腾空而起，嘴里叼着一个玻璃漂流瓶。ok哥说：\"我赶了一辈子海，今天终于赶到了龙！\"瓶子里面是一张金色的乐谱，是这周你吹过的所有曲子的终极合集。你周日打卡，一周完美收官，神龙亲自给你颁奖！",
+    }
+
+    # 盲盒条件描述
+    DAILY_CHECKIN_CONDS = {
+        1: "完成今日练习即可解锁",
+        2: "完成今日练习即可解锁",
+        3: "完成今日练习即可解锁",
+        4: "完成今日练习即可解锁",
+        5: "完成今日练习即可解锁",
+        6: "完成今日练习即可解锁",
+        7: "完成今日练习即可解锁",
+    }
+
     today_image = DAILY_CHECKIN_IMAGES.get(stage_day, "")
     today_name = DAILY_CHECKIN_NAMES.get(stage_day, "")
+    today_desc = DAILY_CHECKIN_DESCS.get(stage_day, "")
+    today_cond = DAILY_CHECKIN_CONDS.get(stage_day, "")
     checked_class = "unlocked" if today_checked else "locked"
     today_class = "today" if not today_checked else ""
+    locked_flag = "no" if today_checked else "yes"
 
+    import html as _html
     html = f"""
     <div class="ac-card" id="card-daily-blindbox">
       <div class="blindbox-header">
@@ -582,8 +608,16 @@ def _daily_blindbox_html():
       </div>
       
       <div class="blindbox-badge-container">
-        <div class="blindbox-badge {checked_class} {today_class}" id="today-badge" 
-             data-checkin-days="{checkin_days}">
+        <div class="blindbox-badge {checked_class} {today_class} b-card" id="today-badge" 
+             data-checkin-days="{checkin_days}"
+             data-id="daily_checkin_{stage_day}"
+             data-name="{_html.escape(today_name)}"
+             data-tag="突破"
+             data-cond="{_html.escape(today_cond)}"
+             data-desc="{_html.escape(today_desc)}"
+             data-img="{_html.escape(today_image)}"
+             data-locked="{locked_flag}"
+             onclick="openModal(this)">
           <img src="{today_image}" alt="{today_name}" class="blindbox-img">
           <div class="blindbox-day-label">第{stage_day}天</div>
         </div>
