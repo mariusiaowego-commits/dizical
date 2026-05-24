@@ -22,6 +22,7 @@ class CalcResult:
     extra: object          # 额外数据（如 top_items 列表）
     achieved_at: str | None
     condition: str         # 显示用条件文案
+    seasonal_type: str = "monthly"  # seasonal badge 的周期类型
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,31 +237,111 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _calc_seasonal(conn: sqlite3.Connection, aid: str,
+                   seasonal_type: str,
                    today: date,
                    streak: int, total_mins: int,
                    all_item_ids: set[int]) -> CalcResult:
     """
     计算单个 seasonal 类型成就。返回 CalcResult，achieved_at=None（seasonal 无固定解锁日期）。
+    seasonal_type: 'daily' | 'weekly' | 'monthly' | 'stage'
     """
     now_year, now_month = today.year, today.month
 
-    # ── total_60: 当月累计 > 60分钟 ──────────────────────────────
+    # ── daily: 基于 stage 的每日打卡盲盒 ───────────────────────
+    if seasonal_type == "daily":
+        # 获取当前stage
+        cur = conn.execute("""
+            SELECT stage_start, stage_end, stage_order 
+            FROM weekly_assignments 
+            WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
+        """)
+        stage_row = cur.fetchone()
+        if not stage_row:
+            return CalcResult(False, 0, None, None, "无stage数据")
+        
+        stage_start_str, stage_end_str, stage_order = stage_row
+        stage_start = date.fromisoformat(stage_start_str)
+        stage_end = date.fromisoformat(stage_end_str)
+        
+        # 计算今天是stage的第几天（1-7）
+        stage_day = (today - stage_start).days + 1
+        if stage_day < 1 or stage_day > 7:
+            return CalcResult(False, 0, None, None, "不在stage范围内")
+        
+        # 计算本周打卡了几天
+        cur = conn.execute("""
+            SELECT COUNT(DISTINCT date) 
+            FROM daily_practices 
+            WHERE date >= ? AND date <= ?
+        """, (stage_start_str, stage_end_str))
+        checkin_days = cur.fetchone()[0]
+        
+        # 判断今天是否已打卡
+        cur = conn.execute("""
+            SELECT 1 FROM daily_practices WHERE date = ? LIMIT 1
+        """, (today.isoformat(),))
+        today_checked = cur.fetchone() is not None
+        
+        achieved = today_checked
+        cond = f"Stage {stage_order} 第{stage_day}天，本周 {checkin_days}/7"
+        
+        return CalcResult(achieved, checkin_days, None, None, cond)
+
+    # ── weekly: 自然周（周一~周日）周期 ─────────────────────────
+    if seasonal_type == "weekly":
+        # 当前自然周：周一 ~ 周日
+        days_since_monday = today.weekday()  # Mon=0, Sun=6
+        week_start = today - timedelta(days=days_since_monday)
+        week_end   = week_start + timedelta(days=6)
+        week_mins = _get_mins_in_range(conn, week_start, today)
+        week_end_s = week_end if week_end <= today else today
+        cond = f"本周累计 ≥ 10 分钟（当前 {week_mins} 分钟）"
+        achieved = week_mins >= 10
+        return CalcResult(achieved, week_mins, None, None, cond)
+
+    # ── monthly: 自然月周期 ────────────────────────────────────
+    if seasonal_type == "monthly":
+        month_start = date(now_year, now_month, 1)
+        if now_month == 12:
+            month_end = date(now_year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = date(now_year, now_month + 1, 1) - timedelta(days=1)
+        month_mins = _get_mins_in_range(conn, month_start, today)
+        achieved = month_mins >= 60
+        cond = f"当月累计 ≥ 60 分钟（当前 {month_mins} 分钟）"
+        return CalcResult(achieved, month_mins, None, None, cond)
+
+    # ── stage: 课程赛季周期 ────────────────────────────────────
+    # early_riser / little_chick_commander / first_to_act — 按小时判断
+    threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
+    if aid in threshold_map:
+        threshold = threshold_map[aid]
+        month_start = date(now_year, now_month, 1)
+        cur = conn.execute(
+            "SELECT created_at FROM daily_practices WHERE date >= ? AND date <= ? ORDER BY created_at ASC LIMIT 1",
+            (month_start.isoformat(), today.isoformat()))
+        row = cur.fetchone()
+        if row:
+            from datetime import datetime
+            ts = datetime.fromisoformat(row[0])
+            achieved = ts.hour < threshold
+            cond = f"当月首次打卡{ts.hour}:{ts.minute:02d}，需早于{threshold}:00"
+        else:
+            achieved = False
+            cond = f"当月暂无练习记录，需早于{threshold}:00"
+        return CalcResult(achieved, threshold, None, None, cond)
+
     if aid == "total_60":
         month_start = date(now_year, now_month, 1)
         if now_month == 12:
             month_end = date(now_year + 1, 1, 1) - timedelta(days=1)
         else:
             month_end = date(now_year, now_month + 1, 1) - timedelta(days=1)
-        cur = conn.execute(
-            "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date >= ? AND date <= ?",
-            (month_start.isoformat(), month_end.isoformat()))
-        month_mins = int(cur.fetchone()[0])
+        month_mins = _get_mins_in_range(conn, month_start, today)
         achieved = month_mins >= 60
         cond = f"当月累计 ≥ 60 分钟（当前 {month_mins} 分钟）"
-        return CalcResult(achieved, month_mins, None,
-                          None, cond)
+        return CalcResult(achieved, month_mins, None, None, cond)
 
-    # ── week_champ: 本 stage 周 > 上 stage 周 ─────────────────────
     if aid == "week_champ":
         curr_stage, prev_stage = _get_stage_range(conn)
         if not curr_stage or not prev_stage:
@@ -277,7 +358,6 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                 f"阶段 {curr_stage['stage_order']} vs {prev_stage['stage_order']}")
         return CalcResult(achieved, curr_mins, prev_mins, None, cond)
 
-    # ── full_month: 本月 > 上月 ─────────────────────────────────
     if aid == "full_month":
         this_month_start = date(now_year, now_month, 1)
         if now_month == 1:
@@ -292,7 +372,6 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         cond = f"本月 {this_mins} > 上月 {last_mins}"
         return CalcResult(achieved, this_mins, last_mins, None, cond)
 
-    # ── top1: 当月第1科目 ────────────────────────────────────────
     if aid == "top1":
         month_start = date(now_year, now_month, 1)
         month_top = _get_top_items(conn, limit=1, start=month_start, end=today)
@@ -302,26 +381,6 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             return CalcResult(True, mins, item_name, None, cond)
         else:
             return CalcResult(False, 0, None, None, "当月第1科目（暂无数据）")
-
-    # ── early_riser / little_chick_commander / first_to_act ─────
-    # 当月首次打卡(created_at)早于阈值时间
-    if aid in ("early_riser", "little_chick_commander", "first_to_act"):
-        threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
-        threshold = threshold_map[aid]
-        month_start = date(now_year, now_month, 1)
-        cur = conn.execute(
-            "SELECT created_at FROM daily_practices WHERE date >= ? AND date <= ? ORDER BY created_at ASC LIMIT 1",
-            (month_start.isoformat(), today.isoformat()))
-        row = cur.fetchone()
-        if row:
-            from datetime import datetime
-            ts = datetime.fromisoformat(row[0])
-            achieved = ts.hour < threshold
-            cond = f"当月首次打卡{ts.hour}:{ts.minute:02d}，需早于{threshold}:00"
-        else:
-            achieved = False
-            cond = f"当月暂无练习记录，需早于{threshold}:00"
-        return CalcResult(achieved, threshold, None, None, cond)
 
     return CalcResult(False, 0, None, None, "")
 
@@ -355,8 +414,9 @@ def calc_all() -> dict[str, CalcResult]:
         cat = ach["category"]
 
         if cat == "seasonal":
+            seasonal_type = ach.get("seasonal_type", "monthly")
             results[aid] = _calc_seasonal(
-                conn, aid, today, streak, total_mins, all_item_ids)
+                conn, aid, seasonal_type, today, streak, total_mins, all_item_ids)
         else:  # milestone
             results[aid] = _calc_milestone(
                 conn, aid, stats, streak, total_mins,

@@ -1,9 +1,21 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-22
-**当前阶段**: 练习科目配置管理台 Phase 1 MVP ✅ 已合并 main
+**最后更新**: 2026-05-24
+**当前阶段**: 每日打卡盲盒功能开发
 
 ## 阶段记录
+
+**2026-05-24 — 每日打卡盲盒功能**:
+- **功能**: 基于stage周期的7天动态徽章系统，用"随机性"对抗每日打卡疲劳
+- **设计**: 每天展示当天的盲盒badge（220x220大图），打卡后解锁彩色版，未打卡显示灰化版
+- **图片**: 7张OK哥赶海主题badge（河豚→螃蟹→章鱼→海螺→宝箱→魔鬼鱼→神龙）
+- **动效**: GSAP入场动画 + 根据打卡天数触发不同强度的confetti特效
+- **技术**: 
+  - `app.py`: 新增 `_daily_blindbox_html()` 函数
+  - `achievement_definitions.py`: 修改daily类型计算逻辑，基于stage_start/stage_end
+  - `achievements.html`: 新增卡片区域+CSS样式+JS动效
+- **分支**: `feat/badge-design-dev`
+- **commit**: `90ab086`
 
 **2026-05-22 — 配置台 PIN 验证逻辑修复**:
 - **Bug**: Jinja2 模板 `{{ pin_locked | default('false') }}` 输出字符串 `'false'`，在 JavaScript 中是真值

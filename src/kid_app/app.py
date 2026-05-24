@@ -486,12 +486,12 @@ def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv,
     lock_icon = "" if achieved else (
         "<img class='b-lock' src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E\" alt='🔒'>"
     )
-
     return (
         f"<div class='b-card {state_cls}' "
         f"data-id='{_html.escape(ach_id)}' "
         f"data-name='{_html.escape(name)}' "
         f"data-tag='{_html.escape(ach_type)}' "
+        f"data-aid='{_html.escape(ach_id)}' "
         f"data-cond=\"{cond_safe}\" "
         f"data-desc=\"{desc_safe}\" "
         f"data-img='{_html.escape(card_badge_url)}' "
@@ -503,6 +503,98 @@ def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv,
         f"  {lock_icon}"
         f"</div>"
     )
+
+
+def _daily_blindbox_html():
+    """生成每日打卡盲盒卡片 HTML"""
+    conn = db._get_connection()
+    today = dt.date.today()
+
+    # 获取当前stage
+    cur = conn.execute("""
+        SELECT stage_start, stage_end, stage_order 
+        FROM weekly_assignments 
+        WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
+    """)
+    stage_row = cur.fetchone()
+    if not stage_row:
+        return "", 0
+
+    stage_start_str, stage_end_str, stage_order = stage_row
+    stage_start = dt.date.fromisoformat(stage_start_str)
+    stage_end = dt.date.fromisoformat(stage_end_str)
+
+    # 计算今天是stage的第几天（1-7）
+    stage_day = (today - stage_start).days + 1
+    if stage_day < 1 or stage_day > 7:
+        return "", 0  # 不在stage范围内
+
+    # 计算本周打卡了几天
+    cur = conn.execute("""
+        SELECT COUNT(DISTINCT date) 
+        FROM daily_practices 
+        WHERE date >= ? AND date <= ?
+    """, (stage_start_str, stage_end_str))
+    checkin_days = cur.fetchone()[0]
+
+    # 判断今天是否已打卡
+    cur = conn.execute("""
+        SELECT 1 FROM daily_practices WHERE date = ? LIMIT 1
+    """, (today.isoformat(),))
+    today_checked = cur.fetchone() is not None
+
+    # 图片映射
+    DAILY_CHECKIN_IMAGES = {
+        1: "/static/badges/daily_checkin_1.png",
+        2: "/static/badges/daily_checkin_2.png",
+        3: "/static/badges/daily_checkin_3.png",
+        4: "/static/badges/daily_checkin_4.png",
+        5: "/static/badges/daily_checkin_5.png",
+        6: "/static/badges/daily_checkin_6.png",
+        7: "/static/badges/daily_checkin_7.png",
+    }
+
+    # 盲盒名称
+    DAILY_CHECKIN_NAMES = {
+        1: "🐡 惊喜起点",
+        2: "🦀️ 爆桶狂欢",
+        3: "🐙 爆笑羁绊",
+        4: "🐚 声音共鸣",
+        5: "🌟 狂欢大奖",
+        6: "🪼 最后高光",
+        7: "🗺️ 终极神话",
+    }
+
+    today_image = DAILY_CHECKIN_IMAGES.get(stage_day, "")
+    today_name = DAILY_CHECKIN_NAMES.get(stage_day, "")
+    checked_class = "unlocked" if today_checked else "locked"
+    today_class = "today" if not today_checked else ""
+
+    html = f"""
+    <div class="ac-card" id="card-daily-blindbox">
+      <div class="blindbox-header">
+        <span class="blindbox-title">🎁 每日打卡盲盒</span>
+        <span class="blindbox-progress">{checkin_days}/7</span>
+      </div>
+      
+      <div class="blindbox-stage-info">
+        <span>Stage {stage_order} · 第{stage_day}天</span>
+      </div>
+      
+      <div class="blindbox-badge-container">
+        <div class="blindbox-badge {checked_class} {today_class}" id="today-badge" 
+             data-checkin-days="{checkin_days}">
+          <img src="{today_image}" alt="{today_name}" class="blindbox-img">
+          <div class="blindbox-day-label">第{stage_day}天</div>
+        </div>
+      </div>
+      
+      <div class="blindbox-hint">
+        {"<span class='hint-unlocked'>✅ 今日已解锁</span>" if today_checked else "<span class='hint-locked'>🔒 完成今日练习解锁</span>"}
+      </div>
+    </div>
+    """
+    return html, checkin_days
 
 # ─── API: 某日练习明细 ─────────────────────────────────────────────────────
 @app.get("/api/practices/{date_str}")
@@ -942,6 +1034,9 @@ def achievements_page():
     # ── 卡片3: 勋章展示 ────────────────────────────────
     milestone_html = _milestone_html("seasonal")
 
+    # ── 卡片3.5: 每日打卡盲盒 ─────────────────────────
+    daily_blindbox_html, checkin_days = _daily_blindbox_html()
+
     # ── 练习看板后3格：TOP项目展示 ───────────────────
     last_top = _calc_last_practice_top(2)
     week_top = _calc_week_top(2)
@@ -1005,6 +1100,8 @@ def achievements_page():
         month_top2_name=month_top2_name,
         month_top2_mins=month_top2_mins,
         milestone_html=milestone_html,
+        daily_blindbox_html=daily_blindbox_html,
+        checkin_days=checkin_days,
     )
 
 @app.get("/badges", response_class=HTMLResponse)

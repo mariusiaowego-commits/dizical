@@ -1,5 +1,30 @@
 # dizical vibe coding log
 
+## 2026-05-24 — 每日打卡盲盒功能
+
+### 功能设计
+- 基于stage周期的7天动态徽章系统，用"随机性"对抗每日打卡疲劳
+- 每天展示当天的盲盒badge（220x220大图），打卡后解锁彩色版，未打卡显示灰化版
+- 7张OK哥赶海主题badge（河豚→螃蟹→章鱼→海螺→宝箱→魔鬼鱼→神龙）
+- 根据打卡天数触发不同强度的GSAP动效和confetti特效
+
+### 技术实现
+- `app.py`: 新增 `_daily_blindbox_html()` 函数，基于stage_start/stage_end计算
+- `achievement_definitions.py`: 修改daily类型计算逻辑，支持stage周期
+- `achievements.html`: 新增卡片区域+CSS样式+JS动效
+- 图片: 7张badge图存放在 `static/badges/daily_checkin_1-7.png`
+
+### MRD来源
+- 文档: `/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/tqob/05-Coding/project-dizical/PRDs/mrd-每日打卡盲盒.md`
+- 技术方案: `/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/tqob/05-Coding/project-dizical/PRDs/tech-spec-每日打卡盲盒.md`
+
+### Git
+- 分支: `feat/badge-design-dev`
+- commit: `90ab086`
+- 已推送到GitHub
+
+---
+
 ## 2026-05-24 — 练习记录数据修正
 
 ### 变更
@@ -76,7 +101,6 @@
 - 待提交
 
 ---
-
 ## 2026-05-22 — 三栏布局 grid overflow 修复 + box-shadow
 
 ### Bug
