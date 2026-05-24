@@ -247,14 +247,45 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
     """
     now_year, now_month = today.year, today.month
 
-    # ── daily: 当天有练习记录即为达成 ───────────────────────────
+    # ── daily: 基于 stage 的每日打卡盲盒 ───────────────────────
     if seasonal_type == "daily":
-        cur = conn.execute(
-            "SELECT 1 FROM daily_practices WHERE date = ? LIMIT 1",
-            (today.isoformat(),))
-        achieved = cur.fetchone() is not None
-        cond = f"今日{'已' if achieved else '未'}打卡"
-        return CalcResult(achieved, 1 if achieved else 0, None, None, cond)
+        # 获取当前stage
+        cur = conn.execute("""
+            SELECT stage_start, stage_end, stage_order 
+            FROM weekly_assignments 
+            WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
+        """)
+        stage_row = cur.fetchone()
+        if not stage_row:
+            return CalcResult(False, 0, None, None, "无stage数据")
+        
+        stage_start_str, stage_end_str, stage_order = stage_row
+        stage_start = date.fromisoformat(stage_start_str)
+        stage_end = date.fromisoformat(stage_end_str)
+        
+        # 计算今天是stage的第几天（1-7）
+        stage_day = (today - stage_start).days + 1
+        if stage_day < 1 or stage_day > 7:
+            return CalcResult(False, 0, None, None, "不在stage范围内")
+        
+        # 计算本周打卡了几天
+        cur = conn.execute("""
+            SELECT COUNT(DISTINCT date) 
+            FROM daily_practices 
+            WHERE date >= ? AND date <= ?
+        """, (stage_start_str, stage_end_str))
+        checkin_days = cur.fetchone()[0]
+        
+        # 判断今天是否已打卡
+        cur = conn.execute("""
+            SELECT 1 FROM daily_practices WHERE date = ? LIMIT 1
+        """, (today.isoformat(),))
+        today_checked = cur.fetchone() is not None
+        
+        achieved = today_checked
+        cond = f"Stage {stage_order} 第{stage_day}天，本周 {checkin_days}/7"
+        
+        return CalcResult(achieved, checkin_days, None, None, cond)
 
     # ── weekly: 自然周（周一~周日）周期 ─────────────────────────
     if seasonal_type == "weekly":

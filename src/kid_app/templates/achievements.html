@@ -6,6 +6,7 @@
   <title>我的成就 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <style>
     body { padding-bottom: 80px; }
     .nav {
@@ -226,6 +227,112 @@
       width: 20px; height: 20px;
       font-size: 14px; opacity: 0.55;
     }
+
+    /* ── 每日打卡盲盒 ── */
+    .blindbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .blindbox-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .blindbox-progress {
+      font-size: 16px;
+      font-weight: 600;
+      color: #FF6B35;
+      background: rgba(255, 107, 53, 0.1);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .blindbox-stage-info {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-bottom: 16px;
+    }
+
+    .blindbox-badge-container {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .blindbox-badge {
+      width: 220px;
+      height: 220px;
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .blindbox-badge:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .blindbox-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .blindbox-badge.locked .blindbox-img {
+      filter: grayscale(1) brightness(0.9);
+      opacity: 0.7;
+    }
+
+    .blindbox-badge.unlocked {
+      box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+    }
+
+    .blindbox-badge.unlocked .blindbox-img {
+      filter: none;
+      opacity: 1;
+    }
+
+    .blindbox-day-label {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+
+    .blindbox-hint {
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .hint-unlocked {
+      color: #27AE60;
+      font-weight: 600;
+    }
+
+    .hint-locked {
+      color: #7F8C8D;
+      font-weight: 500;
+    }
+
+    .blindbox-badge.locked.today {
+      animation: breathe 2s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(255, 107, 53, 0.6); }
+    }
   </style>
 </head>
 <body>
@@ -252,6 +359,9 @@
     </div>
     <div class="week-pct-text">{{week_pct}}% 完成</div>
   </div>
+
+  <!-- 卡片1.5: 每日打卡盲盒 -->
+  {{daily_blindbox_html}}
 
   <!-- 卡片2: 练习看板 -->
   <div class="ac-card" id="card-board">
@@ -567,6 +677,64 @@
         });
       });
     });
+
+    // ── 盲盒动效 ─────────────────────────────────────────────────
+    const badge = document.getElementById('today-badge');
+    if (badge) {
+      const checkinDays = parseInt(badge.dataset.checkinDays) || 0;
+      
+      // 入场动画
+      gsap.fromTo(badge, 
+        { scale: 0.8, opacity: 0, y: 20 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }
+      );
+      
+      // 如果已解锁，播放解锁动画
+      if (badge.classList.contains('unlocked')) {
+        gsap.to(badge, {
+          rotation: 5,
+          duration: 0.3,
+          yoyo: true,
+          repeat: 3,
+          ease: 'power2.inOut'
+        });
+        
+        // 触发庆祝特效
+        triggerCelebration(checkinDays);
+      }
+    }
+
+    function triggerCelebration(checkinDays) {
+      if (checkinDays === 7) {
+        // 7/7: dramatic confetti
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 200,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ['#FF6B35', '#FFD700', '#FF69B4', '#00CED1', '#9370DB']
+          });
+        }
+      } else if (checkinDays >= 4) {
+        // 4/7-6/7: 中等粒子
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 80,
+            spread: 60,
+            origin: { y: 0.7 }
+          });
+        }
+      } else if (checkinDays >= 1) {
+        // 1/7-3/7: 轻微粒子
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 30,
+            spread: 40,
+            origin: { y: 0.8 }
+          });
+        }
+      }
+    }
   </script>
 </body>
 </html>
