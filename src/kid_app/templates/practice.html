@@ -666,7 +666,7 @@
 
     function finishEarly() {
       if (finishPending) return;       // 防双击：已提前结束则忽略
-      if (!started && !timerRunning) return;  // 计时器未启动则忽略
+      if (elapsed === 0) return;       // 从未计时则忽略（暂停态elapsed>0，允许提前结束）
       clearInterval(timerInterval);
       timerRunning = false;
       finishPending = true;  // 标记提前结束但未打卡
