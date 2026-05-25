@@ -698,16 +698,28 @@
           timerRunning = false;
           finishPending = false;
           fireConfetti();
-          document.querySelector('#confirmArea p').innerHTML = '🎉 打卡成功！太棒啦！';
+          // 显示成功消息，但保留 confirmMins 元素（后续打卡还需要它）
+          const confirmP = document.querySelector('#confirmArea p');
+          confirmP.dataset.originalHtml = confirmP.innerHTML;
+          confirmP.innerHTML = '🎉 打卡成功！太棒啦！';
           document.getElementById('confirmArea').classList.add('show');
           gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
           loadTodayRecords();
           setTimeout(() => {
-            resetTimer();
-            document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
-            selectedItem = null;
+            // 恢复 confirmArea 原始 HTML（包含 confirmMins 元素）
+            const confirmP = document.querySelector('#confirmArea p');
+            if (confirmP.dataset.originalHtml) {
+              confirmP.innerHTML = confirmP.dataset.originalHtml;
+              delete confirmP.dataset.originalHtml;
+            }
+            // 只有没开始新计时才重置（防止打卡后立即继续练习被误清零）
+            if (!started) {
+              resetTimer();
+              document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
+              selectedItem = null;
+              updateReqPanel('');
+            }
             document.getElementById('confirmArea').classList.remove('show');
-            updateReqPanel('');
           }, 2500);
         } else {
           alert('打卡失败：' + (json.message || json.error));
