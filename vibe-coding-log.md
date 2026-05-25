@@ -1,5 +1,31 @@
 # dizical vibe coding log
 
+## 2026-05-25 — 提前结束计时 bug 修复 + 弹窗确认
+
+### Bug 修复
+1. **双击覆盖**: `finishEarly()` 无防抖，iPad 双击触发两次，第二次 elapsed=0 把正确时间覆盖成 1 分钟
+2. **submitting 卡死**: `submitPractice()` 无 try/catch，网络异常后 `submitting` 永远为 true，打卡功能瘫痪
+3. **confirmMins 元素被删**: 打卡成功后 `innerHTML = '🎉 打卡成功！太棒啦！'` 把 `<strong id="confirmMins">` 删了，第二次 `getElementById` 返回 null 报错
+4. **暂停态误拦截**: 暂停后 `started=false, timerRunning=false`，原守卫 `!started && !timerRunning` 把暂停态也拦了
+5. **2500ms 定时器误清零**: 打卡后 setTimeout 无条件 resetTimer，如果用户在 2500ms 内开始新计时，elapsed 被清零
+
+### 修复方案
+- `finishEarly()`: 加 `finishPending` 防双击 + `elapsed === 0` 守卫 + 先保存 elapsed 再清零
+- `submitPractice()`: try/catch/finally 包裹，finally 重置 submitting
+- 打卡成功时保存原始 HTML，2500ms 后恢复
+- setTimeout 里检查 `!started`，已开始新计时则跳过 resetTimer
+
+### 功能改进
+- 提前结束改为弹窗二次确认，显示练习分钟数 + gsap 入场动效
+- 确认打卡 → 提交 + 庆祝动效（confetti + gsap）
+- 继续练习 → 关闭弹窗，恢复计时状态
+
+### Git
+- 分支: `fix/finish-early-race` → PR #37 → 已合并 main
+- commits: `3bb67f0` + `741507d` + `e988e7c` + `bb6b0a5`
+
+---
+
 ## 2026-05-24 — 每日打卡盲盒功能
 
 ### 功能设计
