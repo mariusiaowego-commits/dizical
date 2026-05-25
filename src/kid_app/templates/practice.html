@@ -43,6 +43,34 @@
     .modal-actions .btn-stay { background: #4ECDC4; color: white; }
     .modal-actions .btn-leave { background: #FF6B6B; color: white; }
 
+    /* 提前结束确认弹窗 */
+    #finishEarlyModal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    #finishEarlyModal.open { display: flex; }
+    .finish-modal-box {
+      background: white; border-radius: 24px; padding: 32px 28px;
+      max-width: 340px; width: 100%; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .finish-modal-box .finish-icon { font-size: 48px; margin-bottom: 12px; }
+    .finish-modal-box h3 { font-size: 22px; color: #2E7D32; margin-bottom: 8px; }
+    .finish-modal-box .finish-mins {
+      font-size: 56px; font-weight: 800; color: #4ECDC4;
+      line-height: 1.1; margin: 12px 0;
+    }
+    .finish-modal-box .finish-mins-label { font-size: 16px; color: #7F8C8D; margin-bottom: 24px; }
+    .finish-modal-actions { display: flex; gap: 10px; flex-direction: column; }
+    .finish-modal-actions button {
+      padding: 16px; border: none; border-radius: 16px;
+      font-size: 18px; font-weight: bold; cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .finish-modal-actions button:active { transform: scale(0.96); }
+    .finish-modal-actions .btn-confirm { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
+    .finish-modal-actions .btn-cancel { background: #F0F0F0; color: #666; }
+
     /* 顶部状态栏 */
     .top-bar {
       display: flex; justify-content: space-between; align-items: center;
@@ -283,6 +311,20 @@
       <div class="modal-actions">
         <button class="btn-stay" onclick="closeTimerProtect()">继续练习</button>
         <button class="btn-leave" onclick="confirmLeave()">确认离开</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提前结束确认弹窗 -->
+  <div id="finishEarlyModal">
+    <div class="finish-modal-box">
+      <div class="finish-icon">⏱️</div>
+      <h3>提前结束练习</h3>
+      <div class="finish-mins" id="finishMinsDisplay">0</div>
+      <div class="finish-mins-label">分钟</div>
+      <div class="finish-modal-actions">
+        <button class="btn-confirm" onclick="confirmFinishEarly()">✅ 确认打卡</button>
+        <button class="btn-cancel" onclick="cancelFinishEarly()">继续练习</button>
       </div>
     </div>
   </div>
@@ -676,9 +718,47 @@
       started = false;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('timer-display').classList.remove('running');
-      document.getElementById('confirmMins').textContent = finalMins;
-      document.getElementById('confirmArea').classList.add('show');
       document.getElementById('startBtn').textContent = '开始';
+      // 显示弹窗确认
+      document.getElementById('finishMinsDisplay').textContent = finalMins;
+      document.getElementById('finishEarlyModal').classList.add('open');
+      // 弹窗入场动效
+      gsap.fromTo('.finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.4, ease: 'back.out(2)' });
+    }
+
+    function confirmFinishEarly() {
+      document.getElementById('finishEarlyModal').classList.remove('open');
+      document.getElementById('confirmMins').textContent = document.getElementById('finishMinsDisplay').textContent;
+      submitPractice();
+    }
+
+    function cancelFinishEarly() {
+      document.getElementById('finishEarlyModal').classList.remove('open');
+      // 恢复计时状态，继续练习
+      finishPending = false;
+      started = true;
+      timerRunning = true;
+      document.getElementById('startBtn').textContent = '暂停';
+      document.getElementById('timer-display').classList.add('running');
+      // 恢复 elapsed（从弹窗显示的分钟数反推秒数）
+      const mins = parseInt(document.getElementById('finishMinsDisplay').textContent) || 1;
+      elapsed = (mins - 1) * 60;  // 退回到上一分钟开始
+      timerInterval = setInterval(() => {
+        elapsed++;
+        let m = Math.floor(elapsed / 60).toString().padStart(2,'0');
+        let s = (elapsed % 60).toString().padStart(2,'0');
+        document.getElementById('timer-display').textContent = m + ':' + s;
+        if (elapsed >= duration * 60) {
+          clearInterval(timerInterval);
+          timerRunning = false;
+          started = false;
+          document.getElementById('timer-display').classList.remove('running');
+          document.getElementById('confirmMins').textContent = duration;
+          document.getElementById('confirmArea').classList.add('show');
+          document.getElementById('startBtn').textContent = '开始';
+          playChime();
+        }
+      }, 1000);
     }
 
     async function submitPractice() {
