@@ -665,12 +665,15 @@
     }
 
     function finishEarly() {
+      if (finishPending) return;       // 防双击：已提前结束则忽略
+      if (!started && !timerRunning) return;  // 计时器未启动则忽略
       clearInterval(timerInterval);
-      started = false;
       timerRunning = false;
       finishPending = true;  // 标记提前结束但未打卡
-      const finalMins = Math.max(1, Math.ceil(elapsed / 60));
+      const savedElapsed = elapsed;    // 先保存再清零，防竞态
+      const finalMins = Math.max(1, Math.ceil(savedElapsed / 60));
       elapsed = 0;
+      started = false;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('timer-display').classList.remove('running');
       document.getElementById('confirmMins').textContent = finalMins;
@@ -684,29 +687,36 @@
       let finalMins = parseInt(document.getElementById('confirmMins').textContent) || 0;
       if (finalMins === 0) return;
       submitting = true;
-      let res = await fetch('/api/log', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: finalMins, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]})
-      });
-      let json = await res.json();
-      submitting = false;
-      if (json.ok) {
-        timerRunning = false;
-        fireConfetti();
-        document.querySelector('#confirmArea p').innerHTML = '🎉 打卡成功！太棒啦！';
-        document.getElementById('confirmArea').classList.add('show');
-        gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
-        loadTodayRecords();
-        setTimeout(() => {
-          resetTimer();
-          document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
-          selectedItem = null;
-          document.getElementById('confirmArea').classList.remove('show');
-          updateReqPanel('');
-        }, 2500);
-      } else {
-        alert('打卡失败：' + (json.message || json.error));
+      try {
+        let res = await fetch('/api/log', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: finalMins, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]})
+        });
+        let json = await res.json();
+        if (json.ok) {
+          timerRunning = false;
+          finishPending = false;
+          fireConfetti();
+          document.querySelector('#confirmArea p').innerHTML = '🎉 打卡成功！太棒啦！';
+          document.getElementById('confirmArea').classList.add('show');
+          gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
+          loadTodayRecords();
+          setTimeout(() => {
+            resetTimer();
+            document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
+            selectedItem = null;
+            document.getElementById('confirmArea').classList.remove('show');
+            updateReqPanel('');
+          }, 2500);
+        } else {
+          alert('打卡失败：' + (json.message || json.error));
+        }
+      } catch (e) {
+        console.error('打卡请求失败:', e);
+        alert('网络错误，请重试');
+      } finally {
+        submitting = false;
       }
     }
 
