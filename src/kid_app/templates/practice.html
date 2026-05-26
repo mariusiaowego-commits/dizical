@@ -917,8 +917,7 @@
       ];
       const el = document.getElementById('practiceFooter');
       if (el) {
-        const d = new Date();
-        const idx = (d.getDate() + d.getMonth() * 31) % quotes.length;
+        const idx = Math.floor(Math.random() * quotes.length);
         el.textContent = '「 ' + quotes[idx] + ' 」';
       }
     })();
