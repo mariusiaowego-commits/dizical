@@ -22,6 +22,44 @@
     .nav a:active { transform: scale(0.95); }
     .nav a.active { background: var(--primary, #FF6B6B); color: white; }
     .nav-icon { font-size: 20px; }
+
+    /* dayDetail 区域 */
+    #dayDetail { font-size: 16px; }
+    #dayDetail h3 { font-size: 18px; color: #FF6B6B; margin-bottom: 14px; }
+    .detail-empty { text-align: center; color: #BDBDBD; padding: 24px; font-size: 15px; }
+
+    /* 哑铃图 */
+    .dumbbell-chart { width: 100%; }
+    .dumbbell-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #F5F5F5; }
+    .dumbbell-row:last-child { border-bottom: none; }
+    .dumbbell-item-name { min-width: 80px; font-size: 15px; color: #333; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+    .dumbbell-svg-wrap { flex: 1; position: relative; height: 36px; }
+    .dumbbell-bar-wrap { position: absolute; top: 50%; transform: translateY(-50%); left: 0; right: 0; height: 4px; background: #E0E0E0; border-radius: 2px; }
+    .dumbbell-bar-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+    .dumbbell-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+    .dumbbell-marker.yesterday { background: #90A4AE; }
+    .dumbbell-marker.today { background: #27AE60; }
+    .dumbbell-marker.today.decrease { background: #E74C3C; }
+    .dumbbell-marker.today.same { background: #90A4AE; }
+    .dumbbell-marker.today.new-item { background: #FFB300; }
+    .dumbbell-mins { position: absolute; top: -18px; transform: translateX(-50%); font-size: 12px; color: #7F8C8D; white-space: nowrap; }
+    .dumbbell-mins.yesterday { color: #90A4AE; }
+    .dumbbell-mins.today { font-weight: bold; }
+    .dumbbell-mins.today.increase { color: #27AE60; }
+    .dumbbell-mins.today.decrease { color: #E74C3C; }
+    .dumbbell-mins.today.same { color: #7F8C8D; }
+
+    /* 练习轨迹 */
+    .trail-section { margin-top: 14px; padding: 16px; background: #FFF; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .trail-header { font-size: 14px; color: #888; margin-bottom: 12px; }
+    .trail-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 15px; }
+    .trail-time { color: #999; font-size: 13px; min-width: 38px; }
+    .trail-item-tag { background: #E3F2FD; padding: 3px 10px; border-radius: 12px; color: #1565C0; font-size: 14px; }
+    .trail-mins { color: #888; font-size: 14px; }
+
+    /* 图例 */
+    .dumbbell-legend { display: flex; gap: 16px; margin-top: 12px; font-size: 13px; color: #7F8C8D; flex-wrap: wrap; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 4px; }
   </style>
 </head>
 <body>
@@ -60,45 +98,147 @@
 
   <!-- 当天明细区域 -->
   <div id="dayDetail" class="card" style="display:none;margin-top:12px;">
-    <h3 id="detailDate" style="color:#FF6B6B;margin-bottom:12px;"></h3>
-    <div id="detailItems" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-    <div id="detailLog" style="margin-top:10px;font-size:14px;color:#7F8C8D;"></div>
-    <div id="detailEmpty" style="color:#BDC3C7;font-size:15px;"></div>
+    <h3 id="detailDate"></h3>
+    <div id="detailBody"></div>
   </div>
 </body>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+  // ── 哑铃图渲染函数 ──────────────────────────────────────────────────
+  // items: [{name, yesterdayMins, todayMins}], newItems: [name]
+  function renderDumbbellChart(items, newItems) {
+    if (items.length === 0) return '<div class="detail-empty">这两天都没有练习记录</div>';
+
+    // 计算全局最大分钟数，用于等比例定位
+    const allMins = items.map(it => Math.max(it.yesterdayMins, it.todayMins));
+    const maxMins = Math.max(...allMins, 1);
+
+    let html = '<div class="dumbbell-chart">';
+
+    items.forEach(function(it) {
+      const isNew = newItems.includes(it.name);
+      const diff = it.todayMins - it.yesterdayMins;
+      const isIncrease = diff > 0;
+      const isDecrease = diff < 0;
+      const isSame = diff === 0;
+
+      // 计算位置百分比（以 maxMins 为 100%）
+      const yPct = Math.round((it.yesterdayMins / maxMins) * 100);
+      const tPct = Math.round((it.todayMins / maxMins) * 100);
+
+      let todayClass = 'today';
+      let diffLabel = '';
+      if (isNew) {
+        todayClass += ' new-item';
+        diffLabel = '<span style="color:#FFB300;margin-left:4px;">✨ 新科目</span>';
+      } else if (isIncrease) {
+        todayClass += ' increase';
+        diffLabel = '<span style="color:#27AE60;margin-left:4px;">+' + diff + '</span>';
+      } else if (isDecrease) {
+        todayClass += ' decrease';
+        diffLabel = '<span style="color:#E74C3C;margin-left:4px;">' + diff + '</span>';
+      } else {
+        todayClass += ' same';
+      }
+
+      html += '<div class="dumbbell-row">';
+
+      // 科目名
+      html += '<div class="dumbbell-item-name">' + it.name + diffLabel + '</div>';
+
+      // 哑铃条
+      html += '<div class="dumbbell-svg-wrap">';
+
+      // 背景灰条
+      html += '<div class="dumbbell-bar-wrap"></div>';
+
+      // 填充条（从昨天到今天）
+      const fillLeft = yPct;
+      const fillWidth = Math.abs(tPct - yPct);
+      const fillColor = isDecrease ? '#E74C3C' : '#27AE60';
+      if (fillWidth > 0) {
+        html += '<div class="dumbbell-bar-fill" style="left:' + fillLeft + '%;width:' + fillWidth + '%;background:' + fillColor + ';"></div>';
+      }
+
+      // 昨天圆点
+      html += '<div class="dumbbell-marker yesterday" style="left:' + yPct + '%;">';
+      html += '<div class="dumbbell-mins yesterday" style="left:' + yPct + '%;">' + it.yesterdayMins + '分</div>';
+      html += '</div>';
+
+      // 今天圆点
+      html += '<div class="dumbbell-marker ' + todayClass + '" style="left:' + tPct + '%;">';
+      html += '<div class="dumbbell-mins ' + todayClass + '" style="left:' + tPct + '%;">' + it.todayMins + '分</div>';
+      html += '</div>';
+
+      html += '</div>'; // .dumbbell-svg-wrap
+      html += '</div>'; // .dumbbell-row
+    });
+
+    html += '</div>'; // .dumbbell-chart
+
+    // 图例
+    html += '<div class="dumbbell-legend">';
+    html += '<span><span class="legend-dot" style="background:#90A4AE;"></span>昨天</span>';
+    html += '<span><span class="legend-dot" style="background:#27AE60;"></span>增加</span>';
+    html += '<span><span class="legend-dot" style="background:#E74C3C;"></span>减少</span>';
+    html += '<span><span class="legend-dot" style="background:#FFB300;"></span>新科目</span>';
+    html += '</div>';
+
+    return html;
+  }
+
+  // ── 练习轨迹渲染函数 ───────────────────────────────────────────────
+  function renderTrail(behLog, dateStr) {
+    if (!behLog || behLog.length === 0) return '';
+    let html = '<div class="trail-section">';
+    html += '<div class="trail-header">📍 练习轨迹</div>';
+    behLog.forEach(function(entry) {
+      const t = entry.enter_time || '';
+      const timeStr = t ? t.split('T')[1].substring(0, 5) : '--:--';
+      html += '<div class="trail-item">';
+      html += '<span class="trail-time">' + timeStr + '</span>';
+      html += '<span class="trail-item-tag">' + (entry.item || '未知') + '</span>';
+      html += '<span class="trail-mins">' + (entry.minutes || 0) + '分钟</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  // ── 点击日历格子 ──────────────────────────────────────────────────
   document.querySelectorAll('.cal-day:not(.empty)').forEach(function(cell) {
     cell.style.cursor = 'pointer';
     cell.addEventListener('click', function() {
-      var date = this.getAttribute('data-date');
-      if (!date) return;
-      // 选中态切换
+
+      // GSAP 格子动画
       var prev = document.querySelector('.cal-day.selected');
       document.querySelectorAll('.cal-day.selected').forEach(function(c){ c.classList.remove('selected'); });
       this.classList.add('selected');
 
-      // 清除旧 bar 的 GSAP inline transform（让 CSS scaleY(0) 生效）
-      if (prev) {
-        var oldBar = prev.querySelector('.sel-bar');
-        if (oldBar) {
-          gsap.killTweensOf(oldBar);
-          oldBar.style.transform = 'scaleY(0)';
-        }
+      var oldBar = prev ? prev.querySelector('.sel-bar') : null;
+      if (oldBar) {
+        gsap.killTweensOf(oldBar);
+        oldBar.style.transform = 'scaleY(0)';
       }
-
-      // 新格子竖条弹入
       var bar = this.querySelector('.sel-bar');
       if (bar) {
         gsap.fromTo(bar, { scaleY: 0 }, { scaleY: 1, duration: 0.22, ease: 'back.out(2.2)' });
       }
-      // 加载明细
+
+      var date = this.getAttribute('data-date');
+      if (!date) return;
+
       var detailDiv = document.getElementById('dayDetail');
+      var detailBody = document.getElementById('detailBody');
+
+      // 显示并 GSAP 滑入
       detailDiv.style.display = 'block';
       document.getElementById('detailDate').textContent = date;
-      document.getElementById('detailItems').innerHTML = '';
-      document.getElementById('detailLog').textContent = '';
-      document.getElementById('detailEmpty').textContent = '加载中...';
+      document.getElementById('detailDate').style.color = '#FF6B6B';
+      detailBody.innerHTML = '<div style="text-align:center;color:#BDBDBD;padding:24px;">加载中...</div>';
+      gsap.fromTo(detailDiv, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' });
+
       var prevDate = new Date(date);
       prevDate.setDate(prevDate.getDate() - 1);
       var prevDateStr = prevDate.toISOString().split('T')[0];
@@ -106,168 +246,79 @@ document.addEventListener('DOMContentLoaded', function() {
 
       Promise.all([
         fetch('/api/practices/' + date).then(function(r){ return r.json(); }),
-        isToday ? Promise.resolve({items: [], total_minutes: 0}) : fetch('/api/practices/' + prevDateStr).then(function(r){ return r.json(); })
+        isToday ? Promise.resolve({items: [], total_minutes: 0, behavior_log: []})
+                : fetch('/api/practices/' + prevDateStr).then(function(r){ return r.json(); })
       ]).then(function(results) {
         var data = results[0];
         var prevData = results[1];
         var prevItemsMap = {};
         (prevData.items || []).forEach(function(it){ prevItemsMap[it.item] = it.minutes; });
-        var prevOrder = (prevData.items || []).map(function(it){ return it.item; });
 
-        // 今天无数据时显示提示
+        // ── 今天无数据 ──────────────────────────────────────────
         if (isToday && (data.total_minutes === 0 || (Array.isArray(data.items) && data.items.length === 0))) {
-          document.getElementById('detailEmpty').textContent = '今天还没过完，明天来看';
-          document.getElementById('detailItems').innerHTML = '';
-          document.getElementById('detailLog').textContent = '';
-          var behDiv = document.getElementById('detailBehaviorLog');
-          if (behDiv) behDiv.remove();
-          var compDiv = document.getElementById('detailComparison');
-          if (compDiv) compDiv.remove();
+          detailBody.innerHTML = '<div class="detail-empty">今天还没过完，明天来看</div>';
           return;
         }
 
-        // 有数据但今天无对比时，直接显示记录+轨迹，skip对比部分
-        if (isToday) {
-          document.getElementById('detailEmpty').textContent = '';
-          var itemsHtml = '';
-          (data.items || []).forEach(function(it) {
-            itemsHtml += '<span style="background:#E8F5E9;padding:6px 12px;border-radius:20px;font-size:14px;">' + it.item + ' ' + it.minutes + '分钟</span>';
-          });
-          document.getElementById('detailItems').innerHTML = itemsHtml;
-          document.getElementById('detailLog').textContent = data.log || '';
-          var behLog = data.behavior_log || [];
-          var behDiv = document.getElementById('detailBehaviorLog');
-          if (behDiv) behDiv.remove();
-          if (behLog.length > 0) {
-            var behHtml = '<div id="detailBehaviorLog" style="margin-top:14px;padding:16px;background:#FFF;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">';
-            behHtml += '<div style="font-size:13px;color:#888;margin-bottom:12px;">📍 今日练习轨迹</div>';
-            behLog.forEach(function(entry) {
-              var t = entry.enter_time || '';
-              var timeStr = t ? t.split('T')[1].substring(0, 5) : '--:--';
-              behHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px;">';
-              behHtml += '<span style="color:#999;font-size:12px;min-width:36px;">' + timeStr + '</span>';
-              behHtml += '<span style="background:#E3F2FD;padding:3px 10px;border-radius:12px;color:#1565C0;font-size:13px;">' + (entry.item || '未知') + '</span>';
-              behHtml += '<span style="color:#888;font-size:12px;">' + (entry.minutes || 0) + '分钟</span>';
-              behHtml += '</div>';
-            });
-            behHtml += '</div>';
-            document.getElementById('detailItems').insertAdjacentHTML('afterend', behHtml);
-          }
-          var compDiv = document.getElementById('detailComparison');
-          if (compDiv) compDiv.remove();
-          document.getElementById('detailLog').textContent = data.log || '';
-          return;
-        }
-
+        // ── 两天都没数据 ────────────────────────────────────────
         if ((data.total_minutes === 0 || (Array.isArray(data.items) && data.items.length === 0))
             && (prevData.total_minutes === 0 || (Array.isArray(prevData.items) && prevData.items.length === 0))) {
-          document.getElementById('detailEmpty').textContent = '这两天都没有练习记录';
-          document.getElementById('detailItems').innerHTML = '';
-          document.getElementById('detailLog').textContent = '';
-          var behDiv = document.getElementById('detailBehaviorLog');
-          if (behDiv) behDiv.remove();
+          detailBody.innerHTML = '<div class="detail-empty">这两天都没有练习记录</div>';
           return;
         }
 
-        document.getElementById('detailEmpty').textContent = '';
-
-        // 总时长对比
-        var totalDiff = data.total_minutes - prevData.total_minutes;
-        var totalDiffStr = totalDiff > 0 ? '+' + totalDiff : String(totalDiff);
-        var totalDiffColor = totalDiff > 0 ? '#27AE60' : totalDiff < 0 ? '#E74C3C' : '#999';
-
-        // 行为日志轨迹
-        var behLog = data.behavior_log || [];
-        var behDiv = document.getElementById('detailBehaviorLog');
-        if (behDiv) behDiv.remove();
-        if (behLog.length > 0) {
-          var behHtml = '<div id="detailBehaviorLog" style="margin-top:14px;padding:16px;background:#FFF;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">';
-          behHtml += '<div style="font-size:13px;color:#888;margin-bottom:12px;">📍 练习轨迹</div>';
-          behLog.forEach(function(entry, idx) {
-            var t = entry.enter_time || '';
-            var timeStr = t ? t.split('T')[1].substring(0, 5) : '--:--';
-            var item = entry.item || '未知';
-            var mins = entry.minutes || 0;
-            behHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:14px;">';
-            behHtml += '<span style="color:#999;font-size:12px;min-width:36px;">' + timeStr + '</span>';
-            behHtml += '<span style="background:#E3F2FD;padding:3px 10px;border-radius:12px;color:#1565C0;font-size:13px;">' + item + '</span>';
-            behHtml += '<span style="color:#888;font-size:12px;">' + mins + '分钟</span>';
-            behHtml += '</div>';
+        // ── 今天有数据，昨天无数据 ──────────────────────────────
+        if (prevData.total_minutes === 0 || (Array.isArray(prevData.items) && prevData.items.length === 0)) {
+          var items = (data.items || []).map(function(it) {
+            return { name: it.item, yesterdayMins: 0, todayMins: it.minutes || 0 };
           });
-          behHtml += '</div>';
-          document.getElementById('detailItems').insertAdjacentHTML('afterend', behHtml);
+          var newItems = items.map(function(it){ return it.name; });
+          var html = renderDumbbellChart(items, newItems);
+          html += renderTrail(data.behavior_log || [], date);
+          detailBody.innerHTML = html;
+          gsap.fromTo('.dumbbell-row', { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' });
+          return;
         }
 
-        // 逐科目对比
-        var compDiv = document.getElementById('detailComparison');
-        if (compDiv) compDiv.remove();
-        var compHtml = '<div id="detailComparison" style="margin-top:14px;padding:16px;background:#FFF;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">';
-        compHtml += '<div style="font-size:13px;color:#888;margin-bottom:14px;">📊 ' + date + ' vs ' + prevDateStr + '</div>';
+        // ── 两天都有数据：只展示共同科目 ──────────────────────
+        var curItems = data.items || [];
+        var curItemNames = curItems.map(function(it){ return it.item; });
+        var newItems = curItemNames.filter(function(n){ return !(n in prevItemsMap); });
 
-        // 总时长对比行
-        compHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #EEE;margin-bottom:10px;">';
-        compHtml += '<span style="font-size:14px;color:#333;">总时长</span>';
-        compHtml += '<div><span style="font-size:14px;font-weight:bold;color:#333;">' + data.total_minutes + '分钟</span>';
-        compHtml += '<span style="font-size:12px;color:' + totalDiffColor + ';margin-left:6px;">' + totalDiffStr + '分钟</span></div>';
-        compHtml += '</div>';
-
-        // 当天每个科目
-        var curOrder = (data.items || []).map(function(it){ return it.item; });
-        (data.items || []).forEach(function(it) {
-          var itemName = it.item;
-          var curMins = it.minutes || 0;
-          var prevMins = prevItemsMap[itemName] || 0;
-          var diff = curMins - prevMins;
-          var diffStr = diff > 0 ? '+' + diff : String(diff);
-          var diffColor = diff > 0 ? '#27AE60' : diff < 0 ? '#E74C3C' : '#999';
-          var prevIdx = prevOrder.indexOf(itemName);
-          var curIdx = curOrder.indexOf(itemName);
-          var orderChange = '';
-          if (prevIdx >= 0 && curIdx >= 0) {
-            if (curIdx < prevIdx) orderChange = '↑ 前移' + (prevIdx - curIdx);
-            else if (curIdx > prevIdx) orderChange = '↓ 后移' + (curIdx - prevIdx);
-            else orderChange = '＝ 顺序不变';
-          } else if (prevIdx < 0) {
-            orderChange = '🆕 新科目';
-          }
-          compHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #F5F5F5;">';
-          compHtml += '<div>';
-          compHtml += '<div style="font-size:14px;color:#333;">' + itemName + '</div>';
-          compHtml += '<div style="font-size:11px;color:#AAA;">' + orderChange + '</div>';
-          compHtml += '</div>';
-          compHtml += '<div><span style="font-size:14px;color:#333;">' + curMins + '分钟</span>';
-          compHtml += '<span style="font-size:12px;color:' + diffColor + ';margin-left:6px;">' + diffStr + '分钟</span></div>';
-          compHtml += '</div>';
+        // 共同科目
+        var commonItems = curItems.filter(function(it){ return it.item in prevItemsMap; });
+        var dumbbellItems = commonItems.map(function(it) {
+          return {
+            name: it.item,
+            yesterdayMins: prevItemsMap[it.item] || 0,
+            todayMins: it.minutes || 0
+          };
         });
 
-        // 前一天有但当天没有的科目
-        (prevData.items || []).forEach(function(it) {
-          if (!curOrder.includes(it.item)) {
-            compHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;opacity:0.5;">';
-            compHtml += '<div><div style="font-size:14px;color:#999;text-decoration:line-through;">' + it.item + '</div>';
-            compHtml += '<div style="font-size:11px;color:#BBB;">前一天 ' + it.minutes + '分钟（今日未练）</div></div>';
-            compHtml += '<span style="font-size:12px;color:#E74C3C;">-' + it.minutes + '分钟</span>';
-            compHtml += '</div>';
-          }
-        });
+        var html = renderDumbbellChart(dumbbellItems, newItems);
+        html += renderTrail(data.behavior_log || [], date);
+        detailBody.innerHTML = html;
 
-        compHtml += '</div>';
-        document.getElementById('detailItems').insertAdjacentHTML('afterend', compHtml);
-        document.getElementById('detailLog').textContent = data.log || '';
-      })
-        .catch(function() {
-          document.getElementById('detailEmpty').textContent = '加载失败';
-        });
+        // 轨迹 GSAP
+        if ((data.behavior_log || []).length > 0) {
+          gsap.fromTo('.trail-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, stagger: 0.07, ease: 'power2.out', delay: dumbbellItems.length * 0.04 });
+        }
+
+        // 哑铃图行 GSAP
+        if (dumbbellItems.length > 0) {
+          gsap.fromTo('.dumbbell-row', { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' });
+        }
+
+      }).catch(function() {
+        detailBody.innerHTML = '<div class="detail-empty">加载失败</div>';
+      });
     });
   });
-});
-// 页面整体弹入（和 achievements 一样的风格）
-document.addEventListener('DOMContentLoaded', () => {
-  const reportCard = document.querySelector('.card');
-  gsap.fromTo(reportCard,
-    { opacity: 0, scale: 0.82, y: 28 },
-    { opacity: 1, scale: 1, y: 0, duration: 0.65, ease: "back.out(2)" }
-  );
+
+  // 页面整体弹入
+  document.querySelectorAll('.card').forEach(function(card) {
+    gsap.fromTo(card, { opacity: 0, scale: 0.82, y: 28 }, { opacity: 1, scale: 1, y: 0, duration: 0.65, ease: 'back.out(2)', delay: 0.05 });
+  });
 });
 </script>
 </div><!-- .page-content -->
