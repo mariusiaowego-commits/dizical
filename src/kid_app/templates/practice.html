@@ -164,10 +164,13 @@
     .time-btn { padding: 10px 16px; border: 2px solid #4ECDC4; background: white; border-radius: 20px; font-size: 16px; cursor: pointer; }
     .time-btn.selected { background: #4ECDC4; color: white; }
     .action-btns { display: flex; gap: 10px; justify-content: center; }
-    .btn { padding: 12px 24px; border: none; border-radius: 24px; font-size: 17px; font-family: inherit; cursor: pointer; transition: transform 0.1s; }
-    .btn:active { transform: scale(0.96); }
-    .btn-primary { background: #FF6B6B; color: white; }
-    .btn-secondary { background: #4ECDC4; color: white; }
+    .btn { padding: 12px 24px; border: none; border-radius: 24px; font-size: 17px; font-family: inherit; cursor: pointer; transition: transform 0.1s, filter 0.2s; }
+    .btn:hover:not(:disabled) { filter: brightness(1.08); }
+    .btn:active:not(:disabled) { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
+    .btn-danger { background: #FF6B6B; color: white; }
+    .btn-secondary { background: #F0F0F0; color: #555; }
 
     /* 确认区域 */
     .confirm-area {
@@ -203,7 +206,9 @@
     .panel-extra h4 { font-size: 14px; color: #2E7D32; margin: 0; display: flex; align-items: center; gap: 6px; }
     .extra-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
     .extra-btn { padding: 8px 12px; border: 2px solid #7CB87C; background: white; border-radius: 16px; font-size: 15px; cursor: pointer; color: #333; }
-    .extra-btn.selected { background: #7CB87C; color: white; }
+    .extra-btn:hover { filter: brightness(0.95); transform: scale(1.05); }
+    .extra-btn:active { transform: scale(0.95); }
+    .extra-btn.disabled { opacity: 0.45; cursor: not-allowed; }
     .extra-custom { display: flex; gap: 8px; justify-content: center; }
     .extra-custom input {
       width: 80px; padding: 8px; border: 2px solid #7CB87C;
@@ -373,9 +378,10 @@
         <button class="time-btn" onclick="setDuration(30)">30分钟</button>
       </div>
       <div class="action-btns">
-        <button class="btn btn-secondary" id="startBtn" onclick="toggleTimer()">开始</button>
-        <button class="btn btn-primary" onclick="finishEarly()">提前结束</button>
+        <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
+        <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
       </div>
+      <button class="quick-add-toggle" id="quickAddToggle" onclick="toggleQuickAdd()" style="display:block; margin-top:8px; background:none; border:none; color:#4ECDC4; font-size:14px; cursor:pointer; text-decoration:underline; font-family:inherit; padding:4px;">⚡ 快速补录</button>
       <!-- 确认区域 -->
       <div class="confirm-area" id="confirmArea">
         <p>练了 <strong id="confirmMins" class="confirm-mins">0</strong> 分钟！</p>
@@ -556,10 +562,13 @@
       const bubbleName = document.getElementById('bubbleName');
       bubbleName.textContent = name;
       bubble.style.display = 'flex';
-      bubble.classList.add('animate');
+      // 重新触发动画
       bubble.style.animation = 'none';
-      bubble.offsetHeight;
+      bubble.offsetHeight; // reflow
       bubble.style.animation = '';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('quickAddToggle').disabled = false;
+      document.querySelectorAll('.extra-btn').forEach(b => b.classList.remove('disabled'));
     }
 
     // ── 计时器防跳出 ──
@@ -651,6 +660,9 @@
       bubble.style.animation = 'none';
       bubble.offsetHeight; // reflow
       bubble.style.animation = '';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('quickAddToggle').disabled = false;
+      document.querySelectorAll('.extra-btn').forEach(b => b.classList.remove('disabled'));
     }
 
     function setDuration(mins) {
@@ -668,8 +680,12 @@
       elapsed = 0;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('startBtn').textContent = '开始';
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('quickAddToggle').disabled = true;
+      document.getElementById('finishEarlyBtn').style.display = 'none';
       document.getElementById('confirmArea').classList.remove('show');
       document.getElementById('quickAddSection').classList.remove('open');
+      document.querySelectorAll('.extra-btn').forEach(b => b.classList.add('disabled'));
     }
 
     function toggleTimer() {
@@ -685,6 +701,7 @@
         started = true;
         timerRunning = true;
         document.getElementById('startBtn').textContent = '暂停';
+        document.getElementById('finishEarlyBtn').style.display = 'inline-block';
         document.getElementById('timer-display').classList.add('running');
         timerInterval = setInterval(() => {
           elapsed++;
@@ -695,6 +712,7 @@
             clearInterval(timerInterval);
             timerRunning = false;
             started = false;
+            document.getElementById('finishEarlyBtn').style.display = 'none';
             document.getElementById('timer-display').classList.remove('running');
             document.getElementById('confirmMins').textContent = duration;
             document.getElementById('confirmArea').classList.add('show');
@@ -718,6 +736,7 @@
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('timer-display').classList.remove('running');
       document.getElementById('startBtn').textContent = '开始';
+      document.getElementById('finishEarlyBtn').style.display = 'none';
       // 显示弹窗确认
       document.getElementById('finishMinsDisplay').textContent = finalMins;
       document.getElementById('finishEarlyModal').classList.add('open');
@@ -738,6 +757,7 @@
       started = true;
       timerRunning = true;
       document.getElementById('startBtn').textContent = '暂停';
+      document.getElementById('finishEarlyBtn').style.display = 'inline-block';
       document.getElementById('timer-display').classList.add('running');
       // 恢复 elapsed（从弹窗显示的分钟数反推秒数）
       const mins = parseInt(document.getElementById('finishMinsDisplay').textContent) || 1;
