@@ -269,7 +269,8 @@
     .archived-item-btn.selected { background: #FF6B6B; color: white; }
 
     /* 今日记录 */
-    .today-records { margin-top: 8px; margin-bottom: 12px; }
+    .today-records { display: none; margin-top: 8px; margin-bottom: 12px; }
+    .today-records.visible { display: block; }
     .today-records h3 { font-size: 18px; color: #4ECDC4; margin-bottom: 10px; }
     .empty-records { text-align: center; color: #BDBDBD; font-size: 14px; padding: 24px 12px; line-height: 1.6; }
     .record-item { display: flex; align-items: center; justify-content: space-between; background: #FFF; border: 2px solid #E0E0E0; border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
@@ -857,8 +858,10 @@
     // Load today's records from API
     function renderTodayRecords(items, total) {
       let recordsList = document.getElementById('recordsList');
+      let card = document.querySelector('.today-records');
       if (!items || items.length === 0) {
         recordsList.innerHTML = '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
+        card.classList.remove('visible');
       } else {
         recordsList.innerHTML = items.map(it => `
           <div class="record-item">
@@ -869,6 +872,8 @@
             <button class="delete-btn" onclick="deleteRecord(${it.item_id})">✕</button>
           </div>
         `).join('');
+        card.classList.add('visible');
+        gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
         gsap.fromTo('.record-item', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
       }
       document.querySelector('.today-stat').textContent = '今日已练习: ' + total + ' 分钟';
@@ -925,7 +930,7 @@
     setupTimerProtect();
 
     // ── 页面加载整体弹入动画 ──
-    const allCards = document.querySelectorAll('.card, .panel');
+    const allCards = document.querySelectorAll('.panel, .card:not(.today-records)');
     gsap.fromTo(allCards, { opacity: 0, scale: 0.88, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "back.out(2)" });
   </script>
 </body>
