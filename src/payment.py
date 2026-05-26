@@ -1,5 +1,6 @@
 import datetime as dt
 import re
+from calendar import monthrange
 from typing import List, Optional, Dict
 from .models import Payment, PaymentStatus, LessonStatus, settings
 
@@ -107,8 +108,16 @@ class PaymentManager:
         all_active = attended + scheduled
         last_lesson_date = max((l.date for l in all_active), default=None)
 
-        # 缴费提醒日：最后上课前一天
-        payment_reminder_date = last_lesson_date - dt.timedelta(days=1) if last_lesson_date else None
+        # 缴费提醒日：当月最后一个周六前3天
+        # 先算出当月所有周六，再取最后一个
+        last_saturday = None
+        _, num_days = monthrange(year, month)
+        for day in range(num_days, 0, -1):  # 周六一定是21~28号范围内，从后往前找最快
+            candidate = dt.date(year, month, day)
+            if candidate.weekday() == 5:  # 5=Saturday
+                last_saturday = candidate
+                break
+        payment_reminder_date = last_saturday - dt.timedelta(days=3) if last_saturday else None
 
         # 判断是否当月
         is_current_month = (year == today.year and month == today.month)

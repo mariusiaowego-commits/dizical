@@ -885,8 +885,20 @@ def remind_payment():
         console.print(Panel("[green]✅ 本月已缴清学费[/green]"))
         return
 
-    # 最后上课前一天晚上提醒
-    if today == last_lesson_date - timedelta(days=1):
+    # 找到当月最后一个周六
+    from calendar import monthrange
+    last_saturday = None
+    _, num_days = monthrange(today.year, today.month)
+    for day in range(num_days, 0, -1):
+        candidate = date(today.year, today.month, day)
+        if candidate.weekday() == 5:
+            last_saturday = candidate
+            break
+    reminder_trigger_date = last_saturday - timedelta(days=3) if last_saturday else None
+
+    # 最后上课前一天晚上提醒（逻辑保留供参考）
+    # if today == last_lesson_date - timedelta(days=1):
+    if reminder_trigger_date and today == reminder_trigger_date:
         payload = payment_manager.get_payment_reminder_payload(today.year, today.month)
         notifier = TelegramNotifier()
         notifier.send(payload['message'])
@@ -900,8 +912,8 @@ def remind_payment():
         ))
     else:
         console.print(Panel(
-            f"[dim]📅 本月最后一节课是 {last_lesson_date}，"
-            f"{last_lesson_date - timedelta(days=1)} 前一天会发送预计缴费提醒[/dim]"
+            f"[dim]📅 本月最后一个周六是 {last_saturday}，"
+            f"{reminder_trigger_date}（前3天）会发送预计缴费提醒[/dim]"
         ))
 
 @remind_app.command("check")
