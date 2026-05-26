@@ -19,3 +19,4 @@ venv/
 build/
 dizical.egg-info/
 backups/
+docs/practice-*-audit-*.md

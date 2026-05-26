@@ -1,7 +1,24 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
 **最后更新**: 2026-05-26
-**当前阶段**: 缴费提醒逻辑修正完成
+**当前阶段**: Practice 页 UI/UX 优化完成
+
+## 阶段记录
+
+**2026-05-26 — Practice 页 UI/UX 优化**:
+- **分支**: `feat/practice-ui-ux` → 已合并 main
+- **改动汇总**:
+  1. disabled 状态：未选科目时开始按钮灰色禁用，选中后 enabled
+  2. 提前结束时机：计时开始后出现提前结束红色按钮，自然结束/提前结束后消失
+  3. 确认 Area 补全：HTML 补了 `confirmArea` 和 `confirmMins` 元素
+  4. 确认 Area 空指针防护：5处 JS 引用全部加 if 判空
+  5. 快速补录合并：删除独立中栏 toggle 区，右栏统一为单一入口
+  6. 今天练习记录：min-height: 140px 删除（溢出视口）
+  7. body padding-bottom: 107px（撑开免被导航栏遮挡）
+  8. today-records margin-bottom: 12px
+  9. 页脚励志文案：记录卡片下方，普通流式布局，随机 8 条文案
+- **教训**: 修改前未完整走读原代码，导致 `confirmArea` 不存在却引用了5处；HTML/JS 结构性 bug 应在动手前完整走读一遍
+- **commit**: `d140e00`..`5df69b1`（10个commit）→ **已合并 main**
 
 ## 阶段记录
 
