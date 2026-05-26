@@ -604,7 +604,7 @@
       event.target.classList.add('selected');
     }
     async function submitQuickLog() {
-      if (!selectedItem) { alert('请先选择一个科目'); return; }
+      if (!selectedItem) return;
       let res = await fetch('/api/log', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -680,7 +680,6 @@
         document.getElementById('startBtn').textContent = '继续';
       } else {
         if (!selectedItemId) {
-          alert('请先选择一个科目');
           return;
         }
         started = true;
@@ -834,7 +833,7 @@
     }
 
     async function addExtraMins(mins) {
-      if (!selectedItem) { alert('请先选择一个科目'); return; }
+      if (!selectedItem) return;
       try {
         let res = await fetch('/api/log', {
           method: 'POST',
