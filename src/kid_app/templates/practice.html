@@ -182,22 +182,7 @@
     .confirm-area p { font-size: 20px; color: #2E7D32; margin-bottom: 12px; }
     .confirm-area .confirm-mins { font-size: 48px; font-weight: bold; color: #27AE60; display: block; margin: 8px 0; }
 
-    /* 快速录入 */
-    .quick-add-section {
-      display: none;
-      background: #FFFCF0; border: 2px solid #F0D060;
-      border-radius: var(--radius); padding: 14px;
-    }
-    .quick-add-section.open { display: block; }
-    .quick-add-section h4 { font-size: 15px; color: #8B6914; margin: 0 0 10px; text-align: center; }
-    .quick-time-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
-    .quick-time-btn { padding: 8px 14px; border: 2px solid #F0D060; background: white; border-radius: 16px; font-size: 15px; cursor: pointer; }
-    .quick-time-btn.selected { background: #F0D060; color: #333; }
-    .quick-add-actions { display: flex; gap: 8px; justify-content: center; }
-    .quick-add-actions .start-btn { background: #FFE066; color: #333; padding: 12px 20px; border: none; border-radius: 16px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    .quick-add-actions .btn-cancel { background: white; border: 2px solid #E0E0E0; color: #7F8C8D; padding: 10px 16px; border-radius: 16px; font-size: 15px; cursor: pointer; }
-
-    /* 右栏 - 额外练习时间 */
+    /* 右栏 - 快速补录 */
     .panel-extra {
       background: #F0F9F0;
       border: 2px solid #A0C8A0;
@@ -381,32 +366,14 @@
         <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
         <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
       </div>
-      <button class="quick-add-toggle" id="quickAddToggle" onclick="toggleQuickAdd()" style="display:block; margin-top:8px; background:none; border:none; color:#4ECDC4; font-size:14px; cursor:pointer; text-decoration:underline; font-family:inherit; padding:4px;">⚡ 快速补录</button>
-      <!-- 确认区域 -->
       <div class="confirm-area" id="confirmArea">
-        <p>练了 <strong id="confirmMins" class="confirm-mins">0</strong> 分钟！</p>
-        <button class="btn btn-primary" onclick="submitPractice()">✅ 打卡完成</button>
-      </div>
-      <!-- 快速录入 -->
-      <div class="quick-add-section" id="quickAddSection">
-        <h4>⚡ 快速录入（不计时）</h4>
-        <div class="quick-time-btns">
-          <button class="quick-time-btn" onclick="setQuickDuration(5)">5分钟</button>
-          <button class="quick-time-btn selected" onclick="setQuickDuration(10)">10分钟</button>
-          <button class="quick-time-btn" onclick="setQuickDuration(15)">15分钟</button>
-          <button class="quick-time-btn" onclick="setQuickDuration(20)">20分钟</button>
-          <button class="quick-time-btn" onclick="setQuickDuration(30)">30分钟</button>
-        </div>
-        <div class="quick-add-actions">
-          <button class="start-btn" onclick="submitQuickLog()">✅ 直接打卡</button>
-          <button class="btn-cancel" onclick="toggleQuickAdd()">取消</button>
-        </div>
+        <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
       </div>
     </div>
 
-    <!-- 右栏：额外练习时间 -->
+    <!-- 右栏：快速补录 -->
     <div class="panel panel-extra" id="extraSection">
-      <h4>🌿 额外练习时间</h4>
+      <h4>⚡ 快速补录</h4>
       <div class="extra-btns">
         <button class="extra-btn" onclick="addExtraMins(5)">+5</button>
         <button class="extra-btn" onclick="addExtraMins(10)">+10</button>
@@ -480,7 +447,6 @@
     let timerRunning = false;
     let finishPending = false;  // 提前结束但未打卡
     let submitting = false;  // 防重放：打卡请求进行中
-    let quickDuration = 10;
     let todayDate = "{{today_date}}";
     let enterTime = new Date().toISOString();  // 行为日志：进入时间
 
@@ -528,7 +494,7 @@
         let html = '<div class="archived-section open"><h4>📁 老科目</h4>';
         html += '<div class="item-grid">';
         archived.forEach(it => {
-          html += '<button class="archived-item-btn" onclick="selectArchivedItem(\'' + it.name.replace(/'/g, "\\'") + '\', ' + it.id + ', this)">' + it.name + '</button>';
+          html += '<button class="archived-item-btn" onclick="selectArchivedItem(\'' + it.name.replace(/'/g, "\\'") + '\', ' + it.id + ', this, event)">' + it.name + '</button>';
         });
         html += '</div></div>';
         wrap.insertAdjacentHTML('beforeend', html);
@@ -545,7 +511,8 @@
       }
     }
 
-    function selectArchivedItem(name, id, btn) {
+    function selectArchivedItem(name, id, btn, e) {
+      if (e) e.stopPropagation();
       document.querySelectorAll('.archived-item-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('selected'));
@@ -562,14 +529,15 @@
       const bubbleName = document.getElementById('bubbleName');
       bubbleName.textContent = name;
       bubble.style.display = 'flex';
-      // 重新触发动画
+      bubble.classList.add('animate');
       bubble.style.animation = 'none';
-      bubble.offsetHeight; // reflow
+      bubble.offsetHeight;
       bubble.style.animation = '';
       document.getElementById('startBtn').disabled = false;
-      document.getElementById('quickAddToggle').disabled = false;
       document.querySelectorAll('.extra-btn').forEach(b => b.classList.remove('disabled'));
     }
+
+    // 更新左栏老师要求显示
 
     // ── 计时器防跳出 ──
     function setupTimerProtect() {
@@ -603,40 +571,9 @@
       if (pendingNav) window.location.href = pendingNav;
     }
 
-    // ── 快速录入 ──
-    function toggleQuickAdd() {
-      document.getElementById('quickAddSection').classList.toggle('open');
-    }
-    function setQuickDuration(mins) {
-      quickDuration = mins;
-      document.querySelectorAll('.quick-time-btn').forEach(b => b.classList.remove('selected'));
-      event.target.classList.add('selected');
-    }
-    async function submitQuickLog() {
-      if (!selectedItem) return;
-      let res = await fetch('/api/log', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: quickDuration, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: quickDuration}]})
-      });
-      let json = await res.json();
-      if (json.ok) {
-        fireConfetti();
-        document.querySelector('#confirmArea p').innerHTML = '⚡ 快速打卡 +' + quickDuration + '分钟！';
-        document.getElementById('confirmArea').classList.add('show');
-        gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
-        document.getElementById('quickAddSection').classList.remove('open');
-        setTimeout(() => {
-          document.getElementById('confirmArea').classList.remove('show');
-          document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
-          selectedItem = null;
-          loadTodayRecords();
-        }, 2000);
-      }
-    }
-
     // ── 计时器主逻辑 ──
-    function selectItem(name, id) {
+    function selectItem(name, id, e) {
+      if (e) e.stopPropagation();
       document.querySelectorAll('.archived-item-btn').forEach(b => b.classList.remove('selected'));
       document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('selected'));
       const btn = document.querySelector(`.item-btn[data-id='${id}'], .archived-item-btn[data-id='${id}']`);
@@ -661,7 +598,6 @@
       bubble.offsetHeight; // reflow
       bubble.style.animation = '';
       document.getElementById('startBtn').disabled = false;
-      document.getElementById('quickAddToggle').disabled = false;
       document.querySelectorAll('.extra-btn').forEach(b => b.classList.remove('disabled'));
     }
 
@@ -681,10 +617,9 @@
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('startBtn').textContent = '开始';
       document.getElementById('startBtn').disabled = true;
-      document.getElementById('quickAddToggle').disabled = true;
       document.getElementById('finishEarlyBtn').style.display = 'none';
-      document.getElementById('confirmArea').classList.remove('show');
-      document.getElementById('quickAddSection').classList.remove('open');
+      const confirmArea = document.getElementById('confirmArea');
+      if (confirmArea) confirmArea.classList.remove('show');
       document.querySelectorAll('.extra-btn').forEach(b => b.classList.add('disabled'));
     }
 
@@ -715,7 +650,8 @@
             document.getElementById('finishEarlyBtn').style.display = 'none';
             document.getElementById('timer-display').classList.remove('running');
             document.getElementById('confirmMins').textContent = duration;
-            document.getElementById('confirmArea').classList.add('show');
+            const confirmArea2 = document.getElementById('confirmArea');
+            if (confirmArea2) confirmArea2.classList.add('show');
             document.getElementById('startBtn').textContent = '开始';
             playChime();
           }
@@ -773,7 +709,8 @@
           started = false;
           document.getElementById('timer-display').classList.remove('running');
           document.getElementById('confirmMins').textContent = duration;
-          document.getElementById('confirmArea').classList.add('show');
+          const confirmArea3 = document.getElementById('confirmArea');
+          if (confirmArea3) confirmArea3.classList.add('show');
           document.getElementById('startBtn').textContent = '开始';
           playChime();
         }
@@ -798,18 +735,26 @@
           finishPending = false;
           fireConfetti();
           // 显示成功消息，但保留 confirmMins 元素（后续打卡还需要它）
-          const confirmP = document.querySelector('#confirmArea p');
-          confirmP.dataset.originalHtml = confirmP.innerHTML;
-          confirmP.innerHTML = '🎉 打卡成功！太棒啦！';
-          document.getElementById('confirmArea').classList.add('show');
-          gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
+          const confirmArea4 = document.getElementById('confirmArea');
+          if (confirmArea4) {
+            const confirmP = confirmArea4.querySelector('p');
+            if (confirmP) {
+              confirmP.dataset.originalHtml = confirmP.innerHTML;
+              confirmP.innerHTML = '🎉 打卡成功！太棒啦！';
+            }
+            confirmArea4.classList.add('show');
+            gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
+          }
           loadTodayRecords();
           setTimeout(() => {
             // 恢复 confirmArea 原始 HTML（包含 confirmMins 元素）
-            const confirmP = document.querySelector('#confirmArea p');
-            if (confirmP.dataset.originalHtml) {
-              confirmP.innerHTML = confirmP.dataset.originalHtml;
-              delete confirmP.dataset.originalHtml;
+            const confirmArea5 = document.getElementById('confirmArea');
+            if (confirmArea5) {
+              const confirmP2 = confirmArea5.querySelector('p');
+              if (confirmP2 && confirmP2.dataset.originalHtml) {
+                confirmP2.innerHTML = confirmP2.dataset.originalHtml;
+                delete confirmP2.dataset.originalHtml;
+              }
             }
             // 只有没开始新计时才重置（防止打卡后立即继续练习被误清零）
             if (!started) {
@@ -818,7 +763,8 @@
               selectedItem = null;
               updateReqPanel('');
             }
-            document.getElementById('confirmArea').classList.remove('show');
+            const confirmArea6 = document.getElementById('confirmArea');
+            if (confirmArea6) confirmArea6.classList.remove('show');
           }, 2500);
         } else {
           alert('打卡失败：' + (json.message || json.error));

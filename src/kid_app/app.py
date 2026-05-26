@@ -1008,7 +1008,7 @@ def practice_page():
                 "<div class='" + wrap_class + "'>"
                 + "<button class='item-btn " + has_req_class + "' data-id='" + str(it["item_id"]) + "' "
                 + "data-req='" + combined.replace("'", "&#39;") + "' "
-                + "onclick=\"selectItem('" + name.replace("'", "\\'") + "', " + str(it["item_id"]) + ")\">"
+                + "onclick=\"selectItem('" + name.replace("'", "\\'") + "', " + str(it["item_id"]) + ", event)\">"
                 + name + " <span style='font-size:11px;color:rgba(255,255,255,0.6)'>[" + str(it["item_id"]) + "]</span>"
                 + tooltip_html
                 + "</button></div>"
