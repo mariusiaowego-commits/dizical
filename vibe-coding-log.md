@@ -1,5 +1,19 @@
 # dizical vibe coding log
 
+## 2026-05-26 PM — Practice 页 UI/UX 优化
+
+### 完成内容
+- disabled 状态：未选科目时开始按钮灰色禁用
+- 提前结束：计时开始后出现红色按钮，结束/提前结束后消失
+- confirmArea/confirmMins HTML 补全 + 5处空指针防护
+- 快速补录与额外练习合并为右栏单一入口
+- today-records margin-bottom 12px，body padding-bottom 107px
+- 页脚励志文案：记录卡片下方，随机 8 条
+
+### 教训
+- 修改 HTML/JS 前必须完整走读，不能只凭函数名推断 DOM 结构
+- confirmArea 不存在却引用了5处，导致 resetTimer 每次报错
+
 ## 2026-05-25 — 提前结束计时 bug 修复 + 弹窗确认
 
 ### Bug 修复
