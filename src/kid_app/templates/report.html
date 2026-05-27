@@ -6,6 +6,7 @@
   <title>练习报告 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
   <style>
     body { padding-bottom: 0; }
     .nav {
@@ -100,6 +101,12 @@
     display: flex; align-items: center; justify-content: center;
     gap: 0; padding: 12px 0 4px;
     flex-wrap: wrap;
+  }
+  #dizi3dcanvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 12px;
+    background: transparent;
   }
 
   /* 每段竹笛 */
@@ -412,6 +419,168 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // ── Three.js 竹笛 3D 爆炸轴测图 ───────────────────────────────────
+  var _diziScene = null;
+  var _diziRenderer = null;
+  var _diziAnimFrame = null;
+
+  function disposeDizi3D() {
+    if (_diziAnimFrame) { cancelAnimationFrame(_diziAnimFrame); _diziAnimFrame = null; }
+    if (_diziRenderer) {
+      _diziRenderer.dispose();
+      _diziRenderer = null;
+    }
+    _diziScene = null;
+    var canvas = document.getElementById('dizi3dcanvas');
+    if (canvas) canvas._diziMeshes = null;
+  }
+
+  function renderDizi3D(items, totalMins) {
+    disposeDizi3D();
+
+    var canvas = document.getElementById('dizi3dcanvas');
+    if (!canvas) return;
+
+    var W = canvas.width, H = canvas.height;
+
+    // Scene
+    var scene = new THREE.Scene();
+    _diziScene = scene;
+
+    // Colors
+    var STAGE_COLORS3 = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
+
+    // ── Camera: orthographic for isometric ─────────────────────────
+    var aspect = W / H;
+    var frustSize = 3.2;
+    var camera = new THREE.OrthographicCamera(
+      -frustSize * aspect, frustSize * aspect,
+       frustSize, -frustSize,
+       0.1, 100
+    );
+    camera.position.set(5, 5, 5);
+    camera.lookAt(0, 0, 0);
+
+    // ── Renderer ────────────────────────────────────────────────────
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    _diziRenderer = renderer;
+
+    // ── Lights ──────────────────────────────────────────────────────
+    var ambient = new THREE.AmbientLight(0xffffff, 0.55);
+    scene.add(ambient);
+    var dirLight = new THREE.DirectionalLight(0xffeedd, 0.85);
+    dirLight.position.set(4, 6, 4);
+    scene.add(dirLight);
+    var fillLight = new THREE.DirectionalLight(0xddeeff, 0.3);
+    fillLight.position.set(-3, 2, -2);
+    scene.add(fillLight);
+
+    // ── Compute segment lengths ─────────────────────────────────────
+    var TOTAL_LEN = 6.0;
+    var GAP = 0.18;
+    var segLengths = items.map(function(it) {
+      return Math.max(0.3, (it.minutes / totalMins) * TOTAL_LEN);
+    });
+
+    // ── Textures ───────────────────────────────────────────────────
+    var crossTex = new THREE.TextureLoader().load('/static/dizi-cross-detail.png');
+    crossTex.wrapS = THREE.ClampToEdgeWrapping;
+    crossTex.wrapT = THREE.ClampToEdgeWrapping;
+
+    // ── Build segments ─────────────────────────────────────────────
+    var segMeshes = [];
+    var xOffset = 0;
+
+    // Center the whole dizi
+    var totalExplodedLen = segLengths.reduce(function(a, b){ return a + b; }, 0)
+                            + (items.length - 1) * GAP;
+    var startX = -totalExplodedLen / 2;
+
+    items.forEach(function(it, idx) {
+      var segLen = segLengths[idx];
+      var col = STAGE_COLORS3[idx % STAGE_COLORS3.length];
+      var colInt = parseInt(col.replace('#',''), 16);
+      var matColor = new THREE.Color(colInt);
+
+      // Main cylinder body
+      var cylGeo = new THREE.CylinderGeometry(0.28, 0.28, segLen, 24, 1, false);
+      var cylMat = new THREE.MeshPhongMaterial({
+        color: matColor,
+        transparent: true,
+        opacity: 0.80,
+        shininess: 45,
+        specular: 0x444444,
+      });
+      var cylMesh = new THREE.Mesh(cylGeo, cylMat);
+      cylMesh.rotation.z = Math.PI / 2; // lay along X axis
+      cylMesh.position.x = startX + xOffset + segLen / 2;
+      cylMesh.userData.idx = idx;
+      cylMesh.userData.it = it;
+      scene.add(cylMesh);
+      segMeshes.push(cylMesh);
+
+      // End cross-section disk (right end, where next segment begins)
+      // Slightly inset into the gap
+      var diskGeo = new THREE.CircleGeometry(0.28, 24);
+      var diskMat = new THREE.MeshBasicMaterial({
+        map: crossTex,
+        transparent: true,
+        opacity: 0.92,
+        side: THREE.DoubleSide,
+      });
+      var disk = new THREE.Mesh(diskGeo, diskMat);
+      disk.position.x = startX + xOffset + segLen + GAP / 2;
+      disk.rotation.y = Math.PI / 2; // face +X direction
+      disk.userData.idx = idx;
+      scene.add(disk);
+      segMeshes.push(disk);
+
+      xOffset += segLen + GAP;
+    });
+
+    // ── GSAP: animate from collapsed center outward ───────────────
+    // Start all meshes compressed to center at scale 0
+    segMeshes.forEach(function(mesh) {
+      mesh.scale.set(0.01, 0.01, 0.01);
+      mesh.position.y = 0;
+    });
+
+    // Expand outward
+    var expandObjs = segMeshes.map(function(mesh) { return { mesh: mesh }; });
+    gsap.to(expandObjs.map(function(o){ return o.mesh.scale; }), {
+      x: 1, y: 1, z: 1,
+      duration: 0.55,
+      stagger: 0.09,
+      ease: 'back.out(1.7)',
+      delay: 0.1,
+    });
+    gsap.to(expandObjs.map(function(o){ return o.mesh.position; }), {
+      y: 0,
+      duration: 0.55,
+      stagger: 0.09,
+      ease: 'back.out(1.7)',
+      delay: 0.1,
+    });
+
+    // ── Gentle idle rotation ───────────────────────────────────────
+    var idleAngle = 0;
+    function animate() {
+      _diziAnimFrame = requestAnimationFrame(animate);
+      idleAngle += 0.006;
+      segMeshes.forEach(function(mesh) {
+        mesh.rotation.y = idleAngle * 0.3;
+      });
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Store for close animation
+    canvas._diziMeshes = segMeshes;
+  }
+
   // ── 竹笛弹窗 ─────────────────────────────────────────────
   var diziModal = document.getElementById('diziModal');
   var diziModalContent = diziModal ? diziModal.querySelector('.modal-content') : null;
@@ -421,7 +590,6 @@ document.addEventListener('DOMContentLoaded', function() {
     diziModal.style.display = 'flex';
     document.getElementById('diziModalDate').textContent = date;
     document.getElementById('diziModalTotal').textContent = '加载中...';
-    document.getElementById('diziExploded').innerHTML = '';
 
     // GSAP
     var mask = document.getElementById('diziModalMask');
@@ -435,45 +603,10 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('diziModalTotal').textContent = '总练习 ' + total + ' 分钟';
       var items = data.items || [];
       if (items.length === 0 || total === 0) {
-        document.getElementById('diziExploded').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#A89080;font-size:14px;padding:20px;">当日无练习数据</div>';
+        document.getElementById('diziModalTotal').textContent = '总练习 0 分钟（当日无练习数据）';
         return;
       }
-
-      var EXPLODED_IMG = '/static/dizi-exploded.png';
-      var CROSS_IMG = '/static/dizi-cross-detail.png';
-      var STAGE_COLORS2 = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
-
-      // 每段宽度按分钟比例，最小120px，最大300px
-      var MIN_SEG = 120, MAX_SEG = 300;
-      var segWidths = items.map(function(it){ return Math.max(MIN_SEG, Math.min(MAX_SEG, Math.round((it.minutes / total) * MAX_SEG * 2))); });
-
-      var html = '';
-      items.forEach(function(it, idx) {
-        var w = segWidths[idx];
-        var col = STAGE_COLORS2[idx % STAGE_COLORS2.length];
-        html += '<div class="dizi-seg-wrap" style="opacity:0;">';
-        // 竹笛段主体（爆炸图背景）
-        html += '<div class="dizi-seg-body" style="width:' + w + 'px;background:rgba(' + hexToRgb(col) + ',0.62) linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);">';
-        html += '<img class="dizi-seg-img" src="' + EXPLODED_IMG + '" alt="" draggable="false"/>';
-        html += '<div class="seg-label">';
-        html += '<span class="seg-name">' + it.item + '</span>';
-        html += '<span class="seg-mins">' + it.minutes + '分钟</span>';
-        html += '</div>';
-        html += '</div>';
-        // 横截面（只在段与段之间）
-        if (idx < items.length - 1) {
-          html += '<div class="dizi-seg-cross"></div>';
-        }
-        html += '</div>';
-      });
-
-      document.getElementById('diziExploded').innerHTML = html;
-
-      // GSAP 依次弹入
-      gsap.to('.dizi-seg-wrap', {
-        opacity: 1, y: 0, duration: 0.45,
-        stagger: 0.1, ease: 'back.out(1.8)', delay: 0.15
-      });
+      renderDizi3D(items, total);
     }).catch(function() {
       document.getElementById('diziModalTotal').textContent = '加载失败';
     });
@@ -483,19 +616,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!diziModal) return;
     var content = document.getElementById('diziModalContent');
     var mask = document.getElementById('diziModalMask');
+
+    // Shrink and fade the 3D meshes before closing
+    var canvas = document.getElementById('dizi3dcanvas');
+    if (canvas && canvas._diziMeshes) {
+      var meshes = canvas._diziMeshes;
+      gsap.to(meshes.map(function(m){ return m.scale; }), {
+        x: 0.01, y: 0.01, z: 0.01,
+        duration: 0.28,
+        stagger: 0.05,
+        ease: 'power2.in',
+        onComplete: disposeDizi3D
+      });
+    } else {
+      disposeDizi3D();
+    }
+
     gsap.to(content, { scale: 0.6, opacity: 0, y: 30, duration: 0.3, ease: 'power2.in' });
     gsap.to(mask, { opacity: 0, duration: 0.25, delay: 0.05, onComplete: function() {
       diziModal.style.display = 'none';
       gsap.set(content, { clearProps: 'all' });
       gsap.set(mask, { clearProps: 'all' });
     }});
-  }
-
-  function hexToRgb(hex) {
-    var r = parseInt(hex.slice(1,3),16);
-    var g = parseInt(hex.slice(3,5),16);
-    var b = parseInt(hex.slice(5,7),16);
-    return r + ',' + g + ',' + b;
   }
 
   // 绑定关闭
@@ -634,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
       <button class="modal-close" id="diziModalClose">×</button>
     </div>
-    <div id="diziExploded"></div>
+    <div id="diziExploded"><canvas id="dizi3dcanvas" width="700" height="120"></canvas></div>
     <div class="modal-footer">点击遮罩或 × 关闭</div>
   </div>
 </div>
