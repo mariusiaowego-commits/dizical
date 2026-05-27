@@ -253,8 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
         stackY = barY;
       });
 
-      // label 放在 LABEL_ABOVE_H 区域的正中间
-      var labelY = LABEL_ABOVE_H / 2 + 4;
+      // label 紧贴 bar 上方
+      var labelY = LABEL_ABOVE_H - 8;
       svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
 
       var dtParts = d.split('-');
