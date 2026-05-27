@@ -209,10 +209,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var BAR_W = n <= 3 ? 72 : n <= 5 ? 52 : 40;
     var BAR_GAP = 20;
     var CHART_H = 160;
+    var LABEL_ABOVE_H = 40;  // bar 上方放数字的空间
     var LABEL_W = 44;
     var RIGHT_PAD = 10;
+    var SVG_H = LABEL_ABOVE_H + CHART_H + 52;
     var SVG_W = LABEL_W + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
-    var SVG_H = CHART_H + 52;
     var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
 
     var dailyTotals = {};
@@ -231,15 +232,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function minsToH(mins) { return mins * hScale; }
 
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;overflow:visible;" height="' + (SVG_H + 30) + '">';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;" height="' + SVG_H + '">';
     svg += '<style>.bar-label{pointer-events:none}</style>';
 
     dates.forEach(function(d, i) {
       var x = LABEL_W + i * (BAR_W + BAR_GAP);
       var dayTotal = dailyTotals[d] || 0;
-      var stackY = CHART_H;
+      var stackY = LABEL_ABOVE_H + CHART_H;
 
-      svg += '<rect x="' + x + '" y="0" width="' + BAR_W + '" height="' + CHART_H + '" fill="#F5F5F5" rx="4"/>';
+      // label zone 背景
+      svg += '<rect x="' + x + '" y="0" width="' + BAR_W + '" height="' + LABEL_ABOVE_H + '" fill="transparent"/>';
+
+      svg += '<rect x="' + x + '" y="' + LABEL_ABOVE_H + '" width="' + BAR_W + '" height="' + CHART_H + '" fill="#F5F5F5" rx="4"/>';
 
       items.forEach(function(it, idx) {
         var v = data[d] && data[d][it.id];
@@ -252,17 +256,15 @@ document.addEventListener('DOMContentLoaded', function() {
         stackY = barY;
       });
 
+      // label 放在 LABEL_ABOVE_H 区域的正中间
+      var labelY = LABEL_ABOVE_H / 2 + 4;
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
+
       var dtParts = d.split('-');
       var label = dtParts[1] + '/' + dtParts[2];
       var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 6) + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 18) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
-
-      if (dayTotal > 0) {
-        var barTopY = CHART_H - minsToH(dayTotal);
-        var labelY = barTopY + 20;
-        svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
-      }
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (LABEL_ABOVE_H + CHART_H + 40) + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (LABEL_ABOVE_H + CHART_H + 52) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
     });
 
     svg += '</svg>';
