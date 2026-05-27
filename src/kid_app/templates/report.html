@@ -89,6 +89,15 @@
       <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
     </div>
     <div class="cal-grid">{{cal_html}}</div>
+
+  <!-- Stage堆叠柱状图卡片 -->
+  <div id="stageChartCard" class="card" style="display:none;margin-top:12px;">
+    <h3 id="stageChartTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;"></h3>
+    <div id="stageChartSub" style="font-size:12px;color:#999;margin-bottom:16px;"></div>
+    <div id="stageChartWrap" style="position:relative;overflow-x:auto;"></div>
+    <div id="stageChartLegend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
     <div style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:#7F8C8D;flex-wrap:wrap;">
       <span style="width:16px;height:16px;background:#E8F5E9;border-radius:4px;display:inline-block;"></span> 少量
       <span style="width:16px;height:16px;background:#FFF8E1;border-radius:4px;display:inline-block;"></span> 中等
@@ -105,79 +114,118 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-  // ── 哑铃图渲染函数 ──────────────────────────────────────────────────
-  // items: [{name, yesterdayMins, todayMins}], newItems: [name]
-  function renderDumbbellChart(items, newItems) {
-    if (items.length === 0) return '<div class="detail-empty">这两天都没有练习记录</div>';
+  // ── Stage 堆叠柱状图渲染函数 ─────────────────────────────────────────
+  var STAGE_COLORS = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
 
-    // 全局最大值作为上限，统一样式
-    const allVals = items.reduce(function(acc, it) { acc.push(it.yesterdayMins, it.todayMins); return acc; }, []);
-    const maxRef = Math.max(...allVals, 1);
-    const MIN_PCT = 3;
-    const MAX_PCT = 97;
+  function renderStageChart(stageData) {
+    var dates = stageData.dates; // 最多7个
+    var items = stageData.items; // [{id, name}]
+    var data = stageData.data;   // {date: {itemId: mins|null}}
 
-    function minsToPct(m) {
-      return MIN_PCT + Math.round((m / maxRef) * (MAX_PCT - MIN_PCT));
+    var n = dates.length;
+    var BAR_W = 36;
+    var BAR_GAP = Math.max(12, Math.floor((300 - n * BAR_W) / (n - 1)));
+    var CHART_H = 160;
+    var LEFT_PAD = 8;
+    var RIGHT_PAD = 8;
+    var SVG_W = LEFT_PAD + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
+    var SVG_H = CHART_H + 60;
+
+    // 计算每天的总分钟数（用于Y轴上限）
+    var dailyTotals = {};
+    dates.forEach(function(d) {
+      var total = 0;
+      items.forEach(function(it) {
+        var v = data[d] && data[d][it.id];
+        if (v !== null && v !== undefined) total += v;
+      });
+      dailyTotals[d] = total;
+    });
+    var maxTotal = Math.max(...Object.values(dailyTotals), 1);
+
+    function minsToH(mins) {
+      return Math.round((mins / maxTotal) * CHART_H);
+    }
+    function dateX(i) {
+      return LEFT_PAD + i * (BAR_W + BAR_GAP);
     }
 
-    let html = '<div class="dumbbell-chart">';
-
-    items.forEach(function(it) {
-      const isNew = newItems.includes(it.name);
-      const diff = it.todayMins - it.yesterdayMins;
-      const isIncrease = diff > 0;
-      const isDecrease = diff < 0;
-
-      const yPct = minsToPct(it.yesterdayMins);
-      const tPct = minsToPct(it.todayMins);
-      const lineColor = isDecrease ? '#E74C3C' : '#27AE60';
-
-      let todayClass = 'today';
-      let diffLabel = '';
-      if (isNew) {
-        todayClass += ' new-item';
-        diffLabel = '<span style="color:#FFB300;margin-left:4px;font-size:12px;">✨</span>';
-      } else if (isIncrease) {
-        todayClass += ' increase';
-        diffLabel = '<span style="color:#27AE60;margin-left:4px;font-size:13px;">+' + diff + '分</span>';
-      } else if (isDecrease) {
-        todayClass += ' decrease';
-        diffLabel = '<span style="color:#E74C3C;margin-left:4px;font-size:13px;">' + diff + '分</span>';
-      } else {
-        todayClass += ' same';
-      }
-
-      html += '<div class="dumbbell-row">';
-      html += '<div class="dumbbell-item-name">' + it.name + diffLabel + '</div>';
-      html += '<div class="dumbbell-svg-wrap">';
-      html += '<div class="dumbbell-bar-wrap"></div>';
-
-      // 昨天点
-      html += '<div class="dumbbell-marker yesterday" style="left:' + yPct + '%;">';
-      html += '<div class="dumbbell-mins yesterday" style="left:' + yPct + '%;">' + it.yesterdayMins + '</div>';
-      html += '</div>';
-
-      // 连接线
-      const lineLeft = Math.min(yPct, tPct);
-      const lineWidth = Math.abs(tPct - yPct);
-      if (lineWidth > 0) {
-        html += '<div style="position:absolute;top:50%;left:' + lineLeft + '%;width:' + lineWidth + '%;height:2px;background:' + lineColor + ';transform:translateY(-50%);border-radius:1px;opacity:0.65;"></div>';
-      }
-
-      // 今天点
-      html += '<div class="dumbbell-marker ' + todayClass + '" style="left:' + tPct + '%;">';
-      html += '<div class="dumbbell-mins ' + todayClass + '" style="left:' + tPct + '%;">' + it.todayMins + '</div>';
-      html += '</div>';
-
-      html += '</div></div>';
+    // 预计算每列每个item的bottom累加高度
+    // colStacks[d][itemIdx] = {bottom, height, top}
+    var colStacks = {};
+    dates.forEach(function(d) {
+      colStacks[d] = [];
+      var bottom = 0;
+      items.forEach(function(it) {
+        var v = (data[d] && data[d][it.id] !== null && data[d][it.id] !== undefined) ? data[d][it.id] : null;
+        var h = v !== null ? minsToH(v) : 0;
+        colStacks[d].push({bottom: bottom, height: h, top: bottom + h, value: v});
+        bottom += h;
+      });
     });
 
-    html += '</div>';
-    html += '<div class="dumbbell-legend">';
-    html += '<span><span class="legend-dot" style="background:#90A4AE;"></span>昨天</span>';
-    html += '<span><span class="legend-dot" style="background:#27AE60;"></span>今天</span>';
-    html += '</div>';
-    return html;
+    var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+
+    var svg = '<svg width="' + SVG_W + '" height="' + SVG_H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;font-family:sans-serif;">';
+
+    // 画连接线（底层到顶层，每层一条）
+    for (var ii = 0; ii < items.length; ii++) {
+      for (var jj = 0; jj < dates.length - 1; jj++) {
+        var d1 = dates[jj], d2 = dates[jj + 1];
+        var s1 = colStacks[d1][ii], s2 = colStacks[d2][ii];
+        if (s1.value === null || s2.value === null) continue;
+        var x1 = dateX(jj) + BAR_W;
+        var x2 = dateX(jj + 1);
+        var col1 = s1.value <= s2.value ? '#27AE60' : '#E74C3C';
+        // top线
+        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.top) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.top) + '" stroke="' + col1 + '" stroke-width="1.5" opacity="0.4" stroke-dasharray="3,2"/>';
+        // bottom线
+        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.bottom) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.bottom) + '" stroke="' + col1 + '" stroke-width="1.5" opacity="0.3" stroke-dasharray="3,2"/>';
+      }
+    }
+
+    // 画堆叠柱
+    for (var jj = 0; jj < dates.length; jj++) {
+      var d = dates[jj];
+      var x = dateX(jj);
+      var stacks = colStacks[d];
+      var isFuture = (data[d] && Object.values(data[d]).every(function(v){ return v === null; }));
+      var barOpacity = isFuture ? 0.25 : 1;
+
+      for (var ii = 0; ii < stacks.length; ii++) {
+        var s = stacks[ii];
+        if (s.height === 0) continue;
+        var col = STAGE_COLORS[ii % STAGE_COLORS.length];
+        var y = CHART_H - s.top;
+        svg += '<rect x="' + x + '" y="' + y + '" width="' + BAR_W + '" height="' + s.height + '" fill="' + col + '" opacity="' + barOpacity + '" rx="2"/>';
+        // 数据标签
+        if (s.value !== null && s.height > 14) {
+          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (y + s.height / 2 + 4) + '" text-anchor="middle" font-size="9" fill="white" opacity="0.9">' + s.value + '</text>';
+        }
+      }
+
+      // x轴标签
+      var dtParts = d.split('-');
+      var label = dtParts[1] + '/' + dtParts[2];
+      var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 8) + '" text-anchor="middle" font-size="10" fill="#999">' + label + '</text>';
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 20) + '" text-anchor="middle" font-size="9" fill="#BBB">' + wd + '</text>';
+    }
+
+    // y轴参考线
+    [0.25, 0.5, 0.75, 1.0].forEach(function(ratio) {
+      var y = Math.round(CHART_H * (1 - ratio));
+      svg += '<line x1="0" y1="' + y + '" x2="' + SVG_W + '" y2="' + y + '" stroke="#EEE" stroke-width="1"/>';
+      svg += '<text x="2" y="' + (y - 2) + '" font-size="9" fill="#CCC">' + Math.round(maxTotal * ratio) + '</text>';
+    });
+
+    svg += '</svg>';
+
+    return {
+      svg: svg,
+      svgW: SVG_W,
+      items: items.map(function(it, idx) { return {name: it.name, color: STAGE_COLORS[idx % STAGE_COLORS.length]}; })
+    };
   }
 
   // ── 练习轨迹渲染函数 ───────────────────────────────────────────────
@@ -259,48 +307,36 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // ── 今天有数据，昨天无数据 ──────────────────────────────
-        if (prevData.total_minutes === 0 || (Array.isArray(prevData.items) && prevData.items.length === 0)) {
-          var items = (data.items || []).map(function(it) {
-            return { name: it.item, yesterdayMins: 0, todayMins: it.minutes || 0 };
-          });
-          var newItems = items.map(function(it){ return it.name; });
-          var html = renderDumbbellChart(items, newItems);
-          html += renderTrail(data.behavior_log || [], date);
-          detailBody.innerHTML = html;
-          gsap.fromTo('.dumbbell-row', { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' });
-          return;
-        }
+        // ── 渲染当日明细（文字对比，无图表） ───────────────
+        var totalDiff = data.total_minutes - prevData.total_minutes;
+        var totalDiffStr = totalDiff > 0 ? '+' + totalDiff : String(totalDiff);
+        var totalDiffColor = totalDiff > 0 ? '#27AE60' : totalDiff < 0 ? '#E74C3C' : '#999';
+        var diffLabel = totalDiff > 0 ? '↑' : totalDiff < 0 ? '↓' : '＝';
 
-        // ── 两天都有数据：只展示共同科目 ──────────────────────
-        var curItems = data.items || [];
-        var curItemNames = curItems.map(function(it){ return it.item; });
-        var newItems = curItemNames.filter(function(n){ return !(n in prevItemsMap); });
+        var detailHtml = '';
+        detailHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #EEE;margin-bottom:8px;">';
+        detailHtml += '<span style="font-size:14px;color:#333;">总时长</span>';
+        detailHtml += '<span style="font-size:14px;font-weight:bold;color:#333;">' + data.total_minutes + '分 <span style="font-size:12px;color:' + totalDiffColor + ';">' + diffLabel + ' ' + Math.abs(totalDiff) + '分</span></span>';
+        detailHtml += '</div>';
 
-        // 共同科目
-        var commonItems = curItems.filter(function(it){ return it.item in prevItemsMap; });
-        var dumbbellItems = commonItems.map(function(it) {
-          return {
-            name: it.item,
-            yesterdayMins: prevItemsMap[it.item] || 0,
-            todayMins: it.minutes || 0
-          };
-        });
+        var trail = renderTrail(data.behavior_log || [], date);
+        detailBody.innerHTML = detailHtml + trail;
+        if (trail) gsap.fromTo('.trail-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, stagger: 0.07, ease: 'power2.out' });
 
-        var html = renderDumbbellChart(dumbbellItems, newItems);
-        html += renderTrail(data.behavior_log || [], date);
-        detailBody.innerHTML = html;
-
-        // 轨迹 GSAP
-        if ((data.behavior_log || []).length > 0) {
-          gsap.fromTo('.trail-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, stagger: 0.07, ease: 'power2.out', delay: dumbbellItems.length * 0.04 });
-        }
-
-        // 哑铃图行 GSAP
-        if (dumbbellItems.length > 0) {
-          gsap.fromTo('.dumbbell-row', { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' });
-        }
-
+        // ── 加载并渲染 Stage 堆叠柱状图 ───────────────────
+        fetch('/api/practices/stage/' + date).then(function(r){ return r.json(); }).then(function(stageData) {
+          if (stageData.error) return;
+          var chartCard = document.getElementById('stageChartCard');
+          var result = renderStageChart(stageData);
+          document.getElementById('stageChartTitle').textContent = '📊 ' + stageData.stage_start + ' ~ ' + stageData.stage_end + ' 周练习';
+          document.getElementById('stageChartSub').textContent = '共 ' + stageData.dates.length + ' 天';
+          document.getElementById('stageChartWrap').innerHTML = result.svg;
+          document.getElementById('stageChartLegend').innerHTML = result.items.map(function(it) {
+            return '<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#555;"><span style="width:10px;height:10px;border-radius:2px;background:' + it.color + ';display:inline-block;"></span>' + it.name + '</span>';
+          }).join('');
+          chartCard.style.display = 'block';
+          gsap.fromTo(chartCard, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
+        }).catch(function(){});
       }).catch(function() {
         detailBody.innerHTML = '<div class="detail-empty">加载失败</div>';
       });

@@ -670,6 +670,71 @@ def api_practice_day(date_str: str):
         "behavior_log": practice.get("behavior_log", []),
     })
 
+@app.get("/api/practices/stage/{date_str}")
+def api_practice_stage(date_str: str):
+    """返回指定日期所在stage的所有7天练习数据，用于堆叠柱状图"""
+    try:
+        day = dt.date.fromisoformat(date_str)
+    except ValueError:
+        return JSONResponse({"error": "无效日期格式"}, status_code=400)
+
+    c = db._conn.cursor()
+    # 找到这个日期所在的stage
+    row = c.execute(
+        "SELECT stage_start, stage_end FROM weekly_assignments WHERE ? BETWEEN stage_start AND stage_end",
+        (date_str,)
+    ).fetchone()
+    if not row:
+        return JSONResponse({"error": "该日期不在任何stage中"}, status_code=404)
+
+    stage_start, stage_end = row
+    dates_in_stage = []
+    cur = stage_start
+    while cur <= stage_end:
+        dates_in_stage.append(str(cur))
+        cur = (dt.date.fromisoformat(str(cur)) + dt.timedelta(days=1)).isoformat()
+
+    # 收集所有练习数据
+    practices = {}
+    rows = c.execute(
+        "SELECT date, items, total_minutes FROM daily_practices WHERE date BETWEEN ? AND ?",
+        (stage_start, stage_end)
+    ).fetchall()
+    for r in rows:
+        practices[r[0]] = {"items": json.loads(r[1]), "total_minutes": r[2]}
+
+    # 收集所有出现的科目（按item_id升序）
+    all_item_ids = set()
+    for p in practices.values():
+        for it in p.get("items", []):
+            all_item_ids.add(it.get("item_id"))
+    all_item_ids = sorted(all_item_ids)
+    if not all_item_ids:
+        return JSONResponse({"dates": dates_in_stage, "items": [], "data": {}})
+
+    # 按item_id获取科目名
+    item_names = {}
+    for iid in all_item_ids:
+        nm = c.execute("SELECT name FROM practice_items WHERE item_id = ?", (iid,)).fetchone()
+        item_names[iid] = nm[0] if nm else f"科目{iid}"
+
+    # 构建每个日期每科目的分钟数矩阵
+    data = {}
+    for d in dates_in_stage:
+        data[d] = {}
+        p = practices.get(d, {"items": []})
+        item_map = {it.get("item_id"): it.get("minutes", 0) for it in p.get("items", [])}
+        for iid in all_item_ids:
+            data[d][iid] = item_map.get(iid, None)  # None表示无数据（未来日期）
+
+    return JSONResponse({
+        "stage_start": stage_start,
+        "stage_end": stage_end,
+        "dates": dates_in_stage,
+        "items": [{"id": iid, "name": item_names[iid]} for iid in all_item_ids],
+        "data": data,
+    })
+
 # ─── API: 练习项目列表 ─────────────────────────────────────────────────────
 @app.get("/api/items")
 def api_items(include_archived: bool = False):
