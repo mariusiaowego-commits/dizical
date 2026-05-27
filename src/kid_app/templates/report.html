@@ -253,8 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
         stackY = barY;
       });
 
-      // label 紧贴 bar 上方
-      var labelY = LABEL_ABOVE_H - 8;
+      // label 紧贴 bar 上方，留 2px
+      var labelY = LABEL_ABOVE_H + 4;
       svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
 
       var dtParts = d.split('-');
