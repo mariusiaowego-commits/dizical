@@ -245,7 +245,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!v || v <= 0) return;
         var barH = Math.max(0, minsToH(v) - 1);
         var barY = stackY - 1;
-        var col = STAGE_COLORS[idx % STAGE_COLORS.length];
+        var colIdx = it.id % STAGE_COLORS.length;
+        var col = STAGE_COLORS[colIdx];
         svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + col + '" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
         stackY = barY - 1;
       });
@@ -267,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return {
       svg: svg,
       svgW: SVG_W,
-      items: items.map(function(it, idx) { return {name: it.name || '未知', color: STAGE_COLORS[idx % STAGE_COLORS.length]}; })
+      items: items.map(function(it, idx) { return {name: it.name || '未知', color: STAGE_COLORS[it.id % STAGE_COLORS.length]}; })
     };
   }
 
