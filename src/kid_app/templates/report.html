@@ -33,18 +33,18 @@
     .dumbbell-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #F5F5F5; }
     .dumbbell-row:last-child { border-bottom: none; }
     .dumbbell-item-name { min-width: 80px; font-size: 15px; color: #333; font-weight: 500; display: flex; align-items: center; gap: 4px; }
-    .dumbbell-svg-wrap { flex: 1; position: relative; height: 36px; }
-    .dumbbell-bar-wrap { position: absolute; top: 50%; transform: translateY(-50%); left: 0; right: 0; height: 4px; background: #E0E0E0; border-radius: 2px; }
+    .dumbbell-svg-wrap { flex: 1; position: relative; height: 40px; padding: 0 6px; box-sizing: border-box; }
+    .dumbbell-bar-wrap { position: absolute; top: 50%; transform: translateY(-50%); left: 6px; right: 6px; height: 4px; background: #E0E0E0; border-radius: 2px; }
     .dumbbell-bar-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px; transition: width 0.3s ease; }
-    .dumbbell-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+    .dumbbell-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
     .dumbbell-marker.yesterday { background: #90A4AE; }
     .dumbbell-marker.today { background: #27AE60; }
     .dumbbell-marker.today.decrease { background: #E74C3C; }
     .dumbbell-marker.today.same { background: #90A4AE; }
     .dumbbell-marker.today.new-item { background: #FFB300; }
-    .dumbbell-mins { position: absolute; top: -18px; transform: translateX(-50%); font-size: 12px; color: #7F8C8D; white-space: nowrap; }
-    .dumbbell-mins.yesterday { color: #90A4AE; }
-    .dumbbell-mins.today { font-weight: bold; }
+    .dumbbell-mins { position: absolute; font-size: 11px; color: #7F8C8D; white-space: nowrap; transform: translateX(-50%); }
+    .dumbbell-mins.yesterday { bottom: 20px; color: #90A4AE; font-weight: 500; }
+    .dumbbell-mins.today { bottom: 20px; font-weight: bold; }
     .dumbbell-mins.today.increase { color: #27AE60; }
     .dumbbell-mins.today.decrease { color: #E74C3C; }
     .dumbbell-mins.today.same { color: #7F8C8D; }
