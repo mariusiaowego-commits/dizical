@@ -243,11 +243,11 @@ document.addEventListener('DOMContentLoaded', function() {
       items.forEach(function(it, idx) {
         var v = data[d] && data[d][it.id];
         if (!v || v <= 0) return;
-        var barH = minsToH(v);
-        var barY = stackY - barH;
+        var barH = Math.max(0, minsToH(v) - 2);
+        var barY = stackY - 1;
         var col = STAGE_COLORS[idx % STAGE_COLORS.length];
-        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + col + '" rx="2" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
-        stackY = barY;
+        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + col + '" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
+        stackY = barY - 2;
       });
 
       var dtParts = d.split('-');
