@@ -110,9 +110,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderDumbbellChart(items, newItems) {
     if (items.length === 0) return '<div class="detail-empty">这两天都没有练习记录</div>';
 
-    // 计算全局最大分钟数，用于等比例定位
-    const allMins = items.map(it => Math.max(it.yesterdayMins, it.todayMins));
-    const maxMins = Math.max(...allMins, 1);
+    const LEFT_PCT = 12;
+    const RIGHT_PCT = 88;
 
     let html = '<div class="dumbbell-chart">';
 
@@ -121,54 +120,46 @@ document.addEventListener('DOMContentLoaded', function() {
       const diff = it.todayMins - it.yesterdayMins;
       const isIncrease = diff > 0;
       const isDecrease = diff < 0;
-      const isSame = diff === 0;
-
-      // 计算位置百分比（以 maxMins 为 100%）
-      const yPct = Math.round((it.yesterdayMins / maxMins) * 100);
-      const tPct = Math.round((it.todayMins / maxMins) * 100);
 
       let todayClass = 'today';
       let diffLabel = '';
       if (isNew) {
         todayClass += ' new-item';
-        diffLabel = '<span style="color:#FFB300;margin-left:4px;">✨ 新科目</span>';
+        diffLabel = '<span style="color:#FFB300;margin-left:4px;font-size:12px;">✨</span>';
       } else if (isIncrease) {
         todayClass += ' increase';
-        diffLabel = '<span style="color:#27AE60;margin-left:4px;">+' + diff + '</span>';
+        diffLabel = '<span style="color:#27AE60;margin-left:4px;font-size:13px;">+' + diff + '分</span>';
       } else if (isDecrease) {
         todayClass += ' decrease';
-        diffLabel = '<span style="color:#E74C3C;margin-left:4px;">' + diff + '</span>';
+        diffLabel = '<span style="color:#E74C3C;margin-left:4px;font-size:13px;">' + diff + '分</span>';
       } else {
         todayClass += ' same';
       }
 
+      const lineColor = isDecrease ? '#E74C3C' : '#27AE60';
+
       html += '<div class="dumbbell-row">';
 
-      // 科目名
+      // 科目名 + 变化标签
       html += '<div class="dumbbell-item-name">' + it.name + diffLabel + '</div>';
 
       // 哑铃条
       html += '<div class="dumbbell-svg-wrap">';
 
-      // 背景灰条
+      // 背景灰条（左右固定端点）
       html += '<div class="dumbbell-bar-wrap"></div>';
 
-      // 填充条（从昨天到今天）
-      const fillLeft = yPct;
-      const fillWidth = Math.abs(tPct - yPct);
-      const fillColor = isDecrease ? '#E74C3C' : '#27AE60';
-      if (fillWidth > 0) {
-        html += '<div class="dumbbell-bar-fill" style="left:' + fillLeft + '%;width:' + fillWidth + '%;background:' + fillColor + ';"></div>';
-      }
-
-      // 昨天圆点
-      html += '<div class="dumbbell-marker yesterday" style="left:' + yPct + '%;">';
-      html += '<div class="dumbbell-mins yesterday" style="left:' + yPct + '%;">' + it.yesterdayMins + '分</div>';
+      // 昨天圆点（固定左侧）
+      html += '<div class="dumbbell-marker yesterday" style="left:' + LEFT_PCT + '%;">';
+      html += '<div class="dumbbell-mins yesterday" style="left:' + LEFT_PCT + '%;">' + it.yesterdayMins + '</div>';
       html += '</div>';
 
-      // 今天圆点
-      html += '<div class="dumbbell-marker ' + todayClass + '" style="left:' + tPct + '%;">';
-      html += '<div class="dumbbell-mins ' + todayClass + '" style="left:' + tPct + '%;">' + it.todayMins + '分</div>';
+      // 连接线（昨天→今天）
+      html += '<div style="position:absolute;top:50%;left:' + LEFT_PCT + '%;width:' + (RIGHT_PCT - LEFT_PCT) + '%;height:2px;background:' + lineColor + ';transform:translateY(-50%);border-radius:1px;opacity:0.6;"></div>';
+
+      // 今天圆点（固定右侧）
+      html += '<div class="dumbbell-marker ' + todayClass + '" style="left:' + RIGHT_PCT + '%;">';
+      html += '<div class="dumbbell-mins ' + todayClass + '" style="left:' + RIGHT_PCT + '%;">' + it.todayMins + '</div>';
       html += '</div>';
 
       html += '</div>'; // .dumbbell-svg-wrap
@@ -180,9 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 图例
     html += '<div class="dumbbell-legend">';
     html += '<span><span class="legend-dot" style="background:#90A4AE;"></span>昨天</span>';
-    html += '<span><span class="legend-dot" style="background:#27AE60;"></span>增加</span>';
-    html += '<span><span class="legend-dot" style="background:#E74C3C;"></span>减少</span>';
-    html += '<span><span class="legend-dot" style="background:#FFB300;"></span>新科目</span>';
+    html += '<span><span class="legend-dot" style="background:#27AE60;"></span>今天</span>';
     html += '</div>';
 
     return html;
