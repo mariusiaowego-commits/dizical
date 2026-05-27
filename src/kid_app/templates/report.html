@@ -199,6 +199,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Stage 堆叠柱状图渲染函数 ─────────────────────────────────────────
   var STAGE_COLORS = ['#C32222','#C36222','#C3A222','#A2C322','#62C322','#22C322','#22C362','#22C3A2','#22A2C3','#2262C3','#2222C3','#6222C3','#A222C3','#C322A2','#C32262'];
+  var STAGE_COLORS_LIGHT = ['#E84545','#E88545','#E8C845','#C5E045','#85E845','#45E845','#45E885','#45E8C8','#45C5E8','#4585E8','#4545E8','#8545E8','#C545E8','#E845C5','#E84585'];
+  var STAGE_GRAD_IDS = ['g0','g1','g2','g3','g4','g5','g6','g7','g8','g9','g10','g11','g12','g13','g14'];
 
   function renderStageChart(stageData) {
     var dates = stageData.dates;
@@ -233,7 +235,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function minsToH(mins) { return mins * hScale; }
 
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;" height="' + SVG_H + '">';
-    svg += '<style>.bar-label{pointer-events:none}</style>';
+    svg += '<defs>';
+    for (var gi = 0; gi < STAGE_GRAD_IDS.length; gi++) {
+      svg += '<linearGradient id="' + STAGE_GRAD_IDS[gi] + '" x1="0" y1="0" x2="0" y2="1">';
+      svg += '<stop offset="0%" stop-color="' + STAGE_COLORS[gi] + '"/>';
+      svg += '<stop offset="100%" stop-color="' + STAGE_COLORS_LIGHT[gi] + '"/></linearGradient>';
+    }
+    svg += '</defs>';
 
     dates.forEach(function(d, i) {
       var x = LABEL_W + i * (BAR_W + BAR_GAP);
@@ -248,8 +256,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var barH = Math.max(0, minsToH(v));
         var barY = stackY - barH;
         var colIdx = it.id % STAGE_COLORS.length;
-        var col = STAGE_COLORS[colIdx];
-        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + col + '" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
+        var gradUrl = 'url(#' + STAGE_GRAD_IDS[colIdx] + ')';
+        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + gradUrl + '" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
         stackY = barY;
       });
 
