@@ -257,11 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
       svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 18) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
 
       if (dayTotal > 0) {
-        var labelY = CHART_H - minsToH(dayTotal) / 2 + 4;
-        svg += '<text x="' + (LABEL_W - 4) + '" y="' + labelY + '" text-anchor="end" font-size="10" fill="#888" font-weight="500">'
-          + '<tspan x="' + (LABEL_W - 4) + '" dy="0">' + Math.round(dayTotal) + '</tspan>'
-          + '<tspan x="' + (LABEL_W - 4) + '" dy="12">分</tspan>'
-          + '</text>';
+        var labelY = CHART_H - minsToH(dayTotal) - 4;
+        svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#888" font-weight="500">' + Math.round(dayTotal) + '分</text>';
       }
     });
 
