@@ -110,8 +110,15 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderDumbbellChart(items, newItems) {
     if (items.length === 0) return '<div class="detail-empty">这两天都没有练习记录</div>';
 
-    const LEFT_PCT = 12;
-    const RIGHT_PCT = 88;
+    // 全局最大值作为上限，统一样式
+    const allVals = items.reduce(function(acc, it) { acc.push(it.yesterdayMins, it.todayMins); return acc; }, []);
+    const maxRef = Math.max(...allVals, 1);
+    const MIN_PCT = 3;
+    const MAX_PCT = 97;
+
+    function minsToPct(m) {
+      return MIN_PCT + Math.round((m / maxRef) * (MAX_PCT - MIN_PCT));
+    }
 
     let html = '<div class="dumbbell-chart">';
 
@@ -120,6 +127,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const diff = it.todayMins - it.yesterdayMins;
       const isIncrease = diff > 0;
       const isDecrease = diff < 0;
+
+      const yPct = minsToPct(it.yesterdayMins);
+      const tPct = minsToPct(it.todayMins);
+      const lineColor = isDecrease ? '#E74C3C' : '#27AE60';
 
       let todayClass = 'today';
       let diffLabel = '';
@@ -136,44 +147,36 @@ document.addEventListener('DOMContentLoaded', function() {
         todayClass += ' same';
       }
 
-      const lineColor = isDecrease ? '#E74C3C' : '#27AE60';
-
       html += '<div class="dumbbell-row">';
-
-      // 科目名 + 变化标签
       html += '<div class="dumbbell-item-name">' + it.name + diffLabel + '</div>';
-
-      // 哑铃条
       html += '<div class="dumbbell-svg-wrap">';
-
-      // 背景灰条（左右固定端点）
       html += '<div class="dumbbell-bar-wrap"></div>';
 
-      // 昨天圆点（固定左侧）
-      html += '<div class="dumbbell-marker yesterday" style="left:' + LEFT_PCT + '%;">';
-      html += '<div class="dumbbell-mins yesterday" style="left:' + LEFT_PCT + '%;">' + it.yesterdayMins + '</div>';
+      // 昨天点
+      html += '<div class="dumbbell-marker yesterday" style="left:' + yPct + '%;">';
+      html += '<div class="dumbbell-mins yesterday" style="left:' + yPct + '%;">' + it.yesterdayMins + '</div>';
       html += '</div>';
 
-      // 连接线（昨天→今天）
-      html += '<div style="position:absolute;top:50%;left:' + LEFT_PCT + '%;width:' + (RIGHT_PCT - LEFT_PCT) + '%;height:2px;background:' + lineColor + ';transform:translateY(-50%);border-radius:1px;opacity:0.6;"></div>';
+      // 连接线
+      const lineLeft = Math.min(yPct, tPct);
+      const lineWidth = Math.abs(tPct - yPct);
+      if (lineWidth > 0) {
+        html += '<div style="position:absolute;top:50%;left:' + lineLeft + '%;width:' + lineWidth + '%;height:2px;background:' + lineColor + ';transform:translateY(-50%);border-radius:1px;opacity:0.65;"></div>';
+      }
 
-      // 今天圆点（固定右侧）
-      html += '<div class="dumbbell-marker ' + todayClass + '" style="left:' + RIGHT_PCT + '%;">';
-      html += '<div class="dumbbell-mins ' + todayClass + '" style="left:' + RIGHT_PCT + '%;">' + it.todayMins + '</div>';
+      // 今天点
+      html += '<div class="dumbbell-marker ' + todayClass + '" style="left:' + tPct + '%;">';
+      html += '<div class="dumbbell-mins ' + todayClass + '" style="left:' + tPct + '%;">' + it.todayMins + '</div>';
       html += '</div>';
 
-      html += '</div>'; // .dumbbell-svg-wrap
-      html += '</div>'; // .dumbbell-row
+      html += '</div></div>';
     });
 
-    html += '</div>'; // .dumbbell-chart
-
-    // 图例
+    html += '</div>';
     html += '<div class="dumbbell-legend">';
     html += '<span><span class="legend-dot" style="background:#90A4AE;"></span>昨天</span>';
     html += '<span><span class="legend-dot" style="background:#27AE60;"></span>今天</span>';
     html += '</div>';
-
     return html;
   }
 
