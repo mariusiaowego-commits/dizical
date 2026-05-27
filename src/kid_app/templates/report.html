@@ -64,78 +64,91 @@
   }
   #diziModal .modal-mask {
     position: absolute; inset: 0;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.60);
+    backdrop-filter: blur(6px);
   }
   #diziModal .modal-content {
     position: relative; z-index: 1;
-    background: #FFF9F0;
-    border-radius: 20px;
-    padding: 24px 28px 28px;
-    max-width: 680px; width: 92%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    background: #FFFDF8;
+    border-radius: 24px;
+    padding: 28px 32px 32px;
+    max-width: 760px; width: 94%;
+    box-shadow: 0 28px 80px rgba(0,0,0,0.30);
     overflow: hidden;
   }
   #diziModal .modal-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 20px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 24px;
   }
-  #diziModal .modal-title {
-    font-size: 17px; font-weight: bold; color: #5D4E37;
-  }
+  #diziModal .modal-title { font-size: 18px; font-weight: bold; color: #3D2E1E; }
   #diziModal .modal-total {
-    font-size: 13px; color: #8B7355; background: #F5E6D3;
-    padding: 4px 12px; border-radius: 20px;
+    font-size: 13px; color: #8B6914; background: #FEF3C7;
+    padding: 4px 12px; border-radius: 20px; margin-top: 6px;
+    display: inline-block;
   }
   #diziModal .modal-close {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: #E8DFD0; border: none; cursor: pointer;
-    font-size: 18px; color: #8B7355; line-height: 1;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #EDE8E0; border: none; cursor: pointer;
+    font-size: 20px; color: #7A6A5A; line-height: 1;
     display: flex; align-items: center; justify-content: center;
-    transition: background 0.2s;
+    transition: background 0.2s; flex-shrink: 0;
   }
-  #diziModal .modal-close:hover { background: #D4C4B0; }
+  #diziModal .modal-close:hover { background: #D8CEBD; }
 
-  /* 竹笛容器 */
-  #diziBamboo {
-    position: relative; width: 100%; height: 90px;
-    background: url('/static/dizi-cross-section.png') no-repeat center;
-    background-size: cover;
-    border-radius: 45px;
-    overflow: hidden;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);
-  }
-  /* 竹笛内分段 */
-  #diziSegments {
-    position: absolute; inset: 0;
-    display: flex; overflow: hidden; border-radius: 45px;
-  }
-  .dizi-seg {
-    position: relative; height: 100%;
+  /* 爆炸轴测竹笛容器 */
+  #diziExploded {
     display: flex; align-items: center; justify-content: center;
-    overflow: visible;
+    gap: 0; padding: 12px 0 4px;
+    flex-wrap: wrap;
   }
-  .dizi-seg + .dizi-seg {
-    border-left: 3px dashed rgba(139,115,85,0.6);
+
+  /* 每段竹笛 */
+  .dizi-seg-wrap {
+    display: flex; align-items: stretch;
+    text-decoration: none; /* 去掉下划线 */
+    gap: 6px; /* 段与段之间的爆炸间距 */
   }
-  .seg-label {
-    position: absolute; right: -1px;
-    white-space: nowrap;
-    display: flex; flex-direction: column; align-items: flex-start;
-    padding-left: 6px;
+  .dizi-seg-body {
+    position: relative;
+    border-radius: 36px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12), inset 0 0 12px rgba(0,0,0,0.08);
+    display: flex; align-items: center;
   }
-  .seg-name {
-    font-size: 12px; font-weight: 600; color: #FFF;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  .dizi-seg-body img.dizi-seg-img {
+    height: 72px; width: auto;
+    object-fit: cover; display: block;
   }
-  .seg-mins {
-    font-size: 10px; color: rgba(255,255,255,0.85);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  /* 横截面 */
+  .dizi-seg-cross {
+    width: 42px; height: 72px;
+    flex-shrink: 0;
+    background: url('/static/dizi-cross-detail.png') no-repeat center;
+    background-size: cover;
+    border-radius: 0;
+    position: relative;
+  }
+  /* 段内标签 */
+  .dizi-seg-body .seg-label {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 6px 10px; text-align: center;
+    pointer-events: none;
+  }
+  .dizi-seg-body .seg-name {
+    font-size: 13px; font-weight: 700; color: #FFF;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.55);
+  }
+  .dizi-seg-body .seg-mins {
+    font-size: 11px; color: rgba(255,255,255,0.9);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    margin-top: 3px;
   }
 
   #diziModal .modal-footer {
-    margin-top: 16px;
-    font-size: 12px; color: #A89080; text-align: center;
+    margin-top: 18px;
+    font-size: 12px; color: #B0A090; text-align: center;
   }
 
   @media (max-width: 600px) {
@@ -405,45 +418,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function openDiziModal(date) {
     if (!diziModal) return;
-    // 显示并定位
     diziModal.style.display = 'flex';
-    gsap.fromTo(diziModal.querySelector('.modal-mask'), { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
-    gsap.fromTo(diziModalContent, { scale: 0.6, opacity: 0, y: 40 }, { scale: 1, opacity: 1, y: 0, duration: 0.55, ease: 'back.out(1.7)' });
-
-    // 标题
     document.getElementById('diziModalDate').textContent = date;
     document.getElementById('diziModalTotal').textContent = '加载中...';
-    document.getElementById('diziSegments').innerHTML = '';
+    document.getElementById('diziExploded').innerHTML = '';
+
+    // GSAP
+    var mask = document.getElementById('diziModalMask');
+    var content = document.getElementById('diziModalContent');
+    gsap.fromTo(mask, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    gsap.fromTo(content, { scale: 0.5, opacity: 0, y: 50 }, { scale: 1, opacity: 1, y: 0, duration: 0.55, ease: 'back.out(1.7)', delay: 0.05 });
 
     // 获取当天数据
     fetch('/api/practices/' + date).then(function(r){ return r.json(); }).then(function(data) {
       var total = data.total_minutes || 0;
       document.getElementById('diziModalTotal').textContent = '总练习 ' + total + ' 分钟';
-
       var items = data.items || [];
       if (items.length === 0 || total === 0) {
-        document.getElementById('diziSegments').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#A89080;font-size:14px;">当日无练习数据</div>';
+        document.getElementById('diziExploded').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#A89080;font-size:14px;padding:20px;">当日无练习数据</div>';
         return;
       }
 
-      var STAGE_COLORS = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
-      var segs = document.getElementById('diziSegments');
-      var segHtml = '';
-      items.forEach(function(it, idx) {
-        var pct = Math.round((it.minutes / total) * 1000) / 10; // 保留1位小数
-        var col = STAGE_COLORS[idx % STAGE_COLORS.length];
-        // 半透明白色叠加在图片上形成有色段
-        segHtml += '<div class="dizi-seg" style="width:' + pct + '%;background:rgba(' + hexToRgb(col) + ',0.55);">';
-        segHtml += '<div class="seg-label">';
-        segHtml += '<span class="seg-name">' + it.item + '</span>';
-        segHtml += '<span class="seg-mins">' + it.minutes + '分钟</span>';
-        segHtml += '</div>';
-        segHtml += '</div>';
-      });
-      segs.innerHTML = segHtml;
+      var EXPLODED_IMG = '/static/dizi-exploded.png';
+      var CROSS_IMG = '/static/dizi-cross-detail.png';
+      var STAGE_COLORS2 = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
 
-      // 竹笛段依次弹入
-      gsap.fromTo('.dizi-seg', { scaleX: 0, transformOrigin: 'left' }, { scaleX: 1, duration: 0.35, stagger: 0.08, ease: 'back.out(1.5)', delay: 0.2 });
+      // 每段宽度按分钟比例，最小120px，最大300px
+      var MIN_SEG = 120, MAX_SEG = 300;
+      var segWidths = items.map(function(it){ return Math.max(MIN_SEG, Math.min(MAX_SEG, Math.round((it.minutes / total) * MAX_SEG * 2))); });
+
+      var html = '';
+      items.forEach(function(it, idx) {
+        var w = segWidths[idx];
+        var col = STAGE_COLORS2[idx % STAGE_COLORS2.length];
+        html += '<div class="dizi-seg-wrap" style="opacity:0;">';
+        // 竹笛段主体（爆炸图背景）
+        html += '<div class="dizi-seg-body" style="width:' + w + 'px;background:rgba(' + hexToRgb(col) + ',0.62) linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);">';
+        html += '<img class="dizi-seg-img" src="' + EXPLODED_IMG + '" alt="" draggable="false"/>';
+        html += '<div class="seg-label">';
+        html += '<span class="seg-name">' + it.item + '</span>';
+        html += '<span class="seg-mins">' + it.minutes + '分钟</span>';
+        html += '</div>';
+        html += '</div>';
+        // 横截面（只在段与段之间）
+        if (idx < items.length - 1) {
+          html += '<div class="dizi-seg-cross"></div>';
+        }
+        html += '</div>';
+      });
+
+      document.getElementById('diziExploded').innerHTML = html;
+
+      // GSAP 依次弹入
+      gsap.to('.dizi-seg-wrap', {
+        opacity: 1, y: 0, duration: 0.45,
+        stagger: 0.1, ease: 'back.out(1.8)', delay: 0.15
+      });
     }).catch(function() {
       document.getElementById('diziModalTotal').textContent = '加载失败';
     });
@@ -451,11 +481,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function closeDiziModal() {
     if (!diziModal) return;
-    gsap.to(diziModalContent, { scale: 0.7, opacity: 0, y: 30, duration: 0.3, ease: 'power2.in', onComplete: function() {
+    var content = document.getElementById('diziModalContent');
+    var mask = document.getElementById('diziModalMask');
+    gsap.to(content, { scale: 0.6, opacity: 0, y: 30, duration: 0.3, ease: 'power2.in' });
+    gsap.to(mask, { opacity: 0, duration: 0.25, delay: 0.05, onComplete: function() {
       diziModal.style.display = 'none';
-      gsap.set(diziModalContent, { clearProps: 'all' });
+      gsap.set(content, { clearProps: 'all' });
+      gsap.set(mask, { clearProps: 'all' });
     }});
-    gsap.to(diziModal.querySelector('.modal-mask'), { opacity: 0, duration: 0.2 });
   }
 
   function hexToRgb(hex) {
@@ -592,8 +625,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <div id="diziModal">
-  <div class="modal-mask"></div>
-  <div class="modal-content">
+  <div class="modal-mask" id="diziModalMask"></div>
+  <div class="modal-content" id="diziModalContent">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="diziModalDate"></div>
@@ -601,10 +634,8 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
       <button class="modal-close" id="diziModalClose">×</button>
     </div>
-    <div id="diziBamboo">
-      <div id="diziSegments"></div>
-    </div>
-    <div class="modal-footer">点击竹笛外区域或 × 关闭</div>
+    <div id="diziExploded"></div>
+    <div class="modal-footer">点击遮罩或 × 关闭</div>
   </div>
 </div>
 </div><!-- .page-content -->
