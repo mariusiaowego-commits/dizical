@@ -1,0 +1,108 @@
+<!--
+  dizi-modal-template.html
+  竹笛弹窗通用模板 — 供 dizical 项目复用
+  使用方式：替换 {{DIZI_BG_IMG}} {{DIZI_SEGMENTS}} {{DIZI_DATE}} {{DIZI_TOTAL}}
+  弹层背景色变量：--modal-bg (#FFFDF8)，改一处全局生效
+-->
+<style>
+  :root { --modal-bg: #FFFDF8; }
+
+  /* ── 竹笛弹窗 ─────────────────────────────────── */
+  #diziModal {
+    position: fixed; inset: 0; z-index: 10000;
+    display: none; align-items: center; justify-content: center;
+  }
+  #diziModal .modal-mask {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(5px);
+    cursor: pointer;
+  }
+  #diziModal .modal-content {
+    position: relative;
+    background: var(--modal-bg);
+    border-radius: 24px;
+    padding: 28px 32px 32px;
+    max-width: 760px; width: 94%;
+    box-shadow: 0 28px 80px rgba(0,0,0,0.30);
+    z-index: 1;
+  }
+  #diziModal .modal-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  #diziModal .modal-title { font-size: 18px; font-weight: bold; color: #3D2E1E; }
+  #diziModal .modal-total {
+    font-size: 13px; color: #8B6914; background: #FEF3C7;
+    padding: 4px 12px; border-radius: 20px; margin-top: 6px; display: inline-block;
+  }
+  #diziModal .modal-close {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #EDE8E0; border: none; cursor: pointer;
+    font-size: 20px; color: #7A6A5A; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  #diziModal .modal-close:hover { background: #D8CEBD; }
+
+  /* 竹笛图：撑满宽度 */
+  #diziModal #diziBg {
+    width: 100%; height: auto; display: block; pointer-events: none;
+  }
+
+  /* 线段层 */
+  #diziModal #segmentsContainer {
+    position: relative; width: 100%; height: 52px; margin-top: 10px;
+  }
+  #diziModal .seg-item {
+    position: absolute; top: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #diziModal .seg-text-col {
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 2; gap: 10px;
+  }
+  #diziModal .seg-line-wrap {
+    position: absolute; top: 50%; left: 0; right: 0; height: 2px;
+    transform: translateY(-50%); display: flex; align-items: center;
+  }
+  #diziModal .seg-bar {
+    width: 2px; height: 14px; border-radius: 1px;
+    background: #C9A030; flex-shrink: 0;
+  }
+  #diziModal .seg-bar-line {
+    height: 2px; border-radius: 1px; background: #C9A030; flex-grow: 1;
+  }
+  #diziModal .seg-name {
+    font-family: 'Ma Shan Zheng','Noto Serif SC','SimSun',serif;
+    font-size: 14px; color: #3D2E1E;
+    background: var(--modal-bg);
+    padding: 2px 6px; border-radius: 3px;
+    white-space: nowrap; letter-spacing: 2px;
+  }
+  #diziModal .seg-mins {
+    font-size: 11px; color: #8B6914; text-align: center;
+  }
+
+  #diziModal .modal-footer {
+    margin-top: 20px; font-size: 12px; color: #B0A090; text-align: center;
+  }
+</style>
+
+<div id="diziModal">
+  <div class="modal-mask" id="diziModalMask"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="diziModalDate"></div>
+        <div class="modal-total" id="diziModalTotal"></div>
+      </div>
+      <button class="modal-close" id="diziModalClose">×</button>
+    </div>
+    <div id="diziContainer">
+      <img id="diziBg" src="{{DIZI_BG_IMG}}" alt="">
+    </div>
+    <div id="segmentsContainer">{{DIZI_SEGMENTS}}</div>
+    <div class="modal-footer">点击遮罩或 × 关闭</div>
+  </div>
+</div>

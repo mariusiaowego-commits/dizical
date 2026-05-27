@@ -6,7 +6,6 @@
   <title>练习报告 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
   <style>
     body { padding-bottom: 0; }
     .nav {
@@ -58,101 +57,43 @@
   .bar-tooltip .tt-diff.up { color: #6EE7B7; }
   .bar-tooltip .tt-diff.down { color: #FCA5A5; }
 
-  /* ── 竹笛弹窗 ─────────────────────────────────── */
+  /* ── 竹笛弹窗（新模板） ─────────────────────────── */
+  :root { --modal-bg: #FFFDF8; }
   #diziModal {
     position: fixed; inset: 0; z-index: 10000;
     display: none; align-items: center; justify-content: center;
   }
   #diziModal .modal-mask {
     position: absolute; inset: 0;
-    background: rgba(0,0,0,0.60);
-    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(5px);
+    cursor: pointer;
   }
   #diziModal .modal-content {
     position: relative; z-index: 1;
-    background: #FFFDF8;
+    background: var(--modal-bg);
     border-radius: 24px;
     padding: 28px 32px 32px;
     max-width: 760px; width: 94%;
     box-shadow: 0 28px 80px rgba(0,0,0,0.30);
-    overflow: hidden;
   }
-  #diziModal .modal-header {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin-bottom: 24px;
-  }
+  #diziModal .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
   #diziModal .modal-title { font-size: 18px; font-weight: bold; color: #3D2E1E; }
-  #diziModal .modal-total {
-    font-size: 13px; color: #8B6914; background: #FEF3C7;
-    padding: 4px 12px; border-radius: 20px; margin-top: 6px;
-    display: inline-block;
-  }
-  #diziModal .modal-close {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: #EDE8E0; border: none; cursor: pointer;
-    font-size: 20px; color: #7A6A5A; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.2s; flex-shrink: 0;
-  }
+  #diziModal .modal-total { font-size: 13px; color: #8B6914; background: #FEF3C7; padding: 4px 12px; border-radius: 20px; margin-top: 6px; display: inline-block; }
+  #diziModal .modal-close { width: 34px; height: 34px; border-radius: 50%; background: #EDE8E0; border: none; cursor: pointer; font-size: 20px; color: #7A6A5A; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
   #diziModal .modal-close:hover { background: #D8CEBD; }
+  #diziModal #diziBg { width: 100%; height: auto; display: block; pointer-events: none; }
+  #diziModal #segmentsContainer { position: relative; width: 100%; height: 52px; margin-top: 10px; }
+  #diziModal .seg-item { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
+  #diziModal .seg-text-col { display: flex; flex-direction: column; align-items: center; z-index: 2; gap: 10px; }
+  #diziModal .seg-line-wrap { position: absolute; top: 50%; left: 0; right: 0; height: 2px; transform: translateY(-50%); display: flex; align-items: center; }
+  #diziModal .seg-bar { width: 2px; height: 14px; border-radius: 1px; background: #C9A030; flex-shrink: 0; }
+  #diziModal .seg-bar-line { height: 2px; border-radius: 1px; background: #C9A030; flex-grow: 1; }
+  #diziModal .seg-name { font-family: 'Ma Shan Zheng','Noto Serif SC','SimSun',serif; font-size: 14px; color: #3D2E1E; background: var(--modal-bg); padding: 2px 6px; border-radius: 3px; white-space: nowrap; letter-spacing: 2px; }
+  #diziModal .seg-mins { font-size: 11px; color: #8B6914; text-align: center; }
+  #diziModal .modal-footer { margin-top: 20px; font-size: 12px; color: #B0A090; text-align: center; }
 
-  /* 爆炸轴测竹笛容器 */
-  #diziExploded {
-    display: flex; align-items: center; justify-content: center;
-    gap: 0; padding: 12px 0 4px;
-    flex-wrap: wrap;
-  }
-  #dizi3dcanvas {
-    display: block;
-    margin: 0 auto;
-    border-radius: 12px;
-    background: transparent;
-  }
-
-  /* 每段竹笛 */
-  .dizi-seg-wrap {
-    display: flex; align-items: stretch;
-    text-decoration: none; /* 去掉下划线 */
-    gap: 6px; /* 段与段之间的爆炸间距 */
-  }
-  .dizi-seg-body {
-    position: relative;
-    border-radius: 36px;
-    overflow: hidden;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12), inset 0 0 12px rgba(0,0,0,0.08);
-    display: flex; align-items: center;
-  }
-  .dizi-seg-body img.dizi-seg-img {
-    height: 72px; width: auto;
-    object-fit: cover; display: block;
-  }
-  /* 横截面 */
-  .dizi-seg-cross {
-    width: 42px; height: 72px;
-    flex-shrink: 0;
-    background: url('/static/dizi-cross-detail.png') no-repeat center;
-    background-size: cover;
-    border-radius: 0;
-    position: relative;
-  }
-  /* 段内标签 */
-  .dizi-seg-body .seg-label {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 6px 10px; text-align: center;
-    pointer-events: none;
-  }
-  .dizi-seg-body .seg-name {
-    font-size: 13px; font-weight: 700; color: #FFF;
-    text-shadow: 0 2px 6px rgba(0,0,0,0.55);
-  }
-  .dizi-seg-body .seg-mins {
-    font-size: 11px; color: rgba(255,255,255,0.9);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-    margin-top: 3px;
-  }
-
+  /* ── 新弹窗样式已移到上方 #diziModal ── */
   #diziModal .modal-footer {
     margin-top: 18px;
     font-size: 12px; color: #B0A090; text-align: center;
@@ -268,14 +209,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var BAR_W = n <= 3 ? 72 : n <= 5 ? 52 : 40;
     var BAR_GAP = 20;
     var CHART_H = 200;
-    var LABEL_W = 62;   // 左侧标签宽度
+    var LABEL_W = 62;
     var RIGHT_PAD = 10;
     var SVG_W = LABEL_W + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
     var SVG_H = CHART_H + 50;
 
     var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
 
-    // 计算每天总时长和最大值
     var dailyTotals = {};
     dates.forEach(function(d) {
       var total = 0;
@@ -285,89 +225,45 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       dailyTotals[d] = total;
     });
-    var maxTotal = Math.max(...Object.values(dailyTotals), 1);
 
-    function minsToH(mins) { return Math.round((mins / maxTotal) * CHART_H); }
-    function barX(i) { return LABEL_W + i * (BAR_W + BAR_GAP); }
+    var maxTotal = Math.max.apply(null, Object.values(dailyTotals).filter(function(v){ return v > 0; }));
+    if (maxTotal === 0) maxTotal = 60;
 
-    // 预计算每列堆叠
-    var colStacks = {};
-    dates.forEach(function(d) {
-      colStacks[d] = [];
-      var bottom = 0;
-      items.forEach(function(it) {
-        var raw = (data[d] && data[d][it.id] !== null && data[d][it.id] !== undefined) ? data[d][it.id] : null;
-        var h = raw !== null ? minsToH(raw) : 0;
-        colStacks[d].push({bottom: bottom, height: h, top: bottom + h, value: raw});
-        bottom += h;
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" height="' + SVG_H + '" style="display:block;width:100%;height:auto;overflow:visible;">';
+
+    var hScale = CHART_H / maxTotal;
+
+    function minsToH(mins) { return mins * hScale; }
+
+    dates.forEach(function(d, i) {
+      var x = LABEL_W + i * (BAR_W + BAR_GAP);
+      var total = dailyTotals[d] || 0;
+      var stackY = CHART_H;
+
+      // 背景条
+      svg += '<rect x="' + x + '" y="0" width="' + BAR_W + '" height="' + CHART_H + '" fill="#F5F5F5" rx="4"/>';
+
+      items.forEach(function(it, idx) {
+        var v = data[d] && data[d][it.id];
+        if (!v || v <= 0) return;
+        var barH = minsToH(v);
+        var barY = stackY - barH;
+        var col = STAGE_COLORS[idx % STAGE_COLORS.length];
+        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + col + '" rx="2" data-bar="1" data-itemname="' + it.name + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
+        stackY = barY;
       });
-    });
 
-    // 昨天数据映射（用于tooltip对比）
-    var prevData = {};
-    if (dates.length > 1) {
-      var prevDate = dates[dates.length - 2];
-      items.forEach(function(it, ii) {
-        prevData[it.id] = colStacks[prevDate] ? colStacks[prevDate][ii].value : null;
-      });
-    }
-
-    var svg = '<svg width="' + SVG_W + '" height="' + SVG_H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;font-family:sans-serif;">';
-
-    // Y轴参考线
-    [0.25, 0.5, 0.75, 1.0].forEach(function(r) {
-      var y = Math.round(CHART_H * (1 - r));
-      svg += '<line x1="0" y1="' + y + '" x2="' + SVG_W + '" y2="' + y + '" stroke="#F0F0F0" stroke-width="1"/>';
-      svg += '<text x="3" y="' + (y - 3) + '" font-size="10" fill="#CCC">' + Math.round(maxTotal * r) + '分</text>';
-    });
-
-    // 连接线
-    for (var ii = 0; ii < items.length; ii++) {
-      for (var jj = 0; jj < dates.length - 1; jj++) {
-        var d1 = dates[jj], d2 = dates[jj + 1];
-        var s1 = colStacks[d1][ii], s2 = colStacks[d2][ii];
-        if (s1.value === null || s2.value === null) continue;
-        var x1 = barX(jj) + BAR_W;
-        var x2 = barX(jj + 1);
-        var col = s1.value <= s2.value ? '#34D399' : '#F87171';
-        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.top) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.top) + '" stroke="' + col + '" stroke-width="2" opacity="0.5"/>';
-        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.bottom) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.bottom) + '" stroke="' + col + '" stroke-width="1.5" opacity="0.35"/>';
-      }
-    }
-
-    // 堆叠柱 + 悬停
-    for (var jj = 0; jj < dates.length; jj++) {
-      var d = dates[jj];
-      var x = barX(jj);
-      var stacks = colStacks[d];
-      var isFuture = !data[d] || Object.values(data[d]).every(function(v){ return v === null; });
-      var barOpacity = isFuture ? 0.2 : 1;
-
-      for (var ii = 0; ii < stacks.length; ii++) {
-        var s = stacks[ii];
-        if (s.height === 0) continue;
-        var col = STAGE_COLORS[ii % STAGE_COLORS.length];
-        var y = CHART_H - s.top;
-        svg += '<rect data-bar="1" data-date="' + d + '" data-itemid="' + items[ii].id + '" data-itemname="' + items[ii].name + '" data-value="' + (s.value !== null ? s.value : 0) + '" data-prev="' + (prevData[items[ii].id] !== undefined ? (prevData[items[ii].id] !== null ? prevData[items[ii].id] : 'null') : '') + '" x="' + x + '" y="' + y + '" width="' + BAR_W + '" height="' + s.height + '" fill="' + col + '" opacity="' + barOpacity + '" rx="3" style="cursor:pointer;transition:opacity 0.15s,filter 0.15s;"/>';
-        // 数据标签
-        if (s.value !== null && s.height > 18) {
-          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (y + s.height / 2 + 4) + '" text-anchor="middle" font-size="11" fill="white" font-weight="600" style="pointer-events:none;">' + s.value + '</text>';
-        }
-      }
-
-      // x轴
       var dtParts = d.split('-');
       var label = dtParts[1] + '/' + dtParts[2];
       var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
       svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 6) + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
       svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 18) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
 
-      // 左侧总时长标签
       var total = dailyTotals[d] || 0;
       if (total > 0) {
         svg += '<text x="' + (LABEL_W - 4) + '" y="' + (CHART_H - minsToH(total) / 2 + 4) + '" text-anchor="end" font-size="10" fill="#888" font-weight="500" style="writing-mode:tb">' + total + '分</text>';
       }
-    }
+    });
 
     svg += '</svg>';
     return {
@@ -419,194 +315,47 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ── Three.js 竹笛 3D 爆炸轴测图 ───────────────────────────────────
-  var _diziScene = null;
-  var _diziRenderer = null;
-  var _diziAnimFrame = null;
-
-  function disposeDizi3D() {
-    if (_diziAnimFrame) { cancelAnimationFrame(_diziAnimFrame); _diziAnimFrame = null; }
-    if (_diziRenderer) {
-      _diziRenderer.dispose();
-      _diziRenderer = null;
-    }
-    _diziScene = null;
-    var canvas = document.getElementById('dizi3dcanvas');
-    if (canvas) canvas._diziMeshes = null;
-  }
-
-  function renderDizi3D(items, totalMins) {
-    disposeDizi3D();
-
-    var canvas = document.getElementById('dizi3dcanvas');
-    if (!canvas) return;
-
-    var W = canvas.width, H = canvas.height;
-
-    // Scene
-    var scene = new THREE.Scene();
-    _diziScene = scene;
-
-    // Colors
-    var STAGE_COLORS3 = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
-
-    // ── Camera: orthographic for isometric ─────────────────────────
-    var aspect = W / H;
-    var frustSize = 3.2;
-    var camera = new THREE.OrthographicCamera(
-      -frustSize * aspect, frustSize * aspect,
-       frustSize, -frustSize,
-       0.1, 100
-    );
-    camera.position.set(5, 5, 5);
-    camera.lookAt(0, 0, 0);
-
-    // ── Renderer ────────────────────────────────────────────────────
-    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
-    renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
-    _diziRenderer = renderer;
-
-    // ── Lights ──────────────────────────────────────────────────────
-    var ambient = new THREE.AmbientLight(0xffffff, 0.55);
-    scene.add(ambient);
-    var dirLight = new THREE.DirectionalLight(0xffeedd, 0.85);
-    dirLight.position.set(4, 6, 4);
-    scene.add(dirLight);
-    var fillLight = new THREE.DirectionalLight(0xddeeff, 0.3);
-    fillLight.position.set(-3, 2, -2);
-    scene.add(fillLight);
-
-    // ── Compute segment lengths ─────────────────────────────────────
-    var TOTAL_LEN = 6.0;
-    var GAP = 0.18;
-    var segLengths = items.map(function(it) {
-      return Math.max(0.3, (it.minutes / totalMins) * TOTAL_LEN);
-    });
-
-    // ── Textures ───────────────────────────────────────────────────
-    var crossTex = new THREE.TextureLoader().load('/static/dizi-cross-detail.png');
-    crossTex.wrapS = THREE.ClampToEdgeWrapping;
-    crossTex.wrapT = THREE.ClampToEdgeWrapping;
-
-    // ── Build segments ─────────────────────────────────────────────
-    var segMeshes = [];
-    var xOffset = 0;
-
-    // Center the whole dizi
-    var totalExplodedLen = segLengths.reduce(function(a, b){ return a + b; }, 0)
-                            + (items.length - 1) * GAP;
-    var startX = -totalExplodedLen / 2;
-
-    items.forEach(function(it, idx) {
-      var segLen = segLengths[idx];
-      var col = STAGE_COLORS3[idx % STAGE_COLORS3.length];
-      var colInt = parseInt(col.replace('#',''), 16);
-      var matColor = new THREE.Color(colInt);
-
-      // Main cylinder body
-      var cylGeo = new THREE.CylinderGeometry(0.28, 0.28, segLen, 24, 1, false);
-      var cylMat = new THREE.MeshPhongMaterial({
-        color: matColor,
-        transparent: true,
-        opacity: 0.80,
-        shininess: 45,
-        specular: 0x444444,
-      });
-      var cylMesh = new THREE.Mesh(cylGeo, cylMat);
-      cylMesh.rotation.z = Math.PI / 2; // lay along X axis
-      cylMesh.position.x = startX + xOffset + segLen / 2;
-      cylMesh.userData.idx = idx;
-      cylMesh.userData.it = it;
-      scene.add(cylMesh);
-      segMeshes.push(cylMesh);
-
-      // End cross-section disk (right end, where next segment begins)
-      // Slightly inset into the gap
-      var diskGeo = new THREE.CircleGeometry(0.28, 24);
-      var diskMat = new THREE.MeshBasicMaterial({
-        map: crossTex,
-        transparent: true,
-        opacity: 0.92,
-        side: THREE.DoubleSide,
-      });
-      var disk = new THREE.Mesh(diskGeo, diskMat);
-      disk.position.x = startX + xOffset + segLen + GAP / 2;
-      disk.rotation.y = Math.PI / 2; // face +X direction
-      disk.userData.idx = idx;
-      scene.add(disk);
-      segMeshes.push(disk);
-
-      xOffset += segLen + GAP;
-    });
-
-    // ── GSAP: animate from collapsed center outward ───────────────
-    // Start all meshes compressed to center at scale 0
-    segMeshes.forEach(function(mesh) {
-      mesh.scale.set(0.01, 0.01, 0.01);
-      mesh.position.y = 0;
-    });
-
-    // Expand outward
-    var expandObjs = segMeshes.map(function(mesh) { return { mesh: mesh }; });
-    gsap.to(expandObjs.map(function(o){ return o.mesh.scale; }), {
-      x: 1, y: 1, z: 1,
-      duration: 0.55,
-      stagger: 0.09,
-      ease: 'back.out(1.7)',
-      delay: 0.1,
-    });
-    gsap.to(expandObjs.map(function(o){ return o.mesh.position; }), {
-      y: 0,
-      duration: 0.55,
-      stagger: 0.09,
-      ease: 'back.out(1.7)',
-      delay: 0.1,
-    });
-
-    // ── Gentle idle rotation ───────────────────────────────────────
-    var idleAngle = 0;
-    function animate() {
-      _diziAnimFrame = requestAnimationFrame(animate);
-      idleAngle += 0.006;
-      segMeshes.forEach(function(mesh) {
-        mesh.rotation.y = idleAngle * 0.3;
-      });
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    // Store for close animation
-    canvas._diziMeshes = segMeshes;
-  }
-
-  // ── 竹笛弹窗 ─────────────────────────────────────────────
+  // ── 竹笛弹窗（新线段模板） ────────────────────────────────
   var diziModal = document.getElementById('diziModal');
-  var diziModalContent = diziModal ? diziModal.querySelector('.modal-content') : null;
 
   function openDiziModal(date) {
     if (!diziModal) return;
     diziModal.style.display = 'flex';
     document.getElementById('diziModalDate').textContent = date;
     document.getElementById('diziModalTotal').textContent = '加载中...';
+    document.getElementById('segmentsContainer').innerHTML = '';
 
-    // GSAP
     var mask = document.getElementById('diziModalMask');
-    var content = document.getElementById('diziModalContent');
+    var content = diziModal.querySelector('.modal-content');
     gsap.fromTo(mask, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
     gsap.fromTo(content, { scale: 0.5, opacity: 0, y: 50 }, { scale: 1, opacity: 1, y: 0, duration: 0.55, ease: 'back.out(1.7)', delay: 0.05 });
 
-    // 获取当天数据
-    fetch('/api/practices/' + date).then(function(r){ return r.json(); }).then(function(data) {
+    fetch('/api/practices/' + date).then(function(r) { return r.json(); }).then(function(data) {
       var total = data.total_minutes || 0;
       document.getElementById('diziModalTotal').textContent = '总练习 ' + total + ' 分钟';
       var items = data.items || [];
-      if (items.length === 0 || total === 0) {
-        document.getElementById('diziModalTotal').textContent = '总练习 0 分钟（当日无练习数据）';
-        return;
-      }
-      renderDizi3D(items, total);
+      if (!items.length || !total) return;
+
+      var html = '';
+      var cumulative = 0;
+      items.forEach(function(it) {
+        var pct = (it.minutes / total * 100).toFixed(2);
+        var left = cumulative.toFixed(2) + '%';
+        cumulative += parseFloat(pct);
+        html += ''
+          + '<div class="seg-item" style="left:' + left + ';width:' + pct + '%;">'
+          +   '<div class="seg-line-wrap">'
+          +     '<div class="seg-bar"></div>'
+          +     '<div class="seg-bar-line"></div>'
+          +     '<div class="seg-bar"></div>'
+          +   '</div>'
+          +   '<div class="seg-text-col">'
+          +     '<div class="seg-name">' + it.name + '</div>'
+          +     '<div class="seg-mins">' + it.minutes + '分钟</div>'
+          +   '</div>'
+          + '</div>';
+      });
+      document.getElementById('segmentsContainer').innerHTML = html;
     }).catch(function() {
       document.getElementById('diziModalTotal').textContent = '加载失败';
     });
@@ -614,44 +363,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function closeDiziModal() {
     if (!diziModal) return;
-    var content = document.getElementById('diziModalContent');
     var mask = document.getElementById('diziModalMask');
-
-    // Shrink and fade the 3D meshes before closing
-    var canvas = document.getElementById('dizi3dcanvas');
-    if (canvas && canvas._diziMeshes) {
-      var meshes = canvas._diziMeshes;
-      gsap.to(meshes.map(function(m){ return m.scale; }), {
-        x: 0.01, y: 0.01, z: 0.01,
-        duration: 0.28,
-        stagger: 0.05,
-        ease: 'power2.in',
-        onComplete: disposeDizi3D
-      });
-    } else {
-      disposeDizi3D();
-    }
-
-    gsap.to(content, { scale: 0.6, opacity: 0, y: 30, duration: 0.3, ease: 'power2.in' });
-    gsap.to(mask, { opacity: 0, duration: 0.25, delay: 0.05, onComplete: function() {
+    var content = diziModal.querySelector('.modal-content');
+    gsap.to([content, mask], { opacity: 0, scale: 0.9, duration: 0.25, ease: 'power2.in', onComplete: function() {
       diziModal.style.display = 'none';
-      gsap.set(content, { clearProps: 'all' });
-      gsap.set(mask, { clearProps: 'all' });
+      gsap.set([content, mask], { opacity: 1, scale: 1 });
     }});
   }
 
-  // 绑定关闭
-  document.getElementById('diziModalClose').addEventListener('click', closeDiziModal);
-  document.querySelector('#diziModal .modal-mask').addEventListener('click', closeDiziModal);
+  document.getElementById('diziModalMask') && document.getElementById('diziModalMask').addEventListener('click', closeDiziModal);
+  document.getElementById('diziModalClose') && document.getElementById('diziModalClose').addEventListener('click', closeDiziModal);
 
   // ── 练习轨迹渲染函数 ───────────────────────────────────────────────
   function renderTrail(behLog, dateStr) {
     if (!behLog || behLog.length === 0) return '';
-    let html = '<div class="trail-section">';
+    var html = '<div class="trail-section">';
     html += '<div class="trail-header">📍 练习轨迹</div>';
     behLog.forEach(function(entry) {
-      const t = entry.enter_time || '';
-      const timeStr = t ? t.split('T')[1].substring(0, 5) : '--:--';
+      var t = entry.enter_time || '';
+      var timeStr = t ? t.split('T')[1].substring(0, 5) : '--:--';
       html += '<div class="trail-item">';
       html += '<span class="trail-time">' + timeStr + '</span>';
       html += '<span class="trail-item-tag">' + (entry.item || '未知') + '</span>';
@@ -667,7 +397,6 @@ document.addEventListener('DOMContentLoaded', function() {
     cell.style.cursor = 'pointer';
     cell.addEventListener('click', function() {
 
-      // GSAP 格子动画
       var prev = document.querySelector('.cal-day.selected');
       document.querySelectorAll('.cal-day.selected').forEach(function(c){ c.classList.remove('selected'); });
       this.classList.add('selected');
@@ -688,7 +417,6 @@ document.addEventListener('DOMContentLoaded', function() {
       var detailDiv = document.getElementById('dayDetail');
       var detailBody = document.getElementById('detailBody');
 
-      // 显示并 GSAP 滑入
       detailDiv.style.display = 'block';
       document.getElementById('detailDate').textContent = date;
       document.getElementById('detailDate').style.color = '#FF6B6B';
@@ -710,20 +438,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var prevItemsMap = {};
         (prevData.items || []).forEach(function(it){ prevItemsMap[it.item] = it.minutes; });
 
-        // ── 今天无数据 ──────────────────────────────────────────
         if (isToday && (data.total_minutes === 0 || (Array.isArray(data.items) && data.items.length === 0))) {
           detailBody.innerHTML = '<div class="detail-empty">今天还没过完，明天来看</div>';
           return;
         }
 
-        // ── 两天都没数据 ────────────────────────────────────────
         if ((data.total_minutes === 0 || (Array.isArray(data.items) && data.items.length === 0))
             && (prevData.total_minutes === 0 || (Array.isArray(prevData.items) && prevData.items.length === 0))) {
           detailBody.innerHTML = '<div class="detail-empty">这两天都没有练习记录</div>';
           return;
         }
 
-        // ── 渲染当日明细（文字对比，无图表） ───────────────
         var totalDiff = data.total_minutes - prevData.total_minutes;
         var totalDiffStr = totalDiff > 0 ? '+' + totalDiff : String(totalDiff);
         var totalDiffColor = totalDiff > 0 ? '#27AE60' : totalDiff < 0 ? '#E74C3C' : '#999';
@@ -739,7 +464,6 @@ document.addEventListener('DOMContentLoaded', function() {
         detailBody.innerHTML = detailHtml + trail;
         if (trail) gsap.fromTo('.trail-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, stagger: 0.07, ease: 'power2.out' });
 
-        // ── 加载并渲染 Stage 堆叠柱状图 ───────────────────
         fetch('/api/practices/stage/' + date).then(function(r){ return r.json(); }).then(function(stageData) {
           if (stageData.error) return;
           var chartCard = document.getElementById('stageChartCard');
@@ -761,14 +485,15 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // 页面整体弹入
-  document.querySelectorAll('.card').forEach(function(card) {
-    gsap.fromTo(card, { opacity: 0, scale: 0.82, y: 28 }, { opacity: 1, scale: 1, y: 0, duration: 0.65, ease: 'back.out(2)', delay: 0.05 });
-  });
+  var pageContent = document.querySelector('.page-content');
+  if (pageContent) {
+    gsap.fromTo(pageContent, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
+  }
 });
 </script>
 <div id="diziModal">
   <div class="modal-mask" id="diziModalMask"></div>
-  <div class="modal-content" id="diziModalContent">
+  <div class="modal-content">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="diziModalDate"></div>
@@ -776,7 +501,10 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
       <button class="modal-close" id="diziModalClose">×</button>
     </div>
-    <div id="diziExploded"><canvas id="dizi3dcanvas" width="700" height="120"></canvas></div>
+    <div id="diziContainer">
+      <img id="diziBg" src="/static/dizi-h-crop-clean.png" alt="">
+    </div>
+    <div id="segmentsContainer"></div>
     <div class="modal-footer">点击遮罩或 × 关闭</div>
   </div>
 </div>
