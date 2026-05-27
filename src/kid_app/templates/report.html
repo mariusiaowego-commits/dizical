@@ -231,7 +231,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function minsToH(mins) { return mins * hScale; }
 
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;overflow:visible;">';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;overflow:visible;" height="' + (SVG_H + 30) + '">';
+    svg += '<style>.bar-label{pointer-events:none}</style>';
 
     dates.forEach(function(d, i) {
       var x = LABEL_W + i * (BAR_W + BAR_GAP);
@@ -260,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (dayTotal > 0) {
         var barTopY = CHART_H - minsToH(dayTotal);
         var labelY = barTopY + 20;
-        svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#fff" font-weight="500" style="pointer-events:none">' + Math.round(dayTotal) + '分</text>';
+        svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
       }
     });
 
