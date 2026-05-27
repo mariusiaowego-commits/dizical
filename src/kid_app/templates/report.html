@@ -24,8 +24,49 @@
     .nav-icon { font-size: 20px; }
 
     /* dayDetail 区域 */
-    #dayDetail { font-size: 16px; }
-    #dayDetail h3 { font-size: 18px; color: #FF6B6B; margin-bottom: 14px; }
+  /* ── Stage 堆叠柱状图 ─────────────────────────────────── */
+  #stageChartCard {
+    margin-top: 14px;
+    padding-bottom: 14px;
+    min-height: 320px;
+  }
+  #stageChartTitle { font-size: 17px !important; }
+  #stageChartSub { font-size: 13px !important; }
+  #stageChartWrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  #stageChartWrap svg { display: block; }
+  .bar-tooltip {
+    position: fixed;
+    background: rgba(40,40,40,0.92);
+    color: white;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+    transform: translate(-50%, -110%);
+    transition: opacity 0.15s;
+  }
+  .bar-tooltip .tt-item { margin: 2px 0; }
+  .bar-tooltip .tt-diff { font-size: 11px; margin-top: 3px; }
+  .bar-tooltip .tt-diff.up { color: #6EE7B7; }
+  .bar-tooltip .tt-diff.down { color: #FCA5A5; }
+
+  @media (max-width: 600px) {
+    #stageChartCard { padding: 10px 10px 14px; }
+    #stageChartTitle { font-size: 15px !important; }
+  }
+  @media (min-width: 1024px) {
+    #stageChartCard { padding: 16px 20px 20px; }
+  }
+
+  /* ── 日历 dayDetail ─────────────────────────────────── */
+  #dayDetail h3 { font-size: 17px !important; color: #FF6B6B !important; margin-bottom: 14px !important; }
     .detail-empty { text-align: center; color: #BDBDBD; padding: 24px; font-size: 15px; }
 
     /* 哑铃图 */
@@ -118,20 +159,22 @@ document.addEventListener('DOMContentLoaded', function() {
   var STAGE_COLORS = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
 
   function renderStageChart(stageData) {
-    var dates = stageData.dates; // 最多7个
-    var items = stageData.items; // [{id, name}]
-    var data = stageData.data;   // {date: {itemId: mins|null}}
+    var dates = stageData.dates;
+    var items = stageData.items;
+    var data = stageData.data;
 
     var n = dates.length;
-    var BAR_W = 36;
-    var BAR_GAP = Math.max(12, Math.floor((300 - n * BAR_W) / (n - 1)));
-    var CHART_H = 160;
-    var LEFT_PAD = 8;
-    var RIGHT_PAD = 8;
-    var SVG_W = LEFT_PAD + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
-    var SVG_H = CHART_H + 60;
+    var BAR_W = n <= 3 ? 72 : n <= 5 ? 52 : 40;
+    var BAR_GAP = 20;
+    var CHART_H = 200;
+    var LABEL_W = 62;   // 左侧标签宽度
+    var RIGHT_PAD = 10;
+    var SVG_W = LABEL_W + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
+    var SVG_H = CHART_H + 50;
 
-    // 计算每天的总分钟数（用于Y轴上限）
+    var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+
+    // 计算每天总时长和最大值
     var dailyTotals = {};
     dates.forEach(function(d) {
       var total = 0;
@@ -143,89 +186,130 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     var maxTotal = Math.max(...Object.values(dailyTotals), 1);
 
-    function minsToH(mins) {
-      return Math.round((mins / maxTotal) * CHART_H);
-    }
-    function dateX(i) {
-      return LEFT_PAD + i * (BAR_W + BAR_GAP);
-    }
+    function minsToH(mins) { return Math.round((mins / maxTotal) * CHART_H); }
+    function barX(i) { return LABEL_W + i * (BAR_W + BAR_GAP); }
 
-    // 预计算每列每个item的bottom累加高度
-    // colStacks[d][itemIdx] = {bottom, height, top}
+    // 预计算每列堆叠
     var colStacks = {};
     dates.forEach(function(d) {
       colStacks[d] = [];
       var bottom = 0;
       items.forEach(function(it) {
-        var v = (data[d] && data[d][it.id] !== null && data[d][it.id] !== undefined) ? data[d][it.id] : null;
-        var h = v !== null ? minsToH(v) : 0;
-        colStacks[d].push({bottom: bottom, height: h, top: bottom + h, value: v});
+        var raw = (data[d] && data[d][it.id] !== null && data[d][it.id] !== undefined) ? data[d][it.id] : null;
+        var h = raw !== null ? minsToH(raw) : 0;
+        colStacks[d].push({bottom: bottom, height: h, top: bottom + h, value: raw});
         bottom += h;
       });
     });
 
-    var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+    // 昨天数据映射（用于tooltip对比）
+    var prevData = {};
+    if (dates.length > 1) {
+      var prevDate = dates[dates.length - 2];
+      items.forEach(function(it, ii) {
+        prevData[it.id] = colStacks[prevDate] ? colStacks[prevDate][ii].value : null;
+      });
+    }
 
     var svg = '<svg width="' + SVG_W + '" height="' + SVG_H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;font-family:sans-serif;">';
 
-    // 画连接线（底层到顶层，每层一条）
+    // Y轴参考线
+    [0.25, 0.5, 0.75, 1.0].forEach(function(r) {
+      var y = Math.round(CHART_H * (1 - r));
+      svg += '<line x1="0" y1="' + y + '" x2="' + SVG_W + '" y2="' + y + '" stroke="#F0F0F0" stroke-width="1"/>';
+      svg += '<text x="3" y="' + (y - 3) + '" font-size="10" fill="#CCC">' + Math.round(maxTotal * r) + '分</text>';
+    });
+
+    // 连接线
     for (var ii = 0; ii < items.length; ii++) {
       for (var jj = 0; jj < dates.length - 1; jj++) {
         var d1 = dates[jj], d2 = dates[jj + 1];
         var s1 = colStacks[d1][ii], s2 = colStacks[d2][ii];
         if (s1.value === null || s2.value === null) continue;
-        var x1 = dateX(jj) + BAR_W;
-        var x2 = dateX(jj + 1);
-        var col1 = s1.value <= s2.value ? '#27AE60' : '#E74C3C';
-        // top线
-        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.top) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.top) + '" stroke="' + col1 + '" stroke-width="1.5" opacity="0.4" stroke-dasharray="3,2"/>';
-        // bottom线
-        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.bottom) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.bottom) + '" stroke="' + col1 + '" stroke-width="1.5" opacity="0.3" stroke-dasharray="3,2"/>';
+        var x1 = barX(jj) + BAR_W;
+        var x2 = barX(jj + 1);
+        var col = s1.value <= s2.value ? '#34D399' : '#F87171';
+        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.top) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.top) + '" stroke="' + col + '" stroke-width="2" opacity="0.5"/>';
+        svg += '<line x1="' + x1 + '" y1="' + (CHART_H - s1.bottom) + '" x2="' + x2 + '" y2="' + (CHART_H - s2.bottom) + '" stroke="' + col + '" stroke-width="1.5" opacity="0.35"/>';
       }
     }
 
-    // 画堆叠柱
+    // 堆叠柱 + 悬停
     for (var jj = 0; jj < dates.length; jj++) {
       var d = dates[jj];
-      var x = dateX(jj);
+      var x = barX(jj);
       var stacks = colStacks[d];
-      var isFuture = (data[d] && Object.values(data[d]).every(function(v){ return v === null; }));
-      var barOpacity = isFuture ? 0.25 : 1;
+      var isFuture = !data[d] || Object.values(data[d]).every(function(v){ return v === null; });
+      var barOpacity = isFuture ? 0.2 : 1;
 
       for (var ii = 0; ii < stacks.length; ii++) {
         var s = stacks[ii];
         if (s.height === 0) continue;
         var col = STAGE_COLORS[ii % STAGE_COLORS.length];
         var y = CHART_H - s.top;
-        svg += '<rect x="' + x + '" y="' + y + '" width="' + BAR_W + '" height="' + s.height + '" fill="' + col + '" opacity="' + barOpacity + '" rx="2"/>';
+        svg += '<rect data-bar="1" data-date="' + d + '" data-itemid="' + items[ii].id + '" data-itemname="' + items[ii].name + '" data-value="' + (s.value !== null ? s.value : 0) + '" data-prev="' + (prevData[items[ii].id] !== undefined ? (prevData[items[ii].id] !== null ? prevData[items[ii].id] : 'null') : '') + '" x="' + x + '" y="' + y + '" width="' + BAR_W + '" height="' + s.height + '" fill="' + col + '" opacity="' + barOpacity + '" rx="3" style="cursor:pointer;transition:opacity 0.15s,filter 0.15s;"/>';
         // 数据标签
-        if (s.value !== null && s.height > 14) {
-          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (y + s.height / 2 + 4) + '" text-anchor="middle" font-size="9" fill="white" opacity="0.9">' + s.value + '</text>';
+        if (s.value !== null && s.height > 18) {
+          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (y + s.height / 2 + 4) + '" text-anchor="middle" font-size="11" fill="white" font-weight="600" style="pointer-events:none;">' + s.value + '</text>';
         }
       }
 
-      // x轴标签
+      // x轴
       var dtParts = d.split('-');
       var label = dtParts[1] + '/' + dtParts[2];
       var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 8) + '" text-anchor="middle" font-size="10" fill="#999">' + label + '</text>';
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 20) + '" text-anchor="middle" font-size="9" fill="#BBB">' + wd + '</text>';
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 6) + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 18) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
+
+      // 左侧总时长标签
+      var total = dailyTotals[d] || 0;
+      if (total > 0) {
+        svg += '<text x="' + (LABEL_W - 4) + '" y="' + (CHART_H - minsToH(total) / 2 + 4) + '" text-anchor="end" font-size="10" fill="#888" font-weight="500" style="writing-mode:tb">' + total + '分</text>';
+      }
     }
 
-    // y轴参考线
-    [0.25, 0.5, 0.75, 1.0].forEach(function(ratio) {
-      var y = Math.round(CHART_H * (1 - ratio));
-      svg += '<line x1="0" y1="' + y + '" x2="' + SVG_W + '" y2="' + y + '" stroke="#EEE" stroke-width="1"/>';
-      svg += '<text x="2" y="' + (y - 2) + '" font-size="9" fill="#CCC">' + Math.round(maxTotal * ratio) + '</text>';
-    });
-
     svg += '</svg>';
-
     return {
       svg: svg,
       svgW: SVG_W,
       items: items.map(function(it, idx) { return {name: it.name, color: STAGE_COLORS[idx % STAGE_COLORS.length]}; })
     };
+  }
+
+  // ── 绑定柱状图悬停 ─────────────────────────────────────────
+  function bindBarHover() {
+    var tooltip = document.createElement('div');
+    tooltip.className = 'bar-tooltip';
+    tooltip.style.opacity = '0';
+    document.body.appendChild(tooltip);
+
+    document.querySelectorAll('[data-bar="1"]').forEach(function(rect) {
+      rect.addEventListener('mouseenter', function() {
+        var name = rect.getAttribute('data-itemname');
+        var val = rect.getAttribute('data-value');
+        var prev = rect.getAttribute('data-prev');
+        var date = rect.getAttribute('data-date');
+
+        var diffHtml = '';
+        if (prev !== '' && prev !== 'null' && prev !== null) {
+          var diff = parseInt(val) - parseInt(prev);
+          if (diff > 0) diffHtml = '<div class="tt-diff up">↑ +' + diff + '分 vs昨日</div>';
+          else if (diff < 0) diffHtml = '<div class="tt-diff down">↓ ' + diff + '分 vs昨日</div>';
+          else diffHtml = '<div class="tt-diff" style="color:#AAA">＝ 持平昨日</div>';
+        }
+        tooltip.innerHTML = '<div class="tt-item"><strong>' + name + '</strong></div><div class="tt-item">' + val + '分钟</div>' + diffHtml;
+        tooltip.style.opacity = '1';
+        gsap.to(rect, { scaleY: 1.04, transformOrigin: 'bottom', duration: 0.15, ease: 'power2.out' });
+      });
+      rect.addEventListener('mousemove', function(e) {
+        tooltip.style.left = e.clientX + 'px';
+        tooltip.style.top = e.clientY + 'px';
+      });
+      rect.addEventListener('mouseleave', function() {
+        tooltip.style.opacity = '0';
+        gsap.to(rect, { scaleY: 1, duration: 0.2, ease: 'power2.out' });
+      });
+    });
   }
 
   // ── 练习轨迹渲染函数 ───────────────────────────────────────────────
@@ -332,10 +416,11 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('stageChartSub').textContent = '共 ' + stageData.dates.length + ' 天';
           document.getElementById('stageChartWrap').innerHTML = result.svg;
           document.getElementById('stageChartLegend').innerHTML = result.items.map(function(it) {
-            return '<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#555;"><span style="width:10px;height:10px;border-radius:2px;background:' + it.color + ';display:inline-block;"></span>' + it.name + '</span>';
+            return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;background:#F5F5F5;padding:3px 8px;border-radius:12px;"><span style="width:9px;height:9px;border-radius:2px;background:' + it.color + ';display:inline-block;"></span>' + it.name + '</span>';
           }).join('');
           chartCard.style.display = 'block';
           gsap.fromTo(chartCard, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
+          bindBarHover();
         }).catch(function(){});
       }).catch(function() {
         detailBody.innerHTML = '<div class="detail-empty">加载失败</div>';
