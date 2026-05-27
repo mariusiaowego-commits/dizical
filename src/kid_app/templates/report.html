@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // label zone 背景
       svg += '<rect x="' + x + '" y="0" width="' + BAR_W + '" height="' + LABEL_ABOVE_H + '" fill="transparent"/>';
 
-      svg += '<rect x="' + x + '" y="' + LABEL_ABOVE_H + '" width="' + BAR_W + '" height="' + CHART_H + '" fill="#F5F5F5" rx="4"/>';
+      svg += '<rect x="' + x + '" y="' + LABEL_ABOVE_H + '" width="' + BAR_W + '" height="' + CHART_H + '" fill="transparent" stroke="#F0F0F0" stroke-width="1" rx="4"/>';
 
       items.forEach(function(it, idx) {
         var v = data[d] && data[d][it.id];
