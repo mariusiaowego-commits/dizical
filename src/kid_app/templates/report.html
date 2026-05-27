@@ -34,9 +34,9 @@
   #stageChartSub { font-size: 13px !important; }
   #stageChartWrap {
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
-    height: 216px;
+    min-height: 216px;
   }
   #stageChartWrap svg { display: block; }
   .bar-tooltip {
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function minsToH(mins) { return mins * hScale; }
 
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" height="' + SVG_H + '" style="display:block;overflow:visible;">';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;overflow:visible;">';
 
     dates.forEach(function(d, i) {
       var x = LABEL_W + i * (BAR_W + BAR_GAP);
