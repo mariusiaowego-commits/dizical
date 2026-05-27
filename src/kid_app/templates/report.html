@@ -198,7 +198,7 @@
 document.addEventListener('DOMContentLoaded', function() {
 
   // ── Stage 堆叠柱状图渲染函数 ─────────────────────────────────────────
-  var STAGE_COLORS = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB'];
+  var STAGE_COLORS = ['#FF4D6A','#FF6B4D','#FF8A4D','#FFA84D','#FFC74D','#FFE64D','#E8FF4D','#C7FF4D','#A8FF4D','#8AFF4D','#6BFF4D','#4DFF6B','#4DFF8A','#4DFFA8','#4DFFC7','#4DFFE6','#4DE8FF','#4DC7FF','#4DA8FF','#4D8AFF','#4D6BFF','#6B4DFF','#8A4DFF','#A84DFF','#C74DFF','#E64DFF','#FF4DE8','#FF4DC7','#FF4DA8','#FF4D8A'];
 
   function renderStageChart(stageData) {
     var dates = stageData.dates;
@@ -257,7 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
       svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (SVG_H - 18) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
 
       if (dayTotal > 0) {
-        var labelY = CHART_H - minsToH(dayTotal) - 4;
+        var barTopY = CHART_H - minsToH(dayTotal);
+        var labelY = Math.max(14, barTopY - 14);
         svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#888" font-weight="500">' + Math.round(dayTotal) + '分</text>';
       }
     });
@@ -370,6 +371,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('diziModalMask') && document.getElementById('diziModalMask').addEventListener('click', closeDiziModal);
   document.getElementById('diziModalClose') && document.getElementById('diziModalClose').addEventListener('click', closeDiziModal);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDiziModal();
+  });
 
   // ── 练习轨迹渲染函数 ───────────────────────────────────────────────
   function renderTrail(behLog, dateStr) {
