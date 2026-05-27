@@ -259,8 +259,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (dayTotal > 0) {
         var barTopY = CHART_H - minsToH(dayTotal);
-        var labelY = barTopY - 40;
-        svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#888" font-weight="500">' + Math.round(dayTotal) + '分</text>';
+        var labelY = barTopY + 20;
+        svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#fff" font-weight="500" style="pointer-events:none">' + Math.round(dayTotal) + '分</text>';
       }
     });
 
