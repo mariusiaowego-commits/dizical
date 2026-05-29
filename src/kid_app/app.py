@@ -802,7 +802,9 @@ async def api_log(request: Request):
 
     except Exception as e:
         import traceback
-        return JSONResponse({"ok": False, "error": str(e), "trace": traceback.format_exc()}, status_code=500)
+        import logging
+        logging.error(f"API error: {e}\n{traceback.format_exc()}")
+        return JSONResponse({"ok": False, "error": "服务器内部错误"}, status_code=500)
 
 # ─── API: 删除单条练习记录 ─────────────────────────────────────────────────
 @app.delete("/api/log")
@@ -826,7 +828,10 @@ async def api_delete_log(request: Request):
             return JSONResponse({"ok": False, "error": "缺少参数"}, status_code=400)
         return JSONResponse({"ok": True, "items": after["items"] if after else [], "total_minutes": after["total_minutes"] if after else 0})
     except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e), "trace": traceback.format_exc()}, status_code=500)
+        import traceback
+        import logging
+        logging.error(f"API error: {e}\n{traceback.format_exc()}")
+        return JSONResponse({"ok": False, "error": "服务器内部错误"}, status_code=500)
 
 # ─── API: 更新练习项目排序 ─────────────────────────────────────────────────
 @app.put("/api/items/order")

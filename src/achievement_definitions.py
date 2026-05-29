@@ -11,8 +11,9 @@ from datetime import date, timedelta
 from typing import Optional
 import sqlite3
 import re
+from pathlib import Path
 
-DB_PATH = "/Users/mt16/dev/dizical/data/dizi.db"
+_DB_PATH = Path(__file__).parent.parent / "data" / "dizi.db"
 
 
 @dataclass
@@ -30,7 +31,7 @@ class CalcResult:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_conn():
-    return sqlite3.connect(DB_PATH)
+    return sqlite3.connect(_DB_PATH)
 
 
 def _get_achievements(conn: sqlite3.Connection) -> list[dict]:
