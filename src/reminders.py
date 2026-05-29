@@ -3,6 +3,7 @@ Apple Reminders 同步模块
 使用 remindctl CLI 监控 dizi 列表，解析自然语言指令
 """
 
+import json
 import os
 import re
 import logging
@@ -90,7 +91,6 @@ class RemindersManager:
             if result.returncode != 0:
                 return []
 
-            import json
             items = json.loads(result.stdout)
             return items
         except Exception as e:

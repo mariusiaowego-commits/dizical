@@ -70,24 +70,29 @@ def _calc_max_consecutive_streak():
     """计算历史最长连续练习天数（断掉后重新接上也能恢复）"""
     today = dt.date.today()
     practices = db.get_daily_practices_in_range(dt.date(2020, 1, 1), today)
-    day_mins = {p["date"]: p.get("total_minutes", 0) for p in practices}
 
-    if not day_mins:
+    # 只遍历有练习的日期，而非逐日遍历整个时间范围
+    practice_dates = sorted(
+        p["date"] for p in practices if p.get("total_minutes", 0) > 0
+    )
+
+    if not practice_dates:
         return 0
-
-    dates_sorted = sorted(day_mins.keys())
-    first_day = dates_sorted[0]
 
     max_streak = 0
     cur_streak = 0
-    d = first_day
-    while d <= today:
-        if day_mins.get(d, 0) > 0:
+    prev_date = None
+
+    for d in practice_dates:
+        if prev_date is None:
+            cur_streak = 1
+        elif (d - prev_date).days == 1:
             cur_streak += 1
-            max_streak = max(max_streak, cur_streak)
         else:
-            cur_streak = 0
-        d += dt.timedelta(days=1)
+            cur_streak = 1
+        max_streak = max(max_streak, cur_streak)
+        prev_date = d
+
     return max_streak
 
 

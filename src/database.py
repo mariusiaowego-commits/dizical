@@ -1,5 +1,7 @@
+import json
 import sqlite3
 import datetime as dt
+from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 from .models import Lesson, Payment, LessonStatus, settings
@@ -534,7 +536,6 @@ class Database:
         合并两个小科目：删除 from_id，保留 to_id，
         同时把所有历史记录里的 from_name 替换为 to_name。
         """
-        import json
         with self._get_connection() as conn:
             cursor = conn.cursor()
             # 1. 找出所有涉及 from_name 的历史记录
@@ -598,7 +599,6 @@ class Database:
 
     # Weekly assignment operations
     def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
-        import json
         if isinstance(lesson_date, str):
             lesson_date = dt.date.fromisoformat(lesson_date)
         # 增量追加：查询现有 items，合并新旧（按 item 名称去重），再保存
@@ -664,7 +664,6 @@ class Database:
             ''', (anchor_date.isoformat(),))
             row = cursor.fetchone()
             if row:
-                import json
                 return {
                     'id': row['id'],
                     'lesson_date': dt.date.fromisoformat(row['lesson_date']),
@@ -693,7 +692,6 @@ class Database:
             ''', (week_start.isoformat(), week_end.isoformat()))
             row = cursor.fetchone()
             if row:
-                import json
                 return {
                     'id': row['id'],
                     'lesson_date': dt.date.fromisoformat(row['lesson_date']),
@@ -714,7 +712,6 @@ class Database:
                 WHERE lesson_date >= ? AND lesson_date <= ?
                 ORDER BY lesson_date
             ''', (start.isoformat(), end.isoformat()))
-            import json
             return [{
                 'id': row['id'],
                 'lesson_date': dt.date.fromisoformat(row['lesson_date']),
@@ -729,7 +726,6 @@ class Database:
     # Daily practice operations
     def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y',
                             channel: Optional[str] = None, method: Optional[str] = None, session_id: Optional[str] = None) -> None:
-        import json
         if isinstance(date, str):
             date = dt.date.fromisoformat(date)
         input_items = list(items)  # 原始输入，用于 audit log
@@ -794,7 +790,6 @@ class Database:
                            total_minutes: int, error: Optional[str] = None,
                            session_id: Optional[str] = None) -> None:
         """写一条练习录入审计日志（数据溯源用）"""
-        import json
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -809,7 +804,6 @@ class Database:
 
     def append_behavior_log(self, date: dt.date, entry: Dict) -> None:
         """追加一条行为日志到当天的 behavior_log JSON 数组"""
-        import json
         if isinstance(date, str):
             date = dt.date.fromisoformat(date)
         with self._get_connection() as conn:
@@ -834,7 +828,6 @@ class Database:
         规范化为 [{'item': 'item1', 'minutes': 0}, ...]
         正常格式直接返回。
         """
-        import json
         items = json.loads(raw) if isinstance(raw, str) else raw
         if not items:
             return []
@@ -844,7 +837,6 @@ class Database:
 
     def remove_daily_practice_record_by_id(self, date: dt.date, item_id: int) -> None:
         """根据日期和 item_id 从 JSON items 数组中删除指定项目"""
-        import json as _json
         existing = self.get_daily_practice(date)
         if not existing:
             return
@@ -863,7 +855,7 @@ class Database:
                 cursor.execute('''
                     INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (date.isoformat(), _json.dumps(new_items, ensure_ascii=False),
+                ''', (date.isoformat(), json.dumps(new_items, ensure_ascii=False),
                       new_total, existing.get("log", ""), 'Y'))
                 conn.commit()
 
@@ -886,7 +878,6 @@ class Database:
                                    channel='internal', method='remove_record')
 
     def get_daily_practice(self, date: dt.date) -> Optional[Dict]:
-        import json
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM daily_practices WHERE date = ?', (date.isoformat(),))
@@ -904,7 +895,6 @@ class Database:
             return None
 
     def get_daily_practices_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:
-        import json
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -964,7 +954,6 @@ class Database:
         将 daily_progress 表的所有 note 迁移到 daily_practices.log。
         返回迁移条数。
         """
-        import json
         migrated = 0
         with self._get_connection() as conn:
             cursor = conn.cursor()

@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional, Annotated, List, Dict
 import curses
 import io
+import json
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -2216,7 +2217,6 @@ def _get_last_practice() -> str | None:
     """获取最近一次练习记录"""
     try:
         from src.database import db
-        import json
         conn = db._get_connection()
         cursor = conn.execute(
             "SELECT date, total_minutes, items FROM daily_practices ORDER BY date DESC LIMIT 1"

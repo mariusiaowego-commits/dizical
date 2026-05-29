@@ -4,6 +4,7 @@
 """
 
 import datetime as dt
+import json
 import re
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
@@ -319,7 +320,6 @@ def get_week_summary(week_start: dt.date) -> Dict:
         practice_days.append(p['date'])
         items_raw = p['items']
         if isinstance(items_raw, str):
-            import json
             items_raw = json.loads(items_raw)
         for item in (items_raw or []):
             name = item['item']
@@ -369,7 +369,6 @@ def get_week_days(week_start: dt.date) -> Dict[str, Dict]:
             # 确保 items 是 list 而非 JSON 字符串（防御旧数据或异常路径）
             items_raw = p['items']
             if isinstance(items_raw, str):
-                import json
                 items_raw = json.loads(items_raw)
             days[key]['items'] = items_raw if items_raw else []
 
@@ -401,7 +400,6 @@ def get_month_summary(year: int, month: int) -> Dict:
         practice_days.add(p['date'])
         items_raw = p['items']
         if isinstance(items_raw, str):
-            import json
             items_raw = json.loads(items_raw)
         for item in (items_raw or []):
             name = item['item']
