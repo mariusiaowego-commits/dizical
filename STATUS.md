@@ -1,9 +1,52 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-26
-**当前阶段**: Practice 页 UI/UX 优化完成
+**2026-05-29 — 弹窗竹笛背景图随机切换 + 呼吸动效**:
+- **分支**: `feat/ui-adjustments`
+- **9张竹笛背景图**：原 `dizi-h-crop-clean.png` + 8张新生成图（牡丹繁花/锦鲤戏莲/祥云游龙/银杏秋风/星象夜空/几何流线/千里江山/仙鹤修竹），rembg统一去背景+自动裁剪
+- **随机切换**：每次打开弹窗随机选一张图
+- **呼吸动效**：opacity 1↔0.65 + scale 1.0↔1.03，0.6s周期，关闭时kill动画
+- **静态文件**: `src/kid_app/static/dizi-modal-new-{1-8}-crop.png` + `remove_bg.py` / `crop_flutes.py` / `download_and_rmbg.py`
+- **教训**: execute_code的terminal是沙盒，下载文件必须用real terminal；rembg抠图需裁剪后高度统一（padding+crop）；img.complete检查解决缓存图onload不触发问题
 
 ## 阶段记录
+
+**2026-05-29 — config台课程管理 + 练习记录管理**:
+- **分支**: `feat/config-cli-management`
+- **config-lessons.html**: 课程日历/生成计划/课程列表/课程统计 四tab
+  - 课程日历：月历视图，彩色圆点（紫=已安排，绿=已上课，灰=已取消）
+  - action bar：日期选择 + 添加/取消/确认上课/调课
+  - 调课弹窗：选新日期后自动刷新日历
+  - 课程列表：月份切换，每条可单独标记缴费
+  - 课程统计：安排/上课/取消数量 + 学费合计/已缴/待缴
+- **config-records.html**: 练习日历/录入/编辑/统计 四tab
+  - 练习日历：月历热力图，点击显示当日练习明细弹窗
+  - 录入：category + item 二级下拉，必须从现有科目选择
+  - 编辑：修改历史记录，自动合并历史科目（⭐标记）
+  - 统计：GSAP 数字滚动动画，proxy + onUpdate 方式
+- **config.py**: 新增 `/api/lessons/*` 系列API（8个）+ `/api/records/*` 系列API（4个）
+- **config.html**: 导航卡片新增「课程管理」「练习记录管理」
+- **教训**: lesson_manager 实际是类实例不是模块，直接 import 会失败；payment_manager 类名拼写不同
+- **commit**: `02a64b9` → PR #38 → **已合并 main**
+- **分支**: `feat/report-page`
+- **竹笛弹窗**:
+  - 新模板 `dizi-modal-template.html`：横向竹笛底图（`dizi-h-crop-clean.png`）+ 扁平金线段（`#C9A030`）无渐变，竖杠+横线，科目隶书古风，无边框背景，时长在科目名下 10px
+  - Three.js 3D 方案已废弃（用户拒绝）
+  - ESC 关闭弹窗
+- **Stage 堆叠柱状图**:
+  - API `/api/practices/stage/{date_str}`（`app.py`）
+  - label zone 上方 40px 透明空间放总时长数字
+  - 颜色按 `item.id % 30` 固定映射（跨柱子一致）
+  - 色块 1px 间隙，无圆角，渐变填充（顶深底浅）
+  - 悬停 tooltip + GSAP scaleY 动效
+- **已解决 Bug**:
+  1. 堆叠逻辑 `barY = stackY - 1` 写反 → `barY = stackY - barH`, `stackY = barY`
+  2. 颜色按渲染顺序 `idx` → 按 `it.id` 固定映射
+  3. SVG viewBox/Safari 缩放异常 → 固定像素宽高
+  4. label 被 SVG 裁剪 → SVG 高度含 label zone，overflow-y:visible
+  5. ESC 关闭弹窗未绑定 → keydown listener
+- **待确认**: label 最终位置（bar 上方 2px 方案被回退，当前在 bar 内）
+- **教训**: 堆叠柱状图先在 Python 里手算一遍数据再写代码，避免 SVG 坐标系逻辑错误
+- **commits**: `cf39b7e` 等多个 → **待合并 main**
 
 **2026-05-26 — Practice 页 UI/UX 优化**:
 - **分支**: `feat/practice-ui-ux` → 已合并 main
