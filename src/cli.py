@@ -863,7 +863,7 @@ def remind_payment():
         if last_month_status.balance > 0:
             notifier = TelegramNotifier()
             notifier.send_payment_overdue_reminder(
-                last_month.month, last_month_status.balance, 0
+                last_month.month, last_month_status.balance
             )
             console.print(Panel(f"[red]✅ 已发送上月欠费催缴提醒，待缴: {last_month_status.balance} 元[/red]"))
             return

@@ -144,6 +144,7 @@ class Database:
             if 'stage_start' not in wa_columns:
                 cursor.execute('ALTER TABLE weekly_assignments ADD COLUMN stage_start DATE')
                 cursor.execute('ALTER TABLE weekly_assignments ADD COLUMN stage_end DATE')
+                cursor.execute('ALTER TABLE weekly_assignments ADD COLUMN stage_order INTEGER')
 
                 # 回填：stage_start = lesson_date + 1天，stage_end = 下一节（attended + scheduled）课日期
                 cursor.execute("SELECT date FROM lessons ORDER BY date")
@@ -179,6 +180,8 @@ class Database:
             columns = [col['name'] for col in cursor.fetchall()]
             if 'log' not in columns:
                 cursor.execute('ALTER TABLE daily_practices ADD COLUMN log TEXT')
+            if 'behavior_log' not in columns:
+                cursor.execute('ALTER TABLE daily_practices ADD COLUMN behavior_log TEXT')
 
             # Migration: add category_id if practice_items doesn't have it
             cursor.execute("PRAGMA table_info(practice_items)")

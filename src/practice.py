@@ -614,7 +614,11 @@ def import_from_csv(csv_path: str, date_column: str = 'Date') -> Tuple[int, int]
                     try:
                         minutes = int(float(val.strip()))
                         if minutes > 0:
-                            items.append({'item': col_stripped, 'minutes': minutes})
+                            item_id = db._match_practice_item_id(col_stripped)
+                            if item_id is None:
+                                print(f"  Row {row_num}: 科目 '{col_stripped}' 无法匹配到已知科目，跳过")
+                                continue
+                            items.append({'item': col_stripped, 'item_id': item_id, 'minutes': minutes})
                     except:
                         continue
                 
