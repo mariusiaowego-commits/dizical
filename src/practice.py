@@ -675,5 +675,32 @@ def get_practice_calendar(year: int, month: int) -> Dict[str, any]:
     for key, note in progress.items():
         if key in calendar:
             calendar[key]['progress'] = note
-    
+
     return calendar
+
+
+def get_week_practices(week_start: dt.date) -> Dict:
+    """导出周报用的练习数据（兼容 export_weekly_practice_report）"""
+    summary = get_week_summary(week_start)
+    days = get_week_days(week_start)
+    return {
+        "daily": [
+            {
+                "date": d.isoformat(),
+                "total_minutes": days[d.isoformat()]["total_minutes"],
+                "items": days[d.isoformat()]["items"],
+                "progress_note": days[d.isoformat()].get("progress"),
+            }
+            for d in [week_start + dt.timedelta(days=i) for i in range(7)]
+        ]
+    }
+
+
+def get_week_stats(week_start: dt.date) -> Dict:
+    """导出周报用的统计数据（兼容 export_weekly_practice_report）"""
+    summary = get_week_summary(week_start)
+    return {
+        "practice_days": summary["practice_days"],
+        "total_minutes": summary["total_minutes"],
+        "avg_minutes": summary["total_minutes"] / max(summary["practice_days"], 1),
+    }

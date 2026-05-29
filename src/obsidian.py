@@ -228,6 +228,79 @@ class ObsidianExporter:
         return str(file_path)
 
 
+    def export_lesson_note(self, lesson_date: dt.date) -> str:
+        """
+        创建单次课程笔记模板
+
+        Args:
+            lesson_date: 课程日期
+
+        Returns:
+            导出文件的绝对路径
+        """
+        from .models import Lesson, LessonStatus
+        lessons = db.get_lessons_by_month(lesson_date.year, lesson_date.month)
+        lesson = next((l for l in lessons if l.date == lesson_date), None)
+
+        file_name = f"课程笔记-{lesson_date}.md"
+        file_path = self.dizi_path / "notes" / file_name
+        self._ensure_dir(file_path.parent)
+
+        if lesson:
+            status_icon = {"attended": "✅", "cancelled": "❌", "scheduled": "📅"}.get(
+                lesson.status.value, "📅"
+            )
+            content = f"""# 🎵 竹笛课程笔记 - {lesson_date}
+
+## 课程信息
+
+| 项目 | 内容 |
+|------|------|
+| 日期 | {lesson.date} |
+| 时间 | {lesson.time} |
+| 状态 | {status_icon} {lesson.status.value} |
+| 费用 | {lesson.fee} 元 |
+
+## 课程内容
+
+-
+
+## 练习要求
+
+-
+
+## 家长备注
+
+"""
+        else:
+            content = f"""# 🎵 竹笛课程笔记 - {lesson_date}
+
+## 课程信息
+
+| 项目 | 内容 |
+|------|------|
+| 日期 | {lesson_date} |
+| 时间 | - |
+| 状态 | 📅 待上课 |
+
+## 课程内容
+
+-
+
+## 练习要求
+
+-
+
+## 家长备注
+
+"""
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return str(file_path)
+
+
 # 全局单例
 _exporter: Optional[ObsidianExporter] = None
 

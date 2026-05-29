@@ -1015,10 +1015,7 @@ def export_obsidian(
     total_fee = sum(l.fee for l in lessons if l.status != 'cancelled')
     paid_amount = sum(p.amount for p in payments)
 
-    filepath = exporter.export_monthly_report(year, month_num, lessons, payments, total_fee, paid_amount)
-
-    # 创建索引
-    exporter.create_index()
+    filepath = exporter.export_monthly_report(year, month_num)
 
     console.print(Panel(f"[green]✅ 已导出到 Obsidian[/green]"))
     console.print(f"📄 文件: {filepath}")
@@ -2219,18 +2216,20 @@ def _get_last_practice() -> str | None:
     """获取最近一次练习记录"""
     try:
         from src.database import db
-        from src.models import DailyPractice
-        row = db.query(
-            "SELECT date, minutes, items FROM daily_practice ORDER BY date DESC LIMIT 1"
-        ).fetchone()
-        if row:
-            d, minutes, items_json = row
-            from src.practice import parse_items_json
-            items = parse_items_json(items_json) if items_json else []
-            item_names = [i.get("name", "?") for i in items[:3]]
-            items_str = " / ".join(item_names) if item_names else "无科目"
-            return f"{d}  {minutes}分钟  {items_str}"
-        return None
+        import json
+        conn = db._get_connection()
+        cursor = conn.execute(
+            "SELECT date, total_minutes, items FROM daily_practices ORDER BY date DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        d = row['date']
+        minutes = row['total_minutes']
+        items = json.loads(row['items']) if row['items'] else []
+        item_names = [i.get('item', '?') for i in items[:3]]
+        items_str = " / ".join(item_names) if item_names else "无科目"
+        return f"{d}  {minutes}分钟  {items_str}"
     except Exception:
         return None
 
