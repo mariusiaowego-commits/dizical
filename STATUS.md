@@ -1,9 +1,31 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-26
-**当前阶段**: Practice 页 UI/UX 优化完成
+**最后更新**: 2026-05-28
+**当前阶段**: 项目综合分析完成
 
 ## 阶段记录
+
+**2026-05-27 — Report 页堆叠柱状图 + 竹笛弹窗（新模板）**:
+- **分支**: `feat/report-page`
+- **竹笛弹窗**:
+  - 新模板 `dizi-modal-template.html`：横向竹笛底图（`dizi-h-crop-clean.png`）+ 扁平金线段（`#C9A030`）无渐变，竖杠+横线，科目隶书古风，无边框背景，时长在科目名下 10px
+  - Three.js 3D 方案已废弃（用户拒绝）
+  - ESC 关闭弹窗
+- **Stage 堆叠柱状图**:
+  - API `/api/practices/stage/{date_str}`（`app.py`）
+  - label zone 上方 40px 透明空间放总时长数字
+  - 颜色按 `item.id % 30` 固定映射（跨柱子一致）
+  - 色块 1px 间隙，无圆角，渐变填充（顶深底浅）
+  - 悬停 tooltip + GSAP scaleY 动效
+- **已解决 Bug**:
+  1. 堆叠逻辑 `barY = stackY - 1` 写反 → `barY = stackY - barH`, `stackY = barY`
+  2. 颜色按渲染顺序 `idx` → 按 `it.id` 固定映射
+  3. SVG viewBox/Safari 缩放异常 → 固定像素宽高
+  4. label 被 SVG 裁剪 → SVG 高度含 label zone，overflow-y:visible
+  5. ESC 关闭弹窗未绑定 → keydown listener
+- **待确认**: label 最终位置（bar 上方 2px 方案被回退，当前在 bar 内）
+- **教训**: 堆叠柱状图先在 Python 里手算一遍数据再写代码，避免 SVG 坐标系逻辑错误
+- **commits**: `cf39b7e` 等多个 → **待合并 main**
 
 **2026-05-26 — Practice 页 UI/UX 优化**:
 - **分支**: `feat/practice-ui-ux` → 已合并 main

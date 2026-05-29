@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>练习记录管理 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+      --sidebar-width: 220px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .records-layout {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── 左侧边栏 ── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: white;
+      border-right: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .sidebar-header h2 {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 10px;
+    }
+
+    .sidebar-header .back-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #7F8C8D;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-header .back-link:hover {
+      background: rgba(0,0,0,0.04);
+      color: var(--text);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .tab-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 14px;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      color: var(--text);
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+
+    .tab-item:hover {
+      background: rgba(168, 213, 186, 0.15);
+    }
+
+    .tab-item.active {
+      background: var(--sage);
+      color: white;
+      box-shadow: 0 3px 12px rgba(168, 213, 186, 0.35);
+    }
+
+    .tab-item .tab-icon { font-size: 18px; }
+    .tab-item .tab-label { font-weight: 500; }
+
+    /* ── 右侧主内容 ── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .content-header {
+      padding: 20px 28px 14px;
+      background: white;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-header h1 {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .content-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 28px;
+    }
+
+    /* ── 日历视图 ── */
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .calendar-nav-btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: none;
+      background: white;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.2s ease;
+    }
+
+    .calendar-nav-btn:hover { transform: scale(1.03); }
+    .calendar-nav-btn:active { transform: scale(0.97); }
+
+    .calendar-month-label {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .calendar-grid {
+      background: white;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: rgba(0,0,0,0.03);
+      padding: 10px 0;
+    }
+
+    .calendar-weekday {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #7F8C8D;
+      text-transform: uppercase;
+    }
+
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 8px;
+      gap: 6px;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      gap: 2px;
+      position: relative;
+      background: transparent;
+      border: none;
+    }
+
+    .calendar-day:hover { background: rgba(168, 213, 186, 0.15); }
+    .calendar-day.today { border: 2px solid var(--sage); }
+    .calendar-day.has-record { background: rgba(168, 213, 186, 0.25); }
+    .calendar-day.empty { color: #ccc; cursor: default; }
+    .calendar-day.empty:hover { background: transparent; }
+
+    .calendar-day .day-num { font-weight: 600; color: var(--text); }
+    .calendar-day.empty .day-num { color: #ccc; }
+    .calendar-day .day-mins { font-size: 10px; color: #7F8C8D; }
+
+    /* ── 录入/编辑表单 ── */
+    .record-form {
+      max-width: 600px;
+    }
+
+    .form-section {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    .form-section h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .form-row:last-child { margin-bottom: 0; }
+
+    .form-label {
+      font-size: 14px;
+      color: #7F8C8D;
+      width: 60px;
+      flex-shrink: 0;
+    }
+
+    .form-input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 2px solid rgba(0,0,0,0.08);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      background: rgba(0,0,0,0.02);
+    }
+
+    .form-input:focus {
+      border-color: var(--sage);
+      background: white;
+    }
+
+    .items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.02);
+      border-radius: 12px;
+    }
+
+    .item-row.is-historic {
+      opacity: 0.65;
+    }
+
+    .item-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: var(--sage);
+    }
+
+    .item-row .item-name {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .item-row .item-cat {
+      font-size: 12px;
+      color: #7F8C8D;
+      background: rgba(0,0,0,0.05);
+      padding: 2px 8px;
+      border-radius: 8px;
+    }
+
+    .item-row input[type="number"] {
+      width: 70px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 2px solid rgba(0,0,0,0.08);
+      font-size: 14px;
+      text-align: center;
+      outline: none;
+    }
+
+    .item-row input[type="number"]:focus {
+      border-color: var(--sage);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 14px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:active { transform: scale(0.96); }
+
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { box-shadow: 0 4px 16px rgba(168, 213, 186, 0.4); }
+
+    .btn-danger { background: #FFE5E5; color: #FF6B6B; }
+    .btn-danger:hover { background: #FFD0D0; }
+
+    .btn-secondary { background: rgba(0,0,0,0.06); color: var(--text); }
+
+    /* ── 统计卡片 ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    .stat-card .stat-label {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .stat-card .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-card .stat-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: #7F8C8D;
+      margin-left: 4px;
+    }
+
+    .stat-card .stat-sub {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-top: 6px;
+    }
+
+    /* ── 当天记录弹窗 ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: white;
+      border-radius: 24px;
+      padding: 28px;
+      max-width: 440px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.06);
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close:hover { background: rgba(0,0,0,0.12); }
+
+    /* ── 加载状态 ── */
+    .loading { text-align: center; padding: 40px; color: #7F8C8D; font-size: 15px; }
+    .empty-state { text-align: center; padding: 40px; color: #7F8C8D; font-size: 15px; }
+  </style>
+</head>
+<body>
+<div class="records-layout">
+
+  <!-- 左侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>练习记录</h2>
+      <a href="/config" class="back-link">← 配置管理台</a>
+    </div>
+    <div class="sidebar-content">
+      <div class="tab-list">
+        <button class="tab-item active" data-tab="calendar">
+          <span class="tab-icon">📅</span>
+          <span class="tab-label">练习日历</span>
+        </button>
+        <button class="tab-item" data-tab="add">
+          <span class="tab-icon">➕</span>
+          <span class="tab-label">录入练习</span>
+        </button>
+        <button class="tab-item" data-tab="edit">
+          <span class="tab-icon">✏️</span>
+          <span class="tab-label">编辑记录</span>
+        </button>
+        <button class="tab-item" data-tab="stats">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">练习统计</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧主内容 -->
+  <main class="main-content">
+
+    <!-- 日历视图 -->
+    <section id="tab-calendar" class="tab-panel">
+      <div class="content-header">
+        <h1>📅 练习日历</h1>
+      </div>
+      <div class="content-body">
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" id="cal-prev">← 上月</button>
+          <span class="calendar-month-label" id="cal-label"></span>
+          <button class="calendar-nav-btn" id="cal-next">下月 →</button>
+        </div>
+        <div class="calendar-grid">
+          <div class="calendar-weekdays">
+            <div class="calendar-weekday">一</div>
+            <div class="calendar-weekday">二</div>
+            <div class="calendar-weekday">三</div>
+            <div class="calendar-weekday">四</div>
+            <div class="calendar-weekday">五</div>
+            <div class="calendar-weekday">六</div>
+            <div class="calendar-weekday">日</div>
+          </div>
+          <div class="calendar-days" id="cal-days"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 录入练习 -->
+    <section id="tab-add" class="tab-panel" style="display:none">
+      <div class="content-header">
+        <h1>➕ 录入练习</h1>
+      </div>
+      <div class="content-body">
+        <div class="record-form">
+          <div class="form-section">
+            <h3>📆 日期</h3>
+            <div class="form-row">
+              <input type="date" class="form-input" id="add-date">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>🎵 练习科目（勾选并填写分钟数）</h3>
+            <div class="items-list" id="add-items-list">
+              <div class="loading">加载科目中...</div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+              <select class="form-input" id="add-cat-select" style="width:130px;cursor:pointer;">
+                <option value="">选大类</option>
+              </select>
+              <select class="form-input" id="add-item-select" style="flex:1;cursor:pointer;">
+                <option value="">选科目</option>
+              </select>
+              <input type="number" id="add-free-mins" placeholder="分钟" min="0" style="width:70px;padding:10px 12px;border-radius:10px;border:2px solid rgba(0,0,0,0.08);font-size:14px;text-align:center;">
+              <button class="btn btn-secondary" id="add-free-btn" style="padding:10px 14px;flex-shrink:0">添加</button>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>📝 备注（选填）</h3>
+            <div class="form-row">
+              <textarea class="form-input" id="add-log" rows="3" placeholder="一句话记录今天的练习进展..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="add-submit">保存记录</button>
+            <button class="btn btn-secondary" id="add-clear">清空</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 编辑记录 -->
+    <section id="tab-edit" class="tab-panel" style="display:none">
+      <div class="content-header">
+        <h1>✏️ 编辑记录</h1>
+      </div>
+      <div class="content-body">
+        <div class="record-form">
+          <div class="form-section">
+            <h3>📆 选择要编辑的日期</h3>
+            <div class="form-row">
+              <input type="date" class="form-input" id="edit-date">
+              <button class="btn btn-primary" id="edit-load">加载</button>
+            </div>
+          </div>
+
+          <div class="form-section" id="edit-form-section" style="display:none">
+            <h3>🎵 练习科目</h3>
+            <div class="items-list" id="edit-items-list">
+              <div class="loading">加载中...</div>
+            </div>
+          </div>
+
+          <div class="form-section" id="edit-log-section" style="display:none">
+            <h3>📝 备注</h3>
+            <div class="form-row">
+              <textarea class="form-input" id="edit-log" rows="3"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions" id="edit-actions" style="display:none">
+            <button class="btn btn-primary" id="edit-submit">保存修改</button>
+            <button class="btn btn-danger" id="edit-delete">删除记录</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 练习统计 -->
+    <section id="tab-stats" class="tab-panel" style="display:none">
+      <div class="content-header">
+        <h1>📊 练习统计</h1>
+      </div>
+      <div class="content-body">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">本周练习时长</div>
+            <div class="stat-value" id="stat-week-mins">--<span class="stat-unit">分钟</span></div>
+            <div class="stat-sub" id="stat-week-days">-- 天</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">本月练习时长</div>
+            <div class="stat-value" id="stat-month-mins">--<span class="stat-unit">分钟</span></div>
+            <div class="stat-sub" id="stat-month-days">-- 天</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">本周练习天数</div>
+            <div class="stat-value" id="stat-week-days-val">--</div>
+            <div class="stat-sub" id="stat-week-range"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">本月练习天数</div>
+            <div class="stat-value" id="stat-month-days-val">--</div>
+            <div class="stat-sub" id="stat-month-range"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- 当天详情弹窗 -->
+<div class="modal-overlay" id="day-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modal-title">日期</h3>
+      <button class="modal-close" id="modal-close">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ── 全局状态 ──────────────────────────────────────────────────────────────────
+let currentYear, currentMonth;
+let allItems = [];  // [{item_id, name, category_name}, ...]
+let calendarData = {}; // {date: {total_minutes, item_count, practiced}}
+
+// ── 工具 ──────────────────────────────────────────────────────────────────────
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function api(url, opts = {}) {
+  return fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  }).then(r => r.json());
+}
+
+// ── Tab 切换 ──────────────────────────────────────────────────────────────────
+$$('.tab-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('active')) return;
+    $$('.tab-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+
+    const panels = $$('.tab-panel');
+    // GSAP 退出
+    gsap.to(panels, { opacity: 0, x: -20, duration: 0.15, onComplete: () => {
+      panels.forEach(p => p.style.display = 'none');
+      const target = $(`#tab-${tab}`);
+      target.style.display = '';
+      target.style.opacity = 0;
+      // GSAP 进场
+      gsap.fromTo(target, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.25, ease: 'back.out(1.3)' });
+      const children = target.querySelectorAll('.form-section, .calendar-grid, .stats-grid, .stat-card');
+      if (children.length) {
+        gsap.from(children, { opacity: 0, y: 16, stagger: 0.07, duration: 0.35, ease: 'back.out(1.4)' });
+      }
+    }});
+
+    if (tab === 'calendar') renderCalendar();
+    if (tab === 'add') loadItemsForAdd();
+    if (tab === 'stats') loadStats();
+  });
+});
+
+// ── 加载所有科目 ───────────────────────────────────────────────────────────────
+async function loadItems() {
+  const data = await api('/config/api/practice/items?include_archived=false');
+  allItems = data.items || [];
+}
+loadItems();
+
+// ── 日历视图 ──────────────────────────────────────────────────────────────────
+const weekdays = ['一','二','三','四','五','六','日'];
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function renderCalendar() {
+  const label = `${currentYear}年${currentMonth}月`;
+  $('#cal-label').textContent = label;
+
+  const firstDay = new Date(currentYear, currentMonth - 1, 1);
+  // 周一=0
+  let startWeekday = firstDay.getDay(); // 0=周日
+  startWeekday = startWeekday === 0 ? 7 : startWeekday; // 周一开始
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+  // 加载当月数据
+  api(`/config/api/records?year=${currentYear}&month=${currentMonth}`)
+    .then(data => {
+      calendarData = data;
+      buildCalendarDays(daysInMonth, startWeekday, todayStr);
+    });
+
+  buildCalendarDays(daysInMonth, startWeekday, todayStr);
+}
+
+function buildCalendarDays(daysInMonth, startWeekday, todayStr) {
+  const container = $('#cal-days');
+  container.innerHTML = '';
+
+  // 空白格子
+  for (let i = 1; i < startWeekday; i++) {
+    const d = document.createElement('button');
+    d.className = 'calendar-day empty';
+    container.appendChild(d);
+  }
+
+  // 日期格子
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear}-${pad(currentMonth)}-${pad(day)}`;
+    const record = calendarData[dateStr];
+    const isToday = dateStr === todayStr;
+    const hasRecord = record && record.total_minutes > 0;
+
+    const btn = document.createElement('button');
+    btn.className = 'calendar-day' + (isToday ? ' today' : '') + (hasRecord ? ' has-record' : '');
+    btn.innerHTML = `<span class="day-num">${day}</span>`;
+    if (hasRecord) {
+      btn.innerHTML += `<span class="day-mins">${record.total_minutes}分钟</span>`;
+    }
+    btn.addEventListener('click', () => openDayModal(dateStr));
+    container.appendChild(btn);
+  }
+
+  // GSAP 入场动画（用 fromTo 确保可重复执行）
+  const dayBtns = container.querySelectorAll('.calendar-day:not(.empty)');
+  gsap.killTweensOf(dayBtns);
+  gsap.fromTo(dayBtns,
+    { opacity: 0, scale: 0.7 },
+    { opacity: 1, scale: 1, duration: 0.3, stagger: 0.02, ease: 'back.out(1.5)' }
+  );
+}
+
+async function openDayModal(dateStr) {
+  const modal = $('#day-modal');
+  const title = $('#modal-title');
+  const body = $('#modal-body');
+  const d = new Date(dateStr + 'T00:00:00');
+  title.textContent = `${d.getMonth()+1}月${d.getDate()}日`;
+  body.innerHTML = '<div class="loading">加载中...</div>';
+  modal.classList.add('open');
+
+  // GSAP 弹窗入场
+  const box = modal.querySelector('.modal-box');
+  gsap.from(box, { scale: 0.85, opacity: 0, duration: 0.25, ease: 'back.out(1.4)' });
+
+  const res = await api(`/config/api/records/${dateStr}`);
+  if (!res.ok || res.total_minutes === 0) {
+    body.innerHTML = `<p class="empty-state">当天暂无练习记录</p>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="modal-goto-add">去录入</button>
+      </div>`;
+    $('#modal-goto-add').addEventListener('click', () => {
+      modal.classList.remove('open');
+      gotoAddWithDate(dateStr);
+    });
+  } else {
+    const itemsHtml = (res.items || []).map(i =>
+      `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.06);font-size:14px;">
+        <span>${i.item || i.name}</span>
+        <span style="color:#7F8C8D;">${i.minutes}分钟</span>
+      </div>`
+    ).join('');
+    body.innerHTML = `
+      <p style="font-size:14px;color:#7F8C8D;margin:0 0 14px;">共 <strong style="color:var(--text);font-size:16px;">${res.total_minutes}</strong> 分钟，${res.items.length} 个科目</p>
+      ${itemsHtml}
+      ${res.log ? `<p style="margin-top:14px;font-size:13px;color:#7F8C8D;padding:10px;background:rgba(0,0,0,0.03);border-radius:10px;">📝 ${res.log}</p>` : ''}
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-secondary" id="modal-goto-edit">编辑</button>
+      </div>
+    `;
+    $('#modal-goto-edit').addEventListener('click', () => {
+      modal.classList.remove('open');
+      $$('.tab-item')[2].click(); // 切到编辑tab
+      $('#edit-date').value = dateStr;
+      $('#edit-load').click();
+    });
+  }
+}
+
+$('#modal-close').addEventListener('click', () => {
+  $('#day-modal').classList.remove('open');
+});
+
+$('#day-modal').addEventListener('click', e => {
+  if (e.target === $('#day-modal')) $('#day-modal').classList.remove('open');
+});
+
+function gotoAddWithDate(dateStr) {
+  $('#day-modal').classList.remove('open');
+  $$('.tab-item')[1].click(); // 切到录入tab
+  $('#add-date').value = dateStr;
+}
+
+// 上月/下月
+$('#cal-prev').addEventListener('click', () => {
+  if (currentMonth === 1) { currentYear--; currentMonth = 12; }
+  else currentMonth--;
+  renderCalendar();
+});
+
+$('#cal-next').addEventListener('click', () => {
+  if (currentMonth === 12) { currentYear++; currentMonth = 1; }
+  else currentMonth++;
+  renderCalendar();
+});
+
+// 初始化日历
+const now = new Date();
+currentYear = now.getFullYear();
+currentMonth = now.getMonth() + 1;
+renderCalendar();
+
+// ── 录入练习 ──────────────────────────────────────────────────────────────────
+async function loadItemsForAdd() {
+  await loadItems();
+  const container = $('#add-items-list');
+  if (allItems.length === 0) {
+    container.innerHTML = '<div class="empty-state">暂无科目，请先去「练习科目配置」添加</div>';
+    return;
+  }
+  container.innerHTML = allItems.map(item => `
+    <div class="item-row">
+      <input type="checkbox" id="add-item-${item.item_id}" data-name="${item.name}">
+      <label class="item-name" for="add-item-${item.item_id}">${item.name}</label>
+      <span class="item-cat">${item.category_name || '未分类'}</span>
+      <input type="number" id="add-mins-${item.item_id}" placeholder="分钟" min="0" value="">
+    </div>
+  `).join('');
+
+  // 填充 category 下拉
+  const cats = [...new Map(allItems.map(i => [i.category_name, i.category_name])).values()];
+  const catSel = $('#add-cat-select');
+  catSel.innerHTML = '<option value="">全部大类</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  // 填充全部 item 下拉
+  const itemSel = $('#add-item-select');
+  itemSel.innerHTML = '<option value="">选科目</option>' + allItems.map(i => `<option value="${i.item_id}" data-cat="${i.category_name}">${i.name}</option>`).join('');
+
+  // 默认今天
+  const today = new Date();
+  $('#add-date').value = today.toISOString().split('T')[0];
+}
+
+// category 切换过滤 item 下拉
+$('#add-cat-select').addEventListener('change', () => {
+  const cat = $('#add-cat-select').value;
+  const itemSel = $('#add-item-select');
+  const filtered = cat ? allItems.filter(i => i.category_name === cat) : allItems;
+  itemSel.innerHTML = '<option value="">选科目</option>' + filtered.map(i => `<option value="${i.item_id}" data-cat="${i.category_name}">${i.name}</option>`).join('');
+});
+
+// 从下拉添加科目
+$('#add-free-btn').addEventListener('click', () => {
+  const itemId = parseInt($('#add-item-select').value);
+  const mins = parseInt($('#add-free-mins').value) || 0;
+  if (!itemId) { alert('请先从下拉选择科目'); return; }
+  if (mins <= 0) { alert('请输入有效分钟数'); return; }
+  const item = allItems.find(i => i.item_id === itemId);
+  if (!item) return;
+  // 检查是否已在列表
+  const existing = $(`#add-item-${itemId}`);
+  if (existing) {
+    existing.checked = true;
+    $(`#add-mins-${itemId}`).value = mins;
+  } else {
+    // 追加到列表
+    const c = $('#add-items-list');
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <input type="checkbox" id="add-item-${itemId}" data-name="${item.name}" checked>
+      <label class="item-name" for="add-item-${itemId}">${item.name}</label>
+      <span class="item-cat">${item.category_name}</span>
+      <input type="number" id="add-mins-${itemId}" value="${mins}" min="0">
+    `;
+    c.appendChild(row);
+    gsap.from(row, { opacity: 0, x: -20, duration: 0.25, ease: 'back.out(1.5)' });
+  }
+  // 清空选择
+  $('#add-item-select').value = '';
+  $('#add-free-mins').value = '';
+});
+
+$('#add-submit').addEventListener('click', async () => {
+  const date = $('#add-date').value;
+  if (!date) { alert('请选择日期'); return; }
+
+  const items = [];
+  let totalMins = 0;
+  allItems.forEach(item => {
+    const cb = $(`#add-item-${item.item_id}`);
+    const minsInput = $(`#add-mins-${item.item_id}`);
+    if (cb && cb.checked) {
+      const mins = parseInt(minsInput.value) || 0;
+      if (mins > 0) {
+        items.push({ item: item.name, item_id: item.item_id, minutes: mins });
+        totalMins += mins;
+      }
+    }
+  });
+
+  if (items.length === 0) { alert('请至少勾选一个科目并填写分钟数'); return; }
+
+  const log = $('#add-log').value.trim();
+  const res = await api('/config/api/records', {
+    method: 'POST',
+    body: JSON.stringify({ date, items, total_minutes: totalMins, log, practiced: 'Y' })
+  });
+
+  if (res.ok) {
+    alert('保存成功');
+    $$('#add-items-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+    $$('#add-items-list input[type="number"]').forEach(inp => inp.value = '');
+    $('#add-log').value = '';
+    renderCalendar();
+  } else {
+    alert('保存失败: ' + res.error);
+  }
+});
+
+$('#add-clear').addEventListener('click', () => {
+  $$('#add-items-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+  $$('#add-items-list input[type="number"]').forEach(inp => inp.value = '');
+  $('#add-log').value = '';
+});
+
+// ── 编辑记录 ──────────────────────────────────────────────────────────────────
+$('#edit-load').addEventListener('click', async () => {
+  const date = $('#edit-date').value;
+  if (!date) { alert('请选择日期'); return; }
+
+  const res = await api(`/config/api/records/${date}`);
+  if (!res.ok) {
+    alert('当天无记录');
+    $('#edit-form-section').style.display = 'none';
+    $('#edit-log-section').style.display = 'none';
+    $('#edit-actions').style.display = 'none';
+    return;
+  }
+
+  await loadItems();
+  const container = $('#edit-items-list');
+  // 合并：当前科目 + 历史科目（去重）
+  const histNames = new Set((res.items || []).map(i => i.item || i.name));
+  const mergedItems = [
+    ...allItems.map(it => ({ name: it.name, item_id: it.item_id, category_name: it.category_name, is_historic: false })),
+    ...(res.items || []).filter(i => !allItems.find(a => a.name === (i.item || i.name)))
+      .map(i => ({ name: i.item || i.name, item_id: i.item_id || 0, category_name: '历史科目', is_historic: true }))
+  ];
+  container.innerHTML = mergedItems.map(item => {
+    const existing = (res.items || []).find(i => (i.item || i.name) === item.name);
+    const checked = existing ? 'checked' : '';
+    const mins = existing ? existing.minutes : '';
+    return `
+      <div class="item-row ${item.is_historic ? 'is-historic' : ''}">
+        <input type="checkbox" id="edit-item-${item.name}" data-name="${item.name}" ${checked}>
+        <label class="item-name" for="edit-item-${item.name}">${item.name}${item.is_historic ? ' ⭐' : ''}</label>
+        <span class="item-cat">${item.category_name || '未分类'}</span>
+        <input type="number" id="edit-mins-${item.name.replace(/\s/g,'_')}" placeholder="分钟" min="0" value="${mins}">
+      </div>
+    `;
+  }).join('');
+
+  $('#edit-log').value = res.log || '';
+  $('#edit-form-section').style.display = '';
+  $('#edit-log-section').style.display = '';
+  $('#edit-actions').style.display = '';
+});
+
+$('#edit-submit').addEventListener('click', async () => {
+  const date = $('#edit-date').value;
+  if (!date) return;
+
+  const items = [];
+  let totalMins = 0;
+  // 遍历 DOM 中的勾选框（支持历史科目）
+  $$('#edit-items-list .item-row').forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    const minsInput = row.querySelector('input[type="number"]');
+    if (cb && cb.checked) {
+      const mins = parseInt(minsInput.value) || 0;
+      if (mins > 0) {
+        items.push({ item: cb.dataset.name, minutes: mins });
+        totalMins += mins;
+      }
+    }
+  });
+
+  const log = $('#edit-log').value.trim();
+  const res = await api('/config/api/records', {
+    method: 'POST',
+    body: JSON.stringify({ date, items, total_minutes: totalMins, log, practiced: items.length > 0 ? 'Y' : 'N' })
+  });
+
+  if (res.ok) {
+    alert('保存成功');
+    renderCalendar();
+  } else {
+    alert('保存失败: ' + res.error);
+  }
+});
+
+$('#edit-delete').addEventListener('click', async () => {
+  const date = $('#edit-date').value;
+  if (!date) return;
+  if (!confirm(`确定要删除 ${date} 的练习记录吗？`)) return;
+
+  const res = await api(`/config/api/records/${date}`, { method: 'DELETE' });
+  if (res.ok) {
+    alert('已删除');
+    $('#edit-form-section').style.display = 'none';
+    $('#edit-log-section').style.display = 'none';
+    $('#edit-actions').style.display = 'none';
+    renderCalendar();
+  } else {
+    alert('删除失败: ' + res.error);
+  }
+});
+
+// ── 练习统计 ──────────────────────────────────────────────────────────────────
+async function loadStats() {
+  const data = await api('/config/api/records/stats');
+  const w = data.week, m = data.month;
+
+  // 设置文本
+  const weekMinsEl = $('#stat-week-mins');
+  const monthMinsEl = $('#stat-month-mins');
+  weekMinsEl.innerHTML = `<span id="w-mins-val">${w.minutes}</span><span class="stat-unit">分钟</span>`;
+  monthMinsEl.innerHTML = `<span id="m-mins-val">${m.minutes}</span><span class="stat-unit">分钟</span>`;
+  $('#stat-week-days').textContent = `${w.days} 天`;
+  $('#stat-week-days-val').textContent = w.days;
+  $('#stat-week-range').textContent = `${w.start} ~ ${w.end}`;
+  $('#stat-month-days').textContent = `${m.days} 天`;
+  $('#stat-month-days-val').textContent = m.days;
+  $('#stat-month-range').textContent = `本月`;
+
+  // GSAP 卡片入场
+  const cards = $$('.stat-card');
+  gsap.killTweensOf(cards);
+  gsap.fromTo(cards,
+    { opacity: 0, y: 24 },
+    { opacity: 1, y: 0, stagger: 0.1, duration: 0.5, ease: 'back.out(1.5)' }
+  );
+
+  // 数字滚动效果（用 proxy + onUpdate 避免直接动画 innerText）
+  gsap.killTweensOf([$('#w-mins-val'), $('#m-mins-val')]);
+  const weekProxy = { v: 0 };
+  gsap.to(weekProxy, {
+    v: w.minutes, duration: 0.8, ease: 'power2.out',
+    onUpdate() {
+      const el = $('#w-mins-val');
+      if (el) el.textContent = Math.round(weekProxy.v);
+    }
+  });
+  const monthProxy = { v: 0 };
+  gsap.to(monthProxy, {
+    v: m.minutes, duration: 0.8, ease: 'power2.out', delay: 0.1,
+    onUpdate() {
+      const el = $('#m-mins-val');
+      if (el) el.textContent = Math.round(monthProxy.v);
+    }
+  });
+}
+</script>
+</body>
+</html>

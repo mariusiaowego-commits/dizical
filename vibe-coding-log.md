@@ -1,5 +1,45 @@
 # dizical vibe coding log
 
+## 2026-05-28 — 项目综合分析 + 端口规范整理
+
+### 完成内容
+- 综合分析报告：代码结构 → 前端展示 → 管理台缺失功能，输出到 Obsidian
+  - `docs/综合分析报告-代码结构到前端展示到管理台缺失功能-2026-05-28.md`
+- 端口规范整理：skill 里 4 处重复教训合并为一份权威规范
+  - 端口定义（8765生产/8766测试/8767备用）
+  - 开发流程 + 杀进程规范 + 验证规范
+  - 历史上 6 次违反记录
+  - 版本 1.34.0 → 1.35.0
+- skill 里错误记录清理：删除了基于误判的 report 页哑铃图/热力图缺失记录
+- STATUS.md 完成度更新
+
+### 结论（用户确认）
+- 哑铃图：用户确认不需做
+- 热力图：已实现（low<20/mid<40/high 三档）
+- 表扬语新建：已实现（addBlessItem）
+- 剩余 P1：通知渠道配置 UI、缴费规则配置 UI
+
+## 2026-05-27 PM — Report 页堆叠柱状图 + 竹笛弹窗新模板
+
+### 完成内容
+- 竹笛弹窗：废弃 Three.js 3D，改用 dizi-h-crop-clean.png 横向底图 + 扁平金线段（#C9A030）
+- 堆叠柱状图：修复堆叠逻辑（barY = stackY - barH）、颜色映射（item.id % 30）、label 位置问题
+- SVG Safari 兼容性：固定像素宽高代替 viewBox
+- ESC 关闭弹窗
+- label zone 方案：上方 40px 透明空间放总时长数字（最终回退位置，待确认）
+
+### Bug 修复
+1. `barY = stackY - 1` 永远等于 CHART_H → 改 `barY = stackY - barH`
+2. 颜色按渲染顺序 idx → 按 it.id % 30
+3. viewBox 导致 Safari 柱子变成一条线 → 固定像素宽高
+4. label 被 SVG 裁剪 → SVG height 含 label zone
+
+### 教训
+- SVG 堆叠逻辑先手算再写代码
+- Safari 不支持 viewBox+百分比宽高组合
+
+---
+
 ## 2026-05-26 PM — Practice 页 UI/UX 优化
 
 ### 完成内容
