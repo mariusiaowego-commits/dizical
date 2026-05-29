@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>课程管理 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+      --sidebar-width: 220px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .lessons-layout {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── 左侧边栏 ── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: white;
+      border-right: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .sidebar-header h2 {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 10px;
+    }
+
+    .sidebar-header .back-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #7F8C8D;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-header .back-link:hover {
+      background: rgba(0,0,0,0.04);
+      color: var(--text);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .tab-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 14px;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      color: var(--text);
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+
+    .tab-item:hover { background: rgba(168,213,186,0.15); }
+
+    .tab-item.active {
+      background: var(--lavender);
+      color: white;
+      box-shadow: 0 3px 12px rgba(197,184,217,0.4);
+    }
+
+    .tab-item .tab-icon { font-size: 18px; }
+    .tab-item .tab-label { font-weight: 500; }
+
+    /* ── 右侧主内容 ── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .content-header {
+      padding: 20px 28px 14px;
+      background: white;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-header h1 {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .content-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 28px;
+    }
+
+    /* ── 日历 ── */
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .calendar-nav-btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: none;
+      background: white;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.2s ease;
+    }
+
+    .calendar-nav-btn:hover { transform: scale(1.03); }
+    .calendar-nav-btn:active { transform: scale(0.97); }
+
+    .calendar-month-label {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .calendar-grid {
+      background: white;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: rgba(0,0,0,0.03);
+      padding: 10px 0;
+    }
+
+    .calendar-weekday {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #7F8C8D;
+      text-transform: uppercase;
+    }
+
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 8px;
+      gap: 6px;
+    }
+
+    .calendar-day {
+      height: 56px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      gap: 2px;
+      background: transparent;
+      border: none;
+    }
+
+    .calendar-day:hover { background: rgba(168,213,186,0.15); }
+    .calendar-day.today { border: 2px solid var(--sage); }
+    .calendar-day.empty { color: #ccc; cursor: default; }
+    .calendar-day.empty:hover { background: transparent; }
+
+    .calendar-day .day-num { font-weight: 600; color: var(--text); }
+    .calendar-day.empty .day-num { color: #ccc; }
+    .calendar-day .day-time { font-size: 10px; color: #7F8C8D; }
+
+    .lesson-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .lesson-dot.scheduled { background: var(--lavender); }
+    .lesson-dot.attended { background: var(--sage); }
+    .lesson-dot.cancelled { background: #ccc; }
+
+    /* ── 课程操作面板 ── */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .form-section {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    .form-section h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 16px;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-row:last-child { margin-bottom: 0; }
+
+    .form-label {
+      font-size: 14px;
+      color: #7F8C8D;
+      width: 70px;
+      flex-shrink: 0;
+    }
+
+    .form-input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 2px solid rgba(0,0,0,0.08);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      background: rgba(0,0,0,0.02);
+    }
+
+    .form-input:focus { border-color: var(--sage); background: white; }
+
+    /* ── 课程列表 ── */
+    .lesson-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .lesson-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: rgba(0,0,0,0.02);
+      border-radius: 12px;
+      border-left: 4px solid var(--lavender);
+    }
+
+    .lesson-item.status-attended { border-left-color: var(--sage); }
+    .lesson-item.status-cancelled { border-left-color: #ccc; opacity: 0.6; }
+
+    .lesson-item .lesson-date {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      min-width: 90px;
+    }
+
+    .lesson-item .lesson-time {
+      font-size: 13px;
+      color: #7F8C8D;
+      min-width: 50px;
+    }
+
+    .lesson-item .lesson-status {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .lesson-item .lesson-status.scheduled {
+      background: rgba(197,184,217,0.2);
+      color: #7a6b99;
+    }
+
+    .lesson-item .lesson-status.attended {
+      background: rgba(168,213,186,0.2);
+      color: #5a9c73;
+    }
+
+    .lesson-item .lesson-status.cancelled {
+      background: rgba(0,0,0,0.06);
+      color: #999;
+    }
+
+    .lesson-item .lesson-fee {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-left: auto;
+    }
+
+    .lesson-item .fee-paid {
+      color: var(--sage);
+      font-weight: 600;
+    }
+
+    .lesson-item .fee-unpaid {
+      color: var(--rose);
+      font-weight: 600;
+    }
+
+    .lesson-item .lesson-actions {
+      display: flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    /* ── 统计 ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+
+    .stat-card .stat-label {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .stat-card .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-card .stat-sub {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-top: 4px;
+    }
+
+    /* ── 按钮 ── */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:active { transform: scale(0.96); }
+
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-primary { background: var(--lavender); color: white; }
+    .btn-primary:hover { box-shadow: 0 3px 12px rgba(197,184,217,0.4); }
+
+    .btn-sage { background: var(--sage); color: white; }
+    .btn-sage:hover { box-shadow: 0 3px 12px rgba(168,213,186,0.4); }
+
+    .btn-danger { background: #FFE5E5; color: #FF6B6B; }
+    .btn-danger:hover { background: #FFD0D0; }
+
+    .btn-secondary { background: rgba(0,0,0,0.06); color: var(--text); }
+
+    /* ── 弹窗 ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: white;
+      border-radius: 24px;
+      padding: 28px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.06);
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover { background: rgba(0,0,0,0.12); }
+
+    .loading { text-align: center; padding: 40px; color: #7F8C8D; }
+    .empty-state { text-align: center; padding: 40px; color: #7F8C8D; }
+  </style>
+</head>
+<body>
+<div class="lessons-layout">
+
+  <!-- 左侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>课程管理</h2>
+      <a href="/config" class="back-link">← 配置管理台</a>
+    </div>
+    <div class="sidebar-content">
+      <div class="tab-list">
+        <button class="tab-item active" data-tab="calendar">
+          <span class="tab-icon">📅</span>
+          <span class="tab-label">课程日历</span>
+        </button>
+        <button class="tab-item" data-tab="generate">
+          <span class="tab-icon">⚡</span>
+          <span class="tab-label">生成计划</span>
+        </button>
+        <button class="tab-item" data-tab="list">
+          <span class="tab-icon">📋</span>
+          <span class="tab-label">课程列表</span>
+        </button>
+        <button class="tab-item" data-tab="stats">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">课程统计</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧主内容 -->
+  <main class="main-content">
+
+    <!-- 课程日历 -->
+    <section id="tab-calendar" class="tab-panel">
+      <div class="content-header">
+        <h1>📅 课程日历</h1>
+      </div>
+      <div class="content-body" style="padding-top:16px">
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" id="cal-prev">← 上月</button>
+          <span class="calendar-month-label" id="cal-label"></span>
+          <button class="calendar-nav-btn" id="cal-next">下月 →</button>
+        </div>
+        <div class="calendar-grid" style="margin-top:12px">
+          <div class="calendar-weekdays">
+            <div class="calendar-weekday">一</div>
+            <div class="calendar-weekday">二</div>
+            <div class="calendar-weekday">三</div>
+            <div class="calendar-weekday">四</div>
+            <div class="calendar-weekday">五</div>
+            <div class="calendar-weekday">六</div>
+            <div class="calendar-weekday">日</div>
+          </div>
+          <div class="calendar-days" id="cal-days"></div>
+        </div>
+        <div class="action-bar" style="margin-top:14px;background:white;border-radius:16px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+          <input type="date" class="form-input" id="action-date" style="max-width:160px;padding:8px 12px;">
+          <button class="btn btn-sage" id="btn-add">+ 添加</button>
+          <button class="btn btn-danger" id="btn-cancel">取消</button>
+          <button class="btn btn-primary" id="btn-confirm">确认上课</button>
+          <button class="btn btn-secondary" id="btn-reschedule">调课</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 生成计划 -->
+    <section id="tab-generate" class="tab-panel" style="display:none">
+      <div class="content-header">
+        <h1>⚡ 生成月度课程计划</h1>
+      </div>
+      <div class="content-body">
+        <div class="form-section" style="max-width:500px;">
+          <h3>选择月份</h3>
+          <div class="form-row">
+            <input type="month" class="form-input" id="gen-month">
+          </div>
+          <div class="form-row" style="margin-top:12px;">
+            <label style="font-size:14px;color:#7F8C8D;display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="gen-overwrite"> 覆盖已存在的课程
+            </label>
+          </div>
+          <div class="form-row" style="margin-top:16px;">
+            <button class="btn btn-primary" id="btn-generate">生成计划</button>
+          </div>
+          <div id="gen-result" style="margin-top:16px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 课程列表 -->
+    <section id="tab-list" class="tab-panel" style="display:none">
+      <div class="content-header">
+        <h1>📋 课程列表</h1>
+      </div>
+      <div class="content-body">
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" id="list-prev">← 上月</button>
+          <span class="calendar-month-label" id="list-label"></span>
+          <button class="calendar-nav-btn" id="list-next">下月 →</button>
+        </div>
+        <div class="lesson-list" id="lesson-list">
+          <div class="loading">加载中...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 课程统计 -->
+    <section id="tab-stats" class="tab-panel" style="display:none">
+      <div class="content-header">
+        <h1>📊 课程统计</h1>
+      </div>
+      <div class="content-body">
+        <div class="calendar-nav" style="margin-bottom:16px;">
+          <button class="calendar-nav-btn" id="stats-prev">← 上月</button>
+          <span class="calendar-month-label" id="stats-label"></span>
+          <button class="calendar-nav-btn" id="stats-next">下月 →</button>
+        </div>
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">已安排</div>
+            <div class="stat-value" id="stat-arranged">--</div>
+            <div class="stat-sub">节课</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">已上课</div>
+            <div class="stat-value" id="stat-attended">--</div>
+            <div class="stat-sub">节课</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">已取消</div>
+            <div class="stat-value" id="stat-cancelled">--</div>
+            <div class="stat-sub">节课</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">学费合计</div>
+            <div class="stat-value" id="stat-total-fee">--</div>
+            <div class="stat-sub">元</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">已缴学费</div>
+            <div class="stat-value" id="stat-paid-fee" style="color:var(--sage)">--</div>
+            <div class="stat-sub">元</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">待缴学费</div>
+            <div class="stat-value" id="stat-balance" style="color:var(--rose)">--</div>
+            <div class="stat-sub">元</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modal-title">提示</h3>
+      <button class="modal-close" id="modal-close">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let currentYear, currentMonth;
+let listYear, listMonth;
+let statsYear, statsMonth;
+let lessonsMap = {};
+
+function $(s) { return document.querySelector(s); }
+function $$(s) { return document.querySelectorAll(s); }
+
+function api(url, opts = {}) {
+  return fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts }).then(r => r.json());
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+// ── Tab 切换 ─────────────────────────────────────────────
+$$('.tab-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('active')) return;
+    $$('.tab-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    $$('.tab-panel').forEach(p => p.style.display = 'none');
+    const target = $(`#tab-${tab}`);
+    target.style.display = '';
+    gsap.fromTo(target, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.3, ease: 'back.out(1.4)' });
+    if (tab === 'calendar') renderCalendar();
+    if (tab === 'list') loadLessonList();
+    if (tab === 'stats') loadStats();
+  });
+});
+
+// ── 日历 ─────────────────────────────────────────────────
+function renderCalendar() {
+  $('#cal-label').textContent = `${currentYear}年${currentMonth}月`;
+  const firstDay = new Date(currentYear, currentMonth - 1, 1);
+  let startWeekday = firstDay.getDay() === 0 ? 7 : firstDay.getDay();
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+  api(`/config/api/lessons?year=${currentYear}&month=${currentMonth}`)
+    .then(data => {
+      lessonsMap = {};
+      (data.lessons || []).forEach(l => { lessonsMap[l.date] = l; });
+      buildCalDays(daysInMonth, startWeekday, todayStr);
+    });
+}
+
+function buildCalDays(daysInMonth, startWeekday, todayStr) {
+  const container = $('#cal-days');
+  container.innerHTML = '';
+  for (let i = 1; i < startWeekday; i++) {
+    const d = document.createElement('button');
+    d.className = 'calendar-day empty';
+    container.appendChild(d);
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear}-${pad(currentMonth)}-${pad(day)}`;
+    const lesson = lessonsMap[dateStr];
+    const isToday = dateStr === todayStr;
+    const btn = document.createElement('button');
+    let cls = 'calendar-day';
+    if (isToday) cls += ' today';
+    if (lesson) cls += ' has-record';
+    btn.className = cls;
+    let dot = '';
+    if (lesson) {
+      const dotCls = lesson.status === 'attended' ? 'attended' : lesson.status === 'cancelled' ? 'cancelled' : 'scheduled';
+      dot = `<span class="lesson-dot ${dotCls}"></span>`;
+    }
+    btn.innerHTML = `<span class="day-num">${day}</span>${dot ? `<span style="margin-top:2px;">${dot}</span>` : ''}`;
+    btn.addEventListener('click', () => {
+      $('#action-date').value = dateStr;
+    });
+    container.appendChild(btn);
+  }
+  const dayBtns = container.querySelectorAll('.calendar-day:not(.empty)');
+  gsap.killTweensOf(dayBtns);
+  gsap.fromTo(dayBtns, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.25, stagger: 0.02, ease: 'back.out(1.5)' });
+}
+
+$('#cal-prev').addEventListener('click', () => {
+  if (currentMonth === 1) { currentYear--; currentMonth = 12; }
+  else currentMonth--;
+  renderCalendar();
+});
+$('#cal-next').addEventListener('click', () => {
+  if (currentMonth === 12) { currentYear++; currentMonth = 1; }
+  else currentMonth++;
+  renderCalendar();
+});
+
+// ── 课程操作 ──────────────────────────────────────────────
+$('#btn-add').addEventListener('click', async () => {
+  const date = $('#action-date').value;
+  if (!date) { alert('请先在日历选择日期'); return; }
+  const res = await api(`/config/api/lessons`, { method: 'POST', body: JSON.stringify({ date }) });
+  if (res.ok) {
+    showModal('✅ 已添加', `<p>${res.lesson.date} ${res.lesson.time} 课程已添加。</p><div class="form-actions" style="margin-top:16px;"><button class="btn btn-primary" id="modal-ok">确定</button></div>`);
+    $('#modal-ok').addEventListener('click', closeModal);
+    renderCalendar();
+  } else {
+    showModal('❌ 错误', `<p>${res.error}</p><div class="form-actions" style="margin-top:16px;"><button class="btn btn-secondary" id="modal-ok">确定</button></div>`);
+    $('#modal-ok').addEventListener('click', closeModal);
+  }
+});
+
+$('#btn-cancel').addEventListener('click', async () => {
+  const date = $('#action-date').value;
+  if (!date) { alert('请先在日历选择日期'); return; }
+  if (!confirm(`确定取消 ${date} 的课程？`)) return;
+  const res = await api(`/config/api/lessons/cancel`, { method: 'POST', body: JSON.stringify({ date }) });
+  if (res.ok) {
+    showModal('✅ 已取消', `<p>${date} 课程已取消。</p><div class="form-actions" style="margin-top:16px;"><button class="btn btn-primary" id="modal-ok">确定</button></div>`);
+    $('#modal-ok').addEventListener('click', closeModal);
+    renderCalendar();
+  } else {
+    alert('取消失败: ' + res.error);
+  }
+});
+
+$('#btn-confirm').addEventListener('click', async () => {
+  const date = $('#action-date').value;
+  if (!date) { alert('请先在日历选择日期'); return; }
+  const res = await api(`/config/api/lessons/confirm`, { method: 'POST', body: JSON.stringify({ date }) });
+  if (res.ok) {
+    showModal('✅ 已确认', `<p>${date} 已确认上课。</p><div class="form-actions" style="margin-top:16px;"><button class="btn btn-primary" id="modal-ok">确定</button></div>`);
+    $('#modal-ok').addEventListener('click', closeModal);
+    renderCalendar();
+  } else {
+    alert('确认失败: ' + res.error);
+  }
+});
+
+$('#btn-reschedule').addEventListener('click', async () => {
+  const fromDate = $('#action-date').value;
+  if (!fromDate) { alert('请先在日历选择要调动的课程日期'); return; }
+  showModal('🔄 调课', `
+    <p style="font-size:14px;color:#7F8C8D;margin-bottom:12px;">原日期：<strong>${fromDate}</strong></p>
+    <p style="font-size:14px;margin-bottom:8px;">选择新课程日期：</p>
+    <input type="date" class="form-input" id="reschedule-to" style="width:100%;margin-bottom:16px;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-secondary" id="reschedule-cancel">取消</button>
+      <button class="btn btn-primary" id="reschedule-ok">确认调课</button>
+    </div>
+  `);
+  $('#reschedule-cancel').addEventListener('click', closeModal);
+  $('#reschedule-ok').addEventListener('click', async () => {
+    const toDate = $('#reschedule-to').value;
+    if (!toDate) { alert('请选择新课程日期'); return; }
+    const res = await api(`/config/api/lessons/reschedule?from_date=${fromDate}&to_date=${toDate}`, { method: 'POST' });
+    if (res.ok) {
+      closeModal();
+      showModal('✅ 已调课', `<p>${fromDate} → ${toDate}</p><div class="form-actions" style="margin-top:16px;"><button class="btn btn-primary" id="modal-ok">确定</button></div>`);
+      $('#modal-ok').addEventListener('click', closeModal);
+      renderCalendar();
+    } else {
+      alert('调课失败: ' + res.error);
+    }
+  });
+});
+
+// ── 生成计划 ──────────────────────────────────────────────
+$('#btn-generate').addEventListener('click', async () => {
+  const monthStr = $('#gen-month').value;
+  if (!monthStr) { alert('请选择月份'); return; }
+  const [year, month] = monthStr.split('-').map(Number);
+  const overwrite = $('#gen-overwrite').checked;
+  const res = await api(`/config/api/lessons/generate?year=${year}&month=${month}&overwrite=${overwrite}`, { method: 'POST' });
+  if (res.ok) {
+    $('#gen-result').innerHTML = `<div style="padding:16px;background:rgba(168,213,186,0.1);border-radius:12px;font-size:14px;">
+      <p style="margin:0 0 8px;">✅ 生成成功！共 ${res.total_lessons} 节课程</p>
+      <p style="margin:0 0 8px;">⚠️ 节假日冲突 ${res.holiday_conflicts} 节</p>
+      <p style="margin:0;color:#7F8C8D;">已自动刷新当月日历。</p>
+    </div>`;
+    renderCalendar();
+  } else {
+    $('#gen-result').innerHTML = `<p style="color:#e05a5a;">❌ 生成失败：${res.error}</p>`;
+  }
+});
+
+// ── 课程列表 ─────────────────────────────────────────────
+async function loadLessonList() {
+  $('#list-label').textContent = `${listYear}年${listMonth}月`;
+  const data = await api(`/config/api/lessons?year=${listYear}&month=${listMonth}`);
+  const container = $('#lesson-list');
+  if (!data.lessons || data.lessons.length === 0) {
+    container.innerHTML = '<div class="empty-state">本月暂无课程记录</div>';
+    return;
+  }
+  container.innerHTML = data.lessons.map(l => {
+    const statusLabel = l.status === 'attended' ? '已上课' : l.status === 'cancelled' ? '已取消' : '已安排';
+    const feeClass = l.fee_paid ? 'fee-paid' : 'fee-unpaid';
+    const feeText = l.fee_paid ? `已缴 ¥${l.fee}` : `未缴 ¥${l.fee}`;
+    return `
+      <div class="lesson-item status-${l.status}">
+        <span class="lesson-date">${l.date}</span>
+        <span class="lesson-time">${l.time}</span>
+        <span class="lesson-status ${l.status}">${statusLabel}</span>
+        <span class="lesson-fee ${feeClass}">${feeText}</span>
+        <div class="lesson-actions">
+          <button class="btn btn-sm btn-sage" onclick="togglePaid('${l.date}', ${!l.fee_paid})">${l.fee_paid ? '取消缴费' : '标记缴费'}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  gsap.from('.lesson-item', { opacity: 0, y: 12, stagger: 0.05, duration: 0.3, ease: 'back.out(1.4)' });
+}
+
+async function togglePaid(date, paid) {
+  const res = await api(`/config/api/lessons/fee-paid?date=${date}&paid=${paid}`, { method: 'POST' });
+  if (res.ok) loadLessonList();
+  else alert('操作失败: ' + res.error);
+}
+
+$('#list-prev').addEventListener('click', () => {
+  if (listMonth === 1) { listYear--; listMonth = 12; }
+  else listMonth--;
+  loadLessonList();
+});
+$('#list-next').addEventListener('click', () => {
+  if (listMonth === 12) { listYear++; listMonth = 1; }
+  else listMonth++;
+  loadLessonList();
+});
+
+// ── 课程统计 ─────────────────────────────────────────────
+async function loadStats() {
+  $('#stats-label').textContent = `${statsYear}年${statsMonth}月`;
+  const data = await api(`/config/api/lessons/stats?year=${statsYear}&month=${statsMonth}`);
+  if (!data.ok) return;
+  $('#stat-arranged').textContent = data.arranged;
+  $('#stat-attended').textContent = data.attended;
+  $('#stat-cancelled').textContent = data.cancelled;
+  $('#stat-total-fee').textContent = data.total_fee;
+  $('#stat-paid-fee').textContent = data.paid_fee;
+  $('#stat-balance').textContent = data.balance;
+
+  const cards = $$('.stat-card');
+  gsap.killTweensOf(cards);
+  gsap.fromTo(cards, { opacity: 0, y: 16 }, { opacity: 1, y: 0, stagger: 0.08, duration: 0.4, ease: 'back.out(1.5)' });
+}
+
+$('#stats-prev').addEventListener('click', () => {
+  if (statsMonth === 1) { statsYear--; statsMonth = 12; }
+  else statsMonth--;
+  loadStats();
+});
+$('#stats-next').addEventListener('click', () => {
+  if (statsMonth === 12) { statsYear++; statsMonth = 1; }
+  else statsMonth++;
+  loadStats();
+});
+
+// ── 弹窗 ─────────────────────────────────────────────────
+function showModal(title, body) {
+  $('#modal-title').textContent = title;
+  $('#modal-body').innerHTML = body;
+  $('#modal').classList.add('open');
+  const box = $('#modal .modal-box');
+  gsap.from(box, { scale: 0.85, opacity: 0, duration: 0.25, ease: 'back.out(1.4)' });
+}
+
+function closeModal() {
+  $('#modal').classList.remove('open');
+}
+
+$('#modal-close').addEventListener('click', closeModal);
+$('#modal').addEventListener('click', e => { if (e.target === $('#modal')) closeModal(); });
+
+// ── 初始化 ───────────────────────────────────────────────
+const now = new Date();
+currentYear = listYear = statsYear = now.getFullYear();
+currentMonth = listMonth = statsMonth = now.getMonth() + 1;
+renderCalendar();
+</script>
+</body>
+</html>
