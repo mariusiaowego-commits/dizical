@@ -218,15 +218,13 @@ def delete_category(cat_id: int) -> None:
 
 
 def set_item_category(item_name: str, category_id: Optional[int]) -> None:
-    """设置小科目归属大科目"""
+    """设置小科目归属大科目。科目不存在则抛出 ValueError。"""
     items = db.get_practice_items(active_only=False)
     for item in items:
         if item['name'] == item_name:
             db.update_practice_item_category(item['item_id'], category_id)
-            return
-    # 不存在则新增
-    new_id = db.add_practice_item(item_name, category_id)
-    return new_id
+            return None
+    raise ValueError(f"科目 '{item_name}' 不存在，无法设置分类")
 
 
 def save_progress(date: dt.date, note: str) -> None:
@@ -440,8 +438,11 @@ def _parse_date(date_str: str) -> Optional[dt.date]:
     date_str = date_str.strip()
     for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%m/%d', '%Y%m%d']:
         try:
-            return dt.datetime.strptime(date_str, fmt).date()
-        except:
+            d = dt.datetime.strptime(date_str, fmt).date()
+            if d.year == 1900:
+                d = d.replace(year=dt.date.today().year)
+            return d
+        except Exception:
             continue
     return None
 
@@ -619,7 +620,7 @@ def import_from_csv(csv_path: str, date_column: str = 'Date') -> Tuple[int, int]
                                 print(f"  Row {row_num}: 科目 '{col_stripped}' 无法匹配到已知科目，跳过")
                                 continue
                             items.append({'item': col_stripped, 'item_id': item_id, 'minutes': minutes})
-                    except:
+                    except Exception:
                         continue
                 
                 if items:

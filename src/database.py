@@ -65,6 +65,19 @@ class Database:
                 )
             ''')
 
+            # Schema migrations tracking (幂等控制)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version INTEGER PRIMARY KEY,
+                    applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            # 获取当前 schema 版本
+            cursor.execute("SELECT MAX(version) FROM schema_migrations")
+            row = cursor.fetchone()
+            current_version = row[0] or 0
+
             # Practice items table (练习项目库)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS practice_items (
@@ -138,7 +151,7 @@ class Database:
             if 'images' not in wa_columns:
                 cursor.execute('ALTER TABLE weekly_assignments ADD COLUMN images TEXT NOT NULL DEFAULT \'[]\'')
 
-            # Migration: add stage_start / stage_end columns if missing
+            # Migration v1: add stage_start / stage_end columns if missing
             cursor.execute("PRAGMA table_info(weekly_assignments)")
             wa_columns = {col['name'] for col in cursor.fetchall()}
             if 'stage_start' not in wa_columns:
@@ -162,6 +175,7 @@ class Database:
                         "UPDATE weekly_assignments SET stage_start = ?, stage_end = ?, stage_order = ? WHERE id = ?",
                         (stage_start, stage_end, stage_order, row[0])
                     )
+                cursor.execute("INSERT INTO schema_migrations (version) VALUES (1)")
 
             # Daily practices table (每日分项打卡)
             cursor.execute('''
@@ -538,6 +552,7 @@ class Database:
                 for entry in items:
                     if isinstance(entry, dict) and entry.get('item') == from_name:
                         entry['item'] = to_name
+                        entry['item_id'] = to_id
                         changed = True
                 if changed:
                     cursor.execute(

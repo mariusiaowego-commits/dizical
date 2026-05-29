@@ -41,7 +41,7 @@ def prepare_page():
     try:
         from src.database import db
         today_practice = db.get_daily_practice(today)
-    except:
+    except Exception:
         pass
     
     return render(

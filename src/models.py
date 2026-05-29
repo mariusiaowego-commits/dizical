@@ -1,5 +1,6 @@
 import datetime as dt
 from enum import Enum
+from pathlib import Path
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
@@ -95,7 +96,7 @@ class Settings(BaseSettings):
     default_fee: int = 600
     default_time: str = "17:15"
     default_weekday: int = 5  # 0=Monday, 5=Saturday
-    db_path: str = "/Users/mt16/dev/dizical/data/dizi.db"
+    db_path: str = str(Path(__file__).parent.parent / "data" / "dizi.db")
 
     class Config:
         env_file = ".env"

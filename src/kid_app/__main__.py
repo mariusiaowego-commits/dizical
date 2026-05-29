@@ -5,7 +5,6 @@ import sys
 import socket
 import time
 import webbrowser
-import time
 import threading
 from pathlib import Path
 
@@ -26,7 +25,7 @@ def get_local_ip() -> str:
         ip = s.getsockname()[0]
         s.close()
         return ip
-    except:
+    except Exception:
         return "127.0.0.1"
 
 @kid_app.command()
@@ -78,7 +77,7 @@ def status():
     try:
         urllib.request.urlopen(f"http://localhost:{port}/", timeout=2)
         print(f"\u2705 服务正在运行: http://localhost:{port}")
-    except:
+    except Exception:
         print(f"\u274C 服务未运行，请先执行: dizical-kid start")
 
 if __name__ == "__main__":

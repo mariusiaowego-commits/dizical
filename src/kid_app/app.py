@@ -37,7 +37,7 @@ def render(tpl, **kwargs):
 def child_name():
     try:
         return db.get_setting("child_name") or "YoYo"
-    except:
+    except Exception:
         return "YoYo"
 
 def week_start_of(today):
@@ -58,8 +58,12 @@ def streak_days():
     return days
 
 def total_practice_minutes():
-    practices = db.get_daily_practices_in_range(dt.date(2020, 1, 1), dt.date.today())
-    return sum(p["total_minutes"] for p in practices)
+    conn = db._get_connection()
+    cur = conn.execute(
+        "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date >= ?",
+        (dt.date(2020, 1, 1).isoformat(),)
+    )
+    return cur.fetchone()[0]
 
 
 def _calc_max_consecutive_streak():
