@@ -8,6 +8,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.database import db
 from src import practice as practice_module
+from src.lesson_manager import LessonManager
+from src.payment import PaymentManager
+from src.models import Lesson, LessonStatus, PaymentStatus
+
+lesson_manager = LessonManager()
+payment_manager = PaymentManager()
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -82,6 +88,20 @@ def config_practice():
         categories=categories,
         items_grouped=items_grouped
     )
+
+
+@router.get("/lessons", response_class=HTMLResponse)
+def config_lessons():
+    """课程管理页"""
+    from src.kid_app.app import render
+    return render("config-lessons")
+
+
+@router.get("/records", response_class=HTMLResponse)
+def config_records():
+    """练习记录管理页"""
+    from src.kid_app.app import render
+    return render("config-records")
 
 
 @router.get("/praise", response_class=HTMLResponse)
@@ -372,8 +392,290 @@ async def api_unarchive_item(item_id: int):
         
         # 取消归档
         db.unarchive_practice_item(item_id)
-        
+
         return JSONResponse({"ok": True})
-    
+
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# ─── API: 练习记录 ───────────────────────────────────────────────────────────
+
+@router.get("/api/records/stats")
+def api_records_stats():
+    """本周+本月练习统计"""
+    import datetime as dt
+    today = dt.date.today()
+    week_start = today - dt.timedelta(days=today.weekday())
+    week_practices = db.get_daily_practices_in_range(week_start, today)
+    week_mins = sum(p.get('total_minutes', 0) for p in week_practices)
+    week_days = sum(1 for p in week_practices if p.get('total_minutes', 0) > 0)
+    month_start = dt.date(today.year, today.month, 1)
+    month_practices = db.get_daily_practices_in_range(month_start, today)
+    month_mins = sum(p.get('total_minutes', 0) for p in month_practices)
+    month_days = sum(1 for p in month_practices if p.get('total_minutes', 0) > 0)
+    return JSONResponse({
+        "week": {"minutes": week_mins, "days": week_days, "start": week_start.isoformat(), "end": today.isoformat()},
+        "month": {"minutes": month_mins, "days": month_days, "start": month_start.isoformat()}
+    })
+
+
+@router.get("/api/records")
+def api_get_records(year: int, month: int):
+    """获取指定月份的练习日历数据（每天是否有练习）"""
+    import datetime as dt
+    start = dt.date(year, month, 1)
+    if month == 12:
+        end = dt.date(year + 1, 1, 1) - dt.timedelta(days=1)
+    else:
+        end = dt.date(year, month + 1, 1) - dt.timedelta(days=1)
+    practices = db.get_daily_practices_in_range(start, end)
+    result = {}
+    for p in practices:
+        d = p['date']
+        items_raw = p.get('items', '')
+        if isinstance(items_raw, str):
+            try:
+                items_raw = json.loads(items_raw)
+            except Exception:
+                items_raw = []
+        result[d.isoformat()] = {
+            'total_minutes': p.get('total_minutes', 0),
+            'item_count': len(items_raw) if items_raw else 0,
+            'practiced': p.get('practiced', 'Y')
+        }
+    return JSONResponse(result)
+
+
+@router.get("/api/records/{date_str}")
+def api_get_record(date_str: str):
+    """获取某天的练习记录"""
+    import datetime as dt
+    try:
+        date = dt.date.fromisoformat(date_str)
+    except ValueError:
+        return JSONResponse({"ok": False, "error": "日期格式错误"}, status_code=400)
+
+    record = db.get_daily_practice(date)
+    if not record:
+        return JSONResponse({"ok": False, "error": "当天无记录"}, status_code=404)
+
+    items_raw = record.get('items', '')
+    if isinstance(items_raw, str):
+        try:
+            items_raw = json.loads(items_raw)
+        except Exception:
+            items_raw = []
+
+    # 补上 item_id（从名称匹配）
+    all_items = {i['name']: i['item_id'] for i in db.get_practice_items(active_only=True)}
+    for item in items_raw:
+        item['item_id'] = all_items.get(item.get('item'))
+
+    return JSONResponse({
+        "date": date_str,
+        "total_minutes": record.get('total_minutes', 0),
+        "items": items_raw,
+        "log": record.get('log', ''),
+        "practiced": record.get('practiced', 'Y')
+    })
+
+
+@router.post("/api/records")
+async def api_save_record(request: Request):
+    """新增/覆盖练习记录"""
+    try:
+        body = json.loads(await request.body())
+        date_str = body.get('date')
+        items = body.get('items', [])
+        total_minutes = body.get('total_minutes', 0)
+        log = body.get('log', '')
+        practiced = body.get('practiced', 'Y')
+
+        if not date_str:
+            return JSONResponse({"ok": False, "error": "日期不能为空"}, status_code=400)
+
+        import datetime as dt
+        date = dt.date.fromisoformat(date_str)
+
+        if total_minutes == 0 and items:
+            total_minutes = sum(i.get('minutes', 0) for i in items)
+
+        db.save_daily_practice(
+            date=date,
+            items=items,
+            total_minutes=total_minutes,
+            log=log,
+            practiced=practiced,
+            channel='web',
+            method='config-records'
+        )
+        return JSONResponse({"ok": True})
+
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.delete("/api/records/{date_str}")
+async def api_delete_record(date_str: str):
+    """清空某天练习记录（不物理删除，只清零）"""
+    try:
+        import datetime as dt
+        date = dt.date.fromisoformat(date_str)
+        db.save_daily_practice(
+            date=date,
+            items=[],
+            total_minutes=0,
+            log='',
+            practiced='N',
+            channel='web',
+            method='config-records-delete'
+        )
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# ─── API: 课程管理 ───────────────────────────────────────────────────────────
+
+@router.get("/api/lessons")
+async def api_lessons(year: int, month: int):
+    """获取指定月份的课程列表"""
+    try:
+        lessons = lesson_manager.get_lessons(year, month)
+        return {
+            "ok": True,
+            "lessons": [
+                {
+                    "date": l.date.isoformat(),
+                    "time": l.time.strftime("%H:%M"),
+                    "status": l.status.value,
+                    "fee": l.fee,
+                    "fee_paid": l.fee_paid,
+                    "notes": l.notes,
+                }
+                for l in lessons
+            ]
+        }
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.post("/api/lessons")
+async def api_add_lesson(date: str):
+    """添加课程"""
+    try:
+        import datetime as dt
+        lesson_date = dt.date.fromisoformat(date)
+        lesson = lesson_manager.add_lesson(lesson_date)
+        return JSONResponse({"ok": True, "lesson": {
+            "date": lesson.date.isoformat(),
+            "time": lesson.time.strftime("%H:%M"),
+            "status": lesson.status.value,
+            "fee": lesson.fee,
+        }})
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.post("/api/lessons/cancel")
+async def api_cancel_lesson(date: str):
+    """取消课程"""
+    try:
+        import datetime as dt
+        lesson_date = dt.date.fromisoformat(date)
+        success = lesson_manager.cancel_lesson(lesson_date)
+        return JSONResponse({"ok": success})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.post("/api/lessons/confirm")
+async def api_confirm_lesson(date: str):
+    """确认上课"""
+    try:
+        import datetime as dt
+        lesson_date = dt.date.fromisoformat(date)
+        lesson = lesson_manager.confirm_attendance(lesson_date)
+        if lesson:
+            return JSONResponse({"ok": True, "lesson": {
+                "date": lesson.date.isoformat(),
+                "status": lesson.status.value,
+            }})
+        return JSONResponse({"ok": False, "error": "未找到课程"}, status_code=404)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.post("/api/lessons/reschedule")
+async def api_reschedule_lesson(from_date: str, to_date: str):
+    """调课"""
+    try:
+        import datetime as dt
+        fd = dt.date.fromisoformat(from_date)
+        td = dt.date.fromisoformat(to_date)
+        lesson = lesson_manager.reschedule_lesson(fd, td)
+        return JSONResponse({"ok": True, "lesson": {
+            "date": lesson.date.isoformat(),
+            "time": lesson.time.strftime("%H:%M"),
+        }})
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.post("/api/lessons/generate")
+async def api_generate_lessons(year: int, month: int, overwrite: bool = False):
+    """生成月度课程计划"""
+    try:
+        plan = lesson_manager.generate_monthly_lessons(year, month, overwrite=overwrite)
+        lessons = lesson_manager.get_lessons(year, month)
+        return JSONResponse({"ok": True, "total_lessons": plan.total_lessons, "holiday_conflicts": plan.holiday_conflicts, "lessons": [
+            {"date": l.date.isoformat(), "time": l.time.strftime("%H:%M"), "status": l.status.value}
+            for l in lessons
+        ]})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.get("/api/lessons/stats")
+async def api_lesson_stats(year: int, month: int):
+    """课程统计"""
+    try:
+        lessons = lesson_manager.get_lessons(year, month)
+        ps = payment_manager.get_monthly_payment_status(year, month)
+        arranged = len([l for l in lessons if l.status == LessonStatus.SCHEDULED])
+        attended = len([l for l in lessons if l.status == LessonStatus.ATTENDED])
+        cancelled = len([l for l in lessons if l.status == LessonStatus.CANCELLED])
+        total_fee = sum(l.fee for l in lessons if l.status != LessonStatus.CANCELLED)
+        paid_fee = sum(l.fee for l in lessons if l.fee_paid and l.status != LessonStatus.CANCELLED)
+        return JSONResponse({
+            "ok": True,
+            "arranged": arranged,
+            "attended": attended,
+            "cancelled": cancelled,
+            "total_fee": total_fee,
+            "paid_fee": paid_fee,
+            "balance": total_fee - paid_fee,
+            "last_lesson_date": str(ps.last_lesson_date) if ps.last_lesson_date else None,
+        })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.post("/api/lessons/fee-paid")
+async def api_mark_fee_paid(date: str, paid: bool = True):
+    """标记学费已缴"""
+    try:
+        import datetime as dt
+        lesson_date = dt.date.fromisoformat(date)
+        lesson = lesson_manager.mark_fee_paid(lesson_date, paid)
+        return JSONResponse({"ok": True, "fee_paid": lesson.fee_paid if lesson else False})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# ─── API: 练习统计（已移到上方 /api/records/stats） ────────────────────────────
