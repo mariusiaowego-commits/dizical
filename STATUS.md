@@ -2,6 +2,13 @@
 
 **最后更新**: 2026-05-29
 **当前阶段**: config台课程管理 + 练习记录管理 ✅ 已合并 main
+**2026-05-29 — 弹窗竹笛背景图随机切换 + 呼吸动效**:
+- **分支**: `feat/ui-adjustments`
+- **9张竹笛背景图**：原 `dizi-h-crop-clean.png` + 8张新生成图（牡丹繁花/锦鲤戏莲/祥云游龙/银杏秋风/星象夜空/几何流线/千里江山/仙鹤修竹），rembg统一去背景+自动裁剪
+- **随机切换**：每次打开弹窗随机选一张图
+- **呼吸动效**：opacity 1↔0.65 + scale 1.0↔1.03，0.6s周期，关闭时kill动画
+- **静态文件**: `src/kid_app/static/dizi-modal-new-{1-8}-crop.png` + `remove_bg.py` / `crop_flutes.py` / `download_and_rmbg.py`
+- **教训**: execute_code的terminal是沙盒，下载文件必须用real terminal；rembg抠图需裁剪后高度统一（padding+crop）；img.complete检查解决缓存图onload不触发问题
 
 ## 阶段记录
 
