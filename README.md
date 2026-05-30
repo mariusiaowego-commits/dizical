@@ -1,5 +1,7 @@
 # 🎵 dizical
 
+[English](./README_EN.md) · [中文](./README.md)
+
 > 竹笛课程管理 + 缴费提醒 + Apple Reminders 双向同步 + iPad 儿童练习助手
 
 <p align="center">
@@ -8,6 +10,8 @@
   <img src="https://img.shields.io/badge/tests-49%20passed-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/lessons-211%20days%20imported-blue" alt="Lessons">
 </p>
+
+---
 
 ## 🤔 为什么叫 dizical？
 
