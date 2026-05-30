@@ -1,5 +1,19 @@
 # dizical vibe coding log
 
+## 2026-05-30 — 合入废弃分支 feat/ui-adjustments
+
+### 完成内容
+- 从废弃分支捡回 commit `91c4915`（弹窗竹笛随机背景+呼吸动效）
+- 分支从未被 merge，后来 reset 回旧 commit 作废，但 commit 仍在仓库
+- 两轮 conflict 解决（pull remote main 时触发）
+- push 到 origin/main：`4b21c0f`
+
+### 教训
+- 分支 reset 不等于 commit 消失，只是 ref 没了，可以靠 reflog 或 commit SHA 找回
+- pull 远程有更新时先 pull 再 push，避免 rejected
+
+---
+
 ## 2026-05-29 — 弹窗竹笛背景图随机切换 + 呼吸动效
 
 ### 完成内容
