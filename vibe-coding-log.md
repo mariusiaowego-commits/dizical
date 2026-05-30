@@ -12,6 +12,11 @@
 - 分支 reset 不等于 commit 消失，只是 ref 没了，可以靠 reflog 或 commit SHA 找回
 - pull 远程有更新时先 pull 再 push，避免 rejected
 
+### Git
+- `eb97c4e` chore: remove docs/INTRODUCTION and OPENAI_PRO_PLAN from tracked files (local only)
+- `35d9114` docs: add language switch link at top of README and README_EN
+- `efc8f0d` chore: update vibe-coding-log
+
 ---
 
 ## 2026-05-29 — 弹窗竹笛背景图随机切换 + 呼吸动效
