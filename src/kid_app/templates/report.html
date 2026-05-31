@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
-    body { padding-bottom: 0; }
+    body { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
     .nav {
       position: fixed; bottom: 0; left: 0; right: 0;
       display: flex; gap: 4px;

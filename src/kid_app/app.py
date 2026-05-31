@@ -530,20 +530,23 @@ def _daily_blindbox_html():
         return "", 0
 
     stage_start_str, stage_end_str, stage_order = stage_row
+    if not stage_start_str:
+        return "", 0
+    # stage_end 为 NULL 时视为 today（当前 stage 尚未结束）
+    stage_end_date = dt.date.fromisoformat(stage_end_str) if stage_end_str else today
     stage_start = dt.date.fromisoformat(stage_start_str)
-    stage_end = dt.date.fromisoformat(stage_end_str)
 
     # 计算今天是stage的第几天（1-7）
     stage_day = (today - stage_start).days + 1
-    if stage_day < 1 or stage_day > 7:
-        return "", 0  # 不在stage范围内
+    if stage_day < 1:
+        return "", 0  # stage 还没开始
 
     # 计算本周打卡了几天
     cur = conn.execute("""
         SELECT COUNT(DISTINCT date) 
         FROM daily_practices 
         WHERE date >= ? AND date <= ?
-    """, (stage_start_str, stage_end_str))
+    """, (stage_start_str, stage_end_date.isoformat()))
     checkin_days = cur.fetchone()[0]
 
     # 查询每一天是否已打卡
@@ -552,7 +555,7 @@ def _daily_blindbox_html():
         SELECT DISTINCT date 
         FROM daily_practices 
         WHERE date >= ? AND date <= ?
-    """, (stage_start_str, stage_end_str))
+    """, (stage_start_str, stage_end_date.isoformat()))
     for row in cur.fetchall():
         checked_days.add(row[0])
 
@@ -689,17 +692,20 @@ def api_practice_stage(date_str: str):
 
     c = db._conn.cursor()
     row = c.execute(
-        "SELECT stage_start, stage_end FROM weekly_assignments WHERE ? BETWEEN stage_start AND stage_end",
-        (date_str,)
+        """SELECT stage_start, stage_end FROM weekly_assignments
+           WHERE ? >= stage_start
+             AND (stage_end IS NULL OR ? <= stage_end)""",
+        (date_str, date_str)
     ).fetchone()
     if not row:
         return JSONResponse({"error": "该日期不在任何stage中"}, status_code=404)
 
     stage_start, stage_end = row
-    # 截止日期 = min(date_str, today)，不超过stage_end
+    # 截止日期 = min(date_str, today)，不超过stage_end（stage_end为NULL则用today）
     today_str = dt.date.today().isoformat()
-    end_date = min(date_str, today_str, stage_end)
-    stage_end_actual = min(stage_end, today_str)
+    effective_end = stage_end if stage_end else today_str
+    end_date = min(date_str, today_str, effective_end)
+    stage_end_actual = min(effective_end, today_str)
 
     # 生成日期列表：stage_start 到 end_date
     dates_in_stage = []
@@ -1137,9 +1143,10 @@ def achievements_page():
     conn = db._get_connection()
     cur_week_row = conn.execute("""
         SELECT stage_order FROM weekly_assignments
-        WHERE ? BETWEEN stage_start AND stage_end
+        WHERE ? >= stage_start
+          AND (stage_end IS NULL OR ? <= stage_end)
         LIMIT 1
-    """, (today.isoformat(),)).fetchone()
+    """, (today.isoformat(), today.isoformat())).fetchone()
     week_days_prev = 0
     if cur_week_row:
         cur_order = cur_week_row[0]

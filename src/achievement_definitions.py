@@ -261,8 +261,11 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             return CalcResult(False, 0, None, None, "无stage数据")
         
         stage_start_str, stage_end_str, stage_order = stage_row
+        if not stage_start_str:
+            return CalcResult(False, 0, None, None, "无stage数据")
         stage_start = date.fromisoformat(stage_start_str)
-        stage_end = date.fromisoformat(stage_end_str)
+        # stage_end 为 NULL 时视为今天（当前 stage 尚未结束）
+        stage_end = date.fromisoformat(stage_end_str) if stage_end_str else today
         
         # 计算今天是stage的第几天（1-7）
         stage_day = (today - stage_start).days + 1
@@ -347,7 +350,13 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         curr_stage, prev_stage = _get_stage_range(conn)
         if not curr_stage or not prev_stage:
             return CalcResult(False, 0, None, None,
-                              "本周 > 上周（暂无上课记录）")
+                              "暂无完整上下周数据")
+        if not curr_stage.get("stage_end") or not curr_stage.get("stage_start"):
+            return CalcResult(False, 0, None, None,
+                              "本周数据不完整")
+        if not prev_stage.get("stage_end") or not prev_stage.get("stage_start"):
+            return CalcResult(False, 0, None, None,
+                              "上周数据不完整")
         curr_start = date.fromisoformat(curr_stage["stage_start"])
         curr_end   = date.fromisoformat(curr_stage["stage_end"])
         prev_start = date.fromisoformat(prev_stage["stage_start"])

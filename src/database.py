@@ -640,7 +640,12 @@ class Database:
             attended_dates = [dt.date.fromisoformat(r[0]) for r in cursor.fetchall()]
             stage_start = (lesson_date + dt.timedelta(days=1)).isoformat()
             future = [d for d in all_lessons if d > lesson_date]
-            stage_end = future[0].isoformat() if future else None
+            if future:
+                stage_end = future[0].isoformat()
+            else:
+                # 没有未来课时，stage_start = lesson_date + 1，stage_end = stage_start + 6（完整7天周期，inclusive）
+                stage_start_val = lesson_date + dt.timedelta(days=1)
+                stage_end = (stage_start_val + dt.timedelta(days=6)).isoformat()
             stage_order = attended_dates.index(lesson_date) + 1 if lesson_date in attended_dates else None
 
             cursor.execute('''
