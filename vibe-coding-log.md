@@ -1,5 +1,45 @@
 # dizical vibe coding log
 
+## 2026-05-31 — stage_end NULL 崩溃修复 + report柱状图 + 打卡盲盒
+
+### 完成内容
+- achievements 页 500 → 修复（`stage_end=NULL` 导致 `fromisoformat` 崩溃）
+- report 页5月31日柱状图消失 → 修复（`BETWEEN` 改 NULL-safe 写法）
+- 打卡盲盒消失 → 修复（`_daily_blindbox_html` + `_calc_seasonal` NULL 处理）
+- report 页底部导航 fix → 修复（`padding-bottom: calc(70px + ...)`）
+
+### 验证（2026-05-31 22:30）
+- uvicorn 8765 起服务，5 路由全 200（/、/achievements、/report、/practice、/prepare）
+- `/api/practices/stage/2026-05-31` → `stage_start=2026-05-31 stage_end=2026-06-06`（非 NULL）
+- `/api/practices/2026-05-31` → 3 items, total_minutes=29
+- achievements HTML 服务端渲染含"盲盒"/"已连续"/"blindbox"
+- report HTML 含 `stageChart` 渲染代码 + `padding-bottom: calc(70px + env(safe-area-inset-bottom))`
+
+### 远端清理
+- 远端 `fix/stage-end-null-safe` 与 main 同 SHA（648e154），属孤儿分支
+- `git push origin --delete fix/stage-end-null-safe` 已删
+- 修复本身已随 648e154 在 main 上，**无需开 PR**
+
+### 本次收尾
+- 远端：0 变化（仅删孤儿分支）
+- 本地：STATUS.md + vibe-coding-log.md 补"验证"栏，commit 到本地 main，不 push
+
+### 踩坑：stage_end=NULL 连锁故障
+- `save_weekly_assignment` 第10课无 future lesson 时设 `stage_end=None`
+- `BETWEEN stage_start AND NULL` 永远失败（SQLite NULL 语义）
+- `date.fromisoformat(None)` 抛 `TypeError`
+- 后续 `_calc_seasonal` 里 `curr_stage["stage_end"]` 直接访问 None
+- **教训**：外键/日期字段用 NULL 表示"未结束"是常见设计，但所有消费方都要 NULL-safe
+- **教训**：`save_weekly_assignment` 源头就不该写 NULL，无 future 时应设 `stage_start+6`
+
+### 踩坑：stage_end 历史数据错误
+- 规则：`stage_end = 下一节课 lesson_date`（inclusive）
+- stages 2,7,9 的 stage_end 都差了1天
+- 修正：2→2026-04-11, 7→2026-05-16, 9→2026-05-30
+- **教训**：录入新课要检查 `stage_end = next_lesson_date` 是否填对
+
+---
+
 ## 2026-05-30 — 合入废弃分支 feat/ui-adjustments
 
 ### 完成内容

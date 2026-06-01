@@ -1,7 +1,19 @@
 # 🎵 dizical 竹笛课程管理助手 - 当前开发状态
 
-**最后更新**: 2026-05-30
-**当前阶段**: 合入废弃分支 feat/ui-adjustments ✅ 已合并 main
+**最后更新**: 2026-05-31
+**当前阶段**: stage_end NULL 修复已验证 ✅ (本地 commit,未 push)
+
+**2026-05-31 — stage_end NULL 崩溃 + report柱状图 + 打卡盲盒修复**:
+- **根因**: 第10课 `stage_end=NULL` 导致所有依赖 BETWEEN/BETWEEN 的查询崩溃
+- **修复文件**: app.py(5处NULL-safe), achievement_definitions.py(4处), database.py(源头), report.html(底部导航)
+- **验证(2026-05-31 22:30)**: uvicorn 8765 起服务,5 路由全 200;/api/practices/stage/2026-05-31 返回 `stage_end=2026-06-06`(非 NULL);achievements HTML 含"盲盒"+"已连续"关键字;report 含 stageChart + padding-bottom 修复
+- **远端**: 远端 `fix/stage-end-null-safe` 与 main 同 SHA(648e154),已 `push --delete` 清掉;无需开 PR
+- **教训**: `save_weekly_assignment` 源头就不该写 NULL，无 future 时应设 `stage_start+6`
+- **教训**: stage_end 历史数据 stages 2/7/9 都有1天偏差（=下一课日期），录入新课需检查
+- **教训**: 远端"fix/xxx"分支若和 main 同 SHA 就是孤儿,直接删不要开 PR
+
+## 阶段记录
+
 **2026-05-30 — 合入废弃分支 feat/ui-adjustments**:
 - **分支**: `feat/ui-adjustments`（从未被 merge，commit `91c4915` 一直留在仓库）
 - **合入内容**: 9张竹笛背景图随机切换 + GSAP呼吸动效
