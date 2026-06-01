@@ -41,6 +41,7 @@
 □ STATUS.md — 本次修改涉及的功能，对应条目是否更新（日期 + 阶段描述）
 □ vibe-coding-log.md — 新增当日记录，append 到文件开头
 □ handoff-YYYY-MM-DD.md — 完整记录含待办清单，写入项目根目录
+□ handoff 归档 — 根目录永远只保留最新一份 handoff-YYYY-MM-DD.md，其余全 `mv` 到 `docs/handoff-archive/`
 □ image-gen.md — 生图 CDN URL + 本地路径追加到 Obsidian tqob/00-Artifacts/
 □ Git — 测通后 add → commit → feature branch → PR（未测不推）
 □ Git push — 代理挂了就改 HTTPS：`git config --local remote.origin.pushurl https://github.com/mariusiaowego-commits/dizical.git`
