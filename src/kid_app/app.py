@@ -407,7 +407,7 @@ def _milestone_html(category: Optional[str] = None):
 
     # ── 读 achievements 表元数据 ──────────────────────────────────
     cur = conn.execute(
-        "SELECT id, name, type, category, description, threshold, "
+        "SELECT id, name, type, category, stat_logic, description, threshold, "
         "unlocked_template, placeholder FROM achievements" +
         (" WHERE category = ?" if category else "") +
         " ORDER BY sort_order",
@@ -434,6 +434,7 @@ def _milestone_html(category: Optional[str] = None):
         "little_chick_commander": "/static/badges/early_bird_B.png",
         "first_to_act": "/static/badges/early_bird_C.png",
         **{f"grade_{n}": f"/static/badges/grade_{n}-u.png" for n in range(1, 11)},
+        **{f"lucky_61_{y}": f"/static/badges/lucky_61_{y}.png" for y in range(2026, 2031)},
     }
 
     # ── 分离已解锁 / 未解锁 ──────────────────────────────────────
@@ -458,6 +459,30 @@ def _milestone_html(category: Optional[str] = None):
             ratio = 1.0
         else:
             ratio = 0.0
+
+        # ── 过滤"日期型 seasonal 徽章"（card-milestones 仅展示当年内可解锁/已解锁）──
+        # 规则：从 stat_logic 提取 exists_practice_on_YYYY_MM_DD 模式：
+        #   1) 未解锁 + (y,mo,d) != (today.year,today.month,today.day) → 隐藏
+        #      （只有当天能解锁；不是当天/不是那年都不展示）
+        #   2) 已解锁 + 解锁年 != 今年 → 隐藏
+        #      （去年 6-1 解锁的 lucky_61_2026，到 2027-01-01 起不再展示，
+        #       避免列表里堆历年已解锁的节日徽章）
+        # 总之：节日徽章只在解锁年（已解锁）或目标年（未解锁）的当月展示。
+        if category == "seasonal":
+            import re as _re
+            from datetime import date as _date
+            m = _re.search(r"exists_practice_on_(\d{4})_(\d{2})_(\d{2})", ach.get("stat_logic", ""))
+            if m:
+                y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                today_d = _date.today()
+                if not achieved:
+                    # 未解锁：只在目标日期 == 当天才显示
+                    if (y, mo, d) != (today_d.year, today_d.month, today_d.day):
+                        continue
+                else:
+                    # 已解锁：只在解锁年内显示
+                    if y != today_d.year:
+                        continue
 
         card_html = _build_milestone_card(
             aid, ach["name"], ach["type"], ach["description"],
@@ -1289,6 +1314,7 @@ def badges_page():
         "little_chick_commander": "/static/badges/early_bird_B.png",
         "first_to_act": "/static/badges/early_bird_C.png",
         **{f"grade_{n}": f"/static/badges/grade_{n}-u.png" for n in range(1, 11)},
+        **{f"lucky_61_{y}": f"/static/badges/lucky_61_{y}.png" for y in range(2026, 2031)},
     }
 
     # 构建 badge 列表

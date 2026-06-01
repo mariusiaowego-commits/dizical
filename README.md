@@ -5,7 +5,7 @@
 > 竹笛课程管理 + 缴费提醒 + Apple Reminders 双向同步 + iPad 儿童练习助手
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.14-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/badge/tests-49%20passed-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/lessons-211%20days%20imported-blue" alt="Lessons">
@@ -111,10 +111,10 @@ dizical kid start
 
 **`/badges` 勋章墙**
 
-- 30 枚 Enamel Pin 风格徽章，实时计算解锁状态
-- 分类展示：连击系 / 累计系 / 段位系 / 排行系 / 特殊徽章
+- 35 枚 Enamel Pin 风格徽章，实时计算解锁状态
+- 分类展示：连击系 / 累计系 / 段位系 / 排行系 / 节日系 / 特殊徽章
 - 顶部进度条：年度总课时进度（1000分钟里程碑）
-- 点击徽章弹出详情（解锁条件 / 当前进度 / 达成日期）
+- 点击徽章弹出详情（解锁条件 / 当前进度 / 达成日期 / 典故描述）
 - 未解锁徽章显示锁定态（灰色 + b-lock 标识）
 
 徽章一览：
@@ -122,6 +122,7 @@ dizical kid start
 - 累计系：`total_60/300/600/1000`（60分钟起）
 - 段位系：`grade_1`～`grade_10`（一级～十级考级成就）
 - 排行系：`top1/top2/top3`（本月练习时长前三）
+- 节日系：`lucky_61_2026/2027/2028/2029/2030`（六一儿童节限定，每年 6-1 当天练习解锁）
 - 特殊：`first_log` 首次打卡、`double` 双倍练习、`week_champ` 本周冠军、`full_month` 全勤月、`all_items` 全部科目、`绕梁七日` 连续7天、`刮目相看` 首次突破10分钟、`情有独钟` 单科目100分钟
 
 **`/report` 月报页**
@@ -184,11 +185,11 @@ dizical reminders sync
 
 ## ⚙️ Configuration
 
-创建 `.env` 文件：
+创建 `.env` 文件（路径按本机情况修改）：
 
 ```env
 REMINDER_LIST_NAME=dizi
-OBSIDIAN_PATH=/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/
+OBSIDIAN_PATH=/path/to/your/Obsidian/Vault
 DEFAULT_FEE=600
 DEFAULT_TIME=17:15
 DEFAULT_WEEKDAY=5

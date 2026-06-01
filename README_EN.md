@@ -64,6 +64,19 @@ GPT-4o is used for AI-generated monthly practice report images. See `docs/OPENAI
 
 ---
 
+## Badge Collection
+
+35 enamel-pin style badges across 6 categories:
+
+- **Streak** — `streak_1/3/7/14/30/100` (1 day to 100 days)
+- **Cumulative** — `total_60/300/600/1000` (60 minutes and up)
+- **Grade** — `grade_1` through `grade_10` (1st to 10th exam achievements)
+- **Top** — `top1/top2/top3` (monthly practice top 3)
+- **Festival** — `lucky_61_2026/2027/2028/2029/2030` (Children's Day limited: each year on June 1, practice to unlock)
+- **Special** — `first_log`, `double`, `week_champ`, `full_month`, `all_items`, and others
+
+---
+
 ## License
 
 MIT

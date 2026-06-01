@@ -305,6 +305,20 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
 
     # ── monthly: 自然月周期 ────────────────────────────────────
     if seasonal_type == "monthly":
+        # 节日限定徽章（lucky_61_YYYY）走独立分支，不按"当月 60 分钟"判断
+        if aid.startswith("lucky_61_") and len(aid) == len("lucky_61_2026"):
+            try:
+                y = int(aid[-4:])
+                target = f"{y:04d}-06-01"
+                cur = conn.execute(
+                    "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date = ?",
+                    (target,))
+                mins = int(cur.fetchone()[0])
+                achieved = mins > 0
+                cond = f"{y}年6月1日当天练习（{mins}分钟）"
+                return CalcResult(achieved, mins if achieved else 0, None, None, cond)
+            except (ValueError, sqlite3.Error) as e:
+                return CalcResult(False, 0, None, None, f"节日徽章解析失败: {e}")
         month_start = date(now_year, now_month, 1)
         if now_month == 12:
             month_end = date(now_year + 1, 1, 1) - timedelta(days=1)

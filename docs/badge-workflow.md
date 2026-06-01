@@ -54,27 +54,37 @@ An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders en
 
 ## 步骤 3：去白底处理
 
-FAL 输出的 PNG 有白色背景，用 PIL 脚本去背：
+⚠️ **FAL GPT-Image-2 模型输出 `RGB`（不是 RGBA），所有新生成 badge 图都必须经过本步骤后处理！**
+
+第一步先校验 `Image.open(p).mode`，如果不是 `RGBA` 就执行去背：
 
 ```python
 from PIL import Image
 import os
 
 src = "/Users/mt16/dev/dizical/src/kid_app/static/badges/<id>.png"
-im = Image.open(src).convert("RGBA")
-pixels = im.load()
-for y in range(im.height):
-    for x in range(im.width):
-        r, g, b, a = pixels[x, y]
-        if r > 220 and g > 220 and b > 220 and a > 200:
-            pixels[x, y] = (r, g, b, 0)  # 纯白 → 透明
-        # 抗锯齿 near-white + 低饱和 → 透明
-        if r > 200 and g > 200 and b > 200:
-            if max(r, g, b) - min(r, g, b) < 30:  # 低饱和度
-                pixels[x, y] = (r, g, b, 0)
+im = Image.open(src)
+assert im.mode == "RGBA", f"图片 {src} mode={im.mode}，必须是 RGBA！FAL 输出是 RGB，需要后处理"
 
-im.save(src)
+# 如不是 RGBA，先转
+if im.mode != "RGBA":
+    im = im.convert("RGBA")
+    pixels = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = pixels[x, y]
+            if r > 220 and g > 220 and b > 220 and a > 200:
+                pixels[x, y] = (r, g, b, 0)  # 纯白 → 透明
+            # 抗锯齿 near-white + 低饱和 → 透明
+            if r > 200 and g > 200 and b > 200:
+                if max(r, g, b) - min(r, g, b) < 30:  # 低饱和度
+                    pixels[x, y] = (r, g, b, 0)
+    im.save(src)
 ```
+
+**验证**：红底预览 `Image.new("RGBA", im.size, (255,0,0,255)).paste(im, mask=im)` 应该看到徽章外是红色（=透明），不能有白方框。
+
+> 💡 经验教训（2026-06-01）：lucky_61_YYYY 5 张图忘了去背，5 张图都显示白方框。后续 daily_checkin 那批可能是手动处理过才是 RGBA。**新建 badge 流程必须把 mode 校验当 hard requirement。**
 
 文件路径：**`/Users/mt16/dev/dizical/src/kid_app/static/badges/<id>.png`**
 
@@ -110,6 +120,8 @@ VALUES
    'An emoji-adjacent 3D enamel pin of a child figure silhouette...',
    <sort_order>);
 ```
+
+> 💡 **长典故 description 写法（2026-06-01 经验）**：如果 description 是长典故（200+ 字符），必须用 `\n\n` 分段。模板 CSS `#modal-desc` 已配 `white-space: pre-wrap`，但默认 `text-align: center` + 19px 字号对长段落难读，建议直接 `text-align: left` + 16px。
 
 ### 4.2 achievement_stats 表（仅 milestone）
 
