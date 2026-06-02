@@ -71,6 +71,13 @@
     .finish-modal-actions .btn-confirm { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
     .finish-modal-actions .btn-cancel { background: #F0F0F0; color: #666; }
 
+    /* 正常结束确认弹窗（修复：正常结束不再自动提交，等待用户点确认/放弃） */
+    #finishNormalModal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    #finishNormalModal.open { display: flex; }
+
     /* 顶部状态栏 */
     .top-bar {
       display: flex; justify-content: space-between; align-items: center;
@@ -326,6 +333,20 @@
       <div class="finish-modal-actions">
         <button class="btn-confirm" onclick="confirmFinishEarly()">✅ 确认打卡</button>
         <button class="btn-cancel" onclick="cancelFinishEarly()">继续练习</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 正常结束确认弹窗（修复：纯计时到点不再自动提交，弹此窗让用户选 打卡/放弃） -->
+  <div id="finishNormalModal">
+    <div class="finish-modal-box">
+      <div class="finish-icon">🎉</div>
+      <h3>练习完成!</h3>
+      <div class="finish-mins" id="finishNormalMinsDisplay">0</div>
+      <div class="finish-mins-label">分钟</div>
+      <div class="finish-modal-actions">
+        <button class="btn-confirm" onclick="confirmFinishNormal()">✅ 打卡记录</button>
+        <button class="btn-cancel" onclick="cancelFinishNormal()">❌ 放弃</button>
       </div>
     </div>
   </div>
@@ -663,14 +684,29 @@
             started = false;
             document.getElementById('finishEarlyBtn').style.display = 'none';
             document.getElementById('timer-display').classList.remove('running');
-            document.getElementById('confirmMins').textContent = duration;
-            const confirmArea2 = document.getElementById('confirmArea');
-            if (confirmArea2) confirmArea2.classList.add('show');
             document.getElementById('startBtn').textContent = '开始';
+            // 修复：正常结束不再自动提交，弹 finishNormalModal 让用户点 打卡/放弃
+            document.getElementById('finishNormalMinsDisplay').textContent = duration;
+            document.getElementById('confirmMins').textContent = duration;
+            const normalModal = document.getElementById('finishNormalModal');
+            normalModal.classList.add('open');
+            gsap.fromTo('#finishNormalModal .finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(2)' });
             playChime();
           }
         }, 1000);
       }
+    }
+
+    function confirmFinishNormal() {
+      // 正常结束 → 确认打卡
+      document.getElementById('finishNormalModal').classList.remove('open');
+      submitPractice();
+    }
+
+    function cancelFinishNormal() {
+      // 正常结束 → 放弃本次练习,清零
+      document.getElementById('finishNormalModal').classList.remove('open');
+      resetTimer();
     }
 
     function finishEarly() {
@@ -722,10 +758,13 @@
           timerRunning = false;
           started = false;
           document.getElementById('timer-display').classList.remove('running');
-          document.getElementById('confirmMins').textContent = duration;
-          const confirmArea3 = document.getElementById('confirmArea');
-          if (confirmArea3) confirmArea3.classList.add('show');
           document.getElementById('startBtn').textContent = '开始';
+          // 修复：cancelFinishEarly 后再次到点，同样弹 finishNormalModal 而非自动提交
+          document.getElementById('finishNormalMinsDisplay').textContent = duration;
+          document.getElementById('confirmMins').textContent = duration;
+          const normalModal2 = document.getElementById('finishNormalModal');
+          normalModal2.classList.add('open');
+          gsap.fromTo('#finishNormalModal .finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(2)' });
           playChime();
         }
       }, 1000);
