@@ -24,11 +24,12 @@ docs/practice-*-audit-*.md
 
 # Agent 协作文档（本地参考，含真实路径/家庭信息，不推 gh）
 AGENTS.md
-# dizical doc 文件（handoff/STATUS/vibe-coding-log 推 gh，AGENTS.md 仅本地）
-docs/INTRODUCTION.md
-docs/OPENAI_PRO_PLAN.md
-# 项目脚本生成的临时交接文档（归档目录保留，最近一份除外）
+# doc 文件不推 gh：仅本地 agent 参考
+# - 根目录 1 份最新未解决 handoff，历史归档到 docs/handoff-archive/
+# - STATUS / vibe log / 项目介绍 / OpenAI 申请 仅本机
 handoff-*.md
-# 顶部根目录的 doc 文件不推（与 AGENTS.md 一样本地参考）
+docs/handoff-archive/
+STATUS.md
+vibe-coding-log.md
 docs/INTRODUCTION.md
 docs/OPENAI_PRO_PLAN.md
