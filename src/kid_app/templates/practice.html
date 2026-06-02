@@ -51,7 +51,7 @@
     #finishEarlyModal.open { display: flex; }
     .finish-modal-box {
       background: white; border-radius: 24px; padding: 32px 28px;
-      max-width: 340px; width: 100%; text-align: center;
+      max-width: 380px; width: 100%; text-align: center;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
     .finish-modal-box .finish-icon { font-size: 48px; margin-bottom: 12px; }
@@ -62,14 +62,21 @@
     }
     .finish-modal-box .finish-mins-label { font-size: 16px; color: #7F8C8D; margin-bottom: 24px; }
     .finish-modal-actions { display: flex; gap: 10px; flex-direction: column; }
+    .finish-modal-actions.finish-modal-3btns { flex-direction: row; gap: 8px; }
     .finish-modal-actions button {
-      padding: 16px; border: none; border-radius: 16px;
-      font-size: 18px; font-weight: bold; cursor: pointer;
+      padding: 14px 8px; border: none; border-radius: 16px;
+      font-size: 16px; font-weight: bold; cursor: pointer;
       transition: transform 0.15s;
+      flex: 1;
+      white-space: nowrap;
+      min-width: 0;
     }
     .finish-modal-actions button:active { transform: scale(0.96); }
-    .finish-modal-actions .btn-confirm { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
-    .finish-modal-actions .btn-cancel { background: #F0F0F0; color: #666; }
+    .finish-modal-actions .btn-confirm,
+    .finish-modal-actions .btn-submit { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
+    .finish-modal-actions .btn-cancel,
+    .finish-modal-actions .btn-resume { background: #F0D060; color: #5D4037; }
+    .finish-modal-actions .btn-abort { background: #F0F0F0; color: #888; }
 
     /* 正常结束确认弹窗（修复：正常结束不再自动提交，等待用户点确认/放弃） */
     #finishNormalModal {
@@ -122,37 +129,67 @@
       font-size: 16px; color: #5D4037; line-height: 1.7;
     }
 
-    /* 楼层 2:计时器(主半圆珊瑚红) */
-    .floor-timer { background: #FFFDF5; border-color: #FF6B6B; }
-    .floor-timer h3 { color: #C44545; }
+    /* 楼层 2+3:两仪表盘并排(同卡片,grid 1fr 1fr) */
+    .floor-pickers { background: #FFFDF5; border-color: #F0D060; }
+    .floor-pickers h3 { color: #8B6914; }
+    .pickers-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; align-items: stretch;
+    }
+    .picker-cell {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 12px;
+      border: 2px solid transparent;
+    }
+    .picker-cell-timer { border-color: rgba(255,107,107,0.4); }   /* 珊瑚红 */
+    .picker-cell-extra { border-color: rgba(78,205,196,0.4); }    /* 蒂芙尼青 */
+    .picker-label {
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      color: #7F8C8D; margin-bottom: 6px; text-transform: uppercase;
+    }
+    .picker-cell-timer .picker-label { color: #C44545; }
+    .picker-cell-extra .picker-label { color: #2A8A82; }
+
+    /* 主半圆(计时) */
     .timer-picker-wrap {
-      position: relative; width: 100%; max-width: 360px;
+      position: relative; width: 100%; max-width: 320px;
       aspect-ratio: 1.6 / 1; margin: 0 auto;
     }
     .timer-picker-wrap svg { width: 100%; height: 100%; display: block; }
     .timer-center-value {
-      position: absolute; left: 50%; top: 62%;
+      position: absolute; left: 50%; top: 72%;
       transform: translate(-50%, -50%);
       text-align: center; pointer-events: none;
+      width: 80%;
     }
     .timer-center-value .num {
-      font-size: 42px; font-weight: 800; color: #FF6B6B; line-height: 1;
+      font-size: 30px; font-weight: 800; color: #FF6B6B; line-height: 1;
+      display: inline-block;
+    }
+    .timer-center-value .num.idle { font-size: 42px; }
+    .timer-center-value .num .digit {
+      display: inline-block;
+      transform-origin: 50% 50%;
+    }
+    .timer-center-value .colon {
+      display: inline-block; margin: 0 2px;
     }
     .timer-center-value .unit { font-size: 14px; color: #C44545; margin-top: 2px; }
     .timer-center-value .hint { font-size: 11px; color: #A1887F; margin-top: 6px; }
 
-    /* 楼层 3:额外记录(副半圆蒂芙尼青) */
-    .floor-extra { background: #FFFDF5; border-color: #4ECDC4; }
-    .floor-extra h3 { color: #2A8A82; }
+    /* 副半圆(补录)— 等大,跟主半圆同步缩放 */
     .extra-picker-wrap {
-      position: relative; width: 100%; max-width: 280px;
-      aspect-ratio: 1.74 / 1; margin: 0 auto;
+      position: relative; width: 100%; max-width: 320px;
+      aspect-ratio: 1.6 / 1; margin: 0 auto;
     }
     .extra-picker-wrap svg { width: 100%; height: 100%; display: block; }
     .extra-center-value {
-      position: absolute; left: 50%; top: 65%;
+      position: absolute; left: 50%; top: 72%;
       transform: translate(-50%, -50%);
       text-align: center; pointer-events: none;
+      width: 80%;
     }
     .extra-center-value .num { font-size: 32px; font-weight: 800; color: #4ECDC4; line-height: 1; }
     .extra-center-value .unit { font-size: 12px; color: #2A8A82; margin-top: 2px; }
@@ -177,9 +214,10 @@
     .item-bubble {
       background: linear-gradient(135deg, #FFE066, #FF9F43);
       border-radius: 20px; padding: 8px 16px;
-      display: flex; align-items: center; gap: 8px;
+      display: inline-flex; align-items: center; gap: 8px;
       box-shadow: 0 2px 8px rgba(255,159,67,0.3);
-      align-self: center;
+      vertical-align: middle;
+      margin-left: 12px;
     }
     .item-bubble .bubble-label {
       font-size: 11px; color: rgba(255,255,255,0.85);
@@ -192,13 +230,8 @@
     }
     .item-bubble.animate { animation: bubbleFloat 1.8s ease-in-out infinite; }
 
-    /* 数字时间显示(可叠加在 picker 上方/替换) */
-    .timer-display {
-      font-size: 56px; font-weight: bold; text-align: center;
-      color: #FF6B6B; letter-spacing: -2px; line-height: 1;
-    }
-    .timer-display.running { color: #4ECDC4; }
-    .timer-display.paused { color: #F0D060; }
+    /* 数字时间显示:已废弃(改用 picker 中央 num 实时变化) */
+    .timer-display { display: none; }
 
     /* 确认打卡区域 */
     .confirm-area {
@@ -215,7 +248,9 @@
       display: flex; align-items: center; justify-content: space-between;
       background: rgba(255,255,255,0.7); border: 1px solid #B0D8B0;
       border-radius: 8px; padding: 8px 12px; font-size: 14px;
+      margin-top: 6px;
     }
+    .extra-log-item:first-child { margin-top: 10px; }
     .extra-log-item + .extra-log-item { margin-top: 6px; }
 
     /* Picker knob 拖拽光标 */
@@ -339,9 +374,10 @@
       <h3>提前结束练习</h3>
       <div class="finish-mins" id="finishMinsDisplay">0</div>
       <div class="finish-mins-label">分钟</div>
-      <div class="finish-modal-actions">
-        <button class="btn-confirm" onclick="confirmFinishEarly()">✅ 确认打卡</button>
-        <button class="btn-cancel" onclick="cancelFinishEarly()">继续练习</button>
+      <div class="finish-modal-actions finish-modal-3btns">
+        <button class="btn-submit" onclick="confirmFinishEarly()">提交</button>
+        <button class="btn-resume" onclick="cancelFinishEarly()">继续练</button>
+        <button class="btn-abort" onclick="abortFinishEarly()">不练了</button>
       </div>
     </div>
   </div>
@@ -381,53 +417,56 @@
 
     <!-- 楼层 1:老师要求 -->
     <div class="floor floor-req">
-      <h3>🎯 老师要求</h3>
+      <h3>🎯 老师要求 <div class="item-bubble" id="itemBubble" style="display:none">
+        <span class="bubble-label">当前练习</span>
+        <span class="bubble-name" id="bubbleName"></span>
+      </div></h3>
       <div class="req-content" id="reqTip">
         <div class="req-empty">选择一个科目<br>查看老师要求</div>
       </div>
     </div>
 
-    <!-- 楼层 2:计时器(主半圆 picker) -->
-    <div class="floor floor-timer">
-      <h3>⏱️ 计时器</h3>
-      <div class="item-bubble" id="itemBubble" style="display:none">
-        <span class="bubble-label">当前练习</span>
-        <span class="bubble-name" id="bubbleName"></span>
-      </div>
-      <!-- 选中前:显示 picker;运行中:切换为数字时间 -->
-      <div class="timer-picker-wrap" id="timerPickerWrap">
-        <svg id="timerPickerSvg" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="timer-center-value" id="timerCenterValue">
-          <div class="num">10</div>
-          <div class="unit">分钟</div>
-          <div class="hint" id="timerHint">拖动选择 · 默认 10</div>
+    <!-- 楼层 2+3:两仪表盘并排(同卡片,grid 1fr 1fr,gap 12px) -->
+    <div class="floor floor-pickers">
+      <h3>⏱️ 计时器 + ⚡ 补录</h3>
+      <div class="pickers-row">
+        <!-- 左:主半圆(计时) -->
+        <div class="picker-cell picker-cell-timer">
+          <div class="picker-label">主计时</div>
+          <div class="timer-picker-wrap" id="timerPickerWrap">
+            <svg id="timerPickerSvg" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="timer-center-value" id="timerCenterValue">
+              <div class="num idle" id="timerNum">10</div>
+              <div class="unit" id="timerUnit">分钟</div>
+              <div class="hint" id="timerHint">拖动选择 · 默认 10</div>
+            </div>
+          </div>
+          <div class="timer-display" id="timer-display" style="display:none">00:00</div>
+          <div class="action-btns">
+            <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
+            <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
+          </div>
+          <div class="confirm-area" id="confirmArea">
+            <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
+          </div>
+        </div>
+        <!-- 右:副半圆(补录) -->
+        <div class="picker-cell picker-cell-extra" id="extraSection">
+          <div class="picker-label">快速补录</div>
+          <div class="extra-picker-wrap">
+            <svg id="extraPickerSvg" viewBox="0 0 400 230" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="extra-center-value" id="extraCenterValue">
+              <div class="num">10</div>
+              <div class="unit">分钟</div>
+              <div class="hint" id="extraHint">拖动 · +N 补录</div>
+            </div>
+          </div>
+          <div class="action-btns">
+            <button class="btn btn-ghost" id="addExtraBtn" onclick="addExtraFromPicker()" disabled>📝 记录这次补录</button>
+          </div>
+          <div id="extraLogList"></div>
         </div>
       </div>
-      <div class="timer-display" id="timer-display" style="display:none">00:00</div>
-      <div class="action-btns">
-        <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
-        <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
-      </div>
-      <div class="confirm-area" id="confirmArea">
-        <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
-      </div>
-    </div>
-
-    <!-- 楼层 3:额外记录(副半圆 picker) -->
-    <div class="floor floor-extra" id="extraSection">
-      <h3>⚡ 快速补录</h3>
-      <div class="extra-picker-wrap">
-        <svg id="extraPickerSvg" viewBox="0 0 400 230" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="extra-center-value" id="extraCenterValue">
-          <div class="num">10</div>
-          <div class="unit">分钟</div>
-          <div class="hint" id="extraHint">拖动 · +N 补录</div>
-        </div>
-      </div>
-      <div class="action-btns">
-        <button class="btn btn-ghost" id="addExtraBtn" onclick="addExtraFromPicker()" disabled>📝 记录这次补录</button>
-      </div>
-      <div id="extraLogList"></div>
     </div>
 
   </div>
@@ -673,6 +712,19 @@
       paused = false;
       finishPending = false;
       elapsed = 0;
+      // 恢复中央 num 为 idle 形式("10" 单数字 + 30px 或 42px idle)
+      const numEl = document.getElementById('timerNum');
+      const unitEl = document.getElementById('timerUnit');
+      const hintEl = document.getElementById('timerHint');
+      if (numEl) {
+        numEl.classList.add('idle');
+        numEl.classList.remove('flipping');
+        // 用 picker 当前值
+        const cur = (typeof timerPicker !== 'undefined' && timerPicker && timerPicker.currentMin) || 10;
+        numEl.textContent = String(cur);
+      }
+      if (unitEl) unitEl.textContent = '分钟';
+      if (hintEl) hintEl.textContent = '拖动选择 · 默认 10';
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('startBtn').textContent = '开始';
       document.getElementById('startBtn').disabled = !selectedItemId;
@@ -684,8 +736,6 @@
       const timeDisp = document.getElementById('timer-display');
       if (pickerWrap) pickerWrap.style.display = '';
       if (timeDisp) timeDisp.style.display = 'none';
-      const hint = document.getElementById('timerHint');
-      if (hint) hint.textContent = '拖动选择 · 点击开始';
       const addBtn = document.getElementById('addExtraBtn');
       if (addBtn) addBtn.disabled = !selectedItemId;
     }
@@ -698,8 +748,8 @@
         paused = true;
         timerRunning = false;
         document.getElementById('startBtn').textContent = '继续';
-        document.getElementById('timer-display').classList.remove('running');
-        document.getElementById('timer-display').classList.add('paused');
+        document.getElementById('finishEarlyBtn').textContent = '提前结束';
+        renderTimerDisplay();
         return;
       }
       if (started && paused) {
@@ -707,39 +757,126 @@
         paused = false;
         timerRunning = true;
         document.getElementById('startBtn').textContent = '暂停';
-        document.getElementById('timer-display').classList.add('running');
-        document.getElementById('timer-display').classList.remove('paused');
+        document.getElementById('finishEarlyBtn').textContent = '提前结束';
+        renderTimerDisplay();
         startTickInterval();
         return;
       }
-      // 首次开始
+      // 首次开始 — picker 保留,中央 num 变 mm:ss
       started = true;
+      paused = false;
       timerRunning = true;
-      // 切换显示:picker → 数字时间
-      const pickerWrap = document.getElementById('timerPickerWrap');
-      const timeDisp = document.getElementById('timer-display');
-      if (pickerWrap) pickerWrap.style.display = 'none';
-      if (timeDisp) timeDisp.style.display = '';
+      elapsed = 0;
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
-      document.getElementById('timer-display').classList.add('running');
+      document.getElementById('finishEarlyBtn').textContent = '提前结束';
+      // 中央 num 切换为 mm:ss 形式
+      const numEl = document.getElementById('timerNum');
+      if (numEl) {
+        numEl.classList.remove('idle');
+      }
+      const unitEl = document.getElementById('timerUnit');
+      if (unitEl) unitEl.textContent = '已练习';
+      const hintEl = document.getElementById('timerHint');
+      if (hintEl) hintEl.textContent = '加油哦~';
+      renderTimerDisplay(true);
+      // 首次 start 触发首次 glitch 动效(由 renderTimerDisplay forceRebuild 内部处理)
       startTickInterval();
+    }
+
+    // 渲染中央数字 mm:ss,半角冒号,带 GSAP glitch 动效(只对变化的数字触发)
+    // 1:1 适配自 React/GSAP TextGlitchPortal(原代码无限循环,我们改为只在数字变化那一刻触发)
+    function glitchAnimateDigit(digitEl) {
+      if (!digitEl) return;
+      // 初始态:大+模糊+透明
+      gsap.set(digitEl, { opacity: 0, scale: 3, filter: 'blur(20px)', textShadow: '0 0 0 transparent', x: 0 });
+      const tl = gsap.timeline();
+      // 段 1:出现(scale 3→1.5, blur 20→10, 出现红/青阴影)
+      tl.to(digitEl, {
+        opacity: 1, scale: 1.5, filter: 'blur(10px)',
+        textShadow: '-5px 0 #ff0000, 5px 0 #00ffff',
+        duration: 0.18, ease: 'power2.out'
+      });
+      // 段 2:阴影抖动(red/cyan 抖动, x 随机)
+      tl.to(digitEl, {
+        textShadow: '3px 0 #ff0000, -3px 0 #00ffff',
+        x: gsap.utils.random(-5, 5),
+        duration: 0.04, repeat: 4, yoyo: true, ease: 'none'
+      });
+      // 段 3:弹性回位(scale 1.5→1, blur 0, 阴影消失, x 0)
+      tl.to(digitEl, {
+        scale: 1, filter: 'blur(0px)',
+        textShadow: '0 0 0 transparent', x: 0,
+        duration: 0.25, ease: 'elastic.out(1, 0.5)'
+      });
+    }
+
+    function renderTimerDisplay(forceRebuild) {
+      const numEl = document.getElementById('timerNum');
+      if (!numEl) return;
+      const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      const s = (elapsed % 60).toString().padStart(2, '0');
+      if (forceRebuild) {
+        // 重建 digit 节点(digit × 4 + colon × 1)
+        numEl.innerHTML = '';
+        for (let i = 0; i < m.length; i++) {
+          const d = document.createElement('span');
+          d.className = 'digit';
+          d.textContent = m[i];
+          d.style.transformOrigin = '50% 50%';
+          numEl.appendChild(d);
+        }
+        const colon = document.createElement('span');
+        colon.className = 'colon';
+        colon.textContent = ':';
+        numEl.appendChild(colon);
+        for (let i = 0; i < s.length; i++) {
+          const d = document.createElement('span');
+          d.className = 'digit';
+          d.textContent = s[i];
+          d.style.transformOrigin = '50% 50%';
+          numEl.appendChild(d);
+        }
+        // 首次 start 触发全部 4 digit 的 glitch 动效
+        if (timerRunning && !paused) {
+          const digits = numEl.querySelectorAll('.digit');
+          digits.forEach(d => glitchAnimateDigit(d));
+        }
+        return;
+      }
+      const digits = numEl.querySelectorAll('.digit');
+      if (digits.length === 4) {
+        // m1 m2 : s1 s2(digit 只有 4 个,colon 在 numEl.querySelectorAll('.digit') 之外)
+        // 实际 digits.length 是 4,colon 是 .colon 不是 .digit
+        // 检测哪些数字变了 → 对变化的 digit 触发 glitch 动效
+        const oldTexts = [digits[0].textContent, digits[1].textContent, digits[2].textContent, digits[3].textContent];
+        if (digits[0].textContent !== m[0]) digits[0].textContent = m[0];
+        if (digits[1].textContent !== m[1]) digits[1].textContent = m[1];
+        if (digits[2].textContent !== s[0]) digits[2].textContent = s[0];
+        if (digits[3].textContent !== s[1]) digits[3].textContent = s[1];
+        // 只对变化的 digit 触发 glitch 动效
+        if (timerRunning && !paused) {
+          if (oldTexts[0] !== digits[0].textContent) glitchAnimateDigit(digits[0]);
+          if (oldTexts[1] !== digits[1].textContent) glitchAnimateDigit(digits[1]);
+          if (oldTexts[2] !== digits[2].textContent) glitchAnimateDigit(digits[2]);
+          if (oldTexts[3] !== digits[3].textContent) glitchAnimateDigit(digits[3]);
+        }
+      } else {
+        // 退化:直接 textContent
+        numEl.textContent = m + ':' + s;
+      }
     }
 
     function startTickInterval() {
       timerInterval = setInterval(() => {
         elapsed++;
-        let m = Math.floor(elapsed / 60).toString().padStart(2,'0');
-        let s = (elapsed % 60).toString().padStart(2,'0');
-        document.getElementById('timer-display').textContent = m + ':' + s;
+        renderTimerDisplay();   // 不传 forceRebuild,走保留 DOM 路径,只对变化的 digit 触发
         if (elapsed >= duration * 60) {
           clearInterval(timerInterval);
           timerRunning = false;
           started = false;
           paused = false;
           document.getElementById('finishEarlyBtn').style.display = 'none';
-          document.getElementById('timer-display').classList.remove('running');
-          document.getElementById('timer-display').classList.remove('paused');
           document.getElementById('startBtn').textContent = '开始';
           // 修复：正常结束不再自动提交，弹 finishNormalModal 让用户点 打卡/放弃
           document.getElementById('finishNormalMinsDisplay').textContent = duration;
@@ -764,6 +901,9 @@
       resetTimer();
     }
 
+    // 全局:弹窗前保存的 elapsed,供 cancelFinishEarly 恢复用
+    let finishSavedElapsed = 0;
+
     function finishEarly() {
       if (finishPending) return;       // 防双击：已提前结束则忽略
       if (elapsed === 0) return;       // 从未计时则忽略(暂停态 elapsed>0,允许提前结束)
@@ -772,12 +912,10 @@
       paused = false;
       finishPending = true;  // 标记提前结束但未打卡
       const savedElapsed = elapsed;    // 先保存再清零，防竞态
+      finishSavedElapsed = savedElapsed;   // 持久化到全局,供 cancelFinishEarly 用
       const finalMins = Math.max(1, Math.ceil(savedElapsed / 60));
-      elapsed = 0;
+      // 不重置 elapsed,保留以备 cancel 恢复
       started = false;
-      document.getElementById('timer-display').textContent = '00:00';
-      document.getElementById('timer-display').classList.remove('running');
-      document.getElementById('timer-display').classList.remove('paused');
       document.getElementById('startBtn').textContent = '开始';
       document.getElementById('finishEarlyBtn').style.display = 'none';
       // 显示弹窗确认
@@ -800,14 +938,59 @@
       started = true;
       paused = false;
       timerRunning = true;
+      // 恢复 elapsed(从 finishSavedElapsed,不要重置)
+      elapsed = finishSavedElapsed;
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
-      document.getElementById('timer-display').classList.add('running');
-      document.getElementById('timer-display').classList.remove('paused');
-      // 恢复 elapsed（从弹窗显示的分钟数反推秒数）
-      const mins = parseInt(document.getElementById('finishMinsDisplay').textContent) || 1;
-      elapsed = (mins - 1) * 60;  // 退回到上一分钟开始
+      // 重建中央数字 + 恢复 unit 文案"已练习"
+      const numEl = document.getElementById('timerNum');
+      const unitEl = document.getElementById('timerUnit');
+      if (numEl) numEl.classList.remove('idle');
+      if (unitEl) unitEl.textContent = '已练习';
+      renderTimerDisplay(true);   // 重建 digit 节点
       startTickInterval();
+    }
+
+    function abortFinishEarly() {
+      // 不练了: 取消当前计时,回到 idle 状态,不打卡
+      document.getElementById('finishEarlyModal').classList.remove('open');
+      finishPending = false;
+      started = false;
+      paused = false;
+      timerRunning = false;
+      elapsed = 0;
+      finishSavedElapsed = 0;
+      clearInterval(timerInterval);
+      // 中央数字回到 idle "10" / "分钟"
+      const numEl = document.getElementById('timerNum');
+      const unitEl = document.getElementById('timerUnit');
+      const hintEl = document.getElementById('timerHint');
+      if (numEl) {
+        numEl.classList.remove('flipping');
+        numEl.classList.add('idle');
+        numEl.textContent = '10';
+      }
+      if (unitEl) unitEl.textContent = '分钟';
+      if (hintEl) hintEl.textContent = '拖动选择 · 默认 10';
+      // 按钮恢复
+      const startBtn = document.getElementById('startBtn');
+      const finishBtn = document.getElementById('finishEarlyBtn');
+      startBtn.textContent = '开始';
+      finishBtn.style.display = 'none';
+      // 重置 timer picker knob 到默认 10 位置
+      // 10min 对应角度 = π - ((10-5)/(30-5))*π = π/2 = 90°
+      // P_CX=200, P_CY=200, P_R=150 → x=200+150*cos(π/2)=200, y=200-150*sin(π/2)=50
+      const timerKnob = document.querySelector('#timerPickerSvg .dizi-picker-knob');
+      if (timerKnob) {
+        timerKnob.setAttribute('transform', 'translate(200, 50) scale(1)');
+      }
+      // 重置 timer 进度弧(0 长度)
+      const timerProgress = document.querySelectorAll('#timerPickerSvg path')[1];
+      if (timerProgress) {
+        timerProgress.setAttribute('stroke-dasharray', '20 100');   // 10min = 5/25 = 20%
+      }
+      // 重置 finishSave 标志
+      finishSavedElapsed = 0;
     }
 
     async function submitPractice() {
@@ -991,7 +1174,16 @@
     // 改自 uiux-asset-library/dizi-practice-picker v1
     // 5-30min 固定 5min 步长 + GSAP attr.transform 复合 translate+scale
     // ════════════════════════════════════════════════
-    const PICKER_MIN = 5, PICKER_MAX = 30, PICKER_STEP = 5;
+    const PICKER_MIN = 5, PICKER_MAX = 30, PICKER_STEP = 1;
+    // 5/10/15/20/25/30 整数吸附:knob 落定后吸附到这些值附近
+    const P_STICK_VALS = [5, 10, 15, 20, 25, 30];
+    const P_STICK_RADIUS = 0.6;   // 距整数吸附点 < 0.6 min 时吸附
+    function pApplyStick(m) {
+      for (const v of P_STICK_VALS) {
+        if (Math.abs(m - v) <= P_STICK_RADIUS) return v;
+      }
+      return Math.round(m);
+    }
     const P_W = 400, P_H = 220, P_CX = 200, P_CY = 200, P_R = 150, P_STROKE = 14;
     function pMinToAngle(m) { return Math.PI - ((m - PICKER_MIN) / (PICKER_MAX - PICKER_MIN)) * Math.PI; }
     function pAngleToMin(a) { return PICKER_MIN + ((Math.PI - a) / Math.PI) * (PICKER_MAX - PICKER_MIN); }
@@ -1029,29 +1221,36 @@
       svgEl.appendChild(progress);
 
       for (let m = PICKER_MIN; m <= PICKER_MAX; m += PICKER_STEP) {
+        const isMajor = (m % 5 === 0);
         const a = pMinToAngle(m);
-        const inner = { x: P_CX + (P_R - 10) * Math.cos(a), y: P_CY - (P_R - 10) * Math.sin(a) };
-        const outer = { x: P_CX + (P_R + 14) * Math.cos(a), y: P_CY - (P_R + 14) * Math.sin(a) };
+        const tickInner = P_R - (isMajor ? 10 : 6);
+        const tickOuter = P_R + (isMajor ? 14 : 9);
+        const inner = { x: P_CX + tickInner * Math.cos(a), y: P_CY - tickInner * Math.sin(a) };
+        const outer = { x: P_CX + tickOuter * Math.cos(a), y: P_CY - tickOuter * Math.sin(a) };
         const tick = document.createElementNS(SVG_NS, 'line');
         tick.setAttribute('x1', inner.x); tick.setAttribute('y1', inner.y);
         tick.setAttribute('x2', outer.x); tick.setAttribute('y2', outer.y);
         tick.setAttribute('stroke', color);
-        tick.setAttribute('stroke-width', 2.5);
+        tick.setAttribute('stroke-width', isMajor ? 2.5 : 1.5);
         tick.setAttribute('stroke-linecap', 'round');
+        if (!isMajor) tick.setAttribute('opacity', '0.55');
         svgEl.appendChild(tick);
 
-        const lblX = P_CX + (P_R + 28) * Math.cos(a);
-        const lblY = P_CY - (P_R + 28) * Math.sin(a);
-        const lbl = document.createElementNS(SVG_NS, 'text');
-        lbl.setAttribute('x', lblX);
-        lbl.setAttribute('y', lblY);
-        lbl.setAttribute('text-anchor', 'middle');
-        lbl.setAttribute('dominant-baseline', 'central');
-        lbl.setAttribute('fill', color);
-        lbl.setAttribute('font-size', '13');
-        lbl.setAttribute('font-weight', '700');
-        lbl.textContent = m;
-        svgEl.appendChild(lbl);
+        // 仅 5 倍数显示数字标签
+        if (isMajor) {
+          const lblX = P_CX + (P_R + 28) * Math.cos(a);
+          const lblY = P_CY - (P_R + 28) * Math.sin(a);
+          const lbl = document.createElementNS(SVG_NS, 'text');
+          lbl.setAttribute('x', lblX);
+          lbl.setAttribute('y', lblY);
+          lbl.setAttribute('text-anchor', 'middle');
+          lbl.setAttribute('dominant-baseline', 'central');
+          lbl.setAttribute('fill', color);
+          lbl.setAttribute('font-size', '13');
+          lbl.setAttribute('font-weight', '700');
+          lbl.textContent = m;
+          svgEl.appendChild(lbl);
+        }
       }
 
       const knobGroup = document.createElementNS(SVG_NS, 'g');
@@ -1116,7 +1315,7 @@
         knobGroup.classList.add('dragging');
         e.preventDefault();
         const a = angleFromEvent(e);
-        const m = Math.round(pAngleToMin(a) / PICKER_STEP) * PICKER_STEP;
+        const m = pApplyStick(pAngleToMin(a));
         currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
         setKnob(currentMin);
         updateValue();
@@ -1135,7 +1334,7 @@
         }
         lastAngle = newAngle;
         lastTs = now;
-        const m = Math.round(pAngleToMin(newAngle) / PICKER_STEP) * PICKER_STEP;
+        const m = pApplyStick(pAngleToMin(newAngle));
         currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
         const targetScale = Math.abs(velocity) > 5 ? 1.15 : 1;
         if (Math.abs(targetScale - visualScale) > 0.01) {
@@ -1150,6 +1349,7 @@
           applyTransform(currentMin, visualScale);
         }
         setKnob(currentMin);
+        updateValue();   // 拖动期间数字实时变(修复 v2.4 bug)
       }
       function onPointerUp(e) {
         if (!isDragging) return;
@@ -1176,9 +1376,10 @@
           let newAngle = curAngle + velocity * dt / 1000;
           if (newAngle < 0) { newAngle = 0; velocity = -velocity * 0.25; }
           if (newAngle > Math.PI) { newAngle = Math.PI; velocity = -velocity * 0.25; }
-          const m = Math.round(pAngleToMin(newAngle) / PICKER_STEP) * PICKER_STEP;
+          const m = pApplyStick(pAngleToMin(newAngle));
           currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
           setKnob(currentMin);
+          updateValue();
           lastTs = ts;
           if (Math.abs(velocity) <= STOP_VEL) {
             velocity = 0;
