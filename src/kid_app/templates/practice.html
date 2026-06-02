@@ -86,132 +86,141 @@
     .top-bar .today-stat { font-size: 15px; color: #4ECDC4; font-weight: bold; }
     .top-bar .server-clock { font-size: 13px; background: #F8F9FA; border-radius: 12px; padding: 4px 12px; }
 
-    /* 三栏容器 */
-    .timer-layout {
-      display: grid;
-      grid-template-columns: 0.656fr 1.316fr 1.014fr;
-      gap: 8px;
-      align-items: stretch;
-      margin-bottom: 12px;
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
+    /* ════════════════════════════════════════════════
+     *  垂直卡片 3 楼层(三栏换掉)
+     *  楼层 1:老师要求 / 楼层 2:计时器 + 主半圆 picker
+     *  楼层 3:额外记录 + 副半圆 picker
+     * ════════════════════════════════════════════════ */
+    .vertical-stack {
+      display: flex; flex-direction: column; gap: 14px;
+      margin-bottom: 14px; width: 100%; max-width: 100%; box-sizing: border-box;
     }
-    .panel {
-      border-radius: var(--radius);
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-height: 0;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-    }
-
-    /* 左栏 - 老师要求 */
-    .panel-req {
+    .floor {
       background: #FFFDF5;
-      border: 2px solid #F0D060;
+      border-radius: var(--radius, 16px);
+      padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      border: 2px solid transparent;
+      overflow: hidden;
     }
-    .panel-req h4 { font-size: 14px; color: #8B6914; margin: 0; display: flex; align-items: center; gap: 6px; }
-    .panel-req .req-empty { font-size: 15px; color: #A1887F; font-style: italic; margin: auto 0; text-align: center; width: 100%; }
-    .panel-req .req-content { flex: 1; }
-    .panel-req .req-highlight {
-      background: #FFF8E0;
-      border-left: 4px solid #F0D060;
-      padding: 12px 14px;
-      border-radius: 0 12px 12px 0;
-      font-size: 16px;
-      color: #5D4037;
-      line-height: 1.7;
-    }
-    .panel-req .req-label { font-size: 12px; color: #8B6914; font-weight: bold; margin-bottom: 8px; }
+    .floor h3 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; }
 
-    /* 中栏 - 计时器 */
-    .panel-center {
-      background: #F0FCFC;
-      border: 2px solid #A0D8D0;
+    /* 楼层 1:老师要求(莫兰迪米 + 金边) */
+    .floor-req { background: #FFFDF5; border-color: #F0D060; }
+    .floor-req h3 { color: #8B6914; }
+    .req-content {
+      max-height: 200px; overflow-y: auto;
+      padding: 0 4px;
+      scrollbar-width: thin;
     }
-    .panel-center h4 { font-size: 14px; color: #2E7D32; margin: 0; display: flex; align-items: center; gap: 6px; }
-    /* 选中科目气泡 */
-    .item-bubble {
-      background: linear-gradient(135deg, #FFE066, #FF9F43);
-      border-radius: 20px;
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 2px 8px rgba(255,159,67,0.3);
+    .req-empty { font-size: 15px; color: #A1887F; font-style: italic; text-align: center; padding: 24px 8px; }
+    .req-label { font-size: 12px; color: #8B6914; font-weight: bold; margin-bottom: 8px; }
+    .req-highlight {
+      background: #FFF8E0; border-left: 4px solid #F0D060;
+      padding: 12px 14px; border-radius: 0 12px 12px 0;
+      font-size: 16px; color: #5D4037; line-height: 1.7;
     }
-    .item-bubble .bubble-label {
-      font-size: 11px;
-      color: rgba(255,255,255,0.85);
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+
+    /* 楼层 2:计时器(主半圆珊瑚红) */
+    .floor-timer { background: #FFFDF5; border-color: #FF6B6B; }
+    .floor-timer h3 { color: #C44545; }
+    .timer-picker-wrap {
+      position: relative; width: 100%; max-width: 360px;
+      aspect-ratio: 1.6 / 1; margin: 0 auto;
     }
-    .item-bubble .bubble-name {
-      font-size: 16px;
-      color: #fff;
-      font-weight: bold;
+    .timer-picker-wrap svg { width: 100%; height: 100%; display: block; }
+    .timer-center-value {
+      position: absolute; left: 50%; top: 62%;
+      transform: translate(-50%, -50%);
+      text-align: center; pointer-events: none;
     }
-    @keyframes bubbleFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
+    .timer-center-value .num {
+      font-size: 42px; font-weight: 800; color: #FF6B6B; line-height: 1;
     }
-    .item-bubble.animate {
-      animation: bubbleFloat 1.8s ease-in-out infinite;
+    .timer-center-value .unit { font-size: 14px; color: #C44545; margin-top: 2px; }
+    .timer-center-value .hint { font-size: 11px; color: #A1887F; margin-top: 6px; }
+
+    /* 楼层 3:额外记录(副半圆蒂芙尼青) */
+    .floor-extra { background: #FFFDF5; border-color: #4ECDC4; }
+    .floor-extra h3 { color: #2A8A82; }
+    .extra-picker-wrap {
+      position: relative; width: 100%; max-width: 280px;
+      aspect-ratio: 1.74 / 1; margin: 0 auto;
     }
-    .timer-display {
-      font-size: 72px; font-weight: bold; text-align: center;
-      color: #FF6B6B; letter-spacing: -2px; line-height: 1;
+    .extra-picker-wrap svg { width: 100%; height: 100%; display: block; }
+    .extra-center-value {
+      position: absolute; left: 50%; top: 65%;
+      transform: translate(-50%, -50%);
+      text-align: center; pointer-events: none;
     }
-    .timer-display.running { color: #4ECDC4; }
-    .time-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .time-btn { padding: 10px 16px; border: 2px solid #4ECDC4; background: white; border-radius: 20px; font-size: 16px; cursor: pointer; }
-    .time-btn.selected { background: #4ECDC4; color: white; }
-    .action-btns { display: flex; gap: 10px; justify-content: center; }
-    .btn { padding: 12px 24px; border: none; border-radius: 24px; font-size: 17px; font-family: inherit; cursor: pointer; transition: transform 0.1s, filter 0.2s; }
+    .extra-center-value .num { font-size: 32px; font-weight: 800; color: #4ECDC4; line-height: 1; }
+    .extra-center-value .unit { font-size: 12px; color: #2A8A82; margin-top: 2px; }
+    .extra-center-value .hint { font-size: 11px; color: #A1887F; margin-top: 4px; }
+
+    /* 控制按钮区 */
+    .action-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 24px;
+      font-size: 17px; font-family: inherit; cursor: pointer;
+      transition: transform 0.1s, filter 0.2s;
+    }
     .btn:hover:not(:disabled) { filter: brightness(1.08); }
     .btn:active:not(:disabled) { transform: scale(0.96); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .btn-primary { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
     .btn-danger { background: #FF6B6B; color: white; }
     .btn-secondary { background: #F0F0F0; color: #555; }
+    .btn-ghost { background: transparent; color: #4ECDC4; border: 2px solid #4ECDC4; }
 
-    /* 确认区域 */
+    /* 选中科目气泡 */
+    .item-bubble {
+      background: linear-gradient(135deg, #FFE066, #FF9F43);
+      border-radius: 20px; padding: 8px 16px;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 2px 8px rgba(255,159,67,0.3);
+      align-self: center;
+    }
+    .item-bubble .bubble-label {
+      font-size: 11px; color: rgba(255,255,255,0.85);
+      font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .item-bubble .bubble-name { font-size: 16px; color: #fff; font-weight: bold; }
+    @keyframes bubbleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .item-bubble.animate { animation: bubbleFloat 1.8s ease-in-out infinite; }
+
+    /* 数字时间显示(可叠加在 picker 上方/替换) */
+    .timer-display {
+      font-size: 56px; font-weight: bold; text-align: center;
+      color: #FF6B6B; letter-spacing: -2px; line-height: 1;
+    }
+    .timer-display.running { color: #4ECDC4; }
+    .timer-display.paused { color: #F0D060; }
+
+    /* 确认打卡区域 */
     .confirm-area {
       display: none; text-align: center;
       background: #EDF7F0; border: 2px solid #A0D8A8;
-      border-radius: var(--radius); padding: 14px;
+      border-radius: var(--radius, 16px); padding: 14px;
     }
     .confirm-area.show { display: block; }
     .confirm-area p { font-size: 20px; color: #2E7D32; margin-bottom: 12px; }
     .confirm-area .confirm-mins { font-size: 48px; font-weight: bold; color: #27AE60; display: block; margin: 8px 0; }
 
-    /* 右栏 - 快速补录 */
-    .panel-extra {
-      background: #F0F9F0;
-      border: 2px solid #A0C8A0;
-      border-radius: var(--radius);
-    }
-    .panel-extra h4 { font-size: 14px; color: #2E7D32; margin: 0; display: flex; align-items: center; gap: 6px; }
-    .extra-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .extra-btn { padding: 8px 12px; border: 2px solid #7CB87C; background: white; border-radius: 16px; font-size: 15px; cursor: pointer; color: #333; }
-    .extra-btn:hover { filter: brightness(0.95); transform: scale(1.05); }
-    .extra-btn:active { transform: scale(0.95); }
-    .extra-btn.disabled { opacity: 0.45; cursor: not-allowed; }
-    .extra-custom { display: flex; gap: 8px; justify-content: center; }
-    .extra-custom input {
-      width: 80px; padding: 8px; border: 2px solid #7CB87C;
-      border-radius: 16px; font-size: 15px; text-align: center; font-family: inherit;
-    }
+    /* 额外记录日志 */
     .extra-log-item {
       display: flex; align-items: center; justify-content: space-between;
       background: rgba(255,255,255,0.7); border: 1px solid #B0D8B0;
       border-radius: 8px; padding: 8px 12px; font-size: 14px;
     }
     .extra-log-item + .extra-log-item { margin-top: 6px; }
+
+    /* Picker knob 拖拽光标 */
+    .dizi-picker-knob { cursor: grab; }
+    .dizi-picker-knob.dragging { cursor: grabbing; }
     .extra-log-item .extra-mins { color: #2E7D32; font-weight: bold; }
     .extra-log-item .extra-del { background: #FF6B6B; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
 
@@ -367,33 +376,34 @@
     <div id="archivedToggleWrap"></div>
   </div>
 
-  <!-- 三栏布局 -->
-  <div class="timer-layout" id="timer-layout">
+  <!-- 垂直卡片 3 楼层 -->
+  <div class="vertical-stack" id="vertical-stack">
 
-    <!-- 左栏：老师要求 -->
-    <div class="panel panel-req">
-      <h4>🎯 老师要求</h4>
+    <!-- 楼层 1:老师要求 -->
+    <div class="floor floor-req">
+      <h3>🎯 老师要求</h3>
       <div class="req-content" id="reqTip">
         <div class="req-empty">选择一个科目<br>查看老师要求</div>
       </div>
     </div>
 
-    <!-- 中栏：计时器 -->
-    <div class="panel panel-center">
-      <h4>⏱️ 计时器</h4>
-      <!-- 选中科目气泡 -->
+    <!-- 楼层 2:计时器(主半圆 picker) -->
+    <div class="floor floor-timer">
+      <h3>⏱️ 计时器</h3>
       <div class="item-bubble" id="itemBubble" style="display:none">
         <span class="bubble-label">当前练习</span>
         <span class="bubble-name" id="bubbleName"></span>
       </div>
-      <div class="timer-display" id="timer-display">00:00</div>
-      <div class="time-btns">
-        <button class="time-btn" onclick="setDuration(5)">5分钟</button>
-        <button class="time-btn selected" onclick="setDuration(10)">10分钟</button>
-        <button class="time-btn" onclick="setDuration(15)">15分钟</button>
-        <button class="time-btn" onclick="setDuration(20)">20分钟</button>
-        <button class="time-btn" onclick="setDuration(30)">30分钟</button>
+      <!-- 选中前:显示 picker;运行中:切换为数字时间 -->
+      <div class="timer-picker-wrap" id="timerPickerWrap">
+        <svg id="timerPickerSvg" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="timer-center-value" id="timerCenterValue">
+          <div class="num">10</div>
+          <div class="unit">分钟</div>
+          <div class="hint" id="timerHint">拖动选择 · 默认 10</div>
+        </div>
       </div>
+      <div class="timer-display" id="timer-display" style="display:none">00:00</div>
       <div class="action-btns">
         <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
         <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
@@ -403,20 +413,19 @@
       </div>
     </div>
 
-    <!-- 右栏：快速补录 -->
-    <div class="panel panel-extra" id="extraSection">
-      <h4>⚡ 快速补录</h4>
-      <div class="extra-btns">
-        <button class="extra-btn" onclick="addExtraMins(5)">+5</button>
-        <button class="extra-btn" onclick="addExtraMins(10)">+10</button>
-        <button class="extra-btn" onclick="addExtraMins(15)">+15</button>
-        <button class="extra-btn" onclick="addExtraMins(20)">+20</button>
-        <button class="extra-btn" onclick="addExtraMins(30)">+30</button>
+    <!-- 楼层 3:额外记录(副半圆 picker) -->
+    <div class="floor floor-extra" id="extraSection">
+      <h3>⚡ 快速补录</h3>
+      <div class="extra-picker-wrap">
+        <svg id="extraPickerSvg" viewBox="0 0 400 230" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="extra-center-value" id="extraCenterValue">
+          <div class="num">10</div>
+          <div class="unit">分钟</div>
+          <div class="hint" id="extraHint">拖动 · +N 补录</div>
+        </div>
       </div>
-      <div class="extra-custom">
-        <input type="number" id="extraCustomMins" min="1" max="480" value="10"
-          style="width:64px;padding:8px 10px;border:2px solid #7CB87C;border-radius:16px;font-size:15px;text-align:center;font-family:inherit;">
-        <button class="extra-btn" onclick="addExtraFromInput()">添加</button>
+      <div class="action-btns">
+        <button class="btn btn-ghost" id="addExtraBtn" onclick="addExtraFromPicker()" disabled>📝 记录这次补录</button>
       </div>
       <div id="extraLogList"></div>
     </div>
@@ -480,8 +489,12 @@
     let timerInterval = null;
     let started = false;
     let timerRunning = false;
+    let paused = false;  // U-4:暂停态(可继续)
     let finishPending = false;  // 提前结束但未打卡
     let submitting = false;  // 防重放：打卡请求进行中
+    let pendingExtraMins = 10;  // 副半圆 picker 当前选值
+    let timerPicker = null;  // 主半圆 picker 实例
+    let extraPicker = null;  // 副半圆 picker 实例
     let todayDate = "{{today_date}}";
     let enterTime = new Date().toISOString();  // 行为日志：进入时间
 
@@ -569,7 +582,9 @@
       bubble.offsetHeight;
       bubble.style.animation = '';
       document.getElementById('startBtn').disabled = false;
-      document.querySelectorAll('.extra-btn').forEach(b => b.classList.remove('disabled'));
+      document.getElementById('addExtraBtn').disabled = false;
+      const addBtn = document.getElementById('addExtraBtn');
+      if (addBtn) addBtn.disabled = !selectedItemId;
     }
 
     // 更新左栏老师要求显示
@@ -620,7 +635,7 @@
 
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(reqText || '');
-      document.getElementById('timer-layout').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('vertical-stack').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       // 更新选中科目气泡
       const bubble = document.getElementById('itemBubble');
@@ -633,13 +648,21 @@
       bubble.offsetHeight; // reflow
       bubble.style.animation = '';
       document.getElementById('startBtn').disabled = false;
-      document.querySelectorAll('.extra-btn').forEach(b => b.classList.remove('disabled'));
+      document.getElementById('addExtraBtn').disabled = false;
+      const addBtn = document.getElementById('addExtraBtn');
+      if (addBtn) addBtn.disabled = !selectedItemId;
     }
 
     function setDuration(mins) {
       duration = mins;
-      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
-      event.target.classList.add('selected');
+      if (typeof timerPicker !== 'undefined' && timerPicker) {
+        timerPicker.setValue(mins);
+      } else {
+        const hint = document.getElementById('timerHint');
+        const num = document.querySelector('.timer-center-value .num');
+        if (num) num.textContent = mins;
+        if (hint) hint.textContent = '默认 ' + mins;
+      }
       if (!started) resetTimer();
     }
 
@@ -647,54 +670,86 @@
       clearInterval(timerInterval);
       started = false;
       timerRunning = false;
+      paused = false;
       finishPending = false;
       elapsed = 0;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('startBtn').textContent = '开始';
-      document.getElementById('startBtn').disabled = true;
+      document.getElementById('startBtn').disabled = !selectedItemId;
       document.getElementById('finishEarlyBtn').style.display = 'none';
       const confirmArea = document.getElementById('confirmArea');
       if (confirmArea) confirmArea.classList.remove('show');
-      document.querySelectorAll('.extra-btn').forEach(b => b.classList.add('disabled'));
+      // 重新显示 picker + 数字,隐藏时间显示
+      const pickerWrap = document.getElementById('timerPickerWrap');
+      const timeDisp = document.getElementById('timer-display');
+      if (pickerWrap) pickerWrap.style.display = '';
+      if (timeDisp) timeDisp.style.display = 'none';
+      const hint = document.getElementById('timerHint');
+      if (hint) hint.textContent = '拖动选择 · 点击开始';
+      const addBtn = document.getElementById('addExtraBtn');
+      if (addBtn) addBtn.disabled = !selectedItemId;
     }
 
     function toggleTimer() {
-      if (started) {
+      if (!selectedItemId) return;
+      if (started && !paused) {
+        // 暂停(U-4):停止计时但保留 elapsed
         clearInterval(timerInterval);
-        started = false;
+        paused = true;
         timerRunning = false;
         document.getElementById('startBtn').textContent = '继续';
-      } else {
-        if (!selectedItemId) {
-          return;
-        }
-        started = true;
+        document.getElementById('timer-display').classList.remove('running');
+        document.getElementById('timer-display').classList.add('paused');
+        return;
+      }
+      if (started && paused) {
+        // 继续
+        paused = false;
         timerRunning = true;
         document.getElementById('startBtn').textContent = '暂停';
-        document.getElementById('finishEarlyBtn').style.display = 'inline-block';
         document.getElementById('timer-display').classList.add('running');
-        timerInterval = setInterval(() => {
-          elapsed++;
-          let m = Math.floor(elapsed / 60).toString().padStart(2,'0');
-          let s = (elapsed % 60).toString().padStart(2,'0');
-          document.getElementById('timer-display').textContent = m + ':' + s;
-          if (elapsed >= duration * 60) {
-            clearInterval(timerInterval);
-            timerRunning = false;
-            started = false;
-            document.getElementById('finishEarlyBtn').style.display = 'none';
-            document.getElementById('timer-display').classList.remove('running');
-            document.getElementById('startBtn').textContent = '开始';
-            // 修复：正常结束不再自动提交，弹 finishNormalModal 让用户点 打卡/放弃
-            document.getElementById('finishNormalMinsDisplay').textContent = duration;
-            document.getElementById('confirmMins').textContent = duration;
-            const normalModal = document.getElementById('finishNormalModal');
-            normalModal.classList.add('open');
-            gsap.fromTo('#finishNormalModal .finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(2)' });
-            playChime();
-          }
-        }, 1000);
+        document.getElementById('timer-display').classList.remove('paused');
+        startTickInterval();
+        return;
       }
+      // 首次开始
+      started = true;
+      timerRunning = true;
+      // 切换显示:picker → 数字时间
+      const pickerWrap = document.getElementById('timerPickerWrap');
+      const timeDisp = document.getElementById('timer-display');
+      if (pickerWrap) pickerWrap.style.display = 'none';
+      if (timeDisp) timeDisp.style.display = '';
+      document.getElementById('startBtn').textContent = '暂停';
+      document.getElementById('finishEarlyBtn').style.display = 'inline-block';
+      document.getElementById('timer-display').classList.add('running');
+      startTickInterval();
+    }
+
+    function startTickInterval() {
+      timerInterval = setInterval(() => {
+        elapsed++;
+        let m = Math.floor(elapsed / 60).toString().padStart(2,'0');
+        let s = (elapsed % 60).toString().padStart(2,'0');
+        document.getElementById('timer-display').textContent = m + ':' + s;
+        if (elapsed >= duration * 60) {
+          clearInterval(timerInterval);
+          timerRunning = false;
+          started = false;
+          paused = false;
+          document.getElementById('finishEarlyBtn').style.display = 'none';
+          document.getElementById('timer-display').classList.remove('running');
+          document.getElementById('timer-display').classList.remove('paused');
+          document.getElementById('startBtn').textContent = '开始';
+          // 修复：正常结束不再自动提交，弹 finishNormalModal 让用户点 打卡/放弃
+          document.getElementById('finishNormalMinsDisplay').textContent = duration;
+          document.getElementById('confirmMins').textContent = duration;
+          const normalModal = document.getElementById('finishNormalModal');
+          normalModal.classList.add('open');
+          gsap.fromTo('#finishNormalModal .finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(2)' });
+          playChime();
+        }
+      }, 1000);
     }
 
     function confirmFinishNormal() {
@@ -711,9 +766,10 @@
 
     function finishEarly() {
       if (finishPending) return;       // 防双击：已提前结束则忽略
-      if (elapsed === 0) return;       // 从未计时则忽略（暂停态elapsed>0，允许提前结束）
+      if (elapsed === 0) return;       // 从未计时则忽略(暂停态 elapsed>0,允许提前结束)
       clearInterval(timerInterval);
       timerRunning = false;
+      paused = false;
       finishPending = true;  // 标记提前结束但未打卡
       const savedElapsed = elapsed;    // 先保存再清零，防竞态
       const finalMins = Math.max(1, Math.ceil(savedElapsed / 60));
@@ -721,6 +777,7 @@
       started = false;
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('timer-display').classList.remove('running');
+      document.getElementById('timer-display').classList.remove('paused');
       document.getElementById('startBtn').textContent = '开始';
       document.getElementById('finishEarlyBtn').style.display = 'none';
       // 显示弹窗确认
@@ -741,33 +798,16 @@
       // 恢复计时状态，继续练习
       finishPending = false;
       started = true;
+      paused = false;
       timerRunning = true;
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
       document.getElementById('timer-display').classList.add('running');
+      document.getElementById('timer-display').classList.remove('paused');
       // 恢复 elapsed（从弹窗显示的分钟数反推秒数）
       const mins = parseInt(document.getElementById('finishMinsDisplay').textContent) || 1;
       elapsed = (mins - 1) * 60;  // 退回到上一分钟开始
-      timerInterval = setInterval(() => {
-        elapsed++;
-        let m = Math.floor(elapsed / 60).toString().padStart(2,'0');
-        let s = (elapsed % 60).toString().padStart(2,'0');
-        document.getElementById('timer-display').textContent = m + ':' + s;
-        if (elapsed >= duration * 60) {
-          clearInterval(timerInterval);
-          timerRunning = false;
-          started = false;
-          document.getElementById('timer-display').classList.remove('running');
-          document.getElementById('startBtn').textContent = '开始';
-          // 修复：cancelFinishEarly 后再次到点，同样弹 finishNormalModal 而非自动提交
-          document.getElementById('finishNormalMinsDisplay').textContent = duration;
-          document.getElementById('confirmMins').textContent = duration;
-          const normalModal2 = document.getElementById('finishNormalModal');
-          normalModal2.classList.add('open');
-          gsap.fromTo('#finishNormalModal .finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(2)' });
-          playChime();
-        }
-      }, 1000);
+      startTickInterval();
     }
 
     async function submitPractice() {
@@ -868,12 +908,13 @@
       } catch(e) {}
     }
 
-    async function addExtraFromInput() {
-      let input = document.getElementById('extraCustomMins');
-      let mins = parseInt(input.value);
-      if (!mins || mins < 1 || mins > 480) { alert('请输入1-480之间的分钟数'); return; }
-      await addExtraMins(mins);
-      input.value = '';
+    async function addExtraFromPicker() {
+      if (!selectedItem) return;
+      if (!pendingExtraMins || pendingExtraMins < 1) {
+        alert('请先在补录 picker 拖动选择分钟数');
+        return;
+      }
+      await addExtraMins(pendingExtraMins);
     }
 
     async function deleteExtraRecord(id) {
@@ -945,7 +986,266 @@
       } catch(e) { console.error(e); }
     }
 
+    // ════════════════════════════════════════════════
+    // 半圆弧 Picker 工厂(本地版,直接嵌 practice.html,避免额外 HTTP 请求)
+    // 改自 uiux-asset-library/dizi-practice-picker v1
+    // 5-30min 固定 5min 步长 + GSAP attr.transform 复合 translate+scale
+    // ════════════════════════════════════════════════
+    const PICKER_MIN = 5, PICKER_MAX = 30, PICKER_STEP = 5;
+    const P_W = 400, P_H = 220, P_CX = 200, P_CY = 200, P_R = 150, P_STROKE = 14;
+    function pMinToAngle(m) { return Math.PI - ((m - PICKER_MIN) / (PICKER_MAX - PICKER_MIN)) * Math.PI; }
+    function pAngleToMin(a) { return PICKER_MIN + ((Math.PI - a) / Math.PI) * (PICKER_MAX - PICKER_MIN); }
+    function pClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function createPicker(opts) {
+      const {
+        svgEl, valueEl, hintEl, color, colorGlow, trackColor,
+        onChange, stateRef, initial = 10
+      } = opts;
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      svgEl.innerHTML = '';
+
+      const arcStart = { x: P_CX - P_R, y: P_CY };
+      const arcEnd   = { x: P_CX + P_R, y: P_CY };
+      const arcPath = `M ${arcStart.x} ${arcStart.y} A ${P_R} ${P_R} 0 0 1 ${arcEnd.x} ${arcEnd.y}`;
+
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', arcPath);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', trackColor);
+      path.setAttribute('stroke-width', P_STROKE);
+      path.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(path);
+
+      const progress = document.createElementNS(SVG_NS, 'path');
+      progress.setAttribute('d', arcPath);
+      progress.setAttribute('fill', 'none');
+      progress.setAttribute('stroke', color);
+      progress.setAttribute('stroke-width', P_STROKE);
+      progress.setAttribute('stroke-linecap', 'round');
+      progress.setAttribute('pathLength', '100');
+      progress.setAttribute('stroke-dasharray', '0 100');
+      progress.style.filter = `drop-shadow(0 0 8px ${colorGlow})`;
+      svgEl.appendChild(progress);
+
+      for (let m = PICKER_MIN; m <= PICKER_MAX; m += PICKER_STEP) {
+        const a = pMinToAngle(m);
+        const inner = { x: P_CX + (P_R - 10) * Math.cos(a), y: P_CY - (P_R - 10) * Math.sin(a) };
+        const outer = { x: P_CX + (P_R + 14) * Math.cos(a), y: P_CY - (P_R + 14) * Math.sin(a) };
+        const tick = document.createElementNS(SVG_NS, 'line');
+        tick.setAttribute('x1', inner.x); tick.setAttribute('y1', inner.y);
+        tick.setAttribute('x2', outer.x); tick.setAttribute('y2', outer.y);
+        tick.setAttribute('stroke', color);
+        tick.setAttribute('stroke-width', 2.5);
+        tick.setAttribute('stroke-linecap', 'round');
+        svgEl.appendChild(tick);
+
+        const lblX = P_CX + (P_R + 28) * Math.cos(a);
+        const lblY = P_CY - (P_R + 28) * Math.sin(a);
+        const lbl = document.createElementNS(SVG_NS, 'text');
+        lbl.setAttribute('x', lblX);
+        lbl.setAttribute('y', lblY);
+        lbl.setAttribute('text-anchor', 'middle');
+        lbl.setAttribute('dominant-baseline', 'central');
+        lbl.setAttribute('fill', color);
+        lbl.setAttribute('font-size', '13');
+        lbl.setAttribute('font-weight', '700');
+        lbl.textContent = m;
+        svgEl.appendChild(lbl);
+      }
+
+      const knobGroup = document.createElementNS(SVG_NS, 'g');
+      knobGroup.setAttribute('class', 'dizi-picker-knob');
+      const knobBg = document.createElementNS(SVG_NS, 'circle');
+      knobBg.setAttribute('r', 18);
+      knobBg.setAttribute('fill', '#FFFFFF');
+      knobBg.setAttribute('stroke', color);
+      knobBg.setAttribute('stroke-width', 3);
+      const knobInner = document.createElementNS(SVG_NS, 'circle');
+      knobInner.setAttribute('r', 8);
+      knobInner.setAttribute('fill', color);
+      knobGroup.appendChild(knobBg);
+      knobGroup.appendChild(knobInner);
+      svgEl.appendChild(knobGroup);
+
+      let currentMin = initial;
+      let isDragging = false;
+      let lastAngle = pMinToAngle(currentMin);
+      let velocity = 0;
+      let lastTs = 0;
+      let rafId = null;
+      let visualScale = 1;
+
+      function knobPos(min) {
+        const a = pMinToAngle(min);
+        return { x: P_CX + P_R * Math.cos(a), y: P_CY - P_R * Math.sin(a) };
+      }
+      function applyTransform(min, scale) {
+        const p = knobPos(min);
+        knobGroup.setAttribute('transform', `translate(${p.x}, ${p.y}) scale(${scale})`);
+      }
+      function setKnob(min, animate) {
+        const ratio = (min - PICKER_MIN) / (PICKER_MAX - PICKER_MIN);
+        progress.setAttribute('stroke-dasharray', `${ratio * 100} 100`);
+        if (animate && typeof gsap !== 'undefined') {
+          const p = knobPos(min);
+          gsap.to(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(${visualScale})` }, duration: 0.3, ease: 'power2.out' });
+        } else {
+          applyTransform(min, visualScale);
+        }
+      }
+      function updateValue() {
+        if (valueEl) valueEl.textContent = currentMin;
+        if (onChange) onChange(currentMin);
+      }
+
+      function angleFromEvent(e) {
+        const rect = svgEl.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const svgX = (clientX - rect.left) * (P_W / rect.width);
+        const svgY = (clientY - rect.top)  * (P_H / rect.height);
+        const dx = svgX - P_CX;
+        const dy = P_CY - svgY;
+        return pClamp(Math.atan2(dy, dx), 0, Math.PI);
+      }
+
+      function onPointerDown(e) {
+        if (stateRef && stateRef.isRunning) return;
+        isDragging = true;
+        knobGroup.classList.add('dragging');
+        e.preventDefault();
+        const a = angleFromEvent(e);
+        const m = Math.round(pAngleToMin(a) / PICKER_STEP) * PICKER_STEP;
+        currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+        setKnob(currentMin);
+        updateValue();
+        velocity = 0; lastTs = 0;
+      }
+      function onPointerMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const a = angleFromEvent(e);
+        const newAngle = a;
+        const now = performance.now();
+        if (lastTs > 0) {
+          const dt = now - lastTs;
+          velocity = (newAngle - lastAngle) / dt * 1000;
+          velocity = pClamp(velocity, -30, 30);
+        }
+        lastAngle = newAngle;
+        lastTs = now;
+        const m = Math.round(pAngleToMin(newAngle) / PICKER_STEP) * PICKER_STEP;
+        currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+        const targetScale = Math.abs(velocity) > 5 ? 1.15 : 1;
+        if (Math.abs(targetScale - visualScale) > 0.01) {
+          visualScale = targetScale;
+          if (typeof gsap !== 'undefined') {
+            const p = knobPos(currentMin);
+            gsap.to(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(${visualScale})` }, duration: 0.1, ease: 'power1.out' });
+          } else {
+            applyTransform(currentMin, visualScale);
+          }
+        } else {
+          applyTransform(currentMin, visualScale);
+        }
+        setKnob(currentMin);
+      }
+      function onPointerUp(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        knobGroup.classList.remove('dragging');
+        visualScale = 1;
+        if (typeof gsap !== 'undefined') {
+          const p = knobPos(currentMin);
+          gsap.to(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(1)` }, duration: 0.2, ease: 'power2.out' });
+        } else {
+          applyTransform(currentMin, 1);
+        }
+        if (Math.abs(velocity) > 1) {
+          startMomentum();
+        }
+      }
+      function startMomentum() {
+        const FRICTION = 0.92;
+        const STOP_VEL = 0.3;
+        function tick(ts) {
+          const dt = lastTs === 0 ? 16 : (ts - lastTs);
+          velocity *= Math.pow(FRICTION, dt / 16.67);
+          const curAngle = pMinToAngle(currentMin);
+          let newAngle = curAngle + velocity * dt / 1000;
+          if (newAngle < 0) { newAngle = 0; velocity = -velocity * 0.25; }
+          if (newAngle > Math.PI) { newAngle = Math.PI; velocity = -velocity * 0.25; }
+          const m = Math.round(pAngleToMin(newAngle) / PICKER_STEP) * PICKER_STEP;
+          currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+          setKnob(currentMin);
+          lastTs = ts;
+          if (Math.abs(velocity) <= STOP_VEL) {
+            velocity = 0;
+            if (typeof gsap !== 'undefined') {
+              const p = knobPos(currentMin);
+              gsap.fromTo(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(1)` } }, { attr: { transform: `translate(${p.x}, ${p.y}) scale(1.25)` }, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out' });
+            }
+            return;
+          }
+          rafId = requestAnimationFrame(tick);
+        }
+        lastTs = 0;
+        rafId = requestAnimationFrame(tick);
+      }
+
+      svgEl.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+      svgEl.style.touchAction = 'none';
+
+      setKnob(currentMin);
+      updateValue();
+
+      return {
+        getValue: () => currentMin,
+        setValue: (m, animate) => {
+          currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+          setKnob(currentMin, animate);
+          updateValue();
+        },
+        destroy: () => { if (rafId) cancelAnimationFrame(rafId); svgEl.innerHTML = ''; }
+      };
+    }
+
+    // ── Init Picker 实例 ──
+    function initPickers() {
+      const timerSvg = document.getElementById('timerPickerSvg');
+      const extraSvg = document.getElementById('extraPickerSvg');
+      if (timerSvg) {
+        const numEl = document.querySelector('.timer-center-value .num');
+        const hintEl = document.getElementById('timerHint');
+        timerPicker = createPicker({
+          svgEl: timerSvg,
+          valueEl: numEl,
+          hintEl: hintEl,
+          color: '#FF6B6B', colorGlow: '#FF8E8E', trackColor: '#F8D7D0',
+          stateRef: { get isRunning() { return timerRunning; } },
+          onChange: (m) => { duration = m; if (hintEl) hintEl.textContent = '已选 ' + m + ' 分钟 · 点开始'; },
+          initial: 10
+        });
+      }
+      if (extraSvg) {
+        const numEl = document.querySelector('.extra-center-value .num');
+        const hintEl = document.getElementById('extraHint');
+        extraPicker = createPicker({
+          svgEl: extraSvg,
+          valueEl: numEl,
+          hintEl: hintEl,
+          color: '#4ECDC4', colorGlow: '#7EDDD5', trackColor: '#CFE9E5',
+          onChange: (m) => { pendingExtraMins = m; if (hintEl) hintEl.textContent = '已选 +' + m + ' 分钟 · 点记录'; },
+          initial: 10
+        });
+      }
+    }
+
     // Init
+    initPickers();
     loadTodayRecords();
     // 页脚励志文案轮换
     (function(){
@@ -969,7 +1269,7 @@
     setupTimerProtect();
 
     // ── 页面加载整体弹入动画 ──
-    const allCards = document.querySelectorAll('.panel, .card:not(.today-records)');
+    const allCards = document.querySelectorAll('.floor, .card:not(.today-records)');
     gsap.fromTo(allCards, { opacity: 0, scale: 0.88, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "back.out(2)" });
   </script>
 </body>
