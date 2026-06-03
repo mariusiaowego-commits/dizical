@@ -266,50 +266,170 @@
     .item-filter-wrap { margin-bottom: 10px; }
     .item-filter-wrap input {
       width: 100%; padding: 12px; border-radius: 12px;
-      border: 2px solid #E0E0E0; font-size: 16px; box-sizing: border-box;
+      border: 2px solid #E8E8E8; font-size: 16px; box-sizing: border-box;
     }
+    .item-filter-wrap input:focus { border-color: #BDBDBD; }
+
+    /* 分类标题 */
+    .item-section h3 {
+      font-size: 13px !important; color: #9E9E9E !important;
+      margin: 22px 0 10px !important; font-weight: 600 !important;
+      letter-spacing: 0.5px;
+    }
+    .item-section h3 .cat-count {
+      background: #F0F0F0; color: #999; font-size: 11px;
+      padding: 2px 7px; border-radius: 10px; font-weight: 700;
+      display: inline-block; margin-left: 4px;
+    }
+
     .item-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px 10px;
+      margin-bottom: 16px;
     }
+
+    /* ── 3D 按钮 ── */
     .item-btn {
-      width: 100%; min-width: 0; min-height: 60px; height: 60px; border: none;
-      border-radius: 16px; font-size: 13px; font-weight: 700;
-      font-family: inherit; color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      text-align: center; padding: 0 6px; white-space: normal;
-      overflow: hidden; text-overflow: ellipsis;
-      transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
-      position: relative; overflow: visible;
-      box-sizing: border-box;
+      position: relative; width: 100%; min-height: 48px;
+      border: none; border-radius: 14px;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 10px 10px; overflow: visible;
+      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), background 0.15s ease;
+      z-index: 1; color: #616161;
     }
-    .item-btn:active { transform: scale(0.96); filter: brightness(0.92); }
-    .item-btn:nth-child(5n+1) { background: #00CED1; }
-    .item-btn:nth-child(5n+2) { background: #FF6B9D; }
-    .item-btn:nth-child(5n+3) { background: #A855F7; }
-    .item-btn:nth-child(5n+4) { background: #FF9F1C; }
-    .item-btn:nth-child(5n+5) { background: #10B981; }
-    .item-btn.selected { background: #FF4D6D !important; box-shadow: 0 4px 0 #C41E3A; transform: translateY(-2px); }
-    .item-btn.selected:active { transform: scale(0.96) translateY(0); box-shadow: none; }
-    .item-btn .req-dot { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; background: #FFD54F; border-radius: 50%; box-shadow: 0 0 4px #FFD54F; }
-
-    /* 金黄色有老师要求的科目 */
-    .item-btn.has-req { background: #FFE066 !important; color: #5D4037; box-shadow: 0 4px 0 #E6A800; transform: translateY(-2px); }
-    .item-btn.has-req.selected { background: #FF4D6D !important; color: white; box-shadow: 0 4px 0 #C41E3A; transform: translateY(-2px); }
-    .item-btn.has-req.selected:active { transform: scale(0.96) translateY(0); box-shadow: none; }
-
-    /* 老师要求气泡 */
-    .item-btn-wrap { position: relative; display: inline-block; }
-    .req-tooltip {
-      position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-      background: #FFE066; color: #333; font-size: 12px; padding: 6px 10px;
-      border-radius: 8px; white-space: normal; max-width: 180px; text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10; pointer-events: none;
+    .item-btn::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+      transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease;
     }
-    .req-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #FFE066; }
-    .item-btn-wrap .req-tooltip { display: none; }
-    .item-btn-wrap:hover .req-tooltip { display: block; }
+    .item-btn:active { filter: brightness(0.95); }
+
+    /* 灰色 — 无老师要求 */
+    .item-btn:not(.has-req) {
+      background: #E8E8E8; border: 1.5px solid #BDBDBD;
+    }
+    .item-btn:not(.has-req)::before {
+      background: #D5D5D5; box-shadow: 0 3px 0 #9E9E9E;
+      transform: translate3d(0, 0.6em, -1em);
+    }
+    .item-btn:not(.has-req):hover { background: #DCDCDC; transform: translate(0, 0.2em); }
+    .item-btn:not(.has-req):hover::before { transform: translate3d(0, 0.4em, -1em); box-shadow: 0 4px 0 #9E9E9E; }
+    .item-btn:not(.has-req):active, .item-btn:not(.has-req).selected {
+      background: #D0D0D0; transform: translate(0, 0.6em);
+    }
+    .item-btn:not(.has-req):active::before, .item-btn:not(.has-req).selected::before {
+      transform: translate3d(0, 0, -1em); box-shadow: 0 2px 0 #9E9E9E;
+    }
+
+    /* 金色 — 有老师要求 */
+    .item-btn.has-req {
+      background: #FFF3C4; color: #7C4A00; border: 1.5px solid #F59E0B;
+    }
+    .item-btn.has-req::before {
+      background: #FCD34D; box-shadow: 0 3px 0 #B45309;
+      transform: translate3d(0, 0.6em, -1em);
+    }
+    .item-btn.has-req:hover { background: #FDE68A; transform: translate(0, 0.2em); }
+    .item-btn.has-req:hover::before { transform: translate3d(0, 0.4em, -1em); box-shadow: 0 4px 0 #B45309; }
+    .item-btn.has-req:active, .item-btn.has-req.selected {
+      background: #FCD34D; transform: translate(0, 0.6em);
+    }
+    .item-btn.has-req:active::before, .item-btn.has-req.selected::before {
+      transform: translate3d(0, 0, -1em); box-shadow: 0 2px 0 #B45309;
+    }
+
+    /* 选中态脉冲环 */
+    .item-btn.selected { z-index: 2; }
+    .item-btn.selected .sel-ring {
+      position: absolute; inset: -3px; border: 2.5px solid #FF6B6B; border-radius: 16px;
+      pointer-events: none; animation: ring-pulse 1.5s ease-out 1;
+    }
+    @keyframes ring-pulse { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.15); } }
+
+    /* 老师要求指示点 */
+    .item-btn .req-dot {
+      position: absolute; top: 5px; right: 5px; width: 8px; height: 8px;
+      background: #FF6B6B; border-radius: 50%; box-shadow: 0 0 6px rgba(255,107,107,0.6);
+      pointer-events: none;
+    }
+
+    /* ── 选中后收拢展示 ── */
+    .selected-summary {
+      display: none; align-items: center; gap: 12px;
+      background: #FAFAFA; border: 1.5px solid #E0E0E0; border-radius: 14px;
+      padding: 14px 16px; margin-bottom: 10px;
+    }
+    .selected-summary.visible { display: flex; }
+    .selected-summary .sum-tag {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 14px;
+      min-width: 100px;
+    }
+    .selected-summary .sum-tag.tag-req { background: #FFF3C4; color: #7C4A00; border: 1.5px solid #F59E0B; }
+    .selected-summary .sum-tag.tag-normal { background: #E8E8E8; color: #616161; border: 1.5px solid #BDBDBD; }
+    .selected-summary .sum-tag .sum-id { font-size: 10px; opacity: 0.5; font-weight: 500; margin-top: 2px; }
+    .selected-summary .sum-info { flex: 1; min-width: 0; }
+    .selected-summary .sum-info .sum-name { font-size: 15px; font-weight: 700; color: #333; }
+    .selected-summary .sum-info .sum-req { font-size: 13px; color: #666; margin-top: 2px; line-height: 1.6; }
+    .resel-btn {
+      padding: 8px 14px; border: 1.5px solid #BDBDBD; border-radius: 10px;
+      background: #fff; color: #666; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .resel-btn:hover { background: #F5F5F5; border-color: #999; }
+
+    /* 选择区折叠 */
+    .selection-area { transition: max-height 0.3s ease, opacity 0.2s ease; overflow: hidden; }
+    .selection-area.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; }
+    .selection-area.expanded { opacity: 1; }
+
+    /* ── 摘要流式输出 ── */
+    .sum-req-content {
+      font-size: 14px; color: #555; line-height: 1.8;
+      max-height: 260px; overflow-y: auto;
+    }
+    .sum-req-content p { margin: 0 0 10px 0; }
+    .sum-req-content .section-title {
+      font-weight: 700; color: #333; margin: 14px 0 4px; font-size: 14px;
+    }
+    .sum-req-content .tip-box {
+      background: #E3F2FD; border-radius: 10px; padding: 10px 12px;
+      margin: 8px 0; font-size: 13px; color: #1565C0;
+    }
+    .sum-req-content .story-box {
+      background: #FFF8E1; border-radius: 10px; padding: 10px 12px;
+      margin: 8px 0; font-size: 13px; color: #795548;
+    }
+
+    /* braille 旋转加载 */
+    @keyframes braille-spin {
+      0% { content: '⣾'; }
+      8% { content: '⣽'; }
+      16% { content: '⣻'; }
+      24% { content: '⢿'; }
+      32% { content: '⡿'; }
+      40% { content: '⣟'; }
+      48% { content: '⣯'; }
+      56% { content: '⣷'; }
+      64% { content: '⣾'; }
+    }
+    .spinner::before {
+      content: '⣾';
+      animation: braille-spin 0.8s infinite;
+      display: inline-block;
+    }
+    .spinner { color: #999; font-size: 14px; }
+
+    /* 模型标签 */
+    .model-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #F5F5F5; border: 1px solid #E0E0E0; border-radius: 6px;
+      padding: 2px 8px; font-size: 11px; color: #999;
+      margin-top: 6px;
+    }
+    .model-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; }
 
     /* 归档 */
     .archived-toggle { display: block; width: 100%; padding: 12px; background: #F5F5F5; border: 2px dashed #BDBDBD; border-radius: 12px; font-size: 15px; color: #7F8C8D; cursor: pointer; text-align: center; margin-top: 8px; }
@@ -405,11 +525,28 @@
   <!-- 练习科目选择 -->
   <div class="item-section card">
     <h2>🎵 选择练习项目</h2>
-    <div class="item-filter-wrap">
-      <input type="text" id="itemFilter" placeholder="🔍 搜索..." oninput="filterItems(this.value)">
+
+    <!-- 选中后收拢展示 -->
+    <div class="selected-summary" id="selectedSummary">
+      <div class="sum-tag" id="sumTag">
+        <span class="sum-name" id="sumName"></span>
+        <span class="sum-id" id="sumId"></span>
+      </div>
+      <div class="sum-info">
+        <div class="sum-name" id="sumFullName"></div>
+        <div class="sum-req" id="sumReq"></div>
+      </div>
+      <button class="resel-btn" onclick="toggleReselect()">🔄 重新选择</button>
     </div>
-    {{items_html}}
-    <div id="archivedToggleWrap"></div>
+
+    <!-- 选择区（可折叠） -->
+    <div class="selection-area expanded" id="selectionArea">
+      <div class="item-filter-wrap">
+        <input type="text" id="itemFilter" placeholder="🔍 搜索..." oninput="filterItems(this.value)">
+      </div>
+      {{items_html}}
+      <div id="archivedToggleWrap"></div>
+    </div>
   </div>
 
   <!-- 垂直卡片 3 楼层 -->
@@ -505,6 +642,7 @@
 
     // ── 老师要求数据 ──
     const WEEKLY_ASSIGN = {{assign_json}};
+    const SUBJECT_INFO = {{subject_info_json}};
 
     // Filter practice items by search query
     function filterItems(q) {
@@ -598,6 +736,176 @@
       }
     }
 
+    // ── 选中摘要 + 收拢/展开 ──
+    function updateSelectedSummary(name, id, reqText, btn) {
+      const isReq = btn && btn.classList.contains('has-req');
+      const info = SUBJECT_INFO[id];
+
+      // sumFullName: 流式生成练习心情
+      const sumFullName = document.getElementById('sumFullName');
+      sumFullName.innerHTML = '<span class="spinner"></span> 正在生成练习心情...';
+      sumFullName.style.color = '#aaa';
+      streamMood(id, name, sumFullName);
+
+      // sumTag: emoji + title
+      const sumTag = document.getElementById('sumTag');
+      if (info) {
+        document.getElementById('sumName').textContent = info.emoji + ' ' + info.title;
+        document.getElementById('sumId').textContent = '#' + id;
+        sumTag.className = 'sum-tag ' + (isReq ? 'tag-req' : 'tag-normal');
+      } else {
+        document.getElementById('sumName').textContent = name;
+        document.getElementById('sumId').textContent = '#' + id;
+        sumTag.className = 'sum-tag ' + (isReq ? 'tag-req' : 'tag-normal');
+      }
+
+      // sumReq: 流式生成完整摘要
+      const sumReq = document.getElementById('sumReq');
+      sumReq.innerHTML = '<span class="spinner"></span> <span style="color:#aaa">正在生成摘要...</span>';
+      streamSummary(id, name, sumReq);
+    }
+
+    // 流式生成练习心情
+    async function streamMood(id, name, el) {
+      try {
+        const resp = await fetch('/api/subject_mood/' + id + '?name=' + encodeURIComponent(name));
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let text = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data.trim() === '[DONE]') break;
+              try {
+                const chunk = JSON.parse(data);
+                if (chunk.text) {
+                  text += chunk.text;
+                  el.textContent = text;
+                  el.style.color = '#333';
+                }
+              } catch(e) {}
+            }
+          }
+        }
+        if (!text) { el.textContent = '练习加油 💪'; el.style.color = '#333'; }
+      } catch(e) { el.textContent = '练习加油 💪'; el.style.color = '#333'; }
+    }
+
+    // 流式生成完整摘要
+    async function streamSummary(id, name, el) {
+      try {
+        const resp = await fetch('/api/subject_summary/' + id + '?name=' + encodeURIComponent(name));
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let text = '';
+        let done = false;
+        while (!done) {
+          const { done: d, value } = await reader.read();
+          if (d) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data.trim() === '[DONE]') { done = true; break; }
+              try {
+                const chunk = JSON.parse(data);
+                if (chunk.text) {
+                  text += chunk.text;
+                  renderStoryText(el, text);
+                }
+              } catch(e) {}
+            }
+          }
+        }
+        if (!text) {
+          el.innerHTML = '<span style="color:#aaa">暂无小故事</span>';
+        } else {
+          renderStoryText(el, text, true);
+        }
+      } catch(e) {
+        el.innerHTML = '<span style="color:#aaa">暂无小故事</span>';
+      }
+    }
+
+    // GSAP Y 轴动画渲染流式文字
+    let _lastStoryLen = 0;
+    function renderStoryText(el, text, isFinal) {
+      const clean = text.replace(/^[\s\n]*/, '');
+      if (!clean) return;
+
+      // 首次渲染：建结构
+      if (!el.querySelector('.story-text')) {
+        el.innerHTML = '<div class="sum-req-content"><div class="story-text" style="font-size:15px;line-height:1.9;color:#444;letter-spacing:0.3px;"></div></div><div class="model-tag"><span class="dot"></span> Gemini 2.5 Flash-Lite</div>';
+        _lastStoryLen = 0;
+      }
+
+      const storyEl = el.querySelector('.story-text');
+      const newChars = clean.slice(_lastStoryLen);
+      if (!newChars) return;
+
+      // 追加新字符，每个包在 span 里做动画
+      const frag = document.createDocumentFragment();
+      for (const ch of newChars) {
+        const span = document.createElement('span');
+        span.textContent = ch;
+        span.style.display = 'inline-block';
+        frag.appendChild(span);
+      }
+      storyEl.appendChild(frag);
+
+      // GSAP 动画新字符
+      const allSpans = storyEl.querySelectorAll('span');
+      const newSpans = Array.from(allSpans).slice(_lastStoryLen);
+      if (newSpans.length && typeof gsap !== 'undefined') {
+        gsap.from(newSpans, {
+          y: '100%',
+          opacity: 0,
+          filter: 'blur(4px)',
+          ease: 'power4.out',
+          duration: 0.4,
+          stagger: 0.02,
+        });
+      }
+
+      _lastStoryLen = clean.length;
+
+      // 最终态：合并为纯文本
+      if (isFinal) {
+        setTimeout(() => {
+          storyEl.textContent = clean;
+          storyEl.style.opacity = '1';
+        }, 600);
+      }
+    }
+    function collapseSelection() {
+      const area = document.getElementById('selectionArea');
+      const summary = document.getElementById('selectedSummary');
+      area.style.maxHeight = area.scrollHeight + 'px';
+      requestAnimationFrame(() => { area.classList.remove('expanded'); area.classList.add('collapsed'); });
+      summary.classList.add('visible');
+      // 滚动到 item-section 可见
+      document.querySelector('.item-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function toggleReselect() {
+      const area = document.getElementById('selectionArea');
+      const summary = document.getElementById('selectedSummary');
+      summary.classList.remove('visible');
+      area.classList.remove('collapsed');
+      area.classList.add('expanded');
+      area.style.maxHeight = area.scrollHeight + 'px';
+      setTimeout(() => { area.style.maxHeight = ''; }, 350);
+    }
+
     function selectArchivedItem(name, id, btn, e) {
       if (e) e.stopPropagation();
       document.querySelectorAll('.archived-item-btn').forEach(b => b.classList.remove('selected'));
@@ -610,6 +918,12 @@
 
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(reqText || '');
+
+      // 更新选中摘要
+      updateSelectedSummary(name, id, reqText, btn);
+
+      // 收拢选择区
+      collapseSelection();
 
       // 更新选中科目气泡
       const bubble = document.getElementById('itemBubble');
@@ -661,12 +975,20 @@
     }
 
     // ── 计时器主逻辑 ──
-    function selectItem(name, id, e) {
+    function selectItem(name, id, btn, e) {
       if (e) e.stopPropagation();
       document.querySelectorAll('.archived-item-btn').forEach(b => b.classList.remove('selected'));
       document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('selected'));
-      const btn = document.querySelector(`.item-btn[data-id='${id}'], .archived-item-btn[data-id='${id}']`);
-      if (btn) btn.classList.add('selected');
+      // 移除旧脉冲环
+      document.querySelectorAll('.sel-ring').forEach(r => r.remove());
+      if (btn) {
+        btn.classList.add('selected');
+        // 添加脉冲环
+        const ring = document.createElement('div');
+        ring.className = 'sel-ring';
+        btn.appendChild(ring);
+        setTimeout(() => { if (ring.parentNode) ring.remove(); }, 1500);
+      }
       selectedItem = name;
       selectedItemId = id;
       resetTimer();
@@ -674,7 +996,12 @@
 
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(reqText || '');
-      document.getElementById('vertical-stack').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // 更新选中摘要
+      updateSelectedSummary(name, id, reqText, btn);
+
+      // 收拢选择区
+      collapseSelection();
 
       // 更新选中科目气泡
       const bubble = document.getElementById('itemBubble');

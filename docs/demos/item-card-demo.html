@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item Card UI 优化 Demo v3</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: #F8F6F3; padding: 32px 24px; min-height: 100vh;
+    display: flex; justify-content: center; align-items: flex-start;
+  }
+  .demo-container { width: 100%; max-width: 680px; }
+  .demo-title {
+    font-size: 13px; color: #aaa; letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 16px; text-align: center;
+  }
+
+  .item-card {
+    background: #FFFFFF; border-radius: 20px; padding: 20px 18px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(0,0,0,0.03) inset,
+      0 24px 40px -16px rgba(0,0,0,0.08), 0 4px 12px -2px rgba(0,0,0,0.04);
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .card-header h2 { font-size: 18px; color: #FF6B6B; font-weight: 700; }
+  .today-badge {
+    font-size: 13px; color: #7F8C8D; background: #F5F5F5;
+    padding: 4px 10px; border-radius: 20px;
+  }
+
+  .search-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .search-bar input {
+    flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid #E8E8E8;
+    font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .search-bar input:focus { border-color: #BDBDBD; }
+
+  .category-title {
+    display: flex; align-items: center; gap: 6px;
+    margin: 22px 0 10px;
+    font-size: 13px; font-weight: 600; color: #9E9E9E; letter-spacing: 0.5px;
+  }
+  .category-title:first-of-type { margin-top: 12px; }
+  .category-title .cat-count {
+    background: #F0F0F0; color: #999; font-size: 11px;
+    padding: 2px 7px; border-radius: 10px; font-weight: 700;
+  }
+
+  .item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px 10px;
+    margin-bottom: 4px;
+  }
+
+  .item-btn {
+    position: relative; width: 100%; min-height: 48px;
+    border: none; border-radius: 14px;
+    font-size: 14px; font-weight: 700; font-family: inherit;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 10px 10px; overflow: visible;
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), background 0.15s ease;
+    z-index: 1;
+  }
+  .item-btn::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease;
+  }
+  .item-btn:active { filter: brightness(0.95); }
+
+  .item-btn.c-normal { background: #E8E8E8; color: #616161; border: 1.5px solid #BDBDBD; }
+  .item-btn.c-normal::before { background: #D5D5D5; box-shadow: 0 3px 0 #9E9E9E; transform: translate3d(0, 0.6em, -1em); }
+  .item-btn.c-normal:hover { background: #DCDCDC; transform: translate(0, 0.2em); }
+  .item-btn.c-normal:hover::before { transform: translate3d(0, 0.4em, -1em); box-shadow: 0 4px 0 #9E9E9E; }
+  .item-btn.c-normal:active, .item-btn.c-normal.is-selected { background: #D0D0D0; transform: translate(0, 0.6em); }
+  .item-btn.c-normal:active::before, .item-btn.c-normal.is-selected::before { transform: translate3d(0, 0, -1em); box-shadow: 0 2px 0 #9E9E9E; }
+
+  .item-btn.c-req { background: #FFF3C4; color: #7C4A00; border: 1.5px solid #F59E0B; }
+  .item-btn.c-req::before { background: #FCD34D; box-shadow: 0 3px 0 #B45309; transform: translate3d(0, 0.6em, -1em); }
+  .item-btn.c-req:hover { background: #FDE68A; transform: translate(0, 0.2em); }
+  .item-btn.c-req:hover::before { transform: translate3d(0, 0.4em, -1em); box-shadow: 0 4px 0 #B45309; }
+  .item-btn.c-req:active, .item-btn.c-req.is-selected { background: #FCD34D; transform: translate(0, 0.6em); }
+  .item-btn.c-req:active::before, .item-btn.c-req.is-selected::before { transform: translate3d(0, 0, -1em); box-shadow: 0 2px 0 #B45309; }
+
+  .item-btn.is-selected { z-index: 2; }
+  .item-btn.is-selected .sel-ring {
+    position: absolute; inset: -3px; border: 2.5px solid #FF6B6B; border-radius: 16px;
+    pointer-events: none; animation: ring-pulse 1.5s ease-out 1;
+  }
+  @keyframes ring-pulse { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.15); } }
+
+  .item-btn .btn-name { font-size: 14px; font-weight: 700; line-height: 1.3; pointer-events: none; }
+  .item-btn .req-dot {
+    position: absolute; top: 5px; right: 5px; width: 8px; height: 8px;
+    background: #FF6B6B; border-radius: 50%; box-shadow: 0 0 6px rgba(255,107,107,0.6);
+    pointer-events: none;
+  }
+
+  /* ── 选中后收拢 ── */
+  .selected-summary {
+    display: none; align-items: center; gap: 12px;
+    background: #FAFAFA; border: 1.5px solid #E0E0E0; border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .selected-summary.visible { display: flex; }
+  .selected-summary .sum-tag {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 14px;
+    min-width: 100px;
+  }
+  .selected-summary .sum-tag.tag-req { background: #FFF3C4; color: #7C4A00; border: 1.5px solid #F59E0B; }
+  .selected-summary .sum-tag.tag-normal { background: #E8E8E8; color: #616161; border: 1.5px solid #BDBDBD; }
+  .selected-summary .sum-tag .sum-id { font-size: 10px; opacity: 0.5; font-weight: 500; margin-top: 2px; }
+  .selected-summary .sum-info { flex: 1; min-width: 0; }
+  .selected-summary .sum-info .sum-name { font-size: 15px; font-weight: 700; color: #333; }
+  .selected-summary .sum-info .sum-req { font-size: 12px; color: #888; margin-top: 2px; line-height: 1.4; }
+  .resel-btn {
+    padding: 8px 14px; border: 1.5px solid #BDBDBD; border-radius: 10px;
+    background: #fff; color: #666; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .resel-btn:hover { background: #F5F5F5; border-color: #999; }
+
+  .selection-area { transition: max-height 0.3s ease, opacity 0.2s ease; overflow: hidden; }
+  .selection-area.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; }
+  .selection-area.expanded { opacity: 1; }
+
+  .expand-btn {
+    display: block; width: 100%; padding: 12px;
+    background: #F5F5F5; border: 2px dashed #BDBDBD; border-radius: 12px;
+    font-size: 14px; color: #999; cursor: pointer; text-align: center;
+    margin-top: 14px; font-family: inherit; transition: background 0.15s;
+  }
+  .expand-btn:hover { background: #EEEEEE; }
+  .expand-section { display: none; margin-top: 10px; }
+  .expand-section.open { display: block; }
+
+  .legend { display: flex; gap: 20px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #999; }
+  .legend-swatch { width: 20px; height: 14px; border-radius: 4px; }
+  .legend-swatch.sw-normal { background: #E8E8E8; border: 1px solid #BDBDBD; }
+  .legend-swatch.sw-req { background: #FFF3C4; border: 1px solid #F59E0B; }
+</style>
+</head>
+<body>
+
+<div class="demo-container">
+  <div class="demo-title">item-section card · demo v3</div>
+
+  <div class="item-card">
+    <div class="card-header">
+      <h2>🎵 选择练习项目</h2>
+      <span class="today-badge">今日已练 25 分钟</span>
+    </div>
+
+    <div class="selected-summary" id="selectedSummary">
+      <div class="sum-tag" id="sumTag">
+        <span class="sum-name" id="sumName"></span>
+        <span class="sum-id" id="sumId"></span>
+      </div>
+      <div class="sum-info">
+        <div class="sum-name" id="sumFullName"></div>
+        <div class="sum-req" id="sumReq"></div>
+      </div>
+      <button class="resel-btn" onclick="toggleReselect()">🔄 重新选择</button>
+    </div>
+
+    <div class="selection-area expanded" id="selectionArea">
+      <div class="search-bar">
+        <input type="text" placeholder="🔍 搜索...">
+      </div>
+
+      <div class="category-title"><span>基本功</span><span class="cat-count">4</span></div>
+      <div class="item-grid">
+        <button class="item-btn c-normal" data-id="1031" data-req=""><span class="btn-name">全按作低音re</span></button>
+        <button class="item-btn c-normal" data-id="1033" data-req=""><span class="btn-name">低音re-音阶</span></button>
+        <button class="item-btn c-req" data-id="1343" data-req="tu ♩=80 / ku ♩=70  tu：1分30秒-2分钟，短颗粒感；ku：中音5，练3天后尝试中音6"><span class="req-dot"></span><span class="btn-name">单吐 tuku</span></button>
+        <button class="item-btn c-req" data-id="1034" data-req="♩=60  吸气后吹的瞬间气息下沉"><span class="req-dot"></span><span class="btn-name">吸气长音</span></button>
+      </div>
+
+      <div class="category-title"><span>演唱</span><span class="cat-count">3</span></div>
+      <div class="item-grid">
+        <button class="item-btn c-normal" data-id="1028" data-req=""><span class="btn-name">唱茉莉花（二）</span></button>
+        <button class="item-btn c-normal" data-id="1341" data-req=""><span class="btn-name">唱萨利哈</span></button>
+        <button class="item-btn c-req" data-id="1344" data-req="新学曲子，本周先唱，能吹的话吹2行"><span class="req-dot"></span><span class="btn-name">唱西藏舞曲</span></button>
+      </div>
+
+      <div class="category-title"><span>曲子</span><span class="cat-count">7</span></div>
+      <div class="item-grid">
+        <button class="item-btn c-normal" data-id="1003" data-req=""><span class="btn-name">单吐练习</span></button>
+        <button class="item-btn c-normal" data-id="1004" data-req=""><span class="btn-name">回娘家</span></button>
+        <button class="item-btn c-normal" data-id="1032" data-req=""><span class="btn-name">茉莉花（二）</span></button>
+        <button class="item-btn c-req" data-id="1026" data-req="♩=100、♩=104 各3天"><span class="req-dot"></span><span class="btn-name">采茶扑蝶</span></button>
+        <button class="item-btn c-normal" data-id="1337" data-req=""><span class="btn-name">颤音练习</span></button>
+        <button class="item-btn c-req" data-id="1340" data-req="♩=76、♩=80 各3天  分句练习"><span class="req-dot"></span><span class="btn-name">萨丽哈</span></button>
+        <button class="item-btn c-normal" data-id="1005" data-req=""><span class="btn-name">喜洋洋</span></button>
+      </div>
+
+      <button class="expand-btn" onclick="toggleExpand()">📁 老科目 (33)</button>
+      <div class="expand-section" id="expandSection">
+        <div class="item-grid">
+          <button class="item-btn c-normal" data-id="1001" data-req="" style="opacity:0.5"><span class="btn-name">长音练习</span></button>
+          <button class="item-btn c-normal" data-id="1002" data-req="" style="opacity:0.5"><span class="btn-name">音阶练习</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch sw-normal"></div> 普通科目</div>
+    <div class="legend-item"><div class="legend-swatch sw-req"></div> 有老师要求</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let selectedBtn = null;
+  document.querySelectorAll('.item-btn').forEach(btn => {
+    btn.addEventListener('click', function() { selectItem(this); });
+  });
+
+  function selectItem(btn) {
+    if (selectedBtn && selectedBtn !== btn) {
+      selectedBtn.classList.remove('is-selected');
+      const ring = selectedBtn.querySelector('.sel-ring');
+      if (ring) ring.remove();
+    }
+    const isNew = !btn.classList.contains('is-selected');
+    btn.classList.add('is-selected');
+    selectedBtn = btn;
+    if (isNew) {
+      const ring = document.createElement('div');
+      ring.className = 'sel-ring';
+      btn.appendChild(ring);
+      setTimeout(() => { if (ring.parentNode) ring.remove(); }, 1500);
+    }
+    document.getElementById('sumName').textContent = btn.querySelector('.btn-name').textContent;
+    document.getElementById('sumId').textContent = '#' + btn.dataset.id;
+    document.getElementById('sumFullName').textContent = btn.querySelector('.btn-name').textContent;
+    document.getElementById('sumReq').textContent = btn.dataset.req || '无特殊要求';
+    document.getElementById('sumTag').className = 'sum-tag ' + (btn.classList.contains('c-req') ? 'tag-req' : 'tag-normal');
+    collapseSelection();
+  }
+
+  function collapseSelection() {
+    const area = document.getElementById('selectionArea');
+    const summary = document.getElementById('selectedSummary');
+    area.style.maxHeight = area.scrollHeight + 'px';
+    requestAnimationFrame(() => { area.classList.remove('expanded'); area.classList.add('collapsed'); });
+    summary.classList.add('visible');
+  }
+
+  window.toggleReselect = function() {
+    const area = document.getElementById('selectionArea');
+    const summary = document.getElementById('selectedSummary');
+    summary.classList.remove('visible');
+    area.classList.remove('collapsed');
+    area.classList.add('expanded');
+    area.style.maxHeight = area.scrollHeight + 'px';
+    setTimeout(() => { area.style.maxHeight = ''; }, 350);
+  };
+
+  window.toggleExpand = function() {
+    document.getElementById('expandSection').classList.toggle('open');
+  };
+})();
+</script>
+
+</body>
+</html>
