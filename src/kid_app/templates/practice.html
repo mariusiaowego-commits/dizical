@@ -109,25 +109,26 @@
       display: flex; flex-direction: column; gap: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.10);
       border: 2px solid transparent;
-      overflow: hidden;
+      overflow: visible;
     }
-    .floor h3 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; }
+    .floor h3 { font-size: 20px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; }
 
-    /* 楼层 1:老师要求(莫兰迪米 + 金边) */
+    /* 楼层 1:老师要求 */
     .floor-req { background: #FFFDF5; border-color: #F0D060; }
-    .floor-req h3 { color: #8B6914; }
+    .floor-req h3 { color: #FF6B6B; }
     .req-content {
       max-height: 200px; overflow-y: auto;
-      padding: 0 4px;
+      padding: 0 4px; min-height: 48px;
       scrollbar-width: thin;
     }
-    .req-empty { font-size: 15px; color: #A1887F; font-style: italic; text-align: center; padding: 24px 8px; }
-    .req-label { font-size: 12px; color: #8B6914; font-weight: bold; margin-bottom: 8px; }
+    .req-empty { font-size: 15px; color: #8D6E63; text-align: center; padding: 24px 8px; }
     .req-highlight {
       background: #FFF8E0; border-left: 4px solid #F0D060;
-      padding: 12px 14px; border-radius: 0 12px 12px 0;
-      font-size: 16px; color: #5D4037; line-height: 1.7;
+      padding: 12px 14px; border-radius: 4px 12px 12px 4px;
+      font-size: 15px; color: #5D4037; line-height: 1.7;
+      animation: reqFadeIn 0.35s ease-out;
     }
+    @keyframes reqFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
     /* 楼层 2+3:两仪表盘并排(同卡片,grid 1fr 1fr) */
     .floor-pickers { background: #FFFDF5; border-color: #F0D060; }
@@ -212,23 +213,16 @@
 
     /* 选中科目气泡 */
     .item-bubble {
+      display: none;
       background: linear-gradient(135deg, #FFE066, #FF9F43);
-      border-radius: 20px; padding: 8px 16px;
-      display: inline-flex; align-items: center; gap: 8px;
-      box-shadow: 0 2px 8px rgba(255,159,67,0.3);
-      vertical-align: middle;
-      margin-left: 12px;
+      border-radius: 8px; padding: 4px 10px;
+      align-items: center; gap: 6px;
+      box-shadow: 0 1px 4px rgba(255,159,67,0.3);
+      margin-left: 8px; vertical-align: middle;
     }
-    .item-bubble .bubble-label {
-      font-size: 11px; color: rgba(255,255,255,0.85);
-      font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    .item-bubble .bubble-name { font-size: 16px; color: #fff; font-weight: bold; }
-    @keyframes bubbleFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-    .item-bubble.animate { animation: bubbleFloat 1.8s ease-in-out infinite; }
+    .item-bubble .bubble-name { font-size: 13px; color: #fff; font-weight: bold; white-space: nowrap; }
+    @keyframes bubbleFadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+    .item-bubble.animate { animation: bubbleFadeIn 0.3s ease-out; }
 
     /* 数字时间显示:已废弃(改用 picker 中央 num 实时变化) */
     .timer-display { display: none; }
@@ -554,10 +548,7 @@
 
     <!-- 楼层 1:老师要求 -->
     <div class="floor floor-req">
-      <h3>🎯 老师要求 <div class="item-bubble" id="itemBubble" style="display:none">
-        <span class="bubble-label">当前练习</span>
-        <span class="bubble-name" id="bubbleName"></span>
-      </div></h3>
+      <h3>🎯 老师要求</h3>
       <div class="req-content" id="reqTip">
         <div class="req-empty">选择一个科目<br>查看老师要求</div>
       </div>
@@ -565,7 +556,9 @@
 
     <!-- 楼层 2+3:两仪表盘并排(同卡片,grid 1fr 1fr,gap 12px) -->
     <div class="floor floor-pickers">
-      <h3>⏱️ 计时器 + ⚡ 补录</h3>
+      <h3>⏱️ 计时器 + ⚡ 补录 <div class="item-bubble" id="itemBubble" style="display:none">
+        <span class="bubble-name" id="bubbleName"></span>
+      </div></h3>
       <div class="pickers-row">
         <!-- 左:主半圆(计时) -->
         <div class="picker-cell picker-cell-timer">
@@ -730,10 +723,51 @@
     function updateReqPanel(reqText) {
       const tip = document.getElementById('reqTip');
       if (reqText) {
-        tip.innerHTML = '<div class="req-label"></div><div class="req-highlight">' + reqText + '</div>';
+        tip.innerHTML = '<div class="req-highlight"><span class="spinner"></span> <span style="color:#aaa">正在加载...</span></div>';
+        setTimeout(() => {
+          tip.innerHTML = '<div class="req-highlight"><span class="req-text"></span></div>';
+          animateReqText(tip.querySelector('.req-text'), reqText);
+        }, 200);
       } else {
         tip.innerHTML = '<div class="req-empty">暂无老师要求<br>直接开始练习吧！</div>';
       }
+    }
+
+    // 逐字动画渲染老师要求（与 story 同款 GSAP Y 轴动效）
+    let _lastReqLen = 0;
+    function animateReqText(el, text) {
+      _lastReqLen = 0;
+      el.textContent = '';
+      // 模拟流式：分批追加字符
+      const chars = text.split('');
+      const batchSize = 3;
+      let idx = 0;
+      function addBatch() {
+        const end = Math.min(idx + batchSize, chars.length);
+        const frag = document.createDocumentFragment();
+        for (let i = idx; i < end; i++) {
+          const span = document.createElement('span');
+          span.textContent = chars[i];
+          span.style.display = 'inline-block';
+          frag.appendChild(span);
+        }
+        el.appendChild(frag);
+        const newSpans = Array.from(el.children).slice(idx);
+        if (newSpans.length && typeof gsap !== 'undefined') {
+          gsap.from(newSpans, {
+            y: '100%', opacity: 0, filter: 'blur(4px)',
+            ease: 'power4.out', duration: 0.3, stagger: 0.015,
+          });
+        }
+        idx = end;
+        if (idx < chars.length) {
+          setTimeout(addBatch, 30);
+        } else {
+          // 最终态：合并为纯文本
+          setTimeout(() => { el.textContent = text; }, 400);
+        }
+      }
+      addBatch();
     }
 
     // ── 选中摘要 + 收拢/展开 ──
@@ -747,17 +781,11 @@
       sumFullName.style.color = '#aaa';
       streamMood(id, name, sumFullName);
 
-      // sumTag: emoji + title
+      // sumTag: 科目名 + ID
       const sumTag = document.getElementById('sumTag');
-      if (info) {
-        document.getElementById('sumName').textContent = info.emoji + ' ' + info.title;
-        document.getElementById('sumId').textContent = '#' + id;
-        sumTag.className = 'sum-tag ' + (isReq ? 'tag-req' : 'tag-normal');
-      } else {
-        document.getElementById('sumName').textContent = name;
-        document.getElementById('sumId').textContent = '#' + id;
-        sumTag.className = 'sum-tag ' + (isReq ? 'tag-req' : 'tag-normal');
-      }
+      document.getElementById('sumName').textContent = name;
+      document.getElementById('sumId').textContent = '#' + id;
+      sumTag.className = 'sum-tag ' + (isReq ? 'tag-req' : 'tag-normal');
 
       // sumReq: 流式生成完整摘要
       const sumReq = document.getElementById('sumReq');
@@ -930,10 +958,8 @@
       const bubbleName = document.getElementById('bubbleName');
       bubbleName.textContent = name;
       bubble.style.display = 'flex';
-      bubble.classList.add('animate');
-      bubble.style.animation = 'none';
-      bubble.offsetHeight;
-      bubble.style.animation = '';
+      bubble.classList.remove('animate');
+      requestAnimationFrame(() => { bubble.classList.add('animate'); });
       document.getElementById('startBtn').disabled = false;
       document.getElementById('addExtraBtn').disabled = false;
       const addBtn = document.getElementById('addExtraBtn');
@@ -1008,11 +1034,8 @@
       const bubbleName = document.getElementById('bubbleName');
       bubbleName.textContent = name;
       bubble.style.display = 'flex';
-      bubble.classList.add('animate');
-      // 重新触发动画
-      bubble.style.animation = 'none';
-      bubble.offsetHeight; // reflow
-      bubble.style.animation = '';
+      bubble.classList.remove('animate');
+      requestAnimationFrame(() => { bubble.classList.add('animate'); });
       document.getElementById('startBtn').disabled = false;
       document.getElementById('addExtraBtn').disabled = false;
       const addBtn = document.getElementById('addExtraBtn');
