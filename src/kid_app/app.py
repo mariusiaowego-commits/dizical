@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.database import db
 from src import practice as practice_module
+from src.kid_app.subject_info import get_subject_info
 
 # ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bamboo Flute Practice")
@@ -884,6 +885,32 @@ async def api_update_items_order(request: Request):
 
 # ─── API: 表扬海报生成 ─────────────────────────────────────────────────────
 # 已下线：图片生成需在 Hermes Agent 对话窗口进行，见 /praise 页面
+@app.get("/api/subject_mood/{item_id}")
+async def api_subject_mood(item_id: int, name: str = ""):
+    """流式生成练习心情 SSE。"""
+    from fastapi.responses import StreamingResponse
+    from src.kid_app.subject_info import generate_mood_stream
+
+    async def event_stream():
+        for token in generate_mood_stream(name):
+            yield f"data: {json.dumps({'text': token})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+@app.get("/api/subject_summary/{item_id}")
+async def api_subject_summary(item_id: int, name: str = ""):
+    """流式生成完整科目摘要 SSE。"""
+    from fastapi.responses import StreamingResponse
+    from src.kid_app.subject_info import generate_summary_stream
+
+    async def event_stream():
+        for token in generate_summary_stream(name):
+            yield f"data: {json.dumps({'text': token})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
 @app.post("/api/praise")
 async def api_praise(request: Request):
     return JSONResponse({
@@ -1105,31 +1132,27 @@ def practice_page():
 
     items_html = ""
     for cat, cat_items in sorted(by_cat.items(), key=lambda x: next((c["sort_order"] for c in categories if c["name"] == x[0]), 99)):
-        items_html += "<h3 style='font-size:16px;color:#4ECDC4;margin:12px 0 6px;'>" + cat + "</h3>"
+        cat_count = len(cat_items)
+        items_html += "<h3>" + cat + "<span class='cat-count'>" + str(cat_count) + "</span></h3>"
         items_html += "<div class='item-grid'>"
         for it in sorted(cat_items, key=lambda x: x.get("sort_order", 0)):
             name = it["name"]
             pid = it.get("item_id")
-            # 优先用 practice_item_id 精确匹配，fallback 用名称模糊匹配
             req_info = assign_by_pi_id.get(pid) or _find_requirement(name)
             req_text = req_info.get('req', '') if isinstance(req_info, dict) else req_info
             metro_text = req_info.get('metro', '') if isinstance(req_info, dict) else ''
-            # tooltip 里：速度 + 要求（metronome 已含 ♩= 前缀）
             combined = (metro_text + '  ' if metro_text else '') + req_text
             has_req = bool(combined)
-            tooltip_html = ""
-            if has_req and combined:
-                tooltip_html = "<div class='req-tooltip'>" + combined + "</div>"
-            wrap_class = "item-btn-wrap" if has_req else ""
             has_req_class = "has-req" if has_req else ""
+            req_dot = "<span class='req-dot'></span>" if has_req else ""
             items_html += (
-                "<div class='" + wrap_class + "'>"
-                + "<button class='item-btn " + has_req_class + "' data-id='" + str(it["item_id"]) + "' "
+                "<button class='item-btn " + has_req_class + "' data-id='" + str(it["item_id"]) + "' "
                 + "data-req='" + combined.replace("'", "&#39;") + "' "
-                + "onclick=\"selectItem('" + name.replace("'", "\\'") + "', " + str(it["item_id"]) + ", event)\">"
-                + name + " <span style='font-size:11px;color:rgba(255,255,255,0.6)'>[" + str(it["item_id"]) + "]</span>"
-                + tooltip_html
-                + "</button></div>"
+                + "data-name='" + name.replace("'", "&#39;") + "' "
+                + "onclick=\"selectItem('" + name.replace("'", "\\'") + "', " + str(it["item_id"]) + ", this, event)\">"
+                + req_dot
+                + "<span class='btn-name'>" + name + "</span>"
+                + "</button>"
             )
         items_html += "</div>"
 
@@ -1139,6 +1162,26 @@ def practice_page():
     today_p = db.get_daily_practice(today)
     today_mins = today_p["total_minutes"] if today_p else 0
 
+    # ── 科目摘要 ──
+    subject_info_dict = {}
+    for it in items:
+        name = it["name"]
+        pid = it["item_id"]
+        info = get_subject_info(name)
+        if info:
+            subject_info_dict[pid] = {
+                "emoji": info["emoji"],
+                "title": info["title"],
+                "one_liner": info["one_liner"],
+                "what": info.get("what", ""),
+                "how": info.get("how", []),
+                "why": info.get("why", ""),
+                "story": info.get("story", ""),
+                "tip": info.get("tip", ""),
+            }
+
+    subject_info_json = json.dumps(subject_info_dict, ensure_ascii=False)
+
     return render(
         "practice",
         child_name=child_name(),
@@ -1146,6 +1189,7 @@ def practice_page():
         today_mins=today_mins,
         assign_json=assign_json,
         today_date=today.isoformat(),
+        subject_info_json=subject_info_json,
     )
 
 @app.get("/achievements", response_class=HTMLResponse)
