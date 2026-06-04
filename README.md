@@ -269,5 +269,3 @@ data/
 ## 📄 License
 
 MIT
-
-<!-- walkthrough-test 2026-06-04: verify PR workflow end-to-end -->
