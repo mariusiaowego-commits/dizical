@@ -33,3 +33,18 @@ STATUS.md
 vibe-coding-log.md
 docs/INTRODUCTION.md
 docs/OPENAI_PRO_PLAN.md
+
+# 渠道分发：源代码可推, 配置文件 (含 AppID / 后端 URL / token) 不推
+# 例外: .gitkeep (占位) + README.md (说明) 推
+channels/*/config/*
+!channels/*/config/.gitkeep
+!channels/*/config/README.md
+
+# Swift Package Manager / Xcode 编译产物
+channels/**/*.build/
+channels/**/.swiftpm/
+channels/**/DerivedData/
+channels/**/*.xcodeproj/xcuserdata/
+channels/**/*.xcworkspace/xcuserdata/
+channels/**/*.dSYM/
+channels/**/Package.resolved
