@@ -1,0 +1,340 @@
+<!--
+  _sidebar.html — dizical 左侧导航栏组件
+  5 个 nav: 准备 / 练习 / 报告 / 成就 / 设置
+  状态: 收起 (64px, 仅 icon) / 展开 (240px, icon+label)
+  触发: 顶部 collapse icon 按钮 (点 = 切状态) / hover 动效
+  动效: width 200ms cubic-bezier(0.16, 1, 0.3, 1) + label opacity 0↔1
+-->
+<style>
+/* ── Sidebar base (法 1: padding 0, 元素用 margin 控) ────── */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  width: 64px;            /* 收起: 仅 icon */
+  background: var(--surface, #FFFFFF);
+  border-right: 1px solid rgba(0,0,0,0.05);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 0;             /* 关键: 取消 sidebar 自身 padding, 元素用 margin 控 */
+  transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+.sidebar.expanded { width: 240px; }
+
+/* ── 通用规则: 收起态 X 中心 = 14+18 = 32px (64 宽 sidebar 居中 36 圆) ── */
+/* ── 展开态 X 中心不变, 只是 sidebar 变 240px 宽 ────── */
+
+/* ── Collapse icon (顶部触发, 36×36 圆) ────────────────── */
+.sidebar-toggle {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: transparent;
+  transition: background 200ms ease, transform 200ms ease;
+  margin: 16px 0 0 14px;   /* 16 上, 0 右, 0 下, 14 左 (64-36=28, 28/2=14 居中) */
+  padding: 6px;
+}
+.sidebar-toggle:focus-visible { outline: 2px solid var(--primary, #FF6B6B); outline-offset: 2px; }
+.sidebar-toggle:hover { background: rgba(255, 107, 107, 0.08); transform: scale(1.05); }
+.sidebar-toggle:active { transform: scale(0.95); }
+.sidebar-toggle img { width: 24px; height: 24px; display: block; }
+
+/* ── Sidebar header (展开时显示用户信息) ────────────────── */
+.sidebar-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 14px 16px 14px;  /* 14px 跟 toggle margin-left 一致, bottom 16 = nav top padding 一致 */
+  border-bottom: 1px solid rgba(0,0,0,0.08);  /* 加深 border 让分割线可见 */
+  margin: 8px 0 0 0;          /* 跟 toggle 间距 8px */
+  min-height: 56px;
+}
+.sidebar-avatar {
+  width: 36px; height: 36px;          /* 跟 toggle/item 同样 36 */
+  border-radius: 9999px;
+  background: var(--primary, #FF6B6B);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 14px;
+  flex-shrink: 0;
+}
+.sidebar-userinfo { opacity: 0; transition: opacity 200ms ease 80ms; white-space: nowrap; }
+.sidebar.expanded .sidebar-userinfo { opacity: 1; }
+.sidebar-username { font-size: 14px; font-weight: 600; color: var(--secondary, #2C3E50); }
+.sidebar-userrole { font-size: 12px; color: var(--muted, #666666); }
+
+/* ── Nav items: 收起态 36×36 圆 active 单独设计 ─────── */
+.sidebar-nav { display: flex; flex-direction: column; gap: 8px; flex: 1; padding: 12px 14px; }
+.sidebar-item {
+  display: flex; align-items: center; gap: 12px;
+  height: 36px;                       /* 跟 toggle/avatar 同样 36 高 */
+  padding: 0 12px;                    /* 展开态 12px, 收起态覆盖 */
+  border-radius: 9999px;
+  text-decoration: none;
+  color: var(--muted, #666666);
+  transition: background 200ms ease, color 200ms ease;
+  white-space: nowrap;
+}
+/* 收起态: item 严格 36×36 圆, icon 绝对定位完美居中 (X=18, Y=18) */
+.sidebar:not(.expanded) .sidebar-item {
+  width: 36px; height: 36px;          /* 严格 36×36 圆 */
+  padding: 0;
+  position: relative;                 /* 让 .icon 绝对定位基于 item */
+}
+/* 收起态: 隐藏 label (不占空间, 不用 flex) */
+.sidebar:not(.expanded) .sidebar-item .label { display: none; }
+/* 收起态: icon 容器绝对定位, 24×24 居中 item (X=6~30, Y=6~30) */
+.sidebar:not(.expanded) .sidebar-item .icon {
+  position: absolute;
+  left: 6px; top: 6px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+}
+/* 收起态: 标签藏起来 */
+.sidebar:not(.expanded) .sidebar-item .label { display: none; }
+.sidebar:not(.expanded) .sidebar-item .icon { width: 24px; height: 24px; }
+.sidebar-item:hover { background: rgba(255, 107, 107, 0.06); color: var(--secondary, #2C3E50); }
+.sidebar-item.active {
+  background: var(--primary, #FF6B6B);
+  color: white;
+  font-weight: 500;
+}
+/* 收起态 active: 36×36 圆, 内部 icon 24×24 居中 (跟 avatar/toggle 视觉统一) */
+.sidebar:not(.expanded) .sidebar-item.active {
+  background: var(--primary, #FF6B6B);
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.25);  /* 微阴影突出 active */
+}
+/* 关键修法: active 态 SVG 描边白, viewBox 留余量 (避免描边越界) */
+.sidebar:not(.expanded) .sidebar-item.active .icon svg {
+  color: white;
+  stroke: white;
+  stroke-width: 1.75;                  /* 减细让白描边不刺眼 */
+}
+.sidebar-item .icon {
+  width: 24px; height: 24px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  /* 不加 padding (避免容器被撑大), SVG viewBox 内部留余量即可 */
+}
+.sidebar-item .icon svg {
+  width: 24px; height: 24px;
+  overflow: visible;                   /* 关键: SVG 内描边可超出 viewBox 显示 */
+}
+.sidebar-item .label {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 200ms ease 80ms;
+}
+.sidebar.expanded .sidebar-item .label { opacity: 1; }
+
+/* ── Sidebar footer ─────────────────────────────────────── */
+.sidebar-footer {
+  margin: 0;
+  padding: 12px 14px 0 14px;
+  border-top: 1px solid rgba(0,0,0,0.05);
+  opacity: 0;
+  transition: opacity 200ms ease 80ms;
+}
+.sidebar.expanded .sidebar-footer { opacity: 1; }
+.sidebar-footer a {
+  display: flex; align-items: center; gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--muted, #666666);
+  text-decoration: none;
+  font-size: 13px;
+  border-radius: 9999px;
+}
+.sidebar-footer a:hover { background: rgba(0,0,0,0.04); }
+.sidebar-footer .icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.sidebar-footer .icon svg { width: 24px; height: 24px; }
+
+/* ── Content shift + gap (主内容让出 sidebar 宽度 + 间距) ─── */
+.has-sidebar { padding-left: 64px; transition: padding-left 240ms cubic-bezier(0.16, 1, 0.3, 1); }
+.has-sidebar.expanded { padding-left: 240px; }
+
+/* 卡片距离 sidebar 有间距: 24px gap, 不让卡片紧贴 sidebar 边 */
+.has-sidebar > .page-content,
+.has-sidebar > .content,
+.has-sidebar > main,
+.has-sidebar > .config-layout,
+.has-sidebar > .config-container,
+.has-sidebar > .records-layout,
+.has-sidebar > .lessons-layout,
+.has-sidebar > .hero {
+  margin-left: 24px;
+  margin-right: 24px;
+  max-width: calc(100% - 48px);
+}
+.has-sidebar > .card,
+.has-sidebar > .pin-overlay,
+.has-sidebar > .modal-overlay {
+  margin-left: 24px;
+  margin-right: 24px;
+}
+
+/* ── iPad 触屏优化 ─────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .sidebar { transform: translateX(-100%); transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), width 0ms; }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .has-sidebar { padding-left: 0; }
+  .has-sidebar.expanded { padding-left: 0; }
+  .has-sidebar > .page-content,
+  .has-sidebar > .content,
+  .has-sidebar > main,
+  .has-sidebar > .config-layout,
+  .has-sidebar > .config-container,
+  .has-sidebar > .records-layout,
+  .has-sidebar > .lessons-layout,
+  .has-sidebar > .hero,
+  .has-sidebar > .card,
+  .has-sidebar > .pin-overlay,
+  .has-sidebar > .modal-overlay { margin-left: 0; margin-right: 0; max-width: 100%; }
+}
+</style>
+
+<!-- Sidebar 容器 -->
+<aside class="sidebar" id="dizicalSidebar" aria-label="主导航">
+  <!-- Collapse 触发按钮 (36×36, img 24×24) -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="切换导航栏">
+    <img id="sidebarToggleIcon"
+         src="/static/icons/sidebar-toggle-collapsed-256.png"
+         alt="toggle">
+  </button>
+
+  <!-- 展开时显示用户信息 (隐式, 占位未来用户体系) -->
+  <div class="sidebar-header">
+    <div class="sidebar-avatar">Y</div>
+    <div class="sidebar-userinfo">
+      <div class="sidebar-username">女儿</div>
+      <div class="sidebar-userrole">学习者</div>
+    </div>
+  </div>
+
+  <!-- 5 个 nav items (顺序: 准备 / 练习 / 报告 / 成就 / 设置) -->
+  <nav class="sidebar-nav">
+    <a href="/prepare" class="sidebar-item {% if active_nav == 'prepare' %}active{% endif %}">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12L12 3l9 9"></path>
+          <path d="M5 10v10h14V10"></path>
+        </svg>
+      </span>
+      <span class="label">准备</span>
+    </a>
+    <a href="/practice" class="sidebar-item {% if active_nav == 'practice' %}active{% endif %}">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="12" x2="20" y2="12"></line>
+          <circle cx="6" cy="12" r="2" fill="currentColor"></circle>
+          <circle cx="20" cy="12" r="1.5" fill="currentColor"></circle>
+        </svg>
+      </span>
+      <span class="label">练习</span>
+    </a>
+    <a href="/report" class="sidebar-item {% if active_nav == 'dashboard' %}active{% endif %}">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="20" x2="21" y2="20"></line>
+          <rect x="5" y="10" width="3" height="8"></rect>
+          <rect x="10.5" y="5" width="3" height="13"></rect>
+          <rect x="16" y="13" width="3" height="5"></rect>
+        </svg>
+      </span>
+      <span class="label">报告</span>
+    </a>
+    <a href="/achievements" class="sidebar-item {% if active_nav == 'achievements' %}active{% endif %}">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9V4h12v5a6 6 0 1 1-12 0z"></path>
+          <path d="M6 9H3v3a3 3 0 0 0 3 3"></path>
+          <path d="M18 9h3v3a3 3 0 0 1-3 3"></path>
+          <path d="M9 19h6"></path>
+          <path d="M12 15v4"></path>
+        </svg>
+      </span>
+      <span class="label">成就</span>
+    </a>
+    <a href="/config" class="sidebar-item {% if active_nav == 'portal' %}active{% endif %}">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </span>
+      <span class="label">设置</span>
+    </a>
+  </nav>
+
+  <!-- footer: 呦呦成就殿堂 (展开态) -->
+  <div class="sidebar-footer">
+    <a href="/badges">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </span>
+      <span class="label">呦呦成就殿堂</span>
+    </a>
+  </div>
+</aside>
+
+<!-- Backdrop for iPad -->
+<div class="sidebar-backdrop" id="sidebarBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:99;"></div>
+
+<!-- Toggle script (localStorage 记忆 + collapse icon swap + click-outside-to-collapse) -->
+<script>
+(function() {
+  const sidebar = document.getElementById('dizicalSidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  const toggle = document.getElementById('sidebarToggle');
+  const icon = document.getElementById('sidebarToggleIcon');
+  if (!sidebar || !toggle) return;
+
+  const ICON_COLLAPSED = '/static/icons/sidebar-toggle-collapsed-256.png';
+  const ICON_EXPANDED = '/static/icons/sidebar-toggle-expanded-256.png';
+
+  const stored = localStorage.getItem('dizical-sidebar-state');
+  const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+  const isMac = window.matchMedia('(min-width: 1024px)').matches && !('ontouchstart' in window);
+  const initiallyExpanded = stored ? stored === 'expanded' : isMac;
+
+  if (initiallyExpanded) {
+    sidebar.classList.add('expanded');
+    document.querySelector('.has-sidebar')?.classList.add('expanded');
+    if (icon) icon.src = ICON_EXPANDED;
+  }
+
+  function toggleSidebar() {
+    if (isMobile) {
+      sidebar.classList.toggle('mobile-open');
+      backdrop.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+    } else {
+      sidebar.classList.toggle('expanded');
+      const expanded = sidebar.classList.contains('expanded');
+      localStorage.setItem('dizical-sidebar-state', expanded ? 'expanded' : 'collapsed');
+      document.querySelector('.has-sidebar')?.classList.toggle('expanded', expanded);
+      if (icon) icon.src = expanded ? ICON_EXPANDED : ICON_COLLAPSED;
+    }
+  }
+
+  toggle.addEventListener('click', toggleSidebar);
+  backdrop.addEventListener('click', toggleSidebar);
+
+  // 1.1 click outside (主内容区域) 收起 expanded sidebar
+  document.addEventListener('click', function(e) {
+    if (isMobile) return;
+    if (!sidebar.classList.contains('expanded')) return;
+    if (sidebar.contains(e.target) || toggle.contains(e.target)) return;
+    // 点击 sidebar 外, 收起
+    sidebar.classList.remove('expanded');
+    document.querySelector('.has-sidebar')?.classList.remove('expanded');
+    localStorage.setItem('dizical-sidebar-state', 'collapsed');
+    if (icon) icon.src = ICON_COLLAPSED;
+  });
+})();
+</script>

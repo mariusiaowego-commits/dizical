@@ -1067,6 +1067,7 @@ def prepare_page():
 
     return render(
         "prepare",
+        active_nav="prepare",  # sidebar: 准备 (默认高亮, prepare 是落地页)
         eyebrow="竹笛练习准备",
         bless_main=bless["main"],
         bless_accent=bless["accent"],
@@ -1184,6 +1185,7 @@ def practice_page():
 
     return render(
         "practice",
+        active_nav="practice",  # sidebar: 练习
         child_name=child_name(),
         items_html=items_html,
         today_mins=today_mins,
@@ -1280,6 +1282,7 @@ def achievements_page():
 
     return render(
         "achievements",
+        active_nav="achievements",  # sidebar: 成就
         child_name=child_name(),
         week_pct=week_pct,
         week_pct_text=week_pct_text,
@@ -1440,6 +1443,7 @@ def report_page():
 
     return render(
         "report",
+        active_nav="dashboard",  # sidebar: Dashboard (report 页面对应 Dashboard)
         child_name=child_name(),
         month_str=today.strftime("%Y/%m"),
         total_mins=str(data["total_minutes"]),

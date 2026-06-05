@@ -72,7 +72,7 @@ def _get_items_grouped() -> Dict:
 def config_home():
     """配置主页 - 显示配置模块列表"""
     from src.kid_app.app import render
-    return render("config")
+    return render("config", active_nav="portal")
 
 
 @router.get("/practice", response_class=HTMLResponse)
@@ -85,6 +85,7 @@ def config_practice():
     
     return render(
         "config-practice",
+        active_nav="portal",  # sidebar: Portal
         categories=categories,
         items_grouped=items_grouped
     )
@@ -94,14 +95,14 @@ def config_practice():
 def config_lessons():
     """课程管理页"""
     from src.kid_app.app import render
-    return render("config-lessons")
+    return render("config-lessons", active_nav="portal")
 
 
 @router.get("/records", response_class=HTMLResponse)
 def config_records():
     """练习记录管理页"""
     from src.kid_app.app import render
-    return render("config-records")
+    return render("config-records", active_nav="portal")
 
 
 @router.get("/praise", response_class=HTMLResponse)
@@ -110,6 +111,7 @@ def config_praise():
     from src.kid_app.app import render, get_setting
     return render(
         "config-praise",
+        active_nav="portal",  # sidebar: Portal (praise 区块)
         pin_locked="true" if get_setting("dad_pin") else "false"
     )
 
