@@ -325,16 +325,8 @@
   toggle.addEventListener('click', toggleSidebar);
   backdrop.addEventListener('click', toggleSidebar);
 
-  // 1.1 click outside (主内容区域) 收起 expanded sidebar
-  document.addEventListener('click', function(e) {
-    if (isMobile) return;
-    if (!sidebar.classList.contains('expanded')) return;
-    if (sidebar.contains(e.target) || toggle.contains(e.target)) return;
-    // 点击 sidebar 外, 收起
-    sidebar.classList.remove('expanded');
-    document.querySelector('.has-sidebar')?.classList.remove('expanded');
-    localStorage.setItem('dizical-sidebar-state', 'collapsed');
-    if (icon) icon.src = ICON_COLLAPSED;
-  });
+  // 用户要求: 取消 click-outside-to-collapse 逻辑 (2026-06-05)
+  // 之前: 点 sidebar 外任意位置都收起 — 跟 report 页 cal-day click 冲突
+  // 现在: 只通过顶部 collapse 按钮 (toggle) 切收起/展开
 })();
 </script>
