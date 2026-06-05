@@ -93,6 +93,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return true
     }
+
+    // 用户要求: Cmd+W = hide (不退出), Cmd+Q = 退出
+    // 关窗 ≠ 退 app. 关窗后菜单栏还在, dock click 重新显示窗口
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return false  // 关窗不退出, app 保留在 dock + 菜单栏
+    }
 }
 
 // ============ WebView 包装 ============
