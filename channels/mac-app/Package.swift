@@ -12,7 +12,9 @@ let package = Package(
             name: "DizicalMac",
             path: "Sources/DizicalMac",
             resources: [
-                .process("Resources")
+                // 只 process app icon (用于 Dock / Launchpad)
+                // menubar icon 不放 bundle (运行时直接读), 避免 iconset 重名冲突
+                .process("Resources/dizical.iconset")
             ]
         )
     ]

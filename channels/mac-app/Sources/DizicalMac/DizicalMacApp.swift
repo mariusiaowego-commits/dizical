@@ -28,9 +28,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 2. 创建菜单栏图标
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            // 用 SF Symbol "music.note" 作为图标
-            button.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "dizical")
-            button.image?.isTemplate = true  // 适应菜单栏黑/白主题
+            // 用自定义 .icns (女孩吹笛极简线稿, 黑白色)
+            // 不放 SwiftPM bundle (避免 iconset 重名冲突), 直接从 .app/Contents/Resources 读
+            let iconPath = Bundle.main.bundlePath + "/Contents/Resources/menubar-icon.icns"
+            if let icon = NSImage(contentsOfFile: iconPath) {
+                icon.isTemplate = true  // template mode: macOS 自动黑/白
+                // 调整大小: macOS 菜单栏图标标准 18pt (@2x = 36px, @3x = 54px)
+                icon.size = NSSize(width: 18, height: 18)
+                button.image = icon
+            } else {
+                // 兜底: SF Symbol music.note
+                button.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "dizical")
+                button.image?.isTemplate = true
+            }
             // 用户要求: 菜单栏点击 = 弹菜单, 不是直接开窗
             button.action = #selector(statusItemClicked(_:))
             button.target = self
@@ -85,7 +95,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc func openWindow() {
         guard let window = mainWindow else { return }
-        // P0-2 修复: 不再切 activationPolicy, 直接显示窗口
+        // 总是 unminimize + 提到前面 + 激活 (用户要求: Cmd+Space 打开要 focus)
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
     }
@@ -109,11 +122,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // 用户要求: dock 点击 = 打开 dizical 窗口
     // macOS dock click 默认行为: app 已开则前置, 没开则启动
-    // 但 menu bar app 没主窗口, 需要手动 openWindow
+    // 修: 总是 openWindow (不管 flag) — 解决"打开但不 focus"问题
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            openWindow()
-        }
+        openWindow()
         return true
     }
 }
@@ -216,9 +227,13 @@ struct DizicalMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        WindowGroup("dizical") {
+        // 用 Window 不用 WindowGroup — Window 单例, 不允许多个窗口
+        // (否则 dock 多次点击会启多个窗口, 出现"大小不一"问题)
+        Window("dizical", id: "main") {
             DizicalWindowView()
         }
+        .defaultSize(width: 2560, height: 1400)  // 27" 显示器匹配
+        .windowResizability(.contentMinSize)  // 最小 800x500, 默认 2560x1400
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {

@@ -71,15 +71,15 @@ PLIST
 # PkgInfo
 echo "APPL????" > "${APP_DIR}/Contents/PkgInfo"
 
-# 复制 Resources (如果有)
+# 复制 Resources (强制覆盖, 确保最新)
 if [ -d "Sources/DizicalMac/Resources" ]; then
-    cp -R Sources/DizicalMac/Resources/* "${APP_DIR}/Contents/Resources/" 2>/dev/null || true
+    cp -Rf Sources/DizicalMac/Resources/* "${APP_DIR}/Contents/Resources/" 2>/dev/null || true
 fi
 
-# 复制 app icon (dizical-icon.icns)
+# 复制 app icon (dizical-icon.icns) - 强制覆盖旧版
 if [ -f "Sources/DizicalMac/Resources/dizical-icon.icns" ]; then
-    cp "Sources/DizicalMac/Resources/dizical-icon.icns" "${APP_DIR}/Contents/Resources/dizical-icon.icns"
-    echo "🎨 App icon installed"
+    cp -f "Sources/DizicalMac/Resources/dizical-icon.icns" "${APP_DIR}/Contents/Resources/dizical-icon.icns"
+    echo "🎨 App icon installed (forced overwrite)"
 fi
 
 # 加可执行权限
