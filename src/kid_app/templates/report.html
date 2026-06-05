@@ -145,15 +145,9 @@
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 4px; }
   </style>
 </head>
-<body>
-<div class="page-content" style="padding-bottom: calc(112px + env(safe-area-inset-bottom));">
-  <div class="nav">
-    <a href="/prepare" class="nav-item"><span class="nav-icon">🏠</span><span>准备</span></a>
-    <a href="/practice" class="nav-item"><span class="nav-icon">🎵</span><span>练习</span></a>
-    <a href="/achievements" class="nav-item"><span class="nav-icon">🏆</span><span>成就</span></a>
-    <a href="/report" class="nav-item active"><span class="nav-icon">📊</span><span>报告</span></a>
-    <a href="/config" class="nav-item"><span class="nav-icon">⚙️</span><span>配置</span></a>
-  </div>
+<body class="has-sidebar">
+  {% include "_sidebar.html" %}
+
 
   <div class="card">
     <h2>{{month_str}} 练习报告</h2>
