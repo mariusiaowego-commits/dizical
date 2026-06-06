@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>练习记录管理 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
   <style>
     :root {
       --cream: #f5e6d3;
@@ -578,9 +580,12 @@
 
         <!-- 生成中状态 -->
         <div id="reportGenerating" class="card" style="display:none">
-          <div style="text-align:center;padding:20px">
-            <div class="braille-spinner" style="margin:0 auto 12px"></div>
-            <p id="reportGeneratingStatus" style="color:#7F8C8D">正在生成月报图片，请稍候...</p>
+          <h3>hermes 实时输出</h3>
+          <div id="terminalContainer" style="background:#1e1e1e;border-radius:12px;overflow:hidden;height:400px">
+          </div>
+          <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+            <span id="reportGeneratingStatus" style="color:#7F8C8D;font-size:13px">准备中...</span>
+            <button class="btn btn-secondary" id="cancelGenerateBtn" style="font-size:12px;padding:6px 12px">取消</button>
           </div>
         </div>
 
@@ -960,58 +965,77 @@ document.getElementById('generateReportBtn').addEventListener('click', async () 
   const confirmed = confirm(`确认生成 ${year}年${month}月 的练习月报？\n风格：${styleNames[style] || style}\n\n生成约需 30-60 秒`);
   if (!confirmed) return;
 
-  // 显示生成中状态
-  document.getElementById('reportGenerating').style.display = 'block';
-  document.getElementById('reportResult').style.display = 'none';
-  document.getElementById('generateReportBtn').disabled = true;
-  const statusEl = document.getElementById('reportGeneratingStatus');
-  statusEl.textContent = '正在准备...';
-
-  try {
-    // 使用 SSE 流式获取状态
-    const response = await fetch('/config/api/practice-report/generate', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({year, month, style}),
-    });
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const event = JSON.parse(line.slice(6));
-            if (event.type === 'status') {
-              statusEl.textContent = event.message;
-            } else if (event.type === 'error') {
-              statusEl.textContent = '❌ ' + event.message;
-              document.getElementById('generateReportBtn').disabled = false;
-              return;
-            } else if (event.type === 'done') {
-              statusEl.textContent = '✅ 生成完成！';
-              showReportResult(event.data);
-              loadReportHistory();
-              document.getElementById('generateReportBtn').disabled = false;
-              return;
-            }
-          } catch(e) { }
-        }
-      }
-    }
-  } catch(e) {
-    statusEl.textContent = '❌ 请求失败：' + e.message;
-    document.getElementById('generateReportBtn').disabled = false;
-  }
-});
+  // 显示 terminal 容器
+   document.getElementById('reportGenerating').style.display = 'block';
+   document.getElementById('reportResult').style.display = 'none';
+   document.getElementById('generateReportBtn').disabled = true;
+   const statusEl = document.getElementById('reportGeneratingStatus');
+   statusEl.textContent = '正在连接...';
+ 
+   // 初始化 xterm.js
+   const term = new Terminal({
+     theme: { background: '#1e1e1e', foreground: '#d4d4d4' },
+     fontSize: 13,
+     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+     disableStdin: true,
+     convertEol: true,
+   });
+   const container = document.getElementById('terminalContainer');
+   container.innerHTML = '';
+   term.open(container);
+ 
+   // 建立 WebSocket 连接
+   const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+   const ws = new WebSocket(`${wsProtocol}//${location.host}/ws/generate`);
+   let cancelled = false;
+ 
+   ws.onopen = () => {
+     term.writeln('\x1b[32m✓ 已连接到服务器\x1b[0m');
+     statusEl.textContent = '已连接，发送参数...';
+     ws.send(JSON.stringify({year, month, style}));
+   };
+ 
+   ws.onmessage = (event) => {
+     const data = JSON.parse(event.data);
+     if (data.type === 'status') {
+       term.writeln('\x1b[36m● ' + data.message + '\x1b[0m');
+       statusEl.textContent = data.message;
+     } else if (data.type === 'output') {
+       term.writeln(data.message);
+     } else if (data.type === 'error') {
+       term.writeln('\x1b[31m✗ ' + data.message + '\x1b[0m');
+       statusEl.textContent = '❌ ' + data.message;
+       document.getElementById('generateReportBtn').disabled = false;
+     } else if (data.type === 'done') {
+       term.writeln('\x1b[32m✓ ' + data.message + '\x1b[0m');
+       statusEl.textContent = '✅ 生成完成！';
+       document.getElementById('generateReportBtn').disabled = false;
+       loadReportHistory();
+     }
+   };
+ 
+   ws.onerror = (e) => {
+     term.writeln('\x1b[31m✗ WebSocket 错误\x1b[0m');
+     statusEl.textContent = '❌ 连接错误';
+     document.getElementById('generateReportBtn').disabled = false;
+   };
+ 
+   ws.onclose = () => {
+     term.writeln('\x1b[33m● 连接已关闭\x1b[0m');
+     if (!cancelled && document.getElementById('generateReportBtn').disabled) {
+       document.getElementById('generateReportBtn').disabled = false;
+     }
+   };
+ 
+   // 取消按钮
+   document.getElementById('cancelGenerateBtn').onclick = () => {
+     cancelled = true;
+     ws.close();
+     term.writeln('\x1b[33m● 已取消\x1b[0m');
+     statusEl.textContent = '已取消';
+     document.getElementById('generateReportBtn').disabled = false;
+   };
+ });
 
 function showReportResult(data) {
   const div = document.getElementById('reportResultContent');
