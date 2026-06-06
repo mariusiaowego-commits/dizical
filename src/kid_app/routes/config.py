@@ -871,3 +871,144 @@ def _serialize_assignment(assignment):
         ld = assignment["lesson_date"]
         result["lesson_date"] = ld.isoformat() if hasattr(ld, "isoformat") else str(ld)
     return result
+
+
+# ── 练习月报生成 API ─────────────────────────────────────────────────────────
+
+@router.get("/api/practice-report/history")
+def api_practice_report_history(year: Optional[int] = None, month: Optional[int] = None):
+    """查询已生成的月报图片"""
+    import datetime as dt
+    with db._get_connection() as conn:
+        cursor = conn.cursor()
+        if year and month:
+            cursor.execute(
+                "SELECT * FROM practice_reports WHERE year=? AND month=? ORDER BY created_at DESC",
+                (year, month)
+            )
+        else:
+            cursor.execute("SELECT * FROM practice_reports ORDER BY year DESC, month DESC, created_at DESC")
+        rows = cursor.fetchall()
+
+    reports = []
+    for row in rows:
+        reports.append({
+            "id": row["id"],
+            "year": row["year"],
+            "month": row["month"],
+            "style": row["style"],
+            "prompt": row["prompt"] or "",
+            "image_url": f"/config/api/practice-report/image/{row['id']}",
+            "created_at": row["created_at"],
+        })
+    return JSONResponse({"reports": reports})
+
+
+@router.get("/api/practice-report/image/{report_id}")
+def api_practice_report_image(report_id: int):
+    """返回月报图片文件"""
+    from fastapi.responses import FileResponse
+    with db._get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT image_path FROM practice_reports WHERE id=?", (report_id,))
+        row = cursor.fetchone()
+    if not row:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    import os
+    if not os.path.exists(row["image_path"]):
+        return JSONResponse({"error": "file missing"}, status_code=404)
+    return FileResponse(row["image_path"], media_type="image/png")
+
+
+@router.post("/api/practice-report/generate")
+async def api_practice_report_generate(request: Request):
+    """生成月报图片（调用 hermes image generation）"""
+    import asyncio
+    import datetime as dt
+    import os
+    import subprocess
+
+    body = json.loads(await request.body())
+    year = body.get("year")
+    month = body.get("month")
+    style = body.get("style", "academic")
+
+    if not year or not month:
+        today = dt.date.today()
+        year = year or today.year
+        month = month or today.month
+
+    # 构建 prompt
+    from src.report_templates import build_monthly_report_prompt
+    prompt, aspect_ratio, data = build_monthly_report_prompt(year, month, style)
+
+    # 调用 hermes 生成图片
+    report_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "data", "reports")
+    os.makedirs(report_dir, exist_ok=True)
+
+    # 用 hermes chat 生成图片
+    query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{prompt}"
+    try:
+        result = subprocess.run(
+            ["hermes", "chat", "-q", query, "-t", "image_gen", "--yolo"],
+            capture_output=True, text=True, timeout=120,
+            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        )
+        output = result.stdout + result.stderr
+
+        # 从输出中提取图片路径
+        image_path = None
+        for line in output.split("\n"):
+            if "MEDIA:" in line:
+                # 提取路径
+                parts = line.split("MEDIA:")
+                if len(parts) > 1:
+                    candidate = parts[1].strip().split()[0]
+                    if os.path.exists(candidate):
+                        image_path = candidate
+                        break
+
+        if not image_path:
+            # 尝试从 output 中找图片路径
+            for line in output.split("\n"):
+                if line.strip().endswith(".png") or line.strip().endswith(".jpg"):
+                    candidate = line.strip()
+                    if os.path.exists(candidate):
+                        image_path = candidate
+                        break
+
+        if not image_path:
+            return JSONResponse({
+                "ok": False,
+                "error": "图片生成失败",
+                "debug": output[:500]
+            }, status_code=500)
+
+        # 复制到 reports 目录
+        import shutil
+        filename = f"{year}-{month:02d}-练习报告-{style}.png"
+        dest_path = os.path.join(report_dir, filename)
+        shutil.copy2(image_path, dest_path)
+
+        # 记录到数据库
+        with db._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO practice_reports (year, month, style, prompt, image_path) VALUES (?, ?, ?, ?, ?)",
+                (year, month, style, prompt, dest_path)
+            )
+            report_id = cursor.lastrowid
+
+        return JSONResponse({
+            "ok": True,
+            "report_id": report_id,
+            "image_url": f"/config/api/practice-report/image/{report_id}",
+            "year": year,
+            "month": month,
+            "style": style,
+        })
+
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"ok": False, "error": "生成超时（120秒）"}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
