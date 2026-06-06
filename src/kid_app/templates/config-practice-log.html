@@ -580,7 +580,7 @@
         <div id="reportGenerating" class="card" style="display:none">
           <div style="text-align:center;padding:20px">
             <div class="braille-spinner" style="margin:0 auto 12px"></div>
-            <p style="color:#7F8C8D">正在生成月报图片，请稍候...</p>
+            <p id="reportGeneratingStatus" style="color:#7F8C8D">正在生成月报图片，请稍候...</p>
           </div>
         </div>
 
@@ -964,28 +964,52 @@ document.getElementById('generateReportBtn').addEventListener('click', async () 
   document.getElementById('reportGenerating').style.display = 'block';
   document.getElementById('reportResult').style.display = 'none';
   document.getElementById('generateReportBtn').disabled = true;
+  const statusEl = document.getElementById('reportGeneratingStatus');
+  statusEl.textContent = '正在准备...';
 
   try {
-    const res = await fetch('/config/api/practice-report/generate', {
+    // 使用 SSE 流式获取状态
+    const response = await fetch('/config/api/practice-report/generate', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({year, month, style}),
     });
-    const data = await res.json();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    document.getElementById('reportGenerating').style.display = 'none';
-    document.getElementById('generateReportBtn').disabled = false;
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
 
-    if (data.ok) {
-      showReportResult(data);
-      loadReportHistory();
-    } else {
-      alert('生成失败：' + (data.error || '未知错误'));
+      buffer += decoder.decode(value, {stream: true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'status') {
+              statusEl.textContent = event.message;
+            } else if (event.type === 'error') {
+              statusEl.textContent = '❌ ' + event.message;
+              document.getElementById('generateReportBtn').disabled = false;
+              return;
+            } else if (event.type === 'done') {
+              statusEl.textContent = '✅ 生成完成！';
+              showReportResult(event.data);
+              loadReportHistory();
+              document.getElementById('generateReportBtn').disabled = false;
+              return;
+            }
+          } catch(e) { }
+        }
+      }
     }
   } catch(e) {
-    document.getElementById('reportGenerating').style.display = 'none';
+    statusEl.textContent = '❌ 请求失败：' + e.message;
     document.getElementById('generateReportBtn').disabled = false;
-    alert('请求失败：' + e.message);
   }
 });
 
