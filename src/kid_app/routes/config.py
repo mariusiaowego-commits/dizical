@@ -740,3 +740,134 @@ async def api_set_blindbox_theme(request: Request):
 
     db.set_setting(ACTIVE_THEME_SETTING_KEY, slug)
     return JSONResponse({"ok": True, "active": slug})
+
+
+# ── 练习记录管理 API ─────────────────────────────────────────────────────────
+
+@router.get("/practice-log", response_class=HTMLResponse)
+def config_practice_log():
+    """练习记录管理页面"""
+    from src.kid_app.app import render
+    return render("config-practice-log", active_nav="portal")
+
+
+@router.get("/api/practice-week")
+def api_practice_week(date_str: Optional[str] = None):
+    """本周练习数据（汇总 + 每天明细）"""
+    import datetime as dt
+    if date_str:
+        anchor = dt.date.fromisoformat(date_str)
+    else:
+        anchor = dt.date.today()
+    week_start = practice_module.get_week_start(anchor)
+    summary = practice_module.get_week_summary(week_start)
+    days = practice_module.get_week_days(week_start)
+
+    # 序列化 date 对象
+    days_serialized = {}
+    for key, day in days.items():
+        days_serialized[key] = {
+            **day,
+            "date": day["date"].isoformat() if hasattr(day["date"], "isoformat") else str(day["date"]),
+        }
+
+    return JSONResponse({
+        "week_start": week_start.isoformat(),
+        "week_end": summary["week_end"].isoformat(),
+        "total_minutes": summary["total_minutes"],
+        "practice_days": summary["practice_days"],
+        "item_totals": summary["item_totals"],
+        "assignment": _serialize_assignment(summary["assignment"]),
+        "days": days_serialized,
+    })
+
+
+@router.get("/api/assignments")
+def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
+    """查询历史老师要求"""
+    assignments = practice_module.query_assignments(weeks=weeks)
+    result = []
+    for a in assignments:
+        entry = {
+            "lesson_date": a["lesson_date"].isoformat() if hasattr(a["lesson_date"], "isoformat") else str(a["lesson_date"]),
+            "items": a["items"],
+            "notes": a.get("notes", ""),
+        }
+        if item:
+            matched = [it for it in a["items"] if item in it.get("item", "")]
+            if not matched:
+                continue
+            entry["items"] = matched
+        result.append(entry)
+    # 最新课在前
+    result.sort(key=lambda x: x["lesson_date"], reverse=True)
+    return JSONResponse({"assignments": result})
+
+
+@router.post("/api/assignments")
+async def api_create_assignment(request: Request):
+    """录入老师要求"""
+    body = json.loads(await request.body())
+    lesson_date_str = body.get("lesson_date")
+    items = body.get("items", [])  # [{item, item_id, requirement}]
+    notes = body.get("notes", "")
+
+    if not lesson_date_str:
+        # 自动推算最近已上课日期
+        from src.models import LessonStatus
+        lessons = db.get_all_lessons()
+        attended = [l for l in lessons if l.status == LessonStatus.ATTENDED]
+        if attended:
+            lesson_date = max(attended, key=lambda l: l.date).date
+        else:
+            return JSONResponse({"ok": False, "error": "无已上课记录，请指定 lesson_date"}, status_code=400)
+    else:
+        import datetime as dt
+        lesson_date = dt.date.fromisoformat(lesson_date_str)
+
+    if not items:
+        return JSONResponse({"ok": False, "error": "请提供练习项目和要求"}, status_code=400)
+
+    # 格式化 items
+    formatted = []
+    for it in items:
+        formatted.append({
+            "item": it.get("item", ""),
+            "item_id": it.get("item_id"),
+            "requirements": it.get("requirement", it.get("requirements", "")),
+        })
+
+    db.save_weekly_assignment(lesson_date, formatted, notes=notes or None)
+    return JSONResponse({"ok": True, "lesson_date": lesson_date.isoformat()})
+
+
+@router.get("/api/practice-month-summary")
+def api_practice_month_summary(year: Optional[int] = None, month: Optional[int] = None):
+    """月度练习汇总（用于月报生成）"""
+    import datetime as dt
+    today = dt.date.today()
+    year = year or today.year
+    month = month or today.month
+    data = practice_module.get_month_summary(year, month)
+    return JSONResponse({
+        "year": year,
+        "month": month,
+        "total_minutes": data["total_minutes"],
+        "practice_days": data["practice_days"],
+        "item_totals": data["item_totals"],
+        "daily_minutes": data.get("daily_minutes", {}),
+    })
+
+
+def _serialize_assignment(assignment):
+    """序列化 weekly_assignment 对象"""
+    if not assignment:
+        return None
+    result = {
+        "items": assignment.get("items", []),
+        "notes": assignment.get("notes", ""),
+    }
+    if "lesson_date" in assignment:
+        ld = assignment["lesson_date"]
+        result["lesson_date"] = ld.isoformat() if hasattr(ld, "isoformat") else str(ld)
+    return result
