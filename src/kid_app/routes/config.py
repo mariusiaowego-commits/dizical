@@ -922,11 +922,12 @@ def api_practice_report_image(report_id: int):
 
 @router.post("/api/practice-report/generate")
 async def api_practice_report_generate(request: Request):
-    """生成月报图片（调用 hermes image generation）"""
-    import asyncio
+    """生成月报图片（SSE 流式状态输出）"""
     import datetime as dt
     import os
-    import subprocess
+    import urllib.request
+    from pathlib import Path
+    from fastapi.responses import StreamingResponse
 
     body = json.loads(await request.body())
     year = body.get("year")
@@ -938,77 +939,128 @@ async def api_practice_report_generate(request: Request):
         year = year or today.year
         month = month or today.month
 
-    # 构建 prompt
-    from src.report_templates import build_monthly_report_prompt
-    prompt, aspect_ratio, data = build_monthly_report_prompt(year, month, style)
+    # 项目根目录
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-    # 调用 hermes 生成图片
-    report_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "data", "reports")
-    os.makedirs(report_dir, exist_ok=True)
+    async def generate_stream():
+        import asyncio
+        import threading
+        import queue
 
-    # 用 hermes chat 生成图片
-    query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{prompt}"
-    try:
-        result = subprocess.run(
-            ["hermes", "chat", "-q", query, "-t", "image_gen", "--yolo"],
-            capture_output=True, text=True, timeout=120,
-            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        )
-        output = result.stdout + result.stderr
+        result_queue = queue.Queue()
 
-        # 从输出中提取图片路径
-        image_path = None
-        for line in output.split("\n"):
-            if "MEDIA:" in line:
-                # 提取路径
-                parts = line.split("MEDIA:")
-                if len(parts) > 1:
-                    candidate = parts[1].strip().split()[0]
-                    if os.path.exists(candidate):
-                        image_path = candidate
+        def run_generation():
+            try:
+                # 步骤 1: 构建 prompt
+                result_queue.put(("status", "构建 prompt..."))
+                from src.report_templates import build_monthly_report_prompt
+                prompt, aspect_ratio, data = build_monthly_report_prompt(year, month, style)
+                result_queue.put(("status", f"Prompt 已构建（{len(prompt)} 字符），开始调用 AI 绘图..."))
+
+                # 步骤 2: 调用 image_generate
+                # 用 hermes chat 调用 image_generate（通过 Nous subscription）
+                import subprocess
+                result_queue.put(("status", "正在调用 hermes + FAL gpt-image-2 生成图片，约需 30-60 秒..."))
+                query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{prompt}"
+                proc = subprocess.run(
+                    ["hermes", "chat", "-q", query, "-t", "image_gen", "--yolo", "-Q"],
+                    capture_output=True, text=True, timeout=120,
+                    cwd=project_root,
+                )
+                output = proc.stdout.strip()
+                result_queue.put(("status", "hermes 返回，解析结果..."))
+
+                # 从输出中提取图片路径或 URL
+                image_source = None
+                for line in output.split("\n"):
+                    line = line.strip()
+                    if "MEDIA:" in line:
+                        parts = line.split("MEDIA:")
+                        if len(parts) > 1:
+                            candidate = parts[1].strip().split()[0]
+                            if os.path.exists(candidate):
+                                image_source = candidate
+                                break
+                    if line.startswith("http") and (".png" in line or ".jpg" in line or "fal" in line):
+                        image_source = line
                         break
+                    if line.startswith("/") and (line.endswith(".png") or line.endswith(".jpg")):
+                        if os.path.exists(line):
+                            image_source = line
+                            break
 
-        if not image_path:
-            # 尝试从 output 中找图片路径
-            for line in output.split("\n"):
-                if line.strip().endswith(".png") or line.strip().endswith(".jpg"):
-                    candidate = line.strip()
-                    if os.path.exists(candidate):
-                        image_path = candidate
-                        break
+                if not image_source:
+                    result_queue.put(("error", f"未找到图片。hermes 输出:\n{output[:300]}"))
+                    return
 
-        if not image_path:
-            return JSONResponse({
-                "ok": False,
-                "error": "图片生成失败",
-                "debug": output[:500]
-            }, status_code=500)
+                result_queue.put(("status", "图片已获取，正在保存..."))
 
-        # 复制到 reports 目录
-        import shutil
-        filename = f"{year}-{month:02d}-练习报告-{style}.png"
-        dest_path = os.path.join(report_dir, filename)
-        shutil.copy2(image_path, dest_path)
+                # 步骤 3: 保存到本地
+                report_dir = os.path.join(project_root, "data", "reports")
+                os.makedirs(report_dir, exist_ok=True)
+                filename = f"{year}-{month:02d}-练习报告-{style}.png"
+                dest_path = os.path.join(report_dir, filename)
 
-        # 记录到数据库
-        with db._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO practice_reports (year, month, style, prompt, image_path) VALUES (?, ?, ?, ?, ?)",
-                (year, month, style, prompt, dest_path)
-            )
-            report_id = cursor.lastrowid
+                if image_source.startswith("http"):
+                    urllib.request.urlretrieve(image_source, dest_path)
+                elif os.path.exists(image_source):
+                    import shutil
+                    shutil.copy2(image_source, dest_path)
+                else:
+                    result_queue.put(("error", f"图片路径无效: {image_source}"))
+                    return
 
-        return JSONResponse({
-            "ok": True,
-            "report_id": report_id,
-            "image_url": f"/config/api/practice-report/image/{report_id}",
-            "year": year,
-            "month": month,
-            "style": style,
-        })
+                result_queue.put(("status", "图片已保存，正在记录到数据库..."))
 
-    except subprocess.TimeoutExpired:
-        return JSONResponse({"ok": False, "error": "生成超时（120秒）"}, status_code=500)
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+                # 步骤 4: 记录到数据库
+                with db._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO practice_reports (year, month, style, prompt, image_path) VALUES (?, ?, ?, ?, ?)",
+                        (year, month, style, prompt, dest_path)
+                    )
+                    report_id = cursor.lastrowid
+
+                result_queue.put(("done", {
+                    "ok": True,
+                    "report_id": report_id,
+                    "image_url": f"/config/api/practice-report/image/{report_id}",
+                    "year": year,
+                    "month": month,
+                    "style": style,
+                }))
+
+            except Exception as e:
+                result_queue.put(("error", str(e)))
+
+        # 在后台线程运行
+        thread = threading.Thread(target=run_generation)
+        thread.start()
+
+        # 流式输出状态
+        while True:
+            try:
+                msg_type, msg_data = result_queue.get(timeout=120)
+                if msg_type == "status":
+                    yield f"data: {json.dumps({'type': 'status', 'message': msg_data})}\n\n"
+                elif msg_type == "error":
+                    yield f"data: {json.dumps({'type': 'error', 'message': msg_data})}\n\n"
+                    break
+                elif msg_type == "done":
+                    yield f"data: {json.dumps({'type': 'done', 'data': msg_data})}\n\n"
+                    break
+            except queue.Empty:
+                yield f"data: {json.dumps({'type': 'error', 'message': '生成超时（120秒）'})}\n\n"
+                break
+
+        thread.join(timeout=5)
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
