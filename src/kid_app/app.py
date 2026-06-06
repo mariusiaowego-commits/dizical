@@ -728,7 +728,9 @@ def _daily_blindbox_html():
              data-img="{_html.escape(image)}"
              data-locked="{locked_flag}"
              onclick="openModal(this)">
-          <img src="{image}" alt="{name}" class="blindbox-img">
+          <div class="blindbox-img-wrap">
+            <img src="{image}" alt="{name}" class="blindbox-img">
+          </div>
           <div class="blindbox-day-label">第{day}天</div>
         </div>
         """
