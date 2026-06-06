@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>练习记录管理 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+      --sidebar-width: 220px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .page-layout {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── 左侧边栏 ── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: white;
+      border-right: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .sidebar-header h2 {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0 0 10px;
+    }
+
+    .sidebar-header .back-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #7F8C8D;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-header .back-link:hover {
+      background: rgba(0,0,0,0.04);
+      color: var(--text);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .tab-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 14px;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      color: var(--text);
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+
+    .tab-item:hover { background: rgba(168,213,186,0.15); }
+
+    .tab-item.active {
+      background: var(--lavender);
+      color: white;
+      box-shadow: 0 3px 12px rgba(197,184,217,0.4);
+    }
+
+    .tab-item .tab-icon { font-size: 18px; }
+    .tab-item .tab-label { font-weight: 500; }
+
+    /* ── 右侧主内容 ── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .content-header {
+      padding: 20px 28px 14px;
+      background: white;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-header h1 {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .content-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 28px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── 通用组件 ── */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+
+    .card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--sage);
+      color: white;
+    }
+
+    .btn-primary:hover { transform: scale(1.03); }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .btn-secondary:hover { background: rgba(0,0,0,0.03); }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #7F8C8D;
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.1);
+      font-size: 14px;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--sage);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-green { background: rgba(168,213,186,0.2); color: #2E7D32; }
+    .badge-blue { background: rgba(100,181,246,0.2); color: #1565C0; }
+    .badge-orange { background: rgba(255,183,77,0.2); color: #E65100; }
+    .badge-grey { background: rgba(0,0,0,0.06); color: #7F8C8D; }
+
+    /* ── 周视图 ── */
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .week-day {
+      background: white;
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+      min-height: 80px;
+      transition: all 0.2s;
+    }
+
+    .week-day.today {
+      border: 2px solid var(--sage);
+    }
+
+    .week-day.future {
+      opacity: 0.4;
+    }
+
+    .week-day .day-label {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-bottom: 4px;
+    }
+
+    .week-day .day-date {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .week-day .day-minutes {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--sage);
+    }
+
+    .week-day .day-minutes.zero {
+      color: #ccc;
+      font-size: 14px;
+    }
+
+    /* ── 项目分布条 ── */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .bar-label {
+      width: 80px;
+      font-size: 13px;
+      color: var(--text);
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 20px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--sage);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+
+    .bar-value {
+      width: 60px;
+      font-size: 13px;
+      color: #7F8C8D;
+      flex-shrink: 0;
+    }
+
+    /* ── 老师要求列表 ── */
+    .assignment-card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      border-left: 4px solid var(--lavender);
+    }
+
+    .assignment-date {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--lavender);
+      margin-bottom: 8px;
+    }
+
+    .assignment-item {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .assignment-item .item-name {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .assignment-item .item-req {
+      color: #7F8C8D;
+      font-size: 13px;
+    }
+
+    .assignment-notes {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* ── 录入行 ── */
+    .log-entry-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .log-entry-row .item-select {
+      flex: 2;
+    }
+
+    .log-entry-row .minutes-input {
+      width: 80px;
+      flex-shrink: 0;
+    }
+
+    .log-entry-row .remove-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,107,107,0.1);
+      color: #FF6B6B;
+      cursor: pointer;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .log-entry-row .remove-btn:hover {
+      background: rgba(255,107,107,0.2);
+    }
+
+    /* ── 月报预览 ── */
+    .report-preview {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .report-preview .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .report-preview .stat-box {
+      background: var(--cream);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .report-preview .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .report-preview .stat-label {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-top: 4px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #7F8C8D;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #7F8C8D;
+    }
+
+    /* ── 响应式 ── */
+    @media (max-width: 768px) {
+      .page-layout { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid rgba(0,0,0,0.08); }
+      .sidebar-content { padding: 8px; }
+      .tab-list { flex-direction: row; overflow-x: auto; gap: 6px; }
+      .tab-item { white-space: nowrap; padding: 10px 14px; }
+      .week-grid { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+      .week-day { padding: 8px; min-height: 60px; }
+      .content-body { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-layout">
+
+  <!-- 左侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>📝 练习记录</h2>
+      <a href="/config" class="back-link">← 配置管理台</a>
+    </div>
+    <div class="sidebar-content">
+      <div class="tab-list">
+        <button class="tab-item active" data-tab="log">
+          <span class="tab-icon">✏️</span>
+          <span class="tab-label">录入练习</span>
+        </button>
+        <button class="tab-item" data-tab="assign">
+          <span class="tab-icon">📋</span>
+          <span class="tab-label">老师要求</span>
+        </button>
+        <button class="tab-item" data-tab="week">
+          <span class="tab-icon">📅</span>
+          <span class="tab-label">本周总览</span>
+        </button>
+        <button class="tab-item" data-tab="report">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">月报生成</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧主内容 -->
+  <main class="main-content">
+    <div class="content-header">
+      <h1 id="panelTitle">✏️ 录入练习</h1>
+    </div>
+    <div class="content-body">
+
+      <!-- Tab 1: 录入练习 -->
+      <section id="tab-log" class="tab-panel active">
+        <div class="card">
+          <h3>今日练习</h3>
+          <div class="form-group">
+            <label>日期</label>
+            <input type="date" class="form-input" id="logDate">
+          </div>
+          <div id="logEntries">
+            <!-- 动态生成 -->
+          </div>
+          <button class="btn btn-secondary" id="addEntryBtn" style="margin-bottom:14px">+ 添加科目</button>
+          <div class="form-group">
+            <label>练习备注</label>
+            <textarea class="form-textarea" id="logNote" placeholder="今天练习的感受..."></textarea>
+          </div>
+          <button class="btn btn-primary" id="submitLogBtn">✅ 提交练习</button>
+        </div>
+
+        <div class="card" id="todayHistory" style="display:none">
+          <h3>今日已录入</h3>
+          <div id="todayHistoryContent"></div>
+        </div>
+      </section>
+
+      <!-- Tab 2: 老师要求 -->
+      <section id="tab-assign" class="tab-panel">
+        <div class="card">
+          <h3>录入老师要求</h3>
+          <div class="form-group">
+            <label>上课日期（留空自动推算最近已上课）</label>
+            <input type="date" class="form-input" id="assignDate">
+          </div>
+          <div id="assignEntries">
+            <!-- 动态生成 -->
+          </div>
+          <button class="btn btn-secondary" id="addAssignEntryBtn" style="margin-bottom:14px">+ 添加科目要求</button>
+          <div class="form-group">
+            <label>老师补充说明</label>
+            <textarea class="form-textarea" id="assignNotes" placeholder="老师说的其他注意事项..."></textarea>
+          </div>
+          <button class="btn btn-primary" id="submitAssignBtn">✅ 提交要求</button>
+        </div>
+
+        <div class="card">
+          <h3>历史老师要求</h3>
+          <div id="assignmentsList" class="loading">加载中...</div>
+        </div>
+      </section>
+
+      <!-- Tab 3: 本周总览 -->
+      <section id="tab-week" class="tab-panel">
+        <div class="card">
+          <h3>本周练习日历</h3>
+          <div id="weekStats" style="margin-bottom:16px"></div>
+          <div id="weekGrid" class="week-grid"></div>
+        </div>
+
+        <div class="card">
+          <h3>项目分布</h3>
+          <div id="itemBars"></div>
+        </div>
+
+        <div class="card" id="weekAssignmentCard" style="display:none">
+          <h3>本周老师要求</h3>
+          <div id="weekAssignment"></div>
+        </div>
+      </section>
+
+      <!-- Tab 4: 月报生成 -->
+      <section id="tab-report" class="tab-panel">
+        <div class="card">
+          <h3>选择月份</h3>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px">
+            <input type="month" class="form-input" id="reportMonth" style="width:auto">
+            <select class="form-select" id="reportStyle" style="width:auto">
+              <option value="academic">学术风格</option>
+              <option value="cute">可爱风格</option>
+              <option value="minimal">极简风格</option>
+              <option value="vintage">复古风格</option>
+            </select>
+            <button class="btn btn-primary" id="loadReportBtn">📊 加载数据</button>
+          </div>
+        </div>
+
+        <div id="reportPreview" style="display:none">
+          <div class="report-preview">
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-value" id="reportDays">0</div>
+                <div class="stat-label">练习天数</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="reportMinutes">0</div>
+                <div class="stat-label">总分钟数</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="reportAvg">0</div>
+                <div class="stat-label">日均分钟</div>
+              </div>
+            </div>
+            <div id="reportItems"></div>
+            <p style="color:#7F8C8D;font-size:13px;margin-top:16px">
+              💡 图片生成功能需通过 alcove profile 使用「生成YYYY年M月练习报告」指令
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ── 状态 ──
+let practiceItems = [];
+let logEntries = [];
+let assignEntries = [];
+
+// ── Tab 切换 ──
+const tabs = document.querySelectorAll('.tab-item');
+const panels = document.querySelectorAll('.tab-panel');
+const titleMap = {
+  'log': '✏️ 录入练习',
+  'assign': '📋 老师要求',
+  'week': '📅 本周总览',
+  'report': '📊 月报生成',
+};
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    tabs.forEach(t => t.classList.remove('active'));
+    panels.forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + target).classList.add('active');
+    document.getElementById('panelTitle').textContent = titleMap[target] || '';
+
+    // 切换时加载数据
+    if (target === 'week') loadWeek();
+    if (target === 'assign') loadAssignments();
+    if (target === 'log') loadTodayHistory();
+  });
+});
+
+// ── 加载练习科目列表 ──
+async function loadItems() {
+  const res = await fetch('/config/api/practice/items?include_archived=false');
+  const data = await res.json();
+  practiceItems = data.items || [];
+}
+
+// ── 日期默认今天 ──
+function setDefaultDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('logDate').value = today;
+}
+
+// ══════════════════════════════════════════════════
+// Tab 1: 录入练习
+// ══════════════════════════════════════════════════
+
+function renderLogEntries() {
+  const container = document.getElementById('logEntries');
+  container.innerHTML = '';
+  logEntries.forEach((entry, i) => {
+    const row = document.createElement('div');
+    row.className = 'log-entry-row';
+    row.innerHTML = `
+      <select class="form-select item-select" data-idx="${i}">
+        <option value="">选择科目...</option>
+        ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
+      </select>
+      <input type="number" class="form-input minutes-input" data-idx="${i}" placeholder="分钟" value="${entry.minutes || ''}" min="1">
+      <button class="remove-btn" data-idx="${i}">×</button>
+    `;
+    container.appendChild(row);
+  });
+
+  // 绑定事件
+  container.querySelectorAll('.item-select').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      logEntries[idx].item_id = parseInt(e.target.value);
+      const item = practiceItems.find(it => it.item_id == e.target.value);
+      logEntries[idx].item = item ? item.name : '';
+    });
+  });
+  container.querySelectorAll('.minutes-input').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      logEntries[idx].minutes = parseInt(e.target.value) || 0;
+    });
+  });
+  container.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      logEntries.splice(idx, 1);
+      renderLogEntries();
+    });
+  });
+}
+
+document.getElementById('addEntryBtn').addEventListener('click', () => {
+  logEntries.push({ item_id: null, item: '', minutes: 0 });
+  renderLogEntries();
+});
+
+document.getElementById('submitLogBtn').addEventListener('click', async () => {
+  const date = document.getElementById('logDate').value;
+  const note = document.getElementById('logNote').value;
+  const validEntries = logEntries.filter(e => e.item_id && e.minutes > 0);
+
+  if (!validEntries.length) {
+    alert('请添加至少一个练习科目');
+    return;
+  }
+
+  for (const entry of validEntries) {
+    await fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        item: entry.item,
+        item_id: entry.item_id,
+        minutes: entry.minutes,
+        log: note,
+      }),
+    });
+  }
+
+  logEntries = [];
+  renderLogEntries();
+  document.getElementById('logNote').value = '';
+  loadTodayHistory();
+  alert('✅ 练习已录入');
+});
+
+async function loadTodayHistory() {
+  const date = document.getElementById('logDate').value;
+  if (!date) return;
+  try {
+    const res = await fetch(`/api/practices/${date}`);
+    const data = await res.json();
+    const card = document.getElementById('todayHistory');
+    const content = document.getElementById('todayHistoryContent');
+    if (data.items && data.items.length) {
+      card.style.display = 'block';
+      content.innerHTML = data.items.map(it =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
+          <span>${it.item}</span>
+          <span class="badge badge-green">${it.minutes} 分钟</span>
+        </div>`
+      ).join('') + (data.log ? `<p style="color:#7F8C8D;font-size:13px;margin-top:8px">📝 ${data.log}</p>` : '');
+    } else {
+      card.style.display = 'none';
+    }
+  } catch(e) {
+    // 静默失败
+  }
+}
+
+// ══════════════════════════════════════════════════
+// Tab 2: 老师要求
+// ══════════════════════════════════════════════════
+
+function renderAssignEntries() {
+  const container = document.getElementById('assignEntries');
+  container.innerHTML = '';
+  assignEntries.forEach((entry, i) => {
+    const row = document.createElement('div');
+    row.className = 'log-entry-row';
+    row.innerHTML = `
+      <select class="form-select item-select" data-idx="${i}">
+        <option value="">选择科目...</option>
+        ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
+      </select>
+      <input type="text" class="form-input" data-idx="${i}" placeholder="要求（如♩=82）" value="${entry.requirement || ''}" style="flex:2">
+      <button class="remove-btn" data-idx="${i}">×</button>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll('.item-select').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      assignEntries[idx].item_id = parseInt(e.target.value);
+      const item = practiceItems.find(it => it.item_id == e.target.value);
+      assignEntries[idx].item = item ? item.name : '';
+    });
+  });
+  container.querySelectorAll('input[type=text]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      assignEntries[idx].requirement = e.target.value;
+    });
+  });
+  container.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      assignEntries.splice(idx, 1);
+      renderAssignEntries();
+    });
+  });
+}
+
+document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
+  assignEntries.push({ item_id: null, item: '', requirement: '' });
+  renderAssignEntries();
+});
+
+document.getElementById('submitAssignBtn').addEventListener('click', async () => {
+  const lessonDate = document.getElementById('assignDate').value || null;
+  const notes = document.getElementById('assignNotes').value;
+  const validEntries = assignEntries.filter(e => e.item_id && e.requirement);
+
+  if (!validEntries.length) {
+    alert('请添加至少一个科目要求');
+    return;
+  }
+
+  const res = await fetch('/config/api/assignments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lesson_date: lessonDate,
+      items: validEntries.map(e => ({ item: e.item, item_id: e.item_id, requirement: e.requirement })),
+      notes,
+    }),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    assignEntries = [];
+    renderAssignEntries();
+    document.getElementById('assignNotes').value = '';
+    loadAssignments();
+    alert('✅ 老师要求已录入');
+  } else {
+    alert('❌ ' + (data.error || '录入失败'));
+  }
+});
+
+async function loadAssignments() {
+  const container = document.getElementById('assignmentsList');
+  container.innerHTML = '<div class="loading">加载中...</div>';
+  try {
+    const res = await fetch('/config/api/assignments?weeks=8');
+    const data = await res.json();
+    if (!data.assignments || !data.assignments.length) {
+      container.innerHTML = '<div class="empty-state">暂无老师要求记录</div>';
+      return;
+    }
+    container.innerHTML = data.assignments.map(a => `
+      <div class="assignment-card">
+        <div class="assignment-date">📅 ${a.lesson_date}</div>
+        ${a.items.map(it => `
+          <div class="assignment-item">
+            <span class="item-name">${it.item}</span>
+            <span class="item-req">${it.requirement || it.requirements || ''}</span>
+          </div>
+        `).join('')}
+        ${a.notes ? `<div class="assignment-notes">💬 ${a.notes}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════
+// Tab 3: 本周总览
+// ══════════════════════════════════════════════════
+
+async function loadWeek() {
+  try {
+    const res = await fetch('/config/api/practice-week');
+    const data = await res.json();
+
+    // 统计
+    document.getElementById('weekStats').innerHTML = `
+      <span class="badge badge-green">练习 ${data.practice_days}/7 天</span>
+      <span class="badge badge-blue">总计 ${data.total_minutes} 分钟</span>
+      <span class="badge badge-orange">日均 ${data.practice_days ? Math.round(data.total_minutes / data.practice_days) : 0} 分钟</span>
+    `;
+
+    // 日历网格
+    const dayNames = ['一', '二', '三', '四', '五', '六', '日'];
+    const grid = document.getElementById('weekGrid');
+    grid.innerHTML = '';
+    const startDate = new Date(data.week_start);
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().split('T')[0];
+      const day = data.days[key] || {};
+      const isToday = day.is_today;
+      const isFuture = day.is_future;
+      const mins = day.total_minutes || 0;
+
+      const cell = document.createElement('div');
+      cell.className = `week-day ${isToday ? 'today' : ''} ${isFuture ? 'future' : ''}`;
+      cell.innerHTML = `
+        <div class="day-label">${dayNames[i]}</div>
+        <div class="day-date">${d.getMonth()+1}/${d.getDate()}</div>
+        <div class="day-minutes ${mins === 0 ? 'zero' : ''}">${isFuture ? '-' : (mins ? mins + "'" : '—')}</div>
+      `;
+      grid.appendChild(cell);
+    }
+
+    // 项目分布
+    const bars = document.getElementById('itemBars');
+    if (data.item_totals && Object.keys(data.item_totals).length) {
+      const total = Object.values(data.item_totals).reduce((a, b) => a + b, 0);
+      const sorted = Object.entries(data.item_totals).sort((a, b) => b[1] - a[1]);
+      bars.innerHTML = sorted.map(([name, mins]) => {
+        const pct = total > 0 ? (mins / total * 100) : 0;
+        return `
+          <div class="bar-row">
+            <span class="bar-label">${name}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <span class="bar-value">${mins}' (${pct.toFixed(0)}%)</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      bars.innerHTML = '<div class="empty-state">本周暂无练习数据</div>';
+    }
+
+    // 老师要求
+    const assignCard = document.getElementById('weekAssignmentCard');
+    const assignDiv = document.getElementById('weekAssignment');
+    if (data.assignment && data.assignment.items && data.assignment.items.length) {
+      assignCard.style.display = 'block';
+      assignDiv.innerHTML = data.assignment.items.map(it =>
+        `<div class="assignment-item">
+          <span class="item-name">${it.item}</span>
+          <span class="item-req">${it.requirement || it.requirements || ''}</span>
+        </div>`
+      ).join('');
+    } else {
+      assignCard.style.display = 'none';
+    }
+  } catch(e) {
+    document.getElementById('weekGrid').innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════
+// Tab 4: 月报生成
+// ══════════════════════════════════════════════════
+
+document.getElementById('loadReportBtn').addEventListener('click', async () => {
+  const yearMonth = document.getElementById('reportDate')?.value;
+  // 从 input[type=month] 获取
+  const ym = document.querySelector('#tab-report input[type="month"]');
+  let year, month;
+  if (ym && ym.value) {
+    [year, month] = ym.value.split('-');
+  } else {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth() + 1;
+  }
+
+  try {
+    const res = await fetch(`/config/api/practice-month-summary?year=${year}&month=${month}`);
+    const data = await res.json();
+
+    document.getElementById('reportDays').textContent = data.practice_days;
+    document.getElementById('reportMinutes').textContent = data.total_minutes;
+    document.getElementById('reportAvg').textContent = data.practice_days ? Math.round(data.total_minutes / data.practice_days) : 0;
+
+    const itemsDiv = document.getElementById('reportItems');
+    if (data.item_totals && Object.keys(data.item_totals).length) {
+      const total = Object.values(data.item_totals).reduce((a, b) => a + b, 0);
+      const sorted = Object.entries(data.item_totals).sort((a, b) => b[1] - a[1]);
+      itemsDiv.innerHTML = '<h3 style="text-align:left;margin:16px 0 8px">项目分布</h3>' +
+        sorted.map(([name, mins]) => {
+          const pct = total > 0 ? (mins / total * 100) : 0;
+          return `
+            <div class="bar-row">
+              <span class="bar-label">${name}</span>
+              <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+              <span class="bar-value">${mins}' (${pct.toFixed(0)}%)</span>
+            </div>
+          `;
+        }).join('');
+    } else {
+      itemsDiv.innerHTML = '<div class="empty-state">当月无练习数据</div>';
+    }
+
+    document.getElementById('reportPreview').style.display = 'block';
+  } catch(e) {
+    alert('加载失败');
+  }
+});
+
+// ── 初始化 ──
+(async function init() {
+  setDefaultDate();
+  await loadItems();
+  renderLogEntries();
+  renderAssignEntries();
+  loadTodayHistory();
+})();
+</script>
+
+</body>
+</html>
