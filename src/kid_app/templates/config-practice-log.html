@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>练习记录管理 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
   <style>
     :root {
       --cream: #f5e6d3;
@@ -477,10 +475,6 @@
           <span class="tab-icon">📅</span>
           <span class="tab-label">本周总览</span>
         </button>
-        <button class="tab-item" data-tab="report">
-          <span class="tab-icon">📊</span>
-          <span class="tab-label">月报生成</span>
-        </button>
       </div>
     </div>
   </aside>
@@ -561,46 +555,6 @@
         </div>
       </section>
 
-      <!-- Tab 4: 月报生成 -->
-      <section id="tab-report" class="tab-panel">
-        <div class="card">
-          <h3>生成月报图片</h3>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-            <input type="month" class="form-input" id="reportMonth" style="width:auto">
-            <select class="form-select" id="reportStyle" style="width:auto">
-              <option value="academic">学术风格</option>
-              <option value="cute">可爱风格</option>
-              <option value="minimal">极简风格</option>
-              <option value="vintage">复古风格</option>
-            </select>
-            <button class="btn btn-primary" id="generateReportBtn">🎨 生成月报图片</button>
-          </div>
-          <p style="color:#7F8C8D;font-size:12px;margin:0">点击生成后会调用 AI 绘图，约需 30-60 秒</p>
-        </div>
-
-        <!-- 生成中状态 -->
-        <div id="reportGenerating" class="card" style="display:none">
-          <h3>hermes 实时输出</h3>
-          <div id="terminalContainer" style="background:#1e1e1e;border-radius:12px;overflow:hidden;height:400px">
-          </div>
-          <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
-            <span id="reportGeneratingStatus" style="color:#7F8C8D;font-size:13px">准备中...</span>
-            <button class="btn btn-secondary" id="cancelGenerateBtn" style="font-size:12px;padding:6px 12px">取消</button>
-          </div>
-        </div>
-
-        <!-- 最新生成结果 -->
-        <div id="reportResult" class="card" style="display:none">
-          <h3>生成结果</h3>
-          <div id="reportResultContent"></div>
-        </div>
-
-        <!-- 历史生成记录 -->
-        <div class="card">
-          <h3>历史月报</h3>
-          <div id="reportHistory" class="loading">加载中...</div>
-        </div>
-      </section>
 
     </div>
   </main>
@@ -620,7 +574,6 @@ const titleMap = {
   'log': '✏️ 录入练习',
   'assign': '📋 老师要求',
   'week': '📅 本周总览',
-  'report': '📊 月报生成',
 };
 
 tabs.forEach(tab => {
@@ -636,7 +589,6 @@ tabs.forEach(tab => {
     if (target === 'week') loadWeek();
     if (target === 'assign') loadAssignments();
     if (target === 'log') loadTodayHistory();
-    if (target === 'report') loadReportHistory();
   });
 });
 
@@ -945,170 +897,7 @@ async function loadWeek() {
 }
 
 // ══════════════════════════════════════════════════
-// Tab 4: 月报生成
-// ══════════════════════════════════════════════════
 
-// 生成月报图片
-document.getElementById('generateReportBtn').addEventListener('click', async () => {
-  const ym = document.querySelector('#tab-report input[type="month"]');
-  const style = document.getElementById('reportStyle').value;
-  let year, month;
-  if (ym && ym.value) {
-    [year, month] = ym.value.split('-').map(Number);
-  } else {
-    const now = new Date();
-    year = now.getFullYear();
-    month = now.getMonth() + 1;
-  }
-
-  const styleNames = {academic:'学术风格', cute:'可爱风格', minimal:'极简风格', vintage:'复古风格'};
-  const confirmed = confirm(`确认生成 ${year}年${month}月 的练习月报？\n风格：${styleNames[style] || style}\n\n生成约需 30-60 秒`);
-  if (!confirmed) return;
-
-  // 显示 terminal 容器
-  document.getElementById('reportGenerating').style.display = 'block';
-  document.getElementById('reportResult').style.display = 'none';
-  document.getElementById('generateReportBtn').disabled = true;
-  const statusEl = document.getElementById('reportGeneratingStatus');
-  statusEl.textContent = '正在连接...';
- 
-  // 初始化 xterm.js
-  const term = new Terminal({
-    theme: { background: '#1e1e1e', foreground: '#d4d4d4' },
-    fontSize: 13,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    disableStdin: true,
-    convertEol: true,
-  });
-  const container = document.getElementById('terminalContainer');
-  container.innerHTML = '';
-  term.open(container);
-  term.writeln('\x1b[32m✓ 正在启动生成任务...\x1b[0m');
- 
-  // 使用 SSE 流式获取状态和 hermes 输出
-  const response = await fetch('/config/api/practice-report/generate', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({year, month, style}),
-  });
- 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let cancelled = false;
- 
-  // 取消按钮
-  document.getElementById('cancelGenerateBtn').onclick = () => {
-    cancelled = true;
-    reader.cancel();
-    term.writeln('\x1b[33m● 已取消\x1b[0m');
-    statusEl.textContent = '已取消';
-    document.getElementById('generateReportBtn').disabled = false;
-  };
- 
-  try {
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
- 
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
- 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const event = JSON.parse(line.slice(6));
-            if (event.type === 'status') {
-              term.writeln('\x1b[36m● ' + event.message + '\x1b[0m');
-              statusEl.textContent = event.message;
-            } else if (event.type === 'output') {
-              term.writeln(event.message);
-            } else if (event.type === 'error') {
-              term.writeln('\x1b[31m✗ ' + event.message + '\x1b[0m');
-              statusEl.textContent = '❌ ' + event.message;
-              document.getElementById('generateReportBtn').disabled = false;
-              return;
-            } else if (event.type === 'done') {
-              term.writeln('\x1b[32m✓ 生成完成！\x1b[0m');
-              statusEl.textContent = '✅ 生成完成！';
-              document.getElementById('generateReportBtn').disabled = false;
-              loadReportHistory();
-              return;
-            }
-          } catch(e) { }
-        }
-      }
-    }
-  } catch(e) {
-    if (!cancelled) {
-      term.writeln('\x1b[31m✗ 请求失败：' + e.message + '\x1b[0m');
-      statusEl.textContent = '❌ 请求失败';
-    }
-  } finally {
-    document.getElementById('generateReportBtn').disabled = false;
-  }
-  });
-
-function showReportResult(data) {
-  const div = document.getElementById('reportResultContent');
-  div.innerHTML = `
-    <div style="text-align:center">
-      <img src="${data.image_url}" style="max-width:100%;max-height:600px;border-radius:12px;cursor:pointer"
-           onclick="window.open('${data.image_url}', '_blank')" title="点击查看详情">
-    </div>
-    <div style="display:flex;justify-content:center;gap:12px;margin-top:12px">
-      <a href="${data.image_url}" download class="btn btn-secondary">💾 下载图片</a>
-      <button class="btn btn-secondary" onclick="window.open('${data.image_url}', '_blank')">🔍 全屏查看</button>
-    </div>
-  `;
-  document.getElementById('reportResult').style.display = 'block';
-}
-
-async function loadReportHistory() {
-  const container = document.getElementById('reportHistory');
-  try {
-    const res = await fetch('/config/api/practice-report/history');
-    const data = await res.json();
-    if (!data.reports || !data.reports.length) {
-      container.innerHTML = '<div class="empty-state">暂无历史月报</div>';
-      return;
-    }
-
-    // 按月份分组
-    const grouped = {};
-    data.reports.forEach(r => {
-      const key = `${r.year}-${String(r.month).padStart(2,'0')}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(r);
-    });
-
-    const styleNames = {academic:'学术', cute:'可爱', minimal:'极简', vintage:'复古'};
-    let html = '';
-    for (const [ym, reports] of Object.entries(grouped)) {
-      html += `<div style="margin-bottom:16px">
-        <h4 style="font-size:15px;color:#3d3d3d;margin:0 0 8px">${ym}</h4>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
-          ${reports.map(r => `
-            <div style="background:white;border-radius:12px;overflow:hidden;cursor:pointer;border:1px solid rgba(0,0,0,0.06)"
-                 onclick="window.open('${r.image_url}', '_blank')">
-              <img src="${r.image_url}" style="width:100%;height:140px;object-fit:cover">
-              <div style="padding:8px">
-                <div style="font-size:12px;color:#7F8C8D">${styleNames[r.style] || r.style}风格</div>
-                <div style="font-size:11px;color:#aaa">${r.created_at}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>`;
-    }
-    container.innerHTML = html;
-  } catch(e) {
-    container.innerHTML = '<div class="empty-state">加载失败</div>';
-  }
-}
-
-// ── 初始化 ──
 (async function init() {
   setDefaultDate();
   await loadItems();
