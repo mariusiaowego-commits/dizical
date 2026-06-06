@@ -562,8 +562,8 @@
       <!-- Tab 4: 月报生成 -->
       <section id="tab-report" class="tab-panel">
         <div class="card">
-          <h3>选择月份</h3>
-          <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px">
+          <h3>生成月报图片</h3>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
             <input type="month" class="form-input" id="reportMonth" style="width:auto">
             <select class="form-select" id="reportStyle" style="width:auto">
               <option value="academic">学术风格</option>
@@ -571,31 +571,29 @@
               <option value="minimal">极简风格</option>
               <option value="vintage">复古风格</option>
             </select>
-            <button class="btn btn-primary" id="loadReportBtn">📊 加载数据</button>
+            <button class="btn btn-primary" id="generateReportBtn">🎨 生成月报图片</button>
+          </div>
+          <p style="color:#7F8C8D;font-size:12px;margin:0">点击生成后会调用 AI 绘图，约需 30-60 秒</p>
+        </div>
+
+        <!-- 生成中状态 -->
+        <div id="reportGenerating" class="card" style="display:none">
+          <div style="text-align:center;padding:20px">
+            <div class="braille-spinner" style="margin:0 auto 12px"></div>
+            <p style="color:#7F8C8D">正在生成月报图片，请稍候...</p>
           </div>
         </div>
 
-        <div id="reportPreview" style="display:none">
-          <div class="report-preview">
-            <div class="stats-grid">
-              <div class="stat-box">
-                <div class="stat-value" id="reportDays">0</div>
-                <div class="stat-label">练习天数</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value" id="reportMinutes">0</div>
-                <div class="stat-label">总分钟数</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value" id="reportAvg">0</div>
-                <div class="stat-label">日均分钟</div>
-              </div>
-            </div>
-            <div id="reportItems"></div>
-            <p style="color:#7F8C8D;font-size:13px;margin-top:16px">
-              💡 图片生成功能需通过 alcove profile 使用「生成YYYY年M月练习报告」指令
-            </p>
-          </div>
+        <!-- 最新生成结果 -->
+        <div id="reportResult" class="card" style="display:none">
+          <h3>生成结果</h3>
+          <div id="reportResultContent"></div>
+        </div>
+
+        <!-- 历史生成记录 -->
+        <div class="card">
+          <h3>历史月报</h3>
+          <div id="reportHistory" class="loading">加载中...</div>
         </div>
       </section>
 
@@ -633,6 +631,7 @@ tabs.forEach(tab => {
     if (target === 'week') loadWeek();
     if (target === 'assign') loadAssignments();
     if (target === 'log') loadTodayHistory();
+    if (target === 'report') loadReportHistory();
   });
 });
 
@@ -944,51 +943,109 @@ async function loadWeek() {
 // Tab 4: 月报生成
 // ══════════════════════════════════════════════════
 
-document.getElementById('loadReportBtn').addEventListener('click', async () => {
-  const yearMonth = document.getElementById('reportDate')?.value;
-  // 从 input[type=month] 获取
+// 生成月报图片
+document.getElementById('generateReportBtn').addEventListener('click', async () => {
   const ym = document.querySelector('#tab-report input[type="month"]');
+  const style = document.getElementById('reportStyle').value;
   let year, month;
   if (ym && ym.value) {
-    [year, month] = ym.value.split('-');
+    [year, month] = ym.value.split('-').map(Number);
   } else {
     const now = new Date();
     year = now.getFullYear();
     month = now.getMonth() + 1;
   }
 
+  const styleNames = {academic:'学术风格', cute:'可爱风格', minimal:'极简风格', vintage:'复古风格'};
+  const confirmed = confirm(`确认生成 ${year}年${month}月 的练习月报？\n风格：${styleNames[style] || style}\n\n生成约需 30-60 秒`);
+  if (!confirmed) return;
+
+  // 显示生成中状态
+  document.getElementById('reportGenerating').style.display = 'block';
+  document.getElementById('reportResult').style.display = 'none';
+  document.getElementById('generateReportBtn').disabled = true;
+
   try {
-    const res = await fetch(`/config/api/practice-month-summary?year=${year}&month=${month}`);
+    const res = await fetch('/config/api/practice-report/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({year, month, style}),
+    });
     const data = await res.json();
 
-    document.getElementById('reportDays').textContent = data.practice_days;
-    document.getElementById('reportMinutes').textContent = data.total_minutes;
-    document.getElementById('reportAvg').textContent = data.practice_days ? Math.round(data.total_minutes / data.practice_days) : 0;
+    document.getElementById('reportGenerating').style.display = 'none';
+    document.getElementById('generateReportBtn').disabled = false;
 
-    const itemsDiv = document.getElementById('reportItems');
-    if (data.item_totals && Object.keys(data.item_totals).length) {
-      const total = Object.values(data.item_totals).reduce((a, b) => a + b, 0);
-      const sorted = Object.entries(data.item_totals).sort((a, b) => b[1] - a[1]);
-      itemsDiv.innerHTML = '<h3 style="text-align:left;margin:16px 0 8px">项目分布</h3>' +
-        sorted.map(([name, mins]) => {
-          const pct = total > 0 ? (mins / total * 100) : 0;
-          return `
-            <div class="bar-row">
-              <span class="bar-label">${name}</span>
-              <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-              <span class="bar-value">${mins}' (${pct.toFixed(0)}%)</span>
-            </div>
-          `;
-        }).join('');
+    if (data.ok) {
+      showReportResult(data);
+      loadReportHistory();
     } else {
-      itemsDiv.innerHTML = '<div class="empty-state">当月无练习数据</div>';
+      alert('生成失败：' + (data.error || '未知错误'));
     }
-
-    document.getElementById('reportPreview').style.display = 'block';
   } catch(e) {
-    alert('加载失败');
+    document.getElementById('reportGenerating').style.display = 'none';
+    document.getElementById('generateReportBtn').disabled = false;
+    alert('请求失败：' + e.message);
   }
 });
+
+function showReportResult(data) {
+  const div = document.getElementById('reportResultContent');
+  div.innerHTML = `
+    <div style="text-align:center">
+      <img src="${data.image_url}" style="max-width:100%;max-height:600px;border-radius:12px;cursor:pointer"
+           onclick="window.open('${data.image_url}', '_blank')" title="点击查看详情">
+    </div>
+    <div style="display:flex;justify-content:center;gap:12px;margin-top:12px">
+      <a href="${data.image_url}" download class="btn btn-secondary">💾 下载图片</a>
+      <button class="btn btn-secondary" onclick="window.open('${data.image_url}', '_blank')">🔍 全屏查看</button>
+    </div>
+  `;
+  document.getElementById('reportResult').style.display = 'block';
+}
+
+async function loadReportHistory() {
+  const container = document.getElementById('reportHistory');
+  try {
+    const res = await fetch('/config/api/practice-report/history');
+    const data = await res.json();
+    if (!data.reports || !data.reports.length) {
+      container.innerHTML = '<div class="empty-state">暂无历史月报</div>';
+      return;
+    }
+
+    // 按月份分组
+    const grouped = {};
+    data.reports.forEach(r => {
+      const key = `${r.year}-${String(r.month).padStart(2,'0')}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(r);
+    });
+
+    const styleNames = {academic:'学术', cute:'可爱', minimal:'极简', vintage:'复古'};
+    let html = '';
+    for (const [ym, reports] of Object.entries(grouped)) {
+      html += `<div style="margin-bottom:16px">
+        <h4 style="font-size:15px;color:#3d3d3d;margin:0 0 8px">${ym}</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+          ${reports.map(r => `
+            <div style="background:white;border-radius:12px;overflow:hidden;cursor:pointer;border:1px solid rgba(0,0,0,0.06)"
+                 onclick="window.open('${r.image_url}', '_blank')">
+              <img src="${r.image_url}" style="width:100%;height:140px;object-fit:cover">
+              <div style="padding:8px">
+                <div style="font-size:12px;color:#7F8C8D">${styleNames[r.style] || r.style}风格</div>
+                <div style="font-size:11px;color:#aaa">${r.created_at}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
 
 // ── 初始化 ──
 (async function init() {
