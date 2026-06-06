@@ -18,6 +18,34 @@ let DIZICAL_PORT = 8765
 let DIZICAL_HOST = "127.0.0.1"
 let DIZICAL_WORK_DIR = "/Users/mt16/dev/dizical"
 
+// 查找 uvicorn 完整路径（macOS GUI app 的 PATH 不含 /opt/homebrew/bin）
+func findUvicornPath() -> String {
+    let candidates = [
+        "/opt/homebrew/bin/uvicorn",
+        "/usr/local/bin/uvicorn",
+        "/Users/mt16/.local/bin/uvicorn",
+        "/usr/bin/uvicorn"
+    ]
+    for path in candidates {
+        if FileManager.default.isExecutableFile(atPath: path) {
+            return path
+        }
+    }
+    let task = Process()
+    task.executableURL = URL(fileURLWithPath: "/bin/zsh")
+    task.arguments = ["-l", "-c", "which uvicorn"]
+    let pipe = Pipe()
+    task.standardOutput = pipe
+    task.standardError = Pipe()
+    try? task.run()
+    task.waitUntilExit()
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return output.isEmpty ? "/opt/homebrew/bin/uvicorn" : output
+}
+
+let UVICORN_PATH = findUvicornPath()
+
 // ============ 服务状态枚举 ============
 enum ServiceStatus: Equatable {
     case idle           // 空闲
@@ -127,9 +155,8 @@ class ServiceManager: ObservableObject {
         
         // 创建进程
         let newProcess = Process()
-        newProcess.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        newProcess.executableURL = URL(fileURLWithPath: UVICORN_PATH)
         newProcess.arguments = [
-            "uvicorn",
             "src.kid_app.app:app",
             "--host", DIZICAL_HOST,
             "--port", "\(DIZICAL_PORT)",
