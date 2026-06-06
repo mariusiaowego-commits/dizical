@@ -955,20 +955,33 @@ async def api_practice_report_generate(request: Request):
                 result_queue.put(("status", "构建 prompt..."))
                 from src.report_templates import build_monthly_report_prompt
                 prompt, aspect_ratio, data = build_monthly_report_prompt(year, month, style)
-                result_queue.put(("status", f"Prompt 已构建（{len(prompt)} 字符），开始调用 AI 绘图..."))
+                result_queue.put(("status", f"Prompt 已构建（{len(prompt)} 字符）"))
 
+                # 用简短 prompt 代替完整 prompt（避免命令行超长导致超时）
+                style_cn = {"academic": "学术风格", "cute": "可爱风格", "minimal": "极简风格", "vintage": "复古风格"}.get(style, style)
+                short_prompt = f"竹笛练习月报，{year}年{month}月，{style_cn}风格，portrait比例，包含练习时长统计和项目分布"
+                result_queue.put(("status", f"使用简短 prompt: {short_prompt}"))
                 # 步骤 2: 调用 image_generate
                 # 用 hermes chat 调用 image_generate（通过 Nous subscription）
                 import subprocess
                 result_queue.put(("status", "正在调用 hermes + FAL gpt-image-2 生成图片，约需 30-60 秒..."))
-                query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{prompt}"
-                proc = subprocess.run(
+                query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{short_prompt}"
+                proc = subprocess.Popen(
                     ["hermes", "chat", "-q", query, "-t", "image_gen", "--yolo", "-Q"],
-                    capture_output=True, text=True, timeout=120,
-                    cwd=project_root,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    cwd=project_root, bufsize=1, text=True,
                 )
-                output = proc.stdout.strip()
-                result_queue.put(("status", "hermes 返回，解析结果..."))
+
+                # 实时读取 stdout 每行输出
+                output_lines = []
+                for line in proc.stdout:
+                    line = line.rstrip()
+                    output_lines.append(line)
+                    result_queue.put(("output", line))
+
+                proc.wait(timeout=120)
+                output = "\n".join(output_lines)
+                result_queue.put(("status", f"hermes 进程结束 (exit={proc.returncode})"))
 
                 # 从输出中提取图片路径或 URL
                 image_source = None
@@ -1043,6 +1056,8 @@ async def api_practice_report_generate(request: Request):
                 msg_type, msg_data = result_queue.get(timeout=120)
                 if msg_type == "status":
                     yield f"data: {json.dumps({'type': 'status', 'message': msg_data})}\n\n"
+                elif msg_type == "output":
+                    yield f"data: {json.dumps({'type': 'output', 'message': msg_data})}\n\n"
                 elif msg_type == "error":
                     yield f"data: {json.dumps({'type': 'error', 'message': msg_data})}\n\n"
                     break
