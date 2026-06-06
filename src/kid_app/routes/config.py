@@ -681,3 +681,62 @@ async def api_mark_fee_paid(date: str, paid: bool = True):
 
 
 # ─── API: 练习统计（已移到上方 /api/records/stats） ────────────────────────────
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 盲盒主题配置
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.get("/blindbox", response_class=HTMLResponse)
+def config_blindbox():
+    """盲盒主题配置页 — 选择每周打卡盲盒的故事主题"""
+    from src.kid_app.app import render, get_setting, THEMES, ACTIVE_THEME_SETTING_KEY, DEFAULT_THEME
+    current = get_setting(ACTIVE_THEME_SETTING_KEY) or DEFAULT_THEME
+    return render(
+        "config-blindbox",
+        active_nav="portal",  # sidebar: Portal
+        pin_locked="true" if get_setting("dad_pin") else "false",
+        themes=list(THEMES.values()),
+        current_theme=current,
+    )
+
+
+@router.get("/api/blindbox/theme")
+async def api_get_blindbox_theme():
+    """获取当前生效主题 + 所有可用主题列表"""
+    from src.kid_app.app import get_active_theme, THEMES
+    return JSONResponse({
+        "ok": True,
+        "active": get_active_theme()["slug"],
+        "themes": [
+            {
+                "slug": t["slug"],
+                "title": t["title"],
+                "tag": t["tag"],
+                "desc": t["desc"],
+                "cover": t["cover"],
+            }
+            for t in THEMES.values()
+        ],
+    })
+
+
+@router.post("/api/blindbox/theme")
+async def api_set_blindbox_theme(request: Request):
+    """切换当前生效主题（需 PIN 验证）"""
+    from src.kid_app.app import THEMES, ACTIVE_THEME_SETTING_KEY
+
+    body = json.loads(await request.body())
+    pin = body.get("pin", "")
+    slug = body.get("theme", "").strip()
+
+    # PIN 验证（与 config-praise 保持一致）
+    stored_pin = db.get_setting("dad_pin")
+    if stored_pin and pin != stored_pin:
+        return JSONResponse({"ok": False, "error": "PIN 不对"}, status_code=401)
+
+    if slug not in THEMES:
+        return JSONResponse({"ok": False, "error": f"未知主题: {slug}"}, status_code=400)
+
+    db.set_setting(ACTIVE_THEME_SETTING_KEY, slug)
+    return JSONResponse({"ok": True, "active": slug})
