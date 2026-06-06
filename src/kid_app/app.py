@@ -540,15 +540,129 @@ def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv,
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 每日打卡盲盒 · 主题注册中心
+# ═══════════════════════════════════════════════════════════════════════════
+# 每个主题 = 1 个 dict 集 (IMAGES/NAMES/DESCS/CONDS) + 1 个 meta dict (title/tag/desc/cover)
+# 加新主题: 1) 写新 *_<SLUG>_* 4 个 dict  2) THEMES[slug] = {...}  3) 准备 7 张图
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── 主题 1: ok哥赶海（原版） ──────────────────────────────────────────────
+OK_SEA_IMAGES = {
+    1: "/static/badges/daily_checkin_1.png",
+    2: "/static/badges/daily_checkin_2.png",
+    3: "/static/badges/daily_checkin_3.png",
+    4: "/static/badges/daily_checkin_4.png",
+    5: "/static/badges/daily_checkin_5.png",
+    6: "/static/badges/daily_checkin_6.png",
+    7: "/static/badges/daily_checkin_7.png",
+}
+
+OK_SEA_NAMES = {
+    1: "🐡 惊喜起点",
+    2: "🦀️ 爆桶狂欢",
+    3: "🐙 爆笑羁绊",
+    4: "🐚 声音共鸣",
+    5: "🌟 狂欢大奖",
+    6: "🪼 最后高光",
+    7: "🗺️ 终极神话",
+}
+
+OK_SEA_DESCS = {
+    1: "ok哥每天赶海第一件事不是看潮水，是看桶——今天桶空着，大海准备了什么？他刚弯腰，一只粉色河豚\"噗\"地蹦进桶里，气得圆滚滚的，像个生气的汤圆。ok哥说：\"哟，这河豚气鼓鼓的，跟我周一早上不想起床的样子一模一样！\"你周一打卡，河豚就是你的开工信号——它虽然气鼓鼓的，但它来了，就说明大海今天给你留了惊喜！",
+    2: "ok哥最爱的词就是\"爆桶\"——桶装满了叫爆桶，桶装太满了也叫爆桶，桶里跳出一只大螃蟹还叫爆桶。今天他从沙子里拽出一只拳头大的红螃蟹，螃蟹死活不肯松钳，一夹——正好夹住YoYo的笛梢！YoYo使劲拔笛子，螃蟹使劲夹笛子，ok哥在旁边不帮忙，光顾着喊：\"大货！大货！别动让我拍！\"你周二打卡，这只螃蟹就是你的——它夹着你的笛子不放，就像你坚持练笛不放弃一样！",
+    3: "ok哥抓过无数海鲜，但章鱼是他一生的对手。上次他抓了一只，章鱼八条腿分别吸在他的帽子、眼镜、桶、YoYo的笛子上，还剩三条腿悠闲地给自己扇风。ok哥说：\"这哥们比我还能抓——它把我抓住了！\"你周三打卡，章鱼就是你的\"周中恶魔\"——练笛练到周三最累了，这只章鱼就像你的疲惫，缠着你不放，但你看ok哥笑成那样，就知道其实它也是你的开心果！",
+    4: "赶海最浪漫的时刻不是抓到大货，是你在海边捡到一枚海螺，贴到耳朵上——\"呜——\"，里面好像藏着整片大海的声音。ok哥说：\"我赶海十几年，海螺听过无数，但没有一个像今天这枚——它里面传出来的不是海浪声，是笛声！\"他把海螺递给YoYo，YoYo贴到耳朵上，里面飘出了彩虹色的乐谱。你周四打卡，这枚极光海螺就是你的回声——你吹进去的每一个音符，大海都记住了！",
+    5: "周五了！ok哥说：\"赶海一整周，今天该开大奖了！\"他一铲子下去，沙子里蹦出一个金灿灿的宝箱，打开一看——不是金币，不是珍珠，是一枚比脸还大的黄金海星和一本发光的乐谱！ok哥愣了一秒，然后对着镜头比了个\"OK\"：\"收货！比爆桶还爽！\"你周五打卡，放学了大解放，宝箱为你打开，这周最亮的奖励归你！",
+    6: "ok哥赶海赶了一周，今晚他决定来点不一样的——夜赶海！手电筒一开，海面突然浮起一只半透明的魔鬼鱼，浑身发着梦幻紫光，像一片会飞的光。ok哥说：\"我赶海这么多年，夜光的见过不少，但会跟着笛声游的我头一回见！\"YoYo开始吹笛，魔鬼鱼真的跟着笛声的节奏游。你周六打卡，夜光魔鬼鱼为你亮起来——周末的夜晚，笛声和荧光交织，这是属于你的深海演唱会！",
+    7: "ok哥换上了他的船长服——虽然这衣服他自己都忘了什么时候买的，但他说：\"大结局必须有仪式感！\"海浪突然退去，沙滩上浮现出一个蓝色光环，一条由海水聚成的小神龙从光环中腾空而起，嘴里叼着一个玻璃漂流瓶。ok哥说：\"我赶了一辈子海，今天终于赶到了龙！\"瓶子里面是一张金色的乐谱，是这周你吹过的所有曲子的终极合集。你周日打卡，一周完美收官，神龙亲自给你颁奖！",
+}
+
+OK_SEA_CONDS = {d: "完成今日练习即可解锁" for d in range(1, 8)}
+
+# ─── 主题 2: 长发公主的冒险 ────────────────────────────────────────────────
+RAPUNZEL_IMAGES = {
+    1: "/static/badges/rapunzel_1.png",
+    2: "/static/badges/rapunzel_2.png",
+    3: "/static/badges/rapunzel_3.png",
+    4: "/static/badges/rapunzel_4.png",
+    5: "/static/badges/rapunzel_5.png",
+    6: "/static/badges/rapunzel_6.png",
+    7: "/static/badges/rapunzel_7.png",
+}
+
+RAPUNZEL_NAMES = {
+    1: "🌅 塔窗之光",
+    2: "🐿️ 松鼠朋友",
+    3: "🌸 花园发现",
+    4: "🎨 彩虹编织",
+    5: "⛈️ 风雨挑战",
+    6: "✨ 魔法时刻",
+    7: "🚪 自由之门",
+}
+
+RAPUNZEL_DESCS = {
+    1: "小公主每天在塔里练习用长发扫地，今天她抬起头，看到窗外有一朵粉色的小花。她深吸一口气，把长发甩出去——\"噗\"一声，长发缠住了花茎！她小心翼翼地拉回来，花瓣上的露珠在阳光下闪闪发光。小公主笑了：\"原来我的头发可以够到外面的世界！\"你周一打卡，就像小公主第一次用长发够到窗外的花，虽然只是小小的尝试，但已经迈出了第一步！",
+    2: "一阵风吹过，一只小松鼠\"啪\"地掉在窗台上，吓得瑟瑟发抖。小公主赶紧把长发甩过去，松鼠抓住头发，像荡秋千一样飞进房间。松鼠抖了抖蓬松的尾巴，好奇地看着公主。公主摸摸它的头：\"别怕，我叫长发公主，你呢？\"松鼠\"吱吱\"叫了两声，好像在说\"谢谢你\"。你周二打卡，就像小公主救了松鼠，你的坚持帮助了需要帮助的朋友！",
+    3: "小公主从窗户往下看，发现塔下有一片美丽的花园，开满了五颜六色的花。她灵机一动，把长发甩下去，\"噗噗噗\"——长发像绳子一样，把花朵一朵一朵拉上来！松鼠在旁边帮忙递花，房间瞬间变成了花园。公主开心地转圈，长发上的花朵像星星一样闪烁。你周三打卡，就像小公主发现了花园，你的努力正在把美好的事物带到你身边！",
+    4: "小公主把长发分成几股，用花朵和藤蔓编织成彩色的绳子。她把绳子挂在窗边，阳光照进来——\"哇！\"整个房间出现了彩虹！松鼠兴奋地跳来跳去，用爪子去抓彩虹。公主笑着说：\"原来我的头发不只能扫地，还能编织彩虹！\"你周四打卡，就像小公主编织彩虹，你的坚持正在创造意想不到的美好！",
+    5: "暴风雨来了！窗户被吹开，雨水灌进来，小松鼠和几只小鸟吓得缩在角落。小公主深吸一口气，把长发甩出去，像一把大伞一样罩住小动物们。风雨打在长发上，公主咬着牙撑住。雨停了，小动物们都安全，公主累得坐在地上，但笑得很开心。你周五打卡，就像小公主面对风雨，虽然很累，但你保护了重要的东西！",
+    6: "深夜，月光从窗户照进来。小公主的长发突然开始发光——金色的光芒像星星一样闪烁！小动物们都醒了，围着公主看。公主把长发甩向天花板，光芒像烟花一样散开，照亮了整个房间。松鼠\"吱吱\"叫着，好像在说：\"好美啊！\"你周六打卡，就像小公主发现长发的秘密，你的坚持正在积累看不见的力量！",
+    7: "小公主站在高塔的大门前，心跳得很快。她深吸一口气，推开门——阳光照进来，长发铺在地上，像一条金色的地毯。松鼠跳到她肩膀上，小鸟围着她飞。公主迈出第一步，踩在金色的长发上，走向外面的世界。她回头看了看高塔，笑了：\"谢谢你，我的头发，你让我有勇气走出这里。\"你周日打卡，就像小公主推开大门，一周的坚持让你有勇气走向新的世界！",
+}
+
+RAPUNZEL_CONDS = {d: "完成今日练习即可解锁" for d in range(1, 8)}
+
+# ─── THEMES 注册中心 ──────────────────────────────────────────────────────
+# 主题元信息: card title (前 emoji + 名称) / modal tag / 描述 / cover 图
+THEMES = {
+    "ok_sea": {
+        "slug": "ok_sea",
+        "title": "🎁 每日打卡盲盒",         # 卡片标题
+        "tag": "突破",                     # modal 标签
+        "desc": "ok哥赶海，每天一个小惊喜。",  # portal 描述
+        "cover": "/static/badges/daily_checkin_5.png",  # portal 预览图
+        "dicts": (OK_SEA_IMAGES, OK_SEA_NAMES, OK_SEA_DESCS, OK_SEA_CONDS),
+    },
+    "rapunzel": {
+        "slug": "rapunzel",
+        "title": "👸 长发公主盲盒",
+        "tag": "成长",
+        "desc": "小公主在高塔里每天用长发帮助小动物，逐渐获得勇气，最终走出高塔。",
+        "cover": "/static/badges/rapunzel_5.png",
+        "dicts": (RAPUNZEL_IMAGES, RAPUNZEL_NAMES, RAPUNZEL_DESCS, RAPUNZEL_CONDS),
+    },
+}
+
+DEFAULT_THEME = "ok_sea"
+ACTIVE_THEME_SETTING_KEY = "active_blindbox_theme"
+
+
+def get_active_theme() -> dict:
+    """从 settings 表读当前生效主题，缺失/未注册时回退 DEFAULT_THEME。"""
+    try:
+        slug = db.get_setting(ACTIVE_THEME_SETTING_KEY) or DEFAULT_THEME
+    except Exception:
+        slug = DEFAULT_THEME
+    if slug not in THEMES:
+        slug = DEFAULT_THEME
+    return THEMES[slug]
+
+
 def _daily_blindbox_html():
-    """生成每日打卡盲盒卡片 HTML"""
+    """生成每日打卡盲盒卡片 HTML（主题由 settings['active_blindbox_theme'] 决定）"""
     conn = db._get_connection()
     today = dt.date.today()
 
+    # 加载当前主题
+    theme = get_active_theme()
+    theme_meta = {"title": theme["title"], "tag": theme["tag"]}
+    IMAGES, NAMES, DESCS, CONDS = theme["dicts"]
+
     # 获取当前stage
     cur = conn.execute("""
-        SELECT stage_start, stage_end, stage_order 
-        FROM weekly_assignments 
+        SELECT stage_start, stage_end, stage_order
+        FROM weekly_assignments
         WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
     """)
     stage_row = cur.fetchone()
@@ -569,65 +683,21 @@ def _daily_blindbox_html():
 
     # 计算本周打卡了几天
     cur = conn.execute("""
-        SELECT COUNT(DISTINCT date) 
-        FROM daily_practices 
+        SELECT COUNT(DISTINCT date)
+        FROM daily_practices
         WHERE date >= ? AND date <= ?
-    """, (stage_start_str, stage_end_date.isoformat()))
+    """"", (stage_start_str, stage_end_date.isoformat()))
     checkin_days = cur.fetchone()[0]
 
     # 查询每一天是否已打卡
     checked_days = set()
     cur = conn.execute("""
-        SELECT DISTINCT date 
-        FROM daily_practices 
+        SELECT DISTINCT date
+        FROM daily_practices
         WHERE date >= ? AND date <= ?
-    """, (stage_start_str, stage_end_date.isoformat()))
+    """"", (stage_start_str, stage_end_date.isoformat()))
     for row in cur.fetchall():
         checked_days.add(row[0])
-
-    # 图片映射
-    DAILY_CHECKIN_IMAGES = {
-        1: "/static/badges/daily_checkin_1.png",
-        2: "/static/badges/daily_checkin_2.png",
-        3: "/static/badges/daily_checkin_3.png",
-        4: "/static/badges/daily_checkin_4.png",
-        5: "/static/badges/daily_checkin_5.png",
-        6: "/static/badges/daily_checkin_6.png",
-        7: "/static/badges/daily_checkin_7.png",
-    }
-
-    # 盲盒名称
-    DAILY_CHECKIN_NAMES = {
-        1: "🐡 惊喜起点",
-        2: "🦀️ 爆桶狂欢",
-        3: "🐙 爆笑羁绊",
-        4: "🐚 声音共鸣",
-        5: "🌟 狂欢大奖",
-        6: "🪼 最后高光",
-        7: "🗺️ 终极神话",
-    }
-
-    # 盲盒描述
-    DAILY_CHECKIN_DESCS = {
-        1: "ok哥每天赶海第一件事不是看潮水，是看桶——今天桶空着，大海准备了什么？他刚弯腰，一只粉色河豚\"噗\"地蹦进桶里，气得圆滚滚的，像个生气的汤圆。ok哥说：\"哟，这河豚气鼓鼓的，跟我周一早上不想起床的样子一模一样！\"你周一打卡，河豚就是你的开工信号——它虽然气鼓鼓的，但它来了，就说明大海今天给你留了惊喜！",
-        2: "ok哥最爱的词就是\"爆桶\"——桶装满了叫爆桶，桶装太满了也叫爆桶，桶里跳出一只大螃蟹还叫爆桶。今天他从沙子里拽出一只拳头大的红螃蟹，螃蟹死活不肯松钳，一夹——正好夹住YoYo的笛梢！YoYo使劲拔笛子，螃蟹使劲夹笛子，ok哥在旁边不帮忙，光顾着喊：\"大货！大货！别动让我拍！\"你周二打卡，这只螃蟹就是你的——它夹着你的笛子不放，就像你坚持练笛不放弃一样！",
-        3: "ok哥抓过无数海鲜，但章鱼是他一生的对手。上次他抓了一只，章鱼八条腿分别吸在他的帽子、眼镜、桶、YoYo的笛子上，还剩三条腿悠闲地给自己扇风。ok哥说：\"这哥们比我还能抓——它把我抓住了！\"你周三打卡，章鱼就是你的\"周中恶魔\"——练笛练到周三最累了，这只章鱼就像你的疲惫，缠着你不放，但你看ok哥笑成那样，就知道其实它也是你的开心果！",
-        4: "赶海最浪漫的时刻不是抓到大货，是你在海边捡到一枚海螺，贴到耳朵上——\"呜——\"，里面好像藏着整片大海的声音。ok哥说：\"我赶海十几年，海螺听过无数，但没有一个像今天这枚——它里面传出来的不是海浪声，是笛声！\"他把海螺递给YoYo，YoYo贴到耳朵上，里面飘出了彩虹色的乐谱。你周四打卡，这枚极光海螺就是你的回声——你吹进去的每一个音符，大海都记住了！",
-        5: "周五了！ok哥说：\"赶海一整周，今天该开大奖了！\"他一铲子下去，沙子里蹦出一个金灿灿的宝箱，打开一看——不是金币，不是珍珠，是一枚比脸还大的黄金海星和一本发光的乐谱！ok哥愣了一秒，然后对着镜头比了个\"OK\"：\"收货！比爆桶还爽！\"你周五打卡，放学了大解放，宝箱为你打开，这周最亮的奖励归你！",
-        6: "ok哥赶海赶了一周，今晚他决定来点不一样的——夜赶海！手电筒一开，海面突然浮起一只半透明的魔鬼鱼，浑身发着梦幻紫光，像一片会飞的光。ok哥说：\"我赶海这么多年，夜光的见过不少，但会跟着笛声游的我头一回见！\"YoYo开始吹笛，魔鬼鱼真的跟着笛声的节奏游。你周六打卡，夜光魔鬼鱼为你亮起来——周末的夜晚，笛声和荧光交织，这是属于你的深海演唱会！",
-        7: "ok哥换上了他的船长服——虽然这衣服他自己都忘了什么时候买的，但他说：\"大结局必须有仪式感！\"海浪突然退去，沙滩上浮现出一个蓝色光环，一条由海水聚成的小神龙从光环中腾空而起，嘴里叼着一个玻璃漂流瓶。ok哥说：\"我赶了一辈子海，今天终于赶到了龙！\"瓶子里面是一张金色的乐谱，是这周你吹过的所有曲子的终极合集。你周日打卡，一周完美收官，神龙亲自给你颁奖！",
-    }
-
-    # 盲盒条件描述
-    DAILY_CHECKIN_CONDS = {
-        1: "完成今日练习即可解锁",
-        2: "完成今日练习即可解锁",
-        3: "完成今日练习即可解锁",
-        4: "完成今日练习即可解锁",
-        5: "完成今日练习即可解锁",
-        6: "完成今日练习即可解锁",
-        7: "完成今日练习即可解锁",
-    }
 
     import html as _html
 
@@ -639,20 +709,20 @@ def _daily_blindbox_html():
         is_checked = day_date_str in checked_days
         is_today = day == stage_day
 
-        image = DAILY_CHECKIN_IMAGES.get(day, "")
-        name = DAILY_CHECKIN_NAMES.get(day, "")
-        desc = DAILY_CHECKIN_DESCS.get(day, "")
-        cond = DAILY_CHECKIN_CONDS.get(day, "")
+        image = IMAGES.get(day, "")
+        name = NAMES.get(day, "")
+        desc = DESCS.get(day, "")
+        cond = CONDS.get(day, "")
 
         checked_class = "unlocked" if is_checked else "locked"
         today_class = "today" if is_today and not is_checked else ""
         locked_flag = "no" if is_checked else "yes"
 
         badges_html += f"""
-        <div class="blindbox-badge {checked_class} {today_class} b-card" 
+        <div class="blindbox-badge {checked_class} {today_class} b-card"
              data-id="daily_checkin_{day}"
              data-name="{_html.escape(name)}"
-             data-tag="突破"
+             data-tag="{_html.escape(theme_meta['tag'])}"
              data-cond="{_html.escape(cond)}"
              data-desc="{_html.escape(desc)}"
              data-img="{_html.escape(image)}"
@@ -667,20 +737,20 @@ def _daily_blindbox_html():
     today_checked = today.isoformat() in checked_days
 
     html = f"""
-    <div class="ac-card" id="card-daily-blindbox">
+    <div class="ac-card" id="card-daily-blindbox" data-theme="{theme['slug']}">
       <div class="blindbox-header">
-        <span class="blindbox-title">🎁 每日打卡盲盒</span>
+        <span class="blindbox-title">{_html.escape(theme_meta['title'])}</span>
         <span class="blindbox-progress">{checkin_days}/7</span>
       </div>
-      
+
       <div class="blindbox-stage-info">
         <span>Stage {stage_order} · 第{stage_day}天</span>
       </div>
-      
+
       <div class="blindbox-badges-grid">
         {badges_html}
       </div>
-      
+
       <div class="blindbox-hint">
         {"<span class='hint-unlocked'>✅ 今日已解锁</span>" if today_checked else "<span class='hint-locked'>🔒 完成今日练习解锁</span>"}
       </div>
