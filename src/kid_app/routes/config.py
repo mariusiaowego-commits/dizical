@@ -957,17 +957,18 @@ async def api_practice_report_generate(request: Request):
                 prompt, aspect_ratio, data = build_monthly_report_prompt(year, month, style)
                 result_queue.put(("status", f"Prompt 已构建（{len(prompt)} 字符）"))
 
-                # 用简短 prompt 代替完整 prompt（避免命令行超长导致超时）
-                style_cn = {"academic": "学术风格", "cute": "可爱风格", "minimal": "极简风格", "vintage": "复古风格"}.get(style, style)
-                short_prompt = f"竹笛练习月报，{year}年{month}月，{style_cn}风格，portrait比例，包含练习时长统计和项目分布"
-                result_queue.put(("status", f"使用简短 prompt: {short_prompt}"))
                 # 步骤 2: 调用 image_generate
-                # 用 hermes chat 调用 image_generate（通过 Nous subscription）
-                import subprocess
+                # 写入临时文件，通过 stdin 传给 hermes chat（避免命令行超长）
+                import subprocess, tempfile
                 result_queue.put(("status", "正在调用 hermes + FAL gpt-image-2 生成图片，约需 30-60 秒..."))
-                query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{short_prompt}"
+                query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 portrait：\n\n{prompt}"
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                    f.write(query)
+                    tmp_path = f.name
+                # 用 shell 管道读取临时文件
+                shell_cmd = f'hermes chat -q "$(cat {tmp_path})" -t image_gen --yolo -Q'
                 proc = subprocess.Popen(
-                    ["hermes", "chat", "-q", query, "-t", "image_gen", "--yolo", "-Q"],
+                    shell_cmd, shell=True,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     cwd=project_root, bufsize=1, text=True,
                 )
@@ -982,6 +983,10 @@ async def api_practice_report_generate(request: Request):
                 proc.wait(timeout=120)
                 output = "\n".join(output_lines)
                 result_queue.put(("status", f"hermes 进程结束 (exit={proc.returncode})"))
+
+                # 清理临时文件
+                import os
+                os.unlink(tmp_path)
 
                 # 从输出中提取图片路径或 URL
                 image_source = None
