@@ -115,33 +115,59 @@ class ServiceManager: ObservableObject {
     }
     
     /// 停止服务
+    /// - 如果是 mac app 自己启的进程, 走 SIGTERM (Process API)
+    /// - 如果是外部 (shell 脚本/systemd) 启的进程, 走 lsof 查 PID + kill() 系统调用
+    /// - 两条路径都更新 status = .idle
     func stopService() {
-        guard let process = process, process.isRunning else {
+        // 路径 A: mac app 自己启的进程, 用 Process API
+        if let process = self.process, process.isRunning {
+            process.terminate()
+            // 等待进程结束
+            let deadline = Date().addingTimeInterval(5.0)
+            while process.isRunning && Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.1)
+            }
+            // 如果还在运行，强制终止
+            if process.isRunning {
+                process.interrupt()
+            }
+            DispatchQueue.main.async {
+                self.status = .idle
+            }
             return
         }
-        
-        // 发送 SIGTERM
-        process.terminate()
-        
-        // 等待进程结束
-        let deadline = Date().addingTimeInterval(5.0)
-        while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        
-        // 如果还在运行，强制终止
-        if process.isRunning {
-            process.interrupt()
-        }
-        
-        DispatchQueue.main.async {
+
+        // 路径 B: 外部启的进程 (shell 脚本/systemd), 用 lsof + kill 系统调用
+        Task { @MainActor in
+            guard let pidStr = getUvicornPID(), let pid = Int32(pidStr) else {
+                // 端口都没占用, 已经停了
+                self.status = .idle
+                return
+            }
+            // 优雅 TERM
+            kill(pid, SIGTERM)
+            // 等最多 5 秒
+            for _ in 0..<50 {
+                if kill(pid, 0) != 0 { break }  // 进程没了
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            // 还活着就 KILL
+            if kill(pid, 0) == 0 {
+                kill(pid, SIGKILL)
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
             self.status = .idle
         }
     }
-    
+
     /// 重启服务
+    /// - 路径 A (自己启的): 走原 stopService + ensureServiceRunning
+    /// - 路径 B (外部启的): stopService (lsof+kill) + ensureServiceRunning (启一个新进程, 自己管的)
     func restartService() async -> Bool {
+        // 先停 (可能停的是外部进程, 异步路径)
         stopService()
+        // 等 stopService 完成 (路径 B 是 async)
+        try? await Task.sleep(nanoseconds: 1_500_000_000)  // 1.5s
         retryCount = 0
         return await ensureServiceRunning()
     }
