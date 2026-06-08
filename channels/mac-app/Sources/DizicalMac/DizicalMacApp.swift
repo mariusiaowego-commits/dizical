@@ -11,12 +11,16 @@
 import SwiftUI
 import AppKit
 import WebKit
+import Combine
 
 // ============ 全局常量 ============
+// kid-app 内嵌 webview 仍走 127.0.0.1 (最优路由), 但服务本身绑 0.0.0.0 让 iPad (局域网/Tailscale) 能访问
 let DIZICAL_URL = "http://127.0.0.1:8765"
 let DIZICAL_PORT = 8765
-let DIZICAL_HOST = "127.0.0.1"
+let DIZICAL_HOST = "0.0.0.0"          // ⚠️ 不要改 127.0.0.1, 否则 iPad 必 400
 let DIZICAL_WORK_DIR = "/Users/mt16/dev/dizical"
+let DIZICAL_PIDFILE = "/tmp/dizical-8765.pid"
+let DIZICAL_LOGFILE = "/tmp/dizical-8765.log"
 
 // 查找 uvicorn 完整路径（macOS GUI app 的 PATH 不含 /opt/homebrew/bin）
 func findUvicornPath() -> String {
@@ -45,6 +49,27 @@ func findUvicornPath() -> String {
 }
 
 let UVICORN_PATH = findUvicornPath()
+
+// 查询 8765 端口占用进程的 PID (lsof), 用于菜单栏状态显示
+// 返回 nil = 没在跑
+func getUvicornPID() -> String? {
+    let task = Process()
+    task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+    task.arguments = ["-nP", "-iTCP:\(DIZICAL_PORT)", "-sTCP:LISTEN", "-t"]
+    let pipe = Pipe()
+    task.standardOutput = pipe
+    task.standardError = Pipe()
+    do {
+        try task.run()
+        task.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let pid = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (pid?.isEmpty == false) ? pid : nil
+    } catch {
+        return nil
+    }
+}
 
 // ============ 服务状态枚举 ============
 enum ServiceStatus: Equatable {
@@ -321,6 +346,11 @@ class WebViewDelegate: NSObject, WKNavigationDelegate {
 // ============ AppDelegate: 菜单栏 + 顶部菜单栏 (窗口让 SwiftUI 管) ============
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
+    private let serviceManager = ServiceManager()
+    private var statusMenuItem: NSMenuItem!
+    private var startMenuItem: NSMenuItem!
+    private var restartMenuItem: NSMenuItem!
+    private var stopMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 1. 设置 activation policy (regular 让 Cmd+Tab 看到, LSUIElement 让 dock 不显示)
@@ -346,21 +376,114 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 3. 菜单栏菜单项
         let menu = NSMenu()
+
+        // 3a. 状态显示 (灰色, 不可点)
+        statusMenuItem = NSMenuItem(title: "● 检查中...", action: nil, keyEquivalent: "")
+        statusMenuItem.isEnabled = false
+        menu.addItem(statusMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // 3b. 启动
+        startMenuItem = NSMenuItem(title: "启动服务", action: #selector(startService), keyEquivalent: "s")
+        startMenuItem.target = self
+        menu.addItem(startMenuItem)
+
+        // 3c. 重启
+        restartMenuItem = NSMenuItem(title: "重启服务", action: #selector(restartService), keyEquivalent: "r")
+        restartMenuItem.target = self
+        menu.addItem(restartMenuItem)
+
+        // 3d. 停止
+        stopMenuItem = NSMenuItem(title: "停止服务", action: #selector(stopService), keyEquivalent: "x")
+        stopMenuItem.target = self
+        menu.addItem(stopMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // 3e. 打开 dizical
         let openItem = NSMenuItem(title: "打开 dizical", action: #selector(openWindow), keyEquivalent: "o")
         openItem.target = self
         menu.addItem(openItem)
+
+        // 3f. 在浏览器打开
         let browserItem = NSMenuItem(title: "在浏览器打开 dizical", action: #selector(openInBrowser), keyEquivalent: "b")
         browserItem.target = self
         menu.addItem(browserItem)
+
         menu.addItem(NSMenuItem.separator())
+
+        // 3g. 退出
         let quitItem = NSMenuItem(title: "退出", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
+
         statusItem.menu = menu
+
+        // 4. 监听 serviceManager.status 变化, 联动菜单栏 UI (@Published 用 Combine sink)
+        serviceManager.$status
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshMenuState()
+            }
+            .store(in: &cancellables)
+
+        // 5. 启动时主动检查一次 (不等用户点)
+        Task { @MainActor in
+            _ = await serviceManager.ensureServiceRunning()
+            self.refreshMenuState()
+        }
+    }
+
+    // Combine 订阅存储
+    private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - 菜单栏 UI 状态更新
+    private func refreshMenuState() {
+        let s = serviceManager.status
+        // 状态文字
+        switch s {
+        case .idle:
+            statusMenuItem.title = "○ 空闲 (未运行)"
+        case .checking:
+            statusMenuItem.title = "● 检查中..."
+        case .starting:
+            statusMenuItem.title = "● 启动中..."
+        case .running:
+            statusMenuItem.title = "● 运行中 (PID \(getUvicornPID() ?? "?"))"
+        case .failed(let err):
+            statusMenuItem.title = "✗ 失败: \(err)"
+        }
+        // 按钮可用性: 启动中/检查中 时禁用所有控制按钮
+        let busy = (s == .starting || s == .checking)
+        startMenuItem.isEnabled = !busy && s != .running
+        restartMenuItem.isEnabled = !busy
+        stopMenuItem.isEnabled = !busy && s == .running
+    }
+
+    deinit {
+        // Combine sink 跟 cancellables 走, 无需手动 removeObserver
     }
 
     // 菜单栏点击 = 显示菜单 (statusItem.menu 自动处理, 这里不写)
     @objc func statusItemClicked(_ sender: Any?) { /* 菜单自动弹出 */ }
+
+    // MARK: - 服务控制
+    @objc func startService() {
+        Task { @MainActor in
+            _ = await serviceManager.ensureServiceRunning()
+        }
+    }
+
+    @objc func restartService() {
+        Task { @MainActor in
+            _ = await serviceManager.restartService()
+        }
+    }
+
+    @objc func stopService() {
+        serviceManager.stopService()
+    }
 
     // "打开 dizical" 菜单项: 激活 SwiftUI Window
     @objc func openWindow() {
@@ -383,6 +506,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func quit() {
+        // Cmd+Q: 真正退出, 停服务
+        serviceManager.stopService()
         NSApp.terminate(nil)
     }
 
@@ -402,6 +527,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // 关窗 ≠ 退 app. 关窗后菜单栏还在, dock click 重新显示窗口
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false  // 关窗不退出, app 保留在 dock + 菜单栏
+    }
+
+    // mac app 退出 (Cmd+Q) 时清理服务, 防止孤儿进程
+    func applicationWillTerminate(_ notification: Notification) {
+        serviceManager.stopService()
     }
 }
 
@@ -577,8 +707,8 @@ struct DizicalWindowView: View {
             }
         }
         .onDisappear {
-            // 退出时停止服务
-            serviceManager.stopService()
+            // Cmd+W 关窗 ≠ 退出. 服务继续在后台跑 (iPad 仍能访问)
+            // 停止服务只在 applicationWillTerminate (Cmd+Q) 时执行
         }
     }
 }
