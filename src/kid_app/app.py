@@ -680,6 +680,9 @@ def _daily_blindbox_html():
     stage_day = (today - stage_start).days + 1
     if stage_day < 1:
         return "", 0  # stage 还没开始
+    # 盲盒就 7 天 (图也只设计了 7 张), cap at 7
+    # stage 已结束 (today > stage_end) 时, stage_day 仍显示 7, 表示"本周第 7 天"
+    stage_day = min(stage_day, 7)
 
     # 计算本周打卡了几天
     cur = conn.execute("""

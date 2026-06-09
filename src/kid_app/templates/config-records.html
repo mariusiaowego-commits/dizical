@@ -784,7 +784,9 @@ async function openDayModal(dateStr) {
   gsap.from(box, { scale: 0.85, opacity: 0, duration: 0.25, ease: 'back.out(1.4)' });
 
   const res = await api(`/config/api/records/${dateStr}`);
-  if (!res.ok || res.total_minutes === 0) {
+  // API 在 200 时直接返 {date, total_minutes, items, log, practiced} (无 ok 字段),
+  // 404 时返 {ok: false, error: ...}
+  if (res.error || (res.total_minutes !== undefined && res.total_minutes === 0)) {
     body.innerHTML = `<p class="empty-state">当天暂无练习记录</p>
       <div class="form-actions">
         <button class="btn btn-primary" id="modal-goto-add">去录入</button>
