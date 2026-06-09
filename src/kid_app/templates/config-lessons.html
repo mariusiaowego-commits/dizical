@@ -227,7 +227,11 @@
       border-radius: 50%;
       display: inline-block;
     }
-    .lesson-dot.scheduled { background: var(--lavender); }
+    /* dot 颜色区分:
+       - scheduled: 加深紫 #8E7AB5 (原 --lavender #c5b8d9 跟 cancelled 灰色太像, 不易识别)
+       - attended: 鼠尾草绿 #a8d5ba
+       - cancelled: 灰色 #ccc */
+    .lesson-dot.scheduled { background: #8E7AB5; }
     .lesson-dot.attended { background: var(--sage); }
     .lesson-dot.cancelled { background: #ccc; }
 
@@ -538,9 +542,9 @@
         </div>
         <!-- 课程状态图例: hover 日历上的圆点也有详细 tooltip -->
         <div class="lesson-legend" style="display:flex;gap:18px;margin-top:10px;padding:8px 14px;background:white;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,0.05);font-size:12px;color:#7F8C8D;">
-          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot scheduled" style="background:var(--lavender);"></span>已安排 (等候上课)</span>
-          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot attended" style="background:var(--sage);"></span>已上课</span>
-          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot cancelled" style="background:#ccc;"></span>已取消 (灰色 = 不去)</span>
+          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot scheduled"></span>已安排 (等候上课)</span>
+          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot attended"></span>已上课</span>
+          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot cancelled"></span>已取消 (灰色 = 不去)</span>
         </div>
         <div class="action-bar" style="margin-top:14px;background:white;border-radius:16px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
           <input type="date" class="form-input" id="action-date" style="max-width:160px;padding:8px 12px;">
