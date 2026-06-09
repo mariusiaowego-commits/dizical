@@ -65,6 +65,7 @@ PingFang SC (苹方, iOS/macOS 系统自带). Web fallback: `system-ui, -apple-s
 - **dizical mac app 主 icon**: 桃色背景 + 女孩持笛 (珐琅 badge 风格)
 - **dizical mac app 菜单栏 icon**: 3/4 侧脸粗剪影 (透明背景, template mode)
 - **dizical 微信小程序 AppID/AppSecret**: 配置管理 (`channels/mini-program/config/`, chmod 600)
+- **dizical 盲盒主题视觉风格 — enamel pin (强制约束)**: 所有盲盒主题 (ok_sea / rapunzel / 未来主题) 视觉风格**必须**是 enamel pin (cloisonné 掐丝 + 厚金边 + chibi Q版). 跨主题不变 (即使换 IP/角色/叙事独立, 也仍是 enamel pin); 同主题内 7 张图必须 enamel pin 一致 (不能某张偏离). 改这条需明确指令 (类似 mac app icon 待遇). 跟 alma 协作策划案时主动强调.
 
 ## 渠道 (Channels)
 
