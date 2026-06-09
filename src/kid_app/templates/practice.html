@@ -1516,28 +1516,31 @@
     // ════════════════════════════════════════════════
     // 半圆弧 Picker 工厂(本地版,直接嵌 practice.html,避免额外 HTTP 请求)
     // 改自 uiux-asset-library/dizi-practice-picker v1
-    // 5-30min 固定 5min 步长 + GSAP attr.transform 复合 translate+scale
+    // timer 5-30min 5min 步长, extra 1-30min 1min 步长 (允许补录 1-4 分钟)
     // ════════════════════════════════════════════════
-    const PICKER_MIN = 5, PICKER_MAX = 30, PICKER_STEP = 1;
-    // 5/10/15/20/25/30 整数吸附:knob 落定后吸附到这些值附近
-    const P_STICK_VALS = [5, 10, 15, 20, 25, 30];
-    const P_STICK_RADIUS = 0.6;   // 距整数吸附点 < 0.6 min 时吸附
+    const PICKER_STEP = 1;
+    const PICKER_MAX = 30;
+    // 距整数吸附点 < 0.6 min 时吸附
+    const P_STICK_RADIUS = 0.6;
     function pApplyStick(m) {
-      for (const v of P_STICK_VALS) {
+      for (const v of pickerStickVals) {
         if (Math.abs(m - v) <= P_STICK_RADIUS) return v;
       }
       return Math.round(m);
     }
     const P_W = 400, P_H = 220, P_CX = 200, P_CY = 200, P_R = 150, P_STROKE = 14;
-    function pMinToAngle(m) { return Math.PI - ((m - PICKER_MIN) / (PICKER_MAX - PICKER_MIN)) * Math.PI; }
-    function pAngleToMin(a) { return PICKER_MIN + ((Math.PI - a) / Math.PI) * (PICKER_MAX - PICKER_MIN); }
+    function pMinToAngle(m) { return Math.PI - ((m - pickerMin) / (PICKER_MAX - pickerMin)) * Math.PI; }
+    function pAngleToMin(a) { return pickerMin + ((Math.PI - a) / Math.PI) * (PICKER_MAX - pickerMin); }
     function pClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+    let pickerMin, pickerStickVals;
     function createPicker(opts) {
       const {
         svgEl, valueEl, hintEl, color, colorGlow, trackColor,
-        onChange, stateRef, initial = 10
+        onChange, stateRef, initial = 10, min = 5, stickVals = [5, 10, 15, 20, 25, 30]
       } = opts;
+      pickerMin = min;
+      pickerStickVals = stickVals;
       const SVG_NS = 'http://www.w3.org/2000/svg';
       svgEl.innerHTML = '';
 
@@ -1564,7 +1567,7 @@
       progress.style.filter = `drop-shadow(0 0 8px ${colorGlow})`;
       svgEl.appendChild(progress);
 
-      for (let m = PICKER_MIN; m <= PICKER_MAX; m += PICKER_STEP) {
+      for (let m = pickerMin; m <= PICKER_MAX; m += PICKER_STEP) {
         const isMajor = (m % 5 === 0);
         const a = pMinToAngle(m);
         const tickInner = P_R - (isMajor ? 10 : 6);
@@ -1628,7 +1631,7 @@
         knobGroup.setAttribute('transform', `translate(${p.x}, ${p.y}) scale(${scale})`);
       }
       function setKnob(min, animate) {
-        const ratio = (min - PICKER_MIN) / (PICKER_MAX - PICKER_MIN);
+        const ratio = (min - pickerMin) / (PICKER_MAX - pickerMin);
         progress.setAttribute('stroke-dasharray', `${ratio * 100} 100`);
         if (animate && typeof gsap !== 'undefined') {
           const p = knobPos(min);
@@ -1660,7 +1663,7 @@
         e.preventDefault();
         const a = angleFromEvent(e);
         const m = pApplyStick(pAngleToMin(a));
-        currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+        currentMin = pClamp(m, pickerMin, PICKER_MAX);
         setKnob(currentMin);
         updateValue();
         velocity = 0; lastTs = 0;
@@ -1679,7 +1682,7 @@
         lastAngle = newAngle;
         lastTs = now;
         const m = pApplyStick(pAngleToMin(newAngle));
-        currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+        currentMin = pClamp(m, pickerMin, PICKER_MAX);
         const targetScale = Math.abs(velocity) > 5 ? 1.15 : 1;
         if (Math.abs(targetScale - visualScale) > 0.01) {
           visualScale = targetScale;
@@ -1721,7 +1724,7 @@
           if (newAngle < 0) { newAngle = 0; velocity = -velocity * 0.25; }
           if (newAngle > Math.PI) { newAngle = Math.PI; velocity = -velocity * 0.25; }
           const m = pApplyStick(pAngleToMin(newAngle));
-          currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+          currentMin = pClamp(m, pickerMin, PICKER_MAX);
           setKnob(currentMin);
           updateValue();
           lastTs = ts;
@@ -1750,7 +1753,7 @@
       return {
         getValue: () => currentMin,
         setValue: (m, animate) => {
-          currentMin = pClamp(m, PICKER_MIN, PICKER_MAX);
+          currentMin = pClamp(m, pickerMin, PICKER_MAX);
           setKnob(currentMin, animate);
           updateValue();
         },
@@ -1784,7 +1787,9 @@
           hintEl: hintEl,
           color: '#4ECDC4', colorGlow: '#7EDDD5', trackColor: '#CFE9E5',
           onChange: (m) => { pendingExtraMins = m; if (hintEl) hintEl.textContent = '已选 +' + m + ' 分钟 · 点记录'; },
-          initial: 10
+          initial: 10,
+          min: 1,                                                // 补录允许 1-30 min
+          stickVals: [1, 2, 3, 4, 5, 10, 15, 20, 25, 30]         // 整数吸附, 1-4 都允许
         });
       }
     }
