@@ -536,6 +536,12 @@
           </div>
           <div class="calendar-days" id="cal-days"></div>
         </div>
+        <!-- 课程状态图例: hover 日历上的圆点也有详细 tooltip -->
+        <div class="lesson-legend" style="display:flex;gap:18px;margin-top:10px;padding:8px 14px;background:white;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,0.05);font-size:12px;color:#7F8C8D;">
+          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot scheduled" style="background:var(--lavender);"></span>已安排 (等候上课)</span>
+          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot attended" style="background:var(--sage);"></span>已上课</span>
+          <span style="display:flex;align-items:center;gap:6px;"><span class="lesson-dot cancelled" style="background:#ccc;"></span>已取消 (灰色 = 不去)</span>
+        </div>
         <div class="action-bar" style="margin-top:14px;background:white;border-radius:16px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
           <input type="date" class="form-input" id="action-date" style="max-width:160px;padding:8px 12px;">
           <button class="btn btn-sage" id="btn-add">+ 添加</button>
@@ -714,11 +720,22 @@ function buildCalDays(daysInMonth, startWeekday, todayStr) {
     if (lesson) cls += ' has-record';
     btn.className = cls;
     let dot = '';
+    let tooltip = '';
     if (lesson) {
       const dotCls = lesson.status === 'attended' ? 'attended' : lesson.status === 'cancelled' ? 'cancelled' : 'scheduled';
       dot = `<span class="lesson-dot ${dotCls}"></span>`;
+      // 状态中文 + 含义, 解决"灰色到底什么意思"疑惑
+      const statusMap = {
+        scheduled: { label: '已安排', desc: '这节课计划中, 等候上课' },
+        attended:  { label: '已上课', desc: '这节课已上' },
+        cancelled: { label: '已取消', desc: '这节课取消了 (灰色 = 不去)' },
+      };
+      const info = statusMap[lesson.status] || { label: lesson.status, desc: '' };
+      const noteText = lesson.notes ? ` · ${lesson.notes}` : '';
+      tooltip = `${dateStr} ${lesson.time} · ${info.label} — ${info.desc}${noteText}`;
     }
     btn.innerHTML = `<span class="day-num">${day}</span>${dot ? `<span style="margin-top:2px;">${dot}</span>` : ''}`;
+    if (tooltip) btn.title = tooltip;
     btn.addEventListener('click', () => {
       $('#action-date').value = dateStr;
     });
