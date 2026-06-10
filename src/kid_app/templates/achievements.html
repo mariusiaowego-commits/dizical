@@ -257,12 +257,6 @@
       margin-bottom: 16px;
     }
 
-    .blindbox-badge-container {
-      display: flex;
-      justify-content: center;
-      margin: 20px 0;
-    }
-
     .blindbox-badges-grid {
       display: flex;
       flex-wrap: wrap;
@@ -271,79 +265,25 @@
       margin: 20px 0;
     }
 
-    .blindbox-badge {
+    /* 盲盒卡片：复用 .b-card 样式，仅覆盖尺寸 */
+    #card-daily-blindbox .b-card {
       width: 220px;
-      /* 高度 = img-wrap (220) + label (18) + label margin-top (8) + 上下各 7px 留白 ≈ 260 */
-      height: 260px;
       border-radius: 24px;
-      position: relative;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
-      padding: 0;
-      display: block;
+      padding: 7px 14px 16px;
     }
-    /* hover 阴影 (整 badge 包括 label) */
-    .blindbox-badge:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.15);
-    }
-
-    /* img wrapper: 220×220 圆角 + overflow hidden + unlocked 阴影 */
-    .blindbox-img-wrap {
-      width: 220px;
-      height: 220px;
+    #card-daily-blindbox .b-img-wrap {
+      width: 220px; height: 220px;
       border-radius: 24px;
       overflow: hidden;
-      position: relative;
     }
-
-    .blindbox-img {
-      width: 100%;
-      height: 100%;
+    #card-daily-blindbox .b-img {
+      max-width: 220px; max-height: 220px;
+      width: 100%; height: 100%;
       object-fit: cover;
-      display: block;
     }
 
-    .blindbox-badge.locked .blindbox-img {
-      filter: grayscale(0.8) brightness(1.1) contrast(0.9);
-      opacity: 0.7;
-    }
-
-    .blindbox-badge.unlocked .blindbox-img-wrap {
-      box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
-    }
-
-    .blindbox-badge.unlocked .blindbox-img {
-      filter: none;
-      opacity: 1;
-    }
-
-    .blindbox-day-label {
-      /* 移到 badge 下方作为标题，不浮在图上 (避免遮主体) */
-      display: block;
-      text-align: center;
-      margin-top: 8px;
-      color: #555;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .blindbox-hint {
-      text-align: center;
-      margin-top: 12px;
-    }
-
-    .hint-unlocked {
-      color: #27AE60;
-      font-weight: 600;
-    }
-
-    .hint-locked {
-      color: #7F8C8D;
-      font-weight: 500;
-    }
-
-    .blindbox-badge.locked.today .blindbox-img-wrap {
+    /* today 呼吸动效 */
+    #card-daily-blindbox .b-card.locked.today .b-img-wrap {
       animation: breathe 2s ease-in-out infinite;
     }
 
@@ -692,7 +632,7 @@
 
     // ── 盲盒动效 ─────────────────────────────────────────────────
     // 盲盒动效
-    const blindboxBadges = document.querySelectorAll('.blindbox-badge');
+    const blindboxBadges = document.querySelectorAll('#card-daily-blindbox .b-card');
     if (blindboxBadges.length > 0) {
       // 入场动画
       gsap.fromTo(blindboxBadges, 
@@ -701,7 +641,7 @@
       );
       
       // 检查是否有今日未解锁的badge
-      const todayBadge = document.querySelector('.blindbox-badge.today');
+      const todayBadge = document.querySelector('#card-daily-blindbox .b-card.today');
       if (todayBadge) {
         // 今日未解锁，播放呼吸动效（CSS已处理）
       }
