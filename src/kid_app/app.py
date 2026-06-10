@@ -722,7 +722,7 @@ def _daily_blindbox_html():
         locked_flag = "no" if is_checked else "yes"
 
         badges_html += f"""
-        <div class="blindbox-badge {checked_class} {today_class} b-card"
+        <div class="b-card {checked_class} {today_class}"
              data-id="daily_checkin_{day}"
              data-name="{_html.escape(name)}"
              data-tag="{_html.escape(theme_meta['tag'])}"
@@ -731,10 +731,9 @@ def _daily_blindbox_html():
              data-img="{_html.escape(image)}"
              data-locked="{locked_flag}"
              onclick="openModal(this)">
-          <div class="blindbox-img-wrap">
-            <img src="{image}" alt="{name}" class="blindbox-img">
-          </div>
-          <div class="blindbox-day-label">第{day}天</div>
+          <div class="b-img-wrap"><img class="b-img" src="{image}" alt="{name}" onerror="this.style.display='none'"></div>
+          <div class="b-name">第{day}天</div>
+          {"<span class='b-lock'>🔒</span>" if not is_checked else ""}
         </div>
         """
 
