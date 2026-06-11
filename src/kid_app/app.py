@@ -900,6 +900,9 @@ async def api_log(request: Request):
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
             db.save_daily_practice(date, items, minutes, '',
                                    channel='kid_app', method='extra')
+            # extra 追加也要记录 behavior_log
+            for entry in behavior_entries:
+                db.append_behavior_log(date, entry)
             return JSONResponse({"ok": True})
 
         # 正常打卡：直接传给 save_daily_practice，由它处理合并逻辑
