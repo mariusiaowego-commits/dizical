@@ -261,7 +261,7 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 16px;
+      gap: 14px;
       margin: 16px 0;
     }
 
@@ -284,6 +284,22 @@
       border-radius: 50%;
     }
 
+    /* iPad 适配：卡片放大，允许换行 */
+    @media (max-width: 1023px) {
+      #card-daily-blindbox .b-card {
+        width: 150px;
+      }
+      #card-daily-blindbox .b-img-wrap {
+        width: 150px; height: 150px;
+      }
+      #card-daily-blindbox .b-img {
+        max-width: 150px; max-height: 150px;
+      }
+      .blindbox-badges-grid {
+        gap: 16px;
+      }
+    }
+
     /* Phase 2: 视觉锚点 — 恢复卡片背景 */
     #card-daily-blindbox .b-card.unlocked {
       background: #fffdf8;
@@ -299,7 +315,7 @@
     }
     #card-daily-blindbox .b-card.locked .b-img-wrap {
       background: #f0eeea;
-      border: 2px dashed rgba(0,0,0,0.12);
+      border: none;
     }
 
     /* Phase 3: 锁定态强化 */
@@ -313,7 +329,7 @@
 
     /* Phase 4: Today (Day 7) 特殊处理 */
     #card-daily-blindbox .b-card.today .b-img-wrap {
-      border: 2.5px dashed #FF6B6B;
+      border: 2.5px solid #FF6B6B;
       background: rgba(255,107,107,0.06);
       animation: todayPulse 2.5s ease-in-out infinite;
     }
