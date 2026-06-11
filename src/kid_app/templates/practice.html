@@ -130,77 +130,222 @@
     }
     @keyframes reqFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* 楼层 2+3:两仪表盘并排(同卡片,grid 1fr 1fr) */
+    /* 楼层 2+3:计时器+补录 (统一卡片) */
     .floor-pickers { background: #FFFDF5; border-color: #F0D060; }
     .floor-pickers h3 { color: #8B6914; }
     .pickers-row {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 12px; align-items: stretch;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      align-items: stretch;
     }
-    .picker-cell {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 8px;
-      background: rgba(255,255,255,0.6);
-      border-radius: 12px;
-      border: 2px solid transparent;
+    .picker-card {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: linear-gradient(180deg, #FFFDF8 0%, #FFF8F0 100%);
+      border-radius: 20px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.95) inset,
+        0 -1px 0 rgba(0,0,0,0.04) inset,
+        0 4px 16px rgba(0,0,0,0.08);
+      padding: 12px;
     }
-    .picker-cell-timer { border-color: rgba(255,107,107,0.4); }   /* 珊瑚红 */
-    .picker-cell-extra { border-color: rgba(78,205,196,0.4); }    /* 蒂芙尼青 */
+    .picker-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
     .picker-label {
-      font-size: 12px; font-weight: 700; letter-spacing: 1px;
-      color: #7F8C8D; margin-bottom: 6px; text-transform: uppercase;
+      font-size: 13px; font-weight: 600;
+      color: #7F8C8D; text-align: center;
     }
-    .picker-cell-timer .picker-label { color: #C44545; }
-    .picker-cell-extra .picker-label { color: #2A8A82; }
 
-    /* 主半圆(计时) */
-    .timer-picker-wrap {
-      position: relative; width: 100%; max-width: 320px;
-      aspect-ratio: 1.6 / 1; margin: 0 auto;
+    /* ── Dial Knob ── */
+    .dial-knob {
+      --knob-size: 180px;
+      position: relative;
+      width: var(--knob-size);
+      height: var(--knob-size);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
     }
-    .timer-picker-wrap svg { width: 100%; height: 100%; display: block; }
-    .timer-center-value {
-      position: absolute; left: 50%; top: 72%;
-      transform: translate(-50%, -50%);
-      text-align: center; pointer-events: none;
-      width: 80%;
+    .dial-disc {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #FFFDF8 0%, #F0E8D0 100%);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.95) inset,
+        0 -2px 4px rgba(0,0,0,0.08) inset,
+        0 10px 20px -8px rgba(0,0,0,0.15),
+        0 3px 6px rgba(0,0,0,0.06);
     }
-    .timer-center-value .num {
-      font-size: 30px; font-weight: 800; color: #FF6B6B; line-height: 1;
-      display: inline-block;
+    .dial-ticks {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      transition: transform 80ms ease-out;
     }
-    .timer-center-value .num.idle { font-size: 42px; }
-    .timer-center-value .num .digit {
-      display: inline-block;
-      transform-origin: 50% 50%;
+    .dial-ticks.dragging { transition: none; }
+    .dial-face {
+      position: absolute;
+      top: 18%; left: 18%; right: 18%; bottom: 18%;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #FFFFFF 0%, #FFF8F0 100%);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.95) inset,
+        0 -1px 0 rgba(0,0,0,0.06) inset,
+        0 0 0 1px rgba(0,0,0,0.06),
+        0 6px 14px -5px rgba(0,0,0,0.12),
+        0 2px 4px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
     }
-    .timer-center-value .colon {
-      display: inline-block; margin: 0 2px;
+    .dial-value {
+      font-size: 36px;
+      font-weight: 900;
+      color: #2C3E50;
+      line-height: 1;
+      letter-spacing: -1px;
     }
-    .timer-center-value .unit { font-size: 14px; color: #C44545; margin-top: 2px; }
-    .timer-center-value .hint { font-size: 11px; color: #A1887F; margin-top: 6px; }
+    .dial-unit {
+      font-size: 12px;
+      font-weight: 600;
+      color: #999;
+      margin-top: 1px;
+    }
 
-    /* 副半圆(补录)— 等大,跟主半圆同步缩放 */
-    .extra-picker-wrap {
-      position: relative; width: 100%; max-width: 320px;
-      aspect-ratio: 1.6 / 1; margin: 0 auto;
+    /* ── Activity Wheel — vertical strip ── */
+    .activity-wheel {
+      position: relative;
+      width: 180px;
+      height: 200px;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      border-radius: 16px;
     }
-    .extra-picker-wrap svg { width: 100%; height: 100%; display: block; }
-    .extra-center-value {
-      position: absolute; left: 50%; top: 72%;
-      transform: translate(-50%, -50%);
-      text-align: center; pointer-events: none;
-      width: 80%;
+    .wheel-item {
+      position: absolute;
+      left: 0; right: 0;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      cursor: pointer;
+      transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                  opacity 200ms ease;
+      will-change: transform, opacity;
     }
-    .extra-center-value .num { font-size: 32px; font-weight: 800; color: #4ECDC4; line-height: 1; }
-    .extra-center-value .unit { font-size: 12px; color: #2A8A82; margin-top: 2px; }
-    .extra-center-value .hint { font-size: 11px; color: #A1887F; margin-top: 4px; }
+    .wheel-desc {
+      flex: 1;
+      font-size: 11px;
+      font-weight: 500;
+      color: #B0A898;
+      text-align: right;
+      padding-right: 8px;
+      transition: color 250ms ease;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
+    }
+    .wheel-item.selected .wheel-desc {
+      color: #c8860a;
+      font-weight: 600;
+      font-size: 10px;
+    }
+    .wheel-right {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+    .wheel-pill {
+      padding: 4px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      white-space: nowrap;
+      min-width: 38px;
+      text-align: center;
+    }
+    .wheel-item.selected .wheel-pill {
+      background: #FFFFFF;
+      color: #171717;
+      border-color: rgba(0,0,0,0.08);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .wheel-item:not(.selected) .wheel-pill {
+      background: transparent;
+      color: #C0B8A8;
+      border-color: transparent;
+    }
+    .wheel-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 0;
+      transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .wheel-item.selected .wheel-icon {
+      background: #FF6B6B;
+      color: white;
+      box-shadow: 0 4px 10px -3px rgba(255,107,107,0.5), 0 1px 0 rgba(255,255,255,0.7) inset;
+    }
+    .wheel-item:not(.selected) .wheel-icon {
+      background: #FFF0E8;
+      color: #c8860a;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset;
+    }
+    .wheel-indicator {
+      width: 0;
+      height: 4px;
+      border-radius: 2px;
+      background: #2C3E50;
+      transition: width 250ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .wheel-item.selected .wheel-indicator {
+      width: 8px;
+      opacity: 1;
+    }
+    .activity-wheel::before,
+    .activity-wheel::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 30px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .activity-wheel::before {
+      top: 0;
+      background: linear-gradient(to bottom, #FFFDF8, transparent);
+    }
+    .activity-wheel::after {
+      bottom: 0;
+      background: linear-gradient(to top, #FFF8F0, transparent);
+    }
 
     /* 控制按钮区 */
-    .action-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .action-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
     .btn {
-      padding: 12px 24px; border: none; border-radius: 24px;
-      font-size: 17px; font-family: inherit; cursor: pointer;
+      padding: 10px 20px; border: none; border-radius: 20px;
+      font-size: 15px; font-family: inherit; cursor: pointer;
       transition: transform 0.1s, filter 0.2s;
     }
     .btn:hover:not(:disabled) { filter: brightness(1.08); }
@@ -554,41 +699,47 @@
         <span class="bubble-name" id="bubbleName"></span>
       </div></h3>
       <div class="pickers-row">
-        <!-- 左:主半圆(计时) -->
-        <div class="picker-cell picker-cell-timer">
-          <div class="picker-label">主计时</div>
-          <div class="timer-picker-wrap" id="timerPickerWrap">
-            <svg id="timerPickerSvg" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet"></svg>
-            <div class="timer-center-value" id="timerCenterValue">
-              <div class="num idle" id="timerNum">10</div>
-              <div class="unit" id="timerUnit">分钟</div>
-              <div class="hint" id="timerHint">拖动选择 · 默认 10</div>
+        <!-- 主计时 picker -->
+        <div class="picker-card">
+          <div class="activity-wheel" id="timerWheel"></div>
+          <div class="picker-col">
+            <div class="picker-label">⏱️ 主计时</div>
+            <div class="dial-knob" id="timerKnobEl">
+              <div class="dial-disc"></div>
+              <svg class="dial-ticks" id="timerTicks" viewBox="-110 -110 220 220"></svg>
+              <div class="dial-face">
+                <div class="dial-value" id="timerValue">10</div>
+                <div class="dial-unit">分钟</div>
+              </div>
             </div>
-          </div>
-          <div class="timer-display" id="timer-display" style="display:none">00:00</div>
-          <div class="action-btns">
-            <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
-            <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
-          </div>
-          <div class="confirm-area" id="confirmArea">
-            <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
+            <div class="timer-display" id="timer-display" style="display:none">00:00</div>
+            <div class="action-btns">
+              <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
+              <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
+            </div>
+            <div class="confirm-area" id="confirmArea">
+              <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
+            </div>
           </div>
         </div>
-        <!-- 右:副半圆(补录) -->
-        <div class="picker-cell picker-cell-extra" id="extraSection">
-          <div class="picker-label">快速补录</div>
-          <div class="extra-picker-wrap">
-            <svg id="extraPickerSvg" viewBox="0 0 400 230" preserveAspectRatio="xMidYMid meet"></svg>
-            <div class="extra-center-value" id="extraCenterValue">
-              <div class="num">10</div>
-              <div class="unit">分钟</div>
-              <div class="hint" id="extraHint">拖动 · +N 补录</div>
+        <!-- 补录 picker -->
+        <div class="picker-card" id="extraSection">
+          <div class="activity-wheel" id="extraWheel"></div>
+          <div class="picker-col">
+            <div class="picker-label">⚡ 补录</div>
+            <div class="dial-knob" id="extraKnobEl">
+              <div class="dial-disc"></div>
+              <svg class="dial-ticks" id="extraTicks" viewBox="-110 -110 220 220"></svg>
+              <div class="dial-face">
+                <div class="dial-value" id="extraValue">5</div>
+                <div class="dial-unit">分钟</div>
+              </div>
             </div>
+            <div class="action-btns">
+              <button class="btn btn-ghost" id="addExtraBtn" onclick="addExtraFromPicker()" disabled>📝 记录这次补录</button>
+            </div>
+            <div id="extraLogList"></div>
           </div>
-          <div class="action-btns">
-            <button class="btn btn-ghost" id="addExtraBtn" onclick="addExtraFromPicker()" disabled>📝 记录这次补录</button>
-          </div>
-          <div id="extraLogList"></div>
         </div>
       </div>
     </div>
@@ -657,8 +808,10 @@
     let finishPending = false;  // 提前结束但未打卡
     let submitting = false;  // 防重放：打卡请求进行中
     let pendingExtraMins = 10;  // 副半圆 picker 当前选值
-    let timerPicker = null;  // 主半圆 picker 实例
-    let extraPicker = null;  // 副半圆 picker 实例
+    let timerPicker = null;  // dial knob picker 实例
+    let extraPicker = null;  // dial knob picker 实例
+    let timerWheel = null;   // activity wheel 实例
+    let extraWheel = null;   // activity wheel 实例
     let todayDate = "{{today_date}}";
     let enterTime = new Date().toISOString();  // 行为日志：进入时间
 
@@ -1036,16 +1189,10 @@
       if (addBtn) addBtn.disabled = !selectedItemId;
     }
 
-    function setDuration(mins) {
+    function setPickerTime(mins) {
       duration = mins;
-      if (typeof timerPicker !== 'undefined' && timerPicker) {
-        timerPicker.setValue(mins);
-      } else {
-        const hint = document.getElementById('timerHint');
-        const num = document.querySelector('.timer-center-value .num');
-        if (num) num.textContent = mins;
-        if (hint) hint.textContent = '默认 ' + mins;
-      }
+      if (timerPicker) timerPicker.setValue(mins);
+      if (timerWheel) timerWheel.setValue(mins);
       if (!started) resetTimer();
     }
 
@@ -1056,19 +1203,9 @@
       paused = false;
       finishPending = false;
       elapsed = 0;
-      // 恢复中央 num 为 idle 形式("10" 单数字 + 30px 或 42px idle)
-      const numEl = document.getElementById('timerNum');
-      const unitEl = document.getElementById('timerUnit');
-      const hintEl = document.getElementById('timerHint');
-      if (numEl) {
-        numEl.classList.add('idle');
-        numEl.classList.remove('flipping');
-        // 用 picker 当前值
-        const cur = (typeof timerPicker !== 'undefined' && timerPicker && timerPicker.currentMin) || 10;
-        numEl.textContent = String(cur);
-      }
-      if (unitEl) unitEl.textContent = '分钟';
-      if (hintEl) hintEl.textContent = '拖动选择 · 默认 10';
+      // 恢复中央数值为默认
+      const valueEl = document.getElementById('timerValue');
+      if (valueEl) valueEl.textContent = '10';
       document.getElementById('timer-display').textContent = '00:00';
       document.getElementById('startBtn').textContent = '开始';
       document.getElementById('startBtn').disabled = !selectedItemId;
@@ -1114,15 +1251,8 @@
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
       document.getElementById('finishEarlyBtn').textContent = '提前结束';
-      // 中央 num 切换为 mm:ss 形式
-      const numEl = document.getElementById('timerNum');
-      if (numEl) {
-        numEl.classList.remove('idle');
-      }
-      const unitEl = document.getElementById('timerUnit');
-      if (unitEl) unitEl.textContent = '已练习';
-      const hintEl = document.getElementById('timerHint');
-      if (hintEl) hintEl.textContent = '加油哦~';
+      // 中央数值切换为 mm:ss 形式
+      const valueEl = document.getElementById('timerValue');
       renderTimerDisplay(true);
       // 首次 start 触发首次 glitch 动效(由 renderTimerDisplay forceRebuild 内部处理)
       startTickInterval();
@@ -1156,58 +1286,17 @@
     }
 
     function renderTimerDisplay(forceRebuild) {
-      const numEl = document.getElementById('timerNum');
-      if (!numEl) return;
+      const valueEl = document.getElementById('timerValue');
+      if (!valueEl) return;
       const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
       const s = (elapsed % 60).toString().padStart(2, '0');
-      if (forceRebuild) {
-        // 重建 digit 节点(digit × 4 + colon × 1)
-        numEl.innerHTML = '';
-        for (let i = 0; i < m.length; i++) {
-          const d = document.createElement('span');
-          d.className = 'digit';
-          d.textContent = m[i];
-          d.style.transformOrigin = '50% 50%';
-          numEl.appendChild(d);
+      const timeStr = m + ':' + s;
+      if (forceRebuild || valueEl.textContent !== timeStr) {
+        valueEl.textContent = timeStr;
+        // GSAP glitch 动效
+        if (typeof gsap !== 'undefined' && forceRebuild) {
+          gsap.fromTo(valueEl, { opacity: 0, scale: 1.1 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' });
         }
-        const colon = document.createElement('span');
-        colon.className = 'colon';
-        colon.textContent = ':';
-        numEl.appendChild(colon);
-        for (let i = 0; i < s.length; i++) {
-          const d = document.createElement('span');
-          d.className = 'digit';
-          d.textContent = s[i];
-          d.style.transformOrigin = '50% 50%';
-          numEl.appendChild(d);
-        }
-        // 首次 start 触发全部 4 digit 的 glitch 动效
-        if (timerRunning && !paused) {
-          const digits = numEl.querySelectorAll('.digit');
-          digits.forEach(d => glitchAnimateDigit(d));
-        }
-        return;
-      }
-      const digits = numEl.querySelectorAll('.digit');
-      if (digits.length === 4) {
-        // m1 m2 : s1 s2(digit 只有 4 个,colon 在 numEl.querySelectorAll('.digit') 之外)
-        // 实际 digits.length 是 4,colon 是 .colon 不是 .digit
-        // 检测哪些数字变了 → 对变化的 digit 触发 glitch 动效
-        const oldTexts = [digits[0].textContent, digits[1].textContent, digits[2].textContent, digits[3].textContent];
-        if (digits[0].textContent !== m[0]) digits[0].textContent = m[0];
-        if (digits[1].textContent !== m[1]) digits[1].textContent = m[1];
-        if (digits[2].textContent !== s[0]) digits[2].textContent = s[0];
-        if (digits[3].textContent !== s[1]) digits[3].textContent = s[1];
-        // 只对变化的 digit 触发 glitch 动效
-        if (timerRunning && !paused) {
-          if (oldTexts[0] !== digits[0].textContent) glitchAnimateDigit(digits[0]);
-          if (oldTexts[1] !== digits[1].textContent) glitchAnimateDigit(digits[1]);
-          if (oldTexts[2] !== digits[2].textContent) glitchAnimateDigit(digits[2]);
-          if (oldTexts[3] !== digits[3].textContent) glitchAnimateDigit(digits[3]);
-        }
-      } else {
-        // 退化:直接 textContent
-        numEl.textContent = m + ':' + s;
       }
     }
 
@@ -1286,12 +1375,9 @@
       elapsed = finishSavedElapsed;
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
-      // 重建中央数字 + 恢复 unit 文案"已练习"
-      const numEl = document.getElementById('timerNum');
-      const unitEl = document.getElementById('timerUnit');
-      if (numEl) numEl.classList.remove('idle');
-      if (unitEl) unitEl.textContent = '已练习';
-      renderTimerDisplay(true);   // 重建 digit 节点
+      // 重建中央数值 + 恢复显示
+      const valueEl = document.getElementById('timerValue');
+      renderTimerDisplay(true);   // 重建显示
       startTickInterval();
     }
 
@@ -1305,34 +1391,18 @@
       elapsed = 0;
       finishSavedElapsed = 0;
       clearInterval(timerInterval);
-      // 中央数字回到 idle "10" / "分钟"
-      const numEl = document.getElementById('timerNum');
-      const unitEl = document.getElementById('timerUnit');
-      const hintEl = document.getElementById('timerHint');
-      if (numEl) {
-        numEl.classList.remove('flipping');
-        numEl.classList.add('idle');
-        numEl.textContent = '10';
-      }
-      if (unitEl) unitEl.textContent = '分钟';
-      if (hintEl) hintEl.textContent = '拖动选择 · 默认 10';
+      // 中央数值回到 idle "10" / "分钟"
+      const valueEl = document.getElementById('timerValue');
+      if (valueEl) valueEl.textContent = '10';
       // 按钮恢复
       const startBtn = document.getElementById('startBtn');
       const finishBtn = document.getElementById('finishEarlyBtn');
       startBtn.textContent = '开始';
       finishBtn.style.display = 'none';
-      // 重置 timer picker knob 到默认 10 位置
-      // 10min 对应角度 = π - ((10-5)/(30-5))*π = π/2 = 90°
-      // P_CX=200, P_CY=200, P_R=150 → x=200+150*cos(π/2)=200, y=200-150*sin(π/2)=50
-      const timerKnob = document.querySelector('#timerPickerSvg .dizi-picker-knob');
-      if (timerKnob) {
-        timerKnob.setAttribute('transform', 'translate(200, 50) scale(1)');
-      }
-      // 重置 timer 进度弧(0 长度)
-      const timerProgress = document.querySelectorAll('#timerPickerSvg path')[1];
-      if (timerProgress) {
-        timerProgress.setAttribute('stroke-dasharray', '20 100');   // 10min = 5/25 = 20%
-      }
+      // 重置 timer picker 到默认 10
+      if (timerPicker) timerPicker.setValue(10);
+      if (timerWheel) timerWheel.setValue(10);
+      duration = 10;
       // 重置 finishSave 标志
       finishSavedElapsed = 0;
     }
@@ -1379,9 +1449,10 @@
             // 只有没开始新计时才重置（防止打卡后立即继续练习被误清零）
             if (!started) {
               resetTimer();
-              document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
-              selectedItem = null;
-              updateReqPanel('');
+              // 不清空 selectedItem，让用户可以继续使用同一个科目计时
+              // document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
+              // selectedItem = null;
+              // updateReqPanel('');
             }
             const confirmArea6 = document.getElementById('confirmArea');
             if (confirmArea6) confirmArea6.classList.remove('show');
@@ -1514,284 +1585,238 @@
     }
 
     // ════════════════════════════════════════════════
-    // 半圆弧 Picker 工厂(本地版,直接嵌 practice.html,避免额外 HTTP 请求)
-    // 改自 uiux-asset-library/dizi-practice-picker v1
-    // timer 5-30min 5min 步长, extra 1-30min 1min 步长 (允许补录 1-4 分钟)
     // ════════════════════════════════════════════════
-    const PICKER_STEP = 1;
-    const PICKER_MAX = 30;
-    // 距整数吸附点 < 0.6 min 时吸附
-    const P_STICK_RADIUS = 0.6;
-    function pApplyStick(m) {
-      for (const v of pickerStickVals) {
-        if (Math.abs(m - v) <= P_STICK_RADIUS) return v;
-      }
-      return Math.round(m);
-    }
-    const P_W = 400, P_H = 220, P_CX = 200, P_CY = 200, P_R = 150, P_STROKE = 14;
-    function pMinToAngle(m) { return Math.PI - ((m - pickerMin) / (PICKER_MAX - pickerMin)) * Math.PI; }
-    function pAngleToMin(a) { return pickerMin + ((Math.PI - a) / Math.PI) * (PICKER_MAX - pickerMin); }
-    function pClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    // Dial Knob + Activity Wheel (replaces old semi-circle picker)
+    // ════════════════════════════════════════════════
 
-    let pickerMin, pickerStickVals;
-    function createPicker(opts) {
+    // Fun descriptions — scattered intervals
+    const TIMER_DESCS = {
+      5: '就这？手都没热呢', 7: '再加把劲呗', 10: '不错的开始',
+      13: '有点意思了', 15: '标准练习量', 18: '开始上强度了',
+      20: '手指开始酸了！', 23: '停不下来？', 25: '要卷死谁啊！',
+      28: '体力怪物！', 30: '你是认真的？！',
+    };
+    const EXTRA_DESCS = {
+      2: '蚊子腿也是肉', 3: '三分钟 意思意思', 5: '小小加练',
+      8: '越练越起劲', 10: '够意思！', 13: '加练也要卷？',
+      15: '额外的努力！', 18: '这还是加练？！', 20: '二十分钟加练！',
+      25: '你是要上天！', 30: '你赢了！！',
+    };
+
+    // Line-art SVG icons — each one unique
+    const WHEEL_ICONS = [
+      '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>',
+      '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+      '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+      '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',
+      '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>',
+      '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+      '<polygon points="6 3 20 12 6 21 6 3"/>',
+      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+      '<path d="M12 3v18"/><path d="M8 7l4-4 4 4"/><path d="M8 17l4 4 4-4"/>',
+      '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+      '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>',
+      '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
+      '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+      '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+      '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+      '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+      '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
+      '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>',
+      '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    ];
+
+    // Dial Knob — full-circle rotary dial
+    function createDialKnob(opts) {
       const {
-        svgEl, valueEl, hintEl, color, colorGlow, trackColor,
-        onChange, stateRef, initial = 10, min = 5, stickVals = [5, 10, 15, 20, 25, 30]
+        containerEl, ticksEl, valueEl, onChange,
+        initial = 10, min = 1, max = 30, step = 1,
+        snapVals = [], dotCount = 30, color = '#FF6B6B', sensitivity = 0.25,
       } = opts;
-      pickerMin = min;
-      pickerStickVals = stickVals;
       const SVG_NS = 'http://www.w3.org/2000/svg';
-      svgEl.innerHTML = '';
+      const DOT_RADIUS = 80, OUTER_TICKS = 60, SNAP_RADIUS = 0.8;
+      const range = max - min;
+      let currentValue = initial, isDragging = false, lastAngle = 0;
 
-      const arcStart = { x: P_CX - P_R, y: P_CY };
-      const arcEnd   = { x: P_CX + P_R, y: P_CY };
-      const arcPath = `M ${arcStart.x} ${arcStart.y} A ${P_R} ${P_R} 0 0 1 ${arcEnd.x} ${arcEnd.y}`;
+      ticksEl.innerHTML = '';
+      for (let i = 0; i < OUTER_TICKS; i++) {
+        const angle = (i / OUTER_TICKS) * 360 - 90;
+        const rad = (angle * Math.PI) / 180;
+        const isMarker = (i % 5 === 0);
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', Math.cos(rad) * 100);
+        line.setAttribute('y1', Math.sin(rad) * 100);
+        line.setAttribute('x2', Math.cos(rad) * (isMarker ? 88 : 94));
+        line.setAttribute('y2', Math.sin(rad) * (isMarker ? 88 : 94));
+        line.setAttribute('stroke-width', isMarker ? 1.8 : 1);
+        line.setAttribute('stroke-linecap', 'round');
+        line.setAttribute('stroke', isMarker ? '#c8860a' : 'rgba(200,160,40,0.3)');
+        ticksEl.appendChild(line);
+      }
+      for (let i = 0; i < dotCount; i++) {
+        const angle = (i / dotCount) * 360 - 90;
+        const rad = (angle * Math.PI) / 180;
+        const c = document.createElementNS(SVG_NS, 'circle');
+        c.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
+        c.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
+        c.setAttribute('r', 2);
+        c.setAttribute('fill', '#E8E0D0');
+        ticksEl.appendChild(c);
+      }
+      const activeGroup = document.createElementNS(SVG_NS, 'g');
+      ticksEl.appendChild(activeGroup);
+      const arcPath = document.createElementNS(SVG_NS, 'path');
+      arcPath.setAttribute('fill', 'none');
+      arcPath.setAttribute('stroke', color);
+      arcPath.setAttribute('stroke-width', 1.2);
+      arcPath.setAttribute('stroke-opacity', 0.25);
+      arcPath.setAttribute('stroke-linecap', 'round');
+      activeGroup.appendChild(arcPath);
 
-      const path = document.createElementNS(SVG_NS, 'path');
-      path.setAttribute('d', arcPath);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', trackColor);
-      path.setAttribute('stroke-width', P_STROKE);
-      path.setAttribute('stroke-linecap', 'round');
-      svgEl.appendChild(path);
-
-      const progress = document.createElementNS(SVG_NS, 'path');
-      progress.setAttribute('d', arcPath);
-      progress.setAttribute('fill', 'none');
-      progress.setAttribute('stroke', color);
-      progress.setAttribute('stroke-width', P_STROKE);
-      progress.setAttribute('stroke-linecap', 'round');
-      progress.setAttribute('pathLength', '100');
-      progress.setAttribute('stroke-dasharray', '0 100');
-      progress.style.filter = `drop-shadow(0 0 8px ${colorGlow})`;
-      svgEl.appendChild(progress);
-
-      for (let m = pickerMin; m <= PICKER_MAX; m += PICKER_STEP) {
-        const isMajor = (m % 5 === 0);
-        const a = pMinToAngle(m);
-        const tickInner = P_R - (isMajor ? 10 : 6);
-        const tickOuter = P_R + (isMajor ? 14 : 9);
-        const inner = { x: P_CX + tickInner * Math.cos(a), y: P_CY - tickInner * Math.sin(a) };
-        const outer = { x: P_CX + tickOuter * Math.cos(a), y: P_CY - tickOuter * Math.sin(a) };
-        const tick = document.createElementNS(SVG_NS, 'line');
-        tick.setAttribute('x1', inner.x); tick.setAttribute('y1', inner.y);
-        tick.setAttribute('x2', outer.x); tick.setAttribute('y2', outer.y);
-        tick.setAttribute('stroke', color);
-        tick.setAttribute('stroke-width', isMajor ? 2.5 : 1.5);
-        tick.setAttribute('stroke-linecap', 'round');
-        if (!isMajor) tick.setAttribute('opacity', '0.55');
-        svgEl.appendChild(tick);
-
-        // 仅 5 倍数显示数字标签
-        if (isMajor) {
-          const lblX = P_CX + (P_R + 28) * Math.cos(a);
-          const lblY = P_CY - (P_R + 28) * Math.sin(a);
-          const lbl = document.createElementNS(SVG_NS, 'text');
-          lbl.setAttribute('x', lblX);
-          lbl.setAttribute('y', lblY);
-          lbl.setAttribute('text-anchor', 'middle');
-          lbl.setAttribute('dominant-baseline', 'central');
-          lbl.setAttribute('fill', color);
-          lbl.setAttribute('font-size', '13');
-          lbl.setAttribute('font-weight', '700');
-          lbl.textContent = m;
-          svgEl.appendChild(lbl);
+      function updateVisual() {
+        const ratio = (currentValue - min) / range;
+        const filledDots = Math.round(ratio * dotCount);
+        ticksEl.style.transform = 'rotate(' + (ratio * 360) + 'deg)';
+        activeGroup.querySelectorAll('.active-dot').forEach(d => d.remove());
+        for (let i = 0; i < filledDots; i++) {
+          const angle = (i / dotCount) * 360 - 90;
+          const rad = (angle * Math.PI) / 180;
+          const c = document.createElementNS(SVG_NS, 'circle');
+          c.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
+          c.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
+          c.setAttribute('r', i === filledDots - 1 ? 4 : 3);
+          c.setAttribute('fill', color);
+          c.classList.add('active-dot');
+          activeGroup.insertBefore(c, arcPath);
         }
+        if (filledDots > 1) {
+          const startRad = (-90 * Math.PI) / 180;
+          const endA = ((filledDots - 1) / dotCount) * 360 - 90;
+          const endRad = (endA * Math.PI) / 180;
+          const large = (endA - (-90)) > 180 ? 1 : 0;
+          arcPath.setAttribute('d', 'M ' + Math.cos(startRad)*DOT_RADIUS + ' ' + Math.sin(startRad)*DOT_RADIUS + ' A ' + DOT_RADIUS + ' ' + DOT_RADIUS + ' 0 ' + large + ' 1 ' + Math.cos(endRad)*DOT_RADIUS + ' ' + Math.sin(endRad)*DOT_RADIUS);
+          arcPath.style.display = '';
+        } else { arcPath.style.display = 'none'; }
+        if (valueEl) valueEl.textContent = currentValue;
+        if (onChange) onChange(currentValue);
       }
-
-      const knobGroup = document.createElementNS(SVG_NS, 'g');
-      knobGroup.setAttribute('class', 'dizi-picker-knob');
-      const knobBg = document.createElementNS(SVG_NS, 'circle');
-      knobBg.setAttribute('r', 18);
-      knobBg.setAttribute('fill', '#FFFFFF');
-      knobBg.setAttribute('stroke', color);
-      knobBg.setAttribute('stroke-width', 3);
-      const knobInner = document.createElementNS(SVG_NS, 'circle');
-      knobInner.setAttribute('r', 8);
-      knobInner.setAttribute('fill', color);
-      knobGroup.appendChild(knobBg);
-      knobGroup.appendChild(knobInner);
-      svgEl.appendChild(knobGroup);
-
-      let currentMin = initial;
-      let isDragging = false;
-      let lastAngle = pMinToAngle(currentMin);
-      let velocity = 0;
-      let lastTs = 0;
-      let rafId = null;
-      let visualScale = 1;
-
-      function knobPos(min) {
-        const a = pMinToAngle(min);
-        return { x: P_CX + P_R * Math.cos(a), y: P_CY - P_R * Math.sin(a) };
+      function snapValue(v) {
+        v = Math.round(v / step) * step;
+        for (const sv of snapVals) { if (Math.abs(v - sv) <= SNAP_RADIUS) return sv; }
+        return Math.max(min, Math.min(max, v));
       }
-      function applyTransform(min, scale) {
-        const p = knobPos(min);
-        knobGroup.setAttribute('transform', `translate(${p.x}, ${p.y}) scale(${scale})`);
+      function getAngle(cx, cy) {
+        const rect = containerEl.getBoundingClientRect();
+        return (Math.atan2(cy - (rect.top + rect.height / 2), cx - (rect.left + rect.width / 2)) * 180) / Math.PI;
       }
-      function setKnob(min, animate) {
-        const ratio = (min - pickerMin) / (PICKER_MAX - pickerMin);
-        progress.setAttribute('stroke-dasharray', `${ratio * 100} 100`);
-        if (animate && typeof gsap !== 'undefined') {
-          const p = knobPos(min);
-          gsap.to(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(${visualScale})` }, duration: 0.3, ease: 'power2.out' });
-        } else {
-          applyTransform(min, visualScale);
-        }
-      }
-      function updateValue() {
-        if (valueEl) valueEl.textContent = currentMin;
-        if (onChange) onChange(currentMin);
-      }
-
-      function angleFromEvent(e) {
-        const rect = svgEl.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const svgX = (clientX - rect.left) * (P_W / rect.width);
-        const svgY = (clientY - rect.top)  * (P_H / rect.height);
-        const dx = svgX - P_CX;
-        const dy = P_CY - svgY;
-        return pClamp(Math.atan2(dy, dx), 0, Math.PI);
-      }
-
-      function onPointerDown(e) {
-        if (stateRef && stateRef.isRunning) return;
-        isDragging = true;
-        knobGroup.classList.add('dragging');
-        e.preventDefault();
-        const a = angleFromEvent(e);
-        const m = pApplyStick(pAngleToMin(a));
-        currentMin = pClamp(m, pickerMin, PICKER_MAX);
-        setKnob(currentMin);
-        updateValue();
-        velocity = 0; lastTs = 0;
-      }
-      function onPointerMove(e) {
+      containerEl.addEventListener('pointerdown', (e) => {
+        isDragging = true; lastAngle = getAngle(e.clientX, e.clientY);
+        containerEl.setPointerCapture(e.pointerId); ticksEl.classList.add('dragging'); e.preventDefault();
+      });
+      containerEl.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-        e.preventDefault();
-        const a = angleFromEvent(e);
-        const newAngle = a;
-        const now = performance.now();
-        if (lastTs > 0) {
-          const dt = now - lastTs;
-          velocity = (newAngle - lastAngle) / dt * 1000;
-          velocity = pClamp(velocity, -30, 30);
-        }
-        lastAngle = newAngle;
-        lastTs = now;
-        const m = pApplyStick(pAngleToMin(newAngle));
-        currentMin = pClamp(m, pickerMin, PICKER_MAX);
-        const targetScale = Math.abs(velocity) > 5 ? 1.15 : 1;
-        if (Math.abs(targetScale - visualScale) > 0.01) {
-          visualScale = targetScale;
-          if (typeof gsap !== 'undefined') {
-            const p = knobPos(currentMin);
-            gsap.to(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(${visualScale})` }, duration: 0.1, ease: 'power1.out' });
-          } else {
-            applyTransform(currentMin, visualScale);
-          }
-        } else {
-          applyTransform(currentMin, visualScale);
-        }
-        setKnob(currentMin);
-        updateValue();   // 拖动期间数字实时变(修复 v2.4 bug)
-      }
-      function onPointerUp(e) {
-        if (!isDragging) return;
-        isDragging = false;
-        knobGroup.classList.remove('dragging');
-        visualScale = 1;
-        if (typeof gsap !== 'undefined') {
-          const p = knobPos(currentMin);
-          gsap.to(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(1)` }, duration: 0.2, ease: 'power2.out' });
-        } else {
-          applyTransform(currentMin, 1);
-        }
-        if (Math.abs(velocity) > 1) {
-          startMomentum();
-        }
-      }
-      function startMomentum() {
-        const FRICTION = 0.92;
-        const STOP_VEL = 0.3;
-        function tick(ts) {
-          const dt = lastTs === 0 ? 16 : (ts - lastTs);
-          velocity *= Math.pow(FRICTION, dt / 16.67);
-          const curAngle = pMinToAngle(currentMin);
-          let newAngle = curAngle + velocity * dt / 1000;
-          if (newAngle < 0) { newAngle = 0; velocity = -velocity * 0.25; }
-          if (newAngle > Math.PI) { newAngle = Math.PI; velocity = -velocity * 0.25; }
-          const m = pApplyStick(pAngleToMin(newAngle));
-          currentMin = pClamp(m, pickerMin, PICKER_MAX);
-          setKnob(currentMin);
-          updateValue();
-          lastTs = ts;
-          if (Math.abs(velocity) <= STOP_VEL) {
-            velocity = 0;
-            if (typeof gsap !== 'undefined') {
-              const p = knobPos(currentMin);
-              gsap.fromTo(knobGroup, { attr: { transform: `translate(${p.x}, ${p.y}) scale(1)` } }, { attr: { transform: `translate(${p.x}, ${p.y}) scale(1.25)` }, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out' });
-            }
-            return;
-          }
-          rafId = requestAnimationFrame(tick);
-        }
-        lastTs = 0;
-        rafId = requestAnimationFrame(tick);
-      }
+        const angle = getAngle(e.clientX, e.clientY);
+        let delta = angle - lastAngle;
+        if (delta > 180) delta -= 360; if (delta < -180) delta += 360;
+        currentValue = snapValue(currentValue + delta * sensitivity);
+        lastAngle = angle; updateVisual();
+      });
+      containerEl.addEventListener('pointerup', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
+      containerEl.addEventListener('pointercancel', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
+      containerEl.addEventListener('wheel', (e) => {
+        e.preventDefault(); currentValue = snapValue(currentValue + (e.deltaY > 0 ? -step : step)); updateVisual();
+      }, { passive: false });
+      updateVisual();
+      return { getValue: () => currentValue, setValue: (v) => { currentValue = snapValue(v); updateVisual(); } };
+    }
 
-      svgEl.addEventListener('pointerdown', onPointerDown);
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', onPointerUp);
-      svgEl.style.touchAction = 'none';
-
-      setKnob(currentMin);
-      updateValue();
-
-      return {
-        getValue: () => currentMin,
-        setValue: (m, animate) => {
-          currentMin = pClamp(m, pickerMin, PICKER_MAX);
-          setKnob(currentMin, animate);
-          updateValue();
-        },
-        destroy: () => { if (rafId) cancelAnimationFrame(rafId); svgEl.innerHTML = ''; }
-      };
+    // Activity Wheel — vertical curved arc selector
+    function createActivityWheel(opts) {
+      const { containerEl, values, descs, icons, initial, onChange, ARC_RADIUS = 280, ARC_STEP_DEG = 10, VISIBLE_RANGE = 5 } = opts;
+      let selectedIdx = values.indexOf(initial); if (selectedIdx < 0) selectedIdx = 0;
+      containerEl.innerHTML = '';
+      const items = values.map((v, i) => {
+        const el = document.createElement('div'); el.className = 'wheel-item';
+        const iconSvg = icons ? icons[i % icons.length] : '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+        el.innerHTML = '<span class="wheel-desc">' + (descs[v] || '') + '</span><div class="wheel-right"><span class="wheel-pill">' + v + '</span><div class="wheel-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + iconSvg + '</svg></div><div class="wheel-indicator"></div></div>';
+        el.addEventListener('click', () => { selectedIdx = i; updateWheel(true); if (onChange) onChange(values[selectedIdx]); });
+        containerEl.appendChild(el); return el;
+      });
+      function updateWheel(animate) {
+        items.forEach((el, i) => {
+          const offset = i - selectedIdx, absOffset = Math.abs(offset);
+          const angleRad = (offset * ARC_STEP_DEG * Math.PI) / 180;
+          const arcX = ARC_RADIUS * (1 - Math.cos(angleRad));
+          const arcY = ARC_RADIUS * Math.sin(angleRad);
+          const scale = Math.max(0.72, 1 - absOffset * 0.06);
+          const opacity = absOffset > VISIBLE_RANGE ? 0 : Math.max(0.25, 1 - absOffset * 0.18);
+          el.classList.toggle('selected', offset === 0);
+          el.style.top = 'calc(50% + ' + (-17 + arcY) + 'px)';
+          el.style.transform = 'translateX(' + arcX + 'px) scale(' + scale + ')';
+          el.style.opacity = opacity;
+          el.style.pointerEvents = absOffset > VISIBLE_RANGE ? 'none' : 'auto';
+          if (animate) { el.style.transition = 'transform 280ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease'; setTimeout(() => el.style.transition = '', 300); }
+        });
+      }
+      let wheelAccum = 0; const WHEEL_THRESHOLD = 35;
+      containerEl.addEventListener('wheel', (e) => {
+        e.preventDefault(); wheelAccum += e.deltaY;
+        if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
+        const steps = Math.trunc(wheelAccum / WHEEL_THRESHOLD); wheelAccum -= steps * WHEEL_THRESHOLD;
+        const newIdx = Math.max(0, Math.min(values.length - 1, selectedIdx + steps));
+        if (newIdx !== selectedIdx) { selectedIdx = newIdx; updateWheel(true); if (onChange) onChange(values[selectedIdx]); }
+      }, { passive: false });
+      let touchStartY = 0;
+      containerEl.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+      containerEl.addEventListener('touchmove', (e) => {
+        const dy = touchStartY - e.touches[0].clientY;
+        if (Math.abs(dy) > 25) { const steps = Math.trunc(dy / 25); touchStartY = e.touches[0].clientY;
+          const newIdx = Math.max(0, Math.min(values.length - 1, selectedIdx + steps));
+          if (newIdx !== selectedIdx) { selectedIdx = newIdx; updateWheel(true); if (onChange) onChange(values[selectedIdx]); } }
+      }, { passive: true });
+      updateWheel(false);
+      return { getValue: () => values[selectedIdx], setValue: (v) => { const idx = values.indexOf(v); if (idx >= 0) { selectedIdx = idx; updateWheel(true); } } };
     }
 
     // ── Init Picker 实例 ──
     function initPickers() {
-      const timerSvg = document.getElementById('timerPickerSvg');
-      const extraSvg = document.getElementById('extraPickerSvg');
-      if (timerSvg) {
-        const numEl = document.querySelector('.timer-center-value .num');
-        const hintEl = document.getElementById('timerHint');
-        timerPicker = createPicker({
-          svgEl: timerSvg,
-          valueEl: numEl,
-          hintEl: hintEl,
-          color: '#FF6B6B', colorGlow: '#FF8E8E', trackColor: '#F8D7D0',
-          stateRef: { get isRunning() { return timerRunning; } },
-          onChange: (m) => { duration = m; if (hintEl) hintEl.textContent = '已选 ' + m + ' 分钟 · 点开始'; },
-          initial: 10
-        });
-      }
-      if (extraSvg) {
-        const numEl = document.querySelector('.extra-center-value .num');
-        const hintEl = document.getElementById('extraHint');
-        extraPicker = createPicker({
-          svgEl: extraSvg,
-          valueEl: numEl,
-          hintEl: hintEl,
-          color: '#4ECDC4', colorGlow: '#7EDDD5', trackColor: '#CFE9E5',
-          onChange: (m) => { pendingExtraMins = m; if (hintEl) hintEl.textContent = '已选 +' + m + ' 分钟 · 点记录'; },
-          initial: 10,
-          min: 1,                                                // 补录允许 1-30 min
-          stickVals: [1, 2, 3, 4, 5, 10, 15, 20, 25, 30]         // 整数吸附, 1-4 都允许
-        });
-      }
+      const timerValues = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+      const extraValues = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+
+      timerPicker = createDialKnob({
+        containerEl: document.getElementById('timerKnobEl'),
+        ticksEl: document.getElementById('timerTicks'),
+        valueEl: document.getElementById('timerValue'),
+        initial: 10, min: 5, max: 30, step: 1,
+        snapVals: timerValues, sensitivity: 0.25,
+        onChange: (v) => { duration = v; if (timerWheel) timerWheel.setValue(v); },
+      });
+
+      timerWheel = createActivityWheel({
+        containerEl: document.getElementById('timerWheel'),
+        values: timerValues, descs: TIMER_DESCS, icons: WHEEL_ICONS,
+        initial: 10,
+        onChange: (v) => { duration = v; if (timerPicker) timerPicker.setValue(v); },
+      });
+
+      extraPicker = createDialKnob({
+        containerEl: document.getElementById('extraKnobEl'),
+        ticksEl: document.getElementById('extraTicks'),
+        valueEl: document.getElementById('extraValue'),
+        initial: 5, min: 1, max: 30, step: 1,
+        snapVals: extraValues, sensitivity: 0.25,
+        onChange: (v) => { pendingExtraMins = v; if (extraWheel) extraWheel.setValue(v); },
+      });
+
+      extraWheel = createActivityWheel({
+        containerEl: document.getElementById('extraWheel'),
+        values: extraValues, descs: EXTRA_DESCS, icons: WHEEL_ICONS,
+        initial: 5,
+        onChange: (v) => { pendingExtraMins = v; if (extraPicker) extraPicker.setValue(v); },
+      });
     }
 
     // Init
