@@ -199,10 +199,10 @@
     }
 
     .b-name {
-      font-size: 16px;
+      font-size: 13px;
       font-weight: 700;
       color: #c8860a;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       line-height: 1.3;
     }
     .b-card.locked .b-name { color: #bbb; }
@@ -261,31 +261,77 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 14px;
-      margin: 20px 0;
+      gap: 16px;
+      margin: 16px 0;
     }
 
     /* 盲盒卡片：复用 .b-card 样式，仅覆盖尺寸 */
     #card-daily-blindbox .b-card {
-      width: 150px;
-      border-radius: 24px;
-      padding: 7px 14px 16px;
-      background: transparent;
+      width: 120px;
+      border-radius: 20px;
+      padding: 12px 8px 14px;
       border: none;
-      box-shadow: none;
     }
     #card-daily-blindbox .b-img-wrap {
-      width: 150px; height: 150px;
-      border-radius: 24px;
+      width: 120px; height: 120px;
+      border-radius: 50%;
       overflow: hidden;
     }
     #card-daily-blindbox .b-img {
-      max-width: 150px; max-height: 150px;
+      max-width: 120px; max-height: 120px;
       width: 100%; height: 100%;
       object-fit: cover;
+      border-radius: 50%;
+    }
+
+    /* Phase 2: 视觉锚点 — 恢复卡片背景 */
+    #card-daily-blindbox .b-card.unlocked {
+      background: #fffdf8;
+      box-shadow: 0 2px 8px rgba(200,160,40,0.15);
+    }
+    #card-daily-blindbox .b-card.unlocked .b-img-wrap {
+      background: linear-gradient(135deg, #fff8e1, #fffdf8);
+      border: 2px solid rgba(200,160,40,0.3);
+      box-shadow: 0 2px 12px rgba(200,160,40,0.2), inset 0 1px 3px rgba(255,255,255,0.8);
+    }
+    #card-daily-blindbox .b-card.locked {
+      background: #f8f7f4;
     }
     #card-daily-blindbox .b-card.locked .b-img-wrap {
-      background-color: transparent;
+      background: #f0eeea;
+      border: 2px dashed rgba(0,0,0,0.12);
+    }
+
+    /* Phase 3: 锁定态强化 */
+    #card-daily-blindbox .b-card.locked .b-img {
+      opacity: 0.5;
+      filter: grayscale(1) brightness(1.05);
+    }
+    #card-daily-blindbox .b-card.locked .b-name {
+      color: #c0bdb8;
+    }
+
+    /* Phase 4: Today (Day 7) 特殊处理 */
+    #card-daily-blindbox .b-card.today .b-img-wrap {
+      border: 2.5px dashed #FF6B6B;
+      background: rgba(255,107,107,0.06);
+      animation: todayPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes todayPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0); }
+      50% { box-shadow: 0 0 0 6px rgba(255,107,107,0.15); }
+    }
+    #card-daily-blindbox .b-card.today .b-name {
+      color: #FF6B6B;
+    }
+
+    /* Phase 5: Hover 效果 */
+    #card-daily-blindbox .b-card.unlocked:hover {
+      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 8px 24px rgba(200,160,40,0.25);
+    }
+    #card-daily-blindbox .b-card.locked:hover {
+      cursor: not-allowed;
     }
 
     /* today 呼吸动效 — 去掉，会形成圆角矩形背景 */
