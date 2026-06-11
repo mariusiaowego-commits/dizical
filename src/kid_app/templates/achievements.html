@@ -329,17 +329,13 @@
 
     /* Phase 4: Today (Day 7) 特殊处理 */
     #card-daily-blindbox .b-card.today .b-img-wrap {
-      border: 2.5px solid #FF6B6B;
-      background: rgba(255,107,107,0.06);
-      animation: todayPulse 2.5s ease-in-out infinite;
+      /* 不突出 today，保持跟其他 locked 一样 */
     }
     @keyframes todayPulse {
       0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0); }
       50% { box-shadow: 0 0 0 6px rgba(255,107,107,0.15); }
     }
-    #card-daily-blindbox .b-card.today .b-name {
-      color: #FF6B6B;
-    }
+    /* Phase 4: Today (Day 7) 特殊处理 — 不突出，保持跟其他 locked 一样 */
 
     /* Phase 5: Hover 效果 */
     #card-daily-blindbox .b-card.unlocked:hover {
