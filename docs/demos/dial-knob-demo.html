@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dial Knob + Activity Wheel — dizical test v3</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background: #FFF8F0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 48px;
+  padding: 20px;
+}
+/* ── Unified card: wheel + knob ── */
+.picker-card {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: linear-gradient(180deg, #FFFDF8 0%, #FFF8F0 100%);
+  border-radius: 24px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 -1px 0 rgba(0,0,0,0.04) inset,
+    0 8px 24px rgba(0,0,0,0.10);
+  padding: 16px;
+}
+.picker-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.dial-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #7F8C8D;
+  text-align: center;
+}
+/* ── Dial Knob ── */
+.dial-knob {
+  --knob-size: 220px;
+  position: relative;
+  width: var(--knob-size);
+  height: var(--knob-size);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.dial-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #FFFDF8 0%, #F0E8D0 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 -2px 4px rgba(0,0,0,0.08) inset,
+    0 14px 28px -10px rgba(0,0,0,0.18),
+    0 4px 8px rgba(0,0,0,0.06);
+}
+.dial-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: transform 80ms ease-out;
+}
+.dial-ticks.dragging { transition: none; }
+.dial-face {
+  position: absolute;
+  top: 18%; left: 18%; right: 18%; bottom: 18%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFF8F0 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 -1px 0 rgba(0,0,0,0.06) inset,
+    0 0 0 1px rgba(0,0,0,0.06),
+    0 8px 18px -6px rgba(0,0,0,0.15),
+    0 2px 4px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.dial-value {
+  font-size: 44px;
+  font-weight: 900;
+  color: #2C3E50;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+.dial-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+  margin-top: 2px;
+}
+/* ── Activity Wheel — vertical strip ── */
+.activity-wheel {
+  position: relative;
+  width: 220px;
+  height: 260px;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 20px;
+}
+.wheel-item {
+  position: absolute;
+  left: 0; right: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  cursor: pointer;
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 200ms ease;
+  will-change: transform, opacity;
+}
+.wheel-desc {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #B0A898;
+  text-align: right;
+  padding-right: 10px;
+  transition: color 250ms ease;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.wheel-item.selected .wheel-desc {
+  color: #c8860a;
+  font-weight: 600;
+  font-size: 11px;
+}
+.wheel-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.wheel-pill {
+  padding: 5px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+  min-width: 44px;
+  text-align: center;
+}
+.wheel-item.selected .wheel-pill {
+  background: #FFFFFF;
+  color: #171717;
+  border-color: rgba(0,0,0,0.08);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.wheel-item:not(.selected) .wheel-pill {
+  background: transparent;
+  color: #C0B8A8;
+  border-color: transparent;
+}
+.wheel-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0;
+  transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wheel-item.selected .wheel-icon {
+  background: #FF6B6B;
+  color: white;
+  box-shadow: 0 4px 12px -4px rgba(255,107,107,0.55), 0 1px 0 rgba(255,255,255,0.7) inset;
+}
+.wheel-item:not(.selected) .wheel-icon {
+  background: #FFF0E8;
+  color: #c8860a;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset;
+}
+.wheel-indicator {
+  width: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: #2C3E50;
+  transition: width 250ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease;
+  opacity: 0;
+  flex-shrink: 0;
+}
+.wheel-item.selected .wheel-indicator {
+  width: 10px;
+  opacity: 1;
+}
+.activity-wheel::before,
+.activity-wheel::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 40px;
+  pointer-events: none;
+  z-index: 2;
+}
+.activity-wheel::before {
+  top: 0;
+  background: linear-gradient(to bottom, #FFFDF8, transparent);
+}
+.activity-wheel::after {
+  bottom: 0;
+  background: linear-gradient(to top, #FFF8F0, transparent);
+}
+</style>
+</head>
+<body>
+
+<!-- Timer picker -->
+<div class="picker-card">
+  <div class="activity-wheel" id="timerWheel"></div>
+  <div class="picker-col">
+    <div class="dial-label">⏱️ 主计时</div>
+    <div class="dial-knob" id="timerKnob">
+      <div class="dial-disc"></div>
+      <svg class="dial-ticks" id="timerTicks" viewBox="-110 -110 220 220"></svg>
+      <div class="dial-face">
+        <div class="dial-value" id="timerValue">10</div>
+        <div class="dial-unit">分钟</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Extra picker -->
+<div class="picker-card">
+  <div class="activity-wheel" id="extraWheel"></div>
+  <div class="picker-col">
+    <div class="dial-label">⚡ 补录</div>
+    <div class="dial-knob" id="extraKnob">
+      <div class="dial-disc"></div>
+      <svg class="dial-ticks" id="extraTicks" viewBox="-110 -110 220 220"></svg>
+      <div class="dial-face">
+        <div class="dial-value" id="extraValue">5</div>
+        <div class="dial-unit">分钟</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// Fun descriptions — scattered intervals
+// ═══════════════════════════════════════════════════
+const TIMER_DESCS = {
+  5:  '就这？手都没热呢',
+  7:  '再加把劲呗',
+  10: '不错的开始',
+  13: '有点意思了',
+  15: '标准练习量',
+  18: '开始上强度了',
+  20: '手指开始酸了！',
+  23: '停不下来？',
+  25: '要卷死谁啊！',
+  28: '体力怪物！',
+  30: '你是认真的？！',
+};
+
+const EXTRA_DESCS = {
+  2:  '蚊子腿也是肉',
+  3:  '三分钟 意思意思',
+  5:  '小小加练',
+  8:  '越练越起劲',
+  10: '够意思！',
+  13: '加练也要卷？',
+  15: '额外的努力！',
+  18: '这还是加练？！',
+  20: '二十分钟加练！',
+  25: '你是要上天！',
+  30: '你赢了！！',
+};
+
+// Line-art SVG icons — each one unique
+const WHEEL_ICONS = [
+  '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',                    // clock
+  '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>', // star
+  '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>', // heart
+  '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>', // flame
+  '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',                                               // zap
+  '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>', // sun
+  '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',                               // moon
+  '<polygon points="6 3 20 12 6 21 6 3"/>',                                                     // play
+  '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>', // book
+  '<path d="M12 3v18"/><path d="M8 7l4-4 4 4"/><path d="M8 17l4 4 4-4"/>',                     // arrows-v
+  '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',   // edit
+  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/>', // layout
+  '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>', // help
+  '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',                                       // activity
+  '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>',                              // bar-chart
+  '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',                 // terminal
+  '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', // globe
+  '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>', // book-open
+  '<polygon points="12 2 15 8.5 22 9.3 17 14 18 21 12 17.8 6 21 7 14 2 9.3 9 8.5"/>',          // star-alt
+  '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>', // upload
+  '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/>', // clock-2
+  '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',   // music
+  '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>', // wrench
+  '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',       // user
+  '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',                                   // shield
+  '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',    // check-circle
+  '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>', // layers
+  '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>', // flag
+  '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>',                   // play-circle
+  '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',                                                     // zigzag
+];
+
+// ═══════════════════════════════════════════════════
+// Dial Knob
+// ═══════════════════════════════════════════════════
+function createDialKnob(opts) {
+  const {
+    containerEl, ticksEl, valueEl, onChange,
+    initial = 10, min = 1, max = 30, step = 1,
+    snapVals = [], dotCount = 30,
+    color = '#FF6B6B',
+    sensitivity = 0.25,
+  } = opts;
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const DOT_RADIUS = 80;
+  const OUTER_TICKS = 60;
+  const SNAP_RADIUS = 0.8;
+  const range = max - min;
+
+  let currentValue = initial;
+  let isDragging = false;
+  let lastAngle = 0;
+
+  ticksEl.innerHTML = '';
+  for (let i = 0; i < OUTER_TICKS; i++) {
+    const angle = (i / OUTER_TICKS) * 360 - 90;
+    const rad = (angle * Math.PI) / 180;
+    const r1 = 100;
+    const r2 = 94;
+    const isMarker = (i % 5 === 0);
+    const line = document.createElementNS(SVG_NS, 'line');
+    line.setAttribute('x1', Math.cos(rad) * r1);
+    line.setAttribute('y1', Math.sin(rad) * r1);
+    line.setAttribute('x2', Math.cos(rad) * (isMarker ? 88 : r2));
+    line.setAttribute('y2', Math.sin(rad) * (isMarker ? 88 : r2));
+    line.setAttribute('stroke-width', isMarker ? 1.8 : 1);
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('stroke', isMarker ? '#c8860a' : 'rgba(200,160,40,0.3)');
+    ticksEl.appendChild(line);
+  }
+  for (let i = 0; i < dotCount; i++) {
+    const angle = (i / dotCount) * 360 - 90;
+    const rad = (angle * Math.PI) / 180;
+    const circle = document.createElementNS(SVG_NS, 'circle');
+    circle.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
+    circle.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
+    circle.setAttribute('r', 2);
+    circle.setAttribute('fill', '#E8E0D0');
+    ticksEl.appendChild(circle);
+  }
+  const activeGroup = document.createElementNS(SVG_NS, 'g');
+  ticksEl.appendChild(activeGroup);
+  const arcPath = document.createElementNS(SVG_NS, 'path');
+  arcPath.setAttribute('fill', 'none');
+  arcPath.setAttribute('stroke', color);
+  arcPath.setAttribute('stroke-width', 1.2);
+  arcPath.setAttribute('stroke-opacity', 0.25);
+  arcPath.setAttribute('stroke-linecap', 'round');
+  activeGroup.appendChild(arcPath);
+
+  function updateVisual() {
+    const ratio = (currentValue - min) / range;
+    const filledDots = Math.round(ratio * dotCount);
+    ticksEl.style.transform = `rotate(${ratio * 360}deg)`;
+
+    activeGroup.querySelectorAll('.active-dot').forEach(d => d.remove());
+    for (let i = 0; i < filledDots; i++) {
+      const angle = (i / dotCount) * 360 - 90;
+      const rad = (angle * Math.PI) / 180;
+      const isLead = (i === filledDots - 1);
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
+      circle.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
+      circle.setAttribute('r', isLead ? 4 : 3);
+      circle.setAttribute('fill', color);
+      circle.classList.add('active-dot');
+      activeGroup.insertBefore(circle, arcPath);
+    }
+    if (filledDots > 1) {
+      const startRad = (-90 * Math.PI) / 180;
+      const endA = ((filledDots - 1) / dotCount) * 360 - 90;
+      const endRad = (endA * Math.PI) / 180;
+      const large = (endA - (-90)) > 180 ? 1 : 0;
+      arcPath.setAttribute('d',
+        `M ${Math.cos(startRad)*DOT_RADIUS} ${Math.sin(startRad)*DOT_RADIUS} ` +
+        `A ${DOT_RADIUS} ${DOT_RADIUS} 0 ${large} 1 ${Math.cos(endRad)*DOT_RADIUS} ${Math.sin(endRad)*DOT_RADIUS}`
+      );
+      arcPath.style.display = '';
+    } else {
+      arcPath.style.display = 'none';
+    }
+    if (valueEl) valueEl.textContent = currentValue;
+    if (onChange) onChange(currentValue);
+  }
+
+  function snapValue(v) {
+    v = Math.round(v / step) * step;
+    for (const sv of snapVals) {
+      if (Math.abs(v - sv) <= SNAP_RADIUS) return sv;
+    }
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function getAngle(clientX, clientY) {
+    const rect = containerEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    return (Math.atan2(clientY - cy, clientX - cx) * 180) / Math.PI;
+  }
+
+  containerEl.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    lastAngle = getAngle(e.clientX, e.clientY);
+    containerEl.setPointerCapture(e.pointerId);
+    ticksEl.classList.add('dragging');
+    e.preventDefault();
+  });
+  containerEl.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const angle = getAngle(e.clientX, e.clientY);
+    let delta = angle - lastAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    currentValue = snapValue(currentValue + delta * sensitivity);
+    lastAngle = angle;
+    updateVisual();
+  });
+  containerEl.addEventListener('pointerup', (e) => {
+    isDragging = false;
+    containerEl.releasePointerCapture(e.pointerId);
+    ticksEl.classList.remove('dragging');
+  });
+  containerEl.addEventListener('pointercancel', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
+  containerEl.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    currentValue = snapValue(currentValue + (e.deltaY > 0 ? -step : step));
+    updateVisual();
+  }, { passive: false });
+
+  updateVisual();
+  return {
+    getValue: () => currentValue,
+    setValue: (v) => { currentValue = snapValue(v); updateVisual(); },
+  };
+}
+
+// ═══════════════════════════════════════════════════
+// Activity Wheel
+// ═══════════════════════════════════════════════════
+function createActivityWheel(opts) {
+  const {
+    containerEl, values, descs, icons, initial, onChange,
+    ARC_RADIUS = 280,
+    ARC_STEP_DEG = 10,
+    VISIBLE_RANGE = 5,
+  } = opts;
+
+  let selectedIdx = values.indexOf(initial);
+  if (selectedIdx < 0) selectedIdx = 0;
+
+  containerEl.innerHTML = '';
+  const items = values.map((v, i) => {
+    const el = document.createElement('div');
+    el.className = 'wheel-item';
+    const iconSvg = icons ? icons[i % icons.length] : '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+    el.innerHTML = `
+      <span class="wheel-desc">${descs[v] || ''}</span>
+      <div class="wheel-right">
+        <span class="wheel-pill">${v}</span>
+        <div class="wheel-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></div>
+        <div class="wheel-indicator"></div>
+      </div>
+    `;
+    el.addEventListener('click', () => {
+      selectedIdx = i;
+      updateWheel(true);
+      if (onChange) onChange(values[selectedIdx]);
+    });
+    containerEl.appendChild(el);
+    return el;
+  });
+
+  function updateWheel(animate) {
+    const centerY = containerEl.offsetHeight / 2;
+    items.forEach((el, i) => {
+      const offset = i - selectedIdx;
+      const absOffset = Math.abs(offset);
+      const isSelected = offset === 0;
+
+      const angleRad = (offset * ARC_STEP_DEG * Math.PI) / 180;
+      const arcX = ARC_RADIUS * (1 - Math.cos(angleRad));
+      const arcY = ARC_RADIUS * Math.sin(angleRad);
+
+      const scale = Math.max(0.72, 1 - absOffset * 0.06);
+      const opacity = absOffset > VISIBLE_RANGE ? 0 : Math.max(0.25, 1 - absOffset * 0.18);
+      const y = -19 + arcY;
+
+      el.classList.toggle('selected', isSelected);
+      el.style.top = `calc(50% + ${y}px)`;
+      el.style.transform = `translateX(${arcX}px) scale(${scale})`;
+      el.style.opacity = opacity;
+      el.style.pointerEvents = absOffset > VISIBLE_RANGE ? 'none' : 'auto';
+
+      if (animate) {
+        el.style.transition = 'transform 280ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease';
+        setTimeout(() => el.style.transition = '', 300);
+      }
+    });
+  }
+
+  let wheelAccum = 0;
+  const WHEEL_THRESHOLD = 35;
+  containerEl.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    wheelAccum += e.deltaY;
+    if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
+    const steps = Math.trunc(wheelAccum / WHEEL_THRESHOLD);
+    wheelAccum -= steps * WHEEL_THRESHOLD;
+    const newIdx = Math.max(0, Math.min(values.length - 1, selectedIdx + steps));
+    if (newIdx !== selectedIdx) {
+      selectedIdx = newIdx;
+      updateWheel(true);
+      if (onChange) onChange(values[selectedIdx]);
+    }
+  }, { passive: false });
+
+  let touchStartY = 0;
+  containerEl.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  containerEl.addEventListener('touchmove', (e) => {
+    const dy = touchStartY - e.touches[0].clientY;
+    if (Math.abs(dy) > 25) {
+      const steps = Math.trunc(dy / 25);
+      touchStartY = e.touches[0].clientY;
+      const newIdx = Math.max(0, Math.min(values.length - 1, selectedIdx + steps));
+      if (newIdx !== selectedIdx) {
+        selectedIdx = newIdx;
+        updateWheel(true);
+        if (onChange) onChange(values[selectedIdx]);
+      }
+    }
+  }, { passive: true });
+
+  updateWheel(false);
+  return {
+    getValue: () => values[selectedIdx],
+    setValue: (v) => {
+      const idx = values.indexOf(v);
+      if (idx >= 0) { selectedIdx = idx; updateWheel(true); }
+    },
+  };
+}
+
+// ── Initialize ──
+let timerKnob, timerWheel, extraKnob, extraWheel;
+
+timerKnob = createDialKnob({
+  containerEl: document.getElementById('timerKnob'),
+  ticksEl: document.getElementById('timerTicks'),
+  valueEl: document.getElementById('timerValue'),
+  initial: 10, min: 5, max: 30, step: 1,
+  snapVals: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+  sensitivity: 0.25,
+  onChange: (v) => { if (timerWheel) timerWheel.setValue(v); },
+});
+
+timerWheel = createActivityWheel({
+  containerEl: document.getElementById('timerWheel'),
+  values: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+  descs: TIMER_DESCS,
+  icons: WHEEL_ICONS,
+  initial: 10,
+  onChange: (v) => { if (timerKnob) timerKnob.setValue(v); },
+});
+
+extraKnob = createDialKnob({
+  containerEl: document.getElementById('extraKnob'),
+  ticksEl: document.getElementById('extraTicks'),
+  valueEl: document.getElementById('extraValue'),
+  initial: 5, min: 1, max: 30, step: 1,
+  snapVals: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+  sensitivity: 0.25,
+  onChange: (v) => { if (extraWheel) extraWheel.setValue(v); },
+});
+
+extraWheel = createActivityWheel({
+  containerEl: document.getElementById('extraWheel'),
+  values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+  descs: EXTRA_DESCS,
+  icons: WHEEL_ICONS,
+  initial: 5,
+  onChange: (v) => { if (extraKnob) extraKnob.setValue(v); },
+});
+</script>
+</body>
+</html>
