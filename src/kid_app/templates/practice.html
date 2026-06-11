@@ -1379,9 +1379,10 @@
             // 只有没开始新计时才重置（防止打卡后立即继续练习被误清零）
             if (!started) {
               resetTimer();
-              document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
-              selectedItem = null;
-              updateReqPanel('');
+              // 不清空 selectedItem，让用户可以继续使用同一个科目计时
+              // document.querySelectorAll('.item-btn, .archived-item-btn').forEach(b => b.classList.remove('selected'));
+              // selectedItem = null;
+              // updateReqPanel('');
             }
             const confirmArea6 = document.getElementById('confirmArea');
             if (confirmArea6) confirmArea6.classList.remove('show');
