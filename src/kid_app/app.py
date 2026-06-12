@@ -1582,10 +1582,8 @@ def praise_page():
 from src.kid_app.routes.config import router as config_router
 app.include_router(config_router)
 
-# ─── 注册 Badge 制作工作流路由 (V1 PR-A, 2026-06-12) ─────────────
+# ─── 注册 Badge 制作工作流路由 (V2, 2026-06-12 重构) ─────────────
+# V2 简化: routes/badge_workflow.py 只 3 端点 (draft / commit-from-draft / discoveries)
+# V1 9 端点 + routes/badge_batch.py 整文件删 (批量模式 V2 不做)
 from src.kid_app.routes.badge_workflow import router as badge_workflow_router
 app.include_router(badge_workflow_router)
-
-# ─── 注册 Badge 批量模式路由 (V1 PR-C, 2026-06-12) ─────────────
-from src.kid_app.routes.badge_batch import router as badge_batch_router
-app.include_router(badge_batch_router)

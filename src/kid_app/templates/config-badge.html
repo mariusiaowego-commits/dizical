@@ -146,6 +146,19 @@
       font-weight: 400;
     }
 
+    /* V2 2-tab UI */
+    .v2-tabs { margin: 20px 0; }
+    .tab-headers { display: flex; gap: 4px; border-bottom: 1px solid #eee; }
+    .tab-header {
+      padding: 10px 18px; border: none; background: transparent; cursor: pointer;
+      font-size: 14px; color: #888; border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-header.active { color: #FF6B6B; border-bottom-color: #FF6B6B; font-weight: 600; }
+    .tab-content { padding: 24px 0; }
+    .tab-empty { color: #888; font-size: 14px; line-height: 1.6; }
+    .tab-empty code { background: #f5f5f5; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+
     .portal-refresh {
       padding: 8px 14px;
       border: 1px solid rgba(0,0,0,0.1);
@@ -485,229 +498,21 @@
       <button class="portal-refresh" id="portalRefreshBtn" onclick="refreshPortal()">刷新</button>
     </div>
 
-    <!-- 进度条 -->
-    <div class="progress-bar" id="progressBar">
-      <div class="progress-step active" data-step="1"><div class="dot">1</div><div class="label">元数据</div></div>
-      <div class="progress-step" data-step="2"><div class="dot">2</div><div class="label">Placeholder</div></div>
-      <div class="progress-step" data-step="3"><div class="dot">3</div><div class="label">计算逻辑</div></div>
-      <div class="progress-step" data-step="4"><div class="dot">4</div><div class="label">生成预览</div></div>
-      <div class="progress-step" data-step="5"><div class="dot">5</div><div class="label">确认上线</div></div>
-    </div>
-
-    <!-- Step 容器 -->
-    <div class="step-container">
-      <!-- Step 1: 元数据 -->
-      <div class="step active" data-step="1">
-        <h2>① Badge 元数据</h2>
-        <p class="step-desc">填写 badge 基础信息。id 必须唯一（实时查重），名称会显示在成就殿堂。</p>
-
-        <div class="form-row">
-          <label>Badge ID * <span class="check-status" id="idCheckStatus"></span></label>
-          <input type="text" id="badgeId" pattern="[a-zA-Z0-9_]+" placeholder="例如: lucky_61_2031" required>
-          <div class="hint">仅英文 / 数字 / 下划线. 例如 <code>lucky_61_2026</code> <code>early_bird_D</code></div>
-        </div>
-
-        <div class="form-row">
-          <label>名称 *</label>
-          <input type="text" id="badgeName" placeholder="例如: 幸运六一节" required>
-        </div>
-
-        <div class="form-row">
-          <label>分类标签 * (决定 .b-tag 颜色)</label>
-          <select id="typeLabel">
-            <option value="突破">突破</option>
-            <option value="段位">段位</option>
-            <option value="巅峰">巅峰</option>
-            <option value="执着">执着</option>
-            <option value="晋级">晋级</option>
-            <option value="神秘">神秘</option>
-          </select>
-        </div>
-
-        <div class="form-row">
-          <label>category *</label>
-          <div class="radio-group">
-            <label><input type="radio" name="category" value="milestone" checked> milestone (里程碑, 写 stats)</label>
-            <label><input type="radio" name="category" value="seasonal"> seasonal (季节/节日, 实时算)</label>
-          </div>
-        </div>
-
-        <div class="form-row" id="seasonalTypeRow" style="display:none">
-          <label>seasonal_type *</label>
-          <select id="seasonalType">
-            <option value="monthly">monthly (节日徽章如 lucky_61_YYYY)</option>
-            <option value="stage">stage (课程阶段)</option>
-            <option value="weekly">weekly (自然周)</option>
-            <option value="daily">daily (每日打卡)</option>
-          </select>
-        </div>
-
-        <div class="form-actions step-actions">
-          <button class="btn btn-secondary" disabled>上一步</button>
-          <button class="btn btn-primary" id="step1NextBtn" onclick="nextStep()">下一步</button>
-        </div>
+    <!-- V2 2-tab UI (简化版, 完整表单 V2.1 再做) -->
+    <div class="v2-tabs">
+      <div class="tab-headers">
+        <button class="tab-header active" data-tab="new-draft">新建 Badge 草稿</button>
+        <button class="tab-header" data-tab="pending">待确认 Badge</button>
       </div>
-
-      <!-- Step 2: Placeholder + 典故 -->
-      <div class="step" data-step="2">
-        <h2>② Placeholder + 典故</h2>
-        <p class="step-desc">英文 placeholder 是生图 prompt 必填部分。可手工填（从 alma 等 agent 拿），或 AI 草拟（调 dizical hermes profile，英文地道）。</p>
-
-        <div class="form-row">
-          <label>placeholder 来源 *</label>
-          <div class="radio-group">
-            <label><input type="radio" name="phSource" value="manual" checked> 我自己写</label>
-            <label><input type="radio" name="phSource" value="ai"> AI 草拟 (dizical hermes / deepseek)</label>
-          </div>
-        </div>
-
-        <div class="form-row" id="phManualRow">
-          <label>英文 placeholder *</label>
-          <textarea id="phManual" placeholder="例如: a cute chibi girl with long black hair playing a bamboo flute, surrounded by swimming golden koi fish"></textarea>
-          <div class="hint">30-120 词, 具体角色+动作+道具, 便于 AI 生图</div>
-        </div>
-
-        <div class="form-row" id="phAiRow" style="display:none">
-          <label>典故中文 (给 deepseek 看的) *</label>
-          <textarea id="phAiStory" placeholder="例如: 庄子与惠子游于濠梁之上, 论鱼之乐"></textarea>
-          <button class="btn btn-secondary" id="aiDraftBtn" onclick="aiDraftPlaceholder()">生成草稿</button>
-          <div class="hint">生成后用户可在下面 textarea 编辑 (30-60 秒)</div>
-          <label style="margin-top:12px">AI 草拟结果 (可编辑) *</label>
-          <textarea id="phAiResult" placeholder="点上面 '生成草稿' 按钮"></textarea>
-        </div>
-
-        <div class="form-row">
-          <label>典故 / 描述 *</label>
-          <textarea id="description" placeholder="例: 庄子与惠子游于濠梁之上..."></textarea>
-          <div class="hint">⚠ 超过 200 字符用 <code>\n\n</code> 分段, 前端 CSS 配 pre-wrap</div>
-        </div>
-
-        <div class="form-row">
-          <label>display_format</label>
-          <input type="text" id="displayFormat" value="days" placeholder="days / minutes / achieved_flag / top_items / time_hours_minutes">
-        </div>
-
-        <div class="form-actions step-actions">
-          <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
-          <button class="btn btn-primary" onclick="nextStep()">下一步</button>
-        </div>
+      <div class="tab-content active" data-tab-content="new-draft">
+        <p class="tab-empty">V2 简化版: 完整表单 UI (id / name / placeholder / 典故 ...) 计划 V2.1 实施.</p>
+        <p class="tab-empty">V2 后端 ready: <code>POST /config/api/badge/draft</code> 收 JSON body 即可创建 draft. 端到端走 hermes <code>/badge-image</code> skill 工作流.</p>
       </div>
-
-      <!-- Step 3: 计算逻辑 -->
-      <div class="step" data-step="3">
-        <h2>③ 计算逻辑模板</h2>
-        <p class="step-desc">选已有模板作为参考（跟 achievement_definitions.py 里 if 分支对应）。代码不会自动注入, 复制到 <code>_calc_milestone()</code> 或 <code>_calc_seasonal()</code>。</p>
-
-        <div class="form-row">
-          <label>选择 calc 模板</label>
-          <select id="calcTemplate" onchange="renderCalcSnippet()">
-            <optgroup label="milestone">
-              <option value="milestone_streak">streak_N 天 (连续 N 天)</option>
-              <option value="milestone_total">total_N 分钟 (累计 N 分钟)</option>
-              <option value="milestone_top">top1/2/3 (累计时长前 N)</option>
-              <option value="milestone_grade">grade_N 考级</option>
-              <option value="milestone_first_log">first_log (第一次练习)</option>
-            </optgroup>
-            <optgroup label="seasonal">
-              <option value="seasonal_daily">daily_checkin_N (每日打卡)</option>
-              <option value="seasonal_monthly_lucky">lucky_61_YYYY (节日徽章)</option>
-              <option value="seasonal_stage_early">early_riser / little_chick / first_to_act</option>
-            </optgroup>
-            <optgroup label="其他">
-              <option value="skip" selected>暂不绑定 (上线后进度显示 0, 人工补)</option>
-            </optgroup>
-          </select>
-        </div>
-
-        <div class="form-row" id="thresholdRow" style="display:none">
-          <label>threshold (数字, 用于模板替换)</label>
-          <input type="number" id="threshold" min="0" value="7">
-        </div>
-
-        <div class="form-row">
-          <label>代码片段预览</label>
-          <div class="commit-snippet" id="calcSnippet">-- 选择模板后显示 --</div>
-          <button class="btn btn-secondary" id="copySnippetBtn" onclick="copySnippet()" disabled>复制代码</button>
-        </div>
-
-        <div class="form-actions step-actions">
-          <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
-          <button class="btn btn-primary" onclick="nextStep()">下一步</button>
-        </div>
-      </div>
-
-      <!-- Step 4: 生成 & 预览 -->
-      <div class="step" data-step="4">
-        <h2>④ 生成 & 预览</h2>
-        <p class="step-desc">点 "开始生成" 触发 Nous Portal image_generate 流水线 (走 dizical hermes profile, 用 credits)。生成后看预览, 决定下一步。</p>
-
-        <div class="gen-status-list" id="genStatusList">
-          <div class="status-line" data-stage="step0_portal">⏳ 0️⃣ 检查 Nous Portal 连接</div>
-          <div class="status-line" data-stage="step1_validate">1️⃣ 校验输入</div>
-          <div class="status-line" data-stage="step2_prompt">2️⃣ 组装 enamel pin prompt</div>
-          <div class="status-line" data-stage="step3_fal">3️⃣ 调用 Nous Portal image_generate (30-60 秒)</div>
-          <div class="status-line" data-stage="step4_fetch">4️⃣ 拿图片到本地</div>
-          <div class="status-line" data-stage="step5_dedupe">5️⃣ PIL 去白底 (RGB→RGBA)</div>
-        </div>
-
-        <button class="btn btn-primary" id="startGenBtn" onclick="startGeneration()">开始生成</button>
-
-        <!-- 预览区 (生成后显示) -->
-        <div id="previewArea" style="display:none; margin-top: 24px;">
-          <div id="warningArea" class="warning-banner" style="display:none"></div>
-          <div class="preview-grid">
-            <div class="preview-cell">
-              <div class="preview-label">原图 (白底)</div>
-              <img id="previewImg" src="" alt="原图">
-            </div>
-            <div class="preview-cell">
-              <div class="preview-label">红底透明验证</div>
-              <div class="red-bg"><img id="redBgImg" src="" alt="红底验证"></div>
-            </div>
-          </div>
-          <div class="step-actions" style="border-top:none; padding-top:0;">
-            <button class="btn btn-secondary" id="regenBtn" onclick="regenerate()">重新生图</button>
-            <button class="btn btn-primary" id="acceptBtn" onclick="nextStep()">接受, 继续</button>
-            <button class="btn btn-secondary" id="cancelBtn" onclick="cancelGen()">取消</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 5: 确认上线 -->
-      <div class="step" data-step="5">
-        <h2>⑤ 确认上线</h2>
-        <p class="step-desc">写入 achievements + achievement_stats + achievement_badges 三表。需输入 dad_pin 确认。</p>
-
-        <div class="commit-result" id="commitSummary"></div>
-
-        <div class="form-row">
-          <label>PIN *</label>
-          <input type="password" id="pinInput" placeholder="dad_pin">
-        </div>
-
-        <div class="step-actions">
-          <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
-          <button class="btn btn-primary" id="commitBtn" onclick="commitBadge()">写入数据库</button>
-        </div>
-      </div>
-
-      <!-- 成功页 -->
-      <div class="step" data-step="done">
-        <div class="success-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <h2 style="text-align:center">上线成功</h2>
-        <div class="commit-result" id="commitResult"></div>
-        <p style="font-size:14px;color:#888;margin:16px 0;">⚠ 待办: 把上面 <code>_calc_xxx</code> 代码贴到 <code>src/achievement_definitions.py</code> 并测试</p>
-        <div class="step-actions" style="justify-content:center">
-          <a href="/badges" class="btn btn-secondary">查看成就殿堂</a>
-          <a href="/config/badge" class="btn btn-primary">再做一个</a>
-        </div>
+      <div class="tab-content" data-tab-content="pending" style="display:none">
+        <p class="tab-empty">V2 简化版: 待确认列表 UI 计划 V2.1 实施.</p>
+        <p class="tab-empty">V2 后端 ready: <code>GET /config/api/badge/discoveries</code> 返 [draft_awaiting_confirm] 列表.</p>
       </div>
     </div>
-  </div>
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
@@ -1216,7 +1021,25 @@
       setTimeout(() => t.classList.remove('show'), 2500);
     }
 
-    // ─── 初始化 ───────────────────────────────────────
+    // ─── V2 初始化: Tab 切换 + Portal 检查 (4 步表单 V2.1 再做) ──
+    document.querySelectorAll('.tab-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        document.querySelectorAll('.tab-header').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        btn.classList.add('active');
+        const target = document.querySelector(`.tab-content[data-tab-content="${tabName}"]`);
+        if (target) target.style.display = 'block';
+        // 切到 "待确认" 时拉一次 discoveries
+        if (tabName === 'pending') {
+          loadPendingConfirmations();
+        }
+      });
+    });
+    async function loadPendingConfirmations() {
+      // V2.1: 真实实现; 简化版只 console.log
+      console.log('[V2 简化] 待确认列表加载将在 V2.1 实施');
+    }
     loadPortalStatus();
   </script>
 </body>
