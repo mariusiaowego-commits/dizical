@@ -109,6 +109,43 @@
     .portal-info .detail { font-size: 12px; color: #999; margin-top: 4px; }
     .portal-info .error { font-size: 13px; color: #FF6B6B; margin-top: 4px; }
 
+    /* ── V1.1 portal profiles 列表 (用户 2026-06-12 OUT-OF-BAND) ── */
+    .portal-profiles {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 8px;
+    }
+    .portal-profiles .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+    .portal-profiles .row .light {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .portal-profiles .row .light.green { background: #4CAF50; box-shadow: 0 0 4px #4CAF50; }
+    .portal-profiles .row .light.red { background: #FF6B6B; box-shadow: 0 0 4px #FF6B6B; }
+    .portal-profiles .row .light.gray { background: #ccc; }
+    .portal-profiles .row .name { font-weight: 600; min-width: 110px; }
+    .portal-profiles .row .auth { color: #888; }
+    .portal-profiles .row .img { color: #888; margin-left: auto; }
+    .portal-profiles .row.is-current { background: rgba(255, 107, 107, 0.08); border-left: 3px solid #FF6B6B; padding-left: 6px; }
+    .portal-profiles .row.is-current .name::after {
+      content: ' ← 当前';
+      font-size: 10px;
+      color: #FF6B6B;
+      font-weight: 400;
+    }
+
     .portal-refresh {
       padding: 8px 14px;
       border: 1px solid rgba(0,0,0,0.1);
@@ -442,6 +479,8 @@
         <div class="value" id="portalValue">检查中...</div>
         <div class="detail" id="portalDetail"></div>
         <div class="error" id="portalError" style="display:none"></div>
+        <!-- V1.1 (用户 2026-06-12 OUT-OF-BAND): status-red 时显示所有 profile 灯 -->
+        <div class="portal-profiles" id="portalProfiles" style="display:none"></div>
       </div>
       <button class="portal-refresh" id="portalRefreshBtn" onclick="refreshPortal()">刷新</button>
     </div>
@@ -1085,6 +1124,7 @@
       const valueEl = document.getElementById('portalValue');
       const detailEl = document.getElementById('portalDetail');
       const errorEl = document.getElementById('portalError');
+      const profilesEl = document.getElementById('portalProfiles');
 
       portalVerified = s.ok_for_badge;
 
@@ -1094,6 +1134,7 @@
         valueEl.textContent = 'Portal 正常 (Image generation via Nous)';
         detailEl.textContent = `Model: ${s.model || '?'} · latency: ${s.latency_ms || '?'}ms`;
         errorEl.style.display = 'none';
+        profilesEl.style.display = 'none';  // 绿了不显示 profiles
       } else {
         card.className = 'portal-card status-red';
         light.className = 'portal-light red';
@@ -1101,6 +1142,49 @@
         detailEl.textContent = s.checked_at ? `检查时间: ${new Date(s.checked_at * 1000).toLocaleString()}` : '';
         errorEl.style.display = 'block';
         errorEl.textContent = '⚠ ' + (s.error || '未知错误') + ' — 必须在 Weus Portal login 后才能生图, 否则图质量差 + 浪费 credits';
+        // V1.1 (用户 2026-06-12 OUT-OF-BAND): 加载所有 profile 状态帮用户定位哪个 profile 没连
+        loadPortalProfiles();
+      }
+    }
+
+    // V1.1: 查所有 hermes profile 的 portal 状态, 填 profilesEl
+    async function loadPortalProfiles() {
+      const profilesEl = document.getElementById('portalProfiles');
+      const pin = localStorage.getItem('config_pin') || '';
+      const url = pin ? `/config/api/portal/profiles?pin=${encodeURIComponent(pin)}` : '/config/api/portal/profiles';
+      try {
+        const r = await fetch(url);
+        const data = await r.json();
+        if (!data.ok) {
+          profilesEl.style.display = 'none';
+          return;
+        }
+        const profiles = data.data;
+        // 用 localStorage 拿当前 profile 名 (跟后端 _get_profile 一致)
+        const currentProfile = localStorage.getItem('dizical_current_profile') || 'dizical';
+        const rows = profiles.map(p => {
+          const authLight = p.auth === 'logged_in' ? 'green' : (p.auth === 'not_logged_in' ? 'red' : 'gray');
+          const imgLight = p.image_generation === 'via_portal' ? 'green' : (p.image_generation === 'not_configured' ? 'red' : 'gray');
+          const isCurrent = p.profile === currentProfile;
+          return `
+            <div class="row ${isCurrent ? 'is-current' : ''}">
+              <span class="light ${authLight}" title="auth: ${p.auth}"></span>
+              <span class="name">${p.profile}</span>
+              <span class="auth">${p.auth}</span>
+              <span class="light ${imgLight}" title="image_generation: ${p.image_generation}"></span>
+              <span class="img">${p.image_generation === 'via_portal' ? 'img ✓' : 'img ✗'}</span>
+            </div>
+          `;
+        }).join('');
+        profilesEl.innerHTML = `
+          <div style="font-size: 11px; color: #888; margin-bottom: 6px; font-family: -apple-system, sans-serif;">
+            所有 hermes profile 状态 (左灯=auth / 右灯=image generation):
+          </div>
+          ${rows}
+        `;
+        profilesEl.style.display = 'flex';
+      } catch (err) {
+        profilesEl.style.display = 'none';
       }
     }
 

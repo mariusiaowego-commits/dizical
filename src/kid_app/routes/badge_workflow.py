@@ -378,3 +378,17 @@ def api_portal_refresh() -> JSONResponse:
             "checked_at": status.checked_at,
         },
     })
+
+
+@router.get("/api/portal/profiles")
+def api_portal_profiles() -> JSONResponse:
+    """查 hermes CLI 默认 + dizical profile 2 个 portal 状态 (V1.1 改进, 用户 2026-06-12 OUT-OF-BAND).
+
+    前端 Portal 卡 status-red 时调, 显示 2 个 profile 的 Auth + Image Generation 灯,
+    帮用户定位哪个 profile 没连 portal.
+
+    按用户拍板 "只查 hermes portal status 和 dizical portal status" — 11 个 KNOWN_PROFILES 太冗余.
+    不缓存 (用户手动刷新, 2 个并发 ~700ms).
+    """
+    profiles = badge_portal.check_two_profiles_portal()
+    return JSONResponse({"ok": True, "data": profiles})

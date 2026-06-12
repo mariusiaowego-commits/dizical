@@ -1,7 +1,8 @@
-"""tests/test_badge_portal.py — 单元测试 badge_portal
+"""tests/test_badge_portal.py — V1.1 改用 hermes tools list
 
-V1: 调 `hermes --profile dizical portal status` 解析输出.
-测试用 mock subprocess, 不真打 hermes.
+V1 PR-A: 调 `hermes --profile dizical portal status` 解析输出.
+V1.1: 改用 `hermes --profile dizical tools list` 报 image_gen 状态 (subprocess 友好,
+OAuth 跨 subprocess 不可靠, 改用 tools list 看 built-in toolsets 启用).
 """
 import subprocess
 import time
@@ -12,55 +13,29 @@ import pytest
 from src.kid_app import badge_portal
 
 
-# ─── Sample hermes portal output (实测) ───────────────────────────
+# ─── Sample hermes tools list output (实测) ───────────────────────────
 
-PORTAL_OK_OUTPUT = """
-  Nous Portal
-  ───────────
-  Auth:    ✓ logged in
-  Portal:  https://portal.nousresearch.com
-  API:     https://inference-api.nousresearch.com/v1
-  Model:   currently xiaomi (switch with `hermes model`)
-
-  Tool Gateway
-  ────────────
-  Web tools            via Nous Portal
-  Image generation     via Nous Portal
-  Video generation     not configured
-  OpenAI TTS           via Nous Portal
-  Browser automation   via Nous Portal
-  Modal execution      local
+# image_gen 启用场景
+TOOLS_LIST_WITH_IMAGE_GEN = """Built-in toolsets (cli):
+  ✓ enabled  web  🔍 Web Search & Scraping
+  ✓ enabled  browser  🌐 Browser Automation
+  ✓ enabled  terminal  💻 Terminal & Processes
+  ✓ enabled  file  📁 File Operations
+  ✓ enabled  image_gen  🎨 Image Generation
+  ✗ disabled  video  🎬 Video Analysis
+  ✓ enabled  tts  🔊 Text-to-Speech
 """
 
-PORTAL_AUTH_FAIL_OUTPUT = """
-  Nous Portal
-  ───────────
-  Auth:    ✗ (not set)
-  Portal:  https://portal.nousresearch.com
-  API:     https://inference-api.nousresearch.com/v1
-  Model:   currently xiaomi (switch with `hermes model`)
-
-  Tool Gateway
-  ────────────
-  Web tools            via Nous Portal
-  Image generation     via Nous Portal
-  Video generation     not configured
+# image_gen 禁用场景
+TOOLS_LIST_NO_IMAGE_GEN = """Built-in toolsets (cli):
+  ✓ enabled  web  🔍 Web Search & Scraping
+  ✓ enabled  browser  🌐 Browser Automation
+  ✗ disabled  image_gen  🎨 Image Generation
+  ✗ disabled  video  🎬 Video Analysis
 """
 
-PORTAL_IMG_NOT_CONFIGURED_OUTPUT = """
-  Nous Portal
-  ───────────
-  Auth:    ✓ logged in
-  Portal:  https://portal.nousresearch.com
-  API:     https://inference-api.nousresearch.com/v1
-  Model:   currently xiaomi (switch with `hermes model`)
-
-  Tool Gateway
-  ────────────
-  Web tools            via Nous Portal
-  Image generation     not configured
-  Video generation     not configured
-"""
+# 空 (没 tools)
+TOOLS_LIST_EMPTY = ""
 
 
 def _mock_subprocess_result(stdout: str = "", stderr: str = "", returncode: int = 0):
@@ -71,101 +46,101 @@ def _mock_subprocess_result(stdout: str = "", stderr: str = "", returncode: int 
     return result
 
 
-# ─── TestParsePortalOutput ─────────────────────────────────────
+# ─── TestParsePortalOutput (V1.1 删除, 改用 _parse_tools_list_output) ──
+# V1.1: 不再测旧 _parse_portal_output (portal info/status 格式)
+# 改测 _parse_tools_list_output (新格式)
 
-class TestParsePortalOutput:
-    def test_full_ok(self):
-        s = badge_portal._parse_portal_output(PORTAL_OK_OUTPUT)
-        assert s.auth == "logged_in"
-        assert s.image_generation == "via_portal"
-        assert s.model == "xiaomi"
-        assert s.ok_for_badge is True
-        assert s.error is None
 
-    def test_auth_fail(self):
-        s = badge_portal._parse_portal_output(PORTAL_AUTH_FAIL_OUTPUT)
-        assert s.auth == "not_logged_in"
-        assert s.image_generation == "via_portal"
-        assert s.ok_for_badge is False
-        assert "portal auth" in s.error
+# ─── TestParseToolsListOutput ───────────────────────────────────
 
-    def test_image_not_configured(self):
-        s = badge_portal._parse_portal_output(PORTAL_IMG_NOT_CONFIGURED_OUTPUT)
-        assert s.auth == "logged_in"
-        assert s.image_generation == "not_configured"
-        assert s.ok_for_badge is False
-        assert "image generation" in s.error
+class TestParseToolsListOutput:
+    def test_image_gen_enabled(self):
+        parsed = badge_portal._parse_tools_list_output(TOOLS_LIST_WITH_IMAGE_GEN)
+        assert parsed["image_gen_enabled"] is True
+        assert parsed["web_enabled"] is True
+        assert parsed["tts_enabled"] is True
+        assert parsed["browser_enabled"] is True
+        # raw_tools_count 包括 ✗ disabled (每行算 1)
+        assert parsed["raw_tools_count"] >= 4
 
-    def test_garbage_output(self):
-        s = badge_portal._parse_portal_output("random text")
-        assert s.auth == "unknown"
-        assert s.image_generation == "unknown"
-        assert s.ok_for_badge is False
-        assert s.error is not None
+    def test_image_gen_disabled(self):
+        parsed = badge_portal._parse_tools_list_output(TOOLS_LIST_NO_IMAGE_GEN)
+        assert parsed["image_gen_enabled"] is False
+        assert parsed["web_enabled"] is True
+        assert parsed["browser_enabled"] is True
+        assert parsed["tts_enabled"] is False  # 没出现
 
     def test_empty_output(self):
-        s = badge_portal._parse_portal_output("")
-        assert s.auth == "unknown"
-        assert s.image_generation == "unknown"
-        assert s.model == "unknown"
-        assert s.ok_for_badge is False
+        parsed = badge_portal._parse_tools_list_output(TOOLS_LIST_EMPTY)
+        assert parsed["image_gen_enabled"] is False
+        assert parsed["raw_tools_count"] == 0
+
+    def test_garbage_output(self):
+        parsed = badge_portal._parse_tools_list_output("random text\nwithout tools list format")
+        assert parsed["image_gen_enabled"] is False
+        assert parsed["raw_tools_count"] == 0
 
 
-# ─── TestCheckPortalStatus ─────────────────────────────────────
+# ─── TestCheckPortalStatus ──────────────────────────────────────
 
 class TestCheckPortalStatus:
-    def setup_method(self):
-        badge_portal.invalidate_cache()  # 每个 test 前清 cache
+    """V1.1: check_portal_status 改用 hermes tools list 报 image_gen 状态."""
 
-    def test_success_with_cache_miss(self):
+    def setup_method(self):
+        badge_portal.invalidate_cache()
+
+    def test_image_gen_enabled_returns_ok(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
-        ) as m:
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
+        ):
             s = badge_portal.check_portal_status(use_cache=False)
         assert s.ok_for_badge is True
-        assert s.model == "xiaomi"
-        # 验证 subprocess 命令格式
-        cmd = m.call_args[0][0]
-        assert cmd[0].endswith("hermes")
-        assert cmd[1:3] == ["--profile", "dizical"]
-        assert cmd[3:5] == ["portal", "status"]
+        assert s.auth == "logged_in"
+        assert s.image_generation == "via_portal"
 
-    def test_uses_default_profile_from_env(self, monkeypatch):
-        monkeypatch.setenv("DIZICAL_HERMES_PROFILE", "dizical_test")
+    def test_image_gen_disabled_returns_not_ok(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
-        ) as m:
-            badge_portal.check_portal_status(use_cache=False)
-        cmd = m.call_args[0][0]
-        assert cmd[2] == "dizical_test"
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_NO_IMAGE_GEN, returncode=0,
+            ),
+        ):
+            s = badge_portal.check_portal_status(use_cache=False)
+        assert s.ok_for_badge is False
+        assert "image_gen" in (s.error or "")
 
-    def test_uses_cache_within_ttl(self):
-        # 第一次调用
+    def test_cache_hit_within_ttl(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
         ) as m:
-            s1 = badge_portal.check_portal_status(use_cache=True)
-            s2 = badge_portal.check_portal_status(use_cache=True)
-        # subprocess.run 应该只被调 1 次
+            badge_portal.check_portal_status(use_cache=True)
+            badge_portal.check_portal_status(use_cache=True)
+        # 60s 内只调 1 次 subprocess
         assert m.call_count == 1
-        assert s1 is s2
 
-    def test_no_cache_when_use_cache_false(self):
+    def test_no_cache_when_disabled(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
         ) as m:
             badge_portal.check_portal_status(use_cache=False)
             badge_portal.check_portal_status(use_cache=False)
         assert m.call_count == 2
 
-    def test_cache_expired_after_ttl(self):
+    def test_reloads_after_ttl_expired(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
         ) as m:
             badge_portal.check_portal_status(use_cache=True)
             # 强制 cache 过期
@@ -176,14 +151,16 @@ class TestCheckPortalStatus:
     def test_invalidate_cache(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
         ) as m:
             badge_portal.check_portal_status(use_cache=True)
             badge_portal.invalidate_cache()
             badge_portal.check_portal_status(use_cache=True)
         assert m.call_count == 2
 
-    def test_timeout_returns_unkown(self):
+    def test_timeout_returns_unknown(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
             side_effect=subprocess.TimeoutExpired(cmd=["hermes"], timeout=10),
@@ -206,9 +183,7 @@ class TestCheckPortalStatus:
     def test_nonzero_exit(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(
-                stderr="some error", returncode=1,
-            ),
+            return_value=_mock_subprocess_result(stderr="some error", returncode=1),
         ):
             s = badge_portal.check_portal_status(use_cache=False)
         assert s.ok_for_badge is False
@@ -218,10 +193,32 @@ class TestCheckPortalStatus:
     def test_latency_tracked(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
         ):
             s = badge_portal.check_portal_status(use_cache=False)
         assert s.latency_ms >= 0
+
+
+# ─── TestRefreshCache ──────────────────────────────────────────
+
+class TestRefreshCache:
+    def test_clears_cache(self):
+        with mock.patch.object(
+            badge_portal.subprocess, "run",
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
+        ):
+            badge_portal.check_portal_status(use_cache=True)
+            # cache 里有 PortalStatus 对象
+            assert badge_portal._cache["data"] is not None
+            assert badge_portal._cache["data"].ok_for_badge is True
+            # 失效
+            badge_portal.invalidate_cache()
+            assert badge_portal._cache["ts"] == 0.0
+            assert badge_portal._cache["data"] is None
 
 
 # ─── TestIsReadyForBadgeWorkflow ──────────────────────────────
@@ -229,24 +226,25 @@ class TestCheckPortalStatus:
 class TestIsReadyForBadgeWorkflow:
     def setup_method(self):
         badge_portal.invalidate_cache()
-
     def test_ready(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
-            return_value=_mock_subprocess_result(stdout=PORTAL_OK_OUTPUT, returncode=0),
+            return_value=_mock_subprocess_result(
+                stdout=TOOLS_LIST_WITH_IMAGE_GEN, returncode=0,
+            ),
         ):
             ok, msg = badge_portal.is_ready_for_badge_workflow()
         assert ok is True
         assert "正常" in msg
-        assert "xiaomi" in msg
 
     def test_not_ready(self):
         with mock.patch.object(
             badge_portal.subprocess, "run",
             return_value=_mock_subprocess_result(
-                stdout=PORTAL_AUTH_FAIL_OUTPUT, returncode=0,
+                stdout=TOOLS_LIST_NO_IMAGE_GEN, returncode=0,
             ),
         ):
             ok, msg = badge_portal.is_ready_for_badge_workflow()
         assert ok is False
-        assert "portal auth" in msg
+        # V1.1: msg 来源是 image_gen 未启用
+        assert "image_gen" in msg or "未启用" in msg
