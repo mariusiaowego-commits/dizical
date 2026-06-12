@@ -148,10 +148,12 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         static_path = badge_draft.move_tmp_to_static(req.draft_id, draft.version)
 
         # 2. 调 badge_db 写三表 (achievements + stats + badges)
-        # V2 注意: V1 insert_achievement_row 必填 stat_logic, V2 meta 简化表单不收集
-        # 默认 "无" (V2.1 calc 修法 1 走 git apply 写 achievement_definitions.py, 跟这里解耦)
+        # V2 注意: V1 insert_achievement_row 必填 stat_logic + description,
+        # V2 meta 简化表单不收集, commit handler 默认值兜底
+        # (V2.1 calc 修法 1 走 git apply 写 achievement_definitions.py, 跟这里解耦)
         meta_for_db = dict(draft.meta)
         meta_for_db.setdefault("stat_logic", "无")
+        meta_for_db.setdefault("description", "无")
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":

@@ -51,11 +51,19 @@ def scan_badge_data_dir() -> list[dict[str, Any]]:
             is_committable = False
             conflict_reason = f"DB 已有 id='{badge_id}' 的 badge, 不能再 commit (V1.1 暂无删除 API, 手动 SQL 删)"
 
-        # image 路径
+        # image 路径: skill 写 draft 时是 .tmp/ 临时图, commit-from-draft 时
+        # 复制到 static/badges/{id}_v{n}.png. 前端需 web 路径 (/static/badges/...) 才能渲染.
+        # commit 后: .tmp/ 已被 cleanup, draft.image["path"] 仍指向 .tmp/ 旧路径
+        # (status 已变 committed, 但 draft.json 没更新). V2.1 修: commit 时也更新 image.path.
+        # V2.1 修: discovery 优先返 commit 后的 static/badges/ 路径 (前端可渲染)
         image_url = None
-        if draft.image.get("path"):
+        badge_id = draft.meta.get("id")
+        if badge_id:
+            # commit 后的标准路径 (前端用这个)
+            image_url = f"/static/badges/{badge_id}_v{draft.version}.png"
+        elif draft.image.get("path"):
+            # fallback: 用 draft 写的路径 + strip /static/badges/ 前缀
             image_url = draft.image["path"]
-            # 转 web 路径: /Users/mt16/.../static/badges/xxx.png → /static/badges/xxx.png
             if "/static/badges/" in image_url:
                 image_url = "/static/badges/" + image_url.split("/static/badges/")[-1]
 

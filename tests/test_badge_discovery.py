@@ -70,7 +70,7 @@ class TestScanBadgeDataDir:
         assert len(items) == 0
 
     def test_image_url_extraction(self, tmp_badge_data):
-        """image.path 含 /static/badges/ → 转 web URL."""
+        """image.path 含 /static/badges/ → 转 web URL (V2.1 修: 优先用 meta.id + version 拼 web 路径, draft 写 .tmp/ 也能渲染)."""
         meta = {
             "id": "v2_test_url_xyz", "name": "x", "type": "突破", "category": "milestone",
             "placeholder": "ph", "zh_story": "story",
@@ -84,7 +84,29 @@ class TestScanBadgeDataDir:
             "version": 1,
         })
         items = badge_discovery.scan_badge_data_dir()
-        assert items[0]["image_url"] == "/static/badges/x_1_v1.png"
+        # V2.1: image_url 走 /static/badges/{id}_v{version}.png (从 meta.id 拼)
+        assert items[0]["image_url"] == "/static/badges/v2_test_url_xyz_v1.png"
+
+    def test_image_url_fallback_when_no_id(self, tmp_badge_data):
+        """V2.1 兜底: 没 meta.id 时, 走旧逻辑 strip /static/badges/ 前缀."""
+        meta = {
+            "id": "v2_test_fallback_xyz", "name": "x", "type": "突破", "category": "milestone",
+            "placeholder": "ph", "zh_story": "story",
+        }
+        d = badge_draft.create_draft(meta)
+        # 拿掉 id (在 save 前改 meta dict 引用)
+        d.meta.pop("id", None)
+        badge_draft.save_draft(d)
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/x.png",
+            "model": "gpt-image-2",
+            "alpha_verified": True,
+            "version": 1,
+        })
+        items = badge_discovery.scan_badge_data_dir()
+        # fallback: strip 绝对路径前缀, 但 .tmp/ 没 /static/badges/ 所以原样返
+        # (前端拿不到 web 路径 → 显兜底)
+        assert items[0]["image_url"] == "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/x.png"
 
     def test_skip_awaiting_without_image(self, tmp_badge_data, caplog):
         """status=awaiting_confirm 但 image=None 跳过 (skill 失败中间状态)."""
