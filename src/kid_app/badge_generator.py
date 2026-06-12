@@ -374,8 +374,214 @@ def commit_badge_to_db(
             insert_achievement_stats_row(conn, badge_id)
         insert_badge_row(conn, badge_id, url, version)
 
-    # PR-B 合并后这里加 cache 失效调用:
-    # from src.kid_app.app import _BADGE_URL_CACHE
-    # _BADGE_URL_CACHE["ts"] = 0
+    # PR-B 集成: 让新 badge 立刻在 /badges 页面可见 (无需等 60s cache TTL)
+    # 延迟 import 模式, 跟 routes/badge_workflow.py import render 一样
+    from src.kid_app.app import _invalidate_badge_url_cache
+    _invalidate_badge_url_cache()
 
     return True
+
+
+# ─── PR-C 批量模式 (2026-06-12) ──────────────────────────────────
+# 设计: 基于一个已上线 badge 的元数据, 衍生 N 个同风格新 badge.
+# 每个新 badge 只换 placeholder (一次填 N 个), 元数据继承来源 badge.
+# 失败累计: 任何一条失败, 该条 result["ok"]=False 但不阻断其他.
+# 限制: N <= 20 (防止长 prompt 撑爆 hermes chat 命令行).
+# 派生 id 规则: {source_id}_{i+1} (例如 lucky_61_2026_1, _2, _3 ...)
+
+BATCH_MAX_N = 20
+
+
+def _derive_batch_badge_id(source_id: str, index: int) -> str:
+    """派生 N 个新 badge id. index 从 1 开始."""
+    return f"{source_id}_{index}"
+
+
+def run_badge_pipeline_batch(
+    source_badge_meta: dict[str, Any],
+    placeholders: list[str],
+    on_status: Callable[[str, str, str], None],  # (stage, badge_id, message)
+    project_root: Path | None = None,
+) -> dict[str, Any]:
+    """
+    批量跑流水线. 每条 placeholder 派生一个新 badge.
+
+    Args:
+        source_badge_meta: 来源 badge 的元数据 (name / type / category / stat_logic /
+                          description / display_format / seasonal_type), 用于继承
+        placeholders: 英文 placeholder 列表, 每条生成一个新 badge
+        on_status: 实时状态回调 (stage, badge_id, message)
+                    推 SSE 状态用
+
+    Returns:
+        {
+            "ok": bool,                    # 全部成功
+            "results": [                   # 每条的结果
+                {
+                    "badge_id": str,
+                    "image_path": str | None,
+                    "dedupe_ok": bool,
+                    "version": int,
+                    "ok": bool,
+                    "error": str | None,
+                },
+                ...
+            ],
+            "n_total": int,
+            "n_success": int,
+            "n_failed": int,
+        }
+    """
+    n = len(placeholders)
+    if n == 0:
+        return {"ok": True, "results": [], "n_total": 0, "n_success": 0, "n_failed": 0}
+    if n > BATCH_MAX_N:
+        return {
+            "ok": False, "results": [], "n_total": n, "n_success": 0, "n_failed": 0,
+            "error": f"N 最多 {BATCH_MAX_N} (实际 {n})",
+        }
+
+    source_id = source_badge_meta.get("id", "")
+    if not source_id:
+        return {
+            "ok": False, "results": [], "n_total": n, "n_success": 0, "n_failed": 0,
+            "error": "source_badge_meta 必须含 id",
+        }
+
+    results: list[dict[str, Any]] = []
+    n_success = 0
+    n_failed = 0
+
+    for i, placeholder in enumerate(placeholders, start=1):
+        badge_id = _derive_batch_badge_id(source_id, i)
+
+        # 单条流水线
+        def on_status_for_item(stage: str, msg: str) -> None:
+            on_status(stage, badge_id, msg)
+
+        result = run_badge_pipeline(
+            badge_id=badge_id,
+            placeholder=placeholder,
+            on_status=on_status_for_item,
+            project_root=project_root,
+        )
+
+        # 单条结果整合 (extract image_path / version)
+        item_result = {
+            "badge_id": badge_id,
+            "image_path": result.get("image_path"),
+            "dedupe_ok": result.get("dedupe_ok", False),
+            "version": result.get("version", 0),
+            "ok": result.get("ok", False),
+            "error": result.get("error"),
+            "placeholder": placeholder,
+        }
+        results.append(item_result)
+        if item_result["ok"]:
+            n_success += 1
+        else:
+            n_failed += 1
+        # 推 batch 进度
+        on_status("batch_progress", badge_id, f"{i}/{n} 完成 ({n_success} 成功 / {n_failed} 失败)")
+
+    return {
+        "ok": n_failed == 0,
+        "results": results,
+        "n_total": n,
+        "n_success": n_success,
+        "n_failed": n_failed,
+    }
+
+
+def commit_badge_batch_to_db(
+    source_badge_meta: dict[str, Any],
+    items: list[dict[str, Any]],  # batch preview 返回的 results
+) -> dict[str, Any]:
+    """
+    批量写库. 一次事务 INSERT N 行 achievements + (可选) N 行 achievement_stats + N 行 achievement_badges.
+
+    Args:
+        source_badge_meta: 继承的元数据 (id/name/type/category/stat_logic/description/
+                          display_format/threshold/seasonal_type/placeholder/unlocked_template)
+        items: run_badge_pipeline_batch 返回的 results, 只处理 ok=True 的项
+
+    Returns:
+        {
+            "ok": bool,
+            "committed_count": int,        # 实际写入的 badge 数
+            "failed": [                   # 写入失败的 items
+                {"badge_id": str, "error": str},
+            ],
+        }
+    """
+    valid_items = [it for it in items if it.get("ok") and it.get("image_path")]
+    if not valid_items:
+        return {"ok": True, "committed_count": 0, "failed": []}
+
+    failed: list[dict[str, str]] = []
+    n_committed = 0
+
+    # 继承字段 (id/name/category 不复用, 用各 item 自己的)
+    name_tpl = source_badge_meta.get("name", "")
+    type_label = source_badge_meta.get("type", "突破")
+    stat_logic = source_badge_meta.get("stat_logic", "")
+    description = source_badge_meta.get("description", "")
+    display_format = source_badge_meta.get("displayFormat") or source_badge_meta.get("display_format", "days")
+    threshold = source_badge_meta.get("threshold")
+    seasonal_type = source_badge_meta.get("seasonalType") or source_badge_meta.get("seasonal_type", "monthly")
+    category = source_badge_meta.get("category", "milestone")
+    unlocked_template_tpl = source_badge_meta.get("unlocked_template", "")
+
+    # 用一个事务包所有 INSERT
+    try:
+        with badge_write_tx() as conn:
+            for item in valid_items:
+                badge_id = item["badge_id"]
+                placeholder = item["placeholder"]
+                image_path = item["image_path"]
+                # 名称: 继承来源名 + 后缀 (避免重名)
+                # 例如 "幸运六一节 (1)" / "幸运六一节 (2)" ...
+                # 如果来源名已经有 "(N)" 后缀, 替换它
+                import re as _re
+                m = _re.search(r"\s*\((\d+)\)\s*$", name_tpl)
+                if m:
+                    item_name = _re.sub(r"\s*\(\d+\)\s*$", f" ({item['version']})", name_tpl)
+                else:
+                    item_name = f"{name_tpl} ({item['version']})"
+                # unlocked_template 重新组装 (placeholder 不同)
+                try:
+                    item_unlocked_template = build_unlocked_prompt(placeholder) if placeholder else unlocked_template_tpl
+                except Exception:
+                    item_unlocked_template = unlocked_template_tpl
+                # 写 3 张表
+                insert_achievement_row(conn, {
+                    "id": badge_id,
+                    "name": item_name,
+                    "type": type_label,
+                    "category": category,
+                    "stat_logic": stat_logic,
+                    "description": description,
+                    "display_format": display_format,
+                    "threshold": threshold,
+                    "unlocked_template": item_unlocked_template,
+                    "placeholder": placeholder,
+                    "seasonal_type": seasonal_type,
+                })
+                if category == "milestone":
+                    insert_achievement_stats_row(conn, badge_id)
+                # url 从 image_path 提取
+                url = f"/static/badges/{Path(image_path).name}"
+                insert_badge_row(conn, badge_id, url, item["version"])
+                n_committed += 1
+    except Exception as e:
+        return {
+            "ok": False,
+            "committed_count": 0,
+            "failed": [{"badge_id": it["badge_id"], "error": str(e)} for it in valid_items],
+        }
+
+    # PR-B 集成: 让 N 个新 badge 立刻在 /badges 可见
+    from src.kid_app.app import _invalidate_badge_url_cache
+    _invalidate_badge_url_cache()
+
+    return {"ok": True, "committed_count": n_committed, "failed": failed}
