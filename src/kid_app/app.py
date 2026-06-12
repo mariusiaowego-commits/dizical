@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import sqlite3
 import sys
+import time
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -40,6 +41,47 @@ def child_name():
         return db.get_setting("child_name") or "YoYo"
     except Exception:
         return "YoYo"
+
+
+# ─── Badge URL cache (PR-B 2026-06-12, 取代 BADGE_URLS / BADGE_FILES dict) ──
+# 设计: dict 写死是 wiki 5/21 踩坑的根因 (两处 dict 必须同步). PR-B 改读 DB,
+# 加 60s cache (badge 集合稳定). 新 badge 走 badge_generator.commit_badge_to_db
+# 末尾 _invalidate_badge_url_cache() 立即生效.
+
+_BADGE_URL_CACHE: dict = {"ts": 0.0, "data": {}}
+_BADGE_URL_CACHE_TTL = 60  # 秒
+
+
+def _invalidate_badge_url_cache() -> None:
+    """清 cache. badge_generator.commit_badge_to_db 成功后调, 让新 badge 立刻可见."""
+    _BADGE_URL_CACHE["ts"] = 0.0
+    _BADGE_URL_CACHE["data"] = {}
+
+
+def _refresh_badge_url_cache() -> None:
+    """从 achievement_badges 表刷一次 is_current=1 的全部 url."""
+    with db._get_connection() as conn:
+        cur = conn.execute(
+            "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1"
+        )
+        _BADGE_URL_CACHE["data"] = {row[0]: row[1] for row in cur.fetchall()}
+        _BADGE_URL_CACHE["ts"] = time.time()
+
+
+def get_badge_url(aid: str, default: str = "/static/badges/medal_badge.png") -> str:
+    """返回当前生效的 badge url. 取代 BADGE_URLS / BADGE_FILES dict.
+
+    Args:
+        aid: achievement_id (e.g. "streak_7")
+        default: cache miss 时的兜底图 (跟原 dict.get 行为一致)
+
+    Returns:
+        url 路径 (/static/badges/xxx.png) 或 default
+    """
+    now = time.time()
+    if now - _BADGE_URL_CACHE["ts"] > _BADGE_URL_CACHE_TTL:
+        _refresh_badge_url_cache()
+    return _BADGE_URL_CACHE["data"].get(aid, default)
 
 def week_start_of(today):
     return today - dt.timedelta(days=today.weekday())
@@ -416,29 +458,7 @@ def _milestone_html(category: Optional[str] = None):
     cols = [d[0] for d in cur.description]
     ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
 
-    # ── badge URL 映射 ───────────────────────────────────────────
-    BADGE_URLS = {
-        **{f"streak_{n}": f"/static/badges/streak_{n}.png" for n in [1, 3, 7, 14, 30, 100]},
-        "total_60": "/static/badges/total_60.png",
-        "total_300": "/static/badges/total_300.png",
-        "total_600": "/static/badges/total_600.png",
-        "total_1000": "/static/badges/total_1000.png",
-        "first_log": "/static/badges/first_log.png",
-        "all_items": "/static/badges/all_items.png",
-        "double": "/static/badges/double.png",
-        "week_champ": "/static/badges/week_champ.png",
-        "full_month": "/static/badges/full_month.png",
-        "top1": "/static/badges/top1.png",
-        "top2": "/static/badges/top2.png",
-        "top3": "/static/badges/top3.png",
-        "early_riser": "/static/badges/early_bird_A.png",
-        "little_chick_commander": "/static/badges/early_bird_B.png",
-        "first_to_act": "/static/badges/early_bird_C.png",
-        **{f"grade_{n}": f"/static/badges/grade_{n}-u.png" for n in range(1, 11)},
-        **{f"lucky_61_{y}": f"/static/badges/lucky_61_{y}.png" for y in range(2026, 2031)},
-    }
-
-    # ── 分离已解锁 / 未解锁 ──────────────────────────────────────
+    # ── 分离已解锁 / 未解锁 (PR-B: badge_url 改读 DB + cache 60s) ──
     unlocked_list = []
     locked_list = []   # (ratio, card_html)
 
@@ -451,7 +471,7 @@ def _milestone_html(category: Optional[str] = None):
         achieved = res.achieved
         cv = res.computed_value
         threshold = ach.get("threshold")
-        badge_url = BADGE_URLS.get(aid, "/static/badges/medal_badge.png")
+        badge_url = get_badge_url(aid)  # PR-B: 取代 BADGE_URLS.get(aid, ...)
 
         # seasonal 类型 ratio=achieved（不显示进度条）
         if threshold and threshold > 0 and cv is not None:
@@ -1420,28 +1440,7 @@ def badges_page():
     cols = [d[0] for d in cur.description]
     ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
 
-    BADGE_FILES = {
-        **{f"streak_{n}": f"/static/badges/streak_{n}.png" for n in [1, 3, 7, 14, 30, 100]},
-        "total_60": "/static/badges/total_60.png",
-        "total_300": "/static/badges/total_300.png",
-        "total_600": "/static/badges/total_600.png",
-        "total_1000": "/static/badges/total_1000.png",
-        "first_log": "/static/badges/first_log.png",
-        "all_items": "/static/badges/all_items.png",
-        "double": "/static/badges/double.png",
-        "week_champ": "/static/badges/week_champ.png",
-        "full_month": "/static/badges/full_month.png",
-        "top1": "/static/badges/top1.png",
-        "top2": "/static/badges/top2.png",
-        "top3": "/static/badges/top3.png",
-        "early_riser": "/static/badges/early_bird_A.png",
-        "little_chick_commander": "/static/badges/early_bird_B.png",
-        "first_to_act": "/static/badges/early_bird_C.png",
-        **{f"grade_{n}": f"/static/badges/grade_{n}-u.png" for n in range(1, 11)},
-        **{f"lucky_61_{y}": f"/static/badges/lucky_61_{y}.png" for y in range(2026, 2031)},
-    }
-
-    # 构建 badge 列表
+    # 构建 badge 列表 (PR-B: badge_url 改读 DB + cache 60s)
     badges = []
     for ach in ach_rows:
         aid = ach["id"]
@@ -1457,7 +1456,7 @@ def badges_page():
             "condition": res.condition,
             "achieved": res.achieved,
             "achieved_at": res.achieved_at,
-            "badge_url": BADGE_FILES.get(aid, "/static/badges/medal_badge.png"),
+            "badge_url": get_badge_url(aid),  # PR-B: 取代 BADGE_FILES.get(aid, ...)
         })
 
     # 分离已解锁/未解锁，各按 achieved_at 降序
