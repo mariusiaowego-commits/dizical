@@ -1,0 +1,1139 @@
+<!--
+  config-badge.html — Badge 制作工作流 (V1 PR-A, 2026-06-12)
+
+  4 步表单:
+    ① 元数据 (id / 名称 / type 标签 / category / seasonal_type)
+    ② placeholder + 典故 (二选一: 我自己写 / AI 草拟)
+    ③ 计算逻辑模板 (calc template 选择)
+    ④ 生成 & 预览 (SSE 流式 + 红底验证 + 3 按钮: 重新生图 / 接受 / 取消)
+    ⑤ 确认上线 (PIN 输入 + 写入三表)
+
+  顶部 Portal 状态卡: 绿/红/灰灯 + 最后检查时间 + 手动刷新
+  Portal 红了: 禁用 Step 4 按钮, 弹 tooltip 解释
+
+  设计风格: dizicute 暖色 (跟 config-blindbox.html / config-practice.html 一致)
+  不用 emoji (AGENTS.md §UI 偏好), 按钮只用名字不带 ID
+-->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>徽章制作 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .badge-container {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* ── 顶部导航 ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 15px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.6);
+      transition: all 0.2s ease;
+    }
+    .back-link:hover { background: rgba(255,255,255,0.9); transform: translateX(-2px); }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── Portal 状态卡 ── */
+    .portal-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: all 0.3s ease;
+    }
+    .portal-card.status-ok { border-left: 4px solid #4CAF50; }
+    .portal-card.status-red { border-left: 4px solid #FF6B6B; }
+    .portal-card.status-gray { border-left: 4px solid #999; }
+
+    .portal-light {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .portal-light.green { background: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
+    .portal-light.red { background: #FF6B6B; box-shadow: 0 0 8px #FF6B6B; }
+    .portal-light.gray { background: #ccc; }
+
+    .portal-info { flex: 1; }
+    .portal-info .label { font-size: 13px; color: #888; margin-bottom: 2px; }
+    .portal-info .value { font-size: 15px; font-weight: 600; color: var(--text); }
+    .portal-info .detail { font-size: 12px; color: #999; margin-top: 4px; }
+    .portal-info .error { font-size: 13px; color: #FF6B6B; margin-top: 4px; }
+
+    .portal-refresh {
+      padding: 8px 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      background: white;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .portal-refresh:hover { background: var(--cream); }
+    .portal-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── 进度条 ── */
+    .progress-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding: 0 20px;
+    }
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      position: relative;
+    }
+    .progress-step::after {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 60%;
+      right: -40%;
+      height: 2px;
+      background: rgba(0,0,0,0.1);
+      z-index: -1;
+    }
+    .progress-step:last-child::after { display: none; }
+    .progress-step .dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.08);
+      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      transition: all 0.3s ease;
+    }
+    .progress-step.active .dot {
+      background: var(--rose);
+      color: white;
+      box-shadow: 0 2px 8px rgba(232, 180, 188, 0.5);
+    }
+    .progress-step.done .dot {
+      background: var(--sage);
+      color: white;
+    }
+    .progress-step .label {
+      font-size: 11px;
+      color: #888;
+      font-weight: 500;
+    }
+    .progress-step.active .label { color: var(--text); font-weight: 600; }
+
+    /* ── Step 内容区 ── */
+    .step-container {
+      background: white;
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      min-height: 360px;
+      position: relative;
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .step h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .step .step-desc {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .form-row {
+      margin-bottom: 18px;
+    }
+    .form-row label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-row .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+    .form-row input[type="text"],
+    .form-row input[type="number"],
+    .form-row select,
+    .form-row textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: white;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+    }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus {
+      outline: none;
+      border-color: var(--rose);
+      box-shadow: 0 0 0 3px rgba(232, 180, 188, 0.15);
+    }
+    .form-row textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    .form-row .check-status {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 12px;
+    }
+    .form-row .check-status.checking { color: #999; }
+    .form-row .check-status.unique { color: #4CAF50; }
+    .form-row .check-status.taken { color: #FF6B6B; }
+
+    .radio-group { display: flex; gap: 16px; }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 400;
+    }
+
+    /* ── Step 按钮组 ── */
+    .step-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0,0,0,0.06);
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--rose);
+      color: white;
+      box-shadow: 0 4px 12px rgba(232, 180, 188, 0.4);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232, 180, 188, 0.5); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: rgba(0,0,0,0.05);
+      color: var(--text);
+    }
+    .btn-secondary:hover { background: rgba(0,0,0,0.08); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Step 4 状态条 ── */
+    .gen-status-list {
+      background: var(--cream);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    .gen-status-list .status-line {
+      padding: 4px 0;
+      opacity: 0.4;
+      transition: all 0.3s ease;
+    }
+    .gen-status-list .status-line.active {
+      opacity: 1;
+      font-weight: 600;
+    }
+    .gen-status-list .status-line.done {
+      opacity: 0.7;
+      color: #4CAF50;
+    }
+    .gen-status-list .status-line.error {
+      opacity: 1;
+      color: #FF6B6B;
+    }
+
+    /* ── Step 4 预览区 ── */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .preview-cell {
+      background: var(--cream);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .preview-cell .preview-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .preview-cell img {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+    }
+    .preview-cell .red-bg { background: rgb(220, 60, 60); padding: 12px; border-radius: 8px; }
+
+    .warning-banner {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid #FF6B6B;
+      color: #C62828;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 2000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.success { background: #4CAF50; }
+    .toast.error { background: #FF6B6B; }
+    .toast.info { background: var(--rose); }
+
+    /* ── 成功页 ── */
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: var(--sage);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .success-icon svg { width: 48px; height: 48px; stroke: white; }
+    .commit-result {
+      background: var(--cream);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 20px 0;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .commit-snippet {
+      background: #2C3E50;
+      color: #ecf0f1;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .copy-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="has-sidebar">
+  {% include "_sidebar.html" %}
+
+  <div class="badge-container">
+    <!-- 顶部导航 -->
+    <div class="top-bar">
+      <a href="/config" class="back-link">
+        <span>←</span>
+        <span>返回配置</span>
+      </a>
+      <div class="page-title">徽章制作</div>
+      <div style="width: 100px"></div>  <!-- spacer -->
+    </div>
+
+    <!-- Portal 状态卡 (用户 2026-06-12 拍板 V1 必须) -->
+    <div class="portal-card status-gray" id="portalCard">
+      <div class="portal-light gray" id="portalLight"></div>
+      <div class="portal-info">
+        <div class="label">Nous Portal 连接状态</div>
+        <div class="value" id="portalValue">检查中...</div>
+        <div class="detail" id="portalDetail"></div>
+        <div class="error" id="portalError" style="display:none"></div>
+      </div>
+      <button class="portal-refresh" id="portalRefreshBtn" onclick="refreshPortal()">刷新</button>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-step active" data-step="1"><div class="dot">1</div><div class="label">元数据</div></div>
+      <div class="progress-step" data-step="2"><div class="dot">2</div><div class="label">Placeholder</div></div>
+      <div class="progress-step" data-step="3"><div class="dot">3</div><div class="label">计算逻辑</div></div>
+      <div class="progress-step" data-step="4"><div class="dot">4</div><div class="label">生成预览</div></div>
+      <div class="progress-step" data-step="5"><div class="dot">5</div><div class="label">确认上线</div></div>
+    </div>
+
+    <!-- Step 容器 -->
+    <div class="step-container">
+      <!-- Step 1: 元数据 -->
+      <div class="step active" data-step="1">
+        <h2>① Badge 元数据</h2>
+        <p class="step-desc">填写 badge 基础信息。id 必须唯一（实时查重），名称会显示在成就殿堂。</p>
+
+        <div class="form-row">
+          <label>Badge ID * <span class="check-status" id="idCheckStatus"></span></label>
+          <input type="text" id="badgeId" pattern="[a-zA-Z0-9_]+" placeholder="例如: lucky_61_2031" required>
+          <div class="hint">仅英文 / 数字 / 下划线. 例如 <code>lucky_61_2026</code> <code>early_bird_D</code></div>
+        </div>
+
+        <div class="form-row">
+          <label>名称 *</label>
+          <input type="text" id="badgeName" placeholder="例如: 幸运六一节" required>
+        </div>
+
+        <div class="form-row">
+          <label>分类标签 * (决定 .b-tag 颜色)</label>
+          <select id="typeLabel">
+            <option value="突破">突破</option>
+            <option value="段位">段位</option>
+            <option value="巅峰">巅峰</option>
+            <option value="执着">执着</option>
+            <option value="晋级">晋级</option>
+            <option value="神秘">神秘</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>category *</label>
+          <div class="radio-group">
+            <label><input type="radio" name="category" value="milestone" checked> milestone (里程碑, 写 stats)</label>
+            <label><input type="radio" name="category" value="seasonal"> seasonal (季节/节日, 实时算)</label>
+          </div>
+        </div>
+
+        <div class="form-row" id="seasonalTypeRow" style="display:none">
+          <label>seasonal_type *</label>
+          <select id="seasonalType">
+            <option value="monthly">monthly (节日徽章如 lucky_61_YYYY)</option>
+            <option value="stage">stage (课程阶段)</option>
+            <option value="weekly">weekly (自然周)</option>
+            <option value="daily">daily (每日打卡)</option>
+          </select>
+        </div>
+
+        <div class="form-actions step-actions">
+          <button class="btn btn-secondary" disabled>上一步</button>
+          <button class="btn btn-primary" id="step1NextBtn" onclick="nextStep()">下一步</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Placeholder + 典故 -->
+      <div class="step" data-step="2">
+        <h2>② Placeholder + 典故</h2>
+        <p class="step-desc">英文 placeholder 是生图 prompt 必填部分。可手工填（从 alma 等 agent 拿），或 AI 草拟（调 dizical hermes profile，英文地道）。</p>
+
+        <div class="form-row">
+          <label>placeholder 来源 *</label>
+          <div class="radio-group">
+            <label><input type="radio" name="phSource" value="manual" checked> 我自己写</label>
+            <label><input type="radio" name="phSource" value="ai"> AI 草拟 (dizical hermes / deepseek)</label>
+          </div>
+        </div>
+
+        <div class="form-row" id="phManualRow">
+          <label>英文 placeholder *</label>
+          <textarea id="phManual" placeholder="例如: a cute chibi girl with long black hair playing a bamboo flute, surrounded by swimming golden koi fish"></textarea>
+          <div class="hint">30-120 词, 具体角色+动作+道具, 便于 AI 生图</div>
+        </div>
+
+        <div class="form-row" id="phAiRow" style="display:none">
+          <label>典故中文 (给 deepseek 看的) *</label>
+          <textarea id="phAiStory" placeholder="例如: 庄子与惠子游于濠梁之上, 论鱼之乐"></textarea>
+          <button class="btn btn-secondary" id="aiDraftBtn" onclick="aiDraftPlaceholder()">生成草稿</button>
+          <div class="hint">生成后用户可在下面 textarea 编辑 (30-60 秒)</div>
+          <label style="margin-top:12px">AI 草拟结果 (可编辑) *</label>
+          <textarea id="phAiResult" placeholder="点上面 '生成草稿' 按钮"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label>典故 / 描述 *</label>
+          <textarea id="description" placeholder="例: 庄子与惠子游于濠梁之上..."></textarea>
+          <div class="hint">⚠ 超过 200 字符用 <code>\n\n</code> 分段, 前端 CSS 配 pre-wrap</div>
+        </div>
+
+        <div class="form-row">
+          <label>display_format</label>
+          <input type="text" id="displayFormat" value="days" placeholder="days / minutes / achieved_flag / top_items / time_hours_minutes">
+        </div>
+
+        <div class="form-actions step-actions">
+          <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+          <button class="btn btn-primary" onclick="nextStep()">下一步</button>
+        </div>
+      </div>
+
+      <!-- Step 3: 计算逻辑 -->
+      <div class="step" data-step="3">
+        <h2>③ 计算逻辑模板</h2>
+        <p class="step-desc">选已有模板作为参考（跟 achievement_definitions.py 里 if 分支对应）。代码不会自动注入, 复制到 <code>_calc_milestone()</code> 或 <code>_calc_seasonal()</code>。</p>
+
+        <div class="form-row">
+          <label>选择 calc 模板</label>
+          <select id="calcTemplate" onchange="renderCalcSnippet()">
+            <optgroup label="milestone">
+              <option value="milestone_streak">streak_N 天 (连续 N 天)</option>
+              <option value="milestone_total">total_N 分钟 (累计 N 分钟)</option>
+              <option value="milestone_top">top1/2/3 (累计时长前 N)</option>
+              <option value="milestone_grade">grade_N 考级</option>
+              <option value="milestone_first_log">first_log (第一次练习)</option>
+            </optgroup>
+            <optgroup label="seasonal">
+              <option value="seasonal_daily">daily_checkin_N (每日打卡)</option>
+              <option value="seasonal_monthly_lucky">lucky_61_YYYY (节日徽章)</option>
+              <option value="seasonal_stage_early">early_riser / little_chick / first_to_act</option>
+            </optgroup>
+            <optgroup label="其他">
+              <option value="skip" selected>暂不绑定 (上线后进度显示 0, 人工补)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="form-row" id="thresholdRow" style="display:none">
+          <label>threshold (数字, 用于模板替换)</label>
+          <input type="number" id="threshold" min="0" value="7">
+        </div>
+
+        <div class="form-row">
+          <label>代码片段预览</label>
+          <div class="commit-snippet" id="calcSnippet">-- 选择模板后显示 --</div>
+          <button class="btn btn-secondary" id="copySnippetBtn" onclick="copySnippet()" disabled>复制代码</button>
+        </div>
+
+        <div class="form-actions step-actions">
+          <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+          <button class="btn btn-primary" onclick="nextStep()">下一步</button>
+        </div>
+      </div>
+
+      <!-- Step 4: 生成 & 预览 -->
+      <div class="step" data-step="4">
+        <h2>④ 生成 & 预览</h2>
+        <p class="step-desc">点 "开始生成" 触发 Nous Portal image_generate 流水线 (走 dizical hermes profile, 用 credits)。生成后看预览, 决定下一步。</p>
+
+        <div class="gen-status-list" id="genStatusList">
+          <div class="status-line" data-stage="step0_portal">⏳ 0️⃣ 检查 Nous Portal 连接</div>
+          <div class="status-line" data-stage="step1_validate">1️⃣ 校验输入</div>
+          <div class="status-line" data-stage="step2_prompt">2️⃣ 组装 enamel pin prompt</div>
+          <div class="status-line" data-stage="step3_fal">3️⃣ 调用 Nous Portal image_generate (30-60 秒)</div>
+          <div class="status-line" data-stage="step4_fetch">4️⃣ 拿图片到本地</div>
+          <div class="status-line" data-stage="step5_dedupe">5️⃣ PIL 去白底 (RGB→RGBA)</div>
+        </div>
+
+        <button class="btn btn-primary" id="startGenBtn" onclick="startGeneration()">开始生成</button>
+
+        <!-- 预览区 (生成后显示) -->
+        <div id="previewArea" style="display:none; margin-top: 24px;">
+          <div id="warningArea" class="warning-banner" style="display:none"></div>
+          <div class="preview-grid">
+            <div class="preview-cell">
+              <div class="preview-label">原图 (白底)</div>
+              <img id="previewImg" src="" alt="原图">
+            </div>
+            <div class="preview-cell">
+              <div class="preview-label">红底透明验证</div>
+              <div class="red-bg"><img id="redBgImg" src="" alt="红底验证"></div>
+            </div>
+          </div>
+          <div class="step-actions" style="border-top:none; padding-top:0;">
+            <button class="btn btn-secondary" id="regenBtn" onclick="regenerate()">重新生图</button>
+            <button class="btn btn-primary" id="acceptBtn" onclick="nextStep()">接受, 继续</button>
+            <button class="btn btn-secondary" id="cancelBtn" onclick="cancelGen()">取消</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: 确认上线 -->
+      <div class="step" data-step="5">
+        <h2>⑤ 确认上线</h2>
+        <p class="step-desc">写入 achievements + achievement_stats + achievement_badges 三表。需输入 dad_pin 确认。</p>
+
+        <div class="commit-result" id="commitSummary"></div>
+
+        <div class="form-row">
+          <label>PIN *</label>
+          <input type="password" id="pinInput" placeholder="dad_pin">
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+          <button class="btn btn-primary" id="commitBtn" onclick="commitBadge()">写入数据库</button>
+        </div>
+      </div>
+
+      <!-- 成功页 -->
+      <div class="step" data-step="done">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 style="text-align:center">上线成功</h2>
+        <div class="commit-result" id="commitResult"></div>
+        <p style="font-size:14px;color:#888;margin:16px 0;">⚠ 待办: 把上面 <code>_calc_xxx</code> 代码贴到 <code>src/achievement_definitions.py</code> 并测试</p>
+        <div class="step-actions" style="justify-content:center">
+          <a href="/badges" class="btn btn-secondary">查看成就殿堂</a>
+          <a href="/config/badge" class="btn btn-primary">再做一个</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ─── 状态 ───────────────────────────────────────────────
+    let formData = {
+      id: '', name: '', type: '突破', category: 'milestone', seasonalType: 'monthly',
+      sortOrder: null, phSource: 'manual', placeholder: '', description: '',
+      displayFormat: 'days', calcTemplate: 'skip', threshold: 7,
+    };
+    let previewResult = null;  // { imagePath, dedupeOk, version }
+    let portalVerified = false;
+
+    // ─── PIN 验证入口 (跟 config-blindbox.html 一致) ─────────
+    const savedPin = localStorage.getItem('config_pin') || '';
+    const needsPin = '{{ pin_locked | default("false") }}' === 'true';
+    if (needsPin && !savedPin) {
+      // 未输入 PIN, 跳回 /config (跟其它 config 页面一致)
+      window.location.href = '/config';
+    }
+
+    // ─── Step 切换 ─────────────────────────────────────────
+    function showStep(n) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      const target = document.querySelector(`.step[data-step="${n}"]`);
+      if (target) {
+        target.classList.add('active');
+        gsap.fromTo(target, {opacity: 0, y: 10}, {opacity: 1, y: 0, duration: 0.4, ease: 'back.out(1.2)'});
+      }
+      // 更新进度条
+      document.querySelectorAll('.progress-step').forEach(p => {
+        const ps = parseInt(p.dataset.step);
+        p.classList.remove('active', 'done');
+        if (ps < n) p.classList.add('done');
+        else if (ps === n) p.classList.add('active');
+      });
+    }
+
+    function validateStep1() {
+      const id = document.getElementById('badgeId').value.trim();
+      const name = document.getElementById('badgeName').value.trim();
+      if (!id || !name) {
+        showToast('error', 'id 和名称必填');
+        return false;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(id)) {
+        showToast('error', 'id 只能含英文/数字/下划线');
+        return false;
+      }
+      return true;
+    }
+
+    function validateStep2() {
+      const phSource = formData.phSource;
+      let ph = '';
+      if (phSource === 'manual') {
+        ph = document.getElementById('phManual').value.trim();
+      } else {
+        ph = document.getElementById('phAiResult').value.trim();
+      }
+      const desc = document.getElementById('description').value.trim();
+      if (!ph || ph.length < 5) {
+        showToast('error', 'placeholder 必填 (>= 5 字符)');
+        return false;
+      }
+      if (!desc) {
+        showToast('error', '典故必填');
+        return false;
+      }
+      formData.placeholder = ph;
+      formData.description = desc;
+      formData.displayFormat = document.getElementById('displayFormat').value.trim() || 'days';
+      return true;
+    }
+
+    function nextStep() {
+      const currentStep = parseInt(document.querySelector('.step.active').dataset.step);
+      if (currentStep === 1 && !validateStep1()) return;
+      if (currentStep === 2 && !validateStep2()) return;
+      if (currentStep === 4 && !previewResult) {
+        showToast('error', '先生成图片');
+        return;
+      }
+
+      // 收 Step 1 数据
+      if (currentStep === 1) {
+        formData.id = document.getElementById('badgeId').value.trim();
+        formData.name = document.getElementById('badgeName').value.trim();
+        formData.type = document.getElementById('typeLabel').value;
+        formData.category = document.querySelector('input[name="category"]:checked').value;
+        formData.seasonalType = document.getElementById('seasonalType').value;
+      }
+      // 收 Step 3 数据
+      if (currentStep === 3) {
+        formData.calcTemplate = document.getElementById('calcTemplate').value;
+        formData.threshold = parseInt(document.getElementById('threshold').value) || 0;
+      }
+
+      const next = currentStep + 1;
+      if (next <= 5) showStep(next);
+      if (next === 5) {
+        // 填 commit summary
+        document.getElementById('commitSummary').textContent = JSON.stringify({
+          id: formData.id, name: formData.name, type: formData.type,
+          category: formData.category, imagePath: previewResult?.imagePath || '',
+        }, null, 2);
+      }
+    }
+
+    function prevStep() {
+      const currentStep = parseInt(document.querySelector('.step.active').dataset.step);
+      if (currentStep > 1) showStep(currentStep - 1);
+    }
+
+    // ─── Step 1: id 实时查重 ─────────────────────────────
+    let checkIdTimer = null;
+    document.getElementById('badgeId')?.addEventListener('input', (e) => {
+      const id = e.target.value.trim();
+      const statusEl = document.getElementById('idCheckStatus');
+      if (!/^[a-zA-Z0-9_]+$/.test(id)) {
+        statusEl.textContent = id ? '⚠ 非法字符' : '';
+        statusEl.className = 'check-status';
+        return;
+      }
+      statusEl.textContent = '检查中...';
+      statusEl.className = 'check-status checking';
+      clearTimeout(checkIdTimer);
+      checkIdTimer = setTimeout(async () => {
+        try {
+          const r = await fetch(`/config/api/badge/check-id?id=${encodeURIComponent(id)}`);
+          const data = await r.json();
+          if (data.ok && data.unique) {
+            statusEl.textContent = '✓ 可用';
+            statusEl.className = 'check-status unique';
+          } else if (data.ok && !data.unique) {
+            statusEl.textContent = '✗ 已存在';
+            statusEl.className = 'check-status taken';
+          } else {
+            statusEl.textContent = '⚠ ' + (data.error || '检查失败');
+            statusEl.className = 'check-status taken';
+          }
+        } catch (err) {
+          statusEl.textContent = '⚠ 网络错误';
+          statusEl.className = 'check-status taken';
+        }
+      }, 300);
+    });
+
+    // ─── Step 1: category 切换显隐 seasonalType ──────────
+    document.querySelectorAll('input[name="category"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const isSeasonal = document.querySelector('input[name="category"]:checked').value === 'seasonal';
+        document.getElementById('seasonalTypeRow').style.display = isSeasonal ? 'block' : 'none';
+      });
+    });
+
+    // ─── Step 2: phSource 切换显隐 ─────────────────────
+    document.querySelectorAll('input[name="phSource"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const isAi = document.querySelector('input[name="phSource"]:checked').value === 'ai';
+        document.getElementById('phManualRow').style.display = isAi ? 'none' : 'block';
+        document.getElementById('phAiRow').style.display = isAi ? 'block' : 'none';
+        formData.phSource = isAi ? 'ai' : 'manual';
+      });
+    });
+
+    async function aiDraftPlaceholder() {
+      const story = document.getElementById('phAiStory').value.trim();
+      const name = document.getElementById('badgeName').value.trim() || formData.name;
+      if (!story || story.length < 5) {
+        showToast('error', '典故至少 5 字符');
+        return;
+      }
+      const btn = document.getElementById('aiDraftBtn');
+      btn.disabled = true;
+      btn.textContent = '生成中 (30-60s)...';
+      try {
+        const r = await fetch('/config/api/badge/ai-draft', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({story, name}),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          document.getElementById('phAiResult').value = data.placeholder;
+          showToast('success', '草稿生成, 可继续编辑');
+        } else {
+          showToast('error', data.error || '生成失败');
+        }
+      } catch (err) {
+        showToast('error', '网络错误');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '生成草稿';
+      }
+    }
+
+    // ─── Step 3: calc template 切换 ─────────────────────
+    document.getElementById('calcTemplate')?.addEventListener('change', () => {
+      const t = document.getElementById('calcTemplate').value;
+      const needsThreshold = ['milestone_streak', 'milestone_total'].includes(t);
+      document.getElementById('thresholdRow').style.display = needsThreshold ? 'block' : 'none';
+      renderCalcSnippet();
+    });
+
+    async function renderCalcSnippet() {
+      const tpl = document.getElementById('calcTemplate').value;
+      const badgeId = formData.id || 'your_badge_id';
+      const threshold = document.getElementById('threshold')?.value || 0;
+      try {
+        const r = await fetch(`/config/api/badge/calc-snippet?template=${tpl}&badge_id=${encodeURIComponent(badgeId)}&threshold=${threshold}`);
+        const data = await r.json();
+        if (data.ok) {
+          document.getElementById('calcSnippet').textContent = data.code;
+          document.getElementById('copySnippetBtn').disabled = (tpl === 'skip');
+        }
+      } catch (err) {}
+    }
+
+    function copySnippet() {
+      const text = document.getElementById('calcSnippet').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('success', '代码已复制');
+      }).catch(() => {
+        showToast('error', '复制失败, 手动复制');
+      });
+    }
+
+    // ─── Step 4: SSE 流式生图 ───────────────────────────
+    async function startGeneration() {
+      // Portal 状态检查 (前端)
+      if (!portalVerified) {
+        showToast('error', 'Portal 状态未确认, 请先刷新');
+        await refreshPortal();
+        if (!portalVerified) return;
+      }
+
+      const btn = document.getElementById('startGenBtn');
+      btn.disabled = true;
+      btn.textContent = '生成中...';
+      document.getElementById('previewArea').style.display = 'none';
+      resetStatusList();
+
+      try {
+        const r = await fetch('/config/api/badge/preview', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({id: formData.id, placeholder: formData.placeholder}),
+        });
+        if (!r.ok) {
+          showToast('error', '生图请求失败');
+          btn.disabled = false;
+          btn.textContent = '开始生成';
+          return;
+        }
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const {value, done} = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, {stream: true});
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const evt = JSON.parse(line.slice(6));
+              handleGenEvent(evt);
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        showToast('error', '网络错误');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '开始生成';
+      }
+    }
+
+    function handleGenEvent(evt) {
+      if (evt.type === 'status') {
+        markStatus(evt.stage, 'active', evt.message);
+      } else if (evt.type === 'done') {
+        if (evt.data.ok) {
+          previewResult = evt.data;
+          markStatus('step5_dedupe', 'done', evt.data.dedupe_ok ? '✅ 去背成功' : '⚠ 去背失败');
+          for (let i = 1; i <= 4; i++) markStatus(`step${i}_*`, 'done', '');
+          document.getElementById('previewImg').src = '/' + evt.data.imagePath.replace(/^.*static\//, 'static/');
+          document.getElementById('redBgImg').src = '/' + evt.data.imagePath.replace(/^.*static\//, 'static/');
+          // 红底预览 (前端 canvas 渲染)
+          renderRedBgPreview('/' + evt.data.imagePath.replace(/^.*static\//, 'static/'));
+          document.getElementById('previewArea').style.display = 'block';
+          // 警告
+          if (!evt.data.dedupe_ok) {
+            document.getElementById('warningArea').style.display = 'block';
+            document.getElementById('warningArea').textContent = '⚠ 去背失败, 上线后 kid-app 会显示白方框, 等人工修';
+          }
+        } else {
+          showToast('error', evt.data.error || '生图失败');
+        }
+      } else if (evt.type === 'error') {
+        showToast('error', evt.message);
+      }
+    }
+
+    function resetStatusList() {
+      document.querySelectorAll('.status-line').forEach(s => s.className = 'status-line');
+    }
+    function markStatus(stagePrefix, cls, msg) {
+      const el = document.querySelector(`.status-line[data-stage^="${stagePrefix}"]`);
+      if (el) {
+        el.className = `status-line ${cls}`;
+        if (msg) el.textContent = el.textContent.split(':')[0] + ': ' + msg;
+      }
+    }
+
+    function renderRedBgPreview(src) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgb(220, 60, 60)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        document.getElementById('redBgImg').src = canvas.toDataURL();
+      };
+      img.onerror = () => {
+        // 跨域 / 文件读取失败, 用 alt 提示
+        document.getElementById('redBgImg').alt = '红底预览生成失败';
+      };
+      img.src = src;
+    }
+
+    async function regenerate() {
+      // 重新生图 = 走 run_badge_pipeline(regenerate=True)
+      // 简化: 直接调 preview API 加 regenerate 标志
+      showToast('info', '重新生图中...');
+      document.getElementById('startGenBtn').click();
+    }
+
+    function cancelGen() {
+      previewResult = null;
+      document.getElementById('previewArea').style.display = 'none';
+      showToast('info', '已取消, 回到 Step 1');
+      showStep(1);
+    }
+
+    // ─── Step 5: 写三表 ────────────────────────────────
+    async function commitBadge() {
+      const pin = document.getElementById('pinInput').value;
+      if (!pin) {
+        showToast('error', 'PIN 必填');
+        return;
+      }
+      const btn = document.getElementById('commitBtn');
+      btn.disabled = true;
+      btn.textContent = '写入中...';
+
+      const body = {
+        ...formData,
+        imagePath: previewResult?.imagePath,
+        pin,
+      };
+      try {
+        const r = await fetch('/config/api/badge/commit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          // 显示成功页 + calc snippet
+          showStep('done');
+          document.getElementById('commitResult').innerHTML = `
+            <div>Badge ID: <strong>${data.badge_id}</strong></div>
+            <div style="margin-top:8px">写入: achievements + achievement_stats + achievement_badges</div>
+            ${data.calc_snippet && formData.calcTemplate !== 'skip' ? `<div class="commit-snippet" style="margin-top:12px">${data.calc_snippet}</div>` : ''}
+          `;
+        } else {
+          showToast('error', data.error || '写库失败');
+        }
+      } catch (err) {
+        showToast('error', '网络错误');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '写入数据库';
+      }
+    }
+
+    // ─── Portal 状态 ───────────────────────────────────
+    async function loadPortalStatus() {
+      const pin = localStorage.getItem('config_pin') || '';
+      const url = pin ? `/config/api/portal/status?pin=${encodeURIComponent(pin)}` : '/config/api/portal/status';
+      try {
+        const r = await fetch(url);
+        const data = await r.json();
+        if (data.ok) {
+          updatePortalCard(data.data);
+        } else {
+          updatePortalCard({ok_for_badge: false, error: 'API 错误'});
+        }
+      } catch (err) {
+        updatePortalCard({ok_for_badge: false, error: '网络错误'});
+      }
+    }
+
+    function updatePortalCard(s) {
+      const card = document.getElementById('portalCard');
+      const light = document.getElementById('portalLight');
+      const valueEl = document.getElementById('portalValue');
+      const detailEl = document.getElementById('portalDetail');
+      const errorEl = document.getElementById('portalError');
+
+      portalVerified = s.ok_for_badge;
+
+      if (s.ok_for_badge) {
+        card.className = 'portal-card status-ok';
+        light.className = 'portal-light green';
+        valueEl.textContent = 'Portal 正常 (Image generation via Nous)';
+        detailEl.textContent = `Model: ${s.model || '?'} · latency: ${s.latency_ms || '?'}ms`;
+        errorEl.style.display = 'none';
+      } else {
+        card.className = 'portal-card status-red';
+        light.className = 'portal-light red';
+        valueEl.textContent = 'Portal 不可用';
+        detailEl.textContent = s.checked_at ? `检查时间: ${new Date(s.checked_at * 1000).toLocaleString()}` : '';
+        errorEl.style.display = 'block';
+        errorEl.textContent = '⚠ ' + (s.error || '未知错误') + ' — 必须在 Weus Portal login 后才能生图, 否则图质量差 + 浪费 credits';
+      }
+    }
+
+    async function refreshPortal() {
+      const btn = document.getElementById('portalRefreshBtn');
+      btn.disabled = true;
+      btn.textContent = '检查中...';
+      try {
+        const r = await fetch('/config/api/portal/refresh', {method: 'POST'});
+        const data = await r.json();
+        if (data.ok) {
+          updatePortalCard(data.data);
+        } else {
+          updatePortalCard({ok_for_badge: false, error: 'API 错误'});
+        }
+      } catch (err) {
+        updatePortalCard({ok_for_badge: false, error: '网络错误'});
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '刷新';
+      }
+    }
+
+    // ─── Toast ─────────────────────────────────────────
+    function showToast(type, msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast ${type} show`;
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // ─── 初始化 ───────────────────────────────────────
+    loadPortalStatus();
+  </script>
+</body>
+</html>

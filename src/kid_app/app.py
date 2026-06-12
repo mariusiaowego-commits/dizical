@@ -1582,3 +1582,7 @@ def praise_page():
 # ─── 注册配置管理台路由 ─────────────────────────────────────────────────────
 from src.kid_app.routes.config import router as config_router
 app.include_router(config_router)
+
+# ─── 注册 Badge 制作工作流路由 (V1 PR-A, 2026-06-12) ─────────────
+from src.kid_app.routes.badge_workflow import router as badge_workflow_router
+app.include_router(badge_workflow_router)
