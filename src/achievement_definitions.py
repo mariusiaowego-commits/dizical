@@ -331,23 +331,40 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
 
     # ── stage: 课程赛季周期 ────────────────────────────────────
     # early_riser / little_chick_commander / first_to_act — 按小时判断
+    # 2026-06-13 拍板: 永久解锁版 — 历史任意一天 enter_time CST hour < 阈值 → 永久解锁
+    # (之前 "monthly_first_practice_before_X" 卡死 bug: 6/1 12:56 卡住全月, 6/13 早练不算)
     threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
     if aid in threshold_map:
         threshold = threshold_map[aid]
-        month_start = date(now_year, now_month, 1)
+        # 找历史任意一天, 该天 practice_at 的 CST 小时 < threshold
+        # practice_at 是 CST ISO 字符串 'YYYY-MM-DD HH:MM:SS[.fff]'
         cur = conn.execute(
-            "SELECT created_at FROM daily_practices WHERE date >= ? AND date <= ? ORDER BY created_at ASC LIMIT 1",
-            (month_start.isoformat(), today.isoformat()))
-        row = cur.fetchone()
-        if row:
-            from datetime import datetime
-            ts = datetime.fromisoformat(row[0])
-            achieved = ts.hour < threshold
-            cond = f"当月首次打卡{ts.hour}:{ts.minute:02d}，需早于{threshold}:00"
+            "SELECT date, practice_at FROM daily_practices "
+            "WHERE practice_at IS NOT NULL AND practice_at != '' "
+            "ORDER BY date ASC"
+        )
+        from datetime import datetime
+        achieved = False
+        achieved_date = None
+        achieved_at = None
+        for date_str, p_at in cur.fetchall():
+            if not p_at:
+                continue
+            try:
+                # CST ISO 'YYYY-MM-DD HH:MM:SS[.fff]' 取前 19 字符
+                ts = datetime.strptime(p_at[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                continue
+            if ts.hour < threshold:
+                achieved = True
+                achieved_date = date_str
+                achieved_at = p_at
+                break  # 最早一次达成, 后续不用看
+        if achieved:
+            cond = f"首次达成 {achieved_date} {achieved_at[11:16]} (需早于{threshold}:00)"
         else:
-            achieved = False
-            cond = f"当月暂无练习记录，需早于{threshold}:00"
-        return CalcResult(achieved, threshold, None, None, cond)
+            cond = f"暂无 {threshold}:00 前的练习记录"
+        return CalcResult(achieved, threshold, None, achieved_at, cond)
 
     if aid == "total_60":
         month_start = date(now_year, now_month, 1)
