@@ -419,7 +419,17 @@ document.addEventListener('DOMContentLoaded', function() {
     html += '<div class="trail-header">📍 练习轨迹</div>';
     behLog.forEach(function(entry) {
       var t = entry.enter_time || '';
-      var timeStr = t ? t.split('T')[1].substring(0, 5) : '--:--';
+      // 兼容 CST 'YYYY-MM-DD HH:MM:SS' (空格分隔) 和 UTC ISO 'YYYY-MM-DDTHH:MM:SS' (T 分隔)
+      // 2026-06-13 timezone fix 后 enter_time 改 CST, 旧数据混存两种格式
+      var sep = t.indexOf('T') >= 0 ? 'T' : ' ';
+      var timeStr = '--:--';
+      if (t) {
+        var parts = t.split(sep);
+        if (parts.length >= 2) {
+          var hm = parts[1].substring(0, 5);
+          if (hm) timeStr = hm;
+        }
+      }
       html += '<div class="trail-item">';
       html += '<span class="trail-time">' + timeStr + '</span>';
       html += '<span class="trail-item-tag">' + (entry.item || '未知') + '</span>';
