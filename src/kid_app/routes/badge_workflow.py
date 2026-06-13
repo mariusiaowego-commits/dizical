@@ -117,7 +117,7 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
     Returns:
         {ok: True, badge_id: str, image_url: str}
     """
-    from src.kid_app import badge_draft, badge_db, badge_generator
+    from src.kid_app import badge_draft, badge_db
 
     draft = badge_draft.get_draft(req.draft_id)
     if draft is None:
