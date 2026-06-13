@@ -194,3 +194,63 @@ def api_discoveries(request: Request) -> JSONResponse:
 
     items = badge_discovery.get_pending_confirmations()
     return JSONResponse({"ok": True, "data": items, "count": len(items)})
+
+
+# ─── DELETE /config/api/badge/draft/{draft_id} (V2.1 阶段 2.2 放弃按钮) ─
+
+@router.delete("/api/badge/draft/{draft_id}")
+def api_delete_draft(draft_id: str) -> JSONResponse:
+    """V2.1: 删 draft (idempotent). 待确认列表的"删除"按钮用.
+
+    同时清理 .tmp/ 临时图 (V2 skill 写图可能留在那里).
+    """
+    from src.kid_app import badge_draft
+
+    draft = badge_draft.get_draft(draft_id)
+    if draft is None:
+        return JSONResponse({"ok": True, "deleted": False, "note": "draft 不存在 (idempotent)"})
+
+    try:
+        badge_draft.cleanup_tmp(draft_id, draft.version)
+    except Exception:
+        pass  # tmp 清理失败不阻塞主流程
+
+    deleted = badge_draft.delete_draft(draft_id)
+    return JSONResponse({"ok": True, "deleted": deleted})
+
+
+# ─── POST /config/api/badge/ai-draft (V2.1 STEP 1 AI 草拟) ─────
+
+class AIDraftRequest(BaseModel):
+    """V2.1 STEP 1 表单的 "AI 草拟 placeholder" 按钮请求."""
+    name: str = Field(..., min_length=1)
+    zh_story: str = Field(..., min_length=1)
+
+
+@router.post("/api/badge/ai-draft")
+def api_ai_draft(req: AIDraftRequest) -> JSONResponse:
+    """V2.1: 调 hermes sub-agent 草拟 placeholder 英文描述.
+
+    实际委托给 src.kid_app.badge_ai_placeholder.draft_placeholder (已存在, V1 就有).
+    不阻塞前端: 失败返默认 placeholder 让用户手动改.
+    """
+    from src.kid_app.badge_ai_placeholder import draft_placeholder, is_configured
+
+    if not is_configured():
+        return JSONResponse({
+            "ok": False,
+            "error": "AI placeholder 草拟未配置 (检查 ~/.hermes/profiles/dizical/)",
+            "placeholder": "",
+        }, status_code=503)
+
+    try:
+        result = draft_placeholder(zh_story=req.zh_story, badge_name=req.name)
+    except Exception as e:
+        logger.exception("ai-draft failed for %s", req.name)
+        return JSONResponse({
+            "ok": False,
+            "error": f"AI 草拟失败: {e}",
+            "placeholder": "",
+        }, status_code=500)
+
+    return JSONResponse({"ok": True, "placeholder": result})
