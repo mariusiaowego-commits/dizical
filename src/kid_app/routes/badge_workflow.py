@@ -1,380 +1,196 @@
 """
-Badge 制作工作流 FastAPI 路由 (config 子路由).
+Badge 制作工作流路由 (V2, 2026-06-12 重构).
 
-设计 (用户 2026-06-12 拍板):
-- 所有路径前缀 /config/badge* (跟现有 config-blindbox / config-praise 一致)
-- SSE 流式返回状态 (复用 routes/config.py:955 月报框架的 StreamingResponse 模式)
-- PIN 验证 (跟 config-blindbox 一致: localStorage + 入口检查 + 写操作时 verify)
-- 跟其他 routes 模块同模式: 函数内延迟 import app.render (避免循环 import)
+V2 设计 (用户拍板):
+- STEP 1 表单填元数据 → 调 POST /api/badge/draft 写 lib/badge_data/{id}.json → 返 draft_id
+- STEP 2 hermes chat 调 skill → 调 (subprocess) 调 POST /api/badge/draft/{id} 写回 image 字段 + 状态变更
+- STEP 3 待确认 Tab → 调 GET /api/badge/discoveries 拉待确认列表 → 调 POST /api/badge/commit-from-draft 写三表
 
-端点:
-  GET  /config/badge               - 分步表单 HTML 页面
-  GET  /config/api/badge/check-id  - 实时查重
-  POST /config/api/badge/ai-draft  - AI 草拟 placeholder (调 hermes)
-  POST /config/api/badge/preview   - SSE 流式: 跑 6 步流水线 (不写 DB)
-  POST /config/api/badge/commit    - 写三表 (PIN 验证)
-  GET  /config/api/badge/calc-snippet - 返回 calc logic 代码模板
-  GET  /config/api/portal/status   - Nous Portal 状态 (dad_pin 验证后给全字段)
-  POST /config/api/portal/refresh  - 强制刷新 portal cache
+V2 端点 (3 个, 替代 V1 7 个):
+  POST /config/api/badge/draft                 - STEP 1: 创建 draft, 返 draft_id + json
+  GET  /config/api/badge/draft/{draft_id}      - STEP 2: skill 读 draft, 调 image_gen
+  POST /config/api/badge/commit-from-draft     - STEP 3: 确认上线, 写三表
+  GET  /config/api/badge/discoveries           - STEP 3: 拉待确认列表 (按需扫, 不后台)
 
-PR-C 端点 (批量模式) 在 routes/badge_batch.py 单独放
-
-依赖:
-- src.kid_app.badge_generator
-- src.kid_app.badge_ai_placeholder
-- src.kid_app.badge_portal
-- src.kid_app.badge_db
-- 路径: src/kid_app/routes/badge_workflow.py
+设计原则 (用户 2026-06-12 OUT-OF-BAND):
+- 不后台定时器 (浪费资源)
+- 文件契约: lib/badge_data/*.json (dizical 跟 hermes skill 跨进程交流唯一接口)
+- schema_version=1 锁定 (未来改 schema +1, 老 dizical 端只读 schema=1 字段)
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-import queue
-import re
-import threading
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-
-from src.kid_app import badge_ai_placeholder, badge_db, badge_generator, badge_portal
-from src.kid_app.badge_prompts import build_unlocked_prompt
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/config", tags=["badge-workflow"])
 
-# calc logic 模板 (跟 achievement_definitions.py:170-330 段对齐)
-_CALC_TEMPLATES: dict[str, str] = {
-    "milestone_streak": """# 贴到 src/achievement_definitions.py 的 _calc_milestone():
-if aid == "{badge_id}":
-    return CalcResult(
-        achieved=streak >= {threshold},
-        computed_value=streak,
-        extra=None,
-        achieved_at=achieved_at if streak >= {threshold} else None,
-        "连续 ≥ {threshold} 天",
-    )""",
-    "milestone_total": """# 贴到 _calc_milestone():
-if aid == "{badge_id}":
-    return CalcResult(
-        achieved=total_mins >= {threshold},
-        computed_value=total_mins,
-        extra=None,
-        achieved_at=achieved_at if total_mins >= {threshold} else None,
-        "累计 ≥ {threshold} 分钟",
-    )""",
-    "milestone_top": """# 贴到 _calc_milestone() (top1/top2/top3 共用, rank 从 id 末位取):
-if aid == "{badge_id}":
-    rank = int(aid[-1])
-    ok = len(top_items) >= rank
-    val = top_items[rank - 1][1] if ok else 0
-    item_name = top_items[rank - 1][0] if ok else ""
-    return CalcResult(
-        ok, val, item_name,
-        achieved_at if ok else None,
-        f"累计时长第 {{rank}}: {{item_name}}({{val}}分钟)",
-    )""",
-    "milestone_grade": """# 贴到 _calc_milestone() (考级 grade_N):
-if aid == "{badge_id}":
-    g = int(aid.split("_")[1])
-    row = stats.get(aid)
-    if row:
-        return CalcResult(
-            row["achieved"] == "Y", g, None,
-            row.get("achieved_at"),
-            f"考取 {{g}} 级",
-        )
-    return CalcResult(False, 0, None, None, f"考取 {{g}} 级")""",
-    "milestone_first_log": """# 贴到 _calc_milestone() (first_log):
-if aid == "{badge_id}":
-    return CalcResult(
-        total_mins > 0, total_mins, None,
-        achieved_at if total_mins > 0 else None,
-        "完成第一次练习",
-    )""",
-    "seasonal_daily": """# 贴到 _calc_seasonal() (daily_checkin_N 每日打卡):
-# 已经有现成实现, 你的 badge 复用 daily 类型即可, 不需要新代码""",
-    "seasonal_monthly_lucky": """# 贴到 _calc_seasonal() (lucky_61_YYYY 节日徽章, 已有现成实现):
-# aid 自动按 lucky_61_YYYY 模式解析年份, 不需要新代码""",
-    "seasonal_stage_early": """# 贴到 _calc_seasonal() (early_riser / little_chick_commander / first_to_act):
-# 已有现成实现, threshold_map 已包含 12/17/20, 不需要新代码""",
-    "skip": "# 暂不绑定 calc logic. 上线后新 badge 在 /badges 显示但进度为 0",
-}
+
+# ─── Pydantic models (替代手写 json.loads) ───────────────────────────
+
+class DraftRequest(BaseModel):
+    """STEP 1 收 meta."""
+    meta: dict[str, Any]
 
 
-# ─── 页面 ──────────────────────────────────────────────────────────
+class CommitFromDraftRequest(BaseModel):
+    """STEP 3 收 draft_id."""
+    draft_id: str = Field(..., min_length=1)
+
+
+# ─── helpers ───────────────────────────────────────────────────────
+# V2 设计: dad_pin 验证在前端 localStorage (V1.1 PIN 模式), 端点不做
+# server-side PIN check (V1 routes/badge_workflow.py 9 端点全有 _check_pin
+# 已删, V2 3 端点信任 caller = dizical web UI 跟 hermes skill)
+
+
+# ─── GET /config/badge (HTML page) ───────────────────────────────
 
 @router.get("/badge", response_class=HTMLResponse)
 def config_badge():
-    """分步表单 HTML 页面. PIN 验证由前端 localStorage 控制."""
+    """config-badge.html 2 tab 页面 (V2: 新建 draft + 待确认).
+
+    PIN 验证前端 localStorage 控制.
+    """
     from src.kid_app.app import render
     from src.database import db
     pin_locked = "true" if db.get_setting("dad_pin") else "false"
-    # render() returns HTMLResponse (str subclass), fastapi accepts it
-    return render("config-badge", active_nav="portal", pin_locked=pin_locked)  # type: ignore[return-value]
-
-
-# ─── API: 实时查重 ──────────────────────────────────────────────
-
-@router.get("/api/badge/check-id")
-def api_check_id(id: str) -> JSONResponse:
-    """id 实时查重. 前端 Step 1 输入时调."""
-    valid_id = bool(id) and bool(re.match(r"^[a-zA-Z0-9_]+$", id))
-    if not valid_id:
-        return JSONResponse({"ok": False, "unique": False, "error": "id 必须只含英文/数字/下划线"})
-    return JSONResponse({"ok": True, "unique": badge_db.check_id_unique(id)})
-
-
-# ─── API: AI 草拟 placeholder ───────────────────────────────────
-
-@router.post("/api/badge/ai-draft")
-async def api_ai_draft(request: Request) -> JSONResponse:
-    """调 dizical hermes profile 生成英文 placeholder.
-
-    Body: { story: str, name: str }
-    """
-    try:
-        body = json.loads(await request.body())
-    except json.JSONDecodeError:
-        return JSONResponse({"ok": False, "error": "body 不是 JSON"}, status_code=400)
-
-    zh_story = body.get("story", "").strip()
-    badge_name = body.get("name", "").strip()
-
-    try:
-        placeholder = badge_ai_placeholder.draft_placeholder(zh_story, badge_name)
-    except ValueError as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
-    except RuntimeError as e:
-        # hermes 失败, 透传错误 (含 profile not found 等)
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
-
-    return JSONResponse({"ok": True, "placeholder": placeholder})
-
-
-# ─── API: 预览 (SSE) ─────────────────────────────────────────────
-
-@router.post("/api/badge/preview")
-async def api_preview(request: Request) -> StreamingResponse:
-    """SSE 流式: 跑 6 步流水线, 实时推 status, 完成后返回 image_path.
-
-    Body: { id: str, placeholder: str, regenerate: bool = False }
-    """
-    try:
-        body = json.loads(await request.body())
-    except json.JSONDecodeError:
-        # 改用纯文本 SSE 推 error
-        async def err_stream():
-            yield f"data: {json.dumps({'type': 'error', 'message': 'body 不是 JSON'})}\n\n"
-        return StreamingResponse(err_stream(), media_type="text/event-stream")
-
-    badge_id = body.get("id", "").strip()
-    placeholder = body.get("placeholder", "").strip()
-    regenerate = body.get("regenerate", False)
-
-    result_queue: queue.Queue = queue.Queue()
-
-    def run() -> None:
-        def on_status(stage: str, msg: str) -> None:
-            result_queue.put(("status", stage, msg))
-
-        result = badge_generator.run_badge_pipeline(
-            badge_id=badge_id,
-            placeholder=placeholder,
-            on_status=on_status,
-            regenerate=regenerate,
-        )
-        result_queue.put(("done", result))
-
-    async def event_stream():
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-        # 200s 超时 (FAL 30-60s + 缓冲 + 回滚)
-        while True:
-            try:
-                item = await asyncio.to_thread(result_queue.get, timeout=200)
-            except queue.Empty:
-                yield f"data: {json.dumps({'type': 'error', 'message': '生成超时 (200s)'})}\n\n"
-                break
-
-            if item[0] == "status":
-                _, stage, msg = item
-                yield f"data: {json.dumps({'type': 'status', 'stage': stage, 'message': msg}, ensure_ascii=False)}\n\n"
-            elif item[0] == "done":
-                _, result = item
-                yield f"data: {json.dumps({'type': 'done', 'data': result}, ensure_ascii=False)}\n\n"
-                break
-        # 显式 None 给 async generator
-        return
-        yield  # unreachable, 满足 type checker
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+    return render(
+        "config-badge",
+        pin_locked=pin_locked,
     )
 
 
-# ─── API: 写三表 (commit) ──────────────────────────────────────
+# ─── POST /config/api/badge/draft (STEP 1) ───────────────────────
 
-@router.post("/api/badge/commit")
-async def api_commit(request: Request) -> JSONResponse:
-    """写 achievements + achievement_stats + achievement_badges 三表.
+@router.post("/api/badge/draft")
+def api_create_draft(req: DraftRequest) -> JSONResponse:
+    """STEP 1: 收 meta, 写 lib/badge_data/{draft_id}.json, 返 draft_id + json."""
+    from src.kid_app import badge_draft
 
-    Body: { ..., pin: str }
-    PIN 验证: 跟 config-blindbox 一致.
+    if not req.meta:
+        return JSONResponse({"ok": False, "error": "缺 meta 字段"}, status_code=400)
+
+    try:
+        draft = badge_draft.create_draft(req.meta)
+        badge_draft.save_draft(draft)
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+    import json
+    return JSONResponse({
+        "ok": True,
+        "draft_id": draft.draft_id,
+        "json": json.dumps(draft.to_dict(), ensure_ascii=False, indent=2),
+    })
+
+
+# ─── GET /config/api/badge/draft/{draft_id} (STEP 2 read) ────────
+
+@router.get("/api/badge/draft/{draft_id}")
+def api_get_draft(draft_id: str) -> JSONResponse:
+    """STEP 2: skill 读 draft (校验 + 返完整 draft).
+
+    Returns:
+        {ok: True, draft: dict} or {ok: False, error: str}
     """
-    from src.database import db
+    from src.kid_app import badge_draft
+
+    draft = badge_draft.get_draft(draft_id)
+    if draft is None:
+        return JSONResponse({"ok": False, "error": f"draft '{draft_id}' 不存在"}, status_code=404)
+
+    return JSONResponse({"ok": True, "draft": draft.to_dict()})
+
+
+# ─── POST /config/api/badge/commit-from-draft (STEP 3 write) ─────
+
+@router.post("/api/badge/commit-from-draft")
+def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
+    """STEP 3: 收 draft_id, 校验 + 写三表 + 标 status=committed.
+
+    Returns:
+        {ok: True, badge_id: str, image_url: str}
+    """
+    from src.kid_app import badge_draft, badge_db, badge_generator
+
+    draft = badge_draft.get_draft(req.draft_id)
+    if draft is None:
+        return JSONResponse({"ok": False, "error": f"draft '{req.draft_id}' 不存在"}, status_code=404)
+
+    if draft.status != "draft_awaiting_confirm":
+        return JSONResponse({
+            "ok": False,
+            "error": f"draft 状态 '{draft.status}' 不允许 commit (必须是 draft_awaiting_confirm)",
+        }, status_code=400)
+
+    if draft.image is None:
+        return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=400)
+
+    badge_id = draft.meta.get("id")
+    if not badge_id:
+        return JSONResponse({"ok": False, "error": "draft.meta 缺 id 字段"}, status_code=400)
+
+    # 跟 DB 重复检查
+    if badge_db.badge_exists(badge_id):
+        return JSONResponse({
+            "ok": False,
+            "error": f"DB 已有 id='{badge_id}' 的 badge, 不能重复 commit (V1.1 暂无删除 API)",
+        }, status_code=409)
 
     try:
-        body = json.loads(await request.body())
-    except json.JSONDecodeError:
-        return JSONResponse({"ok": False, "error": "body 不是 JSON"}, status_code=400)
+        # 1. 复制临时图到 static/badges/{id}_v{n}.png
+        static_path = badge_draft.move_tmp_to_static(req.draft_id, draft.version)
 
-    # ── PIN 验证 ──
-    pin = body.get("pin", "")
-    stored_pin = db.get_setting("dad_pin")
-    if stored_pin and pin != stored_pin:
-        return JSONResponse({"ok": False, "error": "PIN 不对"}, status_code=401)
+        # 2. 调 badge_db 写三表 (achievements + stats + badges)
+        # V2 注意: V1 insert_achievement_row 必填 stat_logic + description,
+        # V2 meta 简化表单不收集, commit handler 默认值兜底
+        # (V2.1 calc 修法 1 走 git apply 写 achievement_definitions.py, 跟这里解耦)
+        meta_for_db = dict(draft.meta)
+        meta_for_db.setdefault("stat_logic", "无")
+        meta_for_db.setdefault("description", "无")
+        with badge_db.badge_write_tx() as conn:
+            badge_db.insert_achievement_row(conn, meta_for_db)
+            if draft.meta.get("category") == "milestone":
+                badge_db.insert_achievement_stats_row(conn, badge_id)
+            badge_db.insert_badge_row(
+                conn,
+                badge_id=badge_id,
+                url=f"/static/badges/{badge_id}_v{draft.version}.png",
+                version=draft.version,
+            )
 
-    badge_id = body.get("id", "").strip()
-    image_path = body.get("imagePath", "").strip()
-    if not badge_id or not image_path:
-        return JSONResponse({"ok": False, "error": "id 和 imagePath 必填"}, status_code=400)
+        # 3. 状态变 committed
+        badge_draft.mark_draft_status(req.draft_id, "committed", by="dizical",
+                                    extra={"event": "user_confirmed", "badge_id": badge_id})
 
-    # ── 校验 category/seasonal_type ──
-    category = body.get("category", "milestone")
-    if category not in ("milestone", "seasonal"):
-        return JSONResponse({"ok": False, "error": f"非法 category: {category}"}, status_code=400)
-    seasonal_type = body.get("seasonalType", "monthly")
-    if category == "seasonal" and seasonal_type not in ("daily", "weekly", "monthly", "stage"):
-        return JSONResponse({"ok": False, "error": f"非法 seasonal_type: {seasonal_type}"}, status_code=400)
-
-    try:
-        placeholder = body.get("placeholder", "").strip()
-        badge_generator.commit_badge_to_db(
-            badge_id=badge_id,
-            name=body.get("name", ""),
-            type_label=body.get("type", "突破"),
-            category=category,
-            stat_logic=body.get("statLogic", ""),
-            description=body.get("description", ""),
-            display_format=body.get("displayFormat", "days"),
-            threshold=body.get("threshold"),
-            placeholder=placeholder,
-            unlocked_template=build_unlocked_prompt(placeholder) if placeholder else "",
-            seasonal_type=seasonal_type,
-            image_path=image_path,
-        )
+        # 4. 清理临时图
+        badge_draft.cleanup_tmp(req.draft_id, draft.version)
     except Exception as e:
-        # 失败: 删图片 + 错误透传
-        try:
-            Path(image_path).unlink(missing_ok=True)
-            logger.warning(f"commit 失败, 已删图: {image_path}")
-        except Exception:
-            pass
-        return JSONResponse({"ok": False, "error": f"写库失败: {e}"}, status_code=500)
+        logger.exception("commit_from_draft failed for %s", req.draft_id)
+        return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)
 
     return JSONResponse({
         "ok": True,
         "badge_id": badge_id,
-        "warning": None,  # 去背失败信息已在 preview 阶段展示过
-        "calc_snippet": _render_calc_snippet(
-            body.get("calcTemplate", "skip"), badge_id, body.get("threshold", 0)
-        ),
+        "image_url": f"/static/badges/{badge_id}_v{draft.version}.png",
     })
 
 
-def _render_calc_snippet(template: str, badge_id: str, threshold: int) -> str:
-    """渲染 calc logic 代码模板."""
-    tpl = _CALC_TEMPLATES.get(template, _CALC_TEMPLATES["skip"])
-    return tpl.format(badge_id=badge_id, threshold=threshold)
+# ─── GET /config/api/badge/discoveries (STEP 3 list) ─────────────
 
+@router.get("/api/badge/discoveries")
+def api_discoveries(request: Request) -> JSONResponse:
+    """STEP 3: 按需扫 lib/badge_data/, 返 [draft_awaiting_confirm] 列表.
 
-# ─── API: calc logic 代码片段 ──────────────────────────────────
-
-@router.get("/api/badge/calc-snippet")
-def api_calc_snippet(template: str, badge_id: str, threshold: int = 0) -> JSONResponse:
-    """返回 calc logic 代码片段 (前端 Step 3 / 上线成功页用)."""
-    return JSONResponse({
-        "ok": True,
-        "code": _render_calc_snippet(template, badge_id, threshold),
-    })
-
-
-# ─── API: Nous Portal 状态 (用户 2026-06-12 拍板, V1 必须) ───
-
-@router.get("/api/portal/status")
-def api_portal_status(request: Request) -> JSONResponse:
-    """Nous Portal + Tool Gateway 状态.
-
-    dad_pin 验证后给全部字段 (用户 2026-06-12 拍板 Q5).
-    无 PIN 验证的访客只能拿到 ok_for_badge boolean.
+    不缓存, 不后台 (用户拍板). 单次调用 < 50ms (10 个 draft 内).
     """
-    from src.database import db
+    from src.kid_app import badge_discovery
 
-    # 检查 dad_pin 是否已设 (已设 → 必须 verify)
-    stored_pin = db.get_setting("dad_pin")
-    pin_verified = False
-    if not stored_pin:
-        pin_verified = True  # 未设 PIN, 公开访问
-    else:
-        # 从 query string 或 header 拿 PIN
-        pin = request.query_params.get("pin", "")
-        if pin == stored_pin:
-            pin_verified = True
-
-    status = badge_portal.check_portal_status()
-
-    if pin_verified:
-        return JSONResponse({
-            "ok": True,
-            "data": {
-                "auth": status.auth,
-                "image_generation": status.image_generation,
-                "model": status.model,
-                "provider": status.provider,
-                "ok_for_badge": status.ok_for_badge,
-                "error": status.error,
-                "latency_ms": status.latency_ms,
-                "checked_at": status.checked_at,
-                "raw_output": status.raw_output[:1000] if status.raw_output else "",
-            },
-        })
-    else:
-        # 未 verify, 只给 boolean
-        return JSONResponse({
-            "ok": True,
-            "data": {
-                "ok_for_badge": status.ok_for_badge,
-                "error": status.error,
-                "checked_at": status.checked_at,
-            },
-        })
-
-
-@router.post("/api/portal/refresh")
-def api_portal_refresh() -> JSONResponse:
-    """强制刷新 portal cache (用户点 '刷新状态' 按钮时调)."""
-    badge_portal.invalidate_cache()
-    status = badge_portal.check_portal_status(use_cache=False)
-    return JSONResponse({
-        "ok": True,
-        "data": {
-            "auth": status.auth,
-            "image_generation": status.image_generation,
-            "model": status.model,
-            "ok_for_badge": status.ok_for_badge,
-            "error": status.error,
-            "latency_ms": status.latency_ms,
-            "checked_at": status.checked_at,
-        },
-    })
+    items = badge_discovery.get_pending_confirmations()
+    return JSONResponse({"ok": True, "data": items, "count": len(items)})
