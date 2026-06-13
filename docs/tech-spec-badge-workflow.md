@@ -1,26 +1,52 @@
 ---
-title: tech-spec badge 制作工作流 (前台化)
+title: tech-spec badge 制作工作流
 source: ai-agent
-status: 已定稿 (基于 PRD v5)
+status: V2.1 定稿 (2026-06-14)
 project: dizical
 created: 2026-06-12
+updated: 2026-06-14
 author: coder agent
 ---
 
-# tech-spec: Badge 制作工作流（前台化）
+# tech-spec: Badge 制作工作流
 
 > **AI 标注:** 本技术方案由 coder agent 生成, YAML `source: ai-agent`, 镜像到 Obsidian `tqob/05-Coding/project-dizical/docs/tech-spec-badge-workflow.md`.
-> 配套 PRD: `PRDs/PRD-徽章制作工作流-260612.md` v5 (488 行).
+> 配套 PRD: `PRDs/PRD-徽章制作工作流-260612.md` V2.1.
+
+> **V2.1 变更摘要**: V1 的 6 步流水线 + hermes subprocess 架构已废弃. V2.1 改为文件契约 + skill 解耦. 详见 §0.1b.
 
 ---
 
 ## 0. 范围与依赖
 
-### 0.1 范围
+### 0.1 范围 — ⚠️ V1 已废弃
+
+> **V2.1 注**: 以下 V1 范围已废弃. V2.1 范围见 §0.1b.
+
 本技术方案覆盖 V1 全部 3 个 PR：
 - **PR-A** 前台化基础设施（4 步表单 + 后端 6 步流水线 + 写三表 + 失败回滚）
 - **PR-B** BADGE_URLS / BADGE_FILES 改 DB-driven（PR-A 基础上的独立性改造）
 - **PR-C** 批量模式（基于已认可 badge 衍生 N 个）
+
+### 0.1b V2.1 范围 (2026-06-14)
+
+本技术方案 V2.1 覆盖 PR #85-#90:
+
+| PR | 范围 |
+|----|------|
+| #85 | V2 重构: 9 端点→4, 代码精简 50%+ |
+| #86 | grade url 修复 + milestone 持久化 |
+| #87 | practice_at CST + first_to_act 修复 |
+| #88 | renderTrail CST/UTC 兼容 |
+| #89 | all_items stage items 判定 |
+| #90 | V2.1 阶段 2.1+2.2 UI 完整实现 |
+
+**V2.1 架构核心**:
+- **3 步解耦流程**: dizical draft → hermes skill → dizical commit
+- **文件契约**: `data/lib/badge_data/{draft_id}.json` 是唯一接口
+- **进程隔离**: dizical 不调 hermes, hermes 不调 dizical DB
+- **calc 解耦**: 走 `/calc-apply` skill (git apply → PR → dad merge)
+- **skill 3 profile**: dizical (主) + coder (symlink) + default (symlink)
 
 ### 0.2 设计依据
 - **生产现状**（PR-A 起点）：6 个 Python 文件 + 1 个新模板 + 1 个新路由文件 + DB helper
@@ -1014,6 +1040,50 @@ async def api_batch_commit(request: Request):
 
 ---
 
-## 9. 实施备注 (PR-C 合并后填)
+## 9. V2.1 实现备注 (2026-06-14)
 
-_本节由 §6.5 收尾动作填, 实施过程不写_
+> **V2.1 已完成**, 以下记录实现过程中的 tradeoff 和架构决策.
+
+### 9.1 V1 → V2.1 架构变迁
+
+| 维度 | V1 (PR #81-84, 已废弃) | V2.1 (PR #85-90, 当前) |
+|------|----------------------|----------------------|
+| 流程 | 4 步表单 + 6 步流水线 (dizical 内调 hermes subprocess) | 3 步解耦 (dizical draft → hermes skill → dizical commit) |
+| 生图 | dizical 服务内 spawn hermes chat | hermes agent 独立跑 skill |
+| 通信 | subprocess stdout 解析 | 文件契约 (draft JSON) |
+| 端点 | 9 个 | 4 个 (POST draft, GET draft, POST commit, GET discoveries) |
+| 批量 | PR-C 批量模式 | 不做 |
+
+### 9.2 V2.1 关键文件
+
+| 文件 | 行数 | 用途 |
+|------|------|------|
+| `src/kid_app/badge_draft.py` | 298 | draft CRUD |
+| `src/kid_app/badge_discovery.py` | 90 | discoveries 查询 |
+| `src/kid_app/badge_db.py` | 205 | DB 事务封装 |
+| `src/kid_app/badge_generator.py` | 587 | 流水线协调 (备用) |
+| `src/kid_app/badge_portal.py` | 404 | Nous Portal 状态检查 |
+| `src/kid_app/badge_prompts.py` | 53 | enamel pin prompt 模板 |
+| `src/kid_app/badge_ai_placeholder.py` | 210 | AI 草拟 placeholder |
+| `src/kid_app/routes/badge_workflow.py` | 196 | 4 端点 |
+| `src/kid_app/templates/config-badge.html` | 1133 | V2.1 完整 UI |
+
+### 9.3 V2.1 端点清单
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| POST | `/config/api/badge/draft` | STEP 1 创建 draft |
+| GET | `/config/api/badge/draft/{draft_id}` | STEP 2 skill 读 draft |
+| POST | `/config/api/badge/commit-from-draft` | STEP 3 写三表 |
+| GET | `/config/api/badge/discoveries` | 待确认列表 |
+| POST | `/config/api/badge/ai-draft` | AI 草拟 placeholder |
+| DELETE | `/config/api/badge/draft/{draft_id}` | 删除 draft |
+
+### 9.4 踩坑
+
+1. **SQLite WAL mode cp 丢数据** — 必须先 `PRAGMA wal_checkpoint(TRUNCATE)` 再 cp
+2. **save_daily_practice UPDATE 不覆盖 practice_at** — 保留首次练习时间
+3. **behavior_log.enter_time CST 兼容** — `if t.indexOf('T') >= 0` 兼容旧 UTC 格式
+4. **GitHub URL 笔误** — 必须 `mariusia**wego**-commits`, gh pr list 拷 URL
+5. **Portal 降级** — 不可用时写 1x1 placeholder 到 `.tmp/`, 不是 skill 目录
+6. **PR 拆细 vs 合大** — 非 bug 多阶段 feature 合 1 PR
