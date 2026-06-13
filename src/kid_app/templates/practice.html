@@ -813,7 +813,15 @@
     let timerWheel = null;   // activity wheel 实例
     let extraWheel = null;   // activity wheel 实例
     let todayDate = "{{today_date}}";
-    let enterTime = new Date().toISOString();  // 行为日志：进入时间
+    // 行为日志：进入时间 (CST 本地时间字符串, 2026-06-13 修复 UTC 时区错位 bug)
+    function nowCstLocal() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      const ms = String(d.getMilliseconds()).padStart(3, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+             `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+    }
+    let enterTime = nowCstLocal();
 
     // ── 实时时钟 ──
     function updateClock() {
