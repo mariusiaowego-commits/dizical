@@ -7,6 +7,7 @@
 import datetime as dt
 import curses
 import re
+import unicodedata
 from typing import List, Dict, Optional, Tuple
 
 from .database import db
@@ -24,6 +25,11 @@ class Colors:
 
 
 # ── 工具函数 ───────────────────────────────────────────────
+def _display_width(s: str) -> int:
+    """计算字符串在终端中的实际显示宽度（中文字符占 2 个宽度）"""
+    return sum(2 if unicodedata.east_asian_width(c) in ('F', 'W') else 1 for c in s)
+
+
 def _week_start(date: dt.date) -> dt.date:
     return date - dt.timedelta(days=date.weekday())
 
@@ -141,16 +147,18 @@ class PracticeQueryTUI:
         self.stdscr.refresh()
 
     def _draw_title(self) -> None:
-        title = f" 🎵 笛子练习查询  │  [←/→]切换视图  [↑/↓]浏览  /搜索  ESC/Q退出 "
+        title = f"  竹笛练习查询  "
+        title_w = _display_width(title)
         self._attr(0, 0, title, Colors.HEADER, bold=True)
-        self.stdscr.addstr(0, len(title), ' ' * max(0, self.w - len(title) - 1))
+        self.stdscr.addstr(0, title_w, ' ' * max(0, self.w - title_w - 1))
         self._hline(1, 0, '─', Colors.DIM)
 
     def _draw_footer(self) -> None:
         row = self.h - 1
         hints = "[←/→]视图  [↑/↓]浏览  [/]搜索  [H]本周作业  [Q/ESC]退出"
+        hints_w = _display_width(hints)
         self._attr(row, 0, hints, Colors.DIM)
-        self.stdscr.addstr(row, len(hints), ' ' * max(0, self.w - len(hints) - 1))
+        self.stdscr.addstr(row, hints_w, ' ' * max(0, self.w - hints_w - 1))
 
     def _draw_today(self) -> None:
         row = 3
@@ -410,7 +418,7 @@ class PracticeQueryTUI:
 
     # ── 辅助绘制 ─────────────────────────────────────────
     def _center(self, row: int, text: str, attr: int, bold: bool = False) -> None:
-        x = max(0, (self.w - len(text)) // 2)
+        x = max(0, (self.w - _display_width(text)) // 2)
         self._attr(row, x, text, attr, bold=bold)
 
     def _attr(self, row: int, col: int, text: str, attr: int, bold: bool = False) -> None:
