@@ -107,7 +107,7 @@
     .portal-info .label { font-size: 13px; color: #888; margin-bottom: 2px; }
     .portal-info .value { font-size: 15px; font-weight: 600; color: var(--text); }
     .portal-info .detail { font-size: 12px; color: #999; margin-top: 4px; }
-    .portal-info .error { font-size: 13px; color: #FF6B6B; margin-top: 4px; }
+    .portal-info .error { font-size: 13px; color: #FF6B6B; margin-top: 4px; white-space: pre-line; }
 
     /* ── V1.1 portal profiles 列表 (用户 2026-06-12 OUT-OF-BAND) ── */
     .portal-profiles {
@@ -1058,7 +1058,15 @@
         valueEl.textContent = 'Portal 不可用';
         detailEl.textContent = s.checked_at ? `检查时间: ${new Date(s.checked_at * 1000).toLocaleString()}` : '';
         errorEl.style.display = 'block';
-        errorEl.textContent = '⚠ ' + (s.error || '未知错误') + ' — 必须在 Weus Portal login 后才能生图, 否则图质量差 + 浪费 credits';
+        // 根据错误类型给出具体修复命令
+        const errText = s.error || '未知错误';
+        let fixCmd = '';
+        if (errText.includes('not_logged_in') || errText.includes('not set')) {
+          fixCmd = '\n\n修复命令: hermes portal --profile dizical';
+        } else if (errText.includes('image generation') || errText.includes('not_configured')) {
+          fixCmd = '\n\n修复命令: hermes setup --profile dizical (检查 Tool Gateway)';
+        }
+        errorEl.textContent = '⚠ ' + errText + ' — 必须在 Nous Portal login 后才能生图' + fixCmd;
         // V1.1 (用户 2026-06-12 OUT-OF-BAND): 加载所有 profile 状态帮用户定位哪个 profile 没连
         loadPortalProfiles();
       }
