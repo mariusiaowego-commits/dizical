@@ -730,7 +730,13 @@ class Database:
 
     # Daily practice operations
     def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y',
-                            channel: Optional[str] = None, method: Optional[str] = None, session_id: Optional[str] = None) -> None:
+                            channel: Optional[str] = None, method: Optional[str] = None, session_id: Optional[str] = None,
+                            practice_at: Optional[str] = None) -> None:
+        """
+        practice_at (2026-06-13): CST ISO 'YYYY-MM-DD HH:MM:SS[.fff]', 代表练习实际时间.
+        - 新建记录: 写入 practice_at 列
+        - 更新记录: 仅当显式传入时覆盖 (merge 场景保留首次的 practice_at)
+        """
         if isinstance(date, str):
             date = dt.date.fromisoformat(date)
         input_items = list(items)  # 原始输入，用于 audit log
@@ -769,6 +775,8 @@ class Database:
                 merged_total = sum(it.get('minutes', 0) for it in merged_items)
                 merged_log = (existing_log + '\n' + log).strip() if log else existing_log
                 final_practiced = 'Y' if merged_total > 0 else existing_practiced
+                # UPDATE 路径: 永远不覆盖 practice_at (保留首次的练习时间)
+                # 只有在"该日首次创建"时 (新 INSERT 路径) 才写 practice_at
                 cursor.execute('''
                     UPDATE daily_practices
                     SET items = ?, total_minutes = ?, log = ?, practiced = ?
@@ -777,11 +785,11 @@ class Database:
                 audit_items = merged_items
                 audit_total = merged_total
             else:
-                # 新建记录
+                # 新建记录 (含 practice_at)
                 cursor.execute('''
-                    INSERT INTO daily_practices (date, items, total_minutes, log, practiced)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log, practiced))
+                    INSERT INTO daily_practices (date, items, total_minutes, log, practiced, practice_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log, practiced, practice_at))
                 audit_items = items
                 audit_total = total_minutes
             conn.commit()

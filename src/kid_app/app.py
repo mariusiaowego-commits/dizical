@@ -909,6 +909,9 @@ async def api_log(request: Request):
         log_note = body.get("log", "")
         is_extra = body.get("is_extra", False)
         behavior_entries = body.get("behavior_log", [])  # [{enter_time, item, minutes}, ...]
+        # 2026-06-13: 接受 practice_at (CST ISO) — 来自 practice 页 (前端 nowCstLocal) 或
+        # 补录页 (用户填写的时分). None 时 save_daily_practice 不动 practice_at 列.
+        practice_at = body.get("practice_at")
 
         date = dt.date.fromisoformat(date_str) if date_str else dt.date.today()
 
@@ -919,7 +922,8 @@ async def api_log(request: Request):
             # 同名 item 累加分钟数；不同 item 追加
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
             db.save_daily_practice(date, items, minutes, '',
-                                   channel='kid_app', method='extra')
+                                   channel='kid_app', method='extra',
+                                   practice_at=practice_at)
             # extra 追加也要记录 behavior_log
             for entry in behavior_entries:
                 db.append_behavior_log(date, entry)
@@ -930,7 +934,8 @@ async def api_log(request: Request):
         items = [{"item": item_name, "item_id": item_id, "minutes": minutes}]
         total = minutes  # save_daily_practice 会重新计算，这里只作返回值参考
         db.save_daily_practice(date, items, total, log_note,
-                               channel='kid_app', method='timer')
+                               channel='kid_app', method='timer',
+                               practice_at=practice_at)
 
         # 打卡成功后，追加行为日志（在 save_daily_practice 之后）
         for entry in behavior_entries:

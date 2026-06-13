@@ -494,6 +494,11 @@
             <label>日期</label>
             <input type="date" class="form-input" id="logDate">
           </div>
+          <div class="form-group">
+            <label>练习时间（时分，留空默认当前 CST 时间）</label>
+            <input type="time" class="form-input" id="logTime" step="60">
+            <span class="form-hint" id="logTimeHint" style="font-size:12px;color:#888;margin-top:4px"></span>
+          </div>
           <div id="logEntries">
             <!-- 动态生成 -->
           </div>
@@ -657,12 +662,24 @@ document.getElementById('addEntryBtn').addEventListener('click', () => {
 
 document.getElementById('submitLogBtn').addEventListener('click', async () => {
   const date = document.getElementById('logDate').value;
+  const timeStr = document.getElementById('logTime').value; // 'HH:MM' 或 ''
   const note = document.getElementById('logNote').value;
   const validEntries = logEntries.filter(e => e.item_id && e.minutes > 0);
 
   if (!validEntries.length) {
     alert('请添加至少一个练习科目');
     return;
+  }
+
+  // 构造 practice_at (CST ISO 'YYYY-MM-DD HH:MM:SS')
+  // 时分留空 → 用当前 CST 时间
+  let practiceAt;
+  if (timeStr) {
+    practiceAt = `${date} ${timeStr}:00`;
+  } else {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    practiceAt = `${date} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
   }
 
   for (const entry of validEntries) {
@@ -675,6 +692,7 @@ document.getElementById('submitLogBtn').addEventListener('click', async () => {
         item_id: entry.item_id,
         minutes: entry.minutes,
         log: note,
+        practice_at: practiceAt,
       }),
     });
   }
