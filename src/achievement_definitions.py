@@ -147,16 +147,35 @@ def _get_all_item_ids(conn: sqlite3.Connection) -> set[int]:
     return {r[0] for r in cur.fetchall()}
 
 
+def _get_latest_stage_item_ids(conn: sqlite3.Connection) -> set[int]:
+    """最新 stage (MAX stage_order) 的 items 列表.
+    2026-06-13: all_items 判定基准从"全局活跃 item 集"改成"最新 stage 老师要求集".
+    """
+    cur = conn.execute(
+        "SELECT items FROM weekly_assignments "
+        "WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments) "
+        "LIMIT 1"
+    )
+    row = cur.fetchone()
+    if not row or not row[0]:
+        return set()
+    import json as _json
+    items = _json.loads(row[0])
+    return {it["item_id"] for it in items if it.get("item_id")}
+
+
 def _has_all_items_ever(conn: sqlite3.Connection) -> tuple[bool, str | None]:
     """判断 all_items 是否史上达成.
 
-    语义: 历史任意一天, 该日练习 item 集 ⊇ 当前"未归档且活跃"全集.
-    用 "⊇" (superset) 而非 "==" 避免哪天多练了个 item 而作废.
+    语义 (2026-06-13 拍板): 历史任意一天, 该日练习 item 集 ⊇ 最新 stage 老师要求集.
+    - 用最新 stage (MAX stage_order) 的 items 列表, 不是全局活跃集
+    - 永久解锁版: 一次达成后永久保留
+    - 用 "⊇" (superset) 而非 "==" 允许哪天多练
 
     Returns:
         (达成?, 最早达成日期 YYYY-MM-DD).
     """
-    all_item_ids = _get_all_item_ids(conn)
+    all_item_ids = _get_latest_stage_item_ids(conn)
     if not all_item_ids:
         return False, None
     cur = conn.execute(
@@ -321,8 +340,19 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
         return CalcResult(total_mins > 0, total_mins, None, at, "完成第一次练习")
     if aid == "all_items":
         at = _at(has_all_items, all_items_achieved_at)
+        if has_all_items:
+            cond = f"首次达成 {all_items_achieved_at} 一天内练齐最新 stage 老师布置的所有科目"
+        else:
+            # 列出"最新 stage 还差哪些"给用户清晰反馈
+            latest_ids = _get_latest_stage_item_ids(conn)
+            cur = conn.execute(
+                "SELECT name FROM practice_items WHERE is_active=1 AND item_id IN ("
+                + ",".join("?" * len(latest_ids)) + ") ORDER BY item_id",
+                list(latest_ids)) if latest_ids else []
+            required_names = [r[0] for r in cur]
+            cond = f"最新 stage 要求 {len(latest_ids)} 个科目: {', '.join(required_names) if required_names else '(无)'} — 还没达成"
         return CalcResult(has_all_items, 1 if has_all_items else 0, None,
-                          at, "同一天练所有科目")
+                          at, cond)
     if aid == "double":
         at = _at(has_double, _double_first_achieved_at(conn))
         return CalcResult(has_double, 1 if has_double else 0, None, at, "同日 ≥ 2 次打卡")
