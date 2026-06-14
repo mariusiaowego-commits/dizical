@@ -1105,6 +1105,24 @@ async def api_practice_report_generate(request: Request):
 # 不引 psutil, 简化显示 PID + uptime + port
 # ═══════════════════════════════════════════════════════════════════════════
 
+@router.get("/design", response_class=HTMLResponse)
+def config_design(request: Request):
+    """设计系统服务监控页 — 启动/重启/停止/打开 intro demo
+
+    PIN 行为:
+    - 默认要 PIN (跟 config-badge / config-blindbox 一致, admin 操作)
+    - `?demo=true` query param bypass PIN (展示给朋友看用)
+    """
+    from src.kid_app.app import render
+    demo_mode = request.query_params.get("demo") == "true"
+    return render(
+        "config-design",
+        active_nav="portal",  # sidebar: Portal
+        pin_locked="false" if demo_mode else ("true" if db.get_setting("dad_pin") else "false"),
+        demo_mode=demo_mode,
+    )
+
+
 _SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts"
 
 
