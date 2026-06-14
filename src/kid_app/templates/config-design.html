@@ -1,0 +1,743 @@
+<!--
+  config-design.html — 设计系统服务监控 (PR-B, 2026-06-15)
+
+  功能:
+    ① 实时状态 (绿/黄/红 灯 + PID + 端口 + uptime)
+    ② 4 操作按钮 (启动 / 重启 / 停止 / 浏览器打开)
+    ③ 访问 URL (点击复制)
+    ④ 使用说明 (什么时候需要)
+
+  PIN 行为:
+    - 默认要 PIN (跟 config-badge / config-blindbox 一致)
+    - `?demo=true` query param bypass PIN (专门给"展示给朋友看"用)
+
+  设计风格: dizicute 暖色 (跟 config-blindbox.html / config-badge.html 一致)
+  不用 emoji (AGENTS.md §UI 偏好), 按钮只用名字
+-->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>设计系统服务 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --coral: #FF6B6B;
+      --text: #3d3d3d;
+      --radius: 20px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .design-container {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* ── 顶部导航 ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.6);
+      transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+      background: rgba(255,255,255,0.9);
+      transform: translateX(-2px);
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-title .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(197, 184, 217, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── 状态卡片 ── */
+    .status-card {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 28px 32px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .status-light {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ccc;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.04);
+      transition: all 0.3s ease;
+    }
+
+    .status-light.running {
+      background: var(--sage);
+      box-shadow: 0 0 0 4px rgba(168, 213, 186, 0.25), 0 0 16px rgba(168, 213, 186, 0.6);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .status-light.stopped {
+      background: #d4d4d4;
+    }
+
+    .status-light.error {
+      background: var(--rose);
+      box-shadow: 0 0 0 4px rgba(232, 180, 188, 0.25);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .status-text {
+      flex: 1;
+    }
+
+    .status-label {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .status-detail {
+      font-size: 14px;
+      color: #7F8C8D;
+    }
+
+    .status-refresh {
+      padding: 10px 18px;
+      background: rgba(0,0,0,0.05);
+      color: var(--text);
+      border: none;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .status-refresh:hover {
+      background: rgba(0,0,0,0.1);
+    }
+
+    /* ── 进程信息卡片 ── */
+    .info-card {
+      background: rgba(255,255,255,0.7);
+      border-radius: 20px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #7F8C8D;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    .info-value {
+      font-size: 18px;
+      color: var(--text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .info-value.muted {
+      color: #999;
+      font-weight: 400;
+    }
+
+    .info-value.url {
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 14px;
+      word-break: break-all;
+      cursor: pointer;
+      color: var(--coral);
+    }
+
+    .info-value.url:hover {
+      text-decoration: underline;
+    }
+
+    .copy-hint {
+      font-size: 11px;
+      color: var(--sage);
+      opacity: 0;
+      transition: opacity 0.3s;
+      margin-top: 2px;
+    }
+
+    .copy-hint.show {
+      opacity: 1;
+    }
+
+    /* ── 操作按钮组 ── */
+    .action-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .action-btn {
+      padding: 16px 12px;
+      border: none;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+
+    .action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .action-btn .btn-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .action-btn.start {
+      background: var(--sage);
+      color: #2c5530;
+    }
+    .action-btn.start:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(168, 213, 186, 0.5);
+    }
+
+    .action-btn.restart {
+      background: var(--lavender);
+      color: #4a3d6e;
+    }
+    .action-btn.restart:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(197, 184, 217, 0.5);
+    }
+
+    .action-btn.stop {
+      background: var(--rose);
+      color: #6e3d3d;
+    }
+    .action-btn.stop:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(232, 180, 188, 0.5);
+    }
+
+    .action-btn.browser {
+      background: rgba(0,0,0,0.05);
+      color: var(--text);
+    }
+    .action-btn.browser:hover:not(:disabled) {
+      background: rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    /* ── 使用说明 ── */
+    .help-card {
+      background: rgba(255,255,255,0.55);
+      border-radius: 20px;
+      padding: 24px 28px;
+      border-left: 4px solid var(--lavender);
+    }
+
+    .help-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .help-item {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.7;
+      margin-bottom: 6px;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .help-item::before {
+      content: '·';
+      position: absolute;
+      left: 4px;
+      color: var(--lavender);
+      font-weight: bold;
+    }
+
+    /* ── 反馈 toast ── */
+    .toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: rgba(44, 62, 80, 0.92);
+      color: white;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-size: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      max-width: 80vw;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error { background: rgba(180, 60, 60, 0.92); }
+    .toast.success { background: rgba(76, 130, 80, 0.92); }
+
+    /* ── PIN overlay (跟 config-badge 一致) ── */
+    .pin-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(245, 230, 211, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .pin-box {
+      background: white;
+      padding: 32px;
+      border-radius: 24px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .pin-box h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      color: var(--text);
+    }
+
+    .pin-box p {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: #7F8C8D;
+    }
+
+    .pin-input {
+      width: 100%;
+      padding: 14px;
+      font-size: 24px;
+      text-align: center;
+      letter-spacing: 0.5em;
+      border: 2px solid rgba(0,0,0,0.1);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .pin-input:focus {
+      outline: none;
+      border-color: var(--coral);
+    }
+
+    .pin-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--coral);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .pin-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+    }
+
+    .pin-error {
+      color: #c44848;
+      font-size: 13px;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+
+    @media (max-width: 640px) {
+      .action-bar { grid-template-columns: repeat(2, 1fr); }
+      .info-card { grid-template-columns: 1fr; }
+      .page-title { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+{% if pin_locked == "true" and not demo_mode %}
+<!-- ── PIN 验证 (admin 操作, 跟 config-badge 一致) ── -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-box">
+    <h2>设计系统服务管理</h2>
+    <p>这是管理员操作, 请输入 PIN</p>
+    <input type="password" class="pin-input" id="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" autofocus>
+    <button class="pin-submit" onclick="submitPin()">验证</button>
+    <div class="pin-error" id="pin-error"></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="design-container" {% if pin_locked == "true" and not demo_mode %}style="display:none;"{% endif %}>
+
+  <!-- 顶部导航 -->
+  <div class="top-bar">
+    <a href="/config" class="back-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      <span>返回配置台</span>
+    </a>
+    <div class="page-title">
+      <span class="icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7a6da3" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+      </span>
+      <span>设计系统服务</span>
+    </div>
+  </div>
+
+  <!-- 状态卡片 -->
+  <div class="status-card">
+    <div class="status-light stopped" id="status-light"></div>
+    <div class="status-text">
+      <div class="status-label" id="status-label">检测中...</div>
+      <div class="status-detail" id="status-detail"></div>
+    </div>
+    <button class="status-refresh" onclick="refreshStatus()">刷新</button>
+  </div>
+
+  <!-- 进程信息 -->
+  <div class="info-card">
+    <div class="info-item">
+      <div class="info-label">PID</div>
+      <div class="info-value muted" id="info-pid">—</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">端口</div>
+      <div class="info-value" id="info-port">9876</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">启动时间</div>
+      <div class="info-value muted" id="info-started">—</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">运行时间</div>
+      <div class="info-value muted" id="info-uptime">—</div>
+    </div>
+    <div class="info-item" style="grid-column: 1 / -1;">
+      <div class="info-label">访问 URL (点击复制)</div>
+      <div class="info-value url" id="info-url" onclick="copyUrl()">—</div>
+      <div class="copy-hint" id="copy-hint">已复制到剪贴板</div>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-bar">
+    <button class="action-btn start" id="btn-start" onclick="actionStart()">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="6 4 20 12 6 20 6 4"/>
+      </svg>
+      <span>启动</span>
+    </button>
+    <button class="action-btn restart" id="btn-restart" onclick="actionRestart()" disabled>
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/>
+        <polyline points="21 3 21 8 16 8"/>
+      </svg>
+      <span>重启</span>
+    </button>
+    <button class="action-btn stop" id="btn-stop" onclick="actionStop()" disabled>
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="6" y="6" width="12" height="12" rx="1"/>
+      </svg>
+      <span>停止</span>
+    </button>
+    <button class="action-btn browser" id="btn-browser" onclick="actionOpenBrowser()" disabled>
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+      <span>浏览器打开</span>
+    </button>
+  </div>
+
+  <!-- 使用说明 -->
+  <div class="help-card">
+    <div class="help-title">什么时候需要</div>
+    <div class="help-item">展示 dizicute 设计系统给朋友看 (含 6 色 / 字体 / 真实 badge / brand icon)</div>
+    <div class="help-item">自己 review intro.html 视觉精修效果</div>
+    <div class="help-item">演示后关闭服务避免资源消耗, 下次用时再启动</div>
+    <div class="help-item">服务不影响 dizical 主服务 (端口 8765) 和日常使用</div>
+  </div>
+
+</div>
+
+<!-- Toast 反馈 -->
+<div class="toast" id="toast"></div>
+
+<script>
+const PIN_KEY = "design_svc_pin";
+const STATUS_URL = "/config/api/design/status";
+const START_URL = "/config/api/design/start";
+const RESTART_URL = "/config/api/design/restart";
+const STOP_URL = "/config/api/design/stop";
+
+// ── PIN 验证 (跟 config-badge 一致: 存 sessionStorage) ──
+function submitPin() {
+  const pin = document.getElementById("pin-input").value;
+  if (!pin) {
+    document.getElementById("pin-error").textContent = "请输入 PIN";
+    return;
+  }
+  // 简单验证: 用 PIN 调一次 status API (PIN 是 dawdPIN 设置)
+  // 这里只做客户端 bypass, 真正的 PIN 在 server 端 (跟 config-badge / config-blindbox 一致)
+  sessionStorage.setItem(PIN_KEY, pin);
+  document.getElementById("pin-overlay").style.display = "none";
+  document.querySelector(".design-container").style.display = "";
+  refreshStatus();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const overlay = document.getElementById("pin-overlay");
+  if (overlay) {
+    document.getElementById("pin-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitPin();
+    });
+  } else {
+    // 无 PIN overlay (demo_mode 或 pin_locked=false), 直接 refresh
+    refreshStatus();
+  }
+});
+
+// ── 状态刷新 ──
+async function refreshStatus() {
+  try {
+    const r = await fetch(STATUS_URL, { cache: "no-cache" });
+    const data = await r.json();
+    renderStatus(data);
+  } catch (e) {
+    showToast("无法连接服务: " + e.message, "error");
+  }
+}
+
+function renderStatus(data) {
+  const light = document.getElementById("status-light");
+  const label = document.getElementById("status-label");
+  const detail = document.getElementById("status-detail");
+  const pid = document.getElementById("info-pid");
+  const started = document.getElementById("info-started");
+  const uptime = document.getElementById("info-uptime");
+  const url = document.getElementById("info-url");
+  const btnStart = document.getElementById("btn-start");
+  const btnRestart = document.getElementById("btn-restart");
+  const btnStop = document.getElementById("btn-stop");
+  const btnBrowser = document.getElementById("btn-browser");
+
+  if (data.running) {
+    light.className = "status-light running";
+    label.textContent = "运行中";
+    detail.textContent = `进程已启动 (PID ${data.pid})`;
+    pid.textContent = data.pid;
+    pid.classList.remove("muted");
+    if (data.started_at) {
+      started.textContent = formatTimestamp(data.started_at);
+      started.classList.remove("muted");
+    }
+    if (data.uptime_seconds != null) {
+      uptime.textContent = formatUptime(data.uptime_seconds);
+      uptime.classList.remove("muted");
+    }
+    if (data.url) {
+      url.textContent = data.url;
+      url.dataset.url = data.url;
+    }
+    btnStart.disabled = true;
+    btnRestart.disabled = false;
+    btnStop.disabled = false;
+    btnBrowser.disabled = false;
+  } else {
+    light.className = "status-light stopped";
+    label.textContent = "已停止";
+    detail.textContent = "服务未运行 (端口 9876 空闲)";
+    pid.textContent = "—";
+    pid.classList.add("muted");
+    started.textContent = "—";
+    started.classList.add("muted");
+    uptime.textContent = "—";
+    uptime.classList.add("muted");
+    url.textContent = "—";
+    delete url.dataset.url;
+    btnStart.disabled = false;
+    btnRestart.disabled = true;
+    btnStop.disabled = true;
+    btnBrowser.disabled = true;
+  }
+}
+
+function formatTimestamp(epoch) {
+  const ts = parseInt(epoch, 10);
+  if (!ts) return "—";
+  const d = new Date(ts * 1000);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatUptime(seconds) {
+  if (seconds < 60) return `${seconds} 秒`;
+  if (seconds < 3600) return `${Math.floor(seconds/60)} 分 ${seconds%60} 秒`;
+  const h = Math.floor(seconds/3600);
+  const m = Math.floor((seconds%3600)/60);
+  return `${h} 小时 ${m} 分`;
+}
+
+// ── 操作 ──
+async function actionStart() {
+  await doAction(START_URL, "启动");
+}
+
+async function actionRestart() {
+  await doAction(RESTART_URL, "重启");
+  // 重启后等 2 秒再 refresh (端口释放需要时间)
+  setTimeout(refreshStatus, 2000);
+}
+
+async function actionStop() {
+  await doAction(STOP_URL, "停止");
+}
+
+async function doAction(url, label) {
+  setButtonsDisabled(true);
+  showToast(`${label}中...`, "");
+  try {
+    const r = await fetch(url, { method: "POST" });
+    const data = await r.json();
+    if (data.ok) {
+      showToast(`${label}成功`, "success");
+    } else {
+      showToast(`${label}失败: ${data.message || "未知错误"}`, "error");
+    }
+  } catch (e) {
+    showToast(`${label}失败: ${e.message}`, "error");
+  }
+  // 操作后立刻 refresh (除了 restart 已 setTimeout)
+  if (label !== "重启") {
+    setTimeout(refreshStatus, 1500);
+  }
+  setButtonsDisabled(false);
+}
+
+function setButtonsDisabled(disabled) {
+  ["btn-start", "btn-restart", "btn-stop"].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (!btn.disabled) btn.disabled = disabled;
+  });
+}
+
+function actionOpenBrowser() {
+  const url = document.getElementById("info-url").dataset.url;
+  if (url) window.open(url, "_blank");
+}
+
+function copyUrl() {
+  const url = document.getElementById("info-url").dataset.url;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    const hint = document.getElementById("copy-hint");
+    hint.classList.add("show");
+    setTimeout(() => hint.classList.remove("show"), 2000);
+  });
+}
+
+function showToast(msg, type) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.className = "toast show " + (type || "");
+  setTimeout(() => {
+    toast.className = "toast";
+  }, 2500);
+}
+
+// 启动后 5 秒后自动 refresh (兜底 server 端变化)
+setInterval(refreshStatus, 5000);
+</script>
+
+</body>
+</html>
