@@ -1,6 +1,8 @@
 """配置管理台路由 - 练习科目配置"""
 
 import json
+import subprocess
+from pathlib import Path
 from typing import Optional, List, Dict
 
 from fastapi import APIRouter, Request
@@ -1094,3 +1096,126 @@ async def api_practice_report_generate(request: Request):
             "X-Accel-Buffering": "no",
         }
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 设计系统服务监控 (uiux-asset-library intro demo 端口 9876)
+#
+# 跟 dizical 8765 主服务同风格: shell 脚本封装 + PIDFILE + lsof 兜底
+# 不引 psutil, 简化显示 PID + uptime + port
+# ═══════════════════════════════════════════════════════════════════════════
+
+_SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts"
+
+
+def _run_intro_script(name: str) -> dict:
+    """调 scripts/intro-{name}.sh, 返 {'ok': bool, 'stdout': str, 'stderr': str, 'returncode': int}"""
+    script = _SCRIPTS_DIR / f"intro-{name}.sh"
+    if not script.exists():
+        return {"ok": False, "stdout": "", "stderr": f"script not found: {script}", "returncode": -1}
+    try:
+        result = subprocess.run(
+            ["bash", str(script)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return {
+            "ok": result.returncode == 0,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "stdout": "", "stderr": "script timeout (>10s)", "returncode": -2}
+    except Exception as e:
+        return {"ok": False, "stdout": "", "stderr": str(e), "returncode": -3}
+
+
+@router.get("/api/design/status")
+async def api_design_status():
+    """获取 uiux-asset-library intro demo 服务状态 (PID / 端口 / uptime)
+
+    返回 JSON (跟 scripts/intro-status.sh 一致, 多加 url 字段):
+    {
+      "running": bool,
+      "pid": int|null,
+      "port": 9876,
+      "started_at": str|null (epoch),
+      "uptime_seconds": int|null,
+      "url": str|null,
+      "stale": bool (PIDFILE stale 但端口被占)
+    }
+    """
+    result = _run_intro_script("status")
+    if not result["ok"]:
+        return JSONResponse(
+            {"error": "status script failed", "stderr": result["stderr"]},
+            status_code=500,
+        )
+    # status.sh 输出 JSON, 直接 parse + 加 url 字段
+    try:
+        data = json.loads(result["stdout"])
+    except json.JSONDecodeError:
+        return JSONResponse(
+            {"error": "status script returned non-JSON", "stdout": result["stdout"]},
+            status_code=500,
+        )
+    if data.get("running"):
+        data["url"] = f"http://localhost:{data['port']}/demos/dizicute-intro/intro.html"
+    else:
+        data["url"] = None
+    return JSONResponse(data)
+
+
+@router.post("/api/design/start")
+async def api_design_start():
+    """启动 intro demo 服务
+
+    返回 JSON: {ok: bool, message: str, pid: int|null}
+    """
+    # 先查状态, 如果已在跑就返 ok + 当前 PID (避免重复启动)
+    status_result = _run_intro_script("status")
+    try:
+        status_data = json.loads(status_result["stdout"]) if status_result["ok"] else {}
+    except json.JSONDecodeError:
+        status_data = {}
+    if status_data.get("running"):
+        return JSONResponse({
+            "ok": True,
+            "message": "already running",
+            "pid": status_data.get("pid"),
+        })
+
+    result = _run_intro_script("start")
+    return JSONResponse({
+        "ok": result["ok"],
+        "message": result["stdout"] if result["ok"] else result["stderr"],
+        "pid": None,  # start 后需要再查 status 才知 PID
+    })
+
+
+@router.post("/api/design/restart")
+async def api_design_restart():
+    """重启 intro demo 服务 (stop + start)
+
+    返回 JSON: {ok: bool, message: str}
+    """
+    result = _run_intro_script("restart")
+    return JSONResponse({
+        "ok": result["ok"],
+        "message": result["stdout"] if result["ok"] else result["stderr"],
+    })
+
+
+@router.post("/api/design/stop")
+async def api_design_stop():
+    """停止 intro demo 服务
+
+    返回 JSON: {ok: bool, message: str}
+    """
+    result = _run_intro_script("stop")
+    return JSONResponse({
+        "ok": result["ok"],
+        "message": result["stdout"] if result["ok"] else result["stderr"],
+    })
