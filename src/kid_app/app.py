@@ -451,7 +451,7 @@ def _milestone_html(category: Optional[str] = None):
     # ── 读 achievements 表元数据 ──────────────────────────────────
     cur = conn.execute(
         "SELECT id, name, type, category, stat_logic, description, threshold, "
-        "unlocked_template, placeholder FROM achievements" +
+        "unlocked_template, placeholder, cond_text FROM achievements" +
         (" WHERE category = ?" if category else "") +
         " ORDER BY sort_order",
         ((category,) if category else ()))
@@ -507,7 +507,7 @@ def _milestone_html(category: Optional[str] = None):
 
         card_html = _build_milestone_card(
             aid, ach["name"], ach["type"], ach["description"],
-            badge_url, achieved, cv, threshold, res.condition
+            badge_url, achieved, cv, threshold, res.condition, ach.get("cond_text") or ""
         )
 
         if achieved:
@@ -526,13 +526,18 @@ def _milestone_html(category: Optional[str] = None):
     return "".join(unlocked_list) + nearest_html
 
 
-def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv, threshold, condition=""):
-    """生成单个 milestone 卡片 HTML（对应 .b-card 结构，与 badges 页面一致）"""
+def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv, threshold, condition="", cond_text=""):
+    """生成单个 milestone 卡片 HTML（对应 .b-card 结构，与 badges 页面一致）
+
+    V2.2 (2026-06-15) feat/badge-cond-text: cond_text 字段独立, modal-cond 3 级 fallback:
+    cond (calc) > cond_text (user/AI) > desc (zh_story fallback)
+    """
     import html as _html
     state_cls = "unlocked" if achieved else "locked"
     locked_flag = "yes" if not achieved else "no"
     cond_safe = _html.escape(condition or "")
     desc_safe = _html.escape(desc or "")
+    cond_text_safe = _html.escape(cond_text or "")
 
     # 徽章统一用原图，灰化由 CSS .b-card.locked .b-img { grayscale(1) } 处理
     card_badge_url = badge_url
@@ -548,6 +553,7 @@ def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv,
         f"data-tag='{_html.escape(ach_type)}' "
         f"data-aid='{_html.escape(ach_id)}' "
         f"data-cond=\"{cond_safe}\" "
+        f"data-cond-text=\"{cond_text_safe}\" "
         f"data-desc=\"{desc_safe}\" "
         f"data-img='{_html.escape(card_badge_url)}' "
         f"data-locked='{locked_flag}' "
@@ -1439,7 +1445,7 @@ def badges_page():
 
     # ── 读所有需要展示的 achievements（排除神秘/晋级等纯统计类） ──────
     cur = conn.execute(
-        "SELECT id, name, type, category, description, threshold FROM achievements "
+        "SELECT id, name, type, category, description, threshold, cond_text FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
@@ -1459,6 +1465,7 @@ def badges_page():
             "group": ach["category"],  # milestone / seasonal
             "description": ach["description"],
             "condition": res.condition,
+            "cond_text": ach.get("cond_text") or "",  # V2.2 (2026-06-15) feat/badge-cond-text
             "achieved": res.achieved,
             "achieved_at": res.achieved_at,
             "badge_url": get_badge_url(aid),  # PR-B: 取代 BADGE_FILES.get(aid, ...)

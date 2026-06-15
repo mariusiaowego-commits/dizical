@@ -120,9 +120,10 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
     """写 achievements 表 1 行.
 
     必填 key: id, name, type, category, stat_logic, description, display_format
-    可选: threshold, unlocked_template, placeholder, sort_order, seasonal_type
+    可选: threshold, unlocked_template, placeholder, sort_order, seasonal_type, cond_text
 
     seasonal_type 必填 (CHECK 约束 default='monthly' 也行, 但 V1 显式传)
+    cond_text 是 feat/badge-cond-text (2026-06-15) 加的可选字段, 用户/AI 填的"条件一句话"
     """
     # sort_order 不传时取 max+1
     if "sort_order" not in ach or ach["sort_order"] is None:
@@ -137,6 +138,7 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         "threshold": None,
         "unlocked_template": None,
         "placeholder": None,
+        "cond_text": None,  # feat/badge-cond-text 2026-06-15
     }
     for k, v in defaults.items():
         ach.setdefault(k, v)
@@ -146,11 +148,11 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         INSERT INTO achievements
           (id, name, type, category, stat_logic, description,
            display_format, threshold, unlocked_template, placeholder,
-           sort_order, seasonal_type)
+           sort_order, seasonal_type, cond_text)
         VALUES
           (:id, :name, :type, :category, :stat_logic, :description,
            :display_format, :threshold, :unlocked_template, :placeholder,
-           :sort_order, :seasonal_type)
+           :sort_order, :seasonal_type, :cond_text)
         """,
         ach,
     )

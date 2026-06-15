@@ -277,6 +277,7 @@ function cardHTML(d) {
     data-name="${esc(d.name)}"
     data-tag="${esc(d.typ)}"
     data-cond="${esc(d.condition)}"
+    data-cond-text="${esc(d.cond_text)}"
     data-desc="${esc(d.description)}"
     data-img="${esc(d.badge_url)}"
     data-date="${d.achieved_at||''}"
@@ -354,7 +355,7 @@ function openModal(card) {
     locked ? 'saturate(0.55) brightness(0.85)' : '';
   document.getElementById('modal-name').textContent = card.dataset.name;
   document.getElementById('modal-tag').textContent  = card.dataset.tag;
-  document.getElementById('modal-cond').textContent = card.dataset.cond || card.dataset.desc;
+  document.getElementById('modal-cond').textContent = card.dataset.cond || card.dataset.condText || card.dataset.desc;
 
   const dateEl = document.getElementById('modal-date');
   if (card.dataset.date) {

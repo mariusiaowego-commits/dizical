@@ -17,7 +17,8 @@ def _worktree_db() -> Path:
     return Path(settings.db_path)
 
 
-# 建表 SQL (跟 production 一致, 不带 seasonal_type 默认 'monthly' 是 PR #96 加的)
+# 建表 SQL (跟 production 一致, 不带 seasonal_type 默认 'monthly' 是 PR #96 加的,
+# cond_text 列是 feat/badge-cond-text 2026-06-15 加的)
 _INIT_SQL = """
 CREATE TABLE IF NOT EXISTS achievements (
     id                TEXT PRIMARY KEY,
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS achievements (
     locked_template   TEXT,
     sort_order        INTEGER DEFAULT 0,
     seasonal_type     TEXT DEFAULT 'monthly',
+    cond_text         TEXT,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
