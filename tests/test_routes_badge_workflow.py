@@ -180,8 +180,8 @@ class TestCommitFromDraft:
             assert ach is not None
             assert ach[0] == "v2_test_commit_happy_xyz"
             assert ach[1] == "测试徽章"
-            # V2 meta 没 stat_logic, V2.1 commit handler 默认 "无"
-            assert ach[4] == "无"
+            # V2 meta 没 stat_logic, V2.1 commit handler 默认空字符串 (Bug #4 修法, 2026-06-15)
+            assert ach[4] == ""
 
             stats = conn.execute(
                 "SELECT achievement_id, achieved FROM achievement_stats WHERE achievement_id=?",
