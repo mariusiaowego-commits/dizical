@@ -597,7 +597,7 @@
         locked ? 'saturate(0) brightness(0.92)' : '';
       document.getElementById('modal-name').textContent = card.dataset.name;
       document.getElementById('modal-tag').textContent  = card.dataset.tag;
-      document.getElementById('modal-cond').textContent = card.dataset.cond || card.dataset.desc;
+      document.getElementById('modal-cond').textContent = card.dataset.cond || card.dataset.condText || card.dataset.desc;
 
       const dateEl = document.getElementById('modal-date');
       const dateVal = card.dataset.date;

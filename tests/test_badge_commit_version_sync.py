@@ -57,6 +57,7 @@ def isolated_db(tmp_path, monkeypatch):
             locked_template   TEXT,
             sort_order        INTEGER DEFAULT 0,
             seasonal_type     TEXT DEFAULT 'monthly',
+            cond_text         TEXT,
             created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE achievement_stats (

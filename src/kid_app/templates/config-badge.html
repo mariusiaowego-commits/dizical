@@ -955,6 +955,17 @@
                 <small>Badge 故事背景, 中英文皆可. AI 草拟 placeholder 时也会参考这段</small>
               </div>
             </div>
+            <!-- V2.2 (2026-06-15): 条件文案 (cond_text) + AI 生成按钮 -->
+            <div class="v21-row">
+              <div class="v21-field v21-field-wide">
+                <label for="v21CondText">条件文案 (cond_text, 一句话)</label>
+                <div style="display:flex; gap:8px; align-items:stretch;">
+                  <textarea id="v21CondText" name="cond_text" rows="2" placeholder="例: 练习任意 1 天里包含 '批改' 关键词&#10;(留空 = 走 AI 生成 / 弹窗里 fallback 到典故)" style="flex:1;"></textarea>
+                  <button type="button" id="v21AiCondBtn" class="v21-ai-btn" onclick="v21AiCond()" style="flex:0 0 auto; align-self:flex-start;">✨ AI 生成</button>
+                </div>
+                <small>弹窗里"达成条件"显示的一句话. 留空 = 走 AI / fallback. AI 生成后可看可改可再生.</small>
+              </div>
+            </div>
           </div>
 
           <!-- 可选 advanced (默认折叠) -->
@@ -1385,6 +1396,7 @@
         category: v('v21Category'),
         placeholder: v('v21Placeholder'),
         zh_story: v('v21ZhStory'),
+        cond_text: v('v21CondText'),
         display_format: v('v21DisplayFormat') || 'achieved_flag',
         sort_order: num('v21SortOrder'),
       };
@@ -1444,6 +1456,50 @@
       } finally {
         btn.disabled = false;
         btn.textContent = 'AI 草拟';
+      }
+    }
+
+    // V2.2 (2026-06-15): AI 生成 cond_text 一句话条件文案
+    async function v21AiCond() {
+      const name = document.getElementById('v21Name').value.trim();
+      const type = document.getElementById('v21Type').value.trim();
+      const placeholder = document.getElementById('v21Placeholder').value.trim();
+      const zhStory = document.getElementById('v21ZhStory').value.trim();
+      if (!name || !placeholder || !zhStory) {
+        showToast('error', '先填名称 / 描述 / 典故, AI 才能生成条件');
+        return;
+      }
+      const btn = document.getElementById('v21AiCondBtn');
+      const ta = document.getElementById('v21CondText');
+      btn.disabled = true;
+      btn.textContent = '⏳ AI 思考中...';
+      ta.value = '';  // 清空让用户看 AI 流式填
+      try {
+        const r = await fetch('/config/api/badge/ai-cond', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, type, placeholder, zh_story: zhStory}),
+        });
+        if (r.status === 422) {
+          showToast('error', '缺字段 (名称/描述/典故都要填)');
+          return;
+        }
+        const data = await r.json();
+        if (data.ok) {
+          ta.value = data.cond_text;
+          if (data.fallback) {
+            showToast('warning', 'AI 没能想出来, 兜底文案已填, 你可以再点一次或自己改');
+          } else {
+            showToast('success', 'AI 生成完成 (可改可删可再生)');
+          }
+        } else {
+          showToast('error', data.error || 'AI 生成失败');
+        }
+      } catch (err) {
+        showToast('error', '网络错误: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ AI 生成';
       }
     }
 
@@ -1529,6 +1585,7 @@
       v21SortOrder: "展示顺序, 数字小的在前. 留空 = 追加到末尾 (MAX+1)",
       v21Placeholder: "英文描述想画的画面 (喂给 AI 生图模型). 要具体: 人物 + 动作 + 道具 + 背景 + 风格. 例: a chibi girl with bamboo flute...",
       v21ZhStory: "中文典故 + 鼓励小故事, 弹窗里给孩子看. 写居里夫人/祖逖这类历史人物, 跟孩子能产生共鸣",
+      v21CondText: "弹窗里 '达成条件' 显示的一句话. 解释孩子为什么能获得这个徽章. 留空 = 点 '✨ AI 生成' 自动出 / fallback 兜底. AI 生成后可改可删可再生.",
       v21Threshold: "达成阈值 (数字). 例: 30 = 累计 30 天/分钟/次数. 留空 = 由 calc 决定",
       v21StatLogic: "高级字段. 描述 calc 怎么算达成. 一般留空, 由 /calc-apply skill 单独补",
       v21UnlockedTemplate: "高级字段. 自定义 AI 生图的 prompt 模板. 留空走默认 enamel pin 风格",

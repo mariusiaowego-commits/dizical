@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS achievements (
     sort_order        INTEGER DEFAULT 0,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
     , seasonal_type TEXT DEFAULT 'monthly' CHECK(seasonal_type IN ('daily','weekly','monthly','stage'))
+    , cond_text TEXT
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id   TEXT PRIMARY KEY REFERENCES achievements(id),

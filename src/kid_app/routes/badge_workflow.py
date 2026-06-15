@@ -43,6 +43,14 @@ class CommitFromDraftRequest(BaseModel):
     draft_id: str = Field(..., min_length=1)
 
 
+class AICondRequest(BaseModel):
+    """ai-cond 端点收 name + placeholder + zh_story + type."""
+    name: str = Field(..., min_length=1)
+    type: str = ""
+    placeholder: str = Field(..., min_length=1)
+    zh_story: str = Field(..., min_length=1)
+
+
 # ─── helpers ───────────────────────────────────────────────────────
 # V2 设计: dad_pin 验证在前端 localStorage (V1.1 PIN 模式), 端点不做
 # server-side PIN check (V1 routes/badge_workflow.py 9 端点全有 _check_pin
@@ -165,6 +173,16 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         meta_for_db = dict(draft.meta)
         meta_for_db["description"] = meta_for_db.get("zh_story") or "无"
         meta_for_db["stat_logic"] = ""
+        # feat/badge-cond-text (2026-06-15): cond_text 字段.
+        # - 用户填 / AI 生成 → 写
+        # - 缺 / 空 → 写 None (DB nullable) 走前端 fallback 到 desc
+        # 显式不 setdefault "" (老数据兼容, DB 允许 NULL)
+        if "cond_text" in meta_for_db and meta_for_db["cond_text"] is not None:
+            # 用户的空字符串保留为 "" (跟 None 区分)
+            pass
+        else:
+            # 缺字段 → None (DB 默认, 老 draft 不报错)
+            meta_for_db["cond_text"] = meta_for_db.get("cond_text")  # None
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":
@@ -268,3 +286,55 @@ def api_ai_draft(req: AIDraftRequest) -> JSONResponse:
         }, status_code=500)
 
     return JSONResponse({"ok": True, "placeholder": result})
+
+
+# ─── POST /config/api/badge/ai-cond (V2.2 条件文案 AI 生成) ─────
+
+@router.post("/api/badge/ai-cond")
+def api_ai_cond(req: AICondRequest) -> JSONResponse:
+    """V2.2: 调 LLM 生成一句话"达成条件"文案, 给表单 v21CondText 字段填.
+
+    复用 src.kid_app.subject_info._gemini_stream (流式 Gemini 2.5 Flash-Lite).
+
+    失败兜底: LLM 没返 / 网络断 → 返 fallback 文本, ok=True 让前端有内容可填.
+    """
+    from src.kid_app.subject_info import _gemini_stream
+
+    # prompt: 简洁, 给出 badge 名 + 类型 + 描述 + 典故, 让 LLM 有 context
+    prompt = (
+        f"你是 dizical 竹笛成就系统的文案助手. "
+        f"用户在做一枚新徽章, 需要一句话 '达成条件' 文案 (弹窗里给孩子看, 解释为什么能获得这个徽章).\n\n"
+        f"Badge 名称: {req.name}\n"
+        f"类型: {req.type or '未指定'}\n"
+        f"英文描述 (给 AI 生图用): {req.placeholder}\n"
+        f"中文典故: {req.zh_story}\n\n"
+        f"要求:\n"
+        f"1. 一句话, ≤30 字\n"
+        f"2. 解释孩子为什么能获得这个徽章 (e.g. '练习任意 1 天里包含批改关键词')\n"
+        f"3. 不用 emoji, 不用引号\n"
+        f"4. 不用 markdown\n"
+        f"只返文案本身, 不要解释."
+    )
+
+    fallback = "AI 没能想出条件文案, 你自己写吧"
+    chunks: list[str] = []
+    try:
+        for token in _gemini_stream(prompt):
+            chunks.append(token)
+    except Exception as e:
+        logger.exception("ai-cond LLM stream failed for %s", req.name)
+        return JSONResponse({
+            "ok": True,
+            "cond_text": fallback,
+            "fallback_reason": str(e),
+        })
+
+    cond_text = "".join(chunks).strip()
+    if not cond_text:
+        # LLM 返空 → 兜底, 不报错 (跟 generate_mood_stream 设计一致)
+        return JSONResponse({"ok": True, "cond_text": fallback, "fallback": True})
+
+    # 去掉引号包裹 (LLM 偶尔返 '"...') 
+    cond_text = cond_text.strip('"\'`')
+
+    return JSONResponse({"ok": True, "cond_text": cond_text})
