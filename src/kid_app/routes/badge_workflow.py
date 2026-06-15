@@ -144,16 +144,27 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         }, status_code=409)
 
     try:
-        # 1. 复制临时图到 static/badges/{id}_v{n}.png
-        static_path = badge_draft.move_tmp_to_static(req.draft_id, draft.version)
+        # Bug #1 修法 (2026-06-15): commit handler 用 image.version 不用顶层 version.
+        # 根因: hermes chat 多轮时直接编辑 draft.json 改 image.version=2,
+        # 但顶层 draft.version 还是 1. 修前 commit 复制 v1.png, url 写 _v1.png,
+        # 前端加载到 v1 (旧图) 而不是 v2 (新图).
+        # 修后: commit 拿 image_version 单一数据源, 顶层 version 写库前同步.
+        if draft.image is None:
+            return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=400)
+        image_version = draft.image.get("version", draft.version)
+
+        # 1. 复制临时图到 static/badges/{id}_v{image_version}.png
+        static_path = badge_draft.move_tmp_to_static(req.draft_id, image_version)
 
         # 2. 调 badge_db 写三表 (achievements + stats + badges)
         # V2 注意: V1 insert_achievement_row 必填 stat_logic + description,
         # V2 meta 简化表单不收集, commit handler 默认值兜底
         # (V2.1 calc 修法 1 走 git apply 写 achievement_definitions.py, 跟这里解耦)
+        # Bug #4 修法 (2026-06-15): description 取 meta.zh_story (典故小故事),
+        # 不是默认"无". stat_logic 改空字符串 (calc 不靠它, 留"无"是历史包袱).
         meta_for_db = dict(draft.meta)
-        meta_for_db.setdefault("stat_logic", "无")
-        meta_for_db.setdefault("description", "无")
+        meta_for_db["description"] = meta_for_db.get("zh_story") or "无"
+        meta_for_db["stat_logic"] = ""
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":
@@ -161,16 +172,19 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             badge_db.insert_badge_row(
                 conn,
                 badge_id=badge_id,
-                url=f"/static/badges/{badge_id}_v{draft.version}.png",
-                version=draft.version,
+                url=f"/static/badges/{badge_id}_v{image_version}.png",
+                version=image_version,
             )
 
-        # 3. 状态变 committed
+        # 3. 状态变 committed + 顶层 version 跟 image.version 同步 (状态自洽)
+        draft.version = image_version  # Bug #1 同步
+        from src.kid_app import badge_draft as _bd
+        _bd.save_draft(draft)
         badge_draft.mark_draft_status(req.draft_id, "committed", by="dizical",
                                     extra={"event": "user_confirmed", "badge_id": badge_id})
 
-        # 4. 清理临时图
-        badge_draft.cleanup_tmp(req.draft_id, draft.version)
+        # 4. 清理临时图 (image_version, 不是 draft.version)
+        badge_draft.cleanup_tmp(req.draft_id, image_version)
     except Exception as e:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
         return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)
@@ -178,7 +192,7 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
     return JSONResponse({
         "ok": True,
         "badge_id": badge_id,
-        "image_url": f"/static/badges/{badge_id}_v{draft.version}.png",
+        "image_url": f"/static/badges/{badge_id}_v{image_version}.png",
     })
 
 

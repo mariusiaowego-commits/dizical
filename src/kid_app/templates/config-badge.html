@@ -820,6 +820,23 @@
     @media (max-width: 640px) {
       .v21-row { flex-direction: column; }
     }
+
+    /* ── Bug #6 修法 (2026-06-15): v21-section 字段 tooltip ── */
+    .v21-help {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #f0c040; color: #fff; font-size: 11px; font-weight: 700;
+      margin-left: 6px; cursor: help; user-select: none;
+      vertical-align: middle; line-height: 1;
+    }
+    .v21-help:hover { background: #c8860a; }
+    .v21-tooltip {
+      position: fixed; z-index: 9999;
+      background: #2c2c2c; color: #fff; font-size: 12px; line-height: 1.5;
+      padding: 8px 12px; border-radius: 6px; max-width: 260px;
+      pointer-events: none; opacity: 0; visibility: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
   </style>
 </head>
 <body class="has-sidebar">
@@ -887,7 +904,7 @@
               <div class="v21-field">
                 <label for="v21Category">Category <span class="v21-req">*</span></label>
                 <select id="v21Category" name="category" required onchange="v21CategoryChanged()">
-                  <option value="milestone">milestone (里程碑, 写三表 + 自动解锁)</option>
+                  <option value="milestone">milestone (里程碑, 写三表 + 等 calc 接入后解锁)</option>
                   <option value="seasonal">seasonal (赛季型, 实时计算)</option>
                 </select>
               </div>
@@ -1499,6 +1516,64 @@
         document.body.removeChild(ta);
       }
     }
+
+    // ── Bug #6 修法 (2026-06-15): v21-section 字段 tooltip (GSAP fade-in) ──
+    // 9 个字段的 help 文案 (大白话, 不写 jargon)
+    const V21_HELP = {
+      v21Id: "Badge 的英文 ID, 唯一标识. 只用英文/数字/下划线. 例: grade_5 / streak_30",
+      v21Name: "Badge 的中文名, 孩子能叫出来的名字. 例: 长音练习",
+      v21Type: "中文标签 (突破/坚持/季节). 决定展示时的分组文字. 不影响逻辑",
+      v21Category: "milestone = 永久勋章 (写三表 + 等 calc 接入后解锁) / seasonal = 节日季节限定 (实时计算)",
+      v21SeasonalType: "seasonal 专属: daily (每日打卡) / weekly (周冠军) / monthly (月度) / stage (阶段达成)",
+      v21DisplayFormat: "前端展示格式. achieved_flag = 完成型, 达成打勾. 一般不用改",
+      v21SortOrder: "展示顺序, 数字小的在前. 留空 = 追加到末尾 (MAX+1)",
+      v21Placeholder: "英文描述想画的画面 (喂给 AI 生图模型). 要具体: 人物 + 动作 + 道具 + 背景 + 风格. 例: a chibi girl with bamboo flute...",
+      v21ZhStory: "中文典故 + 鼓励小故事, 弹窗里给孩子看. 写居里夫人/祖逖这类历史人物, 跟孩子能产生共鸣",
+      v21Threshold: "达成阈值 (数字). 例: 30 = 累计 30 天/分钟/次数. 留空 = 由 calc 决定",
+      v21StatLogic: "高级字段. 描述 calc 怎么算达成. 一般留空, 由 /calc-apply skill 单独补",
+      v21UnlockedTemplate: "高级字段. 自定义 AI 生图的 prompt 模板. 留空走默认 enamel pin 风格",
+    };
+    function v21InitHelp() {
+      // 找所有 v21 字段 label, 在 label 后插 ? 图标
+      Object.keys(V21_HELP).forEach(id => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (!label) return;
+        if (label.querySelector('.v21-help')) return;  // 避免重复
+        const help = document.createElement('span');
+        help.className = 'v21-help';
+        help.textContent = '?';
+        help.setAttribute('data-help', V21_HELP[id]);
+        label.appendChild(help);
+      });
+      // 全局 tooltip 元素 (lazy 创建)
+      if (!document.getElementById('v21-help-tooltip')) {
+        const tip = document.createElement('div');
+        tip.id = 'v21-help-tooltip';
+        tip.className = 'v21-tooltip';
+        document.body.appendChild(tip);
+      }
+      // event delegation: hover ? 显示, mouseleave 隐藏
+      document.addEventListener('mouseover', e => {
+        if (e.target.classList && e.target.classList.contains('v21-help')) {
+          const tip = document.getElementById('v21-help-tooltip');
+          tip.textContent = e.target.getAttribute('data-help');
+          const rect = e.target.getBoundingClientRect();
+          tip.style.left = (rect.left + rect.width/2) + 'px';
+          tip.style.top  = (rect.bottom + 6) + 'px';
+          tip.style.transform = 'translateX(-50%)';
+          tip.style.visibility = 'visible';
+          gsap.fromTo(tip, {opacity: 0, y: -4}, {opacity: 1, y: 0, duration: 0.18, ease: 'back.out(1.4)'});
+        }
+      });
+      document.addEventListener('mouseout', e => {
+        if (e.target.classList && e.target.classList.contains('v21-help')) {
+          const tip = document.getElementById('v21-help-tooltip');
+          gsap.to(tip, {opacity: 0, duration: 0.12, ease: 'power2.in',
+            onComplete: () => { tip.style.visibility = 'hidden'; }});
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', v21InitHelp);
 
     function v21JumpToPending() {
       // 切到 "待确认" tab
