@@ -316,7 +316,7 @@ def api_ai_cond(req: AICondRequest) -> JSONResponse:
         f"只返文案本身, 不要解释."
     )
 
-    fallback = "AI 没能想出条件文案, 你自己写吧"
+    fallback = "AI 暂时没灵感, 请手动编辑"
     chunks: list[str] = []
     try:
         for token in _gemini_stream(prompt):
@@ -332,6 +332,7 @@ def api_ai_cond(req: AICondRequest) -> JSONResponse:
     cond_text = "".join(chunks).strip()
     if not cond_text:
         # LLM 返空 → 兜底, 不报错 (跟 generate_mood_stream 设计一致)
+        # 注: V2.2.1 后端 cond_text 必填, fallback 文本用户必改
         return JSONResponse({"ok": True, "cond_text": fallback, "fallback": True})
 
     # 去掉引号包裹 (LLM 偶尔返 '"...') 

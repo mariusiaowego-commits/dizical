@@ -955,15 +955,15 @@
                 <small>Badge 故事背景, 中英文皆可. AI 草拟 placeholder 时也会参考这段</small>
               </div>
             </div>
-            <!-- V2.2 (2026-06-15): 条件文案 (cond_text) + AI 生成按钮 -->
+            <!-- V2.2.1 (2026-06-15): 条件文案 (cond_text) 必填 + AI 生成按钮 -->
             <div class="v21-row">
               <div class="v21-field v21-field-wide">
-                <label for="v21CondText">条件文案 (cond_text, 一句话)</label>
+                <label for="v21CondText">条件文案 (cond_text, 一句话) <span class="v21-req">*</span></label>
                 <div style="display:flex; gap:8px; align-items:stretch;">
-                  <textarea id="v21CondText" name="cond_text" rows="2" placeholder="例: 练习任意 1 天里包含 '批改' 关键词&#10;(留空 = 走 AI 生成 / 弹窗里 fallback 到典故)" style="flex:1;"></textarea>
+                  <textarea id="v21CondText" name="cond_text" required rows="2" placeholder="例: 帮妈妈批 1 次数学作业&#10;或点 '✨ AI 生成' 让 AI 帮你出一句" style="flex:1;"></textarea>
                   <button type="button" id="v21AiCondBtn" class="v21-ai-btn" onclick="v21AiCond()" style="flex:0 0 auto; align-self:flex-start;">✨ AI 生成</button>
                 </div>
-                <small>弹窗里"达成条件"显示的一句话. 留空 = 走 AI / fallback. AI 生成后可看可改可再生.</small>
+                <small>弹窗里"达成条件"显示的一句话. 必填 (跟典故分开显示). 可手填或点 AI 按钮生成后改.</small>
               </div>
             </div>
           </div>
@@ -1424,6 +1424,7 @@
       if (!data.category) return 'Category 必填';
       if (!data.placeholder || data.placeholder.length < 5) return 'Placeholder 必填且 >= 5 字符';
       if (!data.zh_story) return '典故 (zh_story) 必填';
+      if (!data.cond_text || !data.cond_text.trim()) return '条件文案 (cond_text) 必填 (手填或点 AI 生成)';
       if (data.category === 'seasonal' && !data.seasonal_type) return 'category=seasonal 时必填 seasonal_type';
       return null;
     }
@@ -1488,7 +1489,7 @@
         if (data.ok) {
           ta.value = data.cond_text;
           if (data.fallback) {
-            showToast('warning', 'AI 没能想出来, 兜底文案已填, 你可以再点一次或自己改');
+            showToast('warning', 'AI 暂时没灵感, 兜底文案已填, 你必须手动改 (必填)');
           } else {
             showToast('success', 'AI 生成完成 (可改可删可再生)');
           }
@@ -1585,7 +1586,7 @@
       v21SortOrder: "展示顺序, 数字小的在前. 留空 = 追加到末尾 (MAX+1)",
       v21Placeholder: "英文描述想画的画面 (喂给 AI 生图模型). 要具体: 人物 + 动作 + 道具 + 背景 + 风格. 例: a chibi girl with bamboo flute...",
       v21ZhStory: "中文典故 + 鼓励小故事, 弹窗里给孩子看. 写居里夫人/祖逖这类历史人物, 跟孩子能产生共鸣",
-      v21CondText: "弹窗里 '达成条件' 显示的一句话. 解释孩子为什么能获得这个徽章. 留空 = 点 '✨ AI 生成' 自动出 / fallback 兜底. AI 生成后可改可删可再生.",
+      v21CondText: "弹窗里 '达成条件' 显示的一句话. 解释孩子为什么能获得这个徽章. 必填 (跟典故分开显示). 可手填, 或点 '✨ AI 生成' 让 AI 出一句后改.",
       v21Threshold: "达成阈值 (数字). 例: 30 = 累计 30 天/分钟/次数. 留空 = 由 calc 决定",
       v21StatLogic: "高级字段. 描述 calc 怎么算达成. 一般留空, 由 /calc-apply skill 单独补",
       v21UnlockedTemplate: "高级字段. 自定义 AI 生图的 prompt 模板. 留空走默认 enamel pin 风格",

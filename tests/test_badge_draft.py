@@ -25,6 +25,7 @@ class TestCreateDraft:
             "id": "grade_1", "name": "测试徽章", "type": "突破", "category": "milestone",
             "placeholder": "A cute chibi girl with bamboo flute",
             "zh_story": "孔子闻韶",
+            "cond_text": "测试条件文案 (V2.2.1 必填)",  # V2.2.1 (2026-06-15) 必填
         }
         d = badge_draft.create_draft(meta)
         assert d.schema_version == badge_draft.SCHEMA_VERSION
@@ -43,7 +44,7 @@ class TestCreateDraft:
     def test_invalid_id_format(self, tmp_badge_data):
         meta = {
             "id": "bad-id!", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         with pytest.raises(ValueError, match="格式不对"):
             badge_draft.create_draft(meta)
@@ -51,7 +52,7 @@ class TestCreateDraft:
     def test_seasonal_requires_seasonal_type(self, tmp_badge_data):
         meta = {
             "id": "x_1", "name": "x", "type": "主题", "category": "seasonal",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         with pytest.raises(ValueError, match="seasonal_type"):
             badge_draft.create_draft(meta)
@@ -61,7 +62,7 @@ class TestSaveAndGet:
     def test_round_trip(self, tmp_badge_data):
         meta = {
             "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         path = badge_draft.save_draft(d)
@@ -85,7 +86,7 @@ class TestUpdateDraftImage:
     def test_draft_created_to_awaiting_confirm(self, tmp_badge_data):
         meta = {
             "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)
@@ -104,7 +105,7 @@ class TestUpdateDraftImage:
     def test_invalid_status(self, tmp_badge_data):
         meta = {
             "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)
@@ -123,7 +124,7 @@ class TestMarkDraftStatus:
     def test_draft_awaiting_to_committed(self, tmp_badge_data):
         meta = {
             "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)
@@ -148,7 +149,7 @@ class TestListDrafts:
         for _ in range(3):
             meta = {
                 "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-                "placeholder": "ph", "zh_story": "story",
+                "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
             }
             d = badge_draft.create_draft(meta)
             badge_draft.save_draft(d)
@@ -173,7 +174,7 @@ class TestDeleteDraft:
     def test_delete_existing(self, tmp_badge_data):
         meta = {
             "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)
