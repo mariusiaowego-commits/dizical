@@ -58,12 +58,14 @@ def isolated_db(tmp_path, monkeypatch):
             sort_order        INTEGER DEFAULT 0,
             seasonal_type     TEXT DEFAULT 'monthly',
             cond_text         TEXT,
+            unlock_strategy   TEXT DEFAULT 'calc',
             created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE achievement_stats (
             achievement_id TEXT PRIMARY KEY,
             achieved       TEXT NOT NULL DEFAULT 'N',
             raw_stats      TEXT NOT NULL DEFAULT '{}',
+            achieved_at    DATETIME,
             computed_value INTEGER
         );
         CREATE TABLE achievement_badges (
