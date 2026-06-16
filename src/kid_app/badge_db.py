@@ -141,6 +141,7 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         "placeholder": None,
         "cond_text": None,  # feat/badge-cond-text 2026-06-15
         "unlock_strategy": "calc",  # feat/badge-unlock-strategy 2026-06-16
+        "achieved_at_override": None,  # V2.6 (2026-06-16) feat/badge-achieved-at-override
     }
     for k, v in defaults.items():
         ach.setdefault(k, v)
@@ -150,11 +151,13 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         INSERT INTO achievements
           (id, name, type, category, stat_logic, description,
            display_format, threshold, unlocked_template, placeholder,
-           sort_order, seasonal_type, cond_text, unlock_strategy)
+           sort_order, seasonal_type, cond_text, unlock_strategy,
+           achieved_at_override)
         VALUES
           (:id, :name, :type, :category, :stat_logic, :description,
            :display_format, :threshold, :unlocked_template, :placeholder,
-           :sort_order, :seasonal_type, :cond_text, :unlock_strategy)
+           :sort_order, :seasonal_type, :cond_text, :unlock_strategy,
+           :achieved_at_override)
         """,
         ach,
     )

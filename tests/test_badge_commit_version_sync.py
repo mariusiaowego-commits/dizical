@@ -59,6 +59,7 @@ def isolated_db(tmp_path, monkeypatch):
             seasonal_type     TEXT DEFAULT 'monthly',
             cond_text         TEXT,
             unlock_strategy   TEXT DEFAULT 'calc',
+            achieved_at_override TEXT,
             created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE achievement_stats (

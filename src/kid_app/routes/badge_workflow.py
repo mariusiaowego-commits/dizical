@@ -197,19 +197,31 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             }, status_code=400)
         meta_for_db["unlock_strategy"] = unlock_strategy
 
+        # V2.6 (2026-06-16) feat/badge-achieved-at-override: 通用字段
+        # - grade 1-10 考出时间, 表彰型徽章 etc.
+        # - 用户填 → 写 db (TEXT YYYY-MM-DD, nullable)
+        # - 留空 → None
+        achieved_at_override = draft.meta.get("achieved_at_override", "").strip() or None
+        meta_for_db["achieved_at_override"] = achieved_at_override
+
         # 立即解锁时 achieved_at = 当前 UTC ISO
         if unlock_strategy == "immediate":
             import datetime as _dt
             achieved_at_iso = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        elif achieved_at_override:
+            # V2.6: 纪念章 + override 路径, achieved_at = override 时间
+            achieved_at_iso = achieved_at_override + " 00:00:00"
         else:
             achieved_at_iso = None
 
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":
+                # V2.6: override 也立即 unlocked
+                is_unlocked_now = (unlock_strategy == "immediate" or achieved_at_override)
                 badge_db.insert_achievement_stats_row(
                     conn, badge_id,
-                    achieved="Y" if unlock_strategy == "immediate" else "N",
+                    achieved="Y" if is_unlocked_now else "N",
                     achieved_at=achieved_at_iso,
                 )
             badge_db.insert_badge_row(

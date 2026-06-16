@@ -468,6 +468,22 @@ def _milestone_html(category: Optional[str] = None):
         if res is None:
             continue
 
+        # V2.6 (2026-06-16) feat/badge-achieved-at-override:
+        # 纪念章/表彰型徽章不走 calc, 直接读 achievement_stats.achieved + achievements.achieved_at_override
+        # 触发条件: (a) unlock_strategy='immediate' (PR #101), 或 (b) achieved_at_override 非 NULL
+        from src.achievement_definitions import CalcResult
+        is_commemorative = (ach.get("unlock_strategy") == "immediate" or ach.get("achieved_at_override"))
+        if is_commemorative:
+            cur.execute("SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
+            row = cur.fetchone()
+            override_at = ach.get("achieved_at_override")
+            if override_at:
+                # 通用字段: 用表单填的时间戳 (含 grade 1-10 考出时间)
+                res = CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
+            elif row and row[0] == 'Y':
+                # immediate: 读 stats 表
+                res = CalcResult(True, 1, None, row[1] or None, "立即解锁")
+
         achieved = res.achieved
         cv = res.computed_value
         threshold = ach.get("threshold")
@@ -1445,7 +1461,8 @@ def badges_page():
 
     # ── 读所有需要展示的 achievements（排除神秘/晋级等纯统计类） ──────
     cur = conn.execute(
-        "SELECT id, name, type, category, description, threshold, cond_text FROM achievements "
+        "SELECT id, name, type, category, description, threshold, cond_text, "
+        "unlock_strategy, achieved_at_override FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
@@ -1458,6 +1475,21 @@ def badges_page():
         res = results.get(aid)
         if res is None:
             continue
+
+        # V2.6 (2026-06-16) feat/badge-achieved-at-override:
+        # 纪念章/表彰型徽章不走 calc, 直接读 achievement_stats.achieved + achievements.achieved_at_override
+        # 触发条件: (a) unlock_strategy='immediate' (PR #101), 或 (b) achieved_at_override 非 NULL
+        from src.achievement_definitions import CalcResult
+        is_commemorative = (ach.get("unlock_strategy") == "immediate" or ach.get("achieved_at_override"))
+        if is_commemorative:
+            cur.execute("SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
+            row = cur.fetchone()
+            override_at = ach.get("achieved_at_override")
+            if override_at:
+                res = CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
+            elif row and row[0] == 'Y':
+                res = CalcResult(True, 1, None, row[1] or None, "立即解锁")
+
         badges.append({
             "id": aid,
             "name": ach["name"],
@@ -1468,7 +1500,9 @@ def badges_page():
             "cond_text": ach.get("cond_text") or "",  # V2.2 (2026-06-15) feat/badge-cond-text
             "achieved": res.achieved,
             "achieved_at": res.achieved_at,
-            "badge_url": get_badge_url(aid),  # PR-B: 取代 BADGE_FILES.get(aid, ...)
+            "badge_url": get_badge_url(aid),
+            "unlock_strategy": ach.get("unlock_strategy") or "calc",
+            "achieved_at_override": ach.get("achieved_at_override") or "",
         })
 
     # 分离已解锁/未解锁，各按 achieved_at 降序
