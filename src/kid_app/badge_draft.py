@@ -130,7 +130,8 @@ def create_draft(meta: dict[str, Any]) -> BadgeDraft:
         ValueError: meta 缺必填字段 或 id 格式错
     """
     # 必填字段校验 (跟 STEP 1 表单同步)
-    required = ["id", "name", "type", "category", "placeholder", "zh_story"]
+    # V2.2.1 (2026-06-15): cond_text 也必填 (用户拍板, 强制 modal-cond ≠ modal-desc)
+    required = ["id", "name", "type", "category", "placeholder", "zh_story", "cond_text"]
     for k in required:
         if k not in meta or not meta[k]:
             raise ValueError(f"meta 缺必填字段: {k}")

@@ -19,7 +19,7 @@ def _make_draft_pending(badge_data_dir, badge_id="grade_1", draft_id=None):
     """helper: 写一个 status=draft_awaiting_confirm 的 draft."""
     meta = {
         "id": badge_id, "name": "x", "type": "突破", "category": "milestone",
-        "placeholder": "ph", "zh_story": "story",
+        "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
     }
     d = badge_draft.create_draft(meta)
     if draft_id:
@@ -53,14 +53,14 @@ class TestScanBadgeDataDir:
         # draft_created 跳过
         meta = {
             "id": "x_1", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)
         # confirmed 跳过
         meta2 = {
             "id": "x_2", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d2 = badge_draft.create_draft(meta2)
         badge_draft.save_draft(d2)
@@ -73,7 +73,7 @@ class TestScanBadgeDataDir:
         """image.path 含 /static/badges/ → 转 web URL (V2.1 修: 优先用 meta.id + version 拼 web 路径, draft 写 .tmp/ 也能渲染)."""
         meta = {
             "id": "v2_test_url_xyz", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)
@@ -91,7 +91,7 @@ class TestScanBadgeDataDir:
         """V2.1 兜底: 没 meta.id 时, 走旧逻辑 strip /static/badges/ 前缀."""
         meta = {
             "id": "v2_test_fallback_xyz", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         # 拿掉 id (在 save 前改 meta dict 引用)
@@ -112,7 +112,7 @@ class TestScanBadgeDataDir:
         """status=awaiting_confirm 但 image=None 跳过 (skill 失败中间状态)."""
         meta = {
             "id": "v2_test_skip_xyz", "name": "x", "type": "突破", "category": "milestone",
-            "placeholder": "ph", "zh_story": "story",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
         }
         d = badge_draft.create_draft(meta)
         badge_draft.save_draft(d)

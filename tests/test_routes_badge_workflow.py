@@ -50,6 +50,7 @@ def _make_valid_meta(id_suffix="curl_xyz"):
         "display_format": "days",
         "placeholder": "A cute chibi girl with bamboo flute",
         "zh_story": "孔子闻韶",
+        "cond_text": "测试条件文案 (V2.2.1 必填)",  # V2.2.1 (2026-06-15) 必填
     }
 
 
