@@ -77,70 +77,9 @@
       gap: 10px;
     }
 
-    /* ── Portal 状态卡 ── */
-    .portal-card {
-      background: white;
-      border-radius: var(--radius);
-      padding: 18px 22px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      transition: all 0.3s ease;
-    }
-    .portal-card.status-ok { border-left: 4px solid #4CAF50; }
-    .portal-card.status-red { border-left: 4px solid #FF6B6B; }
-    .portal-card.status-gray { border-left: 4px solid #999; }
+    /* ── Portal 状态卡 (V2.5 2026-06-16: 删 /config/api/portal/status 端点不存在, 卡永远红) ── */
 
-    .portal-light {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .portal-light.green { background: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
-    .portal-light.red { background: #FF6B6B; box-shadow: 0 0 8px #FF6B6B; }
-    .portal-light.gray { background: #ccc; }
-
-    .portal-info { flex: 1; }
-    .portal-info .label { font-size: 13px; color: #888; margin-bottom: 2px; }
-    .portal-info .value { font-size: 15px; font-weight: 600; color: var(--text); }
-    .portal-info .detail { font-size: 12px; color: #999; margin-top: 4px; }
-    .portal-info .error { font-size: 13px; color: #FF6B6B; margin-top: 4px; white-space: pre-line; }
-
-    /* ── V1.1 portal profiles 列表 (用户 2026-06-12 OUT-OF-BAND) ── */
-    .portal-profiles {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 10px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,0.04);
-      border-radius: 8px;
-    }
-    .portal-profiles .row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-    }
-    .portal-profiles .row .light {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .portal-profiles .row .light.green { background: #4CAF50; box-shadow: 0 0 4px #4CAF50; }
-    .portal-profiles .row .light.red { background: #FF6B6B; box-shadow: 0 0 4px #FF6B6B; }
-    .portal-profiles .row .light.gray { background: #ccc; }
-    .portal-profiles .row .name { font-weight: 600; min-width: 110px; }
-    .portal-profiles .row .auth { color: #888; }
-    .portal-profiles .row .img { color: #888; margin-left: auto; }
-    .portal-profiles .row.is-current { background: rgba(255, 107, 107, 0.08); border-left: 3px solid #FF6B6B; padding-left: 6px; }
-    .portal-profiles .row.is-current .name::after {
-      content: ' ← 当前';
+    /* ── Portal 状态卡 CSS (V2.5 2026-06-16 已删, 端点不存在永远红) ── */
       font-size: 10px;
       color: #FF6B6B;
       font-weight: 400;
@@ -159,18 +98,7 @@
     .tab-empty { color: #888; font-size: 14px; line-height: 1.6; }
     .tab-empty code { background: #f5f5f5; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
 
-    .portal-refresh {
-      padding: 8px 14px;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 10px;
-      background: white;
-      color: var(--text);
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .portal-refresh:hover { background: var(--cream); }
-    .portal-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* ── Portal 状态卡 CSS (V2.5 2026-06-16 已删) ── */
 
     /* ── 进度条 ── */
     .progress-bar {
@@ -483,39 +411,52 @@
       color: var(--text);
       margin: 0 0 12px;
     }
+    /* V2.5 (2026-06-16): sophon.at 单列堆叠风格
+   - .v21-row 从 flex (挤一行) 改 block (每个字段独占一行)
+   - label/select/input/textarea 加大间距, 字号
+   - .v21-field-wide 跟 .v21-field 同 (单列下没区别)
+*/
     .v21-row {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 12px;
+      display: block;
+      margin-bottom: 8px;  /* 容器间距小, 字段间距大 */
     }
     .v21-row:last-child { margin-bottom: 0; }
-    .v21-field { flex: 1; display: flex; flex-direction: column; }
-    .v21-field-wide { flex: 1 1 100%; }
-    .v21-field label {
-      font-size: 13px;
-      color: var(--text);
-      margin-bottom: 4px;
+    .v21-field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 22px;  /* sophon.at 大间距 */
     }
-    .v21-req { color: #E74C3C; }
+    .v21-field:last-child { margin-bottom: 0; }
+    .v21-field-wide { display: flex; flex-direction: column; margin-bottom: 22px; }
+    .v21-field label {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;  /* 大间距 */
+    }
+    .v21-req { color: #E74C3C; font-weight: 700; }
     .v21-field input,
     .v21-field select,
     .v21-field textarea {
-      padding: 8px 10px;
-      border: 1px solid #E5E5E5;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 14px 16px;  /* 大点击区 (dizicute 风格) */
+      border: 1.5px solid #E5E5E5;
+      border-radius: 14px;  /* 圆角大 */
+      font-size: 15px;
       font-family: inherit;
       background: white;
-      transition: border-color 0.15s;
+      transition: all 0.2s;
+      width: 100%;  /* 单列下宽度自适应 */
+      box-sizing: border-box;
     }
     .v21-field input:focus,
     .v21-field select:focus,
     .v21-field textarea:focus {
       outline: none;
       border-color: #FF6B6B;
+      box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.12);  /* 焦点晕 */
     }
-    .v21-field textarea { resize: vertical; min-height: 60px; font-family: ui-monospace, monospace; }
-    .v21-field small { font-size: 11px; color: #999; margin-top: 2px; }
+    .v21-field textarea { resize: vertical; min-height: 80px; font-family: ui-monospace, monospace; font-size: 14px; }
+    .v21-field small { font-size: 13px; color: #666; margin-top: 6px; line-height: 1.5; }
     .v21-ph-row { display: flex; gap: 8px; }
     .v21-ph-row textarea { flex: 1; }
     .v21-ai-btn {
@@ -853,19 +794,7 @@
       <div style="width: 100px"></div>  <!-- spacer -->
     </div>
 
-    <!-- Portal 状态卡 (用户 2026-06-12 拍板 V1 必须) -->
-    <div class="portal-card status-gray" id="portalCard">
-      <div class="portal-light gray" id="portalLight"></div>
-      <div class="portal-info">
-        <div class="label">Nous Portal 连接状态</div>
-        <div class="value" id="portalValue">检查中...</div>
-        <div class="detail" id="portalDetail"></div>
-        <div class="error" id="portalError" style="display:none"></div>
-        <!-- V1.1 (用户 2026-06-12 OUT-OF-BAND): status-red 时显示所有 profile 灯 -->
-        <div class="portal-profiles" id="portalProfiles" style="display:none"></div>
-      </div>
-      <button class="portal-refresh" id="portalRefreshBtn" onclick="refreshPortal()">刷新</button>
-    </div>
+    <!-- Portal 状态卡 (V2.5 2026-06-16 删: /config/api/portal/status 端点不存在, JS 永远 catch 返红) -->
 
     <!-- V2.1 2-tab UI: 阶段 2.1 "新建 Badge 草稿" tab (单页表单 + 提交后弹 draft_id) -->
     <div class="v2-tabs">
@@ -878,12 +807,15 @@
           <!-- 基础信息 -->
           <div class="v21-section">
             <h4 class="v21-section-title">基础信息</h4>
+            <!-- V2.5 (2026-06-16): sophon.at 单列堆叠 - 每个字段独立一行 -->
             <div class="v21-row">
               <div class="v21-field">
                 <label for="v21Id">Badge ID <span class="v21-req">*</span></label>
                 <input type="text" id="v21Id" name="id" required pattern="[a-zA-Z0-9_]+" placeholder="grade_5 / streak_30">
                 <small>英文/数字/下划线, 跟 V1 一致</small>
               </div>
+            </div>
+            <div class="v21-row">
               <div class="v21-field">
                 <label for="v21Name">Badge 名称 <span class="v21-req">*</span></label>
                 <input type="text" id="v21Name" name="name" required placeholder="长音练习">
@@ -901,6 +833,8 @@
                   <option value="神秘">神秘</option>
                 </select>
               </div>
+            </div>
+            <div class="v21-row">
               <div class="v21-field">
                 <label for="v21Category">Category <span class="v21-req">*</span></label>
                 <select id="v21Category" name="category" required onchange="v21CategoryChanged()">
@@ -908,6 +842,8 @@
                   <option value="seasonal">seasonal (赛季型, 实时计算)</option>
                 </select>
               </div>
+            </div>
+            <div class="v21-row">
               <div class="v21-field">
                 <label for="v21UnlockStrategy">解锁策略 (unlock_strategy)</label>
                 <select id="v21UnlockStrategy" name="unlock_strategy">
@@ -915,6 +851,8 @@
                   <option value="immediate">immediate (立即解锁, 纪念章)</option>
                 </select>
               </div>
+            </div>
+            <div class="v21-row">
               <div class="v21-field">
                 <label for="v21AchievedAtOverride">考出时间 (achieved_at_override)</label>
                 <input type="date" id="v21AchievedAtOverride" name="achieved_at_override" placeholder="YYYY-MM-DD">
@@ -939,6 +877,8 @@
                 <input type="text" id="v21DisplayFormat" name="display_format" value="achieved_flag" placeholder="achieved_flag / top_items / ...">
                 <small>默认 achieved_flag</small>
               </div>
+            </div>
+            <div class="v21-row">
               <div class="v21-field">
                 <label for="v21SortOrder">Sort Order</label>
                 <input type="number" id="v21SortOrder" name="sort_order" placeholder="留空 = MAX + 1">
@@ -1058,120 +998,10 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ─── Portal 状态 ───────────────────────────────────
-    async function loadPortalStatus() {
-      const pin = localStorage.getItem('config_pin') || '';
-      const url = pin ? `/config/api/portal/status?pin=${encodeURIComponent(pin)}` : '/config/api/portal/status';
-      try {
-        const r = await fetch(url);
-        const data = await r.json();
-        if (data.ok) {
-          updatePortalCard(data.data);
-        } else {
-          updatePortalCard({ok_for_badge: false, error: 'API 错误'});
-        }
-      } catch (err) {
-        updatePortalCard({ok_for_badge: false, error: '网络错误'});
-      }
-    }
-
-    function updatePortalCard(s) {
-      const card = document.getElementById('portalCard');
-      const light = document.getElementById('portalLight');
-      const valueEl = document.getElementById('portalValue');
-      const detailEl = document.getElementById('portalDetail');
-      const errorEl = document.getElementById('portalError');
-      const profilesEl = document.getElementById('portalProfiles');
-
-      portalVerified = s.ok_for_badge;
-
-      if (s.ok_for_badge) {
-        card.className = 'portal-card status-ok';
-        light.className = 'portal-light green';
-        valueEl.textContent = 'Portal 正常 (Image generation via Nous)';
-        detailEl.textContent = `Model: ${s.model || '?'} · latency: ${s.latency_ms || '?'}ms`;
-        errorEl.style.display = 'none';
-        profilesEl.style.display = 'none';  // 绿了不显示 profiles
-      } else {
-        card.className = 'portal-card status-red';
-        light.className = 'portal-light red';
-        valueEl.textContent = 'Portal 不可用';
-        detailEl.textContent = s.checked_at ? `检查时间: ${new Date(s.checked_at * 1000).toLocaleString()}` : '';
-        errorEl.style.display = 'block';
-        // 根据错误类型给出具体修复命令
-        const errText = s.error || '未知错误';
-        let fixCmd = '';
-        if (errText.includes('not_logged_in') || errText.includes('not set')) {
-          fixCmd = '\n\n修复命令: hermes portal --profile dizical';
-        } else if (errText.includes('image generation') || errText.includes('not_configured')) {
-          fixCmd = '\n\n修复命令: hermes setup --profile dizical (检查 Tool Gateway)';
-        }
-        errorEl.textContent = '⚠ ' + errText + ' — 必须在 Nous Portal login 后才能生图' + fixCmd;
-        // V1.1 (用户 2026-06-12 OUT-OF-BAND): 加载所有 profile 状态帮用户定位哪个 profile 没连
-        loadPortalProfiles();
-      }
-    }
-
-    // V1.1: 查所有 hermes profile 的 portal 状态, 填 profilesEl
-    async function loadPortalProfiles() {
-      const profilesEl = document.getElementById('portalProfiles');
-      const pin = localStorage.getItem('config_pin') || '';
-      const url = pin ? `/config/api/portal/profiles?pin=${encodeURIComponent(pin)}` : '/config/api/portal/profiles';
-      try {
-        const r = await fetch(url);
-        const data = await r.json();
-        if (!data.ok) {
-          profilesEl.style.display = 'none';
-          return;
-        }
-        const profiles = data.data;
-        // 用 localStorage 拿当前 profile 名 (跟后端 _get_profile 一致)
-        const currentProfile = localStorage.getItem('dizical_current_profile') || 'dizical';
-        const rows = profiles.map(p => {
-          const authLight = p.auth === 'logged_in' ? 'green' : (p.auth === 'not_logged_in' ? 'red' : 'gray');
-          const imgLight = p.image_generation === 'via_portal' ? 'green' : (p.image_generation === 'not_configured' ? 'red' : 'gray');
-          const isCurrent = p.profile === currentProfile;
-          return `
-            <div class="row ${isCurrent ? 'is-current' : ''}">
-              <span class="light ${authLight}" title="auth: ${p.auth}"></span>
-              <span class="name">${p.profile}</span>
-              <span class="auth">${p.auth}</span>
-              <span class="light ${imgLight}" title="image_generation: ${p.image_generation}"></span>
-              <span class="img">${p.image_generation === 'via_portal' ? 'img ✓' : 'img ✗'}</span>
-            </div>
-          `;
-        }).join('');
-        profilesEl.innerHTML = `
-          <div style="font-size: 11px; color: #888; margin-bottom: 6px; font-family: -apple-system, sans-serif;">
-            所有 hermes profile 状态 (左灯=auth / 右灯=image generation):
-          </div>
-          ${rows}
-        `;
-        profilesEl.style.display = 'flex';
-      } catch (err) {
-        profilesEl.style.display = 'none';
-      }
-    }
-
-    async function refreshPortal() {
-      const btn = document.getElementById('portalRefreshBtn');
-      btn.disabled = true;
-      btn.textContent = '检查中...';
-      try {
-        const r = await fetch('/config/api/portal/refresh', {method: 'POST'});
-        const data = await r.json();
-        if (data.ok) {
-          updatePortalCard(data.data);
-        } else {
-          updatePortalCard({ok_for_badge: false, error: 'API 错误'});
-        }
-      } catch (err) {
-        updatePortalCard({ok_for_badge: false, error: '网络错误'});
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '刷新';
-      }
-    }
+    /* ─── Portal 状态 (V2.5 2026-06-16 删: /config/api/portal/status 端点不存在, 永远红) ─── */
+    // V2 era 已迁到 fal-ai/gpt-image-2 直连 (badge-image skill), Nous Portal 不再用.
+    // 旧的 portal_status / portal_profiles / portal_refresh 端点都不存在,
+    // JS 调它们永远 catch 返红, 是误报. 删干净不误导用户.
 
     // ─── Toast ─────────────────────────────────────────
     function showToast(type, msg) {
@@ -1196,7 +1026,7 @@
         }
       });
     });
-    loadPortalStatus();
+    // V2.5 (2026-06-16): loadPortalStatus() 启动调用已删 (Portal 状态卡整体移除)
 
     // ─── V2.1 阶段 2.2: 待确认 Badge 列表 ─────────────
     async function v21LoadPending() {
