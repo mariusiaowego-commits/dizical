@@ -58,23 +58,45 @@ CREATE TABLE IF NOT EXISTS achievement_badges (
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _ensure_badge_tables():
-    """Session 级: 创 achievements/stats/badges 表 (worktree 第一次跑).
+def _ensure_badge_tables(tmp_path_factory, monkeypatch_session):
+    """Session 级: 创 achievements/stats/badges 表 (worktree 隔离环境).
 
-    V2.3 (2026-06-16): 每次 session 重置表结构, 避免 worktree 旧 db 列不对.
+    V2.4 (2026-06-16) 关键修法: 用 **tmp_path_factory 创临时 db** (session-scoped),
+    **完全不碰 production db** (/Users/mt16/dev/dizical/data/dizi.db).
+
+    V2.3 之前是 bug: 直接用 _worktree_db() = production db, session fixture 用
+    DROP TABLE IF EXISTS 会清空 production 3 张 badge 表 (6-16 事故).
+    现在测试用隔离的 tmp db, production 数据安全.
+
+    实现: pytest 不支持 session-scope monkeypatch, 用临时改 src.models.settings.db_path
+    (Database 单例初始化时读 settings.db_path).
     """
-    db_path = _worktree_db()
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    # 先 init Database 单例 (创 lessons/payments/settings 等基表)
+    tmp_db_dir = tmp_path_factory.mktemp("test_db")
+    tmp_db_path = tmp_db_dir / "test_dizi.db"
+
+    # 1. 临时改 settings.db_path → tmp db path (Database 单例下次初始化时读这个)
+    from src import models
+    monkeypatch_session.setattr(models.settings, "db_path", str(tmp_db_path))
+
+    # 2. 触发 Database 单例初始化 (会创 lessons/payments/settings 等基表 + 用 tmp db)
     from src import database
     _ = database.db._get_connection()
 
-    # 重置 badge 三表 (worktree 隔离环境, 每次重建保证 schema 最新)
-    conn = sqlite3.connect(str(db_path))
-    for table in ("achievement_badges", "achievement_stats", "achievements"):
-        conn.execute(f"DROP TABLE IF EXISTS {table}")
+    # 3. 创 badge 三表 (CREATE IF NOT EXISTS, 不 DROP)
+    conn = sqlite3.connect(str(tmp_db_path))
     conn.executescript(_INIT_SQL)
     conn.commit()
     conn.close()
     yield
-    # 测试结束不清理 (worktree 是隔离环境, 下次跑会重置)
+    # 测试结束: monkeypatch_session 自动还原 settings.db_path
+    # Database 单例在 production 进程 (8765) 是独立的, 不受影响
+
+
+@pytest.fixture(scope="session")
+def monkeypatch_session():
+    """Session-scope monkeypatch: 跟 pytest monkeypatch 一样 API, 但 session 范围."""
+    import pytest as _pytest
+    from pytest import MonkeyPatch
+    mp = MonkeyPatch()
+    yield mp
+    mp.undo()
