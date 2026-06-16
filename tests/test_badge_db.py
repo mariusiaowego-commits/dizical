@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS achievements (
     , seasonal_type TEXT DEFAULT 'monthly' CHECK(seasonal_type IN ('daily','weekly','monthly','stage'))
     , cond_text TEXT
     , unlock_strategy TEXT DEFAULT 'calc'
+    , achieved_at_override TEXT
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id   TEXT PRIMARY KEY REFERENCES achievements(id),

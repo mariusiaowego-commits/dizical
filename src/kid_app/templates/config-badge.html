@@ -915,6 +915,11 @@
                   <option value="immediate">immediate (立即解锁, 纪念章)</option>
                 </select>
               </div>
+              <div class="v21-field">
+                <label for="v21AchievedAtOverride">考出时间 (achieved_at_override)</label>
+                <input type="date" id="v21AchievedAtOverride" name="achieved_at_override" placeholder="YYYY-MM-DD">
+                <small>填写立即 unlocked + 显示在 modal-cond (考出时间: YYYY-MM-DD). 留空走 calc 或 immediate 路径.</small>
+              </div>
             </div>
             <div class="v21-row" id="v21SeasonalRow" style="display:none">
               <div class="v21-field">
@@ -1405,6 +1410,7 @@
         zh_story: v('v21ZhStory'),
         cond_text: v('v21CondText'),
         unlock_strategy: v('v21UnlockStrategy') || 'calc',
+        achieved_at_override: v('v21AchievedAtOverride') || '',
         display_format: v('v21DisplayFormat') || 'achieved_flag',
         sort_order: num('v21SortOrder'),
       };
@@ -1590,6 +1596,7 @@
       v21Type: "中文标签 (突破/坚持/季节). 决定展示时的分组文字. 不影响逻辑",
       v21Category: "milestone = 永久勋章 (写三表 + 等 calc 接入后解锁) / seasonal = 节日季节限定 (实时计算)",
       v21UnlockStrategy: "解锁策略. calc = 走计算逻辑 (默认, 跟练习相关, 需 calc 接入) / immediate = 立即解锁 (纪念章, 跟练习无关, commit 时直接 achieved=Y)",
+      v21AchievedAtOverride: "考出时间 (grade 1-10 场景). 填了立即 unlocked + 弹窗显示'考出时间: YYYY-MM-DD'. 留空走 calc 或 immediate 路径.",
       v21SeasonalType: "seasonal 专属: daily (每日打卡) / weekly (周冠军) / monthly (月度) / stage (阶段达成)",
       v21DisplayFormat: "前端展示格式. achieved_flag = 完成型, 达成打勾. 一般不用改",
       v21SortOrder: "展示顺序, 数字小的在前. 留空 = 追加到末尾 (MAX+1)",

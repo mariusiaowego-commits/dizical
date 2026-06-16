@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS achievements (
     seasonal_type     TEXT DEFAULT 'monthly',
     cond_text         TEXT,
     unlock_strategy   TEXT DEFAULT 'calc',
+    achieved_at_override TEXT,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
