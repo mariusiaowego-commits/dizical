@@ -35,8 +35,8 @@ STEP 1 表单填 meta       →  STEP 2 草稿         →  STEP 3 生图       
 | `placeholder` | ✓ | str | AI 生图 prompt |
 | `zh_story` | ✓ | str | 典故 (弹窗 modal-desc) |
 | **`cond_text`** | **✓** | str | **条件文案 (弹窗 modal-cond, 手填/AI 生成, 必填)** |
-| **`unlock_strategy`** | - | enum | `calc` (走计算, 默认) / `immediate` (立即解锁, 纪念章) |
-| **`achieved_at_override`** | - | date | **考出时间 / 表彰时间** (YYYY-MM-DD, 留空走 calc/immediate) |
+| `unlock_strategy` | - | enum | `calc` (走计算, 默认) / `immediate` (立即解锁, 纪念章) |
+| **`achieved_at_override`** | - | date | **解锁时间 (通用字段, 跟 grade 无关)**. 3 种用法: 1) 一次性事件 (考级/获奖/表彰) — 填日期, 立即 unlocked; 2) 纪念章场景 — 跟 `immediate` 配合; 3) 留空走 calc |
 | `display_format` | - | str | `achieved_flag` / `top_items` / `days` / `minutes` / `time_hours_minutes` |
 | `threshold` | - | int | 阈值 (calc 用) |
 | `sort_order` | - | int | 展示顺序 |
@@ -82,9 +82,10 @@ STEP 1 表单填 meta       →  STEP 2 草稿         →  STEP 3 生图       
 ├─ 跟练习相关 (e.g. streak/total_X/first_log)?
 │   └─ → unlock_strategy='calc', 写 stat_logic, calc_all() 评估
 │
-├─ 一次性事件 (考级/表彰)?
-│   └─ → unlock_strategy='calc' + achieved_at_override='YYYY-MM-DD'
-│       (表单填日期, 一上线 unlocked, modal-cond 显示考出时间)
+├─ 一次性事件 (考级/获奖/表彰/生日)?
+│   └─ → `achieved_at_override='YYYY-MM-DD'` (+ `unlock_strategy='calc'` 或 `'immediate'`)
+│       (表单填日期, 一上线 unlocked, modal-cond 显示"考出时间: YYYY-MM-DD")
+│       任何 badge 类型 (不限于 grade 1-10) 都能用此字段
 │
 └─ 任何时候都解锁 (纪念章/特殊)?
     └─ → unlock_strategy='immediate'
