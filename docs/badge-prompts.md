@@ -3,11 +3,11 @@
 > Enamel Pin 风格徽章生图 prompt 记录
 > 生成时间：2026-05-12（v2 统一风格）
 > 模型：FAL Nous Portal（image generation）
-> 背景：统一白底（PNG），后续需去背处理
+> 背景：统一白底（PNG），**PIL 去白底 + rembg 兜底（V2.4 双保险，详见 docs/badge-image-workflow.md）**
 
-**统一模板**：
+**统一模板** (V2.3, 删 "clean white background", 改 "transparent PNG background"):
 ```
-An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders enclose flat, glossy enamel fills. The design is a centered, iconic illustration with a smooth, friendly silhouette and vibrant colors, matching a child's achievement badge style. Studio lighting reflects off the reflective enamel and raised gold metal edges. Orthographic, straight-on view, high quality, isolated on a clean white background.
+An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders enclose flat, glossy enamel fills. The design is a centered, iconic illustration with a smooth, friendly silhouette and vibrant colors, matching a child's achievement badge style. Studio lighting reflects off the reflective enamel and raised gold metal edges. Orthographic, straight-on view, high quality, isolated object, transparent PNG background.
 ```
 
 ---
@@ -78,7 +78,8 @@ An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders en
 - **Obsidian 原始记录**：`tqob/00-Artifacts/image-gen.md`
 
 ## 备注
-
-- 22 个 badge PNG 文件已通过 PIL 去背处理（白底→透明 RGBA）
+## 备注
+- 22 个老 badge PNG 文件已通过 PIL 去背处理（白底→透明 RGBA），2026-05-12
+- V2.4 (2026-06-16) 升级: PIL 阈值去背 + rembg 兜底（透明 < 28% 触发），详 docs/badge-image-workflow.md
 - CDN URL 有效期依赖 FAL Nous Portal 服务
-- 若需重新生成，直接替换 Placeholder 到模板重新生图
+- 若需重新生成，直接替换 Placeholder 到模板重新生图 (skill 自动跑去白底)
