@@ -576,8 +576,14 @@
       font-size: 19px; color: #a08060;
       text-align: center; font-style: italic;
       line-height: 1.65;
+      white-space: pre-wrap;       /* 让 \n 在长典故里正常换行 */
       border-top: 1px solid #f0e8d0;
       padding-top: 14px; width: 100%;
+      /* V2.4 (2026-06-16): 长典故可滚动, 弹窗不超高 */
+      max-height: 60vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #d0c0a0 transparent;
     }
     #modal-hint {
       font-size: 13px; color: #bbb; text-align: center; margin-top: 10px;
