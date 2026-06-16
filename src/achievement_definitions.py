@@ -356,6 +356,22 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
     if aid == "double":
         at = _at(has_double, _double_first_achieved_at(conn))
         return CalcResult(has_double, 1 if has_double else 0, None, at, "同日 ≥ 2 次打卡")
+
+    if aid == "night_owl":
+        # V2.5 (2026-06-16): 加 night_owl calc 规则.
+        # 用户 phase2 拍板: 晚上 8 点后 (CST 20:00) 还在练习
+        # 跟 early_riser/little_chick_commander/first_to_act 一样的 pattern (PR #87 era 拍板
+        # '永久解锁版'): 历史任意一天 practice_at CST hour >= 20 → 永久解锁.
+        cur = conn.execute(
+            "SELECT MIN(date) FROM daily_practices "
+            "WHERE practice_at IS NOT NULL AND practice_at != '' "
+            "AND CAST(strftime('%H', practice_at) AS INT) >= 20"
+        )
+        row = cur.fetchone()
+        first_at = row[0] if row else None
+        return CalcResult(first_at is not None, 1 if first_at else 0, None,
+                          first_at, "晚上 8 点后 (CST 20:00) 还在练习")
+
     if aid in ("top1", "top2", "top3"):
         rank = int(aid[-1])
         ok = len(top_items) >= rank
