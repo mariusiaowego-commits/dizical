@@ -35,11 +35,13 @@ CREATE TABLE IF NOT EXISTS achievements (
     sort_order        INTEGER DEFAULT 0,
     seasonal_type     TEXT DEFAULT 'monthly',
     cond_text         TEXT,
+    unlock_strategy   TEXT DEFAULT 'calc',
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id TEXT PRIMARY KEY,
     achieved       TEXT NOT NULL DEFAULT 'N',
+    achieved_at    DATETIME,
     raw_stats      TEXT NOT NULL DEFAULT '{}',
     computed_value INTEGER
 );
@@ -57,15 +59,20 @@ CREATE TABLE IF NOT EXISTS achievement_badges (
 
 @pytest.fixture(scope="session", autouse=True)
 def _ensure_badge_tables():
-    """Session 级: 创 achievements/stats/badges 表 (worktree 第一次跑)."""
+    """Session 级: 创 achievements/stats/badges 表 (worktree 第一次跑).
+
+    V2.3 (2026-06-16): 每次 session 重置表结构, 避免 worktree 旧 db 列不对.
+    """
     db_path = _worktree_db()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     # 先 init Database 单例 (创 lessons/payments/settings 等基表)
     from src import database
     _ = database.db._get_connection()
 
-    # 创 badge 表
+    # 重置 badge 三表 (worktree 隔离环境, 每次重建保证 schema 最新)
     conn = sqlite3.connect(str(db_path))
+    for table in ("achievement_badges", "achievement_stats", "achievements"):
+        conn.execute(f"DROP TABLE IF EXISTS {table}")
     conn.executescript(_INIT_SQL)
     conn.commit()
     conn.close()

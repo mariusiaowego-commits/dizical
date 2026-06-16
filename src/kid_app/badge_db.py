@@ -120,10 +120,11 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
     """写 achievements 表 1 行.
 
     必填 key: id, name, type, category, stat_logic, description, display_format
-    可选: threshold, unlocked_template, placeholder, sort_order, seasonal_type, cond_text
+    可选: threshold, unlocked_template, placeholder, sort_order, seasonal_type, cond_text, unlock_strategy
 
     seasonal_type 必填 (CHECK 约束 default='monthly' 也行, 但 V1 显式传)
     cond_text 是 feat/badge-cond-text (2026-06-15) 加的可选字段, 用户/AI 填的"条件一句话"
+    unlock_strategy 是 feat/badge-unlock-strategy (2026-06-16) 加的 enum ('immediate'|'calc')
     """
     # sort_order 不传时取 max+1
     if "sort_order" not in ach or ach["sort_order"] is None:
@@ -139,6 +140,7 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         "unlocked_template": None,
         "placeholder": None,
         "cond_text": None,  # feat/badge-cond-text 2026-06-15
+        "unlock_strategy": "calc",  # feat/badge-unlock-strategy 2026-06-16
     }
     for k, v in defaults.items():
         ach.setdefault(k, v)
@@ -148,30 +150,38 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         INSERT INTO achievements
           (id, name, type, category, stat_logic, description,
            display_format, threshold, unlocked_template, placeholder,
-           sort_order, seasonal_type, cond_text)
+           sort_order, seasonal_type, cond_text, unlock_strategy)
         VALUES
           (:id, :name, :type, :category, :stat_logic, :description,
            :display_format, :threshold, :unlocked_template, :placeholder,
-           :sort_order, :seasonal_type, :cond_text)
+           :sort_order, :seasonal_type, :cond_text, :unlock_strategy)
         """,
         ach,
     )
 
 
-def insert_achievement_stats_row(conn: sqlite3.Connection, badge_id: str) -> None:
+def insert_achievement_stats_row(
+    conn: sqlite3.Connection,
+    badge_id: str,
+    achieved: str = "N",
+    achieved_at: str | None = None,
+) -> None:
     """写 achievement_stats 表 1 行 (仅 milestone).
 
-    achieved='N' (初始未达成), raw_stats='{}' (空 JSON), computed_value=NULL.
+    V2.3 (2026-06-16) feat/badge-unlock-strategy:
+    - achieved 默认 'N' (老行为, 走 calc 评估)
+    - achieved='Y' + achieved_at=ISO 时 立即解锁 (设计时纪念章场景, 跳过 calc)
+    - raw_stats='{}' (空 JSON), computed_value=NULL
     """
     conn.execute(
         """
         INSERT INTO achievement_stats
-          (achievement_id, achieved, raw_stats, computed_value)
-        VALUES (?, 'N', '{}', NULL)
+          (achievement_id, achieved, achieved_at, raw_stats, computed_value)
+        VALUES
+          (?, ?, ?, '{}', NULL)
         """,
-        (badge_id,),
+        (badge_id, achieved, achieved_at),
     )
-
 
 def insert_badge_row(
     conn: sqlite3.Connection,

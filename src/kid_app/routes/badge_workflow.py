@@ -183,10 +183,35 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         else:
             # 缺字段 → None (DB 默认, 老 draft 不报错)
             meta_for_db["cond_text"] = meta_for_db.get("cond_text")  # None
+
+        # feat/badge-unlock-strategy (2026-06-16): unlock_strategy 字段
+        # - 'immediate': commit 时直接 achieved='Y' + achieved_at=now (纪念章场景)
+        # - 'calc' (默认): 老行为, achieved='N', 走 calc 评估
+        # - 缺字段 → 默认 'calc' (老 data 兼容)
+        # - enum 校验: 拒绝 invalid 值
+        unlock_strategy = draft.meta.get("unlock_strategy", "calc")
+        if unlock_strategy not in ("immediate", "calc"):
+            return JSONResponse({
+                "ok": False,
+                "error": f"unlock_strategy 必须是 'immediate' 或 'calc', 收到: {unlock_strategy!r}",
+            }, status_code=400)
+        meta_for_db["unlock_strategy"] = unlock_strategy
+
+        # 立即解锁时 achieved_at = 当前 UTC ISO
+        if unlock_strategy == "immediate":
+            import datetime as _dt
+            achieved_at_iso = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            achieved_at_iso = None
+
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":
-                badge_db.insert_achievement_stats_row(conn, badge_id)
+                badge_db.insert_achievement_stats_row(
+                    conn, badge_id,
+                    achieved="Y" if unlock_strategy == "immediate" else "N",
+                    achieved_at=achieved_at_iso,
+                )
             badge_db.insert_badge_row(
                 conn,
                 badge_id=badge_id,
