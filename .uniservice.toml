@@ -1,0 +1,20 @@
+schema_version = 1
+
+[project]
+name = "dizical"
+description = "竹笛课程助手"
+
+[service.kid-app]
+command = "./scripts/start-prod.sh"
+port = 8765
+bind = "0.0.0.0"
+workdir = "~/dev/dizical"
+
+[service.kid-app.healthcheck]
+type = "http"
+url = "http://127.0.0.1:8765/"
+interval = 10
+timeout = 30
+
+[shutdown]
+group = 1

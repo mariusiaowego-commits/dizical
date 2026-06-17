@@ -1633,3 +1633,7 @@ app.include_router(config_router)
 # V1 9 端点 + routes/badge_batch.py 整文件删 (批量模式 V2 不做)
 from src.kid_app.routes.badge_workflow import router as badge_workflow_router
 app.include_router(badge_workflow_router)
+
+# ─── 注册 Badge 后台管理路由 ─────────────────────────────────────────────────
+from src.kid_app.routes.badge_admin import router as badge_admin_router
+app.include_router(badge_admin_router)

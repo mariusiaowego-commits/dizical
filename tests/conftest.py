@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS achievements (
     cond_text         TEXT,
     unlock_strategy   TEXT DEFAULT 'calc',
     achieved_at_override TEXT,
+    display_on_achievements INTEGER DEFAULT 1,
+    sort_order_override INTEGER,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (

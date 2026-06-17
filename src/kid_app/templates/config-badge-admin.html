@@ -1,0 +1,853 @@
+<!--
+  config-badge-admin.html — Badge 后台管理面板
+
+  功能：
+  1. Badge 列表（可搜索、筛选）
+  2. Badge 元数据编辑
+  3. 图片预览
+  4. 排序管理
+
+  设计风格：dizicute 暖色
+-->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Badge 后台管理 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --cream: #f5e6d3;
+      --sage: #a8d5ba;
+      --rose: #e8b4bc;
+      --lavender: #c5b8d9;
+      --text: #3d3d3d;
+      --radius: 20px;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* ── 顶部导航 ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 15px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.6);
+      transition: all 0.2s ease;
+    }
+    .back-link:hover { background: rgba(255,255,255,0.9); transform: translateX(-2px); }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── 主布局 ── */
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .admin-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── 左侧列表 ── */
+    .badge-list-panel {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .list-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .badge-count {
+      font-size: 13px;
+      color: #888;
+      background: #f5f5f5;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    /* ── 搜索框 ── */
+    .search-box {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 36px;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 14px;
+      background: #fafafa;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #FF6B6B;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(255,107,107,0.1);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      font-size: 14px;
+    }
+
+    /* ── 筛选按钮 ── */
+    .filter-buttons {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 6px 12px;
+      border: none;
+      background: #f0f0f0;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      background: #e0e0e0;
+    }
+
+    .filter-btn.active {
+      background: #FF6B6B;
+      color: white;
+    }
+
+    /* ── Badge 列表 ── */
+    .badge-list {
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .badge-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .badge-item:hover {
+      background: #f8f8f8;
+    }
+
+    .badge-item.selected {
+      background: #fff5f5;
+      border-color: #FF6B6B;
+    }
+
+    .badge-item.locked {
+      opacity: 0.6;
+    }
+
+    .badge-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #f0f0f0;
+      flex-shrink: 0;
+    }
+
+    .badge-thumb.locked {
+      filter: grayscale(1) brightness(0.8);
+    }
+
+    .badge-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .badge-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-meta {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .badge-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .badge-status.achieved {
+      background: #4CAF50;
+    }
+
+    .badge-status.locked {
+      background: #ccc;
+    }
+
+    /* ── 右侧编辑区 ── */
+    .edit-panel {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .edit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .edit-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #FF6B6B;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #ff5252;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #666;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    /* ── 图片预览 ── */
+    .image-preview {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 16px;
+    }
+
+    .preview-image {
+      width: 120px;
+      height: 120px;
+      border-radius: 16px;
+      object-fit: cover;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .preview-image.locked {
+      filter: grayscale(1) brightness(0.8);
+    }
+
+    .image-info {
+      flex: 1;
+    }
+
+    .image-info h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .image-info p {
+      margin: 4px 0;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .image-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* ── 表单 ── */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fafafa;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: #FF6B6B;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(255,107,107,0.1);
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-help {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+    }
+
+    /* ── 排序配置 ── */
+    .sort-config {
+      background: #f9f9f9;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .sort-config h3 {
+      margin: 0 0 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .sort-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sort-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: white;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sort-option:hover {
+      background: #fff5f5;
+    }
+
+    .sort-option.selected {
+      background: #fff5f5;
+      border: 1px solid #FF6B6B;
+    }
+
+    .sort-option input[type="radio"] {
+      accent-color: #FF6B6B;
+    }
+
+    .sort-option label {
+      font-size: 14px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* ── 空状态 ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Toast 提示 ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      background: #333;
+      color: white;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.success {
+      background: #4CAF50;
+    }
+
+    .toast.error {
+      background: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <!-- 顶部导航 -->
+    <div class="top-bar">
+      <a href="/config" class="back-link">
+        <span>←</span>
+        <span>返回配置</span>
+      </a>
+      <div class="page-title">
+        <span>Badge 后台管理</span>
+      </div>
+    </div>
+
+    <!-- 主布局 -->
+    <div class="admin-layout">
+      <!-- 左侧列表 -->
+      <div class="badge-list-panel">
+        <div class="list-header">
+          <div class="list-title">Badge 列表</div>
+          <div class="badge-count" id="badgeCount">0 个</div>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="searchInput" placeholder="搜索 badge...">
+        </div>
+
+        <!-- 筛选按钮 -->
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">全部</button>
+          <button class="filter-btn" data-filter="achieved">已解锁</button>
+          <button class="filter-btn" data-filter="locked">未解锁</button>
+          <button class="filter-btn" data-filter="milestone">里程碑</button>
+          <button class="filter-btn" data-filter="seasonal">季节性</button>
+        </div>
+
+        <!-- Badge 列表 -->
+        <div class="badge-list" id="badgeList">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+
+      <!-- 右侧编辑区 -->
+      <div class="edit-panel">
+        <div id="editContent">
+          <div class="empty-state">
+            <div class="icon">🎯</div>
+            <p>选择左侧的 badge 进行编辑</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── 数据 ──
+    let badges = JSON.parse('{{badges_json | safe}}');
+    let displayConfig = JSON.parse('{{display_config_json | safe}}');
+    let selectedBadgeId = null;
+
+    // ── 初始化 ──
+    document.addEventListener('DOMContentLoaded', () => {
+      renderBadgeList();
+      setupEventListeners();
+    });
+
+    // ── 渲染 Badge 列表 ──
+    function renderBadgeList(filter = 'all', search = '') {
+      const list = document.getElementById('badgeList');
+      const count = document.getElementById('badgeCount');
+      
+      let filtered = badges;
+      
+      // 筛选
+      if (filter === 'achieved') {
+        filtered = filtered.filter(b => b.achieved);
+      } else if (filter === 'locked') {
+        filtered = filtered.filter(b => !b.achieved);
+      } else if (filter === 'milestone') {
+        filtered = filtered.filter(b => b.category === 'milestone');
+      } else if (filter === 'seasonal') {
+        filtered = filtered.filter(b => b.category === 'seasonal');
+      }
+      
+      // 搜索
+      if (search) {
+        const s = search.toLowerCase();
+        filtered = filtered.filter(b => 
+          b.name.toLowerCase().includes(s) ||
+          b.id.toLowerCase().includes(s)
+        );
+      }
+      
+      count.textContent = `${filtered.length} 个`;
+      
+      list.innerHTML = filtered.map(badge => `
+        <div class="badge-item ${badge.id === selectedBadgeId ? 'selected' : ''} ${badge.achieved ? '' : 'locked'}" 
+             data-id="${badge.id}" onclick="selectBadge('${badge.id}')">
+          <img class="badge-thumb ${badge.achieved ? '' : 'locked'}" 
+               src="${badge.badge_url || '/static/badges/default.png'}" 
+               alt="${badge.name}"
+               onerror="this.src='/static/badges/default.png'">
+          <div class="badge-info">
+            <div class="badge-name">${badge.name}</div>
+            <div class="badge-meta">${badge.id} · ${badge.category}</div>
+          </div>
+          <div class="badge-status ${badge.achieved ? 'achieved' : 'locked'}"></div>
+        </div>
+      `).join('');
+    }
+
+    // ── 选择 Badge ──
+    function selectBadge(badgeId) {
+      selectedBadgeId = badgeId;
+      const badge = badges.find(b => b.id === badgeId);
+      if (!badge) return;
+      
+      renderBadgeList(getCurrentFilter(), document.getElementById('searchInput').value);
+      renderEditPanel(badge);
+    }
+
+    // ── 渲染编辑面板 ──
+    function renderEditPanel(badge) {
+      const panel = document.getElementById('editContent');
+      
+      panel.innerHTML = `
+        <div class="edit-header">
+          <div class="edit-title">编辑 Badge</div>
+          <div class="edit-actions">
+            <button class="btn btn-secondary" onclick="resetForm()">重置</button>
+            <button class="btn btn-primary" onclick="saveBadge()">保存</button>
+          </div>
+        </div>
+
+        <!-- 图片预览 -->
+        <div class="image-preview">
+          <img class="preview-image ${badge.achieved ? '' : 'locked'}" 
+               src="${badge.badge_url || '/static/badges/default.png'}"
+               alt="${badge.name}"
+               onerror="this.src='/static/badges/default.png'">
+          <div class="image-info">
+            <h3>${badge.name}</h3>
+            <p>ID: ${badge.id}</p>
+            <p>类型: ${badge.type} · ${badge.category}</p>
+            <p>状态: ${badge.achieved ? '已解锁' : '未解锁'}</p>
+            ${badge.badge_version ? `<p>图片版本: v${badge.badge_version}</p>` : ''}
+          </div>
+        </div>
+
+        <!-- 表单 -->
+        <form id="badgeForm">
+          <div class="form-group">
+            <label class="form-label">Badge 名称</label>
+            <input type="text" class="form-input" name="name" value="${badge.name}" 
+                   placeholder="输入 badge 名称">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">条件文案 (modal-cond)</label>
+            <textarea class="form-textarea" name="cond_text" placeholder="输入条件文案">${badge.cond_text || ''}</textarea>
+            <div class="form-help">在 modal 中显示的条件说明</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">描述 (modal-desc)</label>
+            <textarea class="form-textarea" name="description" placeholder="输入描述">${badge.description || ''}</textarea>
+            <div class="form-help">在 modal 中显示的详细描述</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">统计逻辑说明</label>
+            <textarea class="form-textarea" name="stat_logic" placeholder="输入统计逻辑说明">${badge.stat_logic || ''}</textarea>
+            <div class="form-help">解释如何计算解锁条件</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">解锁策略</label>
+            <select class="form-select" name="unlock_strategy">
+              <option value="calc" ${badge.unlock_strategy === 'calc' ? 'selected' : ''}>计算解锁 (calc)</option>
+              <option value="immediate" ${badge.unlock_strategy === 'immediate' ? 'selected' : ''}>立即解锁 (immediate)</option>
+            </select>
+            <div class="form-help">calc: 根据条件自动计算; immediate: 手动设置为已解锁</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">解锁时间覆盖</label>
+            <input type="date" class="form-input" name="achieved_at_override" 
+                   value="${badge.achieved_at_override || ''}">
+            <div class="form-help">表彰型 badge 的解锁时间 (留空使用自动计算)</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">排序权重</label>
+            <input type="number" class="form-input" name="sort_order" 
+                   value="${badge.sort_order || 0}" min="0">
+            <div class="form-help">数值越小越靠前</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">在 achievements 页面展示</label>
+            <select class="form-select" name="display_on_achievements">
+              <option value="1" ${badge.display_on_achievements !== 0 ? 'selected' : ''}>展示</option>
+              <option value="0" ${badge.display_on_achievements === 0 ? 'selected' : ''}>隐藏</option>
+            </select>
+          </div>
+        </form>
+
+        <!-- 排序配置 -->
+        <div class="sort-config">
+          <h3>排序配置</h3>
+          <div class="sort-options">
+            <div class="sort-option ${displayConfig.sort_mode === 'achieved_at_desc' ? 'selected' : ''}" 
+                 onclick="updateSortMode('achieved_at_desc')">
+              <input type="radio" name="sort_mode" value="achieved_at_desc" 
+                     ${displayConfig.sort_mode === 'achieved_at_desc' ? 'checked' : ''}>
+              <label>按获取时间降序 (最新在前)</label>
+            </div>
+            <div class="sort-option ${displayConfig.sort_mode === 'achieved_at_asc' ? 'selected' : ''}" 
+                 onclick="updateSortMode('achieved_at_asc')">
+              <input type="radio" name="sort_mode" value="achieved_at_asc" 
+                     ${displayConfig.sort_mode === 'achieved_at_asc' ? 'checked' : ''}>
+              <label>按获取时间升序 (最早在前)</label>
+            </div>
+            <div class="sort-option ${displayConfig.sort_mode === 'sort_order' ? 'selected' : ''}" 
+                 onclick="updateSortMode('sort_order')">
+              <input type="radio" name="sort_mode" value="sort_order" 
+                     ${displayConfig.sort_mode === 'sort_order' ? 'checked' : ''}>
+              <label>按自定义排序权重</label>
+            </div>
+            <div class="sort-option ${displayConfig.sort_mode === 'category' ? 'selected' : ''}" 
+                 onclick="updateSortMode('category')">
+              <input type="radio" name="sort_mode" value="category" 
+                     ${displayConfig.sort_mode === 'category' ? 'checked' : ''}>
+              <label>按类型分组</label>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── 保存 Badge ──
+    async function saveBadge() {
+      if (!selectedBadgeId) return;
+      
+      const form = document.getElementById('badgeForm');
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      
+      // 转换数字字段
+      data.sort_order = parseInt(data.sort_order) || 0;
+      data.display_on_achievements = parseInt(data.display_on_achievements) || 0;
+      
+      try {
+        const response = await fetch(`/config/badge-admin/api/badges/${selectedBadgeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          // 更新本地数据
+          const index = badges.findIndex(b => b.id === selectedBadgeId);
+          if (index !== -1) {
+            badges[index] = { ...badges[index], ...data };
+          }
+          
+          renderBadgeList(getCurrentFilter(), document.getElementById('searchInput').value);
+          showToast('保存成功', 'success');
+        } else {
+          showToast('保存失败: ' + result.message, 'error');
+        }
+      } catch (err) {
+        showToast('保存失败: ' + err.message, 'error');
+      }
+    }
+
+    // ── 重置表单 ──
+    function resetForm() {
+      if (!selectedBadgeId) return;
+      const badge = badges.find(b => b.id === selectedBadgeId);
+      if (badge) {
+        renderEditPanel(badge);
+      }
+    }
+
+    // ── 更新排序模式 ──
+    async function updateSortMode(mode) {
+      displayConfig.sort_mode = mode;
+      
+      try {
+        const response = await fetch('/config/badge-admin/api/display-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sort_mode: mode })
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          showToast('排序配置已更新', 'success');
+          renderEditPanel(badges.find(b => b.id === selectedBadgeId));
+        } else {
+          showToast('更新失败', 'error');
+        }
+      } catch (err) {
+        showToast('更新失败: ' + err.message, 'error');
+      }
+    }
+
+    // ── 事件监听 ──
+    function setupEventListeners() {
+      // 搜索
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        renderBadgeList(getCurrentFilter(), e.target.value);
+      });
+      
+      // 筛选按钮
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderBadgeList(btn.dataset.filter, document.getElementById('searchInput').value);
+        });
+      });
+    }
+
+    // ── 辅助函数 ──
+    function getCurrentFilter() {
+      const activeBtn = document.querySelector('.filter-btn.active');
+      return activeBtn ? activeBtn.dataset.filter : 'all';
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
