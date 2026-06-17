@@ -30,6 +30,17 @@ def _display_width(s: str) -> int:
     return sum(2 if unicodedata.east_asian_width(c) in ('F', 'W') else 1 for c in s)
 
 
+def _truncate_to_width(s: str, max_width: int) -> str:
+    """按显示宽度截断字符串（中文字符占 2 宽度），末尾不加省略号"""
+    w = 0
+    for i, c in enumerate(s):
+        cw = 2 if unicodedata.east_asian_width(c) in ('F', 'W') else 1
+        if w + cw > max_width:
+            return s[:i]
+        w += cw
+    return s
+
+
 def _week_start(date: dt.date) -> dt.date:
     return date - dt.timedelta(days=date.weekday())
 
@@ -235,7 +246,7 @@ class PracticeQueryTUI:
                 if requirement:
                     req_lines = requirement.split('\n')
                     for ln in req_lines:
-                        self.stdscr.addstr(row, 6, ln[:self.w - 8], curses.color_pair(Colors.DIM))
+                        self.stdscr.addstr(row, 6, _truncate_to_width(ln, self.w - 8), curses.color_pair(Colors.DIM))
                         row += 1
                 row += 1
         self._draw_prompt(row, "  [←]今日  [→]本周  [Q]退出  ")
@@ -288,7 +299,7 @@ class PracticeQueryTUI:
                 self.stdscr.addstr(row, 14, f"{mins:>4}分 ", curses.color_pair(Colors.DIM))
                 self.stdscr.addstr(row, 21, bar_str, curses.color_pair(bar_color))
                 items_str = ' '.join(f"{x['item']}({x.get('item_id','?')}:{x['minutes']})" for x in d['items'])
-                self.stdscr.addstr(row, 44, f" {items_str[:max(0, self.w-46)]}")
+                self.stdscr.addstr(row, 44, f" {_truncate_to_width(items_str, max(0, self.w - 46))}")
             else:
                 self._attr(row, 14, "  休息", Colors.DIM)
             row += 1
@@ -302,7 +313,8 @@ class PracticeQueryTUI:
             self._attr(row, 4, "📋 本周作业:", Colors.HIGHLIGHT, bold=True)
             row += 1
             for it in assignment.get('items', [])[:5]:
-                self.stdscr.addstr(row, 6, f"• {it['item']}: {it.get('requirements','')[:self.w-10]}")
+                _txt = f"{it['item']}: {it.get('requirements','')}"
+                self.stdscr.addstr(row, 6, f"• {_truncate_to_width(_txt, self.w - 10)}")
                 row += 1
         self._draw_prompt(row, "  [←]今日  [→]月视图  [↑/↓]历史  ")
 
@@ -408,7 +420,7 @@ class PracticeQueryTUI:
                 lbl = f"{d.isoformat()}  {total:>4}分"
                 attr = Colors.TODAY if is_today else Colors.HIGHLIGHT if total > 0 else Colors.DIM
                 self._attr(row, 2, lbl, attr, bold=is_today)
-                self.stdscr.addstr(row, 22, f" {items_str[:max(0, self.w-24)]}")
+                self.stdscr.addstr(row, 22, f" {_truncate_to_width(items_str, max(0, self.w - 24))}")
                 row += 1
 
         total_pages = (len(filtered) + page_size - 1) // page_size if filtered else 1
