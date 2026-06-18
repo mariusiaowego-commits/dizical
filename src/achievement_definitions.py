@@ -270,6 +270,26 @@ def _double_first_achieved_at(conn: sqlite3.Connection) -> str | None:
     return row[0] if row else None
 
 
+def _one_breath_first_achieved_at(conn: sqlite3.Connection) -> str | None:
+    """史上首次出现单个练习科目 ≥10 分钟的日期.
+
+    遍历 daily_practices.items JSON, 找第一个 minutes >= 10 的 item.
+    """
+    cur = conn.execute(
+        "SELECT date, items FROM daily_practices ORDER BY date"
+    )
+    import json as _json
+    for date_str, items_str in cur.fetchall():
+        try:
+            items = _json.loads(items_str)
+        except (ValueError, TypeError):
+            continue
+        for item in items:
+            if item.get("minutes", 0) >= 10:
+                return date_str
+    return None
+
+
 def _top_first_achieved_at(conn: sqlite3.Connection, rank: int) -> str | None:
     """某科目累计时长排第 N 名 — 给出"历史上累计达到该名次门槛"的最早日期.
 
@@ -356,6 +376,12 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
     if aid == "double":
         at = _at(has_double, _double_first_achieved_at(conn))
         return CalcResult(has_double, 1 if has_double else 0, None, at, "同日 ≥ 2 次打卡")
+
+    if aid == "one_breath":
+        achieved_at_val = _one_breath_first_achieved_at(conn)
+        ok = achieved_at_val is not None
+        at = _at(ok, achieved_at_val)
+        return CalcResult(ok, 1 if ok else 0, None, at, "单个科目一口气练 ≥ 10 分钟")
 
     if aid == "night_owl":
         # V2.5 (2026-06-16): 加 night_owl calc 规则.
