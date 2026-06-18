@@ -472,6 +472,13 @@
     }
     .v21-ai-btn:disabled { background: #BDBDBD; cursor: not-allowed; }
     .v21-ai-btn:hover:not(:disabled) { background: #5d4ad6; }
+    /* 图片来源 radio */
+    .v21-img-source { display: flex; gap: 16px; margin-bottom: 18px; align-items: center; }
+    .v21-img-source label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; }
+    .v21-img-source input[type="radio"] { accent-color: #FF6B6B; }
+    .v21-img-path-row { display: none; margin-bottom: 18px; }
+    .v21-img-path-row.visible { display: flex; flex-direction: column; gap: 6px; }
+    .v21-img-path-row input[type="text"] { font-family: ui-monospace, monospace; font-size: 13px; }
     .v21-advanced { background: #FAFAFA; }
     .v21-advanced summary {
       cursor: pointer;
@@ -890,9 +897,27 @@
           <!-- 内容 (placeholder + 典故) -->
           <div class="v21-section">
             <h4 class="v21-section-title">内容</h4>
+            <!-- 图片来源选择 -->
+            <div class="v21-row">
+              <div class="v21-field">
+                <label>图片来源</label>
+                <div class="v21-img-source">
+                  <label><input type="radio" name="imageSource" value="generate" checked onchange="v21ImageSourceChanged()"> AI 生图 (走 STEP 2)</label>
+                  <label><input type="radio" name="imageSource" value="existing" onchange="v21ImageSourceChanged()"> 已有图片 (跳过生图)</label>
+                </div>
+              </div>
+            </div>
+            <!-- 已有图片: 路径输入 (默认隐藏) -->
+            <div class="v21-img-path-row" id="v21ImagePathRow">
+              <div class="v21-field">
+                <label for="v21ImagePath">图片本地路径 <span class="v21-req">*</span></label>
+                <input type="text" id="v21ImagePath" name="image_path" placeholder="/Users/mt16/Desktop/badge_xxx.png 或 data/lib/badge_data/xxx.png">
+                <small>绝对路径或相对项目根目录. 提交后自动复制到项目 .tmp/ 目录, 原文件不动.</small>
+              </div>
+            </div>
             <div class="v21-row">
               <div class="v21-field v21-field-wide">
-                <label for="v21Placeholder">Placeholder (英文 prompt) <span class="v21-req">*</span></label>
+                <label for="v21Placeholder">Placeholder (英文 prompt) <span class="v21-req" id="v21PlaceholderReq">*</span></label>
                 <div class="v21-ph-row">
                   <textarea id="v21Placeholder" name="placeholder" required minlength="5" rows="3" placeholder="a cute anime girl blowing bamboo flute..."></textarea>
                   <button type="button" class="v21-ai-btn" onclick="v21AiDraft()" id="v21AiBtn">AI 草拟</button>
@@ -1221,6 +1246,29 @@
       row.style.display = cat === 'seasonal' ? 'flex' : 'none';
     }
 
+    // ─── 图片来源切换 (AI 生图 / 已有图片) ──────────────
+    function v21ImageSourceChanged() {
+      const source = document.querySelector('input[name="imageSource"]:checked').value;
+      const pathRow = document.getElementById('v21ImagePathRow');
+      const placeholderEl = document.getElementById('v21Placeholder');
+      const reqMark = document.getElementById('v21PlaceholderReq');
+      const aiBtn = document.getElementById('v21AiBtn');
+
+      if (source === 'existing') {
+        pathRow.classList.add('visible');
+        placeholderEl.removeAttribute('required');
+        placeholderEl.setAttribute('minlength', '0');
+        reqMark.style.display = 'none';
+        aiBtn.style.display = 'none';
+      } else {
+        pathRow.classList.remove('visible');
+        placeholderEl.setAttribute('required', '');
+        placeholderEl.setAttribute('minlength', '5');
+        reqMark.style.display = '';
+        aiBtn.style.display = '';
+      }
+    }
+
     function v21CollectFormData() {
       const get = (id) => document.getElementById(id);
       const v = (id) => (get(id)?.value || '').trim();
@@ -1245,6 +1293,12 @@
         sort_order: num('v21SortOrder'),
       };
 
+      // 图片来源
+      const imageSource = document.querySelector('input[name="imageSource"]:checked').value;
+      if (imageSource === 'existing') {
+        data._image_path = v('v21ImagePath');
+      }
+
       // seasonal 时必填 seasonal_type
       if (data.category === 'seasonal') {
         data.seasonal_type = v('v21SeasonalType') || 'monthly';
@@ -1266,7 +1320,12 @@
       if (!/^[a-zA-Z0-9_]+$/.test(data.id)) return 'Badge ID 只能含英文/数字/下划线';
       if (!data.name) return 'Badge 名称必填';
       if (!data.category) return 'Category 必填';
-      if (!data.placeholder || data.placeholder.length < 5) return 'Placeholder 必填且 >= 5 字符';
+      // 已有图片时 placeholder 选填, 否则必填 >= 5 字符
+      if (data._image_path) {
+        if (!data._image_path.trim()) return '已有图片模式下, 图片路径必填';
+      } else {
+        if (!data.placeholder || data.placeholder.length < 5) return 'Placeholder 必填且 >= 5 字符';
+      }
       if (!data.zh_story) return '典故 (zh_story) 必填';
       if (!data.cond_text || !data.cond_text.trim()) return '条件文案 (cond_text) 必填 (手填或点 AI 生成)';
       if (data.category === 'seasonal' && !data.seasonal_type) return 'category=seasonal 时必填 seasonal_type';
@@ -1362,10 +1421,16 @@
       btn.textContent = '提交中...';
 
       try {
+        // 构建请求体: meta + 可选 image_path
+        const body = {meta: data};
+        if (data._image_path) {
+          body.image_path = data._image_path;
+          delete data._image_path;  // 不放进 meta
+        }
         const r = await fetch('/config/api/badge/draft', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({meta: data}),
+          body: JSON.stringify(body),
         });
         const respData = await r.json();
         if (!respData.ok) {
@@ -1378,7 +1443,14 @@
         document.getElementById('v21Result').style.display = 'block';
         document.getElementById('v21ResultDraftId').textContent = respData.draft_id;
         document.getElementById('v21ResultJson').textContent = respData.json;
-        showToast('success', `✅ 草稿已创建: ${respData.draft_id}`);
+        if (respData.image_imported) {
+          showToast('success', `✅ 图片已导入, 草稿就绪: ${respData.draft_id}`);
+          // 更新提示文案
+          document.querySelector('.v21-result-hint').innerHTML =
+            '📋 图片已就绪 → 切到 <strong>待确认</strong> tab → 确认上线';
+        } else {
+          showToast('success', `✅ 草稿已创建: ${respData.draft_id}`);
+        }
         return false;  // 阻止 form 默认 submit
       } catch (err) {
         showToast('error', '网络错误: ' + err.message);
@@ -1394,7 +1466,13 @@
       form.reset();
       document.getElementById('v21Category').value = 'milestone';
       v21CategoryChanged();
+      // 重置图片来源为"生成"
+      document.querySelector('input[name="imageSource"][value="generate"]').checked = true;
+      v21ImageSourceChanged();
       document.getElementById('v21Result').style.display = 'none';
+      // 恢复默认提示文案
+      document.querySelector('.v21-result-hint').innerHTML =
+        '📋 复制 draft_id → 切到 hermes chat → 调 <code>/badge-image {draft_id}</code> skill 生图';
       form.style.display = 'block';
     }
 

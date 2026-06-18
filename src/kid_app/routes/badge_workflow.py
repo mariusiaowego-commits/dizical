@@ -36,6 +36,7 @@ router = APIRouter(prefix="/config", tags=["badge-workflow"])
 class DraftRequest(BaseModel):
     """STEP 1 收 meta."""
     meta: dict[str, Any]
+    image_path: str | None = None  # 用户已有图片时, 本地文件路径
 
 
 class CommitFromDraftRequest(BaseModel):
@@ -78,7 +79,11 @@ def config_badge():
 
 @router.post("/api/badge/draft")
 def api_create_draft(req: DraftRequest) -> JSONResponse:
-    """STEP 1: 收 meta, 写 lib/badge_data/{draft_id}.json, 返 draft_id + json."""
+    """STEP 1: 收 meta, 写 lib/badge_data/{draft_id}.json, 返 draft_id + json.
+
+    新增 image_path 可选字段: 用户已有图片时传本地路径, 后端复制到 .tmp/,
+    直接跳到 draft_awaiting_confirm (跳过 STEP 2 生图).
+    """
     from src.kid_app import badge_draft
 
     if not req.meta:
@@ -86,16 +91,35 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
 
     try:
         draft = badge_draft.create_draft(req.meta)
+
+        # 新增: 用户已有图片 → 复制到 .tmp/, 直接进 draft_awaiting_confirm
+        if req.image_path:
+            version = 1
+            badge_draft.copy_external_image(req.image_path, draft.draft_id, version)
+            draft.image = {
+                "path": str(badge_draft.tmp_path_for(draft.draft_id, version)),
+                "source": "user_import",
+                "version": version,
+            }
+            draft.status = "draft_awaiting_confirm"
+
         badge_draft.save_draft(draft)
+    except FileNotFoundError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
     import json
-    return JSONResponse({
+    result = {
         "ok": True,
         "draft_id": draft.draft_id,
         "json": json.dumps(draft.to_dict(), ensure_ascii=False, indent=2),
-    })
+    }
+    # 有图片时提示可直接跳到待确认
+    if req.image_path:
+        result["image_imported"] = True
+        result["hint"] = "图片已导入, 可直接切到'待确认' tab 确认上线"
+    return JSONResponse(result)
 
 
 # ─── GET /config/api/badge/draft/{draft_id} (STEP 2 read) ────────
