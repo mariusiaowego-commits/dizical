@@ -167,22 +167,35 @@
       box-shadow: 0 12px 40px rgba(0,0,0,0.12);
       width: 100%; max-width: 720px;
       max-height: 90vh;
-      padding: 48px 24px 24px;
-      display: flex; flex-direction: column; align-items: center;
+      padding: 0;
+      display: flex; flex-direction: column;
       position: relative;
+      overflow: hidden;
+    }
+    /* modal 头部: 图片+名称+tag+cond+date (固定不滚动) */
+    .modal-header {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 24px 16px;
+    }
+    /* modal 底部: desc+hint (可滚动) */
+    .modal-body {
+      flex: 1;
       overflow-y: auto;
+      padding: 0 24px 24px;
       scrollbar-width: thin;
       scrollbar-color: #d0c0a0 transparent;
     }
     #modal-close {
-      position: absolute; top: -14px; right: -14px;
-      width: 40px; height: 40px;
-      background: #fff; border: 2.5px solid #f0c040;
+      position: absolute; top: 12px; right: 12px;
+      width: 36px; height: 36px;
+      background: #fff; border: 2px solid #f0c040;
       border-radius: 50%;
-      font-size: 20px; color: #c8860a; line-height: 36px; text-align: center;
+      font-size: 18px; color: #c8860a; line-height: 32px; text-align: center;
       cursor: pointer; font-weight: 900;
       box-shadow: 0 4px 12px rgba(0,0,0,0.18);
       transition: transform 0.15s;
+      z-index: 10;
     }
     #modal-close:hover { transform: scale(1.1); }
     #modal-close:active { transform: scale(0.9); }
@@ -247,16 +260,20 @@
   <div id="modal-overlay" onclick="if(event.target===this)closeModal()">
     <div id="modal-box">
       <div id="modal-close" onclick="closeModal()">×</div>
-      <div id="modal-img-wrap">
-        <img id="modal-img" src="" alt="">
+      <div class="modal-header">
+        <div id="modal-img-wrap">
+          <img id="modal-img" src="" alt="">
+        </div>
+        <div id="modal-name"></div>
+        <div id="modal-tag"></div>
+        <div class="modal-divider"></div>
+        <div id="modal-cond"></div>
+        <div id="modal-date"></div>
       </div>
-      <div id="modal-name"></div>
-      <div id="modal-tag"></div>
-      <div class="modal-divider"></div>
-      <div id="modal-cond"></div>
-      <div id="modal-date"></div>
-      <div id="modal-desc"></div>
-      <div id="modal-hint"></div>
+      <div class="modal-body">
+        <div id="modal-desc"></div>
+        <div id="modal-hint"></div>
+      </div>
     </div>
   </div>
 
@@ -359,7 +376,7 @@ function openModal(card) {
     locked ? 'saturate(0.55) brightness(0.85)' : '';
   document.getElementById('modal-name').textContent = card.dataset.name;
   document.getElementById('modal-tag').textContent  = card.dataset.tag;
-  document.getElementById('modal-cond').textContent = card.dataset.cond || card.dataset.condText || card.dataset.desc;
+  document.getElementById('modal-cond').textContent = card.dataset.condText || card.dataset.cond || card.dataset.desc;
 
   const dateEl = document.getElementById('modal-date');
   if (card.dataset.date) {
