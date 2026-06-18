@@ -166,9 +166,13 @@
       border: 2.5px solid #f0c040;
       box-shadow: 0 12px 40px rgba(0,0,0,0.12);
       width: 100%; max-width: 720px;
+      max-height: 90vh;
       padding: 48px 24px 24px;
       display: flex; flex-direction: column; align-items: center;
       position: relative;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #d0c0a0 transparent;
     }
     #modal-close {
       position: absolute; top: -14px; right: -14px;
@@ -219,11 +223,6 @@
       white-space: pre-wrap;       /* 让 \n 在长典故里正常换行 */
       border-top: 1px solid #f0e8d0;
       padding: 14px 8px 0; width: 100%;
-      /* V2.4 (2026-06-16): 长典故可滚动, 弹窗不超高 (尤其 early_bird 扩展版 407 字) */
-      max-height: 60vh;
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: #d0c0a0 transparent;
     }
     #modal-hint {
       font-size: 13px; color: #bbb; text-align: center; margin-top: 10px;
