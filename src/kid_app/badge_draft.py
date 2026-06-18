@@ -297,3 +297,25 @@ def cleanup_tmp(draft_id: str, version: int) -> None:
     path = tmp_path_for(draft_id, version)
     if path.exists():
         path.unlink()
+
+
+def copy_external_image(src_path: str, draft_id: str, version: int) -> Path:
+    """用户已有图片时, 复制到 .tmp/ 统一入口 (跟 skill 生图走同一条 commit 路径).
+
+    src_path: 用户提供的本地文件路径 (绝对路径或相对项目根).
+    返回 .tmp/{draft_id}_v{version}.png 的 Path.
+    """
+    import shutil
+    src = Path(src_path).expanduser()
+    if not src.is_absolute():
+        # 相对路径以项目根为基准
+        project_root = Path(__file__).resolve().parent.parent.parent
+        src = project_root / src
+    if not src.exists():
+        raise FileNotFoundError(f"图片源文件 '{src}' 不存在")
+    if not src.is_file():
+        raise FileNotFoundError(f"图片源路径 '{src}' 不是文件")
+    dst = tmp_path_for(draft_id, version)
+    _tmp_dir().mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    return dst
