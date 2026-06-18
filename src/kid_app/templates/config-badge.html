@@ -1071,6 +1071,7 @@
         card.className = 'v21-pending-card';
         if (!item.is_committable) card.classList.add('v21-pending-conflict');
         card.setAttribute('data-draft-id', draft.draft_id || '');
+        card.setAttribute('data-unlock-strategy', meta.unlock_strategy || 'calc');
 
         // conflict 警告
         let conflictHtml = '';
@@ -1149,8 +1150,28 @@
         });
         const data = await r.json();
         if (data.ok) {
-          showToast('success', `✅ Badge "${data.badge_id}" 已上线! 跳到 /badges 看新图`);
-          setTimeout(() => window.location.href = '/badges', 800);
+          // 检查解锁策略: calc 需要用户手动跑 /calc-apply
+          const strategy = card ? card.getAttribute('data-unlock-strategy') : 'calc';
+          if (strategy === 'calc') {
+            showToast('success', `✅ Badge "${data.badge_id}" 已写入! 需要配置 calc 逻辑才能解锁`);
+            // 不跳转, 显示操作指引
+            if (card) {
+              const actionsEl = card.querySelector('.v21-pending-actions');
+              if (actionsEl) {
+                actionsEl.innerHTML = `
+                  <div style="background:#FFF8E1; border:1px solid #FFE082; border-radius:8px; padding:12px 16px; margin-top:8px; font-size:13px; line-height:1.6;">
+                    <strong>下一步: 配置解锁逻辑</strong><br>
+                    这个 badge 用 <code>calc</code> 策略解锁, 需要在 <code>achievement_definitions.py</code> 的 <code>_calc_milestone()</code> 里加一行判断.<br>
+                    在 hermes chat 里跑: <code>/calc-apply ${data.badge_id}</code><br>
+                    <button type="button" class="v21-act-btn" onclick="v21CopyText('/calc-apply ${data.badge_id}')" style="margin-top:8px;">复制命令</button>
+                  </div>
+                `;
+              }
+            }
+          } else {
+            showToast('success', `✅ Badge "${data.badge_id}" 已上线! 跳到 /badges 看新图`);
+            setTimeout(() => window.location.href = '/badges', 800);
+          }
         } else {
           showToast('error', data.error || 'commit 失败');
           if (btn) { btn.disabled = false; btn.textContent = '✅ 确认上线'; }
