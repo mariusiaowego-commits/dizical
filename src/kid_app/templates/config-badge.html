@@ -398,65 +398,74 @@
     }
 
     /* ─── V2.1 阶段 2.1: 新建 Badge 草稿 tab ─────────── */
-    .v21-form { max-width: 800px; }
+    .v21-form { max-width: 640px; }
     .v21-section {
+      margin-bottom: 48px;  /* section 之间大留白 */
+      padding: 0;
+    }
+    .v21-section:last-of-type { margin-bottom: 32px; }
+    /* 卡片底: 整个表单包在一个圆角白卡里 */
+    .v21-form {
       background: white;
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      margin-bottom: 14px;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 32px 36px;
     }
     .v21-section-title {
-      font-size: 15px;
-      font-weight: bold;
-      color: var(--text);
-      margin: 0 0 12px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0 0 6px;
+      letter-spacing: -0.01em;
     }
-    /* V2.5 (2026-06-16): sophon.at 单列堆叠风格
-   - .v21-row 从 flex (挤一行) 改 block (每个字段独占一行)
-   - label/select/input/textarea 加大间距, 字号
-   - .v21-field-wide 跟 .v21-field 同 (单列下没区别)
-*/
+    .v21-section-desc {
+      font-size: 13px;
+      color: #999;
+      margin: 0 0 24px;
+    }
+    /* V2.5 (2026-06-16): sophon.at 单列堆叠风格 */
     .v21-row {
       display: block;
-      margin-bottom: 8px;  /* 容器间距小, 字段间距大 */
+      margin-bottom: 0;
     }
     .v21-row:last-child { margin-bottom: 0; }
     .v21-field {
       display: flex;
       flex-direction: column;
-      margin-bottom: 22px;  /* sophon.at 大间距 */
+      margin-bottom: 18px;  /* 字段间距 */
     }
     .v21-field:last-child { margin-bottom: 0; }
-    .v21-field-wide { display: flex; flex-direction: column; margin-bottom: 22px; }
+    .v21-field-wide { display: flex; flex-direction: column; margin-bottom: 18px; }
     .v21-field label {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 8px;  /* 大间距 */
+      font-size: 14px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 6px;
     }
     .v21-req { color: #E74C3C; font-weight: 700; }
     .v21-field input,
     .v21-field select,
     .v21-field textarea {
-      padding: 14px 16px;  /* 大点击区 (dizicute 风格) */
-      border: 1.5px solid #E5E5E5;
-      border-radius: 14px;  /* 圆角大 */
-      font-size: 15px;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
       font-family: inherit;
       background: white;
-      transition: all 0.2s;
-      width: 100%;  /* 单列下宽度自适应 */
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
       box-sizing: border-box;
+      color: #1a1a1a;
     }
     .v21-field input:focus,
     .v21-field select:focus,
     .v21-field textarea:focus {
       outline: none;
       border-color: #FF6B6B;
-      box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.12);  /* 焦点晕 */
+      box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
     }
-    .v21-field textarea { resize: vertical; min-height: 80px; font-family: ui-monospace, monospace; font-size: 14px; }
-    .v21-field small { font-size: 13px; color: #666; margin-top: 6px; line-height: 1.5; }
+    .v21-field textarea { resize: vertical; min-height: 72px; font-family: ui-monospace, monospace; font-size: 13px; }
+    .v21-field small { font-size: 12px; color: #999; margin-top: 5px; line-height: 1.5; }
     .v21-ph-row { display: flex; gap: 8px; }
     .v21-ph-row textarea { flex: 1; }
     .v21-ai-btn {
@@ -479,43 +488,47 @@
     .v21-img-path-row { display: none; margin-bottom: 18px; }
     .v21-img-path-row.visible { display: flex; flex-direction: column; gap: 6px; }
     .v21-img-path-row input[type="text"] { font-family: ui-monospace, monospace; font-size: 13px; }
-    .v21-advanced { background: #FAFAFA; }
+    .v21-advanced {
+      background: #FAFAFA;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
     .v21-advanced summary {
       cursor: pointer;
-      font-size: 14px;
-      color: #666;
-      padding: 4px 0;
+      font-size: 13px;
+      color: #888;
+      padding: 0;
       list-style: none;
     }
-    .v21-advanced summary:hover { color: #333; }
+    .v21-advanced summary:hover { color: #555; }
     .v21-submit-row {
       display: flex;
       gap: 12px;
-      margin-top: 20px;
-      padding: 0 4px;
+      margin-top: 32px;
     }
     .v21-submit-btn {
-      padding: 12px 32px;
+      padding: 10px 28px;
       background: var(--rose, #e8b4bc);
       color: white;
       border: none;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: bold;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
     }
     .v21-submit-btn:disabled { background: #BDBDBD; cursor: not-allowed; }
     .v21-submit-btn:hover:not(:disabled) { background: #D89BA3; }
     .v21-clear-btn {
-      padding: 12px 20px;
+      padding: 10px 20px;
       background: white;
-      color: #666;
-      border: 1px solid #DDD;
-      border-radius: 12px;
-      font-size: 14px;
+      color: #888;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
       cursor: pointer;
     }
-    .v21-clear-btn:hover { background: #F5F5F5; }
+    .v21-clear-btn:hover { background: #F5F5F5; color: #555; }
     .v21-result {
       max-width: 800px;
       background: white;
@@ -814,6 +827,7 @@
           <!-- 基础信息 -->
           <div class="v21-section">
             <h4 class="v21-section-title">基础信息</h4>
+            <p class="v21-section-desc">Badge 的 ID、名称和分类</p>
             <!-- V2.5 (2026-06-16): sophon.at 单列堆叠 - 每个字段独立一行 -->
             <div class="v21-row">
               <div class="v21-field">
@@ -897,6 +911,7 @@
           <!-- 内容 (placeholder + 典故) -->
           <div class="v21-section">
             <h4 class="v21-section-title">内容</h4>
+            <p class="v21-section-desc">英文描述 (给 AI 生图用) + 中文典故 + 达成条件</p>
             <!-- 图片来源选择 -->
             <div class="v21-row">
               <div class="v21-field">
