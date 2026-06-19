@@ -172,3 +172,156 @@ async def api_minip_verify_pin(request: Request):
         new_first = first if cnt > 0 else now
         _set_pin_fails(openid, new_cnt, new_first)
         return JSONResponse({"ok": False, "error": "wrong_pin"}, status_code=401)
+
+
+# ─── 成就殿堂 API（小程序用）────────────────────────────────────────────
+@router.get("/api/achievements")
+def api_achievements():
+    """返回所有成就（已解锁 + 未解锁），跟 /badges 页面数据一致。"""
+    from src.achievement_definitions import calc_all, CalcResult
+    from src.kid_app.app import get_badge_url
+
+    conn = db._get_connection()
+
+    # 1. calc_all() 计算所有成就状态
+    results = calc_all()
+
+    # 2. 读 achievements 表
+    cur = conn.execute(
+        "SELECT id, name, type, category, description, threshold, cond_text, "
+        "unlock_strategy, achieved_at_override FROM achievements "
+        "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
+        "ORDER BY sort_order"
+    )
+    cols = [d[0] for d in cur.description]
+    ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+
+    # 3. 构建 badge 列表（复用 badges_page 逻辑）
+    badges = []
+    for ach in ach_rows:
+        aid = ach["id"]
+        res = results.get(aid)
+        if res is None:
+            continue
+
+        # 纪念章/表彰型徽章特殊处理
+        is_commemorative = (
+            ach.get("unlock_strategy") == "immediate"
+            or ach.get("achieved_at_override")
+        )
+        if is_commemorative:
+            cur.execute(
+                "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?",
+                (aid,),
+            )
+            row = cur.fetchone()
+            override_at = ach.get("achieved_at_override")
+            if override_at:
+                res = CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
+            elif row and row[0] == "Y":
+                res = CalcResult(True, 1, None, row[1] or None, "立即解锁")
+
+        badges.append({
+            "id": aid,
+            "name": ach["name"],
+            "typ": ach["type"],
+            "group": ach["category"],
+            "description": ach["description"],
+            "condition": res.condition,
+            "cond_text": ach.get("cond_text") or "",
+            "achieved": res.achieved,
+            "achieved_at": res.achieved_at,
+            "badge_url": get_badge_url(aid),
+            "unlock_strategy": ach.get("unlock_strategy") or "calc",
+        })
+
+    # 4. 分离已解锁/未解锁
+    unlocked = sorted(
+        [b for b in badges if b["achieved"]],
+        key=lambda b: b["achieved_at"] or "",
+        reverse=True,
+    )
+    locked = sorted(
+        [b for b in badges if not b["achieved"]],
+        key=lambda b: b.get("condition") or "",
+    )
+
+    return JSONResponse({
+        "ok": True,
+        "unlocked": unlocked,
+        "locked": locked,
+        "total": len(badges),
+        "earned": len(unlocked),
+    })
+
+
+# ─── 盲盒 API（小程序用）────────────────────────────────────────────
+@router.get("/api/blindbox")
+def api_blindbox():
+    """返回每日打卡盲盒数据。"""
+    today = dt.date.today()
+    conn = db._get_connection()
+
+    # 获取当前 stage
+    cur = conn.execute(
+        "SELECT stage_start, stage_end, stage_order "
+        "FROM weekly_assignments "
+        "WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)"
+    )
+    stage_row = cur.fetchone()
+    if not stage_row:
+        return JSONResponse({"ok": True, "blindbox": None})
+
+    stage_start_str = stage_row[0]
+    stage_end_str = stage_row[1]
+    if not stage_start_str:
+        return JSONResponse({"ok": True, "blindbox": None})
+
+    stage_end_date = dt.date.fromisoformat(stage_end_str) if stage_end_str else today
+    stage_start = dt.date.fromisoformat(stage_start_str)
+    stage_day = (today - stage_start).days + 1
+    if stage_day < 1:
+        return JSONResponse({"ok": True, "blindbox": None})
+    stage_day = min(stage_day, 7)
+
+    # 本周打卡天数
+    cur = conn.execute(
+        "SELECT COUNT(DISTINCT date) FROM daily_practices WHERE date >= ? AND date <= ?",
+        (stage_start_str, stage_end_date.isoformat()),
+    )
+    checkin_days = cur.fetchone()[0]
+
+    # 每天打卡状态
+    checked_dates = set()
+    cur = conn.execute(
+        "SELECT DISTINCT date FROM daily_practices WHERE date >= ? AND date <= ?",
+        (stage_start_str, stage_end_date.isoformat()),
+    )
+    for row in cur.fetchall():
+        checked_dates.add(row[0])
+
+    days = []
+    for day in range(1, stage_day + 1):
+        day_date = stage_start + dt.timedelta(days=day - 1)
+        is_checked = day_date.isoformat() in checked_dates
+        days.append({
+            "day": day,
+            "date": day_date.isoformat(),
+            "checked": is_checked,
+            "is_today": day == stage_day,
+        })
+
+    # 主题信息
+    active_theme = db.get_setting("active_blindbox_theme") or "default"
+
+    return JSONResponse({
+        "ok": True,
+        "blindbox": {
+            "theme": active_theme,
+            "stage_start": stage_start_str,
+            "stage_end": stage_end_date.isoformat(),
+            "stage_day": stage_day,
+            "checkin_days": checkin_days,
+            "days": days,
+        },
+    })
