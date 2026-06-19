@@ -272,44 +272,33 @@ class PracticeQueryTUI:
         self._attr(row, 4, header, Colors.HIGHLIGHT, bold=True)
         row += 2
 
-        # ── 练习项明细 (Rich Table 风格, 逐项展开) ──
+        # ── 练习项明细 — 用 Rich Table 渲染, 列自动对齐 ──
         if items:
-            self._hline(row, 2, '─', Colors.DIM)
-            row += 1
+            buf = io.StringIO()
+            rc = Console(file=buf, force_terminal=False, width=max(self.w - 8, 40))
 
-            # 表头
-            self._attr(row, 4, "#  ", Colors.DIM)
-            self._attr(row, 8, "ID   ", Colors.DIM)
-            self._attr(row, 16, "练习项", Colors.DIM, bold=True)
-            self._attr(row, 30, "速度    ", Colors.DIM)
-            self._attr(row, 40, "老师要求", Colors.DIM, bold=True)
-            row += 1
-            self._hline(row, 2, '─', Colors.DIM)
-            row += 1
+            tbl = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
+            tbl.add_column("#", style="dim", width=2, justify="right")
+            tbl.add_column("ID", style="dim", width=5, justify="right")
+            tbl.add_column("练习项", style="bold white", width=14)
+            tbl.add_column("速度", style="dim", width=10)
+            tbl.add_column("老师要求", style="italic dim")
 
             for i, it in enumerate(items, 1):
-                if row >= self.h - 6:
-                    self._attr(row, 4, f"... 还有 {len(items)-i+1} 项 (终端太短)", Colors.DIM)
-                    break
                 item_id = it.get('item_id', '')
                 item_name = it.get('item', '')
                 metro = it.get('metronome', '')
                 req = (it.get('requirements') or '').strip().replace('\n', ' ')
+                tbl.add_row(str(i), str(item_id), item_name, metro, req)
 
-                # 第一行: # | ID | 练习项 | 速度
-                self._attr(row, 4, f"{i:<3}", Colors.DIM)
-                self._attr(row, 8, f"{str(item_id):<6}", Colors.HIGHLIGHT if item_id else Colors.DIM)
-                self._attr(row, 16, item_name, Colors.HIGHLIGHT, bold=True)
-                if metro:
-                    self._attr(row, 30, metro, Colors.DIM)
+            rc.print(tbl)
+
+            for line in buf.getvalue().splitlines():
+                if row >= self.h - 4:
+                    self._attr(row, 4, f"... 还有内容 (终端太短)", Colors.DIM)
+                    break
+                self.stdscr.addstr(row, 4, _truncate_to_width(line, self.w - 6))
                 row += 1
-
-                # 第二行: 老师要求 (换行展示, 按宽度截断)
-                if req:
-                    for ln in req.split('\n'):
-                        self.stdscr.addstr(row, 8, f"  {_truncate_to_width(ln, self.w - 10)}", curses.color_pair(Colors.DIM))
-                        row += 1
-                row += 1  # 项间空行
 
         # ── 老师备注 ──
         if notes:
