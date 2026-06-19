@@ -445,7 +445,8 @@ def _show_year_stats(year: int):
 
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("月份", style="dim")
-    table.add_column("日期", style="dim")
+    # 日期列内容长 (高频练习月 20+ 个日期), 默认 ellipsize 会丢数据; 用 fold 自动换行保留完整信息
+    table.add_column("日期", style="dim", overflow="fold")
     table.add_column("状态", style="dim")
     table.add_column("应缴", justify="right")
     table.add_column("已缴", justify="right")
@@ -543,7 +544,8 @@ def _show_all_stats():
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("月份", style="dim")
-        table.add_column("日期", style="dim")
+        # 日期列内容长 (高频练习月 20+ 个日期), 默认 ellipsize 会丢数据; 用 fold 自动换行
+        table.add_column("日期", style="dim", overflow="fold")
         table.add_column("状态", style="dim")
         table.add_column("应缴", justify="right")
         table.add_column("已缴", justify="right")
@@ -664,10 +666,11 @@ def payment_history():
     console.print(Panel("[blue]💰 缴费历史[/blue]"))
 
     table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("日期")
-    table.add_column("金额", justify="right")
-    table.add_column("方式")
-    table.add_column("备注")
+    table.add_column("日期", width=12)
+    table.add_column("金额", justify="right", width=10)
+    table.add_column("方式", width=8)
+    # 备注列可能很长, 用 fold 防止窄屏 ellipsize 丢信息
+    table.add_column("备注", overflow="fold")
 
     for p in payments:
         table.add_row(
@@ -1419,9 +1422,18 @@ class _AssignmentsTUI:
                 break
 
     def _draw(self, stdscr: curses.window, h: int, w: int) -> None:
+        # size guard: 极窄屏时直接告警并返回, 避免 addstr OOB 崩溃
+        if h < 8 or w < 60:
+            try:
+                stdscr.addstr(0, 0, "窗口太小，请放大终端 (建议 ≥ 60×24)")
+                stdscr.clrtoeol()
+            except curses.error:
+                pass
+            return
         try:
-            # 标题行
-            stdscr.addstr(0, 0, f" 🎵 每课老师要求  │  {len(self.assignments)} 课  │  [↑↓]浏览  [Enter]展开/收起  [Q/ESC]退出")
+            # 标题行 — 按显示宽度截断到 w-1, 防止长赋值屏 OOB
+            title = f" 🎵 每课老师要求  │  {len(self.assignments)} 课  │  [↑↓]浏览  [Enter]展开/收起  [Q/ESC]退出"
+            stdscr.addstr(0, 0, _truncate_to_width(title, w - 1))
             stdscr.clrtoeol()
             stdscr.addstr(1, 0, "─" * (w - 1))
         except curses.error:
@@ -1872,10 +1884,11 @@ def practice_items():
     if items:
         console.print(Panel("[blue]📋 练习项目库[/blue]"))
         table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("ID")
-        table.add_column("名称")
-        table.add_column("大科目")
-        table.add_column("状态")
+        table.add_column("ID", width=6)
+        # 名称列可能很长, 用 fold 防止窄屏 ellipsize 丢信息
+        table.add_column("名称", overflow="fold")
+        table.add_column("大科目", width=12)
+        table.add_column("状态", width=8)
         for item in items:
             status = "[green]活跃[/green]" if item['is_active'] else "[dim]已停用[/dim]"
             cat = item.get('category_name') or '[dim]-[/dim]'
@@ -1946,9 +1959,10 @@ def practice_category_list():
 
     console.print(Panel("[blue]🏷️  练习大科目[/blue]"))
     table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("ID")
-    table.add_column("大科目")
-    table.add_column("小科目")
+    table.add_column("ID", width=4)
+    table.add_column("大科目", width=10)
+    # 小科目列内容长 (4+ 项), 默认 ellipsize 会丢数据; 用 fold 自动换行保留完整信息
+    table.add_column("小科目", overflow="fold")
     for cat in categories:
         cat_items = sorted((i for i in items if i.get('category_id') == cat['id']), key=lambda x: x.get('item_id', 0))
         sub_items = '、'.join(f"{i['name']}({i['item_id']})" for i in cat_items) if cat_items else '[dim]无[/dim]'

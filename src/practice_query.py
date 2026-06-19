@@ -101,7 +101,8 @@ def _fuzzy_match(text: str, pattern: str) -> bool:
 
 # ── 主 TUI 类 ─────────────────────────────────────────────
 class PracticeQueryTUI:
-    VIEWS = ['today', 'homework', 'week', 'month', 'history']
+    # 视图顺序按用户使用频率排: history(高频查历史) → today(查今天) → homework(本周作业) → week(月内浏览) → month(总览)
+    VIEWS = ['history', 'today', 'homework', 'week', 'month']
 
     def __init__(self, stdscr: curses.window):
         self.stdscr = stdscr
@@ -110,7 +111,7 @@ class PracticeQueryTUI:
         self.stdscr.keypad(True)
         self.stdscr.nodelay(False)
 
-        self.view_idx = 0          # 0=today 1=week 2=month 3=history
+        self.view_idx = 0          # 默认 history (高频场景: 看历史所有练习)
         self.today = dt.date.today()
         self.week_start = _week_start(self.today)
         self.month_year = (self.today.year, self.today.month)
@@ -158,7 +159,10 @@ class PracticeQueryTUI:
         self.stdscr.refresh()
 
     def _draw_title(self) -> None:
-        title = f"  竹笛练习查询  "
+        # 标题包含当前视图名, 用户一进入就知道在哪个视图 (默认 history)
+        view_names_zh = {'history': '历史', 'today': '今日', 'homework': '作业', 'week': '本周', 'month': '月历'}
+        cur = view_names_zh.get(self.VIEWS[self.view_idx], self.VIEWS[self.view_idx])
+        title = f"  竹笛练习查询 · {cur}  "
         title_w = _display_width(title)
         self._attr(0, 0, title, Colors.HEADER, bold=True)
         self.stdscr.addstr(0, title_w, ' ' * max(0, self.w - title_w - 1))
@@ -166,7 +170,11 @@ class PracticeQueryTUI:
 
     def _draw_footer(self) -> None:
         row = self.h - 1
-        hints = "[←/→]视图  [↑/↓]浏览  [/]搜索  [H]本周作业  [Q/ESC]退出"
+        # VIEWS = ['history', 'today', 'homework', 'week', 'month'] (顺序按使用频率)
+        # hotkey: H=history, T=today, W=week, M=month, /搜索, ← → 切换, Q/ESC 退出
+        view_names_zh = {'history': '历史', 'today': '今日', 'homework': '作业', 'week': '本周', 'month': '月历'}
+        cur = view_names_zh.get(self.VIEWS[self.view_idx], self.VIEWS[self.view_idx])
+        hints = f"← → 切换 | [H]历史 [T]今日 [W]本周 [M]月历 | / 搜索 | Q 退出  (当前: {cur})"
         hints_w = _display_width(hints)
         self._attr(row, 0, hints, Colors.DIM)
         self.stdscr.addstr(row, hints_w, ' ' * max(0, self.w - hints_w - 1))
@@ -486,8 +494,16 @@ class PracticeQueryTUI:
         elif key == ord('/'):
             self._do_search()
         elif key in (ord('h'), ord('H')):
-            if view != 'homework':
-                self.view_idx = 1  # 切到作业视图
+            # H 跳转到历史视图 (VIEWS 顺序调整后 history 在 index 0, 是高频场景)
+            self.view_idx = 0
+            self.history_cursor = 0  # 重置翻页
+        elif key in (ord('t'), ord('T')):
+            self.view_idx = 1  # 跳转到 today
+        elif key in (ord('w'), ord('W')):
+            # W 跳转到 week
+            self.view_idx = 3
+        elif key in (ord('m'), ord('M')):
+            self.view_idx = 4  # 跳转到 month
         elif key in (ord('q'), ord('Q'), 27):
             return True
         return False
