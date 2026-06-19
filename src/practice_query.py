@@ -6,9 +6,14 @@
 
 import datetime as dt
 import curses
+import io
 import re
 import unicodedata
 from typing import List, Dict, Optional, Tuple
+
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
 
 from .database import db
 from . import practice
@@ -101,7 +106,8 @@ def _fuzzy_match(text: str, pattern: str) -> bool:
 
 # ── 主 TUI 类 ─────────────────────────────────────────────
 class PracticeQueryTUI:
-    VIEWS = ['today', 'homework', 'week', 'month', 'history']
+    # 视图顺序按用户使用频率排: history(高频查历史) → today(查今天) → homework(本周作业) → week(月内浏览) → month(总览)
+    VIEWS = ['history', 'today', 'homework', 'week', 'month']
 
     def __init__(self, stdscr: curses.window):
         self.stdscr = stdscr
@@ -110,7 +116,7 @@ class PracticeQueryTUI:
         self.stdscr.keypad(True)
         self.stdscr.nodelay(False)
 
-        self.view_idx = 0          # 0=today 1=week 2=month 3=history
+        self.view_idx = 0          # 默认 history (高频场景: 看历史所有练习)
         self.today = dt.date.today()
         self.week_start = _week_start(self.today)
         self.month_year = (self.today.year, self.today.month)
@@ -158,7 +164,10 @@ class PracticeQueryTUI:
         self.stdscr.refresh()
 
     def _draw_title(self) -> None:
-        title = f"  竹笛练习查询  "
+        # 标题包含当前视图名, 用户一进入就知道在哪个视图 (默认 history)
+        view_names_zh = {'history': '历史', 'today': '今日', 'homework': '作业', 'week': '本周', 'month': '月历'}
+        cur = view_names_zh.get(self.VIEWS[self.view_idx], self.VIEWS[self.view_idx])
+        title = f"  竹笛练习查询 · {cur}  "
         title_w = _display_width(title)
         self._attr(0, 0, title, Colors.HEADER, bold=True)
         self.stdscr.addstr(0, title_w, ' ' * max(0, self.w - title_w - 1))
@@ -166,7 +175,11 @@ class PracticeQueryTUI:
 
     def _draw_footer(self) -> None:
         row = self.h - 1
-        hints = "[←/→]视图  [↑/↓]浏览  [/]搜索  [H]本周作业  [Q/ESC]退出"
+        # VIEWS = ['history', 'today', 'homework', 'week', 'month'] (顺序按使用频率)
+        # hotkey: H=history, T=today, W=week, M=month, /搜索, ← → 切换, Q/ESC 退出
+        view_names_zh = {'history': '历史', 'today': '今日', 'homework': '作业', 'week': '本周', 'month': '月历'}
+        cur = view_names_zh.get(self.VIEWS[self.view_idx], self.VIEWS[self.view_idx])
+        hints = f"← → 切换 | [H]历史 [T]今日 [W]本周 [M]月历 | / 搜索 | Q 退出  (当前: {cur})"
         hints_w = _display_width(hints)
         self._attr(row, 0, hints, Colors.DIM)
         self.stdscr.addstr(row, hints_w, ' ' * max(0, self.w - hints_w - 1))
@@ -217,8 +230,7 @@ class PracticeQueryTUI:
         self._draw_prompt(row, "  [→] 本周  [↑/↓] 查历史  ")
 
     def _draw_homework(self) -> None:
-        """专门展示老师本周要求"""
-        # 找今天或之前最近的一次作业（不局限本周周一）
+        """专门展示老师本周要求 — 完整信息: 课日期/阶段/第几课/items明细/老师备注/配图"""
         assignment = db.get_weekly_assignment_for_week(self.today)
         row = 3
         week_label = f" 本周作业 {_fmt_week(self.week_start)} "
@@ -231,25 +243,93 @@ class PracticeQueryTUI:
             self._draw_prompt(row, "  [←]今日  [→]本周  [Q]退出  ")
             return
 
-        # 作业明细
+        # ── 课程头部信息 ──
+        ld = assignment['lesson_date']
+        so = assignment.get('stage_order')
+        ss = assignment.get('stage_start')
+        se = assignment.get('stage_end')
         items = assignment.get('items', [])
+        notes = assignment.get('notes', '')
+        images = assignment.get('images', [])
+        img_count = len(images)
+        item_count = len(items)
+
+        # 头部: 第几课 | 课日期 | 阶段日期 | 几项
+        order_str = f"第{so}课" if so else ""
+        ld_str = ld.strftime('%Y-%m-%d')
+        if ss and se:
+            stage_str = f"{ss.strftime('%m-%d')}~{se.strftime('%m-%d')}"
+        elif ss:
+            stage_str = f"{ss.strftime('%m-%d')}~（未安排）"
+        else:
+            stage_str = ""
+        extra = f"  📷{img_count}" if img_count else ""
+
+        header = f"{order_str} | {ld_str}"
+        if stage_str:
+            header += f" | 阶段 {stage_str}"
+        header += f" | {item_count}项{extra}"
+        self._attr(row, 4, header, Colors.HIGHLIGHT, bold=True)
+        row += 2
+
+        # ── 练习项明细 (Rich Table 风格, 逐项展开) ──
         if items:
-            self._hline(row, 2, '─', Colors.HIGHLIGHT)
+            self._hline(row, 2, '─', Colors.DIM)
             row += 1
-            for it in items:
+
+            # 表头
+            self._attr(row, 4, "#  ", Colors.DIM)
+            self._attr(row, 8, "ID   ", Colors.DIM)
+            self._attr(row, 16, "练习项", Colors.DIM, bold=True)
+            self._attr(row, 30, "速度    ", Colors.DIM)
+            self._attr(row, 40, "老师要求", Colors.DIM, bold=True)
+            row += 1
+            self._hline(row, 2, '─', Colors.DIM)
+            row += 1
+
+            for i, it in enumerate(items, 1):
+                if row >= self.h - 6:
+                    self._attr(row, 4, f"... 还有 {len(items)-i+1} 项 (终端太短)", Colors.DIM)
+                    break
+                item_id = it.get('item_id', '')
                 item_name = it.get('item', '')
-                requirement = it.get('requirements', '')
-                # 大字显示练习项目
-                if item_name:
-                    self._attr(row, 4, f"🎯 {item_name}", Colors.HIGHLIGHT, bold=True)
-                    row += 1
-                if requirement:
-                    req_lines = requirement.split('\n')
-                    for ln in req_lines:
-                        self.stdscr.addstr(row, 6, _truncate_to_width(ln, self.w - 8), curses.color_pair(Colors.DIM))
-                        row += 1
+                metro = it.get('metronome', '')
+                req = (it.get('requirements') or '').strip().replace('\n', ' ')
+
+                # 第一行: # | ID | 练习项 | 速度
+                self._attr(row, 4, f"{i:<3}", Colors.DIM)
+                self._attr(row, 8, f"{str(item_id):<6}", Colors.HIGHLIGHT if item_id else Colors.DIM)
+                self._attr(row, 16, item_name, Colors.HIGHLIGHT, bold=True)
+                if metro:
+                    self._attr(row, 30, metro, Colors.DIM)
                 row += 1
-        self._draw_prompt(row, "  [←]今日  [→]本周  [Q]退出  ")
+
+                # 第二行: 老师要求 (换行展示, 按宽度截断)
+                if req:
+                    for ln in req.split('\n'):
+                        self.stdscr.addstr(row, 8, f"  {_truncate_to_width(ln, self.w - 10)}", curses.color_pair(Colors.DIM))
+                        row += 1
+                row += 1  # 项间空行
+
+        # ── 老师备注 ──
+        if notes:
+            if row < self.h - 4:
+                self._hline(row, 2, '─', Colors.DIM)
+                row += 1
+                self._attr(row, 4, "📝 老师备注", Colors.HIGHLIGHT, bold=True)
+                row += 1
+                for ln in notes.split('\n'):
+                    if row >= self.h - 2:
+                        break
+                    self._attr(row, 8, _truncate_to_width(ln, self.w - 10), Colors.DIM)
+                    row += 1
+
+        # ── 配图 (如果有) ──
+        if images and row < self.h - 3:
+            self._attr(row, 4, f"📷 配图 {img_count} 张 (在 assignments 命令查看)", Colors.DIM)
+            row += 1
+
+        self._draw_prompt(row, "  [←]历史  [→]本周  [Q]退出  ")
 
     def _draw_week(self) -> None:
         row = 3
@@ -486,8 +566,16 @@ class PracticeQueryTUI:
         elif key == ord('/'):
             self._do_search()
         elif key in (ord('h'), ord('H')):
-            if view != 'homework':
-                self.view_idx = 1  # 切到作业视图
+            # H 跳转到历史视图 (VIEWS 顺序调整后 history 在 index 0, 是高频场景)
+            self.view_idx = 0
+            self.history_cursor = 0  # 重置翻页
+        elif key in (ord('t'), ord('T')):
+            self.view_idx = 1  # 跳转到 today
+        elif key in (ord('w'), ord('W')):
+            # W 跳转到 week
+            self.view_idx = 3
+        elif key in (ord('m'), ord('M')):
+            self.view_idx = 4  # 跳转到 month
         elif key in (ord('q'), ord('Q'), 27):
             return True
         return False
