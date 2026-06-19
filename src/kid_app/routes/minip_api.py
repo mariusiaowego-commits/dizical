@@ -8,13 +8,18 @@ kid_app 主仓只新增，不改现有逻辑。
 """
 import datetime as dt
 import json
+import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from src.database import db
 
 router = APIRouter()
+
+# PIN 失败计数持久化 constants
+PIN_COOLDOWN_SEC = 60
+PIN_MAX_FAILS = 3
 
 
 @router.get("/api/streak")
@@ -102,3 +107,68 @@ def api_lessons_upcoming():
             "notes": upcoming.notes or "",
         }
     })
+
+
+# ─── PIN 失败计数持久化（SQLite settings 表）──────────────────────────
+def _pin_fail_key(openid: str) -> str:
+    return f"pin_fail_count:{openid}"
+
+
+def _get_pin_fails(openid: str) -> tuple:
+    """返回 (count, first_attempt_ts)"""
+    raw = db.get_setting(_pin_fail_key(openid))
+    if not raw:
+        return (0, 0.0)
+    try:
+        data = json.loads(raw)
+        return (data.get("count", 0), data.get("first", 0.0))
+    except (json.JSONDecodeError, TypeError):
+        return (0, 0.0)
+
+
+def _set_pin_fails(openid: str, count: int, first_ts: float):
+    db.set_setting(_pin_fail_key(openid), json.dumps({"count": count, "first": first_ts}))
+
+
+@router.post("/api/minip/verify-pin")
+async def api_minip_verify_pin(request: Request):
+    """小程序专用 PIN 验证（白名单 + 失败计数 + 冷却）。
+
+    不改现有 /api/verify-pin 逻辑，这是 minip 专用的新端点。
+    """
+    body = json.loads(await request.body())
+    pin = body.get("pin", "")
+    openid = body.get("openid", "")
+
+    # 1. 白名单校验
+    whitelist_raw = db.get_setting("dad_whitelist") or "[]"
+    try:
+        whitelist = json.loads(whitelist_raw)
+    except (json.JSONDecodeError, TypeError):
+        whitelist = []
+
+    if openid and openid not in whitelist:
+        return JSONResponse({"ok": False, "error": "not_in_whitelist"}, status_code=403)
+
+    # 2. 冷却检查（持久化到 SQLite）
+    cnt, first = _get_pin_fails(openid)
+    now = time.time()
+    if cnt >= PIN_MAX_FAILS and (now - first) < PIN_COOLDOWN_SEC:
+        retry_after = int(PIN_COOLDOWN_SEC - (now - first))
+        return JSONResponse(
+            {"ok": False, "error": "cooldown", "retry_after": retry_after},
+            status_code=429,
+        )
+    if cnt >= PIN_MAX_FAILS and (now - first) >= PIN_COOLDOWN_SEC:
+        _set_pin_fails(openid, 0, now)
+
+    # 3. 比对 PIN
+    stored_pin = db.get_setting("dad_pin") or ""
+    if stored_pin and pin == stored_pin:
+        _set_pin_fails(openid, 0, now)
+        return JSONResponse({"ok": True, "role": "dad"})
+    else:
+        new_cnt = cnt + 1 if cnt > 0 else 1
+        new_first = first if cnt > 0 else now
+        _set_pin_fails(openid, new_cnt, new_first)
+        return JSONResponse({"ok": False, "error": "wrong_pin"}, status_code=401)
