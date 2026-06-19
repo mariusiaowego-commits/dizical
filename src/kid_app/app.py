@@ -1633,3 +1633,8 @@ app.include_router(config_router)
 # V1 9 端点 + routes/badge_batch.py 整文件删 (批量模式 V2 不做)
 from src.kid_app.routes.badge_workflow import router as badge_workflow_router
 app.include_router(badge_workflow_router)
+
+# ─── 注册 minip (微信小程序) 专用路由 ─────────────────────────────────────
+# dizical-minip 项目: 只新增端点，不影响现有功能
+from src.kid_app.routes.minip_api import router as minip_router
+app.include_router(minip_router)
