@@ -6,9 +6,14 @@
 
 import datetime as dt
 import curses
+import io
 import re
 import unicodedata
 from typing import List, Dict, Optional, Tuple
+
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
 
 from .database import db
 from . import practice
