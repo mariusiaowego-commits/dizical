@@ -5,7 +5,7 @@ import io
 import json
 import typer
 from rich.console import Console
-from rich.table import Table
+from rich.table import Table, box
 from rich.panel import Panel
 from rich.text import Text
 import wcwidth
@@ -628,17 +628,24 @@ def payment_status(month: Optional[str] = typer.Argument(None, help="月份，�
     status = payment_manager.get_monthly_payment_status(year, month_num)
 
     console.print(Panel(f"[blue]💰 {year}年{month_num}月 缴费状态[/blue]"))
-    console.print(f"📚 本月课程: {status.total_lessons} 节")
-    console.print(f"✅ 已上课: {status.attended_lessons} 节")
-    console.print(f"💰 应缴总额: {status.total_fee} 元")
-    console.print(f"💵 已缴金额: {status.paid_amount} 元")
+
+    table = Table(show_header=False, box=box.SIMPLE)
+    table.add_column("项目", width=14)
+    table.add_column("数值", justify="right")
+    table.add_row("📚 本月课程", f"{status.total_lessons} 节")
+    table.add_row("✅ 已上课", f"{status.attended_lessons} 节")
+    table.add_row("💰 应缴总额", f"{status.total_fee} 元")
+    table.add_row("💵 已缴金额", f"{status.paid_amount} 元")
 
     if status.balance > 0:
-        console.print(f"[red]❌ 累计待缴金额: {status.balance} 元[/red]")
-        if status.last_lesson_date:
-            console.print(f"📆 最后上课日: {status.last_lesson_date}")
+        table.add_row("❌ 累计待缴", f"[red]{status.balance} 元[/red]")
     else:
-        console.print("[green]✅ 本月费用已缴清[/green]")
+        table.add_row("✅ 状态", "[green]本月费用已缴清[/green]")
+
+    console.print(table)
+
+    if status.balance > 0 and status.last_lesson_date:
+        console.print(f"\n📆 最后上课日: {status.last_lesson_date}")
 
 
 @payment_app.command("record")
@@ -1518,13 +1525,24 @@ def practice_today():
     existing = practice_module.db.get_daily_practice(today)
 
     if existing:
+        total = existing['total_minutes']
         console.print(Panel(f"[blue]📅 {today} 今日练习[/blue]"))
-        console.print(f"总时长: {existing['total_minutes']} 分钟")
+        console.print(f"总时长: {total} 分钟")
+
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("项目")
-        table.add_column("时长")
+        table.add_column("时长", justify="right")
+        table.add_column("占比", justify="right")
+        table.add_column("备注")
         for item in existing['items']:
-            table.add_row(item['item'], f"{item['minutes']} 分钟")
+            mins = item['minutes']
+            pct = f"{mins / total * 100:.0f}%" if total else ""
+            note = ""
+            if item.get('is_extra'):
+                note = "[cyan]加练[/cyan]"
+            elif item.get('is_new'):
+                note = "[yellow]新[/yellow]"
+            table.add_row(item['item'], f"{mins} 分钟", pct, note)
         console.print(table)
     else:
         console.print(Panel(f"[yellow]📅 {today} 今日暂无练习记录[/yellow]"))
@@ -1546,24 +1564,68 @@ def practice_thisweek():
     today = date_type.today()
     week_start = practice_module.get_week_start(today)
     summary = practice_module.get_week_summary(week_start)
+    days = practice_module.get_week_days(week_start)
 
+    WEEKDAY_NAMES = ["一", "二", "三", "四", "五", "六", "日"]
+
+    # ── 头部统计 ──
+    pct = summary['practice_days'] / 7 * 100 if summary['practice_days'] else 0
     console.print(Panel(f"[blue]📅 {week_start} ~ {summary['week_end']} 本周练习[/blue]"))
-    console.print(f"练习天数: {summary['practice_days']} 天")
-    console.print(f"总时长: {summary['total_minutes']} 分钟")
+    console.print(f"练习 {summary['practice_days']}/7 天 · {summary['total_minutes']} 分钟 · {pct:.0f}%")
 
+    # ── 每日明细表 ──
+    table = Table(show_header=True, header_style="bold magenta", show_lines=False)
+    table.add_column("日", width=3)
+    table.add_column("日期", width=6)
+    table.add_column("状态", width=4)
+    table.add_column("时长", justify="right", width=6)
+    table.add_column("项目明细")
+
+    for date_str, day in sorted(days.items()):
+        wd = day['date'].weekday()
+        day_label = f"{day['date'].day}日"
+
+        if day.get('is_future'):
+            status = "[dim]--[/dim]"
+            mins_str = ""
+            items_str = ""
+        elif day.get('progress'):
+            status = "[cyan]+[/cyan]"
+            mins_str = ""
+            items_str = f"[dim]{day['progress'][:30]}[/dim]"
+        elif day['has_practice']:
+            status = "[green]✓[/green]"
+            mins_str = f"{day['total_minutes']}"
+            items_str = " / ".join(
+                f"{it['item']}{it['minutes']}" for it in day['items']
+            )
+        else:
+            status = "[red]✗[/red]"
+            mins_str = ""
+            items_str = ""
+
+        table.add_row(WEEKDAY_NAMES[wd], day_label, status, mins_str, items_str)
+
+    console.print(table)
+
+    # ── 各项目汇总 ──
     if summary['item_totals']:
-        console.print("\n[bold]各项目时长:[/bold]")
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("项目")
-        table.add_column("时长")
+        console.print()
+        tbl = Table(show_header=True, header_style="bold magenta")
+        tbl.add_column("项目")
+        tbl.add_column("时长", justify="right")
+        tbl.add_column("占比", justify="right")
+        total = summary['total_minutes']
         for item, minutes in sorted(summary['item_totals'].items(), key=lambda x: -x[1]):
-            table.add_row(item, f"{minutes} 分钟")
-        console.print(table)
+            tbl.add_row(item, f"{minutes} 分钟", f"{minutes / total * 100:.0f}%")
+        console.print(tbl)
 
+    # ── 老师要求 ──
     if summary['assignment']:
         console.print("\n[bold]本周老师要求:[/bold]")
         for item in summary['assignment']['items']:
-            console.print(f"  • {item['item']}: {item['requirement']}")
+            metro = f" ({item['metronome']})" if item.get('metronome') else ""
+            console.print(f"  • [bold]{item['item']}[/bold]{metro}: {item['requirements']}")
 
 
 @practice_app.command("week")
