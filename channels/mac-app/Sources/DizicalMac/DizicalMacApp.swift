@@ -427,7 +427,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        // 3e. 打开 dizical
+        // 3e. 刷新页面
+        let reloadItem = NSMenuItem(title: "刷新页面", action: #selector(reloadPage), keyEquivalent: "r")
+        reloadItem.target = self
+        menu.addItem(reloadItem)
+
+        // 3f. 打开 dizical
         let openItem = NSMenuItem(title: "打开 dizical", action: #selector(openWindow), keyEquivalent: "o")
         openItem.target = self
         menu.addItem(openItem)
@@ -535,6 +540,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Cmd+Q: 真正退出, 停服务
         serviceManager.stopService()
         NSApp.terminate(nil)
+    }
+
+    @objc func reloadPage() {
+        // Cmd+R: 刷新 WKWebView 页面 (清缓存重载)
+        for window in NSApp.windows {
+            if let webView = findWebView(in: window.contentView) {
+                webView.reload()
+                return
+            }
+        }
+    }
+
+    private func findWebView(in view: NSView?) -> WKWebView? {
+        if let webView = view as? WKWebView { return webView }
+        for subview in view?.subviews ?? [] {
+            if let found = findWebView(in: subview) { return found }
+        }
+        return nil
     }
 
     // dock 点击 = 激活 + 找现有 window 激活 (不创建新的)
