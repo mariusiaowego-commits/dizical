@@ -1,18 +1,18 @@
 <!--
-  config-badge.html — Badge 制作工作流 (V1 PR-A, 2026-06-12)
+  config-badge.html — Badge 制作工作流 (V2.1, 2026-06-13 起 V2.1 重构)
 
-  4 步表单:
-    ① 元数据 (id / 名称 / type 标签 / category / seasonal_type)
-    ② placeholder + 典故 (二选一: 我自己写 / AI 草拟)
-    ③ 计算逻辑模板 (calc template 选择)
-    ④ 生成 & 预览 (SSE 流式 + 红底验证 + 3 按钮: 重新生图 / 接受 / 取消)
-    ⑤ 确认上线 (PIN 输入 + 写入三表)
+  2 tab UI:
+    ① 新建 Badge 草稿 — 单页表单, 提交后写 lib/badge_data/{id}.json, 返 draft_id
+    ② 待确认 Badge    — skill 跑完生图后, draft_awaiting_confirm 状态列表, 用户确认上线
 
-  顶部 Portal 状态卡: 绿/红/灰灯 + 最后检查时间 + 手动刷新
-  Portal 红了: 禁用 Step 4 按钮, 弹 tooltip 解释
+  STEP 1 (本页面): 表单填元数据 → POST /config/api/badge/draft
+  STEP 2 (外部 hermes chat): 调 /badge-image {draft_id} skill → 生图 + 去背
+  STEP 3 (回到本页面 "待确认" tab): POST /config/api/badge/commit-from-draft → 写三表
 
   设计风格: dizicute 暖色 (跟 config-blindbox.html / config-practice.html 一致)
   不用 emoji (AGENTS.md §UI 偏好), 按钮只用名字不带 ID
+  不用 Noto Sans SC (改 PingFang SC, dizicute §字体)
+  不用 hover lift (dizicute CTA 弱化)
 -->
 <!DOCTYPE html>
 <html lang="zh">
@@ -21,784 +21,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>徽章制作 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/badge.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <style>
-    :root {
-      --cream: #f5e6d3;
-      --sage: #a8d5ba;
-      --rose: #e8b4bc;
-      --lavender: #c5b8d9;
-      --text: #3d3d3d;
-      --radius: 20px;
-    }
-
-    body {
-      background: var(--cream);
-      min-height: 100vh;
-      margin: 0;
-      padding: 0;
-      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    .badge-container {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 32px 24px 80px;
-    }
-
-    /* ── 顶部导航 ── */
-    .top-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-    }
-
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--text);
-      text-decoration: none;
-      font-size: 15px;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.6);
-      transition: all 0.2s ease;
-    }
-    .back-link:hover { background: rgba(255,255,255,0.9); transform: translateX(-2px); }
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* ── Portal 状态卡 (V2.5 2026-06-16: 删 /config/api/portal/status 端点不存在, 卡永远红) ── */
-
-    /* ── Portal 状态卡 CSS (V2.5 2026-06-16 已删, 端点不存在永远红) ── */
-      font-size: 10px;
-      color: #FF6B6B;
-      font-weight: 400;
-    }
-
-    /* V2 2-tab UI */
-    .v2-tabs { margin: 20px 0; }
-    .tab-headers { display: flex; gap: 4px; border-bottom: 1px solid #eee; }
-    .tab-header {
-      padding: 10px 18px; border: none; background: transparent; cursor: pointer;
-      font-size: 14px; color: #888; border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-    }
-    .tab-header.active { color: #FF6B6B; border-bottom-color: #FF6B6B; font-weight: 600; }
-    .tab-content { padding: 24px 0; }
-    .tab-empty { color: #888; font-size: 14px; line-height: 1.6; }
-    .tab-empty code { background: #f5f5f5; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
-
-    /* ── Portal 状态卡 CSS (V2.5 2026-06-16 已删) ── */
-
-    /* ── 进度条 ── */
-    .progress-bar {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 32px;
-      padding: 0 20px;
-    }
-    .progress-step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex: 1;
-      position: relative;
-    }
-    .progress-step::after {
-      content: '';
-      position: absolute;
-      top: 14px;
-      left: 60%;
-      right: -40%;
-      height: 2px;
-      background: rgba(0,0,0,0.1);
-      z-index: -1;
-    }
-    .progress-step:last-child::after { display: none; }
-    .progress-step .dot {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.08);
-      color: #999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      transition: all 0.3s ease;
-    }
-    .progress-step.active .dot {
-      background: var(--rose);
-      color: white;
-      box-shadow: 0 2px 8px rgba(232, 180, 188, 0.5);
-    }
-    .progress-step.done .dot {
-      background: var(--sage);
-      color: white;
-    }
-    .progress-step .label {
-      font-size: 11px;
-      color: #888;
-      font-weight: 500;
-    }
-    .progress-step.active .label { color: var(--text); font-weight: 600; }
-
-    /* ── Step 内容区 ── */
-    .step-container {
-      background: white;
-      border-radius: var(--radius);
-      padding: 32px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-      min-height: 360px;
-      position: relative;
-    }
-    .step { display: none; }
-    .step.active { display: block; }
-
-    .step h2 {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 20px;
-    }
-    .step .step-desc {
-      font-size: 14px;
-      color: #888;
-      margin-bottom: 24px;
-      line-height: 1.6;
-    }
-
-    .form-row {
-      margin-bottom: 18px;
-    }
-    .form-row label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
-    .form-row .hint {
-      font-size: 12px;
-      color: #999;
-      margin-top: 4px;
-    }
-    .form-row input[type="text"],
-    .form-row input[type="number"],
-    .form-row select,
-    .form-row textarea {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 10px;
-      font-size: 14px;
-      font-family: inherit;
-      background: white;
-      box-sizing: border-box;
-      transition: all 0.2s ease;
-    }
-    .form-row input:focus,
-    .form-row select:focus,
-    .form-row textarea:focus {
-      outline: none;
-      border-color: var(--rose);
-      box-shadow: 0 0 0 3px rgba(232, 180, 188, 0.15);
-    }
-    .form-row textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-    .form-row .check-status {
-      display: inline-block;
-      margin-left: 8px;
-      font-size: 12px;
-    }
-    .form-row .check-status.checking { color: #999; }
-    .form-row .check-status.unique { color: #4CAF50; }
-    .form-row .check-status.taken { color: #FF6B6B; }
-
-    .radio-group { display: flex; gap: 16px; }
-    .radio-group label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      font-weight: 400;
-    }
-
-    /* ── Step 按钮组 ── */
-    .step-actions {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 32px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(0,0,0,0.06);
-    }
-    .btn {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .btn-primary {
-      background: var(--rose);
-      color: white;
-      box-shadow: 0 4px 12px rgba(232, 180, 188, 0.4);
-    }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232, 180, 188, 0.5); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .btn-secondary {
-      background: rgba(0,0,0,0.05);
-      color: var(--text);
-    }
-    .btn-secondary:hover { background: rgba(0,0,0,0.08); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* ── Step 4 状态条 ── */
-    .gen-status-list {
-      background: var(--cream);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      font-family: monospace;
-    }
-    .gen-status-list .status-line {
-      padding: 4px 0;
-      opacity: 0.4;
-      transition: all 0.3s ease;
-    }
-    .gen-status-list .status-line.active {
-      opacity: 1;
-      font-weight: 600;
-    }
-    .gen-status-list .status-line.done {
-      opacity: 0.7;
-      color: #4CAF50;
-    }
-    .gen-status-list .status-line.error {
-      opacity: 1;
-      color: #FF6B6B;
-    }
-
-    /* ── Step 4 预览区 ── */
-    .preview-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-    .preview-cell {
-      background: var(--cream);
-      border-radius: 12px;
-      padding: 16px;
-      text-align: center;
-    }
-    .preview-cell .preview-label {
-      font-size: 12px;
-      color: #888;
-      margin-bottom: 8px;
-    }
-    .preview-cell img {
-      max-width: 100%;
-      max-height: 200px;
-      object-fit: contain;
-    }
-    .preview-cell .red-bg { background: rgb(220, 60, 60); padding: 12px; border-radius: 8px; }
-
-    .warning-banner {
-      background: rgba(255, 107, 107, 0.1);
-      border: 1px solid #FF6B6B;
-      color: #C62828;
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-size: 13px;
-      margin-bottom: 16px;
-    }
-
-    /* ── Toast ── */
-    .toast {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      padding: 12px 20px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      color: white;
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.3s ease;
-      z-index: 2000;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    }
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-    .toast.success { background: #4CAF50; }
-    .toast.error { background: #FF6B6B; }
-    .toast.info { background: var(--rose); }
-
-    /* ── 成功页 ── */
-    .success-icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 20px;
-      background: var(--sage);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .success-icon svg { width: 48px; height: 48px; stroke: white; }
-    .commit-result {
-      background: var(--cream);
-      border-radius: 12px;
-      padding: 16px;
-      margin: 20px 0;
-      font-family: monospace;
-      font-size: 13px;
-    }
-    .commit-snippet {
-      background: #2C3E50;
-      color: #ecf0f1;
-      border-radius: 12px;
-      padding: 16px;
-      margin: 16px 0;
-      font-family: monospace;
-      font-size: 12px;
-      white-space: pre;
-      overflow-x: auto;
-    }
-    .copy-btn {
-      padding: 6px 12px;
-      font-size: 12px;
-      background: rgba(255,255,255,0.1);
-      color: white;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    /* ─── V2.1 阶段 2.1: 新建 Badge 草稿 tab ─────────── */
-    .v21-form { max-width: 640px; }
-    .v21-section {
-      margin-bottom: 48px;  /* section 之间大留白 */
-      padding: 0;
-    }
-    .v21-section:last-of-type { margin-bottom: 32px; }
-    /* 卡片底: 整个表单包在一个圆角白卡里 */
-    .v21-form {
-      background: white;
-      border: 1px solid #eee;
-      border-radius: 12px;
-      padding: 32px 36px;
-    }
-    .v21-section-title {
-      font-size: 17px;
-      font-weight: 600;
-      color: #1a1a1a;
-      margin: 0 0 6px;
-      letter-spacing: -0.01em;
-    }
-    .v21-section-desc {
-      font-size: 13px;
-      color: #999;
-      margin: 0 0 24px;
-    }
-    /* V2.5 (2026-06-16): sophon.at 单列堆叠风格 */
-    .v21-row {
-      display: block;
-      margin-bottom: 0;
-    }
-    .v21-row:last-child { margin-bottom: 0; }
-    .v21-field {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 18px;  /* 字段间距 */
-    }
-    .v21-field:last-child { margin-bottom: 0; }
-    .v21-field-wide { display: flex; flex-direction: column; margin-bottom: 18px; }
-    .v21-field label {
-      font-size: 14px;
-      font-weight: 500;
-      color: #555;
-      margin-bottom: 6px;
-    }
-    .v21-req { color: #E74C3C; font-weight: 700; }
-    .v21-field input,
-    .v21-field select,
-    .v21-field textarea {
-      padding: 10px 14px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-      background: white;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      width: 100%;
-      box-sizing: border-box;
-      color: #1a1a1a;
-    }
-    .v21-field input:focus,
-    .v21-field select:focus,
-    .v21-field textarea:focus {
-      outline: none;
-      border-color: #FF6B6B;
-      box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
-    }
-    .v21-field textarea { resize: vertical; min-height: 72px; font-family: ui-monospace, monospace; font-size: 13px; }
-    .v21-field small { font-size: 12px; color: #999; margin-top: 5px; line-height: 1.5; }
-    .v21-ph-row { display: flex; gap: 8px; }
-    .v21-ph-row textarea { flex: 1; }
-    .v21-ai-btn {
-      padding: 8px 14px;
-      background: #6c5ce7;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-      white-space: nowrap;
-      align-self: flex-start;
-    }
-    .v21-ai-btn:disabled { background: #BDBDBD; cursor: not-allowed; }
-    .v21-ai-btn:hover:not(:disabled) { background: #5d4ad6; }
-    /* 图片来源 radio */
-    .v21-img-source { display: flex; gap: 16px; margin-bottom: 18px; align-items: center; }
-    .v21-img-source label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; }
-    .v21-img-source input[type="radio"] { accent-color: #FF6B6B; }
-    .v21-img-path-row { display: none; margin-bottom: 18px; }
-    .v21-img-path-row.visible { display: flex; flex-direction: column; gap: 6px; }
-    .v21-img-path-row input[type="text"] { font-family: ui-monospace, monospace; font-size: 13px; }
-    .v21-advanced {
-      background: #FAFAFA;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      padding: 16px 20px;
-    }
-    .v21-advanced summary {
-      cursor: pointer;
-      font-size: 13px;
-      color: #888;
-      padding: 0;
-      list-style: none;
-    }
-    .v21-advanced summary:hover { color: #555; }
-    .v21-submit-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 32px;
-    }
-    .v21-submit-btn {
-      padding: 10px 28px;
-      background: var(--rose, #e8b4bc);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .v21-submit-btn:disabled { background: #BDBDBD; cursor: not-allowed; }
-    .v21-submit-btn:hover:not(:disabled) { background: #D89BA3; }
-    .v21-clear-btn {
-      padding: 10px 20px;
-      background: white;
-      color: #888;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .v21-clear-btn:hover { background: #F5F5F5; color: #555; }
-    .v21-result {
-      max-width: 800px;
-      background: white;
-      border-radius: var(--radius);
-      padding: 20px 24px;
-      margin-top: 14px;
-    }
-    .v21-result h4 { margin: 0 0 16px; color: #27AE60; font-size: 16px; }
-    .v21-result-field { margin-bottom: 14px; }
-    .v21-result-field label {
-      font-size: 12px;
-      color: #999;
-      margin-bottom: 4px;
-      display: block;
-    }
-    .v21-copy-row { display: flex; gap: 8px; align-items: flex-start; }
-    .v21-copy-row code,
-    .v21-copy-row pre {
-      flex: 1;
-      background: #F5F5F5;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-family: ui-monospace, monospace;
-      font-size: 12px;
-      color: #333;
-      word-break: break-all;
-      white-space: pre-wrap;
-      max-height: 200px;
-      overflow-y: auto;
-      margin: 0;
-    }
-    .v21-copy-row pre { max-height: 240px; }
-    .v21-copy-btn {
-      padding: 8px 14px;
-      background: var(--sage, #a8d5ba);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .v21-copy-btn:hover { background: #8FC4A0; }
-    .v21-result-hint {
-      font-size: 13px;
-      color: #666;
-      background: #FFFBEA;
-      border-left: 3px solid #F4A623;
-      padding: 10px 14px;
-      border-radius: 6px;
-      margin: 16px 0;
-    }
-    .v21-result-hint code {
-      background: white;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 12px;
-    }
-    .v21-jump-pending-btn {
-      padding: 10px 20px;
-      background: var(--lavender, #c5b8d9);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .v21-jump-pending-btn:hover { background: #B0A3CB; }
-
-    /* ─── V2.1 阶段 2.2: 待确认 Badge 列表 ─────────── */
-    .v21-pending-toolbar {
-      max-width: 800px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      padding: 10px 14px;
-      background: #FAFAFA;
-      border-radius: var(--radius);
-    }
-    .v21-pending-hint { font-size: 12px; color: #666; line-height: 1.5; }
-    .v21-pending-hint code { background: #FFE9E9; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
-    .v21-refresh-btn {
-      padding: 6px 12px;
-      background: white;
-      border: 1px solid #DDD;
-      border-radius: 8px;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .v21-refresh-btn:hover { background: #F0F0F0; }
-    .v21-pending-list { max-width: 800px; }
-    .v21-pending-empty {
-      max-width: 800px;
-      background: white;
-      border-radius: var(--radius);
-      padding: 32px 24px;
-      text-align: center;
-      color: #999;
-    }
-    .v21-pending-empty p { margin: 4px 0; font-size: 13px; }
-    .v21-pending-empty p:first-child { font-size: 16px; color: #666; }
-    .v21-pending-empty code { background: #F5F5F5; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
-    .v21-pending-loading {
-      max-width: 800px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 20px;
-      color: #999;
-      font-size: 13px;
-    }
-    .braille-spinner { font-size: 20px; animation: braille 0.8s infinite; }
-    @keyframes braille {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
-    }
-    .v21-pending-card {
-      background: white;
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    .v21-pending-card.v21-pending-conflict {
-      border-left: 4px solid #E74C3C;
-      background: #FFF5F5;
-    }
-    .v21-conflict {
-      background: #FFE9E9;
-      color: #C0392B;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      margin-bottom: 12px;
-    }
-    .v21-pending-row { display: flex; gap: 16px; }
-    .v21-pending-img {
-      width: 100px;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 12px;
-      background: #F0F0F0;
-      flex-shrink: 0;
-    }
-    .v21-pending-img-empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #BBB;
-      font-size: 12px;
-    }
-    .v21-pending-body { flex: 1; min-width: 0; }
-    .v21-pending-header {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-    .v21-pending-id {
-      font-family: ui-monospace, monospace;
-      font-size: 12px;
-      color: #999;
-      background: #F5F5F5;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .v21-pending-name {
-      font-size: 15px;
-      font-weight: bold;
-      color: var(--text);
-    }
-    .v21-pending-type {
-      font-size: 11px;
-      color: #666;
-      background: #FFFBEA;
-      padding: 1px 6px;
-      border-radius: 4px;
-    }
-    .v21-pending-time {
-      font-size: 11px;
-      color: #999;
-      margin-left: auto;
-    }
-    .v21-pending-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .v21-meta-chip {
-      font-size: 11px;
-      color: #555;
-      background: #F0F0F0;
-      padding: 2px 8px;
-      border-radius: 10px;
-    }
-    .v21-pending-ph {
-      font-size: 12px;
-      color: #777;
-      background: #FAFAFA;
-      padding: 6px 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
-      font-family: ui-monospace, monospace;
-      word-break: break-all;
-      max-height: 40px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: pre-wrap;
-    }
-    .v21-pending-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .v21-act-btn {
-      padding: 6px 12px;
-      background: white;
-      color: #333;
-      border: 1px solid #DDD;
-      border-radius: 8px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .v21-act-btn:hover:not(:disabled) { background: #F0F0F0; }
-    .v21-act-btn:disabled { color: #BBB; cursor: not-allowed; }
-    .v21-act-confirm {
-      background: var(--sage, #a8d5ba);
-      color: white;
-      border-color: var(--sage, #a8d5ba);
-    }
-    .v21-act-confirm:hover:not(:disabled) { background: #8FC4A0; border-color: #8FC4A0; }
-    .v21-act-confirm:disabled { background: #BDBDBD; border-color: #BDBDBD; }
-    .v21-act-delete {
-      background: white;
-      color: #C0392B;
-      border-color: #FFCDD2;
-    }
-    .v21-act-delete:hover:not(:disabled) { background: #FFF5F5; }
-    @media (max-width: 640px) {
-      .v21-row, .v21-pending-row { flex-direction: column; }
-      .v21-pending-img { width: 100%; height: 140px; }
-    }
-
-    /* 移动端: row 改单列 */
-    @media (max-width: 640px) {
-      .v21-row { flex-direction: column; }
-    }
-
-    /* ── Bug #6 修法 (2026-06-15): v21-section 字段 tooltip ── */
-    .v21-help {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 16px; height: 16px; border-radius: 50%;
-      background: #f0c040; color: #fff; font-size: 11px; font-weight: 700;
-      margin-left: 6px; cursor: help; user-select: none;
-      vertical-align: middle; line-height: 1;
-    }
-    .v21-help:hover { background: #c8860a; }
-    .v21-tooltip {
-      position: fixed; z-index: 9999;
-      background: #2c2c2c; color: #fff; font-size: 12px; line-height: 1.5;
-      padding: 8px 12px; border-radius: 6px; max-width: 260px;
-      pointer-events: none; opacity: 0; visibility: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-    }
-  </style>
 </head>
 <body class="has-sidebar">
   {% include "_sidebar.html" %}
@@ -814,7 +38,6 @@
       <div style="width: 100px"></div>  <!-- spacer -->
     </div>
 
-    <!-- Portal 状态卡 (V2.5 2026-06-16 删: /config/api/portal/status 端点不存在, JS 永远 catch 返红) -->
 
     <!-- V2.1 2-tab UI: 阶段 2.1 "新建 Badge 草稿" tab (单页表单 + 提交后弹 draft_id) -->
     <div class="v2-tabs">
@@ -952,8 +175,8 @@
               <div class="v21-field v21-field-wide">
                 <label for="v21CondText">条件文案 (cond_text, 一句话) <span class="v21-req">*</span></label>
                 <div style="display:flex; gap:8px; align-items:stretch;">
-                  <textarea id="v21CondText" name="cond_text" required rows="2" placeholder="例: 帮妈妈批 1 次数学作业&#10;或点 '✨ AI 生成' 让 AI 帮你出一句" style="flex:1;"></textarea>
-                  <button type="button" id="v21AiCondBtn" class="v21-ai-btn" onclick="v21AiCond()" style="flex:0 0 auto; align-self:flex-start;">✨ AI 生成</button>
+                  <textarea id="v21CondText" name="cond_text" required rows="2" placeholder="例: 帮妈妈批 1 次数学作业&#10;或点 'AI 生成' 让 AI 帮你出一句" style="flex:1;"></textarea>
+                  <button type="button" id="v21AiCondBtn" class="v21-ai-btn" onclick="v21AiCond()" style="flex:0 0 auto; align-self:flex-start;">AI 生成</button>
                 </div>
                 <small>弹窗里"达成条件"显示的一句话. 必填 (跟典故分开显示). 可手填或点 AI 按钮生成后改.</small>
               </div>
@@ -962,7 +185,7 @@
 
           <!-- 可选 advanced (默认折叠) -->
           <details class="v21-section v21-advanced">
-            <summary>⚙ 高级 (可选, 留空走默认值)</summary>
+            <summary>高级 (可选, 留空走默认值)</summary>
             <div class="v21-row">
               <div class="v21-field">
                 <label for="v21Threshold">Threshold</label>
@@ -990,7 +213,7 @@
 
         <!-- 提交后结果显示 -->
         <div class="v21-result" id="v21Result" style="display:none">
-          <h4>✅ 草稿已创建</h4>
+          <h4>草稿已创建</h4>
           <div class="v21-result-field">
             <label>draft_id</label>
             <div class="v21-copy-row">
@@ -1014,7 +237,7 @@
       <div class="tab-content" data-tab-content="pending" style="display:none">
         <!-- V2.1 阶段 2.2: 待确认 Badge 列表 -->
         <div id="v21PendingToolbar" class="v21-pending-toolbar">
-          <button type="button" class="v21-refresh-btn" onclick="v21LoadPending()">🔄 刷新</button>
+          <button type="button" class="v21-refresh-btn" onclick="v21LoadPending()">刷新</button>
           <span class="v21-pending-hint">
             拉到 <code>draft_awaiting_confirm</code> 状态的草稿 (skill 已生图, 待你确认上线).
             列表里点 "确认" 写入三表, 或 "删除" 放弃.
@@ -1024,7 +247,7 @@
           <!-- 动态渲染 -->
         </div>
         <div id="v21PendingEmpty" class="v21-pending-empty" style="display:none">
-          <p>🈳 没有待确认 badge</p>
+          <p>没有待确认 badge</p>
           <p>先去"新建 Badge 草稿" tab 填表, 切到 hermes chat 跑 <code>/badge-image</code> skill 生图, 生成完后这里会列出.</p>
         </div>
         <div id="v21PendingLoading" class="v21-pending-loading" style="display:none">
@@ -1066,7 +289,6 @@
         }
       });
     });
-    // V2.5 (2026-06-16): loadPortalStatus() 启动调用已删 (Portal 状态卡整体移除)
 
     // ─── V2.1 阶段 2.2: 待确认 Badge 列表 ─────────────
     async function v21LoadPending() {
@@ -1116,7 +338,7 @@
         // conflict 警告
         let conflictHtml = '';
         if (item.db_status === 'exists_committed') {
-          conflictHtml = `<div class="v21-conflict">⚠ ${item.conflict_reason || 'DB 已有同 id badge'}</div>`;
+          conflictHtml = `<div class="v21-conflict">注意: ${item.conflict_reason || 'DB 已有同 id badge'}</div>`;
         }
 
         // placeholder 预览 (单行截断)
@@ -1147,10 +369,10 @@
               </div>
               <div class="v21-pending-ph" title="${ph}">${phShort || '(空)'}</div>
               <div class="v21-pending-actions">
-                <button type="button" class="v21-act-btn v21-act-confirm" onclick="v21ConfirmBadge('${draft.draft_id}')" ${!item.is_committable ? 'disabled' : ''}>✅ 确认上线</button>
+                <button type="button" class="v21-act-btn v21-act-confirm" onclick="v21ConfirmBadge('${draft.draft_id}')" ${!item.is_committable ? 'disabled' : ''}>确认上线</button>
                 <button type="button" class="v21-act-btn v21-act-copy" onclick="v21CopyDraftId('${draft.draft_id}')">复制 draft_id</button>
                 <button type="button" class="v21-act-btn v21-act-copy" onclick="v21CopyDraftJson('${draft.draft_id}')">复制 JSON</button>
-                <button type="button" class="v21-act-btn v21-act-delete" onclick="v21DeleteDraft('${draft.draft_id}')">🗑 删除</button>
+                <button type="button" class="v21-act-btn v21-act-delete" onclick="v21DeleteDraft('${draft.draft_id}')">删除</button>
               </div>
             </div>
           </div>
@@ -1193,13 +415,13 @@
           // 检查解锁策略: calc 需要用户手动跑 /calc-apply
           const strategy = card ? card.getAttribute('data-unlock-strategy') : 'calc';
           if (strategy === 'calc') {
-            showToast('success', `✅ Badge "${data.badge_id}" 已写入! 需要配置 calc 逻辑才能解锁`);
+            showToast('success', `Badge "${data.badge_id}" 已写入! 需要配置 calc 逻辑才能解锁`);
             // 不跳转, 显示操作指引
             if (card) {
               const actionsEl = card.querySelector('.v21-pending-actions');
               if (actionsEl) {
                 actionsEl.innerHTML = `
-                  <div style="background:#FFF8E1; border:1px solid #FFE082; border-radius:8px; padding:12px 16px; margin-top:8px; font-size:13px; line-height:1.6;">
+                  <div style="background:var(--accent); border:1px solid var(--accent); border-radius:8px; padding:12px 16px; margin-top:8px; font-size:13px; line-height:1.6;">
                     <strong>下一步: 配置解锁逻辑</strong><br>
                     这个 badge 用 <code>calc</code> 策略解锁, 需要在 <code>achievement_definitions.py</code> 的 <code>_calc_milestone()</code> 里加一行判断.<br>
                     在 hermes chat 里跑: <code>/calc-apply ${data.badge_id}</code><br>
@@ -1209,16 +431,16 @@
               }
             }
           } else {
-            showToast('success', `✅ Badge "${data.badge_id}" 已上线! 跳到 /badges 看新图`);
+            showToast('success', `Badge "${data.badge_id}" 已上线! 跳到 /badges 看新图`);
             setTimeout(() => window.location.href = '/badges', 800);
           }
         } else {
           showToast('error', data.error || 'commit 失败');
-          if (btn) { btn.disabled = false; btn.textContent = '✅ 确认上线'; }
+          if (btn) { btn.disabled = false; btn.textContent = '确认上线'; }
         }
       } catch (err) {
         showToast('error', '网络错误: ' + err.message);
-        if (btn) { btn.disabled = false; btn.textContent = '✅ 确认上线'; }
+        if (btn) { btn.disabled = false; btn.textContent = '确认上线'; }
       }
     }
 
@@ -1395,7 +617,7 @@
         showToast('error', '网络错误: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = 'AI 草拟';
+        btn.textContent = 'AI 生成';
       }
     }
 
@@ -1412,7 +634,7 @@
       const btn = document.getElementById('v21AiCondBtn');
       const ta = document.getElementById('v21CondText');
       btn.disabled = true;
-      btn.textContent = '⏳ AI 思考中...';
+      btn.textContent = 'AI 生成';
       ta.value = '';  // 清空让用户看 AI 流式填
       try {
         const r = await fetch('/config/api/badge/ai-cond', {
@@ -1439,7 +661,7 @@
         showToast('error', '网络错误: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = '✨ AI 生成';
+        btn.textContent = 'AI 生成';
       }
     }
 
@@ -1480,12 +702,12 @@
         document.getElementById('v21ResultDraftId').textContent = respData.draft_id;
         document.getElementById('v21ResultJson').textContent = respData.json;
         if (respData.image_imported) {
-          showToast('success', `✅ 图片已导入, 草稿就绪: ${respData.draft_id}`);
+          showToast('success', `图片已导入, 草稿就绪: ${respData.draft_id}`);
           // 更新提示文案
           document.querySelector('.v21-result-hint').innerHTML =
             '📋 图片已就绪 → 切到 <strong>待确认</strong> tab → 确认上线';
         } else {
-          showToast('success', `✅ 草稿已创建: ${respData.draft_id}`);
+          showToast('success', `草稿已创建: ${respData.draft_id}`);
         }
         return false;  // 阻止 form 默认 submit
       } catch (err) {
@@ -1546,7 +768,7 @@
       v21SortOrder: "展示顺序, 数字小的在前. 留空 = 追加到末尾 (MAX+1)",
       v21Placeholder: "英文描述想画的画面 (喂给 AI 生图模型). 要具体: 人物 + 动作 + 道具 + 背景 + 风格. 例: a chibi girl with bamboo flute...",
       v21ZhStory: "中文典故 + 鼓励小故事, 弹窗里给孩子看. 写居里夫人/祖逖这类历史人物, 跟孩子能产生共鸣",
-      v21CondText: "弹窗里 '达成条件' 显示的一句话. 解释孩子为什么能获得这个徽章. 必填 (跟典故分开显示). 可手填, 或点 '✨ AI 生成' 让 AI 出一句后改.",
+      v21CondText: "弹窗里 '达成条件' 显示的一句话. 解释孩子为什么能获得这个徽章. 必填 (跟典故分开显示). 可手填, 或点 'AI 生成' 让 AI 出一句后改.",
       v21Threshold: "达成阈值 (数字). 例: 30 = 累计 30 天/分钟/次数. 留空 = 由 calc 决定",
       v21StatLogic: "高级字段. 描述 calc 怎么算达成. 一般留空, 由 /calc-apply skill 单独补",
       v21UnlockedTemplate: "高级字段. 自定义 AI 生图的 prompt 模板. 留空走默认 enamel pin 风格",
