@@ -235,13 +235,11 @@
         </div>
       </div>
       <div class="tab-content" data-tab-content="pending" style="display:none">
-        <!-- V2.1 阶段 2.2: 待确认 Badge 列表 -->
+        <!-- V2.1 阶段 2.2: 待确认 Badge 列表 (Fix badge-pending-ux 2026-06-30 极简 toolbar) -->
         <div id="v21PendingToolbar" class="v21-pending-toolbar">
+          <span class="v21-pending-title">待确认 badge</span>
+          <span class="v21-pending-count">共 <b id="v21PendingCount">0</b> 条</span>
           <button type="button" class="v21-refresh-btn" onclick="v21LoadPending()">刷新</button>
-          <span class="v21-pending-hint">
-            拉到 <code>draft_awaiting_confirm</code> 状态的草稿 (skill 已生图, 待你确认上线).
-            列表里点 "确认" 写入三表, 或 "删除" 放弃.
-          </span>
         </div>
         <div id="v21PendingList" class="v21-pending-list">
           <!-- 动态渲染 -->
@@ -318,7 +316,9 @@
     function v21RenderPending(items) {
       const listEl = document.getElementById('v21PendingList');
       const emptyEl = document.getElementById('v21PendingEmpty');
+      const countEl = document.getElementById('v21PendingCount');
       listEl.innerHTML = '';
+      countEl.textContent = items.length;
 
       if (items.length === 0) {
         emptyEl.style.display = 'block';
@@ -350,31 +350,36 @@
           ? `<img class="v21-pending-img" src="${item.image_url}" alt="preview" onerror="this.style.opacity='0.3';this.alt='图加载失败'">`
           : `<div class="v21-pending-img v21-pending-img-empty">无图</div>`;
 
+        // 行内化 meta: category / display / sort 拼成单行
+        const metaParts = [];
+        metaParts.push(`<b>category</b> ${meta.category || '?'}`);
+        if (meta.seasonal_type) metaParts.push(`seasonal <b>${meta.seasonal_type}</b>`);
+        if (meta.display_format) metaParts.push(`<b>display</b> ${meta.display_format}`);
+        if (meta.sort_order !== null && meta.sort_order !== undefined) metaParts.push(`sort <b>${meta.sort_order}</b>`);
+        const metaLineHtml = metaParts.map((s, i) => i === 0 ? s : `<span class="sep">·</span>${s}`).join(' ');
+
         card.innerHTML = `
           ${conflictHtml}
-          <div class="v21-pending-row">
+          <div class="v21-pending-top">
             ${imgHtml}
             <div class="v21-pending-body">
               <div class="v21-pending-header">
-                <span class="v21-pending-id">${meta.id || '?'}</span>
                 <span class="v21-pending-name">${meta.name || '?'}</span>
                 <span class="v21-pending-type">${meta.type || ''}</span>
+                <span class="v21-pending-id">${meta.id || '?'}</span>
                 <span class="v21-pending-time" title="${draft.updated_at || ''}">${v21RelativeTime(draft.updated_at)}</span>
               </div>
-              <div class="v21-pending-meta">
-                <span class="v21-meta-chip">category: ${meta.category || '?'}</span>
-                ${meta.seasonal_type ? `<span class="v21-meta-chip">seasonal: ${meta.seasonal_type}</span>` : ''}
-                ${meta.display_format ? `<span class="v21-meta-chip">display: ${meta.display_format}</span>` : ''}
-                ${meta.sort_order !== null && meta.sort_order !== undefined ? `<span class="v21-meta-chip">sort: ${meta.sort_order}</span>` : ''}
-              </div>
-              <div class="v21-pending-ph" title="${ph}">${phShort || '(空)'}</div>
-              <div class="v21-pending-actions">
-                <button type="button" class="v21-act-btn v21-act-confirm" onclick="v21ConfirmBadge('${draft.draft_id}')" ${!item.is_committable ? 'disabled' : ''}>确认上线</button>
-                <button type="button" class="v21-act-btn v21-act-copy" onclick="v21CopyDraftId('${draft.draft_id}')">复制 draft_id</button>
-                <button type="button" class="v21-act-btn v21-act-copy" onclick="v21CopyDraftJson('${draft.draft_id}')">复制 JSON</button>
-                <button type="button" class="v21-act-btn v21-act-delete" onclick="v21DeleteDraft('${draft.draft_id}')">删除</button>
-              </div>
+              <div class="v21-pending-meta-line">${metaLineHtml}</div>
+              <div class="v21-pending-prompt" title="${ph}">${phShort || '(空)'}</div>
             </div>
+          </div>
+          <div class="v21-pending-foot">
+            <div class="v21-pending-actions">
+              <button type="button" class="v21-act-btn v21-act-copy" onclick="v21CopyDraftId('${draft.draft_id}')">复制 draft_id</button>
+              <button type="button" class="v21-act-btn v21-act-copy" onclick="v21CopyDraftJson('${draft.draft_id}')">复制 JSON</button>
+              <button type="button" class="v21-act-btn v21-act-delete" onclick="v21DeleteDraft('${draft.draft_id}')">删除</button>
+            </div>
+            <button type="button" class="v21-act-btn v21-act-confirm" onclick="v21ConfirmBadge('${draft.draft_id}')" ${!item.is_committable ? 'disabled' : ''}>确认上线</button>
           </div>
         `;
         listEl.appendChild(card);
