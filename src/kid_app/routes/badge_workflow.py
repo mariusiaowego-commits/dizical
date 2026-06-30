@@ -22,8 +22,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -287,6 +287,77 @@ def api_discoveries(request: Request) -> JSONResponse:
 
     items = badge_discovery.get_pending_confirmations()
     return JSONResponse({"ok": True, "data": items, "count": len(items)})
+
+
+# ─── GET /config/api/badge/draft-image (V2.6 待确认列表预览图) ─────
+
+@router.get("/api/badge/draft-image")
+def api_draft_image(draft_id: str) -> Response:
+    r"""V2.6: 待确认 badge 列表的预览图, 从 .tmp/ 临时图读取.
+
+    根因 (2026-06-30): discovery 之前返 /static/badges/{id}_v{n}.png,
+    但 commit 前的草稿图实际在 .tmp/ (生图 skill 写盘位置),
+    不在 static mount 下, 前端 fetch 永远 404 → "图加载失败".
+
+    修法: 加这个端点走 FileResponse 返真图. discovery 优先返
+    commit 后的 static/badges/ 路径 (commit 后 image.path 被
+    commit-from-draft 改成 static 路径), fallback 到这个端点.
+
+    安全:
+    - draft_id 走 SAFE_ID_RE (^[a-zA-Z0-9_-]+$) → 杜绝 path traversal
+      注: DRAFT_ID_RE 跟实际草稿 ID 格式不匹配 (DRAFT_ID_RE 要求
+      6+ 位 hash, 但草稿用顺序 ID 或短 hash), 所以这里不复用
+    - 真实路径必须 resolve 后仍在 _badge_data_dir() 内
+      → 即使 image.path 字段被恶意改, 也读不到项目外文件
+    - 仅返 image/png (Content-Type)
+    """
+    import re as _re
+    from pathlib import Path as _P
+    from src.kid_app import badge_draft
+
+    # path traversal 防御: 字符白名单
+    if not _re.match(r"^[a-zA-Z0-9_-]+$", draft_id) or ".." in draft_id:
+        return JSONResponse({"ok": False, "error": "draft_id 非法"}, status_code=400)
+
+    # 直接读 json, 不走 get_draft (它有 DRAFT_ID_RE 校验跟实际格式不一致)
+    draft_path = badge_draft._badge_data_dir() / f"{draft_id}.json"
+    if not draft_path.is_file():
+        return JSONResponse({"ok": False, "error": "draft 不存在"}, status_code=404)
+
+    try:
+        import json as _json
+        draft_data = _json.loads(draft_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return JSONResponse({"ok": False, "error": f"draft 解析失败: {e}"}, status_code=400)
+
+    img_path_str = (draft_data.get("image") or {}).get("path")
+    if not img_path_str:
+        return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=404)
+
+    # path traversal 防御: resolve 后必须仍在 badge_data_dir 内
+    try:
+        img_path = _P(img_path_str).resolve()
+        data_dir = badge_draft._badge_data_dir().resolve()
+    except (OSError, RuntimeError):
+        return JSONResponse({"ok": False, "error": "image.path 无效"}, status_code=400)
+
+    # 必须在 data_dir 子目录 (.tmp/ 或根目录)
+    try:
+        img_path.relative_to(data_dir)
+    except ValueError:
+        return JSONResponse(
+            {"ok": False, "error": "image.path 越界 (不在 badge_data_dir 内)"},
+            status_code=400,
+        )
+
+    if not img_path.is_file():
+        return JSONResponse({"ok": False, "error": f"图不存在: {img_path}"}, status_code=404)
+
+    return FileResponse(
+        path=str(img_path),
+        media_type="image/png",
+        headers={"Cache-Control": "no-cache"},  # 草稿图会换, 不缓存
+    )
 
 
 # ─── DELETE /config/api/badge/draft/{draft_id} (V2.1 阶段 2.2 放弃按钮) ─

@@ -287,7 +287,12 @@ class TestDiscoveries:
         assert r.json()["count"] == 0
 
     def test_with_pending_image_url_web_path(self, client, tmp_badge_data):
-        """端到端: 1 个 pending draft, image_url 返 web 路径 /static/badges/{id}_v{n}.png (V2.1 修)."""
+        """端到端: 1 个 pending draft, image_url 走 draft-image 端点 (V2.6 修).
+
+        V2.6 (2026-06-30) 修: 待确认状态时 .tmp/ 图真实存在,
+        /static/badges/{id}_v{n}.png 拼接路径 404, fallback 到
+        /config/api/badge/draft-image?draft_id=... 端点 (FileResponse).
+        """
         meta = _make_valid_meta("disc_xyz")
         d = _make_awaiting_draft(tmp_badge_data, meta=meta)
         r = client.get("/config/api/badge/discoveries")
@@ -295,8 +300,9 @@ class TestDiscoveries:
         data = r.json()["data"]
         assert len(data) == 1
         item = data[0]
-        # V2.1: image_url 走 /static/badges/{id}_v{version}.png (前端可渲染)
-        assert item["image_url"] == "/static/badges/v2_test_disc_xyz_v1.png"
+        # V2.6: image_url 走 draft-image 端点 (tmp_badge_data fixture 里
+        # src/kid_app/static/badges/ 不存在, 所以不命中 commit-static-path 分支)
+        assert item["image_url"] == f"/config/api/badge/draft-image?draft_id={d.draft_id}"
         assert item["is_committable"] is True
         assert item["db_status"] == "not_exists"
         # 清理
@@ -310,3 +316,76 @@ class TestDiscoveries:
         badge_draft.save_draft(d)
         r = client.get("/config/api/badge/discoveries")
         assert r.json()["data"] == []
+
+
+# ─── TestDraftImage (V2.6 待确认列表预览图端点) ─────────────
+
+class TestDraftImage:
+    """V2.6 (2026-06-30): GET /api/badge/draft-image 端点.
+
+    修待确认 badge 列表预览图 404 现象:
+    之前 discovery 返 /static/badges/{id}_v{n}.png, 但 commit 前
+    .tmp/ 图不在 static mount 下, 前端 fetch 永远 404.
+
+    新端点: 走 FileResponse 返 .tmp/ 真图, discovery fallback 链上.
+    """
+
+    def test_happy_path_returns_png(self, client, tmp_badge_data):
+        """待确认 draft + 临时图 → 200 + image/png + 真图字节."""
+        meta = _make_valid_meta("dimg_xyz")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        r = client.get(f"/config/api/badge/draft-image?draft_id={d.draft_id}")
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "image/png"
+        # _make_awaiting_draft 写的是 b"fake png content"
+        assert r.content == b"fake png content"
+        # 清理
+        badge_draft.delete_draft(d.draft_id)
+        badge_draft.cleanup_tmp(d.draft_id, 1)
+
+    def test_path_traversal_blocked(self, client, tmp_badge_data):
+        """?draft_id=../etc/passwd → 400 (字符白名单拦截)."""
+        r = client.get("/config/api/badge/draft-image?draft_id=../etc/passwd")
+        assert r.status_code == 400
+        assert "draft_id 非法" in r.json()["error"]
+
+    def test_slash_in_id_blocked(self, client, tmp_badge_data):
+        """?draft_id=foo/bar → 400 (slash 不在白名单)."""
+        r = client.get("/config/api/badge/draft-image?draft_id=foo/bar")
+        assert r.status_code == 400
+        assert "draft_id 非法" in r.json()["error"]
+
+    def test_nonexistent_draft_404(self, client, tmp_badge_data):
+        """?draft_id=does_not_exist_xxx → 404."""
+        r = client.get("/config/api/badge/draft-image?draft_id=does_not_exist_xxx")
+        assert r.status_code == 404
+        assert "draft 不存在" in r.json()["error"]
+
+    def test_draft_without_image_404(self, client, tmp_badge_data):
+        """draft 存在但没 image 字段 → 404."""
+        meta = _make_valid_meta("dimg_noimg_xyz")
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        # 不调 update_draft_image, 留空
+        r = client.get(f"/config/api/badge/draft-image?draft_id={d.draft_id}")
+        assert r.status_code == 404
+        assert "还没 image" in r.json()["error"]
+        # 清理
+        badge_draft.delete_draft(d.draft_id)
+
+    def test_image_path_outside_data_dir_blocked(self, client, tmp_badge_data):
+        """恶意 image.path 指向项目外 → 400 (relative_to 防御)."""
+        meta = _make_valid_meta("dimg_evil_xyz")
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        # 手动写 image.path 指向 /etc/passwd
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": "/etc/passwd",
+            "model": "evil",
+            "version": 1,
+        })
+        r = client.get(f"/config/api/badge/draft-image?draft_id={d.draft_id}")
+        assert r.status_code == 400
+        assert "越界" in r.json()["error"]
+        # 清理
+        badge_draft.delete_draft(d.draft_id)
