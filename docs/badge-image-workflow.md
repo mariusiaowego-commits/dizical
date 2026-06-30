@@ -1,4 +1,4 @@
-# Badge 图片生成工作流 (V2.5, 2026-06-16)
+# Badge 图片生成工作流 (V2.6, 2026-06-30)
 
 > dizical badge 图生成的**完整**流程 + 验收清单 + 排错指南 + 表彰型徽章设计.
 > 沉淀自 2026-06-16 用户反馈"批改小帮手 灰方框" + "assign_pal UI locked" + "表彰型徽章字段" 三次调查, 防止下次重蹈覆辙.
@@ -8,16 +8,17 @@
 ## 1. 流程全景 (5 步)
 
 ```
-STEP 1 表单填 meta       →  STEP 2 草稿         →  STEP 3 生图       →  STEP 4 去白底 (PIL + rembg)  →  STEP 5 commit
-/config/badge 填字段       /api/badge/draft     /badge-image skill    skill step 7 (V2.4)               /api/badge/commit-from-draft
-                                                                 ├─ 主路: PIL 阈值 245
-                                                                 └─ 兜底: 透明<28% → rembg U2-Net
+STEP 1 表单填 meta       →  STEP 2 草稿         →  STEP 3 生图       →  STEP 4 去背 (PIL + rembg 双路)  →  STEP 5 commit
+/config/badge 填字段       /api/badge/draft     /badge-image skill    skill step 7 (V2.6)                  /api/badge/commit-from-draft
+                                                                 ├─ PIL 阈值 245 (快, ~1s)
+                                                                 ├─ rembg U2-Net AI (兜底, ~2-60s)
+                                                                 └─ system-python subprocess (最终保底)
 
 每步**强验收点** (不通过不能进下一步):
 - STEP 1 验收: 表单**cond_text 必填**, **unlock_strategy 选 (calc/immediate)**, **纪念章**填 achieved_at_override
 - STEP 2 验收: draft.json 写到 `data/lib/badge_data/{draft_id}.json`, status=`draft_created`
 - STEP 3 验收: 图存 `.tmp/{draft_id}_v{n}.png`, 文件 > 500KB
-- **STEP 4 验收 (关键)**: 4 角 alpha=0 **AND** 4 角 RGB 不画"软灰" + 真透明比例 ≥ 28%
+- **STEP 4 验收 (关键)**: 4 角 alpha=0 **AND** 真透明比例 ≥ 28%. 自动验证, 不达标发警告.
 - STEP 5 验收: /badges 页面 4 角干净 + modal 弹典故 + 状态跟 unlock_strategy 一致
 
 ---
@@ -118,13 +119,21 @@ STEP 1 表单填 meta       →  STEP 2 草稿         →  STEP 3 生图       
 - ❌ 旧: "isolated on a clean white background"
 - ✅ 新: "isolated object, transparent PNG background"
 
-### 3.4 STEP 4: 去白底 (V2.4 双保险)
+### 3.4 STEP 4: 去背 (V2.6 双路执行 + system-python 保底)
 
-主路 PIL 阈值 245 + 兜底 rembg U2-Net (透明 <28% 触发).
+**PIL 阈值 (主路, ~1s) + rembg U2-Net AI (兜底, ~2-60s) 双路无条件执行**.
 
-**已知模型不稳定** (PR #102 调查):
-- 同一 prompt 偶尔出 RGB(254) 真白 / RGB(237) 软灰 / AI 假装透明画棋盘
-- 兜底机制必要, skill step 7 现在自动化
+**历史教训 (2026-06-30)**: `gpt-image-2` 模型为"透明 PNG"场景生图时, 背景可能是 **深灰 RGB~230** 而非纯白 RGB~254. 旧 V2.4 策略"透明 < 28% 才触发 rembg" 因为 rembg 没装（只装了 system Python 的 Hermes venv）→ 兜底**无声失败** → 4 角不透明, 前端显示白方框.
+
+**新策略**:
+1. PIL 阈值 245 去白底（快, 处理纯白/近白背景）
+2. **无条件**执行 rembg AI 抠图（处理深灰/软灰/棋盘格等非标准背景）
+3. PIl + rembg 都失败 → `subprocess` 调系统 Python `/usr/local/bin/python3` 的 rembg 兜底
+4. 最终自动验证: 4 角 alpha=0 + 透明比例 ≥ 28%
+
+**执行位置**: skill step 7 (`/badge-image`). **依赖**: Hermes venv 已装 `rembg[cpu]` (含 onnxruntime CPU).
+
+> ⚠️ 如果 skill 生图后 step 7 报告"四角不透明"或"透明率 <28%", **不要 commit**, 应先手动修复或重新生图.
 
 ### 3.5 STEP 5: commit
 
@@ -250,4 +259,5 @@ for f in sorted(os.listdir('src/kid_app/static/badges')):
 | V2.1 | 2026-05-20 | workflow 文档初版 | `docs/badge-workflow.md` |
 | V2.3 | 2026-06-16 | 改 prompt 删 "clean white background" | PR #101 |
 | V2.4 | 2026-06-16 | PIL 阈值 + rembg 兜底 (双保险), 验收清单 | PR #103 (assign_pal 灰方框调查) |
-| **V2.5** | **2026-06-16** | **+ V2.6 achieved_at_override 通用字段 + 表彰型徽章设计 + modal-desc 滚动 + /achievements modal bg 修复** | **PR #106-#111 沉淀** |
+|| **V2.5** | **2026-06-16** | **+ V2.6 achieved_at_override 通用字段 + 表彰型徽章设计 + modal-desc 滚动 + /achievements modal bg 修复** | **PR #106-#111 沉淀** |
+|| **V2.6** | **2026-06-30** | **PIL + rembg 双路无条件执行 + system-python subprocess 保底 + 4 角自动验收 + Hermes venv 装 rembg[cpu]** | **swallow_triumph 深灰背景翻车 (#135)** |
