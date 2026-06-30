@@ -52,15 +52,25 @@ def scan_badge_data_dir() -> list[dict[str, Any]]:
             conflict_reason = f"DB 已有 id='{badge_id}' 的 badge, 不能再 commit (V1.1 暂无删除 API, 手动 SQL 删)"
 
         # image 路径: skill 写 draft 时是 .tmp/ 临时图, commit-from-draft 时
-        # 复制到 static/badges/{id}_v{n}.png. 前端需 web 路径 (/static/badges/...) 才能渲染.
+        # 复制到 static/badges/{id}_v{n}.png. 前端需 web 路径才能渲染.
         # commit 后: .tmp/ 已被 cleanup, draft.image["path"] 仍指向 .tmp/ 旧路径
         # (status 已变 committed, 但 draft.json 没更新). V2.1 修: commit 时也更新 image.path.
         # V2.1 修: discovery 优先返 commit 后的 static/badges/ 路径 (前端可渲染)
+        # V2.6 修: 待确认状态时, .tmp/ 图实际存在, 拼接 /static/badges/ 路径 404.
+        #          → fallback 到 /config/api/badge/draft-image 端点 (返 .tmp/ 真图).
+        #          端点本身有 path traversal 防御, 跟这里解耦.
         image_url = None
         badge_id = draft.meta.get("id")
+        from pathlib import Path as _P
+        data_dir = badge_draft._badge_data_dir()
         if badge_id:
-            # commit 后的标准路径 (前端用这个)
-            image_url = f"/static/badges/{badge_id}_v{draft.version}.png"
+            commit_static_path = data_dir.parent.parent.parent / "src" / "kid_app" / "static" / "badges" / f"{badge_id}_v{draft.version}.png"
+            if commit_static_path.is_file():
+                # commit 后真存在 → 直接 web 路径 (走 StaticFiles mount, 高效)
+                image_url = f"/static/badges/{badge_id}_v{draft.version}.png"
+            else:
+                # 待确认态: 图在 .tmp/, 走 draft-image 端点 (FileResponse)
+                image_url = f"/config/api/badge/draft-image?draft_id={draft.draft_id}"
         elif draft.image.get("path"):
             # fallback: 用 draft 写的路径 + strip /static/badges/ 前缀
             image_url = draft.image["path"]
