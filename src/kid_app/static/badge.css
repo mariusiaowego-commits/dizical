@@ -651,28 +651,33 @@
     .v21-jump-pending-btn:hover { background: rgba(44, 62, 80, 0.85); }
 
     /* ─── V2.1 阶段 2.2: 待确认 Badge 列表 ─────────── */
+    /* 极简 toolbar: 标题 + 计数 + 刷新, 不再一条灰底长条 (Fix badge-pending-ux 2026-06-30) */
     .v21-pending-toolbar {
       max-width: 800px;
       display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      padding: 10px 14px;
-      background: var(--muted);
-      border-radius: var(--radius-lg);
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding: 0 4px;
     }
     .v21-pending-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
     .v21-pending-hint code { background: var(--primary); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+    .v21-pending-title { font-size: 15px; font-weight: 600; color: var(--secondary); }
+    .v21-pending-count { font-size: 12px; color: var(--muted); }
+    .v21-pending-count b { color: var(--primary); font-weight: 600; }
     .v21-refresh-btn {
-      padding: 6px 12px;
-      background: white;
-      border: 1px solid var(--muted);
+      margin-left: auto;
+      padding: 6px 14px;
+      min-height: 32px;
+      background: var(--neutral);
+      border: 1px solid #E5E7EB;
       border-radius: 8px;
       font-size: 12px;
+      color: var(--secondary);
       cursor: pointer;
       white-space: nowrap;
     }
-    .v21-refresh-btn:hover { background: var(--muted); }
+    .v21-refresh-btn:hover { background: var(--tertiary); }
     .v21-pending-list { max-width: 800px; }
     .v21-pending-empty {
       max-width: 800px;
@@ -684,7 +689,7 @@
     }
     .v21-pending-empty p { margin: 4px 0; font-size: 13px; }
     .v21-pending-empty p:first-child { font-size: 16px; color: var(--muted); }
-    .v21-pending-empty code { background: var(--muted); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+    .v21-pending-empty code { background: var(--tertiary); color: var(--secondary); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
     .v21-pending-loading {
       max-width: 800px;
       display: flex;
@@ -700,12 +705,14 @@
       0%, 100% { opacity: 0.3; }
       50% { opacity: 1; }
     }
+    /* 卡片: 拆顶部 (主信息) + 脚部 (操作), 暖白脚跟白卡片拉开层次 (Fix badge-pending-ux 2026-06-30) */
     .v21-pending-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      padding: 16px 20px;
+      background: var(--neutral);
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 0;
       margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      overflow: hidden;
     }
     .v21-pending-card.v21-pending-conflict {
       border-left: 4px solid var(--primary);
@@ -719,13 +726,16 @@
       font-size: 12px;
       margin-bottom: 12px;
     }
+    .v21-pending-top { display: flex; gap: 16px; padding: 16px 20px; }
     .v21-pending-row { display: flex; gap: 16px; }
     .v21-pending-img {
-      width: 100px;
-      height: 100px;
+      width: 88px;
+      height: 88px;
       object-fit: cover;
-      border-radius: 12px;
-      background: var(--muted);
+      border-radius: 10px;
+      background: var(--tertiary);
+      outline: 1px solid #E5E7EB;
+      outline-offset: -1px;
       flex-shrink: 0;
     }
     .v21-pending-img-empty {
@@ -733,67 +743,75 @@
       align-items: center;
       justify-content: center;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
     }
     .v21-pending-body { flex: 1; min-width: 0; }
+    /* Row 1: 名称 + type + id + 时间 (同行) */
     .v21-pending-header {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       flex-wrap: wrap;
     }
+    /* id: monospace + muted 文字, 不再加灰底 (灰底灰字 = 看不见) */
     .v21-pending-id {
-      font-family: ui-monospace, monospace;
-      font-size: 12px;
-      color: var(--muted);
-      background: var(--muted);
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .v21-pending-name {
-      font-size: 15px;
-      font-weight: bold;
-      color: var(--secondary);
-    }
-    .v21-pending-type {
+      font-family: ui-monospace, "SF Mono", monospace;
       font-size: 11px;
       color: var(--muted);
-      background: var(--accent);
-      padding: 1px 6px;
+    }
+    .v21-pending-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--secondary);
+    }
+    /* type chip: 暖橙 12% 透明底, 跟 "突破" 语义一致 */
+    .v21-pending-type {
+      font-size: 11px;
+      color: var(--accent);
+      background: rgba(255,140,90,0.12);
+      padding: 2px 8px;
       border-radius: 4px;
+      font-weight: 500;
     }
     .v21-pending-time {
       font-size: 11px;
       color: var(--muted);
       margin-left: auto;
     }
-    .v21-pending-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .v21-meta-chip {
-      font-size: 11px;
-      color: var(--secondary);
-      background: var(--muted);
-      padding: 2px 8px;
-      border-radius: 10px;
-    }
-    .v21-pending-ph {
+    /* Row 2: meta 行内化 'category milestone · display achieved_flag' */
+    .v21-pending-meta-line {
       font-size: 12px;
       color: var(--muted);
-      background: var(--muted);
-      padding: 6px 10px;
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+    .v21-pending-meta-line b { color: var(--secondary); font-weight: 500; }
+    .v21-pending-meta-line .sep { color: #E5E7EB; margin: 0 6px; }
+    /* Row 3: prompt 暖白底 monospace, 跟 Row 2 物理区隔 */
+    .v21-pending-prompt {
+      font-size: 11px;
+      color: var(--secondary);
+      background: var(--tertiary);
+      border: 1px solid #E5E7EB;
       border-radius: 6px;
-      margin-bottom: 10px;
-      font-family: ui-monospace, monospace;
-      word-break: break-all;
+      padding: 6px 10px;
+      font-family: ui-monospace, "SF Mono", monospace;
+      line-height: 1.55;
       max-height: 40px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: pre-wrap;
+      word-break: break-all;
+    }
+    /* 脚部: 暖白底 + 1px 顶边, 主操作在右下 */
+    .v21-pending-foot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--tertiary);
+      border-top: 1px solid #E5E7EB;
     }
     .v21-pending-actions {
       display: flex;
@@ -801,29 +819,31 @@
       flex-wrap: wrap;
     }
     .v21-act-btn {
-      padding: 6px 12px;
-      background: white;
+      padding: 0 12px;
+      min-height: 30px;
+      background: var(--neutral);
       color: var(--secondary);
-      border: 1px solid var(--muted);
-      border-radius: 8px;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
       font-size: 12px;
       cursor: pointer;
     }
-    .v21-act-btn:hover:not(:disabled) { background: var(--muted); }
+    .v21-act-btn:hover:not(:disabled) { background: var(--tertiary); }
     .v21-act-btn:disabled { color: var(--muted); cursor: not-allowed; }
     .v21-act-confirm {
-      background: var(--secondary, var(--secondary));
+      margin-left: auto;
+      background: var(--primary, var(--primary));
       color: white;
-      border-color: var(--secondary, var(--secondary));
+      border-color: var(--primary, var(--primary));
     }
-    .v21-act-confirm:hover:not(:disabled) { background: rgba(44, 62, 80, 0.85); border-color: rgba(44, 62, 80, 0.85); }
+    .v21-act-confirm:hover:not(:disabled) { background: rgba(255,107,107,0.92); border-color: rgba(255,107,107,0.92); }
     .v21-act-confirm:disabled { background: var(--muted); border-color: var(--muted); }
     .v21-act-delete {
-      background: white;
-      color: var(--secondary);
-      border-color: var(--primary);
+      background: var(--neutral);
+      color: var(--primary);
+      border-color: rgba(255,107,107,0.3);
     }
-    .v21-act-delete:hover:not(:disabled) { background: var(--primary); }
+    .v21-act-delete:hover:not(:disabled) { background: rgba(255,107,107,0.06); }
     @media (max-width: 640px) {
       .v21-row, .v21-pending-row { flex-direction: column; }
       .v21-pending-img { width: 100%; height: 140px; }
