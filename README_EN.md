@@ -9,10 +9,10 @@
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/badge/tests-49%20passed-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/lessons-211%20days%20imported-blue" alt="Lessons">
-  <img src="https://img.shields.io/badge/badges-V2.9-ff69b4" alt="Badge Engine v2.9">
+  <img src="https://img.shields.io/badge/badges-V2.10-ff69b4" alt="Badge Engine v2.10">
 </p>
 
-> 📝 **Recent (2026-07-01, V2.9):** streak_*/lucky_61_* milestone auto-unlock · `replace-image-from-draft` endpoint · regenerated streak_1/3/7 PNGs · kid-friendly modal-desc copy. See [CHANGELOG.md](docs/CHANGELOG.md).
+> 📝 **Recent (2026-07-01, V2.10):** added rembg[cpu] (gpt-image-2 light-gray background now cleanly extracted) · streak_1/3/7 restored to V1 era styles (anthropomorphic flute + flame girl + chibi 7) · hard alpha mask for zero grain. See [CHANGELOG.md](docs/CHANGELOG.md).
 
 ---
 
@@ -67,7 +67,7 @@ GPT-4o is used for AI-generated monthly practice report images. See `docs/OPENAI
 
 ---
 
-## Badge Collection (V2.9, 2026-07)
+## Badge Collection (V2.10, 2026-07)
 
 40 enamel-pin style badges across 6 categories, with kid-friendly unlock copy:
 
@@ -77,6 +77,10 @@ GPT-4o is used for AI-generated monthly practice report images. See `docs/OPENAI
 - **Top** — `top1/top2/top3` (monthly practice top 3).
 - **Festival** — `lucky_61_2026/2027/2028/2029/2030` (Children's Day: each year on June 1, practice to permanently unlock that year's badge).
 - **Special** — `first_log`, `double`, `week_champ`, `full_month`, `all_items`, and others.
+
+**V2.10 changes:**
+- streak_1 now an anthropomorphic green bamboo flute (V1 era style, no number)
+- streak_3 now chibi girl + flame halo (V1 era style, no number)
 
 **V2.9 changes:**
 - Milestone cards now auto-unlock on first achievement (instead of "today streak")

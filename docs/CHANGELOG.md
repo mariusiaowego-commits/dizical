@@ -18,6 +18,33 @@
 
 ---
 
+## [2026-07-01] — V2.10 badge 图重生 + rembg 抠图
+
+### Added（新增）
+- 装 **rembg[cpu]** (2.0.76) + onnxruntime (1.27.0) 到 `.venv-service/`
+  - badge-image skill 现在 PIL + rembg 双保险直接跑通 (旧版只有 PIL 阈值, gpt-image-2 浅灰背景去不掉)
+- 创建 `.venv-service/` venv, 服务从 `.venv-service/bin/uvicorn` 启动
+- `streak_1_v2.png` / `streak_3_v2.png` / `streak_7_v2.png` — rembg-cleaned 备份 (PR #143 副产物)
+- `.gitignore` 加 `.venv-service/`
+
+### Changed（变更）
+- **PR #143** streak_1/3 风格还原 (V1 era 原版风格, 不是 V2 era chibi girl + 大数字 模板):
+  - **streak_1** 新图: **绿色拟人化竹笛** + 4 颗粉红心形 (无数字). browser vision 实测确认.
+  - **streak_3** 新图: **chibi girl + 笛子 + 金红橙火焰环绕** (火焰像 halo, 无数字). browser vision 实测确认.
+  - **streak_7** 保持: chibi girl + 大金色 7.
+- 边缘质量: 硬 alpha mask (alpha < 128 → 0, 否则 255), 0 partial alpha 像素
+
+### Removed（移除）
+- `streak_7_v1.png` (PR #140 PIL-only 版, 被 v2 supersede)
+
+### Tested
+- pytest 12/12 通过 (PR #139 + #101 旧测试不破)
+- Browser vision 校验 3 张卡: 风格全部对
+- 服务 PID 25221, `.venv-service/bin/uvicorn`, port 8765 live
+
+---
+
+## [2026-07-01] — V2.9 streak+badge 终章
 ## [2026-07-01] — V2.9 streak+badge 终章
 
 ### Fixed（修复）
