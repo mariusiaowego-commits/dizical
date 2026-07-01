@@ -9,10 +9,10 @@
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/badge/tests-49%20passed-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/lessons-211%20days%20imported-blue" alt="Lessons">
-  <img src="https://img.shields.io/badge/badges-V2.9-ff69b4" alt="Badge Engine v2.9">
+  <img src="https://img.shields.io/badge/badges-V2.10-ff69b4" alt="Badge Engine v2.10">
 </p>
 
-> 📝 **最近变更 (2026-07-01, V2.9):** streak_*/lucky_61_* milestone 永久解锁 · `replace-image-from-draft` 端点 · streak_1/3/7 图重生 · modal-desc 小朋友化文案. 详见 [CHANGELOG.md](docs/CHANGELOG.md) / [STATUS.md](STATUS.md).
+> 📝 **最近变更 (2026-07-01, V2.10):** 装 rembg[cpu] (gpt-image-2 浅灰背景一次抠干净) · streak_1/3/7 还原 V1 era 原风格 (拟人竹笛 + 火焰女孩 + chibi 7) · 边缘硬 alpha mask 0 颗粒. 详见 [CHANGELOG.md](docs/CHANGELOG.md) / [STATUS.md](STATUS.md).
 
 ---
 
