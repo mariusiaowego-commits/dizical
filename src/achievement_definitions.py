@@ -328,24 +328,38 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
             return stat_achieved_at
         return computed_at if calc_achieved else None
 
-    if aid == "streak_1":
-        at = _at(streak >= 1, _streak_first_achieved_at(conn, 1))
-        return CalcResult(streak >= 1, streak, None, at, "连续 ≥ 1 天")
-    if aid == "streak_3":
-        at = _at(streak >= 3, _streak_first_achieved_at(conn, 3))
-        return CalcResult(streak >= 3, streak, None, at, "连续 ≥ 3 天")
-    if aid == "streak_7":
-        at = _at(streak >= 7, _streak_first_achieved_at(conn, 7))
-        return CalcResult(streak >= 7, streak, None, at, "连续 ≥ 7 天")
-    if aid == "streak_14":
-        at = _at(streak >= 14, _streak_first_achieved_at(conn, 14))
-        return CalcResult(streak >= 14, streak, None, at, "连续 ≥ 14 天")
-    if aid == "streak_30":
-        at = _at(streak >= 30, _streak_first_achieved_at(conn, 30))
-        return CalcResult(streak >= 30, streak, None, at, "连续 ≥ 30 天")
-    if aid == "streak_100":
-        at = _at(streak >= 100, _streak_first_achieved_at(conn, 100))
-        return CalcResult(streak >= 100, streak, None, at, "连续 ≥ 100 天")
+    # ── streak_* 系列: 史上首次达成"连续 ≥ n 天"即永久解锁 ──────
+    # 2026-07-01 拍板: 之前用"今日 streak"是错的 — 今天没练 streak=0
+    # → milestone 永远不解锁. milestone 必须走历史首次.
+    if aid.startswith("streak_") and aid[7:].isdigit():
+        n = int(aid.split("_")[1])
+        first_at = _streak_first_achieved_at(conn, n)
+        achieved = first_at is not None
+        return CalcResult(achieved, n if achieved else 0, None,
+                          first_at, f"历史首次连续 ≥ {n} 天解锁 (不依赖当前 streak)")
+
+    # ── lucky_61_YYYY 系列: 六一节永久里程碑 ─────────────────────
+    # 2026-07-01 拍板: 用户认为这是 milestone (永久徽章, 像考级一样).
+    # 之前 seasonal/monthly 走"当月 60 分钟" — 跟节日语义不符.
+    # 改成 milestone: 对应年份 06-01 当天练过 (total_minutes > 0) → 永久解锁.
+    # 注意: achievements 表里的 category/seasonal_type 字段保持不动 (V2 数据契约).
+    # calc_milestone 用 aid 前缀识别即可.
+    if aid.startswith("lucky_61_") and aid[9:].isdigit():
+        try:
+            y = int(aid[9:])
+            target = f"{y:04d}-06-01"
+            cur = conn.execute(
+                "SELECT MIN(date), COALESCE(SUM(total_minutes), 0) "
+                "FROM daily_practices WHERE date = ?",
+                (target,))
+            row = cur.fetchone()
+            first_at = row[0] if row else None
+            mins = int(row[1]) if row and row[1] else 0
+            achieved = first_at is not None and mins > 0
+            return CalcResult(achieved, mins if achieved else 0, None,
+                              first_at, f"{y}年6月1日当天练习过（{mins} 分钟）")
+        except (ValueError, sqlite3.Error):
+            pass
     if aid == "total_300":
         at = _at(total_mins >= 300, _total_first_achieved_at(conn, 300))
         return CalcResult(total_mins >= 300, total_mins, None, at, "累计 ≥ 300 分钟")

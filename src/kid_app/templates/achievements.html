@@ -598,6 +598,8 @@
       white-space: pre-wrap;       /* 让 \n 在长典故里正常换行 */
       border-top: 1px solid #f0e8d0;
       padding-top: 14px; width: 100%;
+      display: block;              /* 2026-07-01 拍板: 防止容器 inline 化导致居中失效 */
+      margin: 0 auto;              /* 居中保险 (配合 width:100% 也无害) */
     }
     #modal-hint {
       font-size: 13px; color: #bbb; text-align: center; margin-top: 10px;
