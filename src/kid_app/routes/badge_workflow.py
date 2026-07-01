@@ -44,6 +44,18 @@ class CommitFromDraftRequest(BaseModel):
     draft_id: str = Field(..., min_length=1)
 
 
+class ReplaceImageFromDraftRequest(BaseModel):
+    """2026-07-01 feat/badges-streak-image-regen: 替换已有 badge 的图.
+
+    跟 commit-from-draft 区别: 这条**不写 achievements/stats 表**, 只换
+    achievement_badges.url + version (走 update_badge_current).
+
+    场景: V1 老图错了 (e.g. streak_7 显示 14), 重生图后用本端点换.
+    """
+    draft_id: str = Field(..., min_length=1)
+    badge_id: str = Field(..., min_length=1, pattern=r"^[a-zA-Z0-9_]+$")
+
+
 class AICondRequest(BaseModel):
     """ai-cond 端点收 name + placeholder + zh_story + type."""
     name: str = Field(..., min_length=1)
@@ -272,6 +284,84 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         "ok": True,
         "badge_id": badge_id,
         "image_url": f"/static/badges/{badge_id}_v{image_version}.png",
+    })
+
+
+# ─── POST /config/api/badge/replace-image-from-draft (V2.1 替换老图) ──
+
+@router.post("/api/badge/replace-image-from-draft")
+def api_replace_image_from_draft(req: ReplaceImageFromDraftRequest) -> JSONResponse:
+    """2026-07-01 feat/badges-streak-image-regen: 替换已有 badge 的图, 不写 achievements 表.
+
+    流程:
+    1. 收 draft_id + badge_id
+    2. 校验 draft.status == draft_awaiting_confirm 且 draft.image 存在
+    3. 校验 badge_id 已存在 (achievement_badges 表, 不管 is_current)
+    4. 拿 image.version (跟 commit-from-draft 一样的 Bug #1 修法)
+    5. 复制 tmp 图到 static/badges/{badge_id}_v{new_version}.png
+    6. 调 badge_db.update_badge_current(badge_id, new_url, new_version)
+       (UPDATE 老行 is_current=0 + INSERT 新行 is_current=1, 走事务)
+    7. 标 draft.status=committed, 清理 .tmp/
+
+    跟 commit-from-draft 区别:
+    - commit 走 insert_achievement_row + insert_badge_row (INSERT 新表行)
+    - replace 走 update_badge_current (UPDATE is_current + INSERT 新行)
+    """
+    from src.kid_app import badge_draft, badge_db
+
+    draft = badge_draft.get_draft(req.draft_id)
+    if draft is None:
+        return JSONResponse({"ok": False, "error": f"draft '{req.draft_id}' 不存在"}, status_code=404)
+
+    if draft.status != "draft_awaiting_confirm":
+        return JSONResponse({
+            "ok": False,
+            "error": f"draft 状态 '{draft.status}' 不允许 replace (必须是 draft_awaiting_confirm)",
+        }, status_code=400)
+
+    if draft.image is None:
+        return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=400)
+
+    if not badge_db.badge_exists(req.badge_id):
+        return JSONResponse({
+            "ok": False,
+            "error": f"badge_id='{req.badge_id}' 不在 DB, 请走 commit-from-draft (V2.x 仅替换已有图)"
+        }, status_code=404)
+
+    try:
+        # Bug #1 同步: 拿 image.version (跟 commit 同源修法)
+        image_version = draft.image.get("version", draft.version)
+
+        # 1. 复制 tmp 图到 static/badges/{badge_id}_v{image_version}.png
+        static_path = badge_draft.move_tmp_to_static(req.draft_id, image_version)
+
+        # 2. 换 badge 行 (UPDATE 老 is_current=0 + INSERT 新 is_current=1)
+        new_url = f"/static/badges/{req.badge_id}_v{image_version}.png"
+        badge_db.update_badge_current(
+            badge_id=req.badge_id,
+            new_url=new_url,
+            new_version=image_version,
+        )
+
+        # 3. 标 draft status = committed
+        draft.version = image_version  # 跟 commit 一致
+        from src.kid_app import badge_draft as _bd
+        _bd.save_draft(draft)
+        badge_draft.mark_draft_status(req.draft_id, "committed", by="dizical",
+                                    extra={"event": "image_replaced", "badge_id": req.badge_id})
+
+        # 4. 清理临时图
+        badge_draft.cleanup_tmp(req.draft_id, image_version)
+    except Exception as e:
+        logger.exception("replace_image_from_draft failed for %s", req.draft_id)
+        return JSONResponse({"ok": False, "error": f"replace 失败: {e}"}, status_code=500)
+
+    logger.info("replace image: badge_id=%s → %s (draft=%s)", req.badge_id, new_url, req.draft_id)
+    return JSONResponse({
+        "ok": True,
+        "badge_id": req.badge_id,
+        "image_url": new_url,
+        "version": image_version,
     })
 
 
