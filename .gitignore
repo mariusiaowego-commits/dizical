@@ -9,6 +9,7 @@ __pycache__/
 *.pyd
 venv/
 .venv/
+.venv-service/
 .pytest_cache/
 .idea/
 .vscode/
