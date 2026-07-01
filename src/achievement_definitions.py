@@ -335,8 +335,14 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
         n = int(aid.split("_")[1])
         first_at = _streak_first_achieved_at(conn, n)
         achieved = first_at is not None
-        return CalcResult(achieved, n if achieved else 0, None,
-                          first_at, f"历史首次连续 ≥ {n} 天解锁 (不依赖当前 streak)")
+        # 2026-07-01 拍板: cond 改成小朋友能懂 (原来"历史首次...不依赖当前 streak"
+        # 是工程视角, 不是孩子视角).
+        # unlocked: 达成日 + 天数;   locked: 直白条件.
+        if achieved:
+            cond = f"你在 {first_at} 第一次连着打卡 {n} 天"
+        else:
+            cond = f"连着打卡 {n} 天就能拿到"
+        return CalcResult(achieved, n if achieved else 0, None, first_at, cond)
 
     # ── lucky_61_YYYY 系列: 六一节永久里程碑 ─────────────────────
     # 2026-07-01 拍板: 用户认为这是 milestone (永久徽章, 像考级一样).
@@ -356,8 +362,13 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
             first_at = row[0] if row else None
             mins = int(row[1]) if row and row[1] else 0
             achieved = first_at is not None and mins > 0
+            # 2026-07-01 拍板: cond 改成小朋友能懂 (之前"2026年6月1日当天练习过（29 分钟）"工程味)
+            if achieved:
+                cond = f"你在 {target} 六一儿童节当天练过竹笛 ({mins} 分钟)"
+            else:
+                cond = f"{y}年6月1日练习就能拿到"
             return CalcResult(achieved, mins if achieved else 0, None,
-                              first_at, f"{y}年6月1日当天练习过（{mins} 分钟）")
+                              first_at, cond)
         except (ValueError, sqlite3.Error):
             pass
     if aid == "total_300":
@@ -513,7 +524,11 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                     (target,))
                 mins = int(cur.fetchone()[0])
                 achieved = mins > 0
-                cond = f"{y}年6月1日当天练习（{mins}分钟）"
+                # 2026-07-01 拍板: cond 改成小朋友能懂
+                if achieved:
+                    cond = f"你在 {target} 六一儿童节当天练过竹笛 ({mins} 分钟)"
+                else:
+                    cond = f"{y}年6月1日练习就能拿到"
                 return CalcResult(achieved, mins if achieved else 0, None, None, cond)
             except (ValueError, sqlite3.Error) as e:
                 return CalcResult(False, 0, None, None, f"节日徽章解析失败: {e}")
