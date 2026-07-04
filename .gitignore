@@ -38,6 +38,12 @@ docs/OPENAI_PRO_PLAN.md
 # 渠道分发：源代码可推, 配置文件 (含 AppID / 后端 URL / token) 不推
 # 例外: .gitkeep (占位) + README.md (说明) 推
 channels/*/config/*
+
+# 全栈审计报告（详尽版本 40KB+, 仅本机参考资料，不推送 gh）
+docs/full-audit-*.md
+
+# badge workflow 测试 fixture 残留 (tests/test_routes_badge_workflow.py 写出但未清理的 8 byte PNG 占位)
+src/kid_app/static/badges/v2_test_commit_happy_xyz_v1.png
 !channels/*/config/.gitkeep
 !channels/*/config/README.md
 
