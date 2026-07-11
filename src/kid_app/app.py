@@ -805,6 +805,90 @@ def _daily_blindbox_html():
     return html, checkin_days
 
 # ─── API: 某日练习明细 ─────────────────────────────────────────────────────
+# ─── API: 月份数据 (feat/month-chart) - 必须注册在 /api/practices/{date_str} 之前避免路由抢占
+@app.get("/api/practices/monthly")
+def api_practices_monthly(month: str):
+    """返回指定自然月 (YYYY-MM) 的练习数据. 与 stage chart 同结构, 前端复用 SVG 渲染."""
+    try:
+        parts = month.split("-")
+        view_year = int(parts[0])
+        view_month = int(parts[1])
+        if not (1 <= view_month <= 12) or view_year < 2000:
+            raise ValueError
+    except (IndexError, ValueError):
+        return JSONResponse({"error": "month 格式必须是 YYYY-MM"}, status_code=400)
+
+    today = dt.date.today()
+    if (view_year, view_month) > (today.year, today.month):
+        view_year, view_month = today.year, today.month
+
+    month_start = dt.date(view_year, view_month, 1)
+    if view_month == 12:
+        month_end = dt.date(view_year + 1, 1, 1) - dt.timedelta(days=1)
+    else:
+        month_end = dt.date(view_year, view_month + 1, 1) - dt.timedelta(days=1)
+
+    # 当前月截止今天, 历史月画完整
+    if view_year == today.year and view_month == today.month:
+        end_date = today
+    else:
+        end_date = month_end
+
+    dates_in_month = []
+    cur = month_start
+    while cur <= end_date:
+        dates_in_month.append(cur.isoformat())
+        cur += dt.timedelta(days=1)
+
+    c = db._conn.cursor()
+    rows = c.execute(
+        "SELECT date, items FROM daily_practices WHERE date BETWEEN ? AND ?",
+        (month_start.isoformat(), end_date.isoformat())
+    ).fetchall()
+    practices = {}
+    for r in rows:
+        practices[r[0]] = {"items": json.loads(r[1])}
+
+    all_item_ids = set()
+    for p in practices.values():
+        for it in p.get("items", []):
+            all_item_ids.add(it.get("item_id"))
+    all_item_ids = sorted(all_item_ids)
+    if not all_item_ids:
+        return JSONResponse({
+            "month": f"{view_year}-{view_month:02d}",
+            "month_start": month_start.isoformat(),
+            "month_end": month_end.isoformat(),
+            "end_date": end_date.isoformat(),
+            "dates": dates_in_month,
+            "items": [],
+            "data": {},
+        })
+
+    item_names = {}
+    for iid in all_item_ids:
+        nm = c.execute("SELECT name FROM practice_items WHERE item_id = ?", (iid,)).fetchone()
+        item_names[iid] = nm[0] if nm else f"科目{iid}"
+
+    data = {}
+    for d in dates_in_month:
+        data[d] = {}
+        p = practices.get(d, {"items": []})
+        item_map = {it.get("item_id"): it.get("minutes", 0) for it in p.get("items", [])}
+        for iid in all_item_ids:
+            data[d][iid] = item_map.get(iid, None)
+
+    return JSONResponse({
+        "month": f"{view_year}-{view_month:02d}",
+        "month_start": month_start.isoformat(),
+        "month_end": month_end.isoformat(),
+        "end_date": end_date.isoformat(),
+        "dates": dates_in_month,
+        "items": [{"id": iid, "name": item_names[iid]} for iid in all_item_ids],
+        "data": data,
+    })
+
+
 @app.get("/api/practices/{date_str}")
 def api_practice_day(date_str: str):
     """返回指定日期的练习明细"""
@@ -899,6 +983,7 @@ def api_practice_stage(date_str: str):
         "items": [{"id": iid, "name": item_names[iid]} for iid in all_item_ids],
         "data": data,
     })
+
 
 # ─── API: 练习项目列表 ─────────────────────────────────────────────────────
 @app.get("/api/items")
