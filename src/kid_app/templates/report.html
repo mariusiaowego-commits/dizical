@@ -211,6 +211,14 @@
     </div>
     <div class="cal-grid">{{cal_html}}</div>
 
+  <!-- 月份堆叠柱状图卡片 (feat/month-chart) - 常驻, 跟 stage chart 共存, 切月自动刷 -->
+  <div id="monthChartCard" class="card" style="margin-top:12px;">
+    <h3 id="monthChartTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><img src="/static/icons/chart-bar.svg" width="16" height="16" alt=""><span id="monthChartTitleText">月练习</span></h3>
+    <div id="monthChartSub" style="font-size:12px;color:#999;margin-bottom:16px;">加载中...</div>
+    <div id="monthChartWrap" style="position:relative;overflow-x:auto;width:100%;"></div>
+    <div id="monthChartLegend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
   <!-- Stage堆叠柱状图卡片 -->
   <div id="stageChartCard" class="card" style="display:none;margin-top:12px;">
     <h3 id="stageChartTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;"></h3>
@@ -284,6 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (newDays) document.querySelector('[style*="color:#F57C00"]').textContent = newDays.textContent;
         // 切月后清掉旧选中 + 关 dayDetail (不让旧月份的选中带过去)
         document.querySelectorAll('.cal-day.selected').forEach(function(c){ c.classList.remove('selected'); });
+        loadMonthChart(targetMonth);
         var dd = document.getElementById('dayDetail');
         if (dd) dd.style.display = 'none';
       })
@@ -314,24 +323,37 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ── Stage 堆叠柱状图渲染函数 ─────────────────────────────────────────
+  // 初始加载月图 (feat/month-chart)
+  (function() {
+    var labelText = monthLabel && monthLabel.textContent;  // "2026/07"
+    if (labelText) {
+      var parts = labelText.split('/');
+      loadMonthChart(parts[0] + '-' + parts[1]);
+    }
+  })();
+
+  // ── 共享: 堆叠柱状图渲染 (feat/month-chart 抽出, stage 与 month 共用) ───────
   var STAGE_COLORS = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB','#2ECC71','#9B59B6','#E67E22','#1ABC9C','#E91E63'];
   var STAGE_COLORS_LIGHT = ['#7EDDD6','#FF8A8A','#61C4DD','#A8DBC8','#F9E06F','#C9A0DC','#F4B820','#8EE4D4','#F06060','#54B4DB','#58D68D','#B07CC6','#F09540','#3DCDB4','#F1407A'];
   var STAGE_GRAD_IDS = ['g0','g1','g2','g3','g4','g5','g6','g7','g8','g9','g10','g11','g12','g13','g14'];
 
-  function renderStageChart(stageData) {
-    var dates = stageData.dates;
-    var items = stageData.items;
-    var data = stageData.data;
-
+  function renderStackedChart(chartData, opts) {
+    opts = opts || {};
+    var dates = chartData.dates;
+    var items = chartData.items;
+    var data = chartData.data;
     var n = dates.length;
-    var BAR_W = n <= 3 ? 72 : n <= 5 ? 52 : 40;
-    var BAR_GAP = 20;
-    var CHART_H = 160;
-    var LABEL_ABOVE_H = 40;  // bar 上方放数字的空间
+    // 默认宽度 (stage 用); month 图柱窄 (feat/month-chart)
+    var BAR_W = opts.barW || (n <= 3 ? 72 : n <= 5 ? 52 : 40);
+    var BAR_GAP = opts.barGap != null ? opts.barGap : 20;
+    var CHART_H = opts.chartH || 160;
     var LABEL_W = 44;
     var RIGHT_PAD = 10;
-    var SVG_H = LABEL_ABOVE_H + CHART_H + 52;
+    // month 图 30 天柱窄, 每周只标 "周一" 减少拥挤 (feat/month-chart)
+    var labelStride = opts.labelStride || 1;
+    var labelY = opts.labelY || (CHART_H + 40);
+    var subY = opts.subY || (CHART_H + 52);
+    var SVG_H = 40 + CHART_H + 52;
     var SVG_W = LABEL_W + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
     var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
 
@@ -363,9 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
     dates.forEach(function(d, i) {
       var x = LABEL_W + i * (BAR_W + BAR_GAP);
       var dayTotal = dailyTotals[d] || 0;
-      var stackY = LABEL_ABOVE_H + CHART_H;
-
-
+      var stackY = 40 + CHART_H;
 
       items.forEach(function(it, idx) {
         var v = data[d] && data[d][it.id];
@@ -378,23 +398,82 @@ document.addEventListener('DOMContentLoaded', function() {
         stackY = barY;
       });
 
-      // label 紧贴 bar 上方
-      var labelY = LABEL_ABOVE_H - 8;
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
+      // 数字标签 (全部显示)
+      svg += '<text x="' + (x + BAR_W / 2) + '" y="32" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
 
-      var dtParts = d.split('-');
-      var label = dtParts[1] + '/' + dtParts[2];
-      var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (LABEL_ABOVE_H + CHART_H + 40) + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="' + (LABEL_ABOVE_H + CHART_H + 52) + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
+      // 日期 + 周几 (labelStride 控制密度, feat/month-chart 用 stride=3 简化后每 i%stride 都标)
+      if (i % labelStride === 0 || i === n - 1) {
+        var dtParts = d.split('-');
+        var label = dtParts[1] + '/' + dtParts[2];
+        var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
+        var wdLabel = (wd === '周一') ? '一' : (wd === '周三') ? '三' : (wd === '周五') ? '五' : (wd === '周日') ? '日' : '';
+        if (labelStride === 1) {
+          // stage 图: 全部日期 + 周几
+          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
+          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + subY + '" text-anchor="middle" font-size="10" fill="#BBB">' + wd + '</text>';
+        } else {
+          // month 图: 按 stride 都标日期 (feat/month-chart 简化掉周几 sub-label, 避免跟相邻日期 label 视觉重叠)
+          svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="10" fill="#888" font-weight="500">' + label + '</text>';
+        }
+      }
     });
 
     svg += '</svg>';
     return {
       svg: svg,
       svgW: SVG_W,
-      items: items.map(function(it, idx) { return {name: it.name || '未知', color: STAGE_COLORS[it.id % STAGE_COLORS.length]}; })
+      items: items.map(function(it) { return {name: it.name || '未知', color: STAGE_COLORS[it.id % STAGE_COLORS.length]}; })
     };
+  }
+
+  // stage chart 兼容入口 (调公共函数, 保留原行为)
+  function renderStageChart(stageData) {
+    return renderStackedChart(stageData);
+  }
+
+  // 月份图渲染 (feat/month-chart): 走公共渲染函数, 窄柱+稀疏 label
+  function renderMonthChart(monthData) {
+    // 响应式: BAR_W 跟随 wrap 宽度, 上限 28px (修当月被拉宽问题)
+    var wrapW = document.getElementById('monthChartWrap');
+    var containerW = wrapW ? wrapW.clientWidth : 700;
+    var n = monthData.dates.length;
+    var LABEL_W = 44, RIGHT_PAD = 10;
+    var availableForBars = Math.max(containerW - LABEL_W - RIGHT_PAD, 200);
+    var barW = Math.max(4, Math.min(28, Math.floor((availableForBars - (n - 1) * 6) / n)));
+    return renderStackedChart(monthData, {
+      barW: barW, barGap: 6, chartH: 140, labelStride: 3
+    });
+  }
+
+  // 月份图 fetch + 渲染 (feat/month-chart)
+  function loadMonthChart(monthStr) {
+    var titleEl = document.getElementById('monthChartTitle');
+    var subEl = document.getElementById('monthChartSub');
+    var wrapEl = document.getElementById('monthChartWrap');
+    var legendEl = document.getElementById('monthChartLegend');
+    if (!titleEl || !wrapEl) return;
+    subEl.textContent = '加载中...';
+    fetch('/api/practices/monthly?month=' + encodeURIComponent(monthStr), { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          subEl.textContent = '加载失败: ' + data.error;
+          return;
+        }
+        var labelParts = monthStr.split('-');
+        titleEl.innerHTML = '<img src="/static/icons/chart-bar.svg" width="16" height="16" alt="" style="vertical-align:-3px;margin-right:6px;"><span>' + labelParts[0] + '/' + labelParts[1] + ' 月练习</span>';
+        subEl.textContent = '共 ' + data.dates.length + ' 天, 截止 ' + data.end_date;
+        var result = renderMonthChart(data);
+        wrapEl.innerHTML = result.svg;
+        legendEl.innerHTML = result.items.map(function(it) {
+          return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;background:#F5F5F5;padding:3px 8px;border-radius:12px;"><span style="width:9px;height:9px;border-radius:2px;background:' + it.color + ';display:inline-block;"></span>' + it.name + '</span>';
+        }).join('');
+        bindBarHover();
+        gsap.fromTo(wrapEl, { opacity: 0.4 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+      })
+      .catch(function() {
+        subEl.textContent = '加载失败';
+      });
   }
 
   // ── 绑定柱状图悬停 ─────────────────────────────────────────
@@ -539,7 +618,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderTrail(behLog, dateStr) {
     if (!behLog || behLog.length === 0) return '';
     var html = '<div class="trail-section">';
-    html += '<div class="trail-header">📍 练习轨迹</div>';
+    html += '<div class="trail-header"><img src="/static/icons/location-dot.svg" width="14" height="14" alt="" style="vertical-align:-2px;margin-right:4px;">练习轨迹</div>';
     behLog.forEach(function(entry) {
       var t = entry.enter_time || '';
       // 兼容 CST 'YYYY-MM-DD HH:MM:SS' (空格分隔) 和 UTC ISO 'YYYY-MM-DDTHH:MM:SS' (T 分隔)
@@ -642,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (stageData.error) return;
           var chartCard = document.getElementById('stageChartCard');
           var result = renderStageChart(stageData);
-          document.getElementById('stageChartTitle').textContent = '📊 ' + stageData.stage_start + ' ~ ' + stageData.stage_end + ' 周练习';
+          document.getElementById('stageChartTitle').innerHTML = '<img src="/static/icons/chart-bar.svg" width="16" height="16" alt="" style="vertical-align:-3px;margin-right:6px;"><span>' + stageData.stage_start + ' ~ ' + stageData.stage_end + ' 周练习</span>';
           document.getElementById('stageChartSub').textContent = '共 ' + stageData.dates.length + ' 天';
           document.getElementById('stageChartWrap').innerHTML = result.svg;
           document.getElementById('stageChartLegend').innerHTML = result.items.map(function(it) {
