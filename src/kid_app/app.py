@@ -1577,15 +1577,37 @@ def badges_page():
 
 
 @app.get("/report", response_class=HTMLResponse)
-def report_page():
+def report_page(request: Request, month: Optional[str] = None):
+    """
+    练习报告页 (feat/happy-month-switch):
+    - `month=YYYY-MM` 可选查询参数; 缺省=当前月; 非法值 fallback 当前月
+    - 模板显示左右箭头月份切换器; 当月锁住右箭头
+    """
     today = dt.date.today()
-    data = practice_module.get_month_summary(today.year, today.month)
 
-    start = dt.date(today.year, today.month, 1)
-    if today.month == 12:
-        end = dt.date(today.year + 1, 1, 1) - dt.timedelta(days=1)
+    # 解析 month 参数 (YYYY-MM), fallback 当前月
+    if month:
+        try:
+            parts = month.split("-")
+            view_year = int(parts[0])
+            view_month = int(parts[1])
+            if not (1 <= view_month <= 12) or view_year < 2000 or view_year > today.year + 1:
+                raise ValueError
+            # 未来月 fallback 当前月
+            if (view_year, view_month) > (today.year, today.month):
+                view_year, view_month = today.year, today.month
+        except (IndexError, ValueError):
+            view_year, view_month = today.year, today.month
     else:
-        end = dt.date(today.year, today.month + 1, 1) - dt.timedelta(days=1)
+        view_year, view_month = today.year, today.month
+
+    data = practice_module.get_month_summary(view_year, view_month)
+
+    start = dt.date(view_year, view_month, 1)
+    if view_month == 12:
+        end = dt.date(view_year + 1, 1, 1) - dt.timedelta(days=1)
+    else:
+        end = dt.date(view_year, view_month + 1, 1) - dt.timedelta(days=1)
 
     practices = {p["date"].isoformat(): p for p in db.get_daily_practices_in_range(start, end)}
 
@@ -1593,7 +1615,7 @@ def report_page():
     for _ in range(start.weekday()):
         cal_html += "<div class='cal-day empty'></div>"
     for d in range(1, end.day + 1):
-        day_date = dt.date(today.year, today.month, d)
+        day_date = dt.date(view_year, view_month, d)
         key = day_date.isoformat()
         p = practices.get(key)
         mins = p["total_minutes"] if p else 0
@@ -1613,14 +1635,30 @@ def report_page():
             cls += " today"
         cal_html += "<div class='" + cls + "' data-date='" + key + "'>" + label + "</div>"
 
+    # 月份切换器上下文 (feat/happy-month-switch)
+    is_current_month = (view_year == today.year and view_month == today.month)
+    if view_month == 1:
+        prev_year, prev_month = view_year - 1, 12
+    else:
+        prev_year, prev_month = view_year, view_month - 1
+    if view_month == 12:
+        next_year, next_month = view_year + 1, 1
+    else:
+        next_year, next_month = view_year, view_month + 1
+
     return render(
         "report",
         active_nav="dashboard",  # sidebar: Dashboard (report 页面对应 Dashboard)
         child_name=child_name(),
-        month_str=today.strftime("%Y/%m"),
+        month_str=f"{view_year}/{view_month:02d}",
         total_mins=str(data["total_minutes"]),
         practice_days=str(data["practice_days"]),
         cal_html=cal_html,
+        # 月份切换器
+        prev_month=f"{prev_year}-{prev_month:02d}",
+        next_month=f"{next_year}-{next_month:02d}",
+        is_current_month=is_current_month,
+        current_month_label=today.strftime("%Y/%m"),
     )
 
 # ─── PIN 验证 ───────────────────────────────────────────────────────────────

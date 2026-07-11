@@ -25,11 +25,42 @@
 
     /* dayDetail 区域 */
   /* ── Stage 堆叠柱状图 ─────────────────────────────────── */
-  #stageChartCard {
-    margin-top: 14px;
-    padding-bottom: 14px;
-    min-height: 320px;
+  /* ── 月份切换器 (feat/happy-month-switch) ──────────────── */
+  .month-switcher {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    margin: 4px 0 18px;
+    padding: 6px 0;
   }
+  .month-arrow {
+    width: 44px; height: 44px;
+    border: 1px solid #EDE6DA; background: #FFF;
+    border-radius: 50%; color: #8B6914; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .month-arrow:hover:not(.disabled) {
+    background: #FF6B6B; border-color: #FF6B6B; color: #FFF;
+  }
+  .month-arrow:active:not(.disabled) { transform: scale(0.92); }
+  .month-arrow.disabled { opacity: 0.35; cursor: not-allowed; }
+  .month-label-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-width: 130px;
+  }
+  .month-label {
+    font-size: 22px; font-weight: 600; color: #3D2E1E;
+    letter-spacing: 0.5px;
+    transition: opacity 0.18s;
+  }
+  .month-label.loading { opacity: 0.4; }
+  .month-current-badge {
+    font-size: 11px; color: #B23A48; background: #FFE8EA;
+    padding: 2px 10px; border-radius: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Stage 堆叠柱状图 ──────────────────────────── */
   #stageChartTitle { font-size: 17px !important; }
   #stageChartSub { font-size: 13px !important; }
   #stageChartWrap {
@@ -150,7 +181,20 @@
 
 
   <div class="card">
-    <h2>{{month_str}} 练习报告</h2>
+    <div class="month-switcher" id="monthSwitcher">
+      <button type="button" class="month-arrow" id="monthPrev" data-month="{{ prev_month }}" aria-label="上一月">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4 L6.5 10 L12.5 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="month-label-wrap">
+        <div class="month-label" id="monthLabel">{{ month_str }}</div>
+        {% if is_current_month %}
+          <div class="month-current-badge">本月</div>
+        {% endif %}
+      </div>
+      <button type="button" class="month-arrow {% if is_current_month %}disabled{% endif %}" id="monthNext" data-month="{{ next_month }}" aria-label="下一月" {% if is_current_month %}disabled{% endif %}>
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4 L13.5 10 L7.5 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
     <div style="display:flex;gap:12px;margin-bottom:16px;">
       <div style="flex:1;text-align:center;padding:12px;background:#E8F5E9;border-radius:12px;">
         <div style="font-size:28px;font-weight:bold;color:#27AE60;">{{total_mins}}</div>
@@ -190,6 +234,85 @@
 </body>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+  // ── 月份切换 (feat/happy-month-switch) ─────────────────────────────
+  var monthLabel = document.getElementById('monthLabel');
+  var monthPrev = document.getElementById('monthPrev');
+  var monthNext = document.getElementById('monthNext');
+
+  function navigateMonth(targetMonth) {
+    if (!targetMonth || monthLabel.classList.contains('loading')) return;
+    monthLabel.classList.add('loading');
+    fetch('/report?month=' + encodeURIComponent(targetMonth), { headers: { 'X-Partial': '1' }})
+      .then(function(r){ return r.text(); })
+      .then(function(html) {
+        // 解析返回的 HTML, 抽出需要替换的 4 块
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var newLabel = doc.getElementById('monthLabel');
+        var newPrev = doc.getElementById('monthPrev');
+        var newNext = doc.getElementById('monthNext');
+        var newTotal = doc.querySelector('.card .month-switcher ~ div div[style*="color:#27AE60"]');
+        var newDays = doc.querySelector('.card .month-switcher ~ div div[style*="color:#F57C00"]');
+        var newCal = doc.querySelector('.cal-grid');
+
+        if (newLabel) monthLabel.textContent = newLabel.textContent;
+        // 更新 data-month + disabled 状态
+        if (newPrev && monthPrev) monthPrev.setAttribute('data-month', newPrev.getAttribute('data-month'));
+        if (newNext && monthNext) {
+          monthNext.setAttribute('data-month', newNext.getAttribute('data-month'));
+          if (newNext.hasAttribute('disabled')) {
+            monthNext.setAttribute('disabled', 'disabled');
+            monthNext.classList.add('disabled');
+          } else {
+            monthNext.removeAttribute('disabled');
+            monthNext.classList.remove('disabled');
+          }
+        }
+        // 当前月 badge 显隐
+        var oldBadge = document.querySelector('.month-current-badge');
+        if (oldBadge) oldBadge.remove();
+        var wrap = document.querySelector('.month-label-wrap');
+        if (wrap && doc.querySelector('.month-current-badge')) {
+          var badge = document.createElement('div');
+          badge.className = 'month-current-badge';
+          badge.textContent = '本月';
+          wrap.appendChild(badge);
+        }
+        // 替换 cal-grid + 两个数字
+        if (newCal) document.querySelector('.cal-grid').innerHTML = newCal.innerHTML;
+        if (newTotal) document.querySelector('[style*="color:#27AE60"]').textContent = newTotal.textContent;
+        if (newDays) document.querySelector('[style*="color:#F57C00"]').textContent = newDays.textContent;
+        // 切月后清掉旧选中 + 关 dayDetail (不让旧月份的选中带过去)
+        document.querySelectorAll('.cal-day.selected').forEach(function(c){ c.classList.remove('selected'); });
+        var dd = document.getElementById('dayDetail');
+        if (dd) dd.style.display = 'none';
+      })
+      .catch(function() {
+        // 失败回退到整页跳转, 至少能用
+        window.location.href = '/report?month=' + encodeURIComponent(targetMonth);
+      })
+      .finally(function() {
+        monthLabel.classList.remove('loading');
+      });
+  }
+
+  function rebindCalDays() {
+    // noop: cal-day 点击已用事件委托绑在 .cal-grid 父容器上, 月份切换不会丢
+  }
+
+  if (monthPrev) {
+    monthPrev.addEventListener('click', function() {
+      var target = monthPrev.getAttribute('data-month');
+      if (target) navigateMonth(target);
+    });
+  }
+  if (monthNext) {
+    monthNext.addEventListener('click', function() {
+      if (monthNext.classList.contains('disabled')) return;
+      var target = monthNext.getAttribute('data-month');
+      if (target) navigateMonth(target);
+    });
+  }
 
   // ── Stage 堆叠柱状图渲染函数 ─────────────────────────────────────────
   var STAGE_COLORS = ['#4ECDC4','#FF6B6B','#45B7D1','#96CEB4','#F7DC6F','#BB8FCE','#F0A500','#76D7C4','#E74C3C','#3498DB','#2ECC71','#9B59B6','#E67E22','#1ABC9C','#E91E63'];
@@ -440,26 +563,29 @@ document.addEventListener('DOMContentLoaded', function() {
     return html;
   }
 
-  // ── 点击日历格子 ──────────────────────────────────────────────────
-  document.querySelectorAll('.cal-day:not(.empty)').forEach(function(cell) {
-    cell.style.cursor = 'pointer';
-    cell.addEventListener('click', function() {
+  // ── 点击日历格子 (事件委托到 .cal-grid, 月份切换不会丢监听) ──
+  var calGrid = document.querySelector('.cal-grid');
+  if (calGrid) {
+    calGrid.addEventListener('click', function(e) {
+      var cell = e.target.closest('.cal-day:not(.empty)');
+      if (!cell || !calGrid.contains(cell)) return;
+      cell.style.cursor = 'pointer';
 
       var prev = document.querySelector('.cal-day.selected');
       document.querySelectorAll('.cal-day.selected').forEach(function(c){ c.classList.remove('selected'); });
-      this.classList.add('selected');
+      cell.classList.add('selected');
 
       var oldBar = prev ? prev.querySelector('.sel-bar') : null;
       if (oldBar) {
         gsap.killTweensOf(oldBar);
         oldBar.style.transform = 'scaleY(0)';
       }
-      var bar = this.querySelector('.sel-bar');
+      var bar = cell.querySelector('.sel-bar');
       if (bar) {
         gsap.fromTo(bar, { scaleY: 0 }, { scaleY: 1, duration: 0.22, ease: 'back.out(2.2)' });
       }
 
-      var date = this.getAttribute('data-date');
+      var date = cell.getAttribute('data-date');
       if (!date) return;
 
       var detailDiv = document.getElementById('dayDetail');
@@ -530,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
         detailBody.innerHTML = '<div class="detail-empty">加载失败</div>';
       });
     });
-  });
+  }
 
   // 页面整体弹入
   var pageContent = document.querySelector('.page-content');
