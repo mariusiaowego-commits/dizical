@@ -1,6 +1,26 @@
-# STATUS.md — dizical 项目状态
+# STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-11 (report 页月份左右切换 PR #145)
+**最后更新**: 2026-07-11 (PR #147 月视图 + emoji 换 SVG icon + 4 处交互修复)
+**当前 main**: 78f34c7 (PR #147 squash merge feat/month-chart)
+**生产服务**: 8765 running PID 78507 (load PR #147 新代码, 6/6 URL curl 200)
+**pytest**: 16 failed / 291 passed (净回归 = 0, 16 fail 全 pre-existing 跟 7/05 handoff 一致: 9 cli_ux_review typer×click + 3 config_design 进程冲突 + 2 payment 业务 + 1 badge_discovery fixture + 1 replace_image 业务)
+**DB**: 未动
+
+### 已完成 (2026-07-11 report 页月视图)
+
+**PR #147** - `feat(month-chart): 月视图 + emoji 换 SVG icon + 4 处交互修复` (squash merge `78f34c7`)
+- 后端 app.py +88: 新增 `/api/practices/monthly?month=YYYY-MM` (注册在 `/practices/{date_str}` 之前避免路由抢占)
+- 模板抽 `renderStackedChart` 公共函数, stage 与 month 共用 15 色梯度 + SVG 生成框架
+- 模板新增 `monthChartCard` (常驻, 跟 stage chart 共存, 切月自动刷)
+- 月图 BAR_W 跟随 wrap 宽度自适应, 封顶 28px (修当月柱粗被拉宽问题)
+- emoji 全清 (4 处换 `static/icons/chart-bar.svg` + `location-dot.svg`)
+- 月图 fetch resolve 后调 `bindBarHover()` 让柱 click 弹 diziModal
+- X 轴 labelStride=3 bug 修复 (此前 'wd === 周一' 二次过滤导致 stride 无效)
+- 月图 X 轴下方周几 sub-label 删除 (避免跟相邻日期 label 视觉重叠)
+
+UI 一致性: 0 新 hex, 0 新 JS 库, 0 新 CSS 文件, em-dash source code 扫描 0
+
+**最后更新**: 2026-07-11 (PR #145 月份左右切换)
 **当前 main**: 891d170 (PR #145 squash merge feat/happy-month-switch)
 **生产服务**: 8765 running PID 90648 (load PR #145 新代码, 3 URL curl 全 200)
 **pytest**: 15 failed / 292 passed (全 pre-existing, 跟 7/05 handoff 根因一致 — 9 cli_ux_review typer×click + 2 config_design 进程冲突 + 2 payment 业务 + 1 badge_discovery fixture + 1 replace_image 业务; 净回归 = 0)

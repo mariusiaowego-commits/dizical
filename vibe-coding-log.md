@@ -1,6 +1,33 @@
-# vibe coding log — dizical
+# vibe coding log - dizical
 
-## 2026-07-11 report 页月份左右切换 (PR #145)
+## 2026-07-11 PR #147 report 页月视图 + emoji 换 SVG icon + 4 处交互修复
+
+**触发**: user prompt "继续在本分支维护给report页增加新feature - 我需要一个自然月 月纬度的柱状图展示，展示信息同目前的周展示". 后续 dad 提 4 issue: label 稀疏 / 柱不满卡片宽 / 柱不能点击 / emoji 全部要换 SVG icon
+
+**做法** (feat/month-chart 分支, squash merge `78f34c7`):
+- 后端 `app.py +88`: 新增 `/api/practices/monthly?month=YYYY-MM` 端点 (注册在 `/api/practices/{date_str}` 之前避免路由抢占)
+- 模板抽 `renderStackedChart(chartData, opts)` 公共函数 (stage + month 共用 SVG 生成框架)
+- 模板新增 `#monthChartCard` (常驻, 跟 stage chart 共存, 切月自动刷)
+- 月图 `renderMonthChart` BAR_W 跟随 wrap 宽度自适应, 封顶 28px
+- emoji 全清 (4 处换 SVG icon: chart-bar.svg + location-dot.svg)
+- 月图 fetch resolve 后调 `bindBarHover()` 让柱 click 弹 diziModal
+- X 轴 labelStride=3 bug 修复
+- 月图 X 轴下方周几 sub-label 删除
+
+**踩坑** (复盘给下次):
+1. FastAPI 路由顺序坑: `/api/practices/{date_str}` 会吞掉 `/api/practices/monthly` 字面字符串 (因为 `{date_str}` 路径参数优先), 修法: 月 endpoint 必须注册在 `{date_str}` 之前
+2. patch tool 多次截断 new_string (吃闭合 `})`, 后续 patch 必须把 old_string 末尾闭合括号完整复制到 new_string
+3. em-dash Discipline (waza-ui skill): source code 注释/字符串不能有 em-dash, commit 前 grep 扫描
+4. JS 事件委托的 `this` 不再是 cell: 必须改成显式 `cell` 变量 (浏览器实测 dayDetail 不弹才定位)
+5. 浏览器缓存陷阱: rename endpoint 后 fetch 旧 URL 返 400, 浏览器缓存旧响应. 修法: `fetch(url, { cache: 'no-store' })`
+6. BAR_W 响应式坑: 当月 11 天柱被拉粗 28px (视觉突兀), 修法: `Math.min(28, ...)` 封顶, 不够宽右留白
+7. 周几 sub-label 视觉重叠坑: 月图 X 轴下方周几跟相邻日期 label 紧贴 (6px 间距, 看起来像挤), 修法: 月图模式删周几 sub-label, 只留日期
+
+**测试**: pytest 净回归 = 0 (main vs feat 双向 FAILED-set diff 一致); 6 URL 200 (含 SVG icon + monthly API); 浏览器实测: 7 月 11 天 + 6 月 30 天 + 2025-12 跨年 + 柱 click 弹 modal 真渲染
+
+**prod**: 8765 重启加载 PR #147 新代码 (PID 78507), 6/6 URL curl 200
+
+## 2026-07-11 PR #145 report 页月份左右切换
 
 **触发**: user prompt "开心分支做一个功能优化 — report 页当前只能看当月, 要求能左右切换月份, UI 要美感一致性"
 
