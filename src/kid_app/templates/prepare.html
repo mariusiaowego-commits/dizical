@@ -330,6 +330,72 @@
     font-size: 1rem;
   }
 
+  /* ── subject block (4-part display) ────────── */
+  .assign-subject {
+    background: rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+  .assign-subject-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .assign-subject-name {
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .assign-subject-id {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    font-family: monospace;
+  }
+  .assign-subject-reqs {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: req-num;
+  }
+  .assign-subject-reqs li {
+    font-size: 0.88rem;
+    opacity: 0.9;
+    padding: 2px 0 2px 16px;
+    position: relative;
+  }
+  .assign-subject-reqs li::before {
+    content: counter(req-num) ".";
+    counter-increment: req-num;
+    position: absolute;
+    left: 0;
+    font-weight: 600;
+    opacity: 0.7;
+  }
+  .assign-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .assign-images img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  .assign-images img:hover {
+    transform: scale(1.05);
+  }
+  .assign-no-images {
+    font-size: 0.82rem;
+    opacity: 0.5;
+    margin-top: 10px;
+  }
+
   /* ── cta section ───────────────────────────────── */
   .cta-section {
     min-height: 60dvh;
@@ -574,9 +640,15 @@
   <div class="assignment-card">
     <p class="assignment-eyebrow">{{assign_eyebrow}}</p>
     <h3 class="assignment-title">{{assign_title}}</h3>
-    <ul class="assignment-items">
+    <ul class="assignment-items" style="display:none"></ul>
+    <div class="assign-subject-container">
       {{assign_items_html}}
-    </ul>
+    </div>
+    <div class="assign-images">
+      {% for img in assign_images %}
+        <img src="{{img}}" alt="配图" onclick="window.open('{{img}}','_blank')">
+      {% endfor %}
+    </div>
   </div>
 </section>
 

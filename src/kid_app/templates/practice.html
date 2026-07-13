@@ -875,17 +875,42 @@
     }
 
     // 更新左栏老师要求显示
-    function updateReqPanel(reqText) {
+    function updateReqPanel(btn) {
       const tip = document.getElementById('reqTip');
-      if (reqText) {
-        tip.innerHTML = '<div class="req-highlight"><span class="spinner"></span> <span style="color:#aaa">正在加载...</span></div>';
-        setTimeout(() => {
-          tip.innerHTML = '<div class="req-highlight"><span class="req-text"></span></div>';
-          animateReqText(tip.querySelector('.req-text'), reqText);
-        }, 200);
-      } else {
+      if (!btn) {
         tip.innerHTML = '<div class="req-empty">暂无老师要求<br>直接开始练习吧！</div>';
+        return;
       }
+      const reqText = btn.getAttribute('data-req') || '';
+      const name = btn.getAttribute('data-name') || '';
+      const id = btn.getAttribute('data-id') || '';
+      const reqs = reqText.split('\n').filter(Boolean);
+
+      let html = '<div class="req-highlight">';
+      // Subject name + ID
+      html += `<div style="font-weight:700;font-size:16px;margin-bottom:6px">${name} <span style="font-size:12px;opacity:0.5;font-family:monospace">(item_id: ${id})</span></div>`;
+      // Requirements as a, b, c
+      if (reqs.length) {
+        html += '<ol style="margin:0;padding-left:20px">';
+        reqs.forEach(r => { html += `<li style="margin-bottom:2px">${r}</li>`; });
+        html += '</ol>';
+      } else {
+        html += '<div style="opacity:0.6;font-size:13px">无具体要求</div>';
+      }
+      // Images from WEEKLY_ASSIGN
+      if (WEEKLY_ASSIGN && WEEKLY_ASSIGN.images && WEEKLY_ASSIGN.images.length) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.08)">';
+        WEEKLY_ASSIGN.images.forEach(img => {
+          html += `<img src="${img}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,0.1);cursor:pointer" onclick="window.open('${img}','_blank')">`;
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+
+      tip.innerHTML = '<div class="req-highlight"><span class="spinner"></span> <span style="color:#aaa">正在加载...</span></div>';
+      setTimeout(() => {
+        tip.innerHTML = html;
+      }, 200);
     }
 
     // 逐字动画渲染老师要求（与 story 同款 GSAP Y 轴动效）
@@ -1100,7 +1125,7 @@
       refreshExtraSection();
 
       const reqText = btn ? btn.getAttribute('data-req') : null;
-      updateReqPanel(reqText || '');
+      updateReqPanel(btn);
 
       // 更新选中摘要
       updateSelectedSummary(name, id, reqText, btn);
@@ -1176,7 +1201,7 @@
       refreshExtraSection();
 
       const reqText = btn ? btn.getAttribute('data-req') : null;
-      updateReqPanel(reqText || '');
+      updateReqPanel(btn);
 
       // 更新选中摘要
       updateSelectedSummary(name, id, reqText, btn);

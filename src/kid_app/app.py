@@ -26,6 +26,11 @@ static_path = Path(__file__).parent / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
+# Mount uploads (assignment images, styled cards)
+_uploads_path = _ROOT / "data" / "uploads"
+_uploads_path.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_path)), name="uploads")
+
 # ─── 模板渲染 ───────────────────────────────────────────────────────────────
 from jinja2 import Environment, FileSystemLoader
 
@@ -1299,8 +1304,9 @@ def prepare_page():
 
     # 本周老师要求
     assign = db.get_weekly_assignment_for_week(today)
+    assign_images = []
     if assign and assign.get("items"):
-        assign_eyebrow = f"本周练习要求 · 第 {assign.get('stage_order', '?')} 课"
+        assign_eyebrow = f"本周练习要求 · 第 {assign.get('stage_order', '?')} 期"
         stage_start = assign.get('stage_start', today)
         stage_end   = assign.get('stage_end', today)
         # 确保 start ≤ end（数据可能有误，统一兜底）
@@ -1316,7 +1322,20 @@ def prepare_page():
         assign_items_html = ""
         for it in assign["items"]:
             req = it.get('requirements') or it.get('requirement', '')
-            assign_items_html += f"<li>{it['item']} {req}</li>"
+            reqs = req.split("\n") if req else []
+            req_lines = "".join(f"      <li>{r}</li>\n" for r in reqs)
+            item_id_str = f"(item_id: {it.get('item_id')})" if it.get('item_id') else ""
+            assign_items_html += f"""<div class="assign-subject">
+        <div class="assign-subject-header">
+          <span class="assign-subject-name">{it['item']}</span>
+          <span class="assign-subject-id">{item_id_str}</span>
+        </div>
+        <ul class="assign-subject-reqs">
+{req_lines}
+        </ul>
+      </div>
+"""
+        assign_images = assign.get("images", [])
     else:
         assign_eyebrow  = "本周老师要求"
         assign_title    = "暂无老师要求"
@@ -1339,6 +1358,7 @@ def prepare_page():
         assign_eyebrow=assign_eyebrow,
         assign_title=assign_title,
         assign_items_html=assign_items_html,
+        assign_images=assign_images,
         cta_title="准备好啦！",
         cta_sub="三个步骤都完成后，开始今天的练习。",
         cta_btn_text="开始行动",

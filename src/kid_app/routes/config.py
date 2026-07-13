@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, List, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.database import db
@@ -804,6 +804,10 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
             "lesson_date": a["lesson_date"].isoformat() if hasattr(a["lesson_date"], "isoformat") else str(a["lesson_date"]),
             "items": a["items"],
             "notes": a.get("notes", ""),
+            "images": a.get("images", []),
+            "stage_order": a.get("stage_order"),
+            "stage_start": a["stage_start"].isoformat() if hasattr(a.get("stage_start"), "isoformat") else a.get("stage_start"),
+            "stage_end": a["stage_end"].isoformat() if hasattr(a.get("stage_end"), "isoformat") else a.get("stage_end"),
         }
         if item:
             matched = [it for it in a["items"] if item in it.get("item", "")]
@@ -823,6 +827,7 @@ async def api_create_assignment(request: Request):
     lesson_date_str = body.get("lesson_date")
     items = body.get("items", [])  # [{item, item_id, requirement}]
     notes = body.get("notes", "")
+    images = body.get("images", None)  # optional: list of image URLs
 
     if not lesson_date_str:
         # 自动推算最近已上课日期
@@ -849,8 +854,116 @@ async def api_create_assignment(request: Request):
             "requirements": it.get("requirement", it.get("requirements", "")),
         })
 
-    db.save_weekly_assignment(lesson_date, formatted, notes=notes or None)
+    db.save_weekly_assignment(lesson_date, formatted, notes=notes or None, images=images)
+
+    # Stage 字段覆盖：UI 显示值优先于自动推算
+    import datetime as dt
+    stage_overrides = {}
+    stage_start_raw = body.get("stage_start")
+    stage_end_raw = body.get("stage_end")
+    stage_order_raw = body.get("stage_order")
+    if stage_start_raw:
+        stage_overrides["stage_start"] = dt.date.fromisoformat(stage_start_raw).isoformat()
+    if stage_end_raw:
+        stage_overrides["stage_end"] = dt.date.fromisoformat(stage_end_raw).isoformat()
+    if stage_order_raw is not None:
+        stage_overrides["stage_order"] = int(stage_order_raw)
+    if stage_overrides:
+        set_clause = ", ".join(f"{k} = ?" for k in stage_overrides)
+        vals = list(stage_overrides.values()) + [lesson_date.isoformat()]
+        with db._get_connection() as conn:
+            conn.execute(f"UPDATE weekly_assignments SET {set_clause} WHERE lesson_date = ?", vals)
+            conn.commit()
+
     return JSONResponse({"ok": True, "lesson_date": lesson_date.isoformat()})
+
+
+@router.put("/api/assignments/{lesson_date}")
+async def api_update_assignment(lesson_date: str, request: Request):
+    """更新指定上课日期的老师要求（全量替换 items/images/notes）"""
+    body = json.loads(await request.body())
+    items = body.get("items", [])
+    notes = body.get("notes", "")
+    images = body.get("images", None)
+
+    import datetime as dt
+    ld = dt.date.fromisoformat(lesson_date)
+
+    # 保留未显式传入的 images
+    if images is None:
+        existing = db.get_weekly_assignment(ld)
+        if existing and existing.get("images"):
+            images = existing["images"]
+
+    formatted = []
+    for it in items:
+        formatted.append({
+            "item": it.get("item", ""),
+            "item_id": it.get("item_id"),
+            "requirements": it.get("requirement", it.get("requirements", "")),
+        })
+
+    # 全量覆盖：先删旧数据再 insert
+    with db._get_connection() as conn:
+        conn.execute("DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
+        conn.commit()
+    db.save_weekly_assignment(ld, formatted, notes=notes or None, images=images)
+
+    # Stage 字段覆盖（同 POST 逻辑）
+    stage_overrides = {}
+    stage_start_raw = body.get("stage_start")
+    stage_end_raw = body.get("stage_end")
+    stage_order_raw = body.get("stage_order")
+    if stage_start_raw:
+        stage_overrides["stage_start"] = dt.date.fromisoformat(stage_start_raw).isoformat()
+    if stage_end_raw:
+        stage_overrides["stage_end"] = dt.date.fromisoformat(stage_end_raw).isoformat()
+    if stage_order_raw is not None:
+        stage_overrides["stage_order"] = int(stage_order_raw)
+    if stage_overrides:
+        set_clause = ", ".join(f"{k} = ?" for k in stage_overrides)
+        vals = list(stage_overrides.values()) + [ld.isoformat()]
+        with db._get_connection() as conn:
+            conn.execute(f"UPDATE weekly_assignments SET {set_clause} WHERE lesson_date = ?", vals)
+            conn.commit()
+
+    return JSONResponse({"ok": True, "lesson_date": lesson_date})
+
+
+@router.delete("/api/assignments/{lesson_date}")
+def api_delete_assignment(lesson_date: str):
+    """删除指定上课日期的老师要求"""
+    import datetime as dt
+    ld = dt.date.fromisoformat(lesson_date)
+    with db._get_connection() as conn:
+        conn.execute("DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
+        conn.commit()
+    return JSONResponse({"ok": True})
+
+
+# ── 配图上传 ────────────────────────────────────────────────────────────────
+import uuid as _uuid
+
+_UPLOAD_RAW = Path(__file__).resolve().parent.parent.parent.parent / "data" / "uploads" / "raw"
+_UPLOAD_RAW.mkdir(parents=True, exist_ok=True)
+
+@router.post("/api/assignments/upload")
+async def api_upload_assignment_image(file: UploadFile = File(...)):
+    """上传配图，保存到 data/uploads/raw/，返回 URL"""
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    if ext not in (".jpg", ".jpeg", ".png", ".heic", ".heif"):
+        return JSONResponse({"ok": False, "error": f"不支持的格式: {ext}"}, status_code=400)
+
+    fname = f"{_uuid.uuid4().hex}{ext}"
+    dest = _UPLOAD_RAW / fname
+    content = await file.read()
+    dest.write_bytes(content)
+
+    return JSONResponse({
+        "ok": True,
+        "url": f"/uploads/raw/{fname}",
+        "filename": fname,
+    })
 
 
 @router.get("/api/practice-month-summary")
@@ -878,10 +991,16 @@ def _serialize_assignment(assignment):
     result = {
         "items": assignment.get("items", []),
         "notes": assignment.get("notes", ""),
+        "images": assignment.get("images", []),
+        "stage_order": assignment.get("stage_order"),
     }
     if "lesson_date" in assignment:
         ld = assignment["lesson_date"]
         result["lesson_date"] = ld.isoformat() if hasattr(ld, "isoformat") else str(ld)
+    for k in ("stage_start", "stage_end"):
+        v = assignment.get(k)
+        if v:
+            result[k] = v.isoformat() if hasattr(v, "isoformat") else str(v)
     return result
 
 
