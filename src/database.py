@@ -628,8 +628,8 @@ class Database:
 
         # 保留 notes（首次录入时保存，后续追加时保留原有 notes 除非明确传入）
         final_notes = notes if notes is not None else (existing['notes'] if existing else None)
-        # 保留 images
-        merged_images = existing['images'] if existing else []
+        # 保留 images：显式传入时覆盖（包括空数组清空），未传入时保留现有
+        merged_images = existing['images'] if images is None and existing else (images if images is not None else [])
 
         # 计算 stage_start = lesson_date + 1，stage_end = 下一节（attended + scheduled）课日期
         with self._get_connection() as conn:

@@ -524,6 +524,23 @@
             <label>上课日期（留空自动推算最近已上课）</label>
             <input type="date" class="form-input" id="assignDate">
           </div>
+          <div class="form-group" style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px">
+              <label>阶段开始</label>
+              <input type="date" class="form-input" id="assignStageStart">
+              <span style="font-size:11px;color:#aaa">留空自动推算</span>
+            </div>
+            <div style="flex:1;min-width:120px">
+              <label>阶段结束</label>
+              <input type="date" class="form-input" id="assignStageEnd">
+              <span style="font-size:11px;color:#aaa">留空自动推算</span>
+            </div>
+            <div style="flex:0 0 100px">
+              <label>第几期</label>
+              <input type="number" class="form-input" id="assignStageOrder" min="1" step="1">
+              <span style="font-size:11px;color:#aaa">留空自动</span>
+            </div>
+          </div>
           <div id="assignEntries">
             <!-- 动态生成 -->
           </div>
@@ -531,6 +548,14 @@
           <div class="form-group">
             <label>老师补充说明</label>
             <textarea class="form-textarea" id="assignNotes" placeholder="老师说的其他注意事项..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>📷 配图（风格化卡片）</label>
+            <div id="assignImagePreview" class="image-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+            <input type="file" id="assignImageInput" accept="image/jpeg,image/png,image/heic,image/heif" multiple style="display:none">
+            <button class="btn btn-secondary" id="addAssignImageBtn">+ 选择图片</button>
+            <span style="font-size:11px;color:#aaa;margin-left:8px">选图后自动上传，等待风格化完成</span>
+            <div id="assignImageStatus" style="font-size:12px;color:#888;margin-top:4px"></div>
           </div>
           <button class="btn btn-primary" id="submitAssignBtn">✅ 提交要求</button>
         </div>
@@ -571,6 +596,7 @@
 let practiceItems = [];
 let logEntries = [];
 let assignEntries = [];
+let assignImages = []; // [{url, name}, ...]
 
 // ── Tab 切换 ──
 const tabs = document.querySelectorAll('.tab-item');
@@ -777,9 +803,54 @@ document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
   renderAssignEntries();
 });
 
+// ── 配图上传 ──
+document.getElementById('addAssignImageBtn').addEventListener('click', () => {
+  document.getElementById('assignImageInput').click();
+});
+
+document.getElementById('assignImageInput').addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (!files.length) return;
+  const statusEl = document.getElementById('assignImageStatus');
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    statusEl.textContent = `⏳ 上传中 (${i+1}/${files.length})...`;
+    const formData = new FormData();
+    formData.append('file', f);
+    try {
+      const res = await fetch('/config/api/assignments/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.ok) {
+        assignImages.push({ url: data.url, name: f.name });
+        renderAssignImagePreview();
+        statusEl.textContent = `✅ ${f.name} 已上传`;
+      } else {
+        statusEl.textContent = `❌ ${f.name}: ${data.error || '上传失败'}`;
+      }
+    } catch (err) {
+      statusEl.textContent = `❌ ${f.name}: 网络错误`;
+    }
+  }
+  e.target.value = ''; // 允许重复选同一文件
+});
+
+function renderAssignImagePreview() {
+  const container = document.getElementById('assignImagePreview');
+  container.innerHTML = assignImages.map((img, i) => `
+    <div style="position:relative;display:inline-block">
+      <img src="${img.url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ddd" alt="${img.name}">
+      <button onclick="assignImages.splice(${i},1);renderAssignImagePreview()" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#FF6B6B;color:white;cursor:pointer;font-size:14px;line-height:22px;text-align:center">×</button>
+    </div>
+  `).join('');
+}
+
+// ── 提交老师要求 ──
 document.getElementById('submitAssignBtn').addEventListener('click', async () => {
   const lessonDate = document.getElementById('assignDate').value || null;
   const notes = document.getElementById('assignNotes').value;
+  const stageStart = document.getElementById('assignStageStart').value || null;
+  const stageEnd = document.getElementById('assignStageEnd').value || null;
+  const stageOrder = document.getElementById('assignStageOrder').value || null;
   const validEntries = assignEntries.filter(e => e.item_id && e.requirement);
 
   if (!validEntries.length) {
@@ -787,20 +858,31 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
     return;
   }
 
+  const body = {
+    lesson_date: lessonDate,
+    items: validEntries.map(e => ({ item: e.item, item_id: e.item_id, requirement: e.requirement })),
+    notes,
+  };
+  if (assignImages.length) body.images = assignImages.map(i => i.url);
+  if (stageStart) body.stage_start = stageStart;
+  if (stageEnd) body.stage_end = stageEnd;
+  if (stageOrder) body.stage_order = parseInt(stageOrder);
+
   const res = await fetch('/config/api/assignments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      lesson_date: lessonDate,
-      items: validEntries.map(e => ({ item: e.item, item_id: e.item_id, requirement: e.requirement })),
-      notes,
-    }),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
   if (data.ok) {
     assignEntries = [];
+    assignImages = [];
     renderAssignEntries();
+    renderAssignImagePreview();
     document.getElementById('assignNotes').value = '';
+    document.getElementById('assignStageStart').value = '';
+    document.getElementById('assignStageEnd').value = '';
+    document.getElementById('assignStageOrder').value = '';
     loadAssignments();
     alert('✅ 老师要求已录入');
   } else {
@@ -812,27 +894,125 @@ async function loadAssignments() {
   const container = document.getElementById('assignmentsList');
   container.innerHTML = '<div class="loading">加载中...</div>';
   try {
-    const res = await fetch('/config/api/assignments?weeks=8');
+    const res = await fetch('/config/api/assignments?weeks=16');
     const data = await res.json();
     if (!data.assignments || !data.assignments.length) {
       container.innerHTML = '<div class="empty-state">暂无老师要求记录</div>';
       return;
     }
-    container.innerHTML = data.assignments.map(a => `
-      <div class="assignment-card">
-        <div class="assignment-date">📅 ${a.lesson_date}</div>
-        ${a.items.map(it => `
-          <div class="assignment-item">
-            <span class="item-name">${it.item}</span>
-            <span class="item-req">${it.requirement || it.requirements || ''}</span>
+    container.innerHTML = data.assignments.map((a, aidx) => {
+      const dateLabel = a.stage_order ? `📅 ${a.lesson_date} · 第 ${a.stage_order} 期` : `📅 ${a.lesson_date}`;
+      const itemsHtml = a.items.map(it => {
+        const reqs = (it.requirements || it.requirement || '').split('\n').filter(Boolean);
+        const reqLines = reqs.map(r => `<li>${r}</li>`).join('');
+        return `<div class="assign-subject">
+          <div class="assign-subject-header">
+            <span class="assign-subject-name">${it.item}</span>
+            <span class="assign-subject-id">(item_id: ${it.item_id || '?'})</span>
           </div>
-        `).join('')}
-        ${a.notes ? `<div class="assignment-notes">💬 ${a.notes}</div>` : ''}
-      </div>
-    `).join('');
+          <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
+        </div>`;
+      }).join('');
+      const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : '';
+      const notesHtml = a.notes ? `<div class="assignment-notes">💬 ${a.notes}</div>` : '';
+      return `<div class="assignment-card" data-lesson="${a.lesson_date}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="assignment-date">${dateLabel}</div>
+          <div style="display:flex;gap:4px">
+            <button class="edit-assign-btn" data-lesson="${a.lesson_date}" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px">✏️</button>
+            <button class="del-assign-btn" data-lesson="${a.lesson_date}" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px">🗑</button>
+          </div>
+        </div>
+        <div class="assign-subject-container">${itemsHtml}</div>
+        ${imagesHtml}
+        ${notesHtml}
+      </div>`;
+    }).join('');
+
+    // Bind edit/delete
+    container.querySelectorAll('.edit-assign-btn').forEach(btn => {
+      btn.addEventListener('click', () => startEditAssignment(btn.dataset.lesson));
+    });
+    container.querySelectorAll('.del-assign-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteAssignment(btn.dataset.lesson));
+    });
   } catch(e) {
     container.innerHTML = '<div class="empty-state">加载失败</div>';
   }
+}
+
+async function deleteAssignment(lessonDate) {
+  if (!confirm(`真的要删除 ${lessonDate} 的老师要求？`)) return;
+  const res = await fetch(`/config/api/assignments/${lessonDate}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.ok) {
+    loadAssignments();
+  } else {
+    alert('❌ ' + (data.error || '删除失败'));
+  }
+}
+
+function startEditAssignment(lessonDate) {
+  const card = document.querySelector(`.assignment-card[data-lesson="${lessonDate}"]`);
+  if (!card) return;
+  // Toggle: if already editing, close
+  if (card.classList.contains('editing')) {
+    card.classList.remove('editing');
+    card.querySelector('.edit-form')?.remove();
+    return;
+  }
+  // Find the assignment data from API
+  fetch('/config/api/assignments?weeks=16').then(r => r.json()).then(data => {
+    const a = data.assignments.find(x => x.lesson_date === lessonDate);
+    if (!a) return;
+    card.classList.add('editing');
+    const form = document.createElement('div');
+    form.className = 'edit-form';
+    form.style.cssText = 'margin-top:12px;padding:12px;background:#f9f9f9;border-radius:10px';
+    // Build subject rows
+    let itemsRows = '';
+    (a.items || []).forEach((it, i) => {
+      itemsRows += `<div class="edit-item-row" style="display:flex;gap:6px;margin-bottom:6px">
+        <input class="edit-item-name" value="${it.item}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <input class="edit-item-req" value="${it.requirements || it.requirement || ''}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+      </div>`;
+    });
+    form.innerHTML = `
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">✏️ 编辑 ${lessonDate}</div>
+      <div style="margin-bottom:8px">
+        <input id="editNotes" value="${a.notes || ''}" placeholder="老师补充说明" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+      </div>
+      ${itemsRows}
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="save-edit-btn" style="background:#4CAF50;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer">💾 保存</button>
+        <button class="cancel-edit-btn" style="background:#999;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer">取消</button>
+      </div>
+    `;
+    card.appendChild(form);
+
+    form.querySelector('.save-edit-btn').addEventListener('click', async () => {
+      const items = Array.from(form.querySelectorAll('.edit-item-row')).map(row => ({
+        item: row.querySelector('.edit-item-name').value,
+        requirement: row.querySelector('.edit-item-req').value,
+      }));
+      const notes = form.querySelector('#editNotes').value;
+      const res = await fetch(`/config/api/assignments/${lessonDate}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, notes }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        loadAssignments();
+      } else {
+        alert('❌ ' + (d.error || '保存失败'));
+      }
+    });
+    form.querySelector('.cancel-edit-btn').addEventListener('click', () => {
+      card.classList.remove('editing');
+      form.remove();
+    });
+  });
 }
 
 // ══════════════════════════════════════════════════
@@ -900,12 +1080,22 @@ async function loadWeek() {
     const assignDiv = document.getElementById('weekAssignment');
     if (data.assignment && data.assignment.items && data.assignment.items.length) {
       assignCard.style.display = 'block';
-      assignDiv.innerHTML = data.assignment.items.map(it =>
-        `<div class="assignment-item">
-          <span class="item-name">${it.item}</span>
-          <span class="item-req">${it.requirement || it.requirements || ''}</span>
-        </div>`
-      ).join('');
+      const a = data.assignment;
+      assignDiv.innerHTML = a.items.map(it => {
+        const reqs = (it.requirements || it.requirement || '').split('\n').filter(Boolean);
+        const reqLines = reqs.map(r => `<li>${r}</li>`).join('');
+        return `<div class="assign-subject">
+          <div class="assign-subject-header">
+            <span class="assign-subject-name">${it.item}</span>
+            <span class="assign-subject-id">(item_id: ${it.item_id || '?'})</span>
+          </div>
+          <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
+        </div>`;
+      }).join('') + (
+        (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : ''
+      ) + (
+        a.notes ? `<div class="assignment-notes" style="margin-top:10px">💬 ${a.notes}</div>` : ''
+      );
     } else {
       assignCard.style.display = 'none';
     }
