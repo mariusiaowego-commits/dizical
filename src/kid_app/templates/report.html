@@ -441,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var availableForBars = Math.max(containerW - LABEL_W - RIGHT_PAD, 200);
     var barW = Math.max(4, Math.min(28, Math.floor((availableForBars - (n - 1) * 6) / n)));
     return renderStackedChart(monthData, {
-      barW: barW, barGap: 6, chartH: 140, labelStride: 3
+      barW: barW, barGap: 6, chartH: 140, labelStride: 3, labelY: 192
     });
   }
 
