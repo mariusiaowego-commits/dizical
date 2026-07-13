@@ -1,16 +1,19 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-13 (unarchive 回课 1338 + 考试 1339)
-**当前 main**: 20d6699 (无代码改动, DB-only 修改)
-**生产服务**: 8765 running PID 35969 (API fresh query 立即生效, 未重启)
-**DB**: data/dizi.db - UPDATE practice_items SET is_archived=0 WHERE item_id IN (1338, 1339) - 备份 backups/2026-07-13-unarchive-回课-考试/
+**最后更新**: 2026-07-13 (PR #155 assignment 配置增强)
+**当前 main**: 3f29774 (PR #155 squash merge feat/assignment-config-stage-images)
+**生产服务**: 8765 running PID 35707 (load PR #155 新代码)
+**pytest**: 13 failed / 294 passed (净回归 = 0, 全 pre-existing)
 
-### 已完成 (2026-07-13 unarchive 回课/考试)
+### 已完成 (2026-07-13 assignment 配置增强)
 
-- dad 报告 practice-log 缺"回课" (1338) + "考试" (1339) 科目
-- 根因: 之前手误归档, is_archived=1, API include_archived=false 排除
-- 修改: DB UPDATE 2 行, 0 副作用 (无历史数据命中)
-- 验证: API 改前 14 → 改后 16 个科目, 实时生效
+**PR #155** - `feat(assignment): 配置增强 — stage字段/配图上传/全端展示重排/编辑删除` (3 commits, +602/-56, 7 files)
+- **后端 data layer**: database.py `save_weekly_assignment` images 参数忽略 bug 修复; config.py 新增 PUT/DELETE/upload 端点; stage 字段 UI 优先覆盖自动推算
+- **配图上传**: POST /config/api/assignments/upload + data/uploads/raw/ + /uploads StaticFiles mount
+- **录入表单**: stage_start/end/order 三个输入框; 图片上传 UI (文件选择+缩略图+删除)
+- **全端展示重排**: prepare 页 4 部分 subject-block + 图片画廊; practice 页楼层 1 选中科目显示 4 部分; config-practice-log Tab2 历史卡片 4 部分 + edit/delete + stage pill; Tab3 周总览 same
+- **skill**: dizical-image-style (跨 3 profile 同步)
+- **卡片视觉重设计**: 珊瑚红 pill 阶段标签 / 科目左竖线 + a)b)c) 编号 / 图片 hover 放大 / 卡片阴影微边框 / 编辑删除 hover 反馈
 
 **最后更新**: 2026-07-13 (PR #152 月份科目累计卡片)
 **当前 main**: 7df1390 (PR #152 squash merge feat/month-summary)
