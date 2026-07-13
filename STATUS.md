@@ -1,5 +1,25 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-13 (PR #152 月份科目累计卡片)
+**当前 main**: 7df1390 (PR #152 squash merge feat/month-summary)
+**生产服务**: 8765 running PID 35969 (load PR #152 新代码, 3/3 URL curl 200)
+**pytest**: 13 failed / 294 passed (净回归 = 0, 全 pre-existing 跟 7/05 handoff 一致)
+
+### 已完成 (2026-07-13 月份科目累计卡片)
+
+**PR #152** - `feat(month-summary): 月份科目累计卡片 (横向 bar 排序, 同色跨图)` (squash merge `7df1390`)
+- 模板新增 `#monthSummaryCard` (.card 同宽, 在 monthChartCard 之后)
+- `renderMonthSummary` 聚合每科目总分钟 + 数组化 + 从长到短排序
+- `renderMonthSummaryDOM` 渲染横向 bar 列表 (排名 chip + bar + 科目名 + 分钟+占比%)
+- 颜色复用月图 STAGE_COLORS (it.id % 15) = 跨图同科目同色
+- 自适应: 横向 bar 长度按 wrap 宽度比例缩放 (BAR_AREA_RATIO=0.6)
+- hover tooltip (复用 .bar-tooltip class)
+- 切月自动同步 (loadMonthChart 集成 renderMonthSummaryDOM)
+- 0 后端改动, 0 新文件, 0 新 JS 库
+
+UI 一致性: 0 新 hex, 0 新 JS 库, em-dash source code 0
+pytest 净回归: 0 (双向 FAILED-set diff, 13/13 fail 同一集合)
+
 **最后更新**: 2026-07-11 (PR #150 月图 X 轴 label 修复)
 **当前 main**: d10f18b (PR #150 squash merge fix/month-label-overlap)
 **生产服务**: 8765 running PID 2000 (load PR #150 新代码, 4/4 URL curl 200)

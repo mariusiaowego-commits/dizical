@@ -1,5 +1,30 @@
 # vibe coding log - dizical
 
+## 2026-07-13 PR #152 月份科目累计卡片
+
+**触发**: dad "再给每个自然月在柱状图下面增加一个同样全屏宽度的卡片, 展示这个自然月累计每个科目的练习总时长情况, 从长到短按顺序排列, ui样式要保持统一"
+
+**做法** (feat/month-summary 分支, squash merge `7df1390`):
+- 模板新增 `#monthSummaryCard` (.card 同宽, 在 monthChartCard 之后)
+- `renderMonthSummary` 聚合 + 排序 (从长到短, 同长按 id 升序)
+- `renderMonthSummaryDOM` 渲染 DOM (排名 chip #1-3 珊瑚红 + 4+ 灰, 横向 bar, 科目名 + 分钟+占比%)
+- `bindSummaryBarHover` hover tooltip (复用 .bar-tooltip class)
+- 切月自动同步 (loadMonthChart 集成)
+- 0 后端改动 (复用 /api/practices/monthly)
+
+**视觉设计** (waza-ui skill §"Lock the Direction" 输出):
+- 视觉方向: 沿 dizicute editorial (暖白底 + 珊瑚红 #FF6B6B 强调 + STAGE_COLORS 15 色)
+- 颜色一致: 同科目在月图 + 累计图颜色一样 (it.id % 15 循环)
+- 横向 bar 长度按 wrap 宽度比例缩放, 留 40% 给右侧文字
+- 排名 chip 圆点 (1-3 珊瑚红, 4+ 灰)
+- 信息密度: 高, 一眼看完 8-9 个科目排序
+
+**踩坑** (复盘给下次):
+- patch tool 多次截断 new_string 末尾闭合 (replaced_all 误改 monthSummaryTitle → monthChartTitle), 后续 patch 必须用更长的唯一上下文
+
+**测试**: 浏览器实测 6 月 (9 科目, 416 分钟, 排序对) + 7 月 (8 科目, 268 分钟, 排序对) + 切月同步; vision 4/4 项过; pytest 净回归 0
+**prod**: 8765 重启加载新代码 (PID 35969), 3/3 URL curl 200
+
 ## 2026-07-11 PR #150 月图 X 轴 label 修复
 
 **触发**: user prompt "x轴上的日期还是和柱状图重叠了" (PR #147 merge 后反馈)
