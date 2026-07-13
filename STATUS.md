@@ -1,9 +1,16 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-13 (PR #155 assignment 配置增强)
-**当前 main**: 3f29774 (PR #155 squash merge feat/assignment-config-stage-images)
-**生产服务**: 8765 running PID 35707 (load PR #155 新代码)
-**pytest**: 13 failed / 294 passed (净回归 = 0, 全 pre-existing)
+**最后更新**: 2026-07-13 (PR #157 textarea 多行录入)
+**当前 main**: 761a85d (PR #157 merge fix/assign-textarea-multiline)
+**生产服务**: 8765 running PID 35707 (新代码需重启生效)
+**pytest**: 13 failed / 294 passed (净回归 = 0)
+
+### 已完成 (2026-07-13 录入要求改 textarea 多行)
+
+**PR #157** - `fix(assign-entry): textarea 多行 + 换行布局` (+43/-24, 1 file)
+- 录入老师要求时每个科目只能填一条（单行 input），改为 textarea 多行
+- 科目选择器 + 删除按钮在上一行，textarea 独占下一行，宽度撑满卡片，高度 100px
+- 录入行背景浅灰圆角，视觉分区
 
 ### 已完成 (2026-07-13 assignment 配置增强)
 
