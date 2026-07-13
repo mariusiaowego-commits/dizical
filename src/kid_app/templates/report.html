@@ -219,6 +219,13 @@
     <div id="monthChartLegend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
   </div>
 
+  <!-- 月份科目累计卡片 (feat/month-summary) - 同宽, 横向 bar 从长到短排序, 颜色复用月图 STAGE_COLORS -->
+  <div id="monthSummaryCard" class="card" style="margin-top:12px;">
+    <h3 id="monthSummaryTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><img src="/static/icons/chart-bar.svg" width="16" height="16" alt=""><span>月科目累计</span></h3>
+    <div id="monthSummarySub" style="font-size:12px;color:#999;margin-bottom:16px;">加载中...</div>
+    <div id="monthSummaryWrap" style="position:relative;width:100%;"></div>
+  </div>
+
   <!-- Stage堆叠柱状图卡片 -->
   <div id="stageChartCard" class="card" style="display:none;margin-top:12px;">
     <h3 id="stageChartTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;"></h3>
@@ -445,6 +452,119 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // 月份科目累计渲染 (feat/month-summary): 横向 bar, 从长到短排序, 颜色复用月图 STAGE_COLORS
+  function renderMonthSummary(monthData) {
+    // 1) 聚合每科目总分钟
+    var totals = {};  // item_id -> total minutes
+    var itemNames = {};  // item_id -> name (复用月图 items 数组的 name)
+    monthData.items.forEach(function(it) {
+      totals[it.id] = 0;
+      itemNames[it.id] = it.name || ('科目' + it.id);
+    });
+    monthData.dates.forEach(function(d) {
+      var row = monthData.data[d] || {};
+      Object.keys(row).forEach(function(itemIdStr) {
+        var itemId = parseInt(itemIdStr, 10);
+        var v = row[itemIdStr];
+        if (v && v > 0) totals[itemId] = (totals[itemId] || 0) + v;
+      });
+    });
+    // 2) 数组化 + 排序 (从长到短, 同长度按 id 升序)
+    var arr = Object.keys(totals).map(function(id) {
+      return { id: parseInt(id, 10), name: itemNames[id], total: totals[id] };
+    }).filter(function(x) { return x.total > 0; });
+    arr.sort(function(a, b) {
+      if (b.total !== a.total) return b.total - a.total;
+      return a.id - b.id;
+    });
+    return arr;
+  }
+
+  // 月份科目累计 DOM 渲染 (feat/month-summary): 渲染横向 bar 列表到 #monthSummaryWrap
+  function renderMonthSummaryDOM(monthData) {
+    var titleEl = document.getElementById('monthSummaryTitle');
+    var subEl = document.getElementById('monthSummarySub');
+    var wrapEl = document.getElementById('monthSummaryWrap');
+    if (!titleEl || !subEl || !wrapEl) return;
+    var labelParts = (monthData.month || '').split('-');
+    titleEl.innerHTML = '<img src="/static/icons/chart-bar.svg" width="16" height="16" alt="" style="vertical-align:-3px;margin-right:6px;"><span>' + (labelParts[0] || '') + '/' + (labelParts[1] || '') + ' 科目累计</span>';
+    var arr = renderMonthSummary(monthData);
+    if (arr.length === 0) {
+      subEl.textContent = '本月暂无练习数据';
+      wrapEl.innerHTML = '';
+      return;
+    }
+    var maxTotal = arr[0].total;
+    var grandTotal = arr.reduce(function(s, x) { return s + x.total; }, 0);
+    subEl.textContent = '共 ' + arr.length + ' 个科目, 总 ' + grandTotal + ' 分钟';
+    // 响应式: 横向 bar 长度按容器宽自适应, 留 40% 给右侧文字
+    var containerW = wrapEl.clientWidth || 600;
+    var RANK_W = 24, LABEL_W = 70, RIGHT_PAD = 8, BAR_AREA_RATIO = 0.6;
+    var availableForBar = Math.max(containerW - RANK_W - LABEL_W - RIGHT_PAD, 100);
+    var maxBarW = Math.max(40, Math.floor(availableForBar * BAR_AREA_RATIO));
+    var html = '';
+    arr.forEach(function(x, i) {
+      var barW = Math.max(2, Math.round(maxBarW * (x.total / maxTotal)));
+      var pct = Math.round(x.total / grandTotal * 100);
+      var rankColor = i < 3 ? '#FF6B6B' : '#999';
+      var colorIdx = x.id % 15;  // 复用月图 STAGE_COLORS (15 色梯度)
+      var color = STAGE_COLORS[colorIdx];
+      // 行布局: [排名] [bar] [科目名 + 数字]
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+        + '<span style="min-width:' + RANK_W + 'px;font-size:11px;color:' + rankColor + ';font-weight:600;text-align:right;">#' + (i + 1) + '</span>'
+        + '<div style="min-width:' + LABEL_W + 'px;font-size:13px;color:#3D2E1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + x.name + '</div>'
+        + '<div style="flex:1;background:#F5F0E8;border-radius:6px;height:14px;overflow:hidden;position:relative;">'
+        +   '<div data-summary-bar="1" data-item-id="' + x.id + '" data-item-name="' + x.name + '" data-total="' + x.total + '" data-pct="' + pct + '" '
+        +        'style="width:' + barW + 'px;height:100%;background:' + color + ';cursor:pointer;transition:transform 0.15s;"></div>'
+        + '</div>'
+        + '<span style="min-width:60px;font-size:12px;color:#666;text-align:right;font-weight:500;">' + x.total + ' 分 <span style="color:#999;font-weight:400;">' + pct + '%</span></span>'
+        + '</div>';
+    });
+    wrapEl.innerHTML = html;
+    bindSummaryBarHover();
+  }
+
+  // 月份科目累计 bar hover + click (feat/month-summary): 复用 .bar-tooltip, click 弹 diziModal
+  function bindSummaryBarHover() {
+    var bars = document.querySelectorAll('[data-summary-bar="1"]');
+    bars.forEach(function(bar) {
+      bar.addEventListener('mouseenter', function() {
+        var name = bar.getAttribute('data-item-name');
+        var total = bar.getAttribute('data-total');
+        var pct = bar.getAttribute('data-pct');
+        showSummaryTooltip(bar, '<div class="tt-item"><strong>' + name + '</strong></div><div class="tt-item">' + total + ' 分钟 (' + pct + '%)</div>');
+        gsap.to(bar, { scaleY: 1.15, transformOrigin: 'left center', duration: 0.15, ease: 'power2.out' });
+      });
+      bar.addEventListener('mousemove', function(e) {
+        moveSummaryTooltip(e);
+      });
+      bar.addEventListener('mouseleave', function() {
+        hideSummaryTooltip();
+        gsap.to(bar, { scaleY: 1, duration: 0.2, ease: 'power2.out' });
+      });
+    });
+  }
+  var _summaryTooltip = null;
+  function showSummaryTooltip(anchor, html) {
+    if (!_summaryTooltip) {
+      _summaryTooltip = document.createElement('div');
+      _summaryTooltip.className = 'bar-tooltip';
+      _summaryTooltip.style.opacity = '0';
+      document.body.appendChild(_summaryTooltip);
+    }
+    _summaryTooltip.innerHTML = html;
+    _summaryTooltip.style.opacity = '1';
+  }
+  function moveSummaryTooltip(e) {
+    if (_summaryTooltip) {
+      _summaryTooltip.style.left = e.clientX + 'px';
+      _summaryTooltip.style.top = e.clientY + 'px';
+    }
+  }
+  function hideSummaryTooltip() {
+    if (_summaryTooltip) _summaryTooltip.style.opacity = '0';
+  }
+
   // 月份图 fetch + 渲染 (feat/month-chart)
   function loadMonthChart(monthStr) {
     var titleEl = document.getElementById('monthChartTitle');
@@ -470,6 +590,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
         bindBarHover();
         gsap.fromTo(wrapEl, { opacity: 0.4 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+        // 月份科目累计 (feat/month-summary): 横向 bar 排序, 共用 STAGE_COLORS 颜色
+        renderMonthSummaryDOM(data);
       })
       .catch(function() {
         subEl.textContent = '加载失败';
