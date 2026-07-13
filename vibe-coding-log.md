@@ -1,6 +1,6 @@
 # vibe coding log - dizical
 
-## 2026-07-13 unarchive 回课 (1338) + 考试 (1339) DB-only 修复
+## 2026-07-13 PR #155 assignment 配置增强 — stage字段/配图上传/全端展示重排/编辑删除
 
 **触发**: dad "practice-log 录入里面, 科目里面没有全部科目, 特别是那个回课 (上课) 的科目 没看到"
 
