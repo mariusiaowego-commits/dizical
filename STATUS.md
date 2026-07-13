@@ -1,5 +1,17 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-11 (PR #150 月图 X 轴 label 修复)
+**当前 main**: d10f18b (PR #150 squash merge fix/month-label-overlap)
+**生产服务**: 8765 running PID 2000 (load PR #150 新代码, 4/4 URL curl 200)
+**pytest**: 16 failed / 291 passed (净回归 = 0, 全 pre-existing)
+
+### 已完成 (2026-07-11 月图 X 轴 label 修复)
+
+**PR #150** - `fix(month-chart): X 轴日期 label 不再与柱状图底部重叠` (squash merge `d10f18b`)
+- 病根: SVG text y 是 baseline. 月图 CHART_H=140, bar 底 y=180, label baseline=180, label 顶 170, 跟 0 分钟柱底 0~180 重叠 10px
+- 修法: 月图 opts.labelY 显式传 192 (CHART_H+52), label 顶 182, bar 底 180, gap 2px. 显式传 opts 不改 renderStackedChart 默认, stage chart 不受影响
+- 验证: vision 确认月图 + stage chart 都无重叠, pytest 净回归 0
+
 **最后更新**: 2026-07-11 (PR #147 月视图 + emoji 换 SVG icon + 4 处交互修复)
 **当前 main**: 78f34c7 (PR #147 squash merge feat/month-chart)
 **生产服务**: 8765 running PID 78507 (load PR #147 新代码, 6/6 URL curl 200)

@@ -1,5 +1,18 @@
 # vibe coding log - dizical
 
+## 2026-07-11 PR #150 月图 X 轴 label 修复
+
+**触发**: user prompt "x轴上的日期还是和柱状图重叠了" (PR #147 merge 后反馈)
+
+**根因**: SVG text y 是 baseline, 不是文本顶部. bar 底 y=180 (月图 CHART_H=140), label baseline=180, label 顶 170, 跟 0 分钟柱底 0~180 重叠 10px
+
+**修法**: 月图 opts.labelY 显式传 192 (CHART_H+52), label 顶 182, bar 底 180, gap 2px. 不改 renderStackedChart 默认, stage chart 不受影响
+
+**踩坑** (复盘给下次): SVG text y 是 baseline 不是 top, 计算 label 跟 bar 间距时必须用 baseline - font_size 才是顶, 不能用 baseline 当顶
+
+**测试**: vision 确认月图 + stage chart 都无重叠; pytest 净回归 0 (双向 FAILED-set diff 一致, merge 边界跑一次)
+**prod**: 8765 重启加载新代码 (PID 2000), 4/4 URL curl 200
+
 ## 2026-07-11 PR #147 report 页月视图 + emoji 换 SVG icon + 4 处交互修复
 
 **触发**: user prompt "继续在本分支维护给report页增加新feature - 我需要一个自然月 月纬度的柱状图展示，展示信息同目前的周展示". 后续 dad 提 4 issue: label 稀疏 / 柱不满卡片宽 / 柱不能点击 / emoji 全部要换 SVG icon
