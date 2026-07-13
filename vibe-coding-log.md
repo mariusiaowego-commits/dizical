@@ -1,5 +1,29 @@
 # vibe coding log - dizical
 
+## 2026-07-13 unarchive 回课 (1338) + 考试 (1339) DB-only 修复
+
+**触发**: dad "practice-log 录入里面, 科目里面没有全部科目, 特别是那个回课 (上课) 的科目 没看到"
+
+**根因排查**:
+- 实践项 API `/config/api/practice/items?include_archived=false` 排除 `is_archived=1` 科目
+- 1338 回课 + 1339 考试 `is_archived=1` (手误归档)
+- DB daily_practices 0 命中 1338/1339 (从来没录入过, 影响 = 0)
+
+**修改** (DB-only, 不动代码):
+- 备份 `backups/2026-07-13-unarchive-回课-考试/dizi.db.snapshot-pre`
+- `UPDATE practice_items SET is_archived=0 WHERE item_id IN (1338, 1339)`
+- 改前 14 个 API 返回, 改后 16 个
+
+**45 分钟 bug 误报澄清**:
+- dad 后续澄清 "练习时间" 是时分选择器 (行 498), "练习时长" 是数字输入 (行 628 minutes-input)
+- 45 是 number input 合法值, 实际不是 bug
+- 不动
+
+**测试**:
+- prod 8765 API 实时返回 16 个科目 (含 1338 回课 + 1339 考试)
+- 无代码改动, 不需 PR
+- 无需 prod 重启 (fresh query 立即生效)
+
 ## 2026-07-13 PR #152 月份科目累计卡片
 
 **触发**: dad "再给每个自然月在柱状图下面增加一个同样全屏宽度的卡片, 展示这个自然月累计每个科目的练习总时长情况, 从长到短按顺序排列, ui样式要保持统一"
