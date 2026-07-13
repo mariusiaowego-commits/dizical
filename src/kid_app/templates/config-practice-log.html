@@ -476,18 +476,32 @@
     /* ── 录入行 ── */
     .log-entry-row {
       display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: #f9f9fa;
+      border-radius: 10px;
+    }
+
+    .log-entry-row .entry-top {
+      display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
+      gap: 8px;
     }
 
-    .log-entry-row .item-select {
-      flex: 2;
+    .log-entry-row .entry-top .item-select {
+      flex: 1;
     }
 
-    .log-entry-row .minutes-input {
-      width: 80px;
-      flex-shrink: 0;
+    .log-entry-row .entry-bottom {
+      display: flex;
+      gap: 8px;
+    }
+
+    .log-entry-row .entry-bottom textarea {
+      flex: 1;
+      min-height: 100px;
     }
 
     .log-entry-row .remove-btn {
@@ -760,17 +774,16 @@ function renderLogEntries() {
     const row = document.createElement('div');
     row.className = 'log-entry-row';
     row.innerHTML = `
-      <select class="form-select item-select" data-idx="${i}">
-        <option value="">选择科目...</option>
-        ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
-      </select>
-      <input type="number" class="form-input minutes-input" data-idx="${i}" placeholder="分钟" value="${entry.minutes || ''}" min="1">
-      <button class="remove-btn" data-idx="${i}">×</button>
-    `;
+      <div class="entry-top">
+        <select class="form-select item-select" data-idx="${i}">
+          <option value="">选择科目...</option>
+          ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
+        </select>
+        <input type="number" class="form-input minutes-input" data-idx="${i}" placeholder="分钟" value="${entry.minutes || ''}" min="1" style="width:80px">
+        <button class="remove-btn" data-idx="${i}">×</button>
+      </div>`;
     container.appendChild(row);
   });
-
-  // 绑定事件
   container.querySelectorAll('.item-select').forEach(sel => {
     sel.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
@@ -878,13 +891,19 @@ function renderAssignEntries() {
     const row = document.createElement('div');
     row.className = 'log-entry-row';
     row.innerHTML = `
-      <select class="form-select item-select" data-idx="${i}">
-        <option value="">选择科目...</option>
-        ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
-      </select>
-      <input type="text" class="form-input" data-idx="${i}" placeholder="要求（如♩=82）" value="${entry.requirement || ''}" style="flex:2">
-      <button class="remove-btn" data-idx="${i}">×</button>
-    `;
+      <div class="entry-top">
+        <select class="form-select item-select" data-idx="${i}">
+          <option value="">选择科目...</option>
+          ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
+        </select>
+        <button class="remove-btn" data-idx="${i}">×</button>
+      </div>
+      <div class="entry-bottom">
+        <textarea class="form-textarea" data-idx="${i}" placeholder="每行一条要求，如：
+♩=82
+注意口风不要漏气
+倒序分句练习">${entry.requirement || ''}</textarea>
+      </div>`;
     container.appendChild(row);
   });
 
@@ -896,7 +915,7 @@ function renderAssignEntries() {
       assignEntries[idx].item = item ? item.name : '';
     });
   });
-  container.querySelectorAll('input[type=text]').forEach(inp => {
+  container.querySelectorAll('textarea').forEach(inp => {
     inp.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
       assignEntries[idx].requirement = e.target.value;
