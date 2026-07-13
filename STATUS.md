@@ -1,5 +1,17 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-13 (unarchive 回课 1338 + 考试 1339)
+**当前 main**: 20d6699 (无代码改动, DB-only 修改)
+**生产服务**: 8765 running PID 35969 (API fresh query 立即生效, 未重启)
+**DB**: data/dizi.db - UPDATE practice_items SET is_archived=0 WHERE item_id IN (1338, 1339) - 备份 backups/2026-07-13-unarchive-回课-考试/
+
+### 已完成 (2026-07-13 unarchive 回课/考试)
+
+- dad 报告 practice-log 缺"回课" (1338) + "考试" (1339) 科目
+- 根因: 之前手误归档, is_archived=1, API include_archived=false 排除
+- 修改: DB UPDATE 2 行, 0 副作用 (无历史数据命中)
+- 验证: API 改前 14 → 改后 16 个科目, 实时生效
+
 **最后更新**: 2026-07-13 (PR #152 月份科目累计卡片)
 **当前 main**: 7df1390 (PR #152 squash merge feat/month-summary)
 **生产服务**: 8765 running PID 35969 (load PR #152 新代码, 3/3 URL curl 200)
