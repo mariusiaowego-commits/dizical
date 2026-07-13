@@ -321,43 +321,156 @@
 
     /* ── 老师要求列表 ── */
     .assignment-card {
-      background: white;
+      background: #fff;
       border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 10px;
-      border-left: 4px solid var(--lavender);
+      padding: 0;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(44,62,80,0.06), 0 1px 2px rgba(44,62,80,0.04);
+      border: 1px solid #eef0f2;
+      overflow: hidden;
+    }
+
+    .assignment-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 0;
     }
 
     .assignment-date {
       font-size: 13px;
-      font-weight: 600;
-      color: var(--lavender);
-      margin-bottom: 8px;
+      color: #7F8C8D;
+      font-weight: 500;
     }
 
-    .assignment-item {
+    .assignment-stage-pill {
+      display: inline-block;
+      background: #FF6B6B;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .assignment-card-actions {
+      display: flex;
+      gap: 2px;
+    }
+
+    .assignment-card-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+      line-height: 1;
+    }
+
+    .assignment-card-actions button:hover {
+      background: #f5f5f5;
+    }
+
+    .assignment-card-body {
+      padding: 12px 18px 16px;
+    }
+
+    /* ── subject block (在白色背景上) ── */
+    .assign-subject {
+      margin-bottom: 10px;
+      padding: 0 0 10px 14px;
+      border-left: 3px solid #FF6B6B;
+    }
+
+    .assign-subject:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .assign-subject-header {
       display: flex;
       align-items: baseline;
       gap: 8px;
       margin-bottom: 4px;
     }
 
-    .assignment-item .item-name {
-      font-weight: 600;
-      color: var(--text);
+    .assign-subject-name {
+      font-weight: 700;
       font-size: 14px;
+      color: #2C3E50;
     }
 
-    .assignment-item .item-req {
-      color: #7F8C8D;
+    .assign-subject-id {
+      font-size: 11px;
+      color: #aaa;
+      font-family: "SF Mono", "Menlo", monospace;
+    }
+
+    .assign-subject-reqs {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      counter-reset: req-num;
+    }
+
+    .assign-subject-reqs li {
       font-size: 13px;
+      color: #555;
+      padding: 1px 0 1px 18px;
+      position: relative;
+      line-height: 1.6;
+    }
+
+    .assign-subject-reqs li::before {
+      content: counter(req-num, lower-alpha) ")";
+      counter-increment: req-num;
+      position: absolute;
+      left: 0;
+      font-weight: 600;
+      color: #FF6B6B;
+      font-size: 12px;
+    }
+
+    /* ── 图片画廊 ── */
+    .assign-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .assign-images img {
+      width: 90px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #e8e8e8;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .assign-images img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(44,62,80,0.10);
     }
 
     .assignment-notes {
       font-size: 12px;
       color: #aaa;
-      margin-top: 6px;
-      font-style: italic;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #f0f0f0;
+      font-style: normal;
+      line-height: 1.5;
+    }
+
+    .assignment-card-footer {
+      padding: 8px 18px 14px;
     }
 
     /* ── 录入行 ── */
@@ -901,7 +1014,7 @@ async function loadAssignments() {
       return;
     }
     container.innerHTML = data.assignments.map((a, aidx) => {
-      const dateLabel = a.stage_order ? `📅 ${a.lesson_date} · 第 ${a.stage_order} 期` : `📅 ${a.lesson_date}`;
+      const stageLabel = a.stage_order ? `<span class="assignment-stage-pill">第 ${a.stage_order} 期</span>` : '';
       const itemsHtml = a.items.map(it => {
         const reqs = (it.requirements || it.requirement || '').split('\n').filter(Boolean);
         const reqLines = reqs.map(r => `<li>${r}</li>`).join('');
@@ -914,18 +1027,23 @@ async function loadAssignments() {
         </div>`;
       }).join('');
       const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : '';
-      const notesHtml = a.notes ? `<div class="assignment-notes">💬 ${a.notes}</div>` : '';
+      const notesHtml = a.notes ? `<div class="assignment-notes">${a.notes}</div>` : '';
       return `<div class="assignment-card" data-lesson="${a.lesson_date}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div class="assignment-date">${dateLabel}</div>
-          <div style="display:flex;gap:4px">
-            <button class="edit-assign-btn" data-lesson="${a.lesson_date}" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px">✏️</button>
-            <button class="del-assign-btn" data-lesson="${a.lesson_date}" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px">🗑</button>
+        <div class="assignment-card-header">
+          <div>
+            <span class="assignment-date">${a.lesson_date}</span>
+            ${stageLabel ? ' ' + stageLabel : ''}
+          </div>
+          <div class="assignment-card-actions">
+            <button class="edit-assign-btn" data-lesson="${a.lesson_date}" title="编辑">✎</button>
+            <button class="del-assign-btn" data-lesson="${a.lesson_date}" title="删除">✕</button>
           </div>
         </div>
-        <div class="assign-subject-container">${itemsHtml}</div>
-        ${imagesHtml}
-        ${notesHtml}
+        <div class="assignment-card-body">
+          <div class="assign-subject-container">${itemsHtml}</div>
+          ${imagesHtml}
+          ${notesHtml}
+        </div>
       </div>`;
     }).join('');
 
