@@ -1,5 +1,16 @@
 # vibe coding log - dizical
 
+## 2026-07-13 PR #157 录入要求改 textarea 多行
+
+**触发**: dad 测 PR #155 后发现录入老师要求时每个科目只能填一条要求
+
+**修改**: config-practice-log.html `renderAssignEntries` 中 `<input>` 改 `<textarea>`:
+- 换行布局：选择器+删除按钮在 `.entry-top`，textarea 在 `.entry-bottom`
+- textarea 高度 100px，宽度撑满卡片
+- 录入行改用 flex-column，浅灰圆角背景
+
+**修复**: replace_all 误改 Tab1 练习录入 number input → 立即还原
+
 ## 2026-07-13 PR #155 assignment 配置增强 — stage字段/配图上传/全端展示重排/编辑删除
 
 **触发**: dad "practice-log 录入里面, 科目里面没有全部科目, 特别是那个回课 (上课) 的科目 没看到"
