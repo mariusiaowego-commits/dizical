@@ -851,6 +851,7 @@ async def api_create_assignment(request: Request):
         formatted.append({
             "item": it.get("item", ""),
             "item_id": it.get("item_id"),
+            "metronome": it.get("metronome", ""),
             "requirements": it.get("requirement", it.get("requirements", "")),
         })
 
@@ -900,6 +901,7 @@ async def api_update_assignment(lesson_date: str, request: Request):
         formatted.append({
             "item": it.get("item", ""),
             "item_id": it.get("item_id"),
+            "metronome": it.get("metronome", ""),
             "requirements": it.get("requirement", it.get("requirements", "")),
         })
 

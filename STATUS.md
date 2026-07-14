@@ -1,9 +1,37 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-13 (PR #157 textarea 多行录入)
-**当前 main**: 761a85d (PR #157 merge fix/assign-textarea-multiline)
-**生产服务**: 8765 running PID 35707 (新代码需重启生效)
-**pytest**: 13 failed / 294 passed (净回归 = 0)
+**最后更新**: 2026-07-13 (PR #159 metronome 渲染 + 编辑 + DB 回填)
+**当前 main**: 761a85d (PR #157, 待 PR #159 merge)
+**生产服务**: 8765 running PID 51913 (load PR #159 新代码, 已重启)
+**pytest**: 13 failed / 294 passed (净回归 = 0, 13 全 pre-existing)
+
+### 已完成 (2026-07-13 metronome 全链路支持)
+
+**PR #159** - `fix(assignments): 渲染 + 编辑 metronome 字段` (1 commit, +17/-3, 2 files)
+- **后端 config.py**: POST/PUT 接口 formatted items 多带 `metronome` 字段 (之前被静默丢弃)
+- **前端 config-practice-log.html** 6 处:
+  1. POST 录入表单 renderAssignEntries: 加 `<input class='metronome-input'>` + change 事件
+  2. addAssignEntryBtn: assignEntries.push 加 metronome 默认空字符串
+  3. submitAssignBtn: body.items 多带 metronome
+  4. 历史列表 loadAssignments: 珊瑚红 pill 渲染 it.metronome (空不渲染)
+  5. 编辑模式: 加 `<input class='edit-item-metro'>`, 保存时取这个值
+  6. 本周总览 loadWeek: 同样渲染 metronome pill
+
+**DB 改动 (不进 PR, 单独 SQL 已应用)**:
+- #26 2026-07-12 stage_order 13→14, stage_start 7-12→7-13, stage_end 7-18→7-19 (修了 stage_order 重复 bug)
+- B1 24 条 metronome 字段回填 (按语义合并, requirements 文本保留):
+  - 例: 西藏舞曲 (2026-07-12) '4/4 ♪=80, 2/4 ♪=69-80'
+  - 例: 采茶扑蝶 (2026-07-12) '♩=108、112'
+  - 例: 单吐练习 (2026-03-14) '♩=52、56、60'
+- 备份: `/tmp/weekly_assignments_backup_2026-07-13.json` (26 条全表)
+- DB 备份: `/tmp/dizi.db.bak.before-2026-07-12-fix`
+- 全表分布: 49 metronome 已填 / 34 空 (34 = B4 类 14 条 + 早期 stage_order=NULL 老 schema 20 条)
+
+**用户偏好沉淀** (本次新增):
+- "前端可以看到所有速度和原文, 而且可以编辑" — 录入和编辑界面都需要 metronome 输入框
+- B1 24 条按"语义合并"而非"机械拼接" (例: 采茶扑蝶 '♩=108、♩=112' → '♩=108、112' 合并顿号, 西藏舞曲 '4/4 ♪=80, 2/4 ♪=69-80' 加乐段标注)
+- requirements 文本不删 (保留可编辑), metronome 字段只填"提取/补全"的速度
+- handoff 列问题先让 dad 看 5 个边界情况 (5 个 B1 边界全部由 dad 拍板"按语义合并")
 
 ### 已完成 (2026-07-13 录入要求改 textarea 多行)
 

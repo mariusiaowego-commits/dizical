@@ -1,5 +1,57 @@
 # vibe coding log - dizical
 
+## 2026-07-13 PR #159 metronome 全链路支持
+
+**触发**: dad "采茶扑蝶的速度要求怎没有 速度是不是单独有一个字段？" → 发现 UI 不渲染 metronome 字段, 后端静默丢弃, DB 历史 24 条 metronome 字段为空
+
+**问题排查**:
+- 早期 (2025-11 ~ 2026-03-07) 老 schema 没 metronome 字段, items 名是 "要求/作业/大课" 等非曲目
+- 2026-03-14 之后 stage_order 有值的 13 周, 速度都塞在 requirements 文本里 ("♩=66练习..." 这种)
+- 从 #20 2026-05-16 录入时 (用户主动设计) 才把 metronome 拆成独立字段
+- UI 渲染 + 后端保存两条线都漏: `config-practice-log.html:1037-1046/1112-1116/1221-1230` 不读 metronome, `config.py:850-855/899-904` 不取 metronome
+
+**改前流程** (用户强约束):
+- handoff-2026-07-13.md 列问题 + 等 dad 拍板
+- dad "可以改动了 abc" → 走 A+B+C 一起
+- B1 24 条逐条列"原文 + 正则提取 + 我的拼接 + 按语义合并备选", 让 dad 5 个边界情况都拍"按语义合并"
+- dad "前端可以看到所有速度和原文, 而且我可以编辑" → requirements 文本不删, metronome 字段只填"提取/补全"
+- 一边干一边 verify, 5 步 verify 全过才进下一步
+
+**DB 改动** (单独 SQL, 不进 commit):
+- #26 2026-07-12 stage_order 13→14, stage_start 7-12→7-13, stage_end 7-18→7-19 (stage_order 重复 bug)
+- B1 24 条 metronome 字段回填 (按语义合并):
+  - 单吐练习 (2026-03-14) '♩=52一行...2小节为单位、♩=52、56、60' → '♩=52、56、60'
+  - 西藏舞曲 (2026-07-04) '♩=76；...♩=60、66' → '♩=76 / ♩=60-66'
+  - 西藏舞曲 (2026-07-12) '4/4 ♪=80... 2/4 ♪=69~80' → '4/4 ♪=80, 2/4 ♪=69-80'
+  - 萨丽哈 (2026-07-12) '♪=88～92 出现 2 次' → '♪=88～92' (去重)
+  - 采茶扑蝶 (2026-07-12) '♩=108、♩=112' → '♩=108、112' (合并顿号)
+- 备份: `/tmp/weekly_assignments_backup_2026-07-13.json` (26 条全表) + `/tmp/dizi.db.bak.before-2026-07-12-fix` (整库)
+- 事务包裹: `BEGIN` → 全跑完 → verify → `COMMIT` (per dad 拍板)
+- 全表分布: 49 metronome 已填 / 34 空 (34 = B4 类 14 条 + 早期 stage_order=NULL 20 条)
+
+**UI 改动** (config.py 2 处 + config-practice-log.html 4 处):
+- `config.py:850-855` POST 接口 formatted items 多带 `metronome` 字段
+- `config.py:899-904` PUT 接口 formatted items 多带 `metronome` 字段
+- `config-practice-log.html:902-905` POST 录入表单 renderAssignEntries: 加 `<input class='metronome-input' placeholder='速度 e.g. ♩=82'>`
+- `config-practice-log.html:918-923` POST 录入表单: change 事件写 `assignEntries[idx].metronome`
+- `config-practice-log.html:933-936` addAssignEntryBtn: assignEntries.push 加 `metronome: ''`
+- `config-practice-log.html:995-998` submitAssignBtn: body.items 多带 `metronome: e.metronome`
+- `config-practice-log.html:1037-1046` 历史列表 loadAssignments: 珊瑚红 pill 渲染 `it.metronome` (空不渲染)
+- `config-practice-log.html:1112-1116` 编辑模式: input 加 `class='edit-item-metro'`
+- `config-practice-log.html:1131-1134` 编辑模式保存: items 多带 `metronome: row.querySelector('.edit-item-metro').value`
+- `config-practice-log.html:1221-1230` 本周总览 loadWeek: 同样渲染 metronome pill
+
+**坑**:
+- stage_order 计算脚本上次 (6-20 案) 命中 "追加前先比对 byte-identical" 规则, 这次 #26 撞 stage_order=13 跟 #25, 修法一样: 14
+- 早期 12 条 stage_end 全被刷成 2026-03-14, 是某次工具统一改的, 不影响主流程, 留待下次大扫除
+- requirements 字段 schema 不一致: 老 schema 用单数 `requirement`, 新 schema 用复数 `requirements`, 前端已做兼容读取 (it.requirement || it.requirements), 后端 PUT 接口 `it.get("requirement", it.get("requirements", ""))` 也是
+
+**用户偏好新增** (本次沉淀):
+- B1 类按"语义合并"而非"机械拼接", handoff 列问题先让 dad 看 5 个边界情况
+- "前端可以看到所有速度和原文, 而且我可以编辑" → 录入/编辑界面都加 metronome 输入框
+- requirements 文本不删, metronome 字段只填"提取/补全"的速度 (避免误删后可恢复)
+- 事务包裹 + 先备份 + 改后 verify 三件套 (per AGENTS.md handoff 收尾规则 + dad 历史偏好)
+
 ## 2026-07-13 PR #157 录入要求改 textarea 多行
 
 **触发**: dad 测 PR #155 后发现录入老师要求时每个科目只能填一条要求
