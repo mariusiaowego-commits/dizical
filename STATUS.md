@@ -1,9 +1,43 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-14 (recovery_first_practice badge 上线, 待 PR)
-**当前 main**: ab57c49 (PR #159 squash merge fix/metronome-field-render-and-backfill-260713)
-**生产服务**: 8765 running PID 73634 (load main 代码, recovery_first_practice 已在 achievements 殿堂可见)
-**pytest**: 13 failed / 294 passed (净回归 = 0, 13 全 pre-existing, 本次未触发任何新增)
+**最后更新**: 2026-07-14 (PR #161 MERGED, 3 个 recovery_first_practice 7/14/21 天徽章上线)
+**当前 main**: ea3b44b (PR #161 merge feat/recovery-first-practice-badge-pad)
+**生产服务**: 8765 running PID 73634 (load main @ ea3b44b, 3 张病愈徽章殿堂可见, locked)
+**pytest**: 13 failed / 294 passed (净回归 = 0, 跟 PR #159 merge baseline 一致)
+
+### 已完成 (2026-07-14 PR #161 3 个 recovery_first_practice 7/14/21 天徽章)
+
+**PR #161** - `feat(badge): 3 个 recovery_first_practice (7/14/21 天) + calc 分支` (1 commit `b13ded9`, 5 files, +44/-1)
+- **calc** (`src/achievement_definitions.py`): 新增 `_recovery_first_achieved_at(conn, injury_date, n)` helper (平行 `_streak_first_achieved_at` + `WHERE date >= injury_date` 过滤), `_calc_milestone` 加 3 条分支 `_7`/`_14`/`_21`, injury_date 写死 `2026-07-08` (左手小臂烫伤, 脸大小一块)
+- **badges (3 新 + 1 删)**:
+  - ❌ 删 `recovery_first_practice` (病愈首练) - 语义重叠,被 3 阶段覆盖
+  - ✅ `recovery_first_practice_7` (病愈连练7天) - v6 图 (一手举笛 + 一手握拳)
+  - ✅ `recovery_first_practice_14` (病愈连练14天) - v5 图 (双手举笛)
+  - ✅ `recovery_first_practice_21` (病愈连练21天) - **v7-1 图 (左手小臂粉色心形绷带 + 金色 sparkles 表达"带伤吹笛")**
+- **故事化文案** (cond_text + zh_story, 3 阶段"带伤吹笛"叙事):
+  - 7 天: 绷带 + 妈妈软套 + 疼但坚持
+  - 14 天: 绷带在, sparkles 多, 逐指按孔
+  - 21 天: 绷带摘, 露出新皮, 完整吹曲
+
+**本会话完整流程** (从 1 个徽章到 3 个徽章):
+1. 修 draft_id 长度 (001 → 001abc) → commit `recovery_first_practice` (病愈首练)
+2. 加 15% padding → "图还是不对" (dad 视觉反馈)
+3. v5 试跑失败 (gpt-image-2 不理 margin 约束) → 回滚
+4. **dad 决定**: v4 走 7 天, v5 走 14 天 → 新增 v6 走 7 天 (v5/v6 都满意, v4 被替换)
+5. **calc 设计**: 7/8 烫伤日, 7/14/21 天连练解锁
+6. **重生 v7-1 加绷带** → 21 天, 3 阶段故事化文案
+7. PR #161 merge
+
+**沉淀**:
+- 🎯 **gpt-image-2 不理 margin/safe-area 指令** (像素测量证明): 贴边率 50-100%, prompt 工程修不了. 治本需要换模型 (midjourney/SDXL) 或人工编辑
+- 🎯 **vision backend SSL 错先重试 1-2 次** (2026-07-14): dad 本地 gemini 调正常, 走 hermes 通道的 vision_analyze 间歇故障
+- 🎯 **3 阶段叙事覆盖单条**: dad 决策"v5 14天 + v6 7天 + v7-1 21天", 3 张不同图 + 3 阶段故事化文案比单条"病愈首练"更贴小朋友心理
+- 🎯 **伤愈/事故 calc 设计**: 写死 injury_date + 平行 _streak_first_achieved_at 实现 + 加 WHERE date >= filter
+
+**未做 (待 dad 拍板)**:
+- ❌ 7/14 天的图跟 21 天视觉不一致 (7/14 是抽象康复感, 21 是带绷带具体故事) - dad 拍"图不变"
+- ❌ 7/8 写死 - 后续事故需新 aid + 新 injury_date (无配置入口)
+- ❌ `DRAFT_ID_RE` 改 `{3,}` 或加 better error msg - 防止下次手填 draft_id 又踩
 
 ### 已完成 (2026-07-14 recovery_first_practice badge 上线 — 待 PR)
 
