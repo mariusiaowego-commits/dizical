@@ -1,9 +1,45 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-13 (PR #159 merge, main = ab57c49)
+**最后更新**: 2026-07-14 (recovery_first_practice badge 上线, 待 PR)
 **当前 main**: ab57c49 (PR #159 squash merge fix/metronome-field-render-and-backfill-260713)
-**生产服务**: 8765 running PID 73634 (load PR #159 新代码, 3/3 URL curl 200)
-**pytest**: 13 failed / 294 passed (净回归 = 0, 13 全 pre-existing)
+**生产服务**: 8765 running PID 73634 (load main 代码, recovery_first_practice 已在 achievements 殿堂可见)
+**pytest**: 13 failed / 294 passed (净回归 = 0, 13 全 pre-existing, 本次未触发任何新增)
+
+### 已完成 (2026-07-14 recovery_first_practice badge 上线 — 待 PR)
+
+**Badge 上线 (commited 到 DB + static, 无代码改动)**:
+- `data/lib/badge_data/2026-06-30_recovery_first_practice_001.json` (status=`committed`, image.path=v4)
+- `src/kid_app/static/badges/recovery_first_practice_v4.png` (1330×1330 RGBA, 15% 透明 padding, 2.25MB)
+- DB 三表: achievements(id=recovery_first_practice/name=病愈首练/category=milestone/cond_text/calc) + achievement_badges(v4 is_current=1) + achievement_stats(N, 走 calc)
+- 前端 /badges 殿堂: 已解锁 17 + 未解锁 17 (新增 1 张, 病愈首练在 locked 区域)
+
+**问题诊断** (dad "病愈首练无法上线" → 已修复):
+1. 根因: `src/kid_app/badge_draft.py:41` 的 `DRAFT_ID_RE` 要求尾部 hash `[a-z0-9]{6,}` ≥6 字符, 但这条 draft 是手填的 `_001` (3 字符), `get_draft()` line 170 直接返回 None, commit 端点报"draft 不存在"
+2. 修法: 不改代码 — mv draft JSON 凑齐 6 字符 (`001` → `001abc`) + cp 图文件同步命名 (`_001_v4_alpha.png` → `_001abc_v4.png`) + 调 commit 接口 + 删 stale 副本
+3. **注**: commit handler 内部 `save_draft()` 用 json 内字段 `draft.draft_id` 写文件名 (不是 URL draft_id), 所以最终落盘文件名回到 `001.json` — 这是隐式发现的"`save_draft` 跟 draft_id 字段耦合"的设计权衡, 暂不改
+
+**视觉调整** (dad "左右两侧被截断" → 加 padding 已修):
+- 原图 1024×1024 几乎填满画布 (vision 报告 "波浪花边紧贴画布边界"), 主体居中但四周透明留白太少
+- 修法: PIL 加 15% 透明 padding → 1330×1330 (主体缩到原 70% 区域, 四边各 15% 透明)
+- 验证: vision modal 截图 "完整无截断, 描边完整, 留白舒服"
+
+**未做 (待 dad 拍板)**:
+- ❌ 重跑生图 v5 (badge-image skill, prompt 加 "centered subject + 20-30% margins") — dad 选 1 保持 padding
+- ❌ `_calc_milestone` 给 recovery_first_practice 加分支 — 这条 badge 暂仅显示, unlock 条件靠手动实现 calc
+- ❌ `DRAFT_ID_RE` 改成 `{3,}` 或加 better error msg — 防止下次手填 draft_id 又踩
+
+**v5 试跑结果 (2026-07-14 第二轮 dad 反馈后)**:
+- 触发: dad "看上去不是前端的问题,是这张图本身就别切掉了左右两边的边缘" → 怀疑 padding 是治标不治本, 要求重跑 v5
+- 跑 v5: prompt 加 "centered + 18% transparent margin + gold border 5-8% breathing room" 约束, 调 fal-ai/gpt-image-2 重生
+- **像素级诊断 (execute_code numpy)**: v5 主体 bbox 仍占满 0-1023, 左右各 51% 行贴边, 上下各 51% 列贴边 (v4 是 100% 横向贴边, v5 比 v4 略好但四边都贴)
+- **vision 看 v5** (修好 SSL 后, 浏览器渲在黑底): "上方边缘: 笛子顶端接近金色边框留白极少, 下方: 祥云紧贴下边框, 左右: 适中留白" — 跟像素测量一致
+- **结论**: gpt-image-2 不理 "margin" 约束, 重跑没有治本效果
+- **回滚**: 复制 /tmp/recovery_v4_padded.png → static, 从 /tmp/recovery_v4_db_backup_2026-07-14.json 恢复 DB 三表, 删 v5 临时 (draft 054a9c + v1 png), 保留 v4 + 15% padding 状态
+- **沉淀**: padding 才是已知最优方案, 治本需要换模型 (midjourney / SDXL) 或人工编辑 — 暂不做
+
+**用户偏好沉淀** (本次新增):
+- dad 选了 15% padding 方案: 最低风险、不重跑生图、不动代码 — 符合 coder memory §"选项菜单限制" (07-11 user 拍板 "be opinionated, 推荐最便宜的")
+- dad 表述 "授权" 但没说具体方向, agent 不阻塞, 按 vision 看出的"贴边"症状走最低动作修
 
 ### 已完成 (2026-07-13 metronome 全链路支持)
 

@@ -245,6 +245,35 @@ def _streak_first_achieved_at(conn: sqlite3.Connection, n: int) -> str | None:
     return None
 
 
+def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: int) -> str | None:
+    """烫伤/事故后首次达成"连续 ≥ n 天"打卡的日期.
+
+    2026-07-14 加: 跟 _streak_first_achieved_at 区别是只算 injury_date 之后的日期.
+    模板抄自 _streak_first_achieved_at, 加 WHERE date >= injury_date 过滤.
+    """
+    cur = conn.execute(
+        "SELECT DISTINCT date FROM daily_practices "
+        "WHERE total_minutes > 0 AND date >= ? ORDER BY date",
+        (injury_date,),
+    )
+    dates = [r[0] for r in cur.fetchall()]
+    if len(dates) < n:
+        return None
+    if n == 1:
+        return dates[0]
+    streak = 1
+    for i in range(1, len(dates)):
+        prev = date.fromisoformat(dates[i - 1])
+        curr = date.fromisoformat(dates[i])
+        if (curr - prev).days == 1:
+            streak += 1
+            if streak >= n:
+                return dates[i]
+        else:
+            streak = 1
+    return None
+
+
 def _total_first_achieved_at(conn: sqlite3.Connection, threshold_mins: int) -> str | None:
     """累计 total_minutes 首次 ≥ threshold_mins 的日期 (按 date 正序累加)."""
     cur = conn.execute(
@@ -342,6 +371,21 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
             cond = f"你在 {first_at} 第一次连着打卡 {n} 天"
         else:
             cond = f"连着打卡 {n} 天就能拿到"
+        return CalcResult(achieved, n if achieved else 0, None, first_at, cond)
+
+    # ── recovery_first_practice_7 / 14 / 21 系列: 烫伤后连练 7/14/21 天 ─────
+    # 2026-07-14 拍板: 烫伤日 2026-07-08 (左手小臂烫伤, 脸大小一块)
+    # 解锁条件: 7/8 以后连续练习 ≥ n 天
+    # 跟 streak_* 区别: streak 是全历史, recovery 只算事故后的连续天数
+    if aid in ("recovery_first_practice_7", "recovery_first_practice_14", "recovery_first_practice_21"):
+        n = int(aid.rsplit("_", 1)[-1])
+        injury_date = "2026-07-08"  # 烫伤日 (2026-07-14 拍板, 写死, 后续事故再加新 aid)
+        first_at = _recovery_first_achieved_at(conn, injury_date, n)
+        achieved = first_at is not None
+        if achieved:
+            cond = f"你在 {first_at} 烫伤后连着打卡 {n} 天"
+        else:
+            cond = f"烫伤后连着打卡 {n} 天就能拿到"
         return CalcResult(achieved, n if achieved else 0, None, first_at, cond)
 
     # ── lucky_61_YYYY 系列: 六一节永久里程碑 ─────────────────────
