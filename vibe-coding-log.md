@@ -1,6 +1,6 @@
 # vibe coding log - dizical
 
-## 2026-07-14 recovery_first_practice badge 上线 (待 PR)
+## 2026-07-14 PR #161 — 3 个 recovery_first_practice (7/14/21 天) 徽章上线 + calc
 
 **触发**: dad "config 里 badge 徽章制作中有一个待上线的badge 无法上线 recovery_first_practice"
 
@@ -8,65 +8,92 @@
 - `src/kid_app/badge_draft.py:41` `DRAFT_ID_RE = r"^\d{4}-\d{2}-\d{2}_[a-zA-Z0-9_-]+_[a-z0-9]{6,}$"` 要求尾部 hash ≥6 字符
 - 但 `data/lib/badge_data/2026-06-30_recovery_first_practice_001.json` 是 6/30 skill 跑完后手填的 draft_id, 尾部 `_001` 只有 3 字符
 - `get_draft()` (badge_draft.py:170) regex 不匹配 → 直接 return None → commit 端点返 "draft 不存在"
-- 类似 `_v3_manual` (9字符) / `b83612` (6字符 hex) 都过; 只有 `_001` 这种手填短 hash 才卡
 
 **修法选择** (dad 拍板 "我自己手动重启" 偏好 → 推荐最便宜):
-1. ✅ 选 1: 不改代码, mv draft JSON 凑齐 6 字符 (`001` → `001abc`), commit 接口走完, 删 stale 副本
-2. ❌ 改 DRAFT_ID_RE 放宽到 `{3,}` (改 1 行, 但未来短 hash 也通过, 语义偏弱)
-3. ❌ 重跑 draft (已生图, 重跑浪费)
+- ✅ 选 1: 不改代码, mv draft JSON 凑齐 6 字符 (`001` → `001abc`), commit 接口走完, 删 stale 副本
+- ❌ 改 DRAFT_ID_RE 放宽到 `{3,}` (改 1 行, 但未来短 hash 也通过, 语义偏弱)
 
 **commit handler 隐式设计** (踩坑沉淀):
 - `badge_workflow.py:273` `_bd.save_draft(draft)` 写回文件名用 `draft.draft_id` json 内字段, 不是 URL draft_id
-- 所以我 mv 出去的 `001abc.json` → commit 内部读 BadgeDraft 内存对象 (draft_id=001) → 写回到 `001.json`
-- 表面看 "改名成功", 实际最终落盘文件名跟 mv 没关系 — 这条耦合被这次救了一手, 但留作 future bug 风险
-- stale `001abc.json` (commit 没改它) 在 discoveries 接口里还出现一次 (db_status=exists_committed, is_committable=false), 手动 `rm` 清掉
+- mv 出去的 `001abc.json` → commit 内部读 BadgeDraft 内存对象 (draft_id=001) → 写回到 `001.json`
+- stale `001abc.json` (commit 没改它) 在 discoveries 接口里还出现一次, 手动 `rm` 清掉
 
-**dad 第二轮反馈 "左右两侧被截断"**:
-- vision 第一次看原图: "波浪花边紧贴画布边界, RGBA 透明区只在四角小三角" — 主体几乎贴边
-- 我在浏览器临时改 180×180 / vision 看 modal: "金色描边左右两端被截断消失"
-- 选 3 个修法问 dad:
-  1. ✅ 加 15% 透明 padding (PIL 5秒, 不重跑生图)
-  2. 重跑生图 v5 (skill, prompt 加 20-30% 留白, 5-10 分钟)
-  3. 回滚 padding + 重跑
-- dad 选 1 — 符合 coder memory §"选项菜单限制" (07-11 user 拍板 "be opinionated, 推荐最便宜的")
-- 结果: PIL 加 153px 透明边每侧, 1024→1330, 主体缩到 70% 区域, vision 验 "完整无截断, 留白舒服"
+**第一轮视觉问题 (dad "左右两侧被截断")**:
+- vision 看原图: 1024×1024 几乎填满画布, 主体居中但四周透明留白太少
+- 修法: PIL 加 15% 透明 padding → 1330×1330 (主体缩到原 70% 区域, 四边各 15% 透明)
+- vision 验 "完整无截断, 描边完整, 留白舒服"
 
-**dad "授权" 没明说方向**:
-- dad 表述 "我授权" 但没说具体做什么 (重跑?padding?改前端?)
-- agent 不阻塞, 按 vision 看出的"贴边"症状走最低动作修 (15% padding)
-- 验证后主动报备结果让 dad 决定, dad 选 1 保持
+**第二轮视觉问题 (dad "图还是不对, 是图本身被切")**:
+- 像素级诊断 (numpy): v4 主体 bbox 0-1023, 100% 行横向贴边
+- v5 试跑: prompt 加 "centered + 18% transparent margin + gold border 5-8% breathing room" 约束
+- 像素测量: v5 主体 bbox 仍 0-1023, 51% 行贴边 (比 v4 略好但四边都贴)
+- vision 看 v5: "上方边缘: 笛子顶端接近金色边框留白极少, 下方: 祥云紧贴下边框, 左右: 适中留白"
+- **结论**: gpt-image-2 不理 "margin" 指令, prompt 工程修不了
+- **回滚**: 从 backup 恢复 v4 padded + DB 三表, 删 v5 临时
 
-**做的具体动作**:
-1. `mv data/lib/badge_data/2026-06-30_recovery_first_practice_001.json → ...001abc.json`
-2. `cp data/lib/badge_data/.tmp/...001_v4_alpha.png → ...001abc_v4.png` (commit handler 内部 tmp_path_for 用 draft_id 拼路径)
-3. `curl POST /config/api/badge/commit-from-draft` → 返 `{"ok": true, "badge_id": "recovery_first_practice"}`
-4. `rm data/lib/badge_data/...001abc.json` (stale 副本)
-5. `python3 PIL` 加 15% 透明 padding → 覆盖 `src/kid_app/static/badges/recovery_first_practice_v4.png`
-6. 验证: DB 三表查 + HTTP 200 + vision modal 截图 + browser 前端 33 张卡里含「病愈首练」
+**dad 决策转换 (这一轮最关键的 insight)**:
+- dad "v5 试跑和 v6 我都满意" → 不是要 v5 重做, **是想要分多版本徽章**!
+- dad "做同一个徽章的2个版本, 解锁cond分别是: 病愈后坚持练习7天, 病愈后坚持练习14天"
+- v4 + 15% padding → 7 天 (v4 复用)
+- v5 → 14 天
+- **后续加 v6 → 7 天 (替换 v4), v5 保留 14 天** (dad 反馈"7天那个图不对, 应该用 v6_view.png")
+- **关键**: v6 + v5 是 dad 视觉满意的两张不同图, 不是失败品
 
-**未做**:
-- ❌ 重跑生图 v5 (dad 选 1 保持)
-- ❌ `_calc_milestone` 给 recovery_first_practice 加分支 (badge 暂仅显示, unlock 条件手动)
-- ❌ `DRAFT_ID_RE` 改 `{3,}` / better error msg (下次手填 draft_id 会再踩, 等 dad 拍)
+**第三轮 - 烫伤语义 (dad 拍板)**:
+- "这次生病主要是手烫伤了, 烫伤日是 7月8日"
+- "烫伤是左手小臂上 脸大小一块"
+- calc 设计: 烫伤后连续练 7/14 天解锁
+- 图加烫伤细节: dad "我没看到你心型绷带在手臂上嘛" → 重跑 v7-1 加 "left forearm bandaged with pink heart-shaped pad"
+- v7-1 视觉: 绷带显眼, sparkles 表达愈合, enamel pin 风格保留
 
-**第二轮 (2026-07-14 evening): v5 试跑 + 回滚**
+**第四轮 - 21 天徽章 + 故事化叙事 (dad 拍板)**:
+- "这个就作为 21 天的吧 新增一个这样的 badge"
+- "然后这三个伤愈后的 story 改成带伤吹笛, 所有相关信息和背景故事等都要改一下"
+- 新增 21 天徽章, v7-1 图给 21 天
+- 3 个徽章文案统一改"带伤吹笛" 3 阶段叙事:
+  - 7 天: 绷带 + 妈妈软套 + 疼但坚持
+  - 14 天: 绷带在, sparkles 多, 逐指按孔
+  - 21 天: 绷带摘, 露出新皮, 完整吹曲
 
-- 触发: dad "看上去不是前端的问题,是这张图本身就别切掉了左右两边的边缘" → 怀疑 15% padding 是治标不治本
-- dad 拍板: "好 1" 跑 v5 重生图
-- 操作: backup DB + static → SQL 删三表 → rm static → 写新 draft 054a9c (status=draft_created) → prompt 加 "centered + 18% transparent margin + gold border 5-8% breathing room" 约束 → 调 image_generate (fal-ai/gpt-image-2)
-- **像素级测量 (execute_code numpy)**: v5 主体 bbox 仍占满 0-1023, 左右各 51% 行贴边 (比 v4 100% 略好), 上下各 51% 列贴边
-- **vision 看 v5** (vision_analyze 修好 SSL 后): "上方: 笛子顶端接近金色边框留白极少, 下方: 祥云紧贴下边框, 左右: 适中留白" — 跟像素一致
-- 结论: gpt-image-2 不理 "margin" 约束, v5 没改善
-- 回滚: cp /tmp/recovery_v4_padded.png → static, SQL 恢复三表, rm 054a9c draft + v1 png
-- 沉淀: padding 才是已知最优, 治本需要换模型 (midjourney/SDXL) 或人工编辑
+**calc 设计**:
+- helper `_recovery_first_achieved_at(conn, injury_date, n)` (抄 `_streak_first_achieved_at`, 加 `WHERE date >= injury_date`)
+- `_calc_milestone` 加 3 条分支, n 解析用 `int(aid.rsplit("_", 1)[-1])` 通用化
+- injury_date 写死 "2026-07-08" (2026-07-14 拍板)
 
-**dad "vision 坏了?" 误判**:
-- 我看到 vision_analyze 3 次连续 SSL 错 → 报 "vision 坏了, 我去修"
-- dad 反馈 "vision 我看可以的啊是 gemini" → 意思是 dad 本地 gemini 调正常, vision backend 走的是 hermes 通道, 是 backend SSL 错
-- 重试一次后 vision 通, 是 backend 暂时故障, 不是坏
-- 教训: vision SSL 错先重试 1-2 次, 不要立刻说"坏了"
+**做的具体动作 (本会话完整流程)**:
+1. `mv draft JSON` + `cp tmp 图` + `curl commit` → recovery_first_practice 上线
+2. PIL 15% padding → v4 padded
+3. v5 试跑失败 → 回滚
+4. 创建 _7/_14 草稿, 用 v4/v5 走 commit
+5. dad 反馈 7 天图错 (v4), 删 v4 padded + 换 v6 (备份保留)
+6. 写 calc helper + 7/14 分支
+7. dad 加 21 天 + 烫伤故事 → v7-1 重生 + 21 天 draft + commit
+8. SQL 更新 3 个徽章的 cond_text + description (zh_story)
+9. calc 加 21 天分支 (用通用 n 解析)
+10. git commit + push + PR #161 + merge
 
-**状态**: 已回滚到 v4 + 15% padding 状态, draft 001.json=committed, DB 三表齐, /badges 殿堂可见, 待 git commit (上次 PR # 还没建)
+**dad "vision 坏了" 误判 + 教训**:
+- vision_analyze 3 次连续 SSL EOF → 报 "vision 坏了"
+- dad "vision 我看可以的啊是 gemini" → 走 hermes 通道间歇故障, 跟 dad 本地 gemini 不同通道
+- 教训: 3 次连续错才视为真坏, 立刻报"坏了"是误诊
+- 沉淀到 memory ⑳
+
+**git 收尾**:
+- feat/recovery-first-practice-badge-pad (3 commits: d43a617, 1fc359f, b13ded9)
+- PR #161 created + MERGED 2026-07-14T12:17:55Z
+- main = ea3b44b
+
+**pytest**:
+- 13 failed / 294 passed
+- 净回归 = 0 (跟 PR #159 merge baseline 一致)
+- 11/11 achievement/recovery/calc/streak 命名匹配测试通过
+
+**未做 (待 dad 拍板)**:
+- ❌ 7/14 天图 vs 21 天图视觉不一致 (dad 拍"图不变")
+- ❌ 7/8 写死 - 后续事故需新 aid + 新 injury_date
+- ❌ `DRAFT_ID_RE` 改 `{3,}` (下次手填 draft_id 会再踩)
+
+**状态**: PR #161 MERGED, 3 个徽章殿堂可见 (locked), 当前 5 天连练数据, 差 2 天才 7 天徽章. 7/15-7/16 连续练 → 7 天徽章解锁; 7/22 → 14 天; 8/5 → 21 天.
 
 ## 2026-07-13 PR #159 metronome 全链路支持
 
