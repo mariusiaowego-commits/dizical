@@ -1,8 +1,8 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-13 (PR #159 metronome 渲染 + 编辑 + DB 回填)
-**当前 main**: 761a85d (PR #157, 待 PR #159 merge)
-**生产服务**: 8765 running PID 51913 (load PR #159 新代码, 已重启)
+**最后更新**: 2026-07-13 (PR #159 merge, main = ab57c49)
+**当前 main**: ab57c49 (PR #159 squash merge fix/metronome-field-render-and-backfill-260713)
+**生产服务**: 8765 running PID 73634 (load PR #159 新代码, 3/3 URL curl 200)
 **pytest**: 13 failed / 294 passed (净回归 = 0, 13 全 pre-existing)
 
 ### 已完成 (2026-07-13 metronome 全链路支持)
