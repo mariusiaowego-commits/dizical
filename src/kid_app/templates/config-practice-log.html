@@ -896,11 +896,11 @@ function renderAssignEntries() {
           <option value="">选择科目...</option>
           ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
         </select>
+        <input class="form-input metronome-input" data-idx="${i}" value="${entry.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
         <button class="remove-btn" data-idx="${i}">×</button>
       </div>
       <div class="entry-bottom">
         <textarea class="form-textarea" data-idx="${i}" placeholder="每行一条要求，如：
-♩=82
 注意口风不要漏气
 倒序分句练习">${entry.requirement || ''}</textarea>
       </div>`;
@@ -913,6 +913,12 @@ function renderAssignEntries() {
       assignEntries[idx].item_id = parseInt(e.target.value);
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
+    });
+  });
+  container.querySelectorAll('.metronome-input').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      assignEntries[idx].metronome = e.target.value;
     });
   });
   container.querySelectorAll('textarea').forEach(inp => {
@@ -931,7 +937,7 @@ function renderAssignEntries() {
 }
 
 document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
-  assignEntries.push({ item_id: null, item: '', requirement: '' });
+  assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '' });
   renderAssignEntries();
 });
 
@@ -992,7 +998,7 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
 
   const body = {
     lesson_date: lessonDate,
-    items: validEntries.map(e => ({ item: e.item, item_id: e.item_id, requirement: e.requirement })),
+    items: validEntries.map(e => ({ item: e.item, item_id: e.item_id, metronome: e.metronome, requirement: e.requirement })),
     notes,
   };
   if (assignImages.length) body.images = assignImages.map(i => i.url);
@@ -1037,9 +1043,11 @@ async function loadAssignments() {
       const itemsHtml = a.items.map(it => {
         const reqs = (it.requirements || it.requirement || '').split('\n').filter(Boolean);
         const reqLines = reqs.map(r => `<li>${r}</li>`).join('');
+        const metro = it.metronome ? `<span class="assign-subject-metronome" style="display:inline-block;background:#FF6B6B;color:#fff;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;margin-left:6px">${it.metronome}</span>` : '';
         return `<div class="assign-subject">
           <div class="assign-subject-header">
             <span class="assign-subject-name">${it.item}</span>
+            ${metro}
             <span class="assign-subject-id">(item_id: ${it.item_id || '?'})</span>
           </div>
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
@@ -1111,6 +1119,7 @@ function startEditAssignment(lessonDate) {
     (a.items || []).forEach((it, i) => {
       itemsRows += `<div class="edit-item-row" style="display:flex;gap:6px;margin-bottom:6px">
         <input class="edit-item-name" value="${it.item}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <input class="edit-item-metro" value="${it.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
         <input class="edit-item-req" value="${it.requirements || it.requirement || ''}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
       </div>`;
     });
@@ -1130,6 +1139,7 @@ function startEditAssignment(lessonDate) {
     form.querySelector('.save-edit-btn').addEventListener('click', async () => {
       const items = Array.from(form.querySelectorAll('.edit-item-row')).map(row => ({
         item: row.querySelector('.edit-item-name').value,
+        metronome: row.querySelector('.edit-item-metro').value,
         requirement: row.querySelector('.edit-item-req').value,
       }));
       const notes = form.querySelector('#editNotes').value;
@@ -1221,9 +1231,11 @@ async function loadWeek() {
       assignDiv.innerHTML = a.items.map(it => {
         const reqs = (it.requirements || it.requirement || '').split('\n').filter(Boolean);
         const reqLines = reqs.map(r => `<li>${r}</li>`).join('');
+        const metro = it.metronome ? `<span class="assign-subject-metronome" style="display:inline-block;background:#FF6B6B;color:#fff;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;margin-left:6px">${it.metronome}</span>` : '';
         return `<div class="assign-subject">
           <div class="assign-subject-header">
             <span class="assign-subject-name">${it.item}</span>
+            ${metro}
             <span class="assign-subject-id">(item_id: ${it.item_id || '?'})</span>
           </div>
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
