@@ -28,6 +28,15 @@
 - ❌ `_calc_milestone` 给 recovery_first_practice 加分支 — 这条 badge 暂仅显示, unlock 条件靠手动实现 calc
 - ❌ `DRAFT_ID_RE` 改成 `{3,}` 或加 better error msg — 防止下次手填 draft_id 又踩
 
+**v5 试跑结果 (2026-07-14 第二轮 dad 反馈后)**:
+- 触发: dad "看上去不是前端的问题,是这张图本身就别切掉了左右两边的边缘" → 怀疑 padding 是治标不治本, 要求重跑 v5
+- 跑 v5: prompt 加 "centered + 18% transparent margin + gold border 5-8% breathing room" 约束, 调 fal-ai/gpt-image-2 重生
+- **像素级诊断 (execute_code numpy)**: v5 主体 bbox 仍占满 0-1023, 左右各 51% 行贴边, 上下各 51% 列贴边 (v4 是 100% 横向贴边, v5 比 v4 略好但四边都贴)
+- **vision 看 v5** (修好 SSL 后, 浏览器渲在黑底): "上方边缘: 笛子顶端接近金色边框留白极少, 下方: 祥云紧贴下边框, 左右: 适中留白" — 跟像素测量一致
+- **结论**: gpt-image-2 不理 "margin" 约束, 重跑没有治本效果
+- **回滚**: 复制 /tmp/recovery_v4_padded.png → static, 从 /tmp/recovery_v4_db_backup_2026-07-14.json 恢复 DB 三表, 删 v5 临时 (draft 054a9c + v1 png), 保留 v4 + 15% padding 状态
+- **沉淀**: padding 才是已知最优方案, 治本需要换模型 (midjourney / SDXL) 或人工编辑 — 暂不做
+
 **用户偏好沉淀** (本次新增):
 - dad 选了 15% padding 方案: 最低风险、不重跑生图、不动代码 — 符合 coder memory §"选项菜单限制" (07-11 user 拍板 "be opinionated, 推荐最便宜的")
 - dad 表述 "授权" 但没说具体方向, agent 不阻塞, 按 vision 看出的"贴边"症状走最低动作修

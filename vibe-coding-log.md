@@ -49,7 +49,24 @@
 - ❌ `_calc_milestone` 给 recovery_first_practice 加分支 (badge 暂仅显示, unlock 条件手动)
 - ❌ `DRAFT_ID_RE` 改 `{3,}` / better error msg (下次手填 draft_id 会再踩, 等 dad 拍)
 
-**状态**: draft status=committed, DB 三表齐全, /badges 殿堂可见, modal 完整, 待 git commit + feature branch + PR
+**第二轮 (2026-07-14 evening): v5 试跑 + 回滚**
+
+- 触发: dad "看上去不是前端的问题,是这张图本身就别切掉了左右两边的边缘" → 怀疑 15% padding 是治标不治本
+- dad 拍板: "好 1" 跑 v5 重生图
+- 操作: backup DB + static → SQL 删三表 → rm static → 写新 draft 054a9c (status=draft_created) → prompt 加 "centered + 18% transparent margin + gold border 5-8% breathing room" 约束 → 调 image_generate (fal-ai/gpt-image-2)
+- **像素级测量 (execute_code numpy)**: v5 主体 bbox 仍占满 0-1023, 左右各 51% 行贴边 (比 v4 100% 略好), 上下各 51% 列贴边
+- **vision 看 v5** (vision_analyze 修好 SSL 后): "上方: 笛子顶端接近金色边框留白极少, 下方: 祥云紧贴下边框, 左右: 适中留白" — 跟像素一致
+- 结论: gpt-image-2 不理 "margin" 约束, v5 没改善
+- 回滚: cp /tmp/recovery_v4_padded.png → static, SQL 恢复三表, rm 054a9c draft + v1 png
+- 沉淀: padding 才是已知最优, 治本需要换模型 (midjourney/SDXL) 或人工编辑
+
+**dad "vision 坏了?" 误判**:
+- 我看到 vision_analyze 3 次连续 SSL 错 → 报 "vision 坏了, 我去修"
+- dad 反馈 "vision 我看可以的啊是 gemini" → 意思是 dad 本地 gemini 调正常, vision backend 走的是 hermes 通道, 是 backend SSL 错
+- 重试一次后 vision 通, 是 backend 暂时故障, 不是坏
+- 教训: vision SSL 错先重试 1-2 次, 不要立刻说"坏了"
+
+**状态**: 已回滚到 v4 + 15% padding 状态, draft 001.json=committed, DB 三表齐, /badges 殿堂可见, 待 git commit (上次 PR # 还没建)
 
 ## 2026-07-13 PR #159 metronome 全链路支持
 
