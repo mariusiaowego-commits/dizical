@@ -1,9 +1,21 @@
 .env
-data/
-data/assignment_images/
+# SQLite 数据库 (永不删, 不进 git)
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+data/*.sqlite
+# symlink (递归目录)
+data/data
+data/data/
+# 备份目录 (本地保留, 不进 git)
+data/backups/
+backups/
+# badge AI 临时缓存 (大, 跑过就丢, 不进 git)
+data/lib/badge_data/.tmp/
+# SQLite WAL mode 文件 (跟 db 配对, 也不进)
 *.db
 *.sqlite
-__pycache__/
 *.pyc
 *.pyo
 *.pyd

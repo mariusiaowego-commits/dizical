@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "draft_id": "2026-07-01_streak7_retry_a1b2c3",
+  "created_at": "2026-07-01T13:36:00Z",
+  "version": 1,
+  "meta": {
+    "id": "streak_7",
+    "name": "周冠军",
+    "type": "执着",
+    "category": "milestone",
+    "placeholder": "an emoji-adjacent 3D enamel pin of a chibi girl standing beside a giant, bold golden numeral 7 as the base. The 7 is centered, large, clearly visible, and reads exactly 7 (not 14, not any other digit). The girl has long brown wavy hair with a pink bow, wearing a pink t-shirt with a small musical-note pin and a purple pleated skirt. She holds a bamboo flute in her right hand and stands on a polished gold platform wrapping the numeral 7. Polished gold metal borders enclose flat glossy enamel fills. Pink/cream/gold palette. Studio lighting reflects off the raised gold edges. Orthographic straight-on view, transparent PNG background, isolated object.",
+    "zh_story": "坚持一周,你就是时间管理大师!",
+    "display_format": "achieved_flag",
+    "sort_order": null,
+    "cond_text": "宝宝连续打卡七天"
+  },
+  "image": {
+    "path": "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/2026-07-01_streak7_retry_a1b2c3_v1.png",
+    "model": "fal-ai/gpt-image-2",
+    "prompt_used": "see streak_7_retry_meta.json meta_to_paste_into_hermes.placeholder (V2.6 enamel pin prompt with explicit 'reads exactly 7 not 14' clause)",
+    "alpha_verified": true,
+    "version": 1,
+    "alpha_method": "V2.6 PIL(245)+rembg(u2net) dual-path",
+    "transparency_pct": 49.9,
+    "source_url": "https://v3b.fal.media/files/b/0aa07727/TDgFNM-0XcWTzpzIfo0Zv_L7DyybrK.png",
+    "vision_check": {
+      "central_digit": "7",
+      "digit_is_exact_match": true,
+      "chibi_girl_match": true,
+      "hair_color": "brown",
+      "bow_color": "pink",
+      "shirt_color": "pink",
+      "skirt_color": "purple",
+      "holding_flute": true,
+      "minor_artifacts": "faint white halo at top edge of numeral 7 (non-critical)"
+    },
+    "notes": "v1 generated 2026-07-01 13:36 via hermes image_gen (dizical profile, gpt-image-2). PIL 245 + rembg u2net dual-path → 49.9% transparent, all 4 corners clean. Vision verified: central digit is exactly 7 (not 14)."
+  },
+  "status": "committed",
+  "updated_at": "2026-07-01T06:10:16Z",
+  "history": [
+    {
+      "at": "2026-07-01T13:36:00Z",
+      "from": null,
+      "to": "draft_created",
+      "by": "subagent",
+      "note": "created via meta_dict mode (skipping /config/api/badge/draft endpoint)"
+    },
+    {
+      "at": "2026-07-01T13:43:00Z",
+      "from": "draft_created",
+      "to": "draft_awaiting_confirm",
+      "by": "subagent",
+      "event": "image_generated",
+      "note": "v1 image generated via hermes image_gen (fal-ai/gpt-image-2), downloaded from fal URL, PIL+rembg dual-path de-background applied, vision verified central digit=7"
+    },
+    {
+      "at": "2026-07-01T06:10:16Z",
+      "from": "draft_awaiting_confirm",
+      "to": "committed",
+      "by": "dizical",
+      "event": "image_replaced",
+      "badge_id": "streak_7"
+    }
+  ]
+}
