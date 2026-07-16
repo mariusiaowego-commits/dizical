@@ -22,8 +22,10 @@ COPY . /app
 
 # 设置 Python 路径 (让 uvicorn 能 import src.*)
 ENV PYTHONPATH=/app
-# spike 阶段用 /tmp (可写, 不依赖 /app/data 目录权限)
-# Phase 1 改 MySQL 后这个变量不再使用
+# Phase 1b: DATABASE_URL 由 CloudRun 控制台 env 注入 (不进 Dockerfile, 避免密码泄露)
+# 容器默认用 SQLite /tmp (跟 spike 一致, 不会因缺 env 启动失败)
+# 部署时在 CloudRun → 服务设置 → 环境变量 填:
+#   DATABASE_URL=mysql+pymysql://<user>:<PASSWORD>@sh-cynosdbmysql-grp-o1j4rd8w.sql.tencentcdb.com:22661/dizical
 ENV DB_PATH=/tmp/dizical.db
 
 # 健康检查 (CloudRun 用这个判断容器是否健康)
