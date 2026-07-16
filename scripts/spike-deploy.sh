@@ -59,17 +59,24 @@ cloudbase run deploy "$SERVICE_NAME" \
     --env "ENV=cloudrun" \
     --env "DATABASE_URL=sqlite:////tmp/dizical.db" \
     --env "JWT_SECRET=spike-temp-secret-change-in-phase-1" \
-    --port 80
+    --port 8080
 
 # Step 7: 等服务起来
 echo "⏳ 等服务起来 (30s)..."
 sleep 30
 
 # Step 8: 拿默认域名
-DOMAIN=$(cloudbase run service-info "$SERVICE_NAME" --region "$REGION" 2>/dev/null | grep -E "default_domain" | awk '{print $2}' | tr -d ',' | tr -d '"')
-if [ -z "$DOMAIN" ]; then
-    echo "⚠️  拿不到默认域名, 请到 CloudRun 控制台查看"
+# Research 2 修复: CloudRun 默认域名格式 https://<serviceName>-<envId>.ap-shanghai.run.tcloudbase.com
+# 必须用公网 HTTPS, 不要试 HTTP
+DOMAIN="${SERVICE_NAME}-${ENV_ID}.ap-shanghai.run.tcloudbase.com"
+echo "🌐 默认域名: https://${DOMAIN}"
+
+# 直接 curl 验证, 不依赖 cloudbase CLI 输出 (避免 CLI 输出格式变动)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${DOMAIN}/health" || echo "000")
+if [ "$HTTP_CODE" != "200" ]; then
+    echo "⚠️  curl /health 返 $HTTP_CODE, 检查 CloudRun 控制台"
     echo "    https://console.cloud.tencent.com/tcb/cloudrun"
+    echo "    重点看「日志」/「实例状态」"
     exit 0
 fi
 

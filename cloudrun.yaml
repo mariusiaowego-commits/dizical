@@ -21,9 +21,9 @@ env:
   JWT_SECRET: "spike-temp-secret-change-in-phase-1"  # 32+ 字符 (Phase 1 用强密钥)
   PYTHONUNBUFFERED: "1"                      # 日志实时输出 (CloudRun 控制台看)
 
-# 扩缩容 (spike 阶段: 最省, Phase 1 再调)
+# 扩缩容 (spike 阶段: min=1 避免冷启动 SERVICE_NOT_READY, Phase 1 再调)
 scaling:
-  min_instances: 0    # 无流量时缩到 0, 省费用 (spike 阶段够用)
+  min_instances: 1    # spike 必须 1 (避免冷启动误判), Phase 1 评估后改 0/1
   max_instances: 3    # 防止流量滥用
   target_cpu: 60      # CPU 60% 触发扩容
 
@@ -32,9 +32,10 @@ network:
   public_access: true   # web / Mac app 走公网 HTTPS
   wechat_private: true  # 小程序走微信专线 (免鉴权)
 
-# 健康检查 (匹配 Dockerfile 的 HEALTHCHECK)
+# 健康检查 (匹配 Dockerfile 的 HEALTHCHECK, 端口 8080)
 healthcheck:
   path: /health
+  port: 8080
   initial_delay_seconds: 10
   period_seconds: 30
   timeout_seconds: 5
