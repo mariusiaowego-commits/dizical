@@ -22,16 +22,14 @@ COPY . /app
 
 # 设置 Python 路径 (让 uvicorn 能 import src.*)
 ENV PYTHONPATH=/app
-ENV PORT=80
+# spike 阶段用 /tmp (可写, 不依赖 /app/data 目录权限)
+# Phase 1 改 MySQL 后这个变量不再使用
+ENV DB_PATH=/tmp/dizical.db
 
 # 健康检查 (CloudRun 用这个判断容器是否健康)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD curl -f http://localhost:80/health || exit 1
 
 # 启动 FastAPI
 # 注意: app 对象在 src/kid_app/app.py:app
-CMD exec uvicorn src.kid_app.app:app \
-    --host 0.0.0.0 \
-    --port ${PORT} \
-    --log-level info \
-    --no-access-log
+CMD ["uvicorn", "src.kid_app.app:app", "--host", "0.0.0.0", "--port", "80", "--log-level", "info"]

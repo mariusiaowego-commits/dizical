@@ -13,6 +13,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -22,6 +23,16 @@ from src.kid_app.subject_info import get_subject_info
 
 # ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bamboo Flute Practice")
+
+# CORS: web / Mac app 调 CloudRun 公网 HTTPS 时需要
+# Phase 1 收紧: 只允许 dizical-prod-xxx 域名, spike 阶段先全开
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # spike 阶段全开, Phase 1 改成具体域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ─── Health check (CloudRun 健康检查 + spike 验证) ──────────────────────
