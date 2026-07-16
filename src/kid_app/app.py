@@ -69,6 +69,11 @@ _uploads_path = _ROOT / "data" / "uploads"
 _uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads_path)), name="uploads")
 
+# Mount reports (monthly practice report PNG)
+_reports_path = _ROOT / "data" / "reports"
+if _reports_path.exists():
+    app.mount("/data/reports", StaticFiles(directory=str(_reports_path)), name="reports")
+
 # ─── 模板渲染 ───────────────────────────────────────────────────────────────
 from jinja2 import Environment, FileSystemLoader
 
