@@ -2,6 +2,7 @@
 
 import datetime as dt
 import json
+import os
 import sqlite3
 import sys
 import time
@@ -21,6 +22,32 @@ from src.kid_app.subject_info import get_subject_info
 
 # ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bamboo Flute Practice")
+
+
+# ─── Health check (CloudRun 健康检查 + spike 验证) ──────────────────────
+@app.get("/health")
+def health():
+    """健康检查: 验证 FastAPI 跑通, 数据库连接 OK"""
+    db_status = "ok"
+    db_error = None
+    record_count = 0
+    try:
+        # 用 get_all_lessons 当 smoke test (业务方法, 验证 ORM + SQLite 都通)
+        lessons = db.get_all_lessons()
+        record_count = len(lessons)
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e)
+
+    return {
+        "status": "ok",
+        "service": "dizical",
+        "env": os.getenv("ENV", "unknown"),
+        "database": db_status,
+        "db_error": db_error,
+        "lesson_count": record_count,
+        "timestamp": dt.datetime.utcnow().isoformat() + "Z",
+    }
 
 static_path = Path(__file__).parent / "static"
 if static_path.exists():
