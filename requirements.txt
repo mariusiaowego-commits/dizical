@@ -10,6 +10,7 @@ uvicorn[standard]>=0.23.0
 python-multipart>=0.0.6
 PyJWT>=2.8.0
 pymysql>=1.1.0
+DBUtils>=3.0.0
 jinja2>=3.1.0
 Pillow>=10.0.0
 requests>=2.31.0

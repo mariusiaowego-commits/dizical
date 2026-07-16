@@ -1000,5 +1000,12 @@ class Database:
         return migrated
 
 
-# Global database instance
-db = Database()
+# Global database instance (双后端: 默认 sqlite3, 有 DATABASE_URL env 用 MySQL)
+import os
+
+if os.environ.get("DATABASE_URL", "").startswith("mysql"):
+    # Phase 1b: mac 本地 kid_app / 容器都用云 MySQL
+    from .database_mysql import MySQLBackend
+    db = MySQLBackend(os.environ["DATABASE_URL"])
+else:
+    db = Database()
