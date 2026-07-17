@@ -1,3 +1,45 @@
+## [2026-07-17] 微信小程序提审准备 + verify-pin 严格 + web/mac 切云 PRD
+
+**commit**: 00a7e97 (验证模式 revert), 02cf4d6 (密码修复, 未 push)
+
+**dad 拍板 4 个决策**:
+1. 旧 MySQL 密码: 不管 (旧账号废了)
+2. 小程序用户: 白名单 = [dad] 单人
+3. 数据策略: 双 1 套数据 + 临时沙盒 (小程序单独云 / web-mac 仍本地)
+4. 退出沙盒: 小程序正式上线前删云重复制
+
+**完成 7 项**:
+- A2 verify-pin 严格模式 (HTTP 403 + daemon whitelist)
+- A3 PRIVACY.md (3029 字节) + 服务说明 (3319 字节) 提审附件
+- A4 mp-weixin build (448KB, 65 文件)
+- A5 5 步上传指南 (Obsidian PRDs)
+- A6 云端 deploy (DeployId 003, 3 测试过)
+- B1 web/mac 切云 4 阶段 PRD (Obsidian)
+- C 数据策略红线 (AGENTS.md)
+
+**3 测试全过** (verify-pin 严格模式):
+- 真 openid + 0905 → 200 ok=dad
+- fake openid + 0905 → 403 not_in_whitelist
+- dad openid + 9999 → 401 wrong_pin (证明白名单先于 PIN)
+
+**pytest 净回归 0**: 13 failed / 294 passed (pre-existing baseline 不动)
+
+**MCP subagent auth 偶发失忆教训**: 第 1 次 subagent 没拿到 device code 状态, 重发了新的; 实际部署已完成. 主对话直接 curl 验证比 subagent 可靠.
+
+**待办 (明天 dad 第一件事)**:
+- git push origin feat/p4-phase1b-staging
+- 微信开发者工具走 5 步 (Obsidian PRDs)
+- 等审核 1-3 工作日
+
+**关联文档**:
+- `handoff-2026-07-17-p4-tishen-prepare.md` (11K)
+- Obsidian AI-PRD-小程序微信提审-260717.md
+- Obsidian AI-PRD-前后端统一云-260717.md
+
+
+
+---
+
 # vibe coding log - dizical
 
 ## 2026-07-14 PR #161 — 3 个 recovery_first_practice (7/14/21 天) 徽章上线 + calc

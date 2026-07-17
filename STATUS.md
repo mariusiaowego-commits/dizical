@@ -1,9 +1,41 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-14 (PR #161 MERGED, 3 个 recovery_first_practice 7/14/21 天徽章上线)
-**当前 main**: ea3b44b (PR #161 merge feat/recovery-first-practice-badge-pad)
-**生产服务**: 8765 running PID 73634 (load main @ ea3b44b, 3 张病愈徽章殿堂可见, locked)
-**pytest**: 13 failed / 294 passed (净回归 = 0, 跟 PR #159 merge baseline 一致)
+**最后更新**: 2026-07-17 (微信提审准备完, verify-pin 严格模式上线)
+**当前 main**: 47f48e4 (含 PR #162 docs sync)
+**生产服务**: 8765 running PID 73634 (load main @ 47f48e4)
+**云托管**: dizical-prod @ commit 00a7e97 (DeployId 003, 2026-07-17 16:27 UTC 上线, verify-pin 严格模式)
+**pytest**: 13 failed / 294 passed (净回归 = 0, pre-existing baseline)
+
+### 已完成 (2026-07-17 提审准备 7 项)
+
+**commit 00a7e97** (待 push): `fix(cloudrun): revert verify-pin 临时方案, 严格白名单模式`
+- commit 02cf4d6: `security: 移除硬编码 MySQL 密码, 改从 env MYSQL_PASSWORD 读取` (未 push)
+- 上一轮 bc38a5e 包含旧密码 `Qpwoei@1980` 历史 leak, dad 拍"旧账号废了不管"
+
+**提审附件 (2 份)**:
+- `docs/PRIVACY.md` (3029 字节, 8 节标准隐私政策)
+- `~/dev/dizical-minip/docs/WEIXIN-SUBMIT-CHECKLIST-2026-07-17.md` (3319 字节, 服务说明)
+
+**小程序 build**: `dist/build/mp-weixin/` 448KB, 65 文件
+
+**5 步上传指南**: `Obsidian/tqob/05-Coding/project-dizical/PRDs/AI-PRD-小程序微信提审-260717.md` (7089 字节)
+
+**云端验证** (3 测试全过):
+- /health: 200 + database=ok + lesson_count=17
+- 真 openid + 0905 → `{"ok":true,"role":"dad"}` 200 ✅
+- fake openid + 0905 → `{"ok":false,"error":"not_in_whitelist"}` 403 ✅
+- dad openid + 9999 → `{"ok":false,"error":"wrong_pin"}` 401 ✅ (证明白名单先于 PIN)
+
+**PRD web/mac 切云 4 阶段**: `Obsidian/tqob/05-Coding/project-dizical/PRDs/AI-PRD-前后端统一云-260717.md` (9676 字节)
+
+**数据策略红线** (dad 拍板): 双 1 套数据 + 临时沙盒 — 小程序单独云 / web-mac 仍本地权威 / 退出条件正式上线前删云重复制
+
+**待办 (明天 dad 第一件事)**:
+- [ ] git push origin feat/p4-phase1b-staging
+- [ ] 微信开发者工具走 5 步
+- [ ] 等审核 1-3 工作日
+
+---
 
 ### 已完成 (2026-07-14 PR #161 3 个 recovery_first_practice 7/14/21 天徽章)
 
