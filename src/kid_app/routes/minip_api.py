@@ -140,14 +140,14 @@ async def api_minip_verify_pin(request: Request):
     pin = body.get("pin", "")
     openid = body.get("openid", "")
 
-    # 1. 白名单校验
+    # 1. 白名单校验: 空 list 默认通过 (Phase 1b 临时方案, 提审时改回)
     whitelist_raw = db.get_setting("dad_whitelist") or "[]"
     try:
         whitelist = json.loads(whitelist_raw)
     except (json.JSONDecodeError, TypeError):
         whitelist = []
 
-    if openid and openid not in whitelist:
+    if whitelist and openid and openid not in whitelist:
         return JSONResponse({"ok": False, "error": "not_in_whitelist"}, status_code=403)
 
     # 2. 冷却检查（持久化到 SQLite）
