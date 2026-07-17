@@ -140,14 +140,19 @@ async def api_minip_verify_pin(request: Request):
     pin = body.get("pin", "")
     openid = body.get("openid", "")
 
-    # 1. 白名单校验: 空 list 默认通过 (Phase 1b 临时方案, 提审时改回)
+    # 1. 白名单校验: 严格模式 — 不在 whitelist 一律拒绝 (提审要求)
+    #    2026-07-17 revert 5a0f43a 临时方案 (空 list 默认通过)
+    #    whitelist = settings.dad_whitelist (JSON list of wechat openid)
+    #    当前白名单: [dad openid] (女儿帐号后续单独加)
     whitelist_raw = db.get_setting("dad_whitelist") or "[]"
     try:
         whitelist = json.loads(whitelist_raw)
     except (json.JSONDecodeError, TypeError):
         whitelist = []
 
-    if whitelist and openid and openid not in whitelist:
+    if not openid or openid not in whitelist:
+        # 没配 whitelist 或 openid 不在 — 严格拒绝
+        # 2026-07-17 revert 5a0f43a 临时方案
         return JSONResponse({"ok": False, "error": "not_in_whitelist"}, status_code=403)
 
     # 2. 冷却检查（持久化到 SQLite）
