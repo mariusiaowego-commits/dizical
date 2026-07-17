@@ -104,10 +104,13 @@ if [ ! -f "$LOCAL_DB" ]; then
     step_fail "本地 DB 不存在, 跳过 ($LOCAL_DB)"
 else
     CLOUD_TOTAL=$(python3 << 'PYEOF'
+import os
 import pymysql
 try:
     c = pymysql.connect(host='sh-cynosdbmysql-grp-o1j4rd8w.sql.tencentcdb.com', port=22661,
-                        user='root', password='Qpwoei@1980', database='dizical', connect_timeout=10)
+                        user=os.environ.get('MYSQL_USER', 'root'),
+                        password=os.environ['MYSQL_PASSWORD'],
+                        database='dizical', connect_timeout=10)
     cur = c.cursor()
     cur.execute('SHOW TABLES')
     total = 0

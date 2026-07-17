@@ -25,13 +25,14 @@ while true; do
 
     # 试连
     if python3 -c "
+import os
 import pymysql
 try:
     conn = pymysql.connect(
         host='$HOST',
         port=3306,
         user='root',
-        password='Qpwoei@1980',
+        password=os.environ['MYSQL_PASSWORD'],
         connect_timeout=3,
     )
     cur = conn.cursor()
