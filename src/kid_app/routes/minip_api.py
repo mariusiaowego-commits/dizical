@@ -138,7 +138,10 @@ async def api_minip_verify_pin(request: Request):
     """
     body = json.loads(await request.body())
     pin = body.get("pin", "")
-    openid = body.get("openid", "")
+    # 2026-07-19: openid 优先从 callContainer 网关注入的 X-WX-OPENID header 读
+    #   官方保证不可伪造 (docs.cloudbase.net/run/develop/access/mini)
+    #   前端 pin.vue 传空串, 真 openid 只在 header. body.openid 仅作本地调试 fallback
+    openid = request.headers.get("X-WX-OPENID", "") or body.get("openid", "")
 
     # 1. 白名单校验: 严格模式 — 不在 whitelist 一律拒绝 (提审要求)
     #    2026-07-17 revert 5a0f43a 临时方案 (空 list 默认通过)
@@ -153,7 +156,12 @@ async def api_minip_verify_pin(request: Request):
     if not openid or openid not in whitelist:
         # 没配 whitelist 或 openid 不在 — 严格拒绝
         # 2026-07-17 revert 5a0f43a 临时方案
-        return JSONResponse({"ok": False, "error": "not_in_whitelist"}, status_code=403)
+        # 2026-07-19: 临时回传 seen openid 便于加白名单 (提审前移除 debug 字段)
+        seen = openid[:6] + "..." + openid[-4:] if len(openid) > 12 else (openid or "(empty)")
+        return JSONResponse(
+            {"ok": False, "error": "not_in_whitelist", "debug_openid": seen},
+            status_code=403,
+        )
 
     # 2. 冷却检查（持久化到 SQLite）
     cnt, first = _get_pin_fails(openid)
