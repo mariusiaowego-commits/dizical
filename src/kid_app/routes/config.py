@@ -566,10 +566,18 @@ async def api_lessons(year: int, month: int):
 
 
 @router.post("/api/lessons")
-async def api_add_lesson(date: str):
-    """添加课程"""
+async def api_add_lesson(request: Request, date: str = ""):
+    """添加课程. 兼容两种调用: query (?date=YYYY-MM-DD) 或 JSON body ({\"date\": \"...\"})."""
     try:
         import datetime as dt
+        if not date:
+            try:
+                body = json.loads(await request.body())
+                date = body.get('date', '')
+            except Exception:
+                pass
+        if not date:
+            return JSONResponse({"ok": False, "error": "缺少 date 参数"}, status_code=400)
         lesson_date = dt.date.fromisoformat(date)
         lesson = lesson_manager.add_lesson(lesson_date)
         return JSONResponse({"ok": True, "lesson": {
