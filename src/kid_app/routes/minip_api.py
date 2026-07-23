@@ -325,3 +325,13 @@ def api_blindbox():
             "days": days,
         },
     })
+
+
+# ─── 小程序 /api/lessons 别名 ─────────────────────────────────────────────
+from src.kid_app.routes.config import api_lessons as _config_get_lessons
+
+
+@router.get("/api/lessons")
+def _minip_lessons(year: int, month: int):
+    import asyncio
+    return asyncio.run(_config_get_lessons(year=year, month=month))

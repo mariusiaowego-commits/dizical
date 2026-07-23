@@ -14,8 +14,8 @@ from src.lesson_manager import LessonManager
 from src.payment import PaymentManager
 from src.models import Lesson, LessonStatus, PaymentStatus
 
-lesson_manager = LessonManager()
-payment_manager = PaymentManager()
+lesson_manager = LessonManager(db=db)
+payment_manager = PaymentManager(db=db)
 
 router = APIRouter(prefix="/config", tags=["config"])
 
