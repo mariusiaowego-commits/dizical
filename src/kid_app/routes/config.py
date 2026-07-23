@@ -14,8 +14,8 @@ from src.lesson_manager import LessonManager
 from src.payment import PaymentManager
 from src.models import Lesson, LessonStatus, PaymentStatus
 
-lesson_manager = LessonManager()
-payment_manager = PaymentManager()
+lesson_manager = LessonManager(db=db)
+payment_manager = PaymentManager(db=db)
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -607,10 +607,18 @@ async def api_cancel_lesson(request: Request, date: str = ""):
 
 
 @router.post("/api/lessons/confirm")
-async def api_confirm_lesson(date: str):
-    """确认上课"""
+async def api_confirm_lesson(request: Request, date: str = ""):
+    """确认上课. 兼容两种调用: query (?date=YYYY-MM-DD) 或 JSON body ({\"date\": \"...\"})."""
     try:
         import datetime as dt
+        if not date:
+            try:
+                body = json.loads(await request.body())
+                date = body.get('date', '')
+            except Exception:
+                pass
+        if not date:
+            return JSONResponse({"ok": False, "error": "缺少 date 参数"}, status_code=400)
         lesson_date = dt.date.fromisoformat(date)
         lesson = lesson_manager.confirm_attendance(lesson_date)
         if lesson:
@@ -619,6 +627,8 @@ async def api_confirm_lesson(date: str):
                 "status": lesson.status.value,
             }})
         return JSONResponse({"ok": False, "error": "未找到课程"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": f"日期格式错误: {e}"}, status_code=400)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
