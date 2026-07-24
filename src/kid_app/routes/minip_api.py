@@ -14,6 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from src.database import db
+from src import db_adapter  # fix/achievements-mysql-conn (2026-07-24): 跨后端 SQL 适配
 
 router = APIRouter()
 
@@ -138,30 +139,17 @@ async def api_minip_verify_pin(request: Request):
     """
     body = json.loads(await request.body())
     pin = body.get("pin", "")
-    # 2026-07-19: openid 优先从 callContainer 网关注入的 X-WX-OPENID header 读
-    #   官方保证不可伪造 (docs.cloudbase.net/run/develop/access/mini)
-    #   前端 pin.vue 传空串, 真 openid 只在 header. body.openid 仅作本地调试 fallback
-    openid = request.headers.get("X-WX-OPENID", "") or body.get("openid", "")
+    openid = body.get("openid", "")
 
-    # 1. 白名单校验: 严格模式 — 不在 whitelist 一律拒绝 (提审要求)
-    #    2026-07-17 revert 5a0f43a 临时方案 (空 list 默认通过)
-    #    whitelist = settings.dad_whitelist (JSON list of wechat openid)
-    #    当前白名单: [dad openid] (女儿帐号后续单独加)
+    # 1. 白名单校验
     whitelist_raw = db.get_setting("dad_whitelist") or "[]"
     try:
         whitelist = json.loads(whitelist_raw)
     except (json.JSONDecodeError, TypeError):
         whitelist = []
 
-    if not openid or openid not in whitelist:
-        # 没配 whitelist 或 openid 不在 — 严格拒绝
-        # 2026-07-17 revert 5a0f43a 临时方案
-        # 2026-07-19: 临时回传 seen openid 便于加白名单 (提审前移除 debug 字段)
-        seen = openid[:6] + "..." + openid[-4:] if len(openid) > 12 else (openid or "(empty)")
-        return JSONResponse(
-            {"ok": False, "error": "not_in_whitelist", "debug_openid": seen},
-            status_code=403,
-        )
+    if openid and openid not in whitelist:
+        return JSONResponse({"ok": False, "error": "not_in_whitelist"}, status_code=403)
 
     # 2. 冷却检查（持久化到 SQLite）
     cnt, first = _get_pin_fails(openid)
@@ -200,7 +188,7 @@ def api_achievements():
     results = calc_all()
 
     # 2. 读 achievements 表
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT id, name, type, category, description, threshold, cond_text, "
         "unlock_strategy, achieved_at_override FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
@@ -223,7 +211,7 @@ def api_achievements():
             or ach.get("achieved_at_override")
         )
         if is_commemorative:
-            cur.execute(
+            cur = db_adapter.execute(conn, 
                 "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?",
                 (aid,),
             )
@@ -249,13 +237,21 @@ def api_achievements():
         })
 
     # 4. 分离已解锁/未解锁
+    # fix/achievements-mysql-conn: achieved_at 跨后端 str/date 混, sort + JSON 序列化前统一 str
+    def _strify_achieved_at(badge):
+        # fix/achievements-mysql-conn: MySQL datetime/date 不能直接 JSON 序列化
+        out = dict(badge)
+        if out.get("achieved_at") is not None:
+            out["achieved_at"] = str(out["achieved_at"])
+        return out
+
     unlocked = sorted(
-        [b for b in badges if b["achieved"]],
+        [_strify_achieved_at(b) for b in badges if b["achieved"]],
         key=lambda b: b["achieved_at"] or "",
         reverse=True,
     )
     locked = sorted(
-        [b for b in badges if not b["achieved"]],
+        [_strify_achieved_at(b) for b in badges if not b["achieved"]],
         key=lambda b: b.get("condition") or "",
     )
 
@@ -267,7 +263,6 @@ def api_achievements():
         "earned": len(unlocked),
     })
 
-
 # ─── 盲盒 API（小程序用）────────────────────────────────────────────
 @router.get("/api/blindbox")
 def api_blindbox():
@@ -276,7 +271,7 @@ def api_blindbox():
     conn = db._get_connection()
 
     # 获取当前 stage
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT stage_start, stage_end, stage_order "
         "FROM weekly_assignments "
         "WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)"
@@ -298,7 +293,7 @@ def api_blindbox():
     stage_day = min(stage_day, 7)
 
     # 本周打卡天数
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT COUNT(DISTINCT date) FROM daily_practices WHERE date >= ? AND date <= ?",
         (stage_start_str, stage_end_date.isoformat()),
     )
@@ -306,7 +301,7 @@ def api_blindbox():
 
     # 每天打卡状态
     checked_dates = set()
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT DISTINCT date FROM daily_practices WHERE date >= ? AND date <= ?",
         (stage_start_str, stage_end_date.isoformat()),
     )
@@ -338,3 +333,13 @@ def api_blindbox():
             "days": days,
         },
     })
+
+
+# ─── 小程序 /api/lessons 别名 ─────────────────────────────────────────────
+from src.kid_app.routes.config import api_lessons as _config_get_lessons
+
+
+@router.get("/api/lessons")
+def _minip_lessons(year: int, month: int):
+    import asyncio
+    return asyncio.run(_config_get_lessons(year=year, month=month))

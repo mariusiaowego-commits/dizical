@@ -109,7 +109,9 @@ def _invalidate_badge_url_cache() -> None:
 def _refresh_badge_url_cache() -> None:
     """从 achievement_badges 表刷一次 is_current=1 的全部 url."""
     with db._get_connection() as conn:
-        cur = conn.execute(
+        # fix/achievements-mysql-conn (2026-07-24): MySQL conn 没 .execute() shortcut, 用 cursor
+        cur = conn.cursor()
+        cur.execute(
             "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1"
         )
         _BADGE_URL_CACHE["data"] = {row[0]: row[1] for row in cur.fetchall()}
