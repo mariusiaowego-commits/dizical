@@ -67,5 +67,6 @@ channels/**/*.xcodeproj/xcuserdata/
 channels/**/*.xcworkspace/xcuserdata/
 channels/**/*.dSYM/
 channels/**/Package.resolved
-.hermes/
-uv.lock
+# fix/achievements-mysql-conn (2026-07-24): 双后端 calc_all 基线快照,
+# 本地 ad-hoc 验证产物, 不进 git (防止 dad 数据变更后基线跟实际漂移污染 git)
+data/_baseline_*.json
