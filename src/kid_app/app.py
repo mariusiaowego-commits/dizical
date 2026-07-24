@@ -1498,7 +1498,7 @@ def achievements_page():
         LIMIT 1
     """, (today.isoformat(), today.isoformat())).fetchone()
     week_days_prev = 0
-    if cur_week_row:
+    if cur_week_row and cur_week_row[0] is not None:
         cur_order = cur_week_row[0]
         prev_week_row = conn.execute("""
             SELECT stage_start, stage_end FROM weekly_assignments
