@@ -1,3 +1,59 @@
+## [2026-07-27] PR #178/#180/#182 收尾 - 今日总时长显眼卡片 + 同 item_name 合并 + MySQL conflict 清理 (已 merge main @ 5a9297b)
+
+**dad 反馈 4 轮澄清** (21:30-22:30):
+1. "你在练习里截图的, 今天 27 日不是联系了 60 分钟吗" → dad 误信截图 60, 实是 UI 渲染 bug
+2. "萨丽哈明显是 2 个 11 分钟, 而且两次练习的细节是不同的" → 误以为两次各 11min
+3. "萨丽哈是 5+6 一共 11 分钟, 一共 49 分钟" → 确认 49 是真, 60 是截图渲染重复算萨丽哈
+4. "2 个萨丽哈应该按科目合并在一起, 一个萨丽哈科目, 下面 2 次练习" → PR #180 算法修
+
+**完成 4 件事** (本会话):
+
+1. **7-27 data fix** (手工修 DB, 写 audit_log 留痕):
+   - daily_practices.items[吸气长音].minutes 40→10
+   - daily_practices.items[单吐tuku].minutes 8→6
+   - daily_practices.total_minutes 81→49 (sessions SUM 一致)
+   - 备份: `data/backups/dizi-pre-fix-81to49-20260727-213631.db` (602K)
+   - audit_log manual_fix entry: method=reset_to_sessions_sum, 含 input/result 完整快照
+
+2. **PR #178** (commit 13df74d) — 今日总时长显眼卡片 (.today-summary-bar):
+   - HTML: 今日练习记录卡片顶部加显眼总时长 (44px Georgia 大字, 珊瑚红渐变背景)
+   - CSS: 14px 圆角 + box-shadow + 移动端 media query (<600px 自动缩字号)
+   - JS: renderTodayRecords 同步填值, sessions 是唯一真相源
+   - 单文件 +56/-0 纯加法, 不破坏 main 6c8ec0d 算法
+   - **保留 main 的 subjectTotals dict 算法** (PR #176 已修)
+
+3. **PR #180** (commit 7a88ea2) — 同 item_name session 合并到 1 个 group:
+   - 旧算法 `if (s.item_name !== lastItem)` 按 sessions 顺序切多个 group header, 同 item 被穿插切成 2 段
+   - 新算法 `groupOrder + groups dict`: 同 item_name 即使被穿插也合并成 1 个 group
+   - 萨丽哈: 2 个 group (11+11) → 1 个 group (11 分钟, 下面 2 行 session: 5min + 6min)
+   - 单文件 +16/-8 纯逻辑调整
+   - session 内容 fallback `'未填写练习内容'` (跟 PRD §US-2 一致)
+
+4. **PR #182** (commit 5a9297b, dizical-agent 写) — 清理 main 上 database_mysql.py git merge conflict marker:
+   - main squash merge 时引入 `<<<<<<< Updated upstream` / `>>>>>>> Stashed changes`, Python import 时 SyntaxError
+   - 重写 save_daily_practice: 去掉冲突标记, 保留 UPDATE 路径 (避免 REPLACE INTO 覆盖累积)
+   - 新增 tests/test_save_daily_practice_mysql.py: 7 场景 pytest PASS (subprocess 隔离)
+   - 本会话没动这个 fix (dizical-agent 提前 push), 我做的是 merge 到 main + 主仓 sync
+
+**关键沉淀** (skill 候选):
+- "group header 渲染读 daily.items 残量" 是 V3 session 路径的隐性风险, PR #176 修了 subjectTotals dict 但没修 group header 算法
+- PR #176 (6c8ec0d) 引入 `if lastItem` 算法会按 sessions 顺序切多个 group header, 同 item 被穿插切成 2 段
+- 修复必须用 dict+order 算法 (PR #180 方案), 不能用相邻比较
+- extra 路径走 save_daily_practice 写 daily.items 时, V3 session 路径叠加不会重置, 残量永远清不掉 (V2 范围)
+- 截图误读是 dad 决策风险: UI 渲染 bug 让 dad 误以为 "60 是对的" → 多次 clarify 才纠正
+- 教训: 遇到数字对不上时, 先验截图渲染 + 数据源双重, 不直接采信任一方
+- "你来判断" 配合 clarify 4 选项时, dad 拍板后必须复核, 防误读
+- squash merge 在 main 上引入 conflict marker 是真坑, Python SyntaxError 整个后端不可用
+- dizical-agent 并行在跑, 必须先 fetch 看哪些 commit 已落地, 避免重复 push
+
+**下一步** (V2 范围, dad 拍板后做):
+- 7-27 之前所有 daily 行有 extra 残量的, 跑迁移脚本重算
+- save_practice_session_and_daily_summary 改为 "item.minutes = SUM(sessions) WHERE item_id" (不是累加)
+- extra 路径改为写 is_extra sessions (不污染 daily.items)
+- panel 拆分 / 速度默认 / content 默认库 (本次 V1 未做)
+
+---
+
 ## [2026-07-17] 微信小程序提审准备 + verify-pin 严格 + web/mac 切云 PRD
 
 **commit**: 00a7e97 (验证模式 revert), 02cf4d6 (密码修复, 未 push)
