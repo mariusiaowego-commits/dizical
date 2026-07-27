@@ -472,10 +472,16 @@ def api_get_record(date_str: str):
         except Exception:
             items_raw = []
 
-    # 补上 item_id（从名称匹配）
-    all_items = {i['name']: i['item_id'] for i in db.get_practice_items(active_only=True)}
+    # 兜底: 老数据 / 仅带 item_id 的记录, 用 ID 反查 name 补到 item 字段
+    # (改 7-27: 之前只补 item_id, 不补 item 名称 → 首页柱状图 item.name 空白)
+    all_items_by_id = {i['item_id']: i['name'] for i in db.get_practice_items(active_only=True)}
+    all_items_by_name = {v: k for k, v in all_items_by_id.items()}
     for item in items_raw:
-        item['item_id'] = all_items.get(item.get('item'))
+        # (a) 新老数据双向兜底
+        if not item.get('item') and item.get('item_id') and item['item_id'] in all_items_by_id:
+            item['item'] = all_items_by_id[item['item_id']]
+        if item.get('item_id') is None and item.get('item') in all_items_by_name:
+            item['item_id'] = all_items_by_name[item['item']]
 
     return JSONResponse({
         "date": date_str,
