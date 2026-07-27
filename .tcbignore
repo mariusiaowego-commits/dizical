@@ -1,0 +1,37 @@
+# tcb cloudrun deploy 上传 ZIP 时排除 (tcb 用此文件, 非 .dockerignore)
+# 目的: 后端镜像只需 src/ + requirements.txt + Dockerfile, 排除 500MB+ 无关内容
+
+# 版本控制
+.git/
+.worktrees/
+.hermes/
+
+# 其他端源码 + 编译产物 (mac-app .build 499MB)
+channels/
+
+# 本地开发工具链 (镜像不需要)
+scripts/
+PRDs/
+docs/
+tests/
+
+# 本地数据库 (云端用 MySQL, DATABASE_URL 注入)
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# 备份 / 日志 / 临时
+backups/
+*.log
+logs/
+*.tmp
+.DS_Store
