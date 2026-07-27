@@ -1781,17 +1781,25 @@
         sessions.forEach(s => {
           subjectTotals[s.item_name] = (subjectTotals[s.item_name] || 0) + s.duration_minutes;
         });
-        let html = '';
-        let lastItem = '';
+        // 2026-07-27 fix: 按 item_name 分组合并, 即使穿插其他科目 (如 萨丽哈-西藏-萨丽哈) 也合并成 1 个 group
+        // 旧算法 (if item_name !== lastItem) 会按 sessions 顺序切多个 group header, 同 item 被切成 2 段
+        const groupOrder = [];
+        const groups = {};
         sessions.forEach(s => {
-          if (s.item_name !== lastItem) {
-            if (lastItem) html += '</div>';
-            html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + s.item_name + '</span><span class="rg-mins">' + (subjectTotals[s.item_name] || 0) + ' 分钟</span></div>';
-            lastItem = s.item_name;
+          if (!groups[s.item_name]) {
+            groups[s.item_name] = [];
+            groupOrder.push(s.item_name);
           }
-          html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
+          groups[s.item_name].push(s);
         });
-        if (lastItem) html += '</div>';
+        let html = '';
+        groupOrder.forEach(name => {
+          html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + name + '</span><span class="rg-mins">' + (subjectTotals[name] || 0) + ' 分钟</span></div>';
+          groups[name].forEach(s => {
+            html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '未填写练习内容') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
+          });
+          html += '</div>';
+        });
         recordsList.innerHTML = html || '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
       } else if (!items || items.length === 0) {
         recordsList.innerHTML = '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
