@@ -430,13 +430,13 @@ class MySQLBackend:
                 # MySQL daily_practices.date 有 UNIQUE, REPLACE 即可
                 if practice_at:
                     cur.execute('''
-                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced, practice_at)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log, practice_at)
+                        VALUES (%s, %s, %s, %s, %s, '', %s)
                     ''', (date.isoformat(), items_json, total_minutes, log, practiced, practice_at))
                 else:
                     cur.execute('''
-                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
-                        VALUES (%s, %s, %s, %s, %s)
+                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
+                        VALUES (%s, %s, %s, %s, %s, '')
                     ''', (date.isoformat(), items_json, total_minutes, log, practiced))
             conn.commit()
 
