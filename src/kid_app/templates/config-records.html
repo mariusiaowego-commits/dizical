@@ -1007,6 +1007,18 @@ $('#edit-load').addEventListener('click', async () => {
   $('#edit-form-section').style.display = '';
   $('#edit-log-section').style.display = '';
   $('#edit-actions').style.display = '';
+  // 2026-07-27: 有 session 细节时, 加跳转链接到 practice-log
+  const hasSessions = res.sessions && res.sessions.length > 0;
+  let detailLink = document.getElementById('edit-detail-link');
+  if (!detailLink) {
+    detailLink = document.createElement('div');
+    detailLink.id = 'edit-detail-link';
+    detailLink.style.cssText = 'margin-top:12px;font-size:13px;color:#8B6914';
+    $('#edit-actions').after(detailLink);
+  }
+  detailLink.innerHTML = hasSessions
+    ? `<a href="/config/practice-log" style="color:#FF6B6B;font-weight:600;text-decoration:none;">查看/编辑练习细节 →</a>`
+    : '';
 });
 
 $('#edit-submit').addEventListener('click', async () => {
