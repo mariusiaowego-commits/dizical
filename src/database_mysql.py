@@ -423,38 +423,32 @@ class MySQLBackend:
 
     # ── Daily Practices ──
     def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y', images: Optional[List[str]] = None, **kwargs) -> None:
-        """改 7-27: 移植 SQLite merge 逻辑, 同 item 累加 minutes, 不同 item 追加.
-
-        之前用 REPLACE INTO 简单粗暴覆盖, 导致小程序每次练习都覆盖前一天累积.
-        对齐本地 SQLite 的 save_daily_practice 语义 (database.py:740-803).
-
-        当 items==[] 且 practiced=='N' (清零场景, 走 api_delete_record), 走全清空路径,
-        不要触发 merge 误把存量 items 保留.
-        """
         items_json = json.dumps(items, ensure_ascii=False) if items else '[]'
         practice_at = kwargs.get('practice_at')
-        # 如没传 total_minutes, 从 items 自动算
-        if total_minutes == 0 and items:
-            total_minutes = sum(i.get('minutes', 0) for i in items)
-
-        # 7-27 fix: 清零场景 (DELETE /api/records/{date}) - 直接全清不走 merge
-        is_clear = (not items) and (practiced == 'N') and (not log)
-
         with self._get_connection() as conn:
             with conn.cursor() as cur:
-                if is_clear:
-                    # 全清, 走 UPDATE 路径 (避免与 merge 语义混淆)
+                # MySQL daily_practices.date 有 UNIQUE, REPLACE 即可
+                if practice_at:
                     cur.execute('''
+<<<<<<< Updated upstream
+                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log, practice_at)
+                        VALUES (%s, %s, %s, %s, %s, '', %s)
+                    ''', (date.isoformat(), items_json, total_minutes, log, practiced, practice_at))
+=======
                         UPDATE daily_practices
                         SET items = %s, total_minutes = 0, log = '', practiced = 'N'
                         WHERE date = %s
                     ''', (json.dumps([], ensure_ascii=False), date.isoformat()))
                     if cur.rowcount == 0:
-                        # 没这天的记录, INSERT 一条空记录
-                        cur.execute('''
-                            INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
-                            VALUES (%s, %s, 0, '', 'N', '')
-                        ''', (date.isoformat(), json.dumps([], ensure_ascii=False)))
+                        # 没这天的记录, INSERT 一条空记录 (注意: connection 池可能复用, 注意 autocommit 行为)
+                        try:
+                            cur.execute('''
+                                INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
+                                VALUES (%s, %s, 0, '', 'N', '')
+                            ''', (date.isoformat(), json.dumps([], ensure_ascii=False)))
+                        except Exception:
+                            # 已被另一进程写, 忽略 (race condition with auto-commit pool)
+                            pass
                     conn.commit()
                     return
 
@@ -502,18 +496,12 @@ class MySQLBackend:
                             SET items = %s, total_minutes = %s, log = %s, practiced = %s
                             WHERE date = %s
                         ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_log, final_practiced, date.isoformat()))
+>>>>>>> Stashed changes
                 else:
-                    # 新建 (含 practice_at)
-                    if practice_at:
-                        cur.execute('''
-                            INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log, practice_at)
-                            VALUES (%s, %s, %s, %s, %s, '', %s)
-                        ''', (date.isoformat(), items_json, total_minutes, log, practiced, practice_at))
-                    else:
-                        cur.execute('''
-                            INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
-                            VALUES (%s, %s, %s, %s, %s, '')
-                        ''', (date.isoformat(), items_json, total_minutes, log, practiced))
+                    cur.execute('''
+                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
+                        VALUES (%s, %s, %s, %s, %s, '')
+                    ''', (date.isoformat(), items_json, total_minutes, log, practiced))
             conn.commit()
 
     def log_practice_audit(self, channel: str, method: str, practice_date: dt.date, input_items: str, result_items: str, total_minutes: int, session_id: Optional[str] = None, error: Optional[str] = None) -> int:

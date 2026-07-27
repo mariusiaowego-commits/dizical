@@ -479,6 +479,33 @@
     .rs-del:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
     .rs-edit { background: none; border: 1px solid #C0D0A0; color: #8B6914; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer; margin-right: 2px; }
     .rs-edit:hover { background: #F0D060; color: #5D4037; border-color: #F0D060; }
+
+    /* 2026-07-27 fix: 今日总时长显眼卡片 (替代 line 93 .top-bar .today-stat) */
+    .today-summary-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%);
+      color: #FFFEFA;
+      border-radius: 14px;
+      padding: 16px 22px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 16px rgba(255, 107, 107, 0.18);
+    }
+    .tsb-main { display: flex; flex-direction: column; gap: 2px; }
+    .tsb-label { font-size: 13px; opacity: 0.92; letter-spacing: 0.5px; }
+    .tsb-value { font-size: 36px; font-weight: 700; line-height: 1.1; }
+    .tsb-value #todayTotalMins { font-family: Georgia, 'Times New Roman', serif; font-size: 44px; }
+    .tsb-unit { font-size: 16px; font-weight: 500; margin-left: 4px; opacity: 0.9; }
+    .tsb-side { display: flex; gap: 18px; }
+    .tsb-stat { display: flex; flex-direction: column; align-items: center; }
+    .tsb-stat-num { font-size: 24px; font-weight: 700; font-family: Georgia, 'Times New Roman', serif; }
+    .tsb-stat-lbl { font-size: 12px; opacity: 0.88; margin-top: 2px; }
+    @media (max-width: 600px) {
+      .today-summary-bar { padding: 12px 16px; }
+      .tsb-value { font-size: 28px; }
+      .tsb-value #todayTotalMins { font-size: 34px; }
+      .tsb-stat-num { font-size: 18px; }
+    }
+
     /* 编辑弹窗 */
     .edit-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:300; align-items:center; justify-content:center; }
     .edit-modal-overlay.open { display:flex; }
@@ -862,6 +889,17 @@
   <!-- 今日练习记录 -->
   <div class="card today-records">
     <h3>📋 今日练习记录</h3>
+    <!-- 2026-07-27 fix: 明显展示今日总时长 + 科目数 + session 数 (dad 看不到位置) -->
+    <div class="today-summary-bar" id="todaySummaryBar">
+      <div class="tsb-main">
+        <div class="tsb-label">今日总时长</div>
+        <div class="tsb-value"><span id="todayTotalMins">0</span><span class="tsb-unit">分钟</span></div>
+      </div>
+      <div class="tsb-side">
+        <div class="tsb-stat"><span class="tsb-stat-num" id="todayItemCount">0</span><span class="tsb-stat-lbl">科目</span></div>
+        <div class="tsb-stat"><span class="tsb-stat-num" id="todaySessionCount">0</span><span class="tsb-stat-lbl">次计时</span></div>
+      </div>
+    </div>
     <div id="recordsList"></div>
   </div>
 
@@ -1772,6 +1810,24 @@
       card.classList.add('visible');
       gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
       gsap.fromTo('.record-item, .record-group', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
+      // 2026-07-27 fix: 同步显眼总时长卡片 (.today-summary-bar), sessions 是唯一真相源
+      const totalEl = document.getElementById('todayTotalMins');
+      const itemEl = document.getElementById('todayItemCount');
+      const sessEl = document.getElementById('todaySessionCount');
+      if (totalEl && itemEl && sessEl) {
+        if (sessions && sessions.length > 0) {
+          const sessionTotal = sessions.reduce((s, x) => s + x.duration_minutes, 0);
+          const itemSet = new Set(sessions.map(s => s.item_name));
+          totalEl.textContent = sessionTotal;
+          itemEl.textContent = itemSet.size;
+          sessEl.textContent = sessions.length;
+        } else {
+          const itemTotal = (items || []).reduce((s, x) => s + (x.minutes || 0), 0);
+          totalEl.textContent = itemTotal;
+          itemEl.textContent = (items || []).length;
+          sessEl.textContent = 0;
+        }
+      }
       document.querySelector('.today-stat').textContent = '今日已练习: ' + total + ' 分钟';
     }
 
