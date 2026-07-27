@@ -1182,6 +1182,47 @@ class Database:
                 conn.rollback()
                 raise
 
+    def update_practice_session(
+        self, session_id: int,
+        tempo_note: Optional[str] = None,
+        tempo_bpm: Optional[int] = None,
+        content: Optional[str] = None,
+    ) -> Optional[Dict]:
+        """更新 session 的 tempo/content (不改 duration).
+        tempo_note: '♪'|'♩' (非空才改), tempo_bpm: 40-150 (非 None 才改).
+        更新 practice_items 冗余列.
+        """
+        self._validate_session_fields(tempo_note or '♪', tempo_bpm or 80, 1, content or 'x')
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM practice_sessions WHERE id = ?", (session_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError(f"session_id={session_id} 不存在")
+            updates = []
+            params = []
+            if tempo_note:
+                updates.append("tempo_note = ?"); params.append(tempo_note)
+            if tempo_bpm is not None:
+                updates.append("tempo_bpm = ?"); params.append(tempo_bpm)
+            if content is not None:
+                updates.append("content = ?"); params.append(content)
+            if not updates:
+                return dict(row)
+            params.append(session_id)
+            cursor.execute(f"UPDATE practice_sessions SET {', '.join(updates)} WHERE id = ?", params)
+            # 同步冗余列
+            cursor.execute("SELECT tempo_note, tempo_bpm FROM practice_sessions WHERE id = ?", (session_id,))
+            s = cursor.fetchone()
+            if s:
+                cursor.execute(
+                    "UPDATE practice_items SET last_tempo_note=?, last_tempo_bpm=?, last_session_at=datetime('now') WHERE item_id=?",
+                    (s["tempo_note"], s["tempo_bpm"], row["item_id"]),
+                )
+            conn.commit()
+            cursor.execute("SELECT * FROM practice_sessions WHERE id = ?", (session_id,))
+            return dict(cursor.fetchone())
+
     def save_practice_session_and_daily_summary(self, practice_date: dt.date, item: str, item_id: int,
                                                   minutes: int, tempo_note: str, tempo_bpm: int,
                                                   content: str, content_source: str = "manual",

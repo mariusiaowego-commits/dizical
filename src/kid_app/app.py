@@ -1026,6 +1026,26 @@ async def api_delete_practice_session(session_id: int):
         return JSONResponse({"ok": False, "error": "服务器内部错误"}, status_code=500)
 
 
+@app.put("/api/practice-sessions/{session_id}")
+async def api_update_practice_session(session_id: int, request: Request):
+    """更新 session 的 tempo/content (不改 duration)."""
+    try:
+        body = json.loads(await request.body())
+        tempo_note = body.get("tempo_note")
+        tempo_bpm = body.get("tempo_bpm")
+        content = body.get("content")
+        if not any([tempo_note, tempo_bpm is not None, content]):
+            return JSONResponse({"ok": False, "error": "至少传一个字段"}, status_code=400)
+        updated = db.update_practice_session(int(session_id), tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content)
+        return JSONResponse({"ok": True, "session": updated})
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    except Exception as e:
+        import traceback, logging
+        logging.error(f"API error: {e}\n{traceback.format_exc()}")
+        return JSONResponse({"ok": False, "error": "服务器内部错误"}, status_code=500)
+
+
 @app.get("/api/assignments/latest")
 def api_assignments_latest(item_id: int):
     """返回某 item_id 最近一次 assignment 的 metronome 字段 (Q1=B fallback 用).
