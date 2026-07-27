@@ -427,6 +427,9 @@ class MySQLBackend:
 
         之前用 REPLACE INTO 简单粗暴覆盖, 导致小程序每次练习都覆盖前一天累积.
         对齐本地 SQLite 的 save_daily_practice 语义 (database.py:740-803).
+
+        当 items==[] 且 practiced=='N' (清零场景, 走 api_delete_record), 走全清空路径,
+        不要触发 merge 误把存量 items 保留.
         """
         items_json = json.dumps(items, ensure_ascii=False) if items else '[]'
         practice_at = kwargs.get('practice_at')
@@ -434,8 +437,27 @@ class MySQLBackend:
         if total_minutes == 0 and items:
             total_minutes = sum(i.get('minutes', 0) for i in items)
 
+        # 7-27 fix: 清零场景 (DELETE /api/records/{date}) - 直接全清不走 merge
+        is_clear = (not items) and (practiced == 'N') and (not log)
+
         with self._get_connection() as conn:
             with conn.cursor() as cur:
+                if is_clear:
+                    # 全清, 走 UPDATE 路径 (避免与 merge 语义混淆)
+                    cur.execute('''
+                        UPDATE daily_practices
+                        SET items = %s, total_minutes = 0, log = '', practiced = 'N'
+                        WHERE date = %s
+                    ''', (json.dumps([], ensure_ascii=False), date.isoformat()))
+                    if cur.rowcount == 0:
+                        # 没这天的记录, INSERT 一条空记录
+                        cur.execute('''
+                            INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
+                            VALUES (%s, %s, 0, '', 'N', '')
+                        ''', (date.isoformat(), json.dumps([], ensure_ascii=False)))
+                    conn.commit()
+                    return
+
                 # 读存量 (items + log + practiced)
                 cur.execute(
                     'SELECT items, log, practiced FROM daily_practices WHERE date = %s',
