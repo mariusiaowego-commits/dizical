@@ -477,6 +477,18 @@
     .rs-mins { color: #A88B5C; font-size: 12px; min-width: 40px; text-align: right; }
     .rs-del { background: none; border: 1px solid #E0D0A0; color: #C06060; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer; }
     .rs-del:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
+    .rs-edit { background: none; border: 1px solid #C0D0A0; color: #8B6914; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer; margin-right: 2px; }
+    .rs-edit:hover { background: #F0D060; color: #5D4037; border-color: #F0D060; }
+    /* 编辑弹窗 */
+    .edit-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:300; align-items:center; justify-content:center; }
+    .edit-modal-overlay.open { display:flex; }
+    .edit-modal-box { background:#FFFEFA; border-radius:16px; padding:24px; max-width:400px; width:100%; box-shadow:0 12px 40px rgba(0,0,0,0.2); }
+    .edit-modal-box h3 { font-size:16px; margin:0 0 14px; color:#5D4037; }
+    .edit-modal-box .em-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .edit-modal-box .em-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+    .em-btn { padding:8px 18px; border-radius:10px; border:none; font-size:14px; cursor:pointer; }
+    .em-btn-primary { background:#FF6B6B; color:#fff; }
+    .em-btn-cancel { background:#e8e0d0; color:#5D4037; }
 
     /* 练习科目 */
     .item-section { margin-bottom: 12px; }
@@ -1734,7 +1746,7 @@
             html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + s.item_name + '</span><span class="rg-mins">' + (items.find(i => i.item_id === s.item_id)?.minutes || 0) + ' 分钟</span></div>';
             lastItem = s.item_name;
           }
-          html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
+          html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
         });
         if (lastItem) html += '</div>';
         recordsList.innerHTML = html || '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
@@ -1766,6 +1778,67 @@
       } catch(e) {
         document.getElementById('recordsList').innerHTML = '<div class="empty-records">加载失败: ' + e.message + '</div>';
       }
+    }
+
+    // 2026-07-27: 编辑 session (弹窗 + 二次确认)
+    let _editingSessionId = null;
+
+    function editSession(sessionId) {
+      // 从 DOM 读当前行的 tempo + content 回填弹窗
+      const row = document.querySelector('.record-session:has(button[onclick*="editSession(' + sessionId + ')"])');
+      if (!row) return;
+      const tempoText = row.querySelector('.rs-tempo')?.textContent || '♪=80';
+      const [note, bpmStr] = tempoText.split('=');
+      const content = row.querySelector('.rs-content')?.textContent || '';
+      _editingSessionId = sessionId;
+      // 回填
+      if (note === '♩') {
+        document.getElementById('emNoteM').classList.add('selected');
+        document.getElementById('emNoteQ').classList.remove('selected');
+      } else {
+        document.getElementById('emNoteQ').classList.add('selected');
+        document.getElementById('emNoteM').classList.remove('selected');
+      }
+      document.getElementById('emBpm').value = bpmStr || '80';
+      document.getElementById('emContent').value = content;
+      document.getElementById('editSessionModal').classList.add('open');
+      gsap.fromTo('#editSessionModal .edit-modal-box', { scale:0.85, opacity:0 }, { scale:1, opacity:1, duration:0.2, ease:'back.out(1.5)' });
+      // 音符切换事件
+      document.querySelectorAll('#editSessionModal .em-note-btn').forEach(b => {
+        b.onclick = () => {
+          document.querySelectorAll('#editSessionModal .em-note-btn').forEach(x => x.classList.remove('selected'));
+          b.classList.add('selected');
+        };
+      });
+      // 保存按钮
+      document.getElementById('emSaveBtn').onclick = () => saveSessionEdit();
+    }
+
+    async function saveSessionEdit() {
+      if (!_editingSessionId) return;
+      if (!confirm('确定要覆盖这条练习记录的内容吗？')) return;
+      const note = document.querySelector('#editSessionModal .em-note-btn.selected')?.dataset?.note || '♪';
+      const bpm = parseInt(document.getElementById('emBpm')?.value) || 80;
+      const content = document.getElementById('emContent')?.value?.trim() || '';
+      try {
+        let res = await fetch('/api/practice-sessions/' + _editingSessionId, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ tempo_note: note, tempo_bpm: bpm, content: content }),
+        });
+        let result = await res.json();
+        if (result.ok) {
+          closeEditModal();
+          loadTodayRecords();
+        } else {
+          alert('修改失败: ' + (result.error || '未知错误'));
+        }
+      } catch(e) { alert('网络错误, 请重试'); }
+    }
+
+    function closeEditModal() {
+      document.getElementById('editSessionModal').classList.remove('open');
+      _editingSessionId = null;
     }
 
     // 2026-07-27: 删单条 session (不是旧 deleteRecord 整个 item 删)
@@ -2091,5 +2164,25 @@
       if (contentInput) contentInput.addEventListener('input', () => { updateStartBtnState(); });
     })();
   </script>
+<!-- 2026-07-27: session 编辑弹窗 -->
+<div class="edit-modal-overlay" id="editSessionModal">
+  <div class="edit-modal-box">
+    <h3>编辑练习记录</h3>
+    <div class="em-row">
+      <button type="button" class="tempo-note-mini em-note-btn selected" id="emNoteQ" data-note="♪">♪</button>
+      <button type="button" class="tempo-note-mini em-note-btn" id="emNoteM" data-note="♩">♩</button>
+      <span>=</span>
+      <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="150" value="80" style="width:60px">
+    </div>
+    <div class="em-row">
+      <input type="text" class="form-input" id="emContent" maxlength="200" placeholder="练什么?" style="flex:1">
+    </div>
+    <div class="em-actions">
+      <button class="em-btn em-btn-cancel" onclick="closeEditModal()">取消</button>
+      <button class="em-btn em-btn-primary" id="emSaveBtn">确认修改</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
