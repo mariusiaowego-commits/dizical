@@ -1,10 +1,55 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-17 (微信提审准备完, verify-pin 严格模式上线)
-**当前 main**: 47f48e4 (含 PR #162 docs sync)
-**生产服务**: 8765 running PID 73634 (load main @ 47f48e4)
+**最后更新**: 2026-07-27 (PR #178 今日总时长显眼卡片 + 7-27 data fix, 已 merge main @ 13df74d)
+**当前 main**: 13df74d (含 PR #176 fix/session-subject-total + PR #178 today-summary-bar)
+**生产服务**: 8765 PID 66394 running main @ 13df74d (重启加载新代码)
+**新分支**: `feat/p4-phase2-web-mac-to-cloud` (基于 main @ b43bc3b, 含 PRD + 备份, **未 commit 未 push**)
 **云托管**: dizical-prod @ commit 00a7e97 (DeployId 003, 2026-07-17 16:27 UTC 上线, verify-pin 严格模式)
-**pytest**: 13 failed / 294 passed (净回归 = 0, pre-existing baseline)
+**pytest**: 13 failed / 294 passed (净回归 = 0, pre-existing baseline, 7-17 baseline 未变)
+
+### 已完成 (2026-07-27 PR #178 今日总时长显眼卡片 + 7-27 data fix)
+
+**branch**: `fix/practice-today-summary-and-grouping` (基于 main @ b43bc3b) → **已 merge PR #178 @ 13df74d**
+- HTML/CSS/JS 单文件 +56/-0, 纯加法
+- 显眼总时长卡片 `.today-summary-bar`: 珊瑚红渐变背景, 44px Georgia 衬线大字, 副统计科目数 + session 数
+- 替换原 top-bar 那个 15px 蓝绿色小字 (dad 看不到位置)
+- `renderTodayRecords` 同步填值: sessions 是唯一真相源, 不依赖 daily.items 残量
+- 不破坏 main 6c8ec0d (PR #176) 的 subjectTotals dict 算法
+- 不破坏 V3 session 路径, 不引新依赖, 不动 dizicute token
+
+**7-27 data fix 配套** (手工修 data/dizi.db, audit log 留痕):
+- daily_practices.items[吸气长音].minutes 40→10
+- daily_practices.items[单吐tuku].minutes 8→6
+- daily_practices.total_minutes 81→49 (跟 sessions SUM 一致)
+- audit_log 写 manual_fix entry (method=reset_to_sessions_sum)
+- 备份: `data/backups/dizi-pre-fix-81to49-20260727-213631.db`
+
+**dad 拍板方向**:
+- "明显 60 是对的, 81 是错的" → 81 = extra 残量污染, 49 = sessions 唯一真相
+- "萨丽哈是两次各 11min, 一共 22" → dad 后来更正: 5+6=11
+- "练习 tab 给今天练习总时长的展示, 明显一点位置" → 显眼卡片
+
+### 已完成 (2026-07-27 phase2 起步)
+
+**branch**: `feat/p4-phase2-web-mac-to-cloud` (基于 main @ b43bc3b, **未 commit 未 push**)
+- 本地 SQLite 备份: `data/backups/phase2-pre-cloud-20260727-154911/` (684K, integrity_check=ok)
+- phase2 PRD: `PRDs/AI-PRD-前后端统一云-phase2实施-260727.md` (249 行)
+  - Obsidian 镜像 1: `tqob/05-Coding/project-dizical/PRDs/...` (md5 三方一致)
+  - Obsidian 镜像 2: `tqob/05-Coding/project-dizical-minip/PRDs/...`
+  - md5: `e2e59896db3480960353a96e84447061`
+- handoff: `handoff-2026-07-27-p4-phase2.md` (~12K, 含 Q1-Q11 全部决策 + 6 步实施清单 + 5 分钟回滚 SOP + 下次接手指引)
+- 6 步实施**全部暂缓** (dad 7-27 14:55 拍"先暂缓, 后续再接续开发")
+
+**Q1-Q11 决策 11 个** (dad 7-27 14:50-14:55 拍板):
+- Q1=A (cherry-pick 2 fix) / Q2=手动激活 / Q3=A (本地→云 一次性) / Q4=A (PRD 双写)
+- Q5=A (停用本地, 等 4 前提) / Q6=A (mac app 同 PR) / Q7=A (1 PR 完事) / Q8=C (minip 暂缓)
+- Q9=A (agent 一气呵成 DESCRIBE) / Q10=A (瞬时切云) / Q11=mac app 在主仓 WKWebView 壳, 不动 1 行代码
+
+**Q5 4 前提现状** (2/4 满足):
+- ❌ 1. 小程序提审通过 + 上架 (dad 14:53: "没提交 没过审")
+- ⚠️ 2. 云 MySQL 完整可用 (PR-1 第 2 步完成 = 满足, 未做)
+- ✅ 3. 小程序录入练习正常写库 (dad 14:51: 已测试, 云端有 1 条测试数据, 不删)
+- ❌ 4. 小程序含 dizical 最新功能 (minip `submitRecord` 缺 `tempo_note/bpm/content`, Q8=C 暂缓)
 
 ### 已完成 (2026-07-17 提审准备 7 项)
 
