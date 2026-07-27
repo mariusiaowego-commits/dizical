@@ -7,6 +7,7 @@ from typing import Optional, List, Dict
 
 from fastapi import APIRouter, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 from src.database import db
 from src import practice as practice_module
@@ -247,11 +248,11 @@ def api_get_items(include_archived: bool = True):
     items = db.get_practice_items(active_only=False, include_archived=include_archived)
     categories = practice_module.get_categories()
     cat_map = {c['id']: c['name'] for c in categories}
-    
+
     for item in items:
         item['category_name'] = cat_map.get(item.get('category_id'), '')
-    
-    return JSONResponse({"items": items})
+
+    return JSONResponse(jsonable_encoder({"items": items}))
 
 
 @router.post("/api/practice/items")

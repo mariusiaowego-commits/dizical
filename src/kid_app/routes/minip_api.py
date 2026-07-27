@@ -14,6 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from src.database import db
+from src import db_adapter  # fix/achievements-mysql-conn (2026-07-24): 跨后端 SQL 适配
 
 router = APIRouter()
 
@@ -187,7 +188,7 @@ def api_achievements():
     results = calc_all()
 
     # 2. 读 achievements 表
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT id, name, type, category, description, threshold, cond_text, "
         "unlock_strategy, achieved_at_override FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
@@ -210,7 +211,7 @@ def api_achievements():
             or ach.get("achieved_at_override")
         )
         if is_commemorative:
-            cur.execute(
+            cur = db_adapter.execute(conn, 
                 "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?",
                 (aid,),
             )
@@ -236,13 +237,21 @@ def api_achievements():
         })
 
     # 4. 分离已解锁/未解锁
+    # fix/achievements-mysql-conn: achieved_at 跨后端 str/date 混, sort + JSON 序列化前统一 str
+    def _strify_achieved_at(badge):
+        # fix/achievements-mysql-conn: MySQL datetime/date 不能直接 JSON 序列化
+        out = dict(badge)
+        if out.get("achieved_at") is not None:
+            out["achieved_at"] = str(out["achieved_at"])
+        return out
+
     unlocked = sorted(
-        [b for b in badges if b["achieved"]],
+        [_strify_achieved_at(b) for b in badges if b["achieved"]],
         key=lambda b: b["achieved_at"] or "",
         reverse=True,
     )
     locked = sorted(
-        [b for b in badges if not b["achieved"]],
+        [_strify_achieved_at(b) for b in badges if not b["achieved"]],
         key=lambda b: b.get("condition") or "",
     )
 
@@ -254,16 +263,16 @@ def api_achievements():
         "earned": len(unlocked),
     })
 
-
 # ─── 盲盒 API（小程序用）────────────────────────────────────────────
 @router.get("/api/blindbox")
 def api_blindbox():
     """返回每日打卡盲盒数据。"""
+    from src.achievement_definitions import _to_date  # 跨后端 date 归一化
     today = dt.date.today()
     conn = db._get_connection()
 
     # 获取当前 stage
-    cur = conn.execute(
+    cur = db_adapter.execute(conn,
         "SELECT stage_start, stage_end, stage_order "
         "FROM weekly_assignments "
         "WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)"
@@ -272,38 +281,40 @@ def api_blindbox():
     if not stage_row:
         return JSONResponse({"ok": True, "blindbox": None})
 
-    stage_start_str = stage_row[0]
-    stage_end_str = stage_row[1]
-    if not stage_start_str:
+    # fix/achievements-mysql-conn: SQLite 返 str 'YYYY-MM-DD', MySQL 返 datetime.date
+    # 用 _to_date 归一化, 后续计算跟 isin 判断都对
+    stage_start = _to_date(stage_row[0])
+    stage_end = _to_date(stage_row[1])
+    if stage_start is None:
         return JSONResponse({"ok": True, "blindbox": None})
-
-    stage_end_date = dt.date.fromisoformat(stage_end_str) if stage_end_str else today
-    stage_start = dt.date.fromisoformat(stage_start_str)
+    stage_end = stage_end or today
     stage_day = (today - stage_start).days + 1
     if stage_day < 1:
         return JSONResponse({"ok": True, "blindbox": None})
     stage_day = min(stage_day, 7)
 
     # 本周打卡天数
-    cur = conn.execute(
+    cur = db_adapter.execute(conn,
         "SELECT COUNT(DISTINCT date) FROM daily_practices WHERE date >= ? AND date <= ?",
-        (stage_start_str, stage_end_date.isoformat()),
+        (stage_start.isoformat(), stage_end.isoformat()),
     )
     checkin_days = cur.fetchone()[0]
 
-    # 每天打卡状态
-    checked_dates = set()
-    cur = conn.execute(
+    # 每天打卡状态 (归一化到 set of date)
+    checked_dates: set = set()
+    cur = db_adapter.execute(conn,
         "SELECT DISTINCT date FROM daily_practices WHERE date >= ? AND date <= ?",
-        (stage_start_str, stage_end_date.isoformat()),
+        (stage_start.isoformat(), stage_end.isoformat()),
     )
-    for row in cur.fetchall():
-        checked_dates.add(row[0])
+    for (d,) in cur.fetchall():
+        nd = _to_date(d)
+        if nd is not None:
+            checked_dates.add(nd)
 
     days = []
     for day in range(1, stage_day + 1):
         day_date = stage_start + dt.timedelta(days=day - 1)
-        is_checked = day_date.isoformat() in checked_dates
+        is_checked = day_date in checked_dates  # set of date 跟 date 比
         days.append({
             "day": day,
             "date": day_date.isoformat(),
@@ -318,8 +329,8 @@ def api_blindbox():
         "ok": True,
         "blindbox": {
             "theme": active_theme,
-            "stage_start": stage_start_str,
-            "stage_end": stage_end_date.isoformat(),
+            "stage_start": stage_start.isoformat(),
+            "stage_end": stage_end.isoformat(),
             "stage_day": stage_day,
             "checkin_days": checkin_days,
             "days": days,

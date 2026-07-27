@@ -9,11 +9,41 @@ dizical 成就定义统一数据源
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
-import sqlite3
+import sqlite3  # 保留类型 hint 用, 实际连接走 src.db_adapter
 import re
 from pathlib import Path
 
+from . import db_adapter
+
+
 _DB_PATH = Path(__file__).parent.parent / "data" / "dizi.db"
+
+
+def _db_conn():
+    """双后端连接入口. fix/achievements-mysql-conn (2026-07-24)
+    替代老版 sqlite3.connect(_DB_PATH), 现在:
+    - DATABASE_URL 以 mysql 开头 → 走 MySQLBackend 工厂
+    - 否则 → SQLite 本地 (兼容本地开发)
+    """
+    return db_adapter.get_conn()
+
+
+def _exec(conn, sql: str, params=()):
+    """统一执行入口, 自动处理 SQLite `?` ↔ MySQL `%s` 占位符.
+    返回 cursor, fetchall/fetchone 行为一致 (row factory 都是 tuple).
+    """
+    return db_adapter.execute(conn, sql, params)
+
+
+def _to_date(v):
+    """跨后端 date 字段归一化. SQLite 返 str 'YYYY-MM-DD', MySQL 返 datetime.date."""
+    if v is None:
+        return None
+    if isinstance(v, date):
+        return v
+    if isinstance(v, str):
+        return date.fromisoformat(v)
+    raise TypeError(f"_to_date: unsupported type {type(v)}")
 
 
 @dataclass
@@ -31,50 +61,73 @@ class CalcResult:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_conn():
-    return sqlite3.connect(_DB_PATH)
+    return _db_conn()
 
 
 def _get_achievements(conn: sqlite3.Connection) -> list[dict]:
     """从 achievements 表读取所有定义，按 sort_order 排序"""
-    cur = conn.execute("SELECT * FROM achievements ORDER BY sort_order")
+    cur = _exec(conn, "SELECT * FROM achievements ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
 def _get_achievement_stats(conn: sqlite3.Connection) -> dict[str, dict]:
     """读 achievement_stats，返回 {id: {achieved, achieved_at, computed_value, ...}}"""
-    cur = conn.execute("SELECT * FROM achievement_stats")
+    cur = _exec(conn, "SELECT * FROM achievement_stats")
     cols = [d[0] for d in cur.description]
     return {row[0]: dict(zip(cols, row)) for row in cur.fetchall()}
 
 
 def _get_practice_dates(conn: sqlite3.Connection) -> list[str]:
     """所有练习日期，倒序"""
-    cur = conn.execute("SELECT date FROM daily_practices ORDER BY date DESC")
+    cur = _exec(conn, "SELECT date FROM daily_practices ORDER BY date DESC")
     return [r[0] for r in cur.fetchall()]
 
 
 def _get_total_mins(conn: sqlite3.Connection) -> int:
-    cur = conn.execute("SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices")
+    cur = _exec(conn, "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices")
     return int(cur.fetchone()[0])
 
 
 def _get_top_items(conn: sqlite3.Connection, limit: int = 3,
                    start: Optional[date] = None, end: Optional[date] = None) -> list[tuple[str, int]]:
-    """累计时长前 N 科目。指定日期范围时做自然月/自然周过滤。"""
+    """累计时长前 N 科目。指定日期范围时做自然月/自然周过滤。
+
+    fix/achievements-mysql-conn (2026-07-24): 不用 SQLite 的 json_each, 改成
+    拉 date+items + practice_items, Python 端解析 JSON 聚合, 跨后端通用.
+    """
+    import json as _json
     where = ""
     params: list = []
     if start and end:
         where = " AND dp.date >= ? AND dp.date <= ? "
         params = [start.isoformat(), end.isoformat()]
-    cur = conn.execute(f"""
-        SELECT pi.name, SUM(je.value->>'$.minutes') as m
-        FROM daily_practices dp, json_each(dp.items) je
-        JOIN practice_items pi ON pi.item_id = je.value->>'$.item_id'
-        WHERE pi.is_archived = 0 {where}
-        GROUP BY pi.name ORDER BY m DESC LIMIT ?
-    """, (*params, limit))
-    return [(r[0], int(r[1])) for r in cur.fetchall()]
+    # 1. 拉所有 item_id -> name 映射 (活跃科目)
+    cur = _exec(conn, "SELECT item_id, name FROM practice_items WHERE is_archived = 0")
+    item_name = {int(r[0]): r[1] for r in cur.fetchall()}
+    # 2. 拉日期范围内的 (date, items) (items 是 JSON 字符串)
+    cur = _exec(conn,
+        f"SELECT items FROM daily_practices WHERE 1=1 {where}",
+        tuple(params))
+    # 3. Python 端聚合 (item_id -> total minutes)
+    minutes_by_id: dict[int, int] = {}
+    for (items_str,) in cur.fetchall():
+        if not items_str:
+            continue
+        try:
+            items = _json.loads(items_str)
+        except (ValueError, TypeError):
+            continue
+        for it in items:
+            iid = it.get("item_id")
+            mins = it.get("minutes") or 0
+            if iid is None:
+                continue
+            minutes_by_id[int(iid)] = minutes_by_id.get(int(iid), 0) + int(mins)
+    # 4. 转 name + 排序
+    pairs = [(item_name.get(iid, f"?{iid}"), mins) for iid, mins in minutes_by_id.items()]
+    pairs.sort(key=lambda x: x[1], reverse=True)
+    return pairs[:limit]
 
 
 def _get_consecutive_streak(dates: list[str], today: date, min_mins: int = 10) -> int:
@@ -95,7 +148,7 @@ def _get_stage_range(conn: sqlite3.Connection) -> tuple[Optional[dict], Optional
     返回（当前stage，上一个stage）的 {stage_start, stage_end, stage_order} 字典。
     当前 stage = MAX(stage_order)。上一个 = MAX(stage_order) - 1。
     """
-    cur = conn.execute("""
+    cur = _exec(conn, """
         SELECT stage_order, stage_start, stage_end
         FROM weekly_assignments
         WHERE stage_order IS NOT NULL
@@ -110,30 +163,36 @@ def _get_stage_range(conn: sqlite3.Connection) -> tuple[Optional[dict], Optional
 
 
 def _get_mins_in_range(conn: sqlite3.Connection, start: date, end: date) -> int:
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date >= ? AND date <= ?",
         (start.isoformat(), end.isoformat()))
     return int(cur.fetchone()[0])
 
 
 def _get_peak_week_mins(conn: sqlite3.Connection) -> int:
-    """历史单周日累计时长最高值"""
-    cur = conn.execute("""
-        SELECT SUM(total_minutes) as wm, strftime('%Y-%W', date) as wy
-        FROM daily_practices GROUP BY wy ORDER BY wm DESC LIMIT 1
-    """)
-    row = cur.fetchone()
-    return int(row[0]) if row else 0
+    """历史单周日累计时长最高值. fix/achievements-mysql-conn: Python group, 跨后端."""
+    cur = _exec(conn, "SELECT date, total_minutes FROM daily_practices")
+    from collections import defaultdict
+    wk_mins = defaultdict(int)
+    for d, m in cur.fetchall():
+        if d is None or m is None: continue
+        dt_v = _to_date(d)
+        # ISO 周: (year, ISO week number)
+        iy, iw, _ = dt_v.isocalendar()
+        wk_mins[(iy, iw)] += int(m or 0)
+    return max(wk_mins.values()) if wk_mins else 0
 
 
 def _get_peak_month_mins(conn: sqlite3.Connection) -> int:
-    """历史单月日累计时长最高值"""
-    cur = conn.execute("""
-        SELECT SUM(total_minutes) as wm, strftime('%Y-%m', date) as my
-        FROM daily_practices GROUP BY my ORDER BY wm DESC LIMIT 1
-    """)
-    row = cur.fetchone()
-    return int(row[0]) if row else 0
+    """历史单月日累计时长最高值. fix/achievements-mysql-conn: Python group."""
+    cur = _exec(conn, "SELECT date, total_minutes FROM daily_practices")
+    from collections import defaultdict
+    mo_mins = defaultdict(int)
+    for d, m in cur.fetchall():
+        if d is None or m is None: continue
+        dt_v = _to_date(d)
+        mo_mins[(dt_v.year, dt_v.month)] += int(m or 0)
+    return max(mo_mins.values()) if mo_mins else 0
 
 
 def _get_all_item_ids(conn: sqlite3.Connection) -> set[int]:
@@ -141,7 +200,7 @@ def _get_all_item_ids(conn: sqlite3.Connection) -> set[int]:
     跟 get_practice_items(active_only=True) 保持一致 (is_active=1 AND is_archived=0).
     2026-06-13 修复: 之前没 is_archived 过滤, 跟 UI 视角不一致.
     """
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT item_id FROM practice_items WHERE is_active=1 AND is_archived=0"
     )
     return {r[0] for r in cur.fetchall()}
@@ -151,7 +210,7 @@ def _get_latest_stage_item_ids(conn: sqlite3.Connection) -> set[int]:
     """最新 stage (MAX stage_order) 的 items 列表.
     2026-06-13: all_items 判定基准从"全局活跃 item 集"改成"最新 stage 老师要求集".
     """
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT items FROM weekly_assignments "
         "WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments) "
         "LIMIT 1"
@@ -178,13 +237,21 @@ def _has_all_items_ever(conn: sqlite3.Connection) -> tuple[bool, str | None]:
     all_item_ids = _get_latest_stage_item_ids(conn)
     if not all_item_ids:
         return False, None
-    cur = conn.execute(
-        "SELECT date, json_each.value->>'$.item_id' FROM daily_practices dp, json_each(dp.items)"
-    )
+    # fix/achievements-mysql-conn (2026-07-24): 不用 SQLite json_each,
+    # 改拉 date+items, Python 解析.
+    cur = _exec(conn, "SELECT date, items FROM daily_practices")
+    import json as _json
     day_items: dict[str, set[int]] = {}
-    for day, iid in cur.fetchall():
-        if iid:
-            day_items.setdefault(day, set()).add(int(iid))
+    for date_str, items_str in cur.fetchall():
+        if not items_str:
+            continue
+        try:
+            items = _json.loads(items_str)
+        except (ValueError, TypeError):
+            continue
+        iids = {int(it["item_id"]) for it in items if it.get("item_id")}
+        if iids:
+            day_items.setdefault(date_str, set()).update(iids)
     if not day_items:
         return False, None
     for day in sorted(day_items.keys()):
@@ -195,7 +262,7 @@ def _has_all_items_ever(conn: sqlite3.Connection) -> tuple[bool, str | None]:
 
 def _has_double_practice(conn: sqlite3.Connection) -> bool:
     """是否存在同日 ≥2 条记录"""
-    cur = conn.execute("""
+    cur = _exec(conn, """
         SELECT date, COUNT(*) as cnt FROM daily_practices
         GROUP BY date HAVING cnt >= 2
     """)
@@ -210,7 +277,7 @@ def _has_double_practice(conn: sqlite3.Connection) -> bool:
 
 def _first_practice_date(conn: sqlite3.Connection) -> str | None:
     """全练习最早一条日期 (total_minutes > 0)."""
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT MIN(date) FROM daily_practices WHERE total_minutes > 0"
     )
     row = cur.fetchone()
@@ -223,7 +290,7 @@ def _streak_first_achieved_at(conn: sqlite3.Connection, n: int) -> str | None:
     算法: DISTINCT date 正序扫, 维护 streak, 第一次 streak >= n 那一天.
     首次练习那一天就是 streak=1 (达成 streak_1).
     """
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT DISTINCT date FROM daily_practices "
         "WHERE total_minutes > 0 ORDER BY date"
     )
@@ -234,8 +301,8 @@ def _streak_first_achieved_at(conn: sqlite3.Connection, n: int) -> str | None:
         return dates[0]  # 首次练习日就是 streak_1 达成日
     streak = 1
     for i in range(1, len(dates)):
-        prev = date.fromisoformat(dates[i - 1])
-        curr = date.fromisoformat(dates[i])
+        prev = _to_date(dates[i - 1])
+        curr = _to_date(dates[i])
         if (curr - prev).days == 1:
             streak += 1
             if streak >= n:
@@ -251,7 +318,7 @@ def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: i
     2026-07-14 加: 跟 _streak_first_achieved_at 区别是只算 injury_date 之后的日期.
     模板抄自 _streak_first_achieved_at, 加 WHERE date >= injury_date 过滤.
     """
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT DISTINCT date FROM daily_practices "
         "WHERE total_minutes > 0 AND date >= ? ORDER BY date",
         (injury_date,),
@@ -263,8 +330,8 @@ def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: i
         return dates[0]
     streak = 1
     for i in range(1, len(dates)):
-        prev = date.fromisoformat(dates[i - 1])
-        curr = date.fromisoformat(dates[i])
+        prev = _to_date(dates[i - 1])
+        curr = _to_date(dates[i])
         if (curr - prev).days == 1:
             streak += 1
             if streak >= n:
@@ -276,7 +343,7 @@ def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: i
 
 def _total_first_achieved_at(conn: sqlite3.Connection, threshold_mins: int) -> str | None:
     """累计 total_minutes 首次 ≥ threshold_mins 的日期 (按 date 正序累加)."""
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT date, total_minutes FROM daily_practices "
         "WHERE total_minutes > 0 ORDER BY date"
     )
@@ -291,7 +358,7 @@ def _total_first_achieved_at(conn: sqlite3.Connection, threshold_mins: int) -> s
 def _double_first_achieved_at(conn: sqlite3.Connection) -> str | None:
     """史上首次同日 ≥2 条 daily_practices 行的最早日期.
     语义同 _has_double_practice, 只是给出日期."""
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT date, COUNT(*) c FROM daily_practices "
         "GROUP BY date HAVING c >= 2 ORDER BY date LIMIT 1"
     )
@@ -304,7 +371,7 @@ def _one_breath_first_achieved_at(conn: sqlite3.Connection) -> str | None:
 
     遍历 daily_practices.items JSON, 找第一个 minutes >= 10 的 item.
     """
-    cur = conn.execute(
+    cur = _exec(conn, 
         "SELECT date, items FROM daily_practices ORDER BY date"
     )
     import json as _json
@@ -398,7 +465,7 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
         try:
             y = int(aid[9:])
             target = f"{y:04d}-06-01"
-            cur = conn.execute(
+            cur = _exec(conn, 
                 "SELECT MIN(date), COALESCE(SUM(total_minutes), 0) "
                 "FROM daily_practices WHERE date = ?",
                 (target,))
@@ -434,7 +501,7 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
         else:
             # 列出"最新 stage 还差哪些"给用户清晰反馈
             latest_ids = _get_latest_stage_item_ids(conn)
-            cur = conn.execute(
+            cur = _exec(conn, 
                 "SELECT name FROM practice_items WHERE is_active=1 AND item_id IN ("
                 + ",".join("?" * len(latest_ids)) + ") ORDER BY item_id",
                 list(latest_ids)) if latest_ids else []
@@ -457,13 +524,26 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
         # 用户 phase2 拍板: 晚上 8 点后 (CST 20:00) 还在练习
         # 跟 early_riser/little_chick_commander/first_to_act 一样的 pattern (PR #87 era 拍板
         # '永久解锁版'): 历史任意一天 practice_at CST hour >= 20 → 永久解锁.
-        cur = conn.execute(
-            "SELECT MIN(date) FROM daily_practices "
-            "WHERE practice_at IS NOT NULL AND practice_at != '' "
-            "AND CAST(strftime('%H', practice_at) AS INT) >= 20"
+        # fix/achievements-mysql-conn: 不用 SQLite strftime, Python 端解析.
+        cur = _exec(conn,
+            "SELECT practice_at FROM daily_practices WHERE practice_at IS NOT NULL"
         )
-        row = cur.fetchone()
-        first_at = row[0] if row else None
+        first_at: str | None = None
+        for (pat,) in cur.fetchall():
+            if not pat:
+                continue
+            # practice_at 格式: 'YYYY-MM-DD HH:MM:SS' (SQLite 返 str, MySQL 返 datetime)
+            pat_str = str(pat)
+            if len(pat_str) < 13:
+                continue
+            hour_part = pat_str[11:13]
+            try:
+                hour = int(hour_part)
+            except ValueError:
+                continue
+            if hour >= 20:
+                first_at = pat_str[:10]
+                break
         return CalcResult(first_at is not None, 1 if first_at else 0, None,
                           first_at, "晚上 8 点后 (CST 20:00) 还在练习")
 
@@ -504,7 +584,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
     # ── daily: 基于 stage 的每日打卡盲盒 ───────────────────────
     if seasonal_type == "daily":
         # 获取当前stage
-        cur = conn.execute("""
+        cur = _exec(conn, """
             SELECT stage_start, stage_end, stage_order 
             FROM weekly_assignments 
             WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
@@ -526,7 +606,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             return CalcResult(False, 0, None, None, "不在stage范围内")
         
         # 计算本周打卡了几天
-        cur = conn.execute("""
+        cur = _exec(conn, """
             SELECT COUNT(DISTINCT date) 
             FROM daily_practices 
             WHERE date >= ? AND date <= ?
@@ -534,7 +614,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         checkin_days = cur.fetchone()[0]
         
         # 判断今天是否已打卡
-        cur = conn.execute("""
+        cur = _exec(conn, """
             SELECT 1 FROM daily_practices WHERE date = ? LIMIT 1
         """, (today.isoformat(),))
         today_checked = cur.fetchone() is not None
@@ -563,7 +643,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             try:
                 y = int(aid[-4:])
                 target = f"{y:04d}-06-01"
-                cur = conn.execute(
+                cur = _exec(conn, 
                     "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date = ?",
                     (target,))
                 mins = int(cur.fetchone()[0])
@@ -595,7 +675,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         threshold = threshold_map[aid]
         # 找历史任意一天, 该天 practice_at 的 CST 小时 < threshold
         # practice_at 是 CST ISO 字符串 'YYYY-MM-DD HH:MM:SS[.fff]'
-        cur = conn.execute(
+        cur = _exec(conn, 
             "SELECT date, practice_at FROM daily_practices "
             "WHERE practice_at IS NOT NULL AND practice_at != '' "
             "ORDER BY date ASC"
@@ -699,21 +779,23 @@ def _persist_unlocked_milestones(conn: sqlite3.Connection,
     for aid, res in results.items():
         if not res.achieved or not res.achieved_at:
             continue
-        cur = conn.execute(
+        cur = _exec(conn, 
             "SELECT achieved FROM achievement_stats WHERE achievement_id = ?", (aid,)
         )
         row = cur.fetchone()
         if row is None:
             # stats 行不存在, INSERT (理论上 migrate_achievements 已经初始化过所有 aid,
             # 兜底防御)
-            conn.execute(
+            # stats 行不存在, INSERT (理论上 migrate_achievements 已经初始化过所有 aid,
+            # 兜底防御)
+            _exec(conn,
                 "INSERT INTO achievement_stats "
                 "(achievement_id, achieved, achieved_at, raw_stats, computed_value) "
                 "VALUES (?, 'Y', ?, '{}', ?)",
                 (aid, res.achieved_at, str(res.computed_value or "1")),
             )
         elif row[0] != "Y":
-            conn.execute(
+            _exec(conn,
                 "UPDATE achievement_stats SET achieved='Y', achieved_at=? "
                 "WHERE achievement_id=? AND achieved != 'Y'",
                 (res.achieved_at, aid),
@@ -727,7 +809,7 @@ def calc_all() -> dict[str, CalcResult]:
     milestone 读 achievement_stats；seasonal 实时计算。
     calc 完毕自动把新解锁的 milestone 写进 stats (持久化 hook).
     """
-    conn = _get_conn()
+    conn, _is_mysql = _get_conn()
     today = dt.date.today()
 
     achievements = _get_achievements(conn)
@@ -764,8 +846,8 @@ def calc_all() -> dict[str, CalcResult]:
 
 def get_achievements_by_type(category: str) -> list[dict]:
     """按 category 过滤 achievements 表数据"""
-    conn = _get_conn()
-    cur = conn.execute(
+    conn, _is_mysql = _get_conn()
+    cur = _exec(conn, 
         "SELECT * FROM achievements WHERE category = ? ORDER BY sort_order",
         (category,))
     cols = [d[0] for d in cur.description]

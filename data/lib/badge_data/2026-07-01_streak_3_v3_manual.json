@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "draft_id": "2026-07-01_streak_3_v3_manual",
+  "created_at": "2026-07-01T09:13:25Z",
+  "version": 1,
+  "meta": {
+    "id": "streak_3",
+    "name": "小火焰",
+    "category": "milestone",
+    "type": "执着",
+    "description": "连续打卡,笛子都被你吹服了!",
+    "zh_story": "祖逖闻鸡起舞,小朋友打卡的热情像一团火苗一样跳动——三天打满成习惯!",
+    "placeholder": "V1 era style: chibi girl + bamboo flute + golden-orange flame halo",
+    "cond_text": "连着打卡 3 天就能拿到"
+  },
+  "image": {
+    "path": "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/2026-07-01_streak_3_v3_manual_v1.png",
+    "version": 1,
+    "alpha_verified": true,
+    "model": "fal-ai/gpt-image-2",
+    "prompt_used": "chibi girl + flute + golden-orange flames"
+  },
+  "status": "committed",
+  "updated_at": "2026-07-01T09:13:25Z",
+  "history": [
+    {
+      "at": "2026-07-01T09:13:25Z",
+      "from": null,
+      "to": "draft_awaiting_confirm",
+      "by": "main-agent",
+      "event": "rembg_blended"
+    },
+    {
+      "at": "2026-07-01T09:13:25Z",
+      "from": "draft_awaiting_confirm",
+      "to": "committed",
+      "by": "dizical",
+      "event": "image_replaced",
+      "badge_id": "streak_3"
+    }
+  ]
+}

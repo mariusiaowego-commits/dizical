@@ -2,6 +2,7 @@
 
 import datetime as dt
 import json
+import os
 import sqlite3
 import sys
 import time
@@ -12,6 +13,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -22,6 +24,42 @@ from src.kid_app.subject_info import get_subject_info
 # ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bamboo Flute Practice")
 
+# CORS: web / Mac app 调 CloudRun 公网 HTTPS 时需要
+# Phase 1 收紧: 只允许 dizical-prod-xxx 域名, spike 阶段先全开
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # spike 阶段全开, Phase 1 改成具体域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─── Health check (CloudRun 健康检查 + spike 验证) ──────────────────────
+@app.get("/health")
+def health():
+    """健康检查: 验证 FastAPI 跑通, 数据库连接 OK"""
+    db_status = "ok"
+    db_error = None
+    record_count = 0
+    try:
+        # 用 get_all_lessons 当 smoke test (业务方法, 验证 ORM + SQLite 都通)
+        lessons = db.get_all_lessons()
+        record_count = len(lessons)
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e)
+
+    return {
+        "status": "ok",
+        "service": "dizical",
+        "env": os.getenv("ENV", "unknown"),
+        "database": db_status,
+        "db_error": db_error,
+        "lesson_count": record_count,
+        "timestamp": dt.datetime.utcnow().isoformat() + "Z",
+    }
+
 static_path = Path(__file__).parent / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
@@ -30,6 +68,11 @@ if static_path.exists():
 _uploads_path = _ROOT / "data" / "uploads"
 _uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads_path)), name="uploads")
+
+# Mount reports (monthly practice report PNG)
+_reports_path = _ROOT / "data" / "reports"
+if _reports_path.exists():
+    app.mount("/data/reports", StaticFiles(directory=str(_reports_path)), name="reports")
 
 # ─── 模板渲染 ───────────────────────────────────────────────────────────────
 from jinja2 import Environment, FileSystemLoader
@@ -66,7 +109,9 @@ def _invalidate_badge_url_cache() -> None:
 def _refresh_badge_url_cache() -> None:
     """从 achievement_badges 表刷一次 is_current=1 的全部 url."""
     with db._get_connection() as conn:
-        cur = conn.execute(
+        # fix/achievements-mysql-conn (2026-07-24): MySQL conn 没 .execute() shortcut, 用 cursor
+        cur = conn.cursor()
+        cur.execute(
             "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1"
         )
         _BADGE_URL_CACHE["data"] = {row[0]: row[1] for row in cur.fetchall()}

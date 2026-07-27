@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "draft_id": "2026-07-14_recovery_first_practice_21_cc8188",
+  "created_at": "2026-07-14T11:54:06Z",
+  "version": 1,
+  "meta": {
+    "id": "recovery_first_practice_21",
+    "name": "病愈连练21天",
+    "type": "突破",
+    "category": "milestone",
+    "placeholder": "a heroic and joyful chibi girl with long black hair and big sparkling anime eyes, wearing an elegant dress with flowing mint-green ribbons, holding her polished bamboo flute high like a victory torch. A small pink bandage styled like a cute heart is wrapped neatly on her tiny finger, fading into floating sparkling golden pixels to represent full healing, surrounded by a massive burst of shimmering holographic stars, rising phoenix feathers, and colorful musical notes floating into the sky The girl has fully recovered — the heart-shaped bandage is gone, revealing fresh pink new skin on her left forearm like a peach blossom just opened. She holds the flute with her full left hand confidently, eyes sparkling with pride. A complete celebration with rising phoenix feathers, full star bursts, and musical notes streaming skyward in victory.",
+    "zh_story": "烫伤后第 21 天。绷带终于摘了, 留下淡粉色的新皮肤 — 像刚开的桃花。她用左手完整握笛, 吹了一首完整的《彩云追月》, 妈妈在手机里录了下来。21 天, 305 次按孔, 0 次放弃。她不再是 \"病愈的孩子\", 她就是 \"会吹笛的孩子\"。",
+    "display_format": "achieved_flag",
+    "sort_order": null,
+    "cond_text": "宝宝左手小臂烫伤后, 坚持恢复竹笛练习 21 天"
+  },
+  "image": {
+    "path": "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/2026-07-14_recovery_first_practice_21_cc8188_v1.png",
+    "model": "fal-ai/gpt-image-2",
+    "prompt_used": "a heroic and joyful chibi girl with long black hair and big sparkling anime eyes, wearing an elegant dress with flowing mint-green ribbons, holding her polished bamboo flute high like a victory torch. A small pink bandage styled like a cute heart is wrapped neatly on her tiny finger, fading into floating sparkling golden pixels to represent full healing, surrounded by a massive burst of shimmering holographic stars, rising phoenix feathers, and colorful musical notes floating into the sky The girl has fully recovered — the heart-shaped bandage is gone, revealing fresh pink new skin on her left forearm like a peach blossom just opened. She holds the flute with her full left hand confidently, eyes sparkling with pride. A complete celebration with rising phoenix feathers, full star bursts, and musical notes streaming skyward in victory.",
+    "alpha_verified": true,
+    "version": 1,
+    "alpha_method": "V2.4 dual-path (PIL 阈值 240 + rembg U2-Net)",
+    "transparency_pct": 37.7,
+    "notes": "v7-1 (一手举笛 + 一手握拳, 左小臂粉色心形绷带) 走去背后给 21 天版本"
+  },
+  "status": "committed",
+  "updated_at": "2026-07-14T11:54:25Z",
+  "history": [
+    {
+      "at": "2026-07-14T11:54:06Z",
+      "from": null,
+      "to": "draft_created",
+      "by": "dizical"
+    },
+    {
+      "at": "2026-07-14T11:54:06Z",
+      "from": "draft_created",
+      "to": "draft_awaiting_confirm",
+      "by": "skill",
+      "event": "image_generated",
+      "note": "v7-1 直接复用, PIL 240 + rembg 兜底去背"
+    },
+    {
+      "at": "2026-07-14T11:54:25Z",
+      "from": "draft_awaiting_confirm",
+      "to": "committed",
+      "by": "dizical",
+      "event": "user_confirmed",
+      "badge_id": "recovery_first_practice_21"
+    }
+  ]
+}

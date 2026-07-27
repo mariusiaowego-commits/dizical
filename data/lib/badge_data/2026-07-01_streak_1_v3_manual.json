@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "draft_id": "2026-07-01_streak_1_v3_manual",
+  "created_at": "2026-07-01T09:10:00Z",
+  "version": 1,
+  "meta": {
+    "id": "streak_1",
+    "name": "初试啼声",
+    "category": "milestone",
+    "type": "执着",
+    "description": "开始你的练习之旅!",
+    "zh_story": "黄帝的乐官伶伦砍竹做笛,第一天做了两根竹管,试吹第一声便引来百鸟——你的练习之旅,从这里开始!",
+    "placeholder": "V1 era style: green anthropomorphic bamboo flute + 4 pink hearts",
+    "cond_text": "打过第一次卡就能拿到"
+  },
+  "image": {
+    "path": "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/2026-07-01_streak_1_v3_manual_v1.png",
+    "version": 1,
+    "alpha_verified": true,
+    "model": "fal-ai/gpt-image-2",
+    "prompt_used": "an emoji-adjacent 3D enamel pin of an anthropomorphic cartoon bamboo flute character come to life. ...green/pink/gold palette..."
+  },
+  "status": "committed",
+  "updated_at": "2026-07-01T09:10:25Z",
+  "history": [
+    {
+      "at": "2026-07-01T09:10:00Z",
+      "from": null,
+      "to": "draft_awaiting_confirm",
+      "by": "main-agent",
+      "event": "rembg_blended"
+    },
+    {
+      "at": "2026-07-01T09:10:25Z",
+      "from": "draft_awaiting_confirm",
+      "to": "committed",
+      "by": "dizical",
+      "event": "image_replaced",
+      "badge_id": "streak_1"
+    }
+  ]
+}

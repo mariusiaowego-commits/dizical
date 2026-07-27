@@ -1,0 +1,27 @@
+{
+  "meta_dict_for_badge_image_skill": {
+    "purpose": "regenerate streak_7.png to fix the wrong number 14 in the original (it should be 7)",
+    "usage_in_hermes": "在 dizical profile 的 hermes chat 里跑: /badge-image <meta_dict_下方>",
+    "draft_id_pattern_required_after_run": "2026-07-01_streak7_retry_<6ch>",
+    "next_step_for_dizical": "拿到 draft_id 后调 POST /config/api/badge/replace-image-from-draft 把 streak_7 老图替换掉"
+  },
+  "meta_to_paste_into_hermes": {
+    "id": "streak_7",
+    "name": "周冠军",
+    "category": "milestone",
+    "type": "执着",
+    "description": "坚持一周,你就是时间管理大师!",
+    "zh_story": "很久很久以前有个人叫祖逖... (跟 achievements 表 zh_story 同, 但不是必需的)",
+    "placeholder": "an emoji-adjacent 3D enamel pin of a chibi girl standing beside a giant, bold golden numeral 7 as the base. The 7 is centered, large, clearly visible, and reads exactly 7 (not 14, not any other digit). The girl has long brown wavy hair with a pink bow, wearing a pink t-shirt with a small musical-note pin and a purple pleated skirt. She holds a bamboo flute in her right hand and stands on a polished gold platform wrapping the numeral 7. Polished gold metal borders enclose flat glossy enamel fills. Pink/cream/gold palette. Studio lighting reflects off the raised gold edges. Orthographic straight-on view, transparent PNG background, isolated object."
+  },
+  "meta_to_paste_alt_softer": {
+    "placeholder": "3D enamel pin badge of a chibi girl standing on a giant golden number 7. The number 7 must be very prominent and clearly the digit 7. Centered design, gold metal edges, transparent background."
+  },
+  "notes_for_agent": [
+    "V2.6 PIL+rembg 双保险去背, 不需手工",
+    "如果 hermes 跑超时 (>60s), 重跑同 prompt 一般就过",
+    "图生成完落 data/lib/badge_data/.tmp/{draft_id}_v1.png",
+    "你审图: 数字必须是 7 不是 14",
+    "OK 后告诉我 draft_id, 我用 replace-image-from-draft 端点 commit"
+  ]
+}
