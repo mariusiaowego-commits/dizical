@@ -1034,9 +1034,10 @@ async def api_update_practice_session(session_id: int, request: Request):
         tempo_note = body.get("tempo_note")
         tempo_bpm = body.get("tempo_bpm")
         content = body.get("content")
-        if not any([tempo_note, tempo_bpm is not None, content]):
+        duration_minutes = body.get("duration_minutes")
+        if not any([tempo_note, tempo_bpm is not None, content, duration_minutes is not None]):
             return JSONResponse({"ok": False, "error": "至少传一个字段"}, status_code=400)
-        updated = db.update_practice_session(int(session_id), tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content)
+        updated = db.update_practice_session(int(session_id), tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content, duration_minutes=duration_minutes)
         return JSONResponse({"ok": True, "session": updated})
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)

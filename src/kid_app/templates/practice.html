@@ -1790,6 +1790,8 @@
       const tempoText = row.querySelector('.rs-tempo')?.textContent || '♪=80';
       const [note, bpmStr] = tempoText.split('=');
       const content = row.querySelector('.rs-content')?.textContent || '';
+      const minsText = row.querySelector('.rs-mins')?.textContent || '1min';
+      const mins = parseInt(minsText) || 1;
       _editingSessionId = sessionId;
       // 回填
       if (note === '♩') {
@@ -1801,6 +1803,7 @@
       }
       document.getElementById('emBpm').value = bpmStr || '80';
       document.getElementById('emContent').value = content;
+      document.getElementById('emDuration').value = mins;
       document.getElementById('editSessionModal').classList.add('open');
       gsap.fromTo('#editSessionModal .edit-modal-box', { scale:0.85, opacity:0 }, { scale:1, opacity:1, duration:0.2, ease:'back.out(1.5)' });
       // 音符切换事件
@@ -1820,11 +1823,12 @@
       const note = document.querySelector('#editSessionModal .em-note-btn.selected')?.dataset?.note || '♪';
       const bpm = parseInt(document.getElementById('emBpm')?.value) || 80;
       const content = document.getElementById('emContent')?.value?.trim() || '';
+      const duration = parseInt(document.getElementById('emDuration')?.value) || 1;
       try {
         let res = await fetch('/api/practice-sessions/' + _editingSessionId, {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ tempo_note: note, tempo_bpm: bpm, content: content }),
+          body: JSON.stringify({ tempo_note: note, tempo_bpm: bpm, content: content, duration_minutes: duration }),
         });
         let result = await res.json();
         if (result.ok) {
@@ -2173,6 +2177,9 @@
       <button type="button" class="tempo-note-mini em-note-btn" id="emNoteM" data-note="♩">♩</button>
       <span>=</span>
       <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="150" value="80" style="width:60px">
+      <span style="margin-left:12px">时长</span>
+      <input type="number" id="emDuration" min="1" max="60" value="1" style="width:50px;padding:4px 6px;border-radius:6px;border:1px solid #ddd;text-align:center">
+      <span>min</span>
     </div>
     <div class="em-row">
       <input type="text" class="form-input" id="emContent" maxlength="200" placeholder="练什么?" style="flex:1">

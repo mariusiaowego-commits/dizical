@@ -1187,18 +1187,22 @@ class Database:
         tempo_note: Optional[str] = None,
         tempo_bpm: Optional[int] = None,
         content: Optional[str] = None,
+        duration_minutes: Optional[int] = None,
     ) -> Optional[Dict]:
-        """更新 session 的 tempo/content (不改 duration).
-        tempo_note: '♪'|'♩' (非空才改), tempo_bpm: 40-150 (非 None 才改).
-        更新 practice_items 冗余列.
+        """更新 session 的 tempo/content/duration.
+        duration_minutes 变化时自动重算 daily 汇总 + 写 audit.
         """
-        self._validate_session_fields(tempo_note or '♪', tempo_bpm or 80, 1, content or 'x')
+        self._validate_session_fields(tempo_note or '♪', tempo_bpm or 80, duration_minutes or 1, content or 'x')
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM practice_sessions WHERE id = ?", (session_id,))
             row = cursor.fetchone()
             if not row:
                 raise ValueError(f"session_id={session_id} 不存在")
+            old_duration = row["duration_minutes"]
+            new_duration = duration_minutes if duration_minutes is not None else old_duration
+
+            # 1. 更新 session 字段
             updates = []
             params = []
             if tempo_note:
@@ -1207,14 +1211,45 @@ class Database:
                 updates.append("tempo_bpm = ?"); params.append(tempo_bpm)
             if content is not None:
                 updates.append("content = ?"); params.append(content)
-            if not updates:
-                return dict(row)
-            params.append(session_id)
-            cursor.execute(f"UPDATE practice_sessions SET {', '.join(updates)} WHERE id = ?", params)
-            # 同步冗余列
+            if duration_minutes is not None:
+                updates.append("duration_minutes = ?"); params.append(duration_minutes)
+            if updates:
+                params.append(session_id)
+                cursor.execute(f"UPDATE practice_sessions SET {', '.join(updates)} WHERE id = ?", params)
+
+            # 2. 时长变了 → 重算 daily 汇总
+            if duration_minutes is not None and new_duration != old_duration:
+                delta = new_duration - old_duration
+                practice_date = row["practice_date"]
+                item_id = row["item_id"]
+                cursor.execute("SELECT items FROM daily_practices WHERE date = ?", (practice_date,))
+                drow = cursor.fetchone()
+                if drow:
+                    from json import loads as _loads, dumps as _dumps
+                    items = _loads(drow["items"]) if drow["items"] else []
+                    new_total = 0
+                    for it in items:
+                        if it.get("item_id") == item_id:
+                            it["minutes"] = max(0, it.get("minutes", 0) + delta)
+                        new_total += it.get("minutes", 0)
+                    cursor.execute(
+                        "UPDATE daily_practices SET items = ?, total_minutes = ? WHERE date = ?",
+                        (_dumps(items, ensure_ascii=False), new_total, practice_date),
+                    )
+                    # 写 audit
+                    cursor.execute(
+                        """INSERT INTO practice_audit_log
+                           (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        ("internal", "update_session_duration", practice_date,
+                         _dumps([{"session_id": session_id, "old_minutes": old_duration, "new_minutes": new_duration}]),
+                         _dumps([]), delta, None, str(session_id)),
+                    )
+
+            # 3. 同步冗余列
             cursor.execute("SELECT tempo_note, tempo_bpm FROM practice_sessions WHERE id = ?", (session_id,))
             s = cursor.fetchone()
-            if s:
+            if s and s["tempo_note"]:
                 cursor.execute(
                     "UPDATE practice_items SET last_tempo_note=?, last_tempo_bpm=?, last_session_at=datetime('now') WHERE item_id=?",
                     (s["tempo_note"], s["tempo_bpm"], row["item_id"]),
