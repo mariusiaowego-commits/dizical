@@ -896,14 +896,19 @@ def api_practices_monthly(month: str):
 
 @app.get("/api/practices/{date_str}")
 def api_practice_day(date_str: str):
-    """返回指定日期的练习明细"""
+    """返回指定日期的练习明细 (兼容旧 items 字段, 2026-07-27 新增 sessions[])"""
     try:
         day = dt.date.fromisoformat(date_str)
     except ValueError:
         return JSONResponse({"error": "无效日期格式"}, status_code=400)
     practice = db.get_daily_practice(day)
     if not practice:
-        return JSONResponse({"date": date_str, "id": None, "items": [], "total_minutes": 0, "log": ""})
+        return JSONResponse({
+            "date": date_str, "id": None, "items": [], "total_minutes": 0,
+            "log": "", "behavior_log": [], "sessions": [],
+        })
+    # 2026-07-27: 新增 sessions[] (按时间升序), 老客户端不读这个字段无影响
+    sessions = db.get_practice_sessions(day)
     return JSONResponse({
         "date": date_str,
         "id": practice.get("id"),
@@ -911,6 +916,104 @@ def api_practice_day(date_str: str):
         "total_minutes": practice.get("total_minutes", 0),
         "log": practice.get("log", ""),
         "behavior_log": practice.get("behavior_log", []),
+        "sessions": sessions,
+    })
+
+
+# 2026-07-27: 新增 session 专用端点 (PRD: AI-PRD-练习计时细分内容-260727.md)
+# ⚠️ 路由顺序: 静态路径 (/latest) 必须在变量路径 (/{date_str}) 之前
+# 跟 sibling endpoint param parsing 7-23 教训一致 (PR #165)
+@app.get("/api/practice-sessions/latest")
+def api_practice_sessions_latest(item_id: int):
+    """返回某 item_id 最近一次 session (Q1=B 速度默认值用).
+
+    优先读 practice_items 冗余列 (last_tempo_note/last_tempo_bpm), 走 save 时同步,
+    避免每次切科目查整张 sessions 表.
+    """
+    if not item_id:
+        return JSONResponse({"ok": False, "error": "缺少 item_id"}, status_code=400)
+    tempo = db.get_latest_session_tempo(int(item_id))
+    if not tempo:
+        return JSONResponse({
+            "ok": True,
+            "found": False,
+            "item_id": item_id,
+            "tempo_note": None,
+            "tempo_bpm": None,
+        })
+    return JSONResponse({
+        "ok": True,
+        "found": True,
+        "item_id": item_id,
+        "tempo_note": tempo["last_tempo_note"],
+        "tempo_bpm": tempo["last_tempo_bpm"],
+        "last_session_at": tempo.get("last_session_at"),
+    })
+
+
+@app.get("/api/practice-sessions/{date_str}")
+def api_practice_sessions(date_str: str, item_id: Optional[int] = None):
+    """返回某日全部 session, 可选 ?item_id= 过滤. 顺序: created_at ASC."""
+    try:
+        day = dt.date.fromisoformat(date_str)
+    except ValueError:
+        return JSONResponse({"ok": False, "error": "无效日期格式"}, status_code=400)
+    sessions = db.get_practice_sessions(day, item_id=item_id)
+    return JSONResponse({
+        "ok": True,
+        "date": date_str,
+        "count": len(sessions),
+        "sessions": sessions,
+    })
+
+
+@app.delete("/api/practice-sessions/{session_id}")
+async def api_delete_practice_session(session_id: int):
+    """删单条 session, 重算 daily 汇总, 写 audit."""
+    try:
+        db.delete_practice_session(int(session_id))
+        return JSONResponse({"ok": True, "session_id": session_id})
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=404)
+    except Exception as e:
+        import traceback, logging
+        logging.error(f"API error: {e}\n{traceback.format_exc()}")
+        return JSONResponse({"ok": False, "error": "服务器内部错误"}, status_code=500)
+
+
+@app.get("/api/assignments/latest")
+def api_assignments_latest(item_id: int):
+    """返回某 item_id 最近一次 assignment 的 metronome 字段 (Q1=B fallback 用).
+
+    metronome 字段格式: '♩=82' / '♪=85' (跟 weekly_assignments.items[].metronome 保持一致).
+    解析失败 → 返回 found=False, 让前端走硬编码 ♪/80 fallback.
+    """
+    import re
+    if not item_id:
+        return JSONResponse({"ok": False, "error": "缺少 item_id"}, status_code=400)
+    target_id = int(item_id)
+    assignments = practice_module.query_assignments(weeks=8)
+    # 按 lesson_date 倒序 (最新在前), 找 metronome 含目标 item_id 的第一条
+    for a in assignments:
+        for it in a.get("items", []):
+            if it.get("item_id") == target_id:
+                metronome = (it.get("metronome") or "").strip()
+                m = re.match(r"^([♪♩♬♯])=(\d+)$", metronome)
+                if m:
+                    return JSONResponse({
+                        "ok": True,
+                        "found": True,
+                        "item_id": target_id,
+                        "tempo_note": m.group(1),
+                        "tempo_bpm": int(m.group(2)),
+                        "lesson_date": a.get("lesson_date"),
+                    })
+    return JSONResponse({
+        "ok": True,
+        "found": False,
+        "item_id": target_id,
+        "tempo_note": None,
+        "tempo_bpm": None,
     })
 
 @app.get("/api/practices/stage/{date_str}")
@@ -1029,6 +1132,16 @@ async def api_log(request: Request):
 
         item_id = body.get("item_id")
 
+        # 2026-07-27: 练习计时细分内容 (PRD: AI-PRD-练习计时细分内容-260727.md)
+        # 路由: 有 4 字段全部传 → 走事务方法, 否则走旧 save_daily_practice 兼容
+        has_session_detail = all(
+            k in body for k in ("tempo_note", "tempo_bpm", "content")
+        )
+        tempo_note = body.get("tempo_note", "♪")
+        tempo_bpm = int(body.get("tempo_bpm", 80))
+        content = body.get("content", "")
+        content_source = body.get("content_source", "manual")
+
         if is_extra:
             # extra 追加：创建独立 item 条目，通过 save_daily_practice 合并
             # 同名 item 累加分钟数；不同 item 追加
@@ -1039,9 +1152,42 @@ async def api_log(request: Request):
             # extra 追加也要记录 behavior_log
             for entry in behavior_entries:
                 db.append_behavior_log(date, entry)
-            return JSONResponse({"ok": True})
+            # 2026-07-27: extra 也可带细节 (新前端会传)
+            if has_session_detail:
+                try:
+                    s = db.save_practice_session_and_daily_summary(
+                        date, item_name, int(item_id), minutes,
+                        tempo_note, tempo_bpm, content, content_source,
+                        practice_at=practice_at, is_extra=True,
+                    )
+                    return JSONResponse({"ok": True, "total": minutes, "session": s})
+                except ValueError as e:
+                    return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+            return JSONResponse({"ok": True, "total": minutes})
 
-        # 正常打卡：直接传给 save_daily_practice，由它处理合并逻辑
+        # 正常打卡路径
+        if has_session_detail:
+            # 新路径: 写 session + 同步 daily + 写 audit + 更新冗余列 (整事务)
+            try:
+                s = db.save_practice_session_and_daily_summary(
+                    date, item_name, int(item_id), minutes,
+                    tempo_note, tempo_bpm, content, content_source,
+                    practice_at=practice_at, is_extra=False,
+                )
+                # 保留旧 behavior_log 行为, 但新前端不再发 behavior_log, 这里降级处理
+                for entry in behavior_entries:
+                    db.append_behavior_log(date, entry)
+                daily = db.get_daily_practice(date)
+                return JSONResponse({
+                    "ok": True,
+                    "total": daily["total_minutes"] if daily else minutes,
+                    "session": s,
+                })
+            except ValueError as e:
+                # 后端兜底校验 (防绕过, 但不向用户展示技术细节)
+                return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+        # 旧路径: 走 save_daily_practice 兼容逻辑 (不创建空 session, 避免污染 sessions 表)
         # 注意：只传 [{item, item_id, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
         items = [{"item": item_name, "item_id": item_id, "minutes": minutes}]
         total = minutes  # save_daily_practice 会重新计算，这里只作返回值参考

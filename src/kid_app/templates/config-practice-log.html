@@ -499,6 +499,26 @@
       gap: 8px;
     }
 
+    /* 2026-07-27: 补录 tempo row (紧凑版) */
+    .log-tempo-row {
+      display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;
+    }
+    .log-tempo-row .tempo-note-mini {
+      padding: 3px 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;
+      cursor: pointer; background: #fff; color: #8B6914; font-weight: 600;
+    }
+    .log-tempo-row .tempo-note-mini.selected {
+      background: #FF6B6B; color: #fff; border-color: #FF6B6B;
+    }
+    .log-tempo-row .tempo-bpm-mini {
+      width: 56px; padding: 4px 6px; font-size: 13px; border-radius: 6px;
+      border: 1px solid #ddd; text-align: center;
+    }
+    .log-tempo-row .tempo-content-mini {
+      flex: 1; min-width: 120px; padding: 4px 8px; font-size: 13px;
+      border-radius: 6px; border: 1px solid #ddd;
+    }
+
     .log-entry-row .entry-bottom textarea {
       flex: 1;
       min-height: 100px;
@@ -771,6 +791,9 @@ function renderLogEntries() {
   const container = document.getElementById('logEntries');
   container.innerHTML = '';
   logEntries.forEach((entry, i) => {
+    if (!entry.tempo_note) entry.tempo_note = '♪';
+    if (!entry.tempo_bpm) entry.tempo_bpm = 80;
+    if (!entry.content) entry.content = '';
     const row = document.createElement('div');
     row.className = 'log-entry-row';
     row.innerHTML = `
@@ -781,9 +804,18 @@ function renderLogEntries() {
         </select>
         <input type="number" class="form-input minutes-input" data-idx="${i}" placeholder="分钟" value="${entry.minutes || ''}" min="1" style="width:80px">
         <button class="remove-btn" data-idx="${i}">×</button>
+      </div>
+      <div class="log-tempo-row" data-idx="${i}">
+        <button type="button" class="tempo-note-mini${entry.tempo_note === '♪' ? ' selected' : ''}" data-note="♪" data-idx="${i}">♪</button>
+        <button type="button" class="tempo-note-mini${entry.tempo_note === '♩' ? ' selected' : ''}" data-note="♩" data-idx="${i}">♩</button>
+        <span>=</span>
+        <input type="number" class="tempo-bpm-mini" data-idx="${i}" value="${entry.tempo_bpm}" min="40" max="150">
+        <input type="text" class="tempo-content-mini" data-idx="${i}" placeholder="练什么?" value="${entry.content || ''}" maxlength="200">
       </div>`;
     container.appendChild(row);
   });
+
+  // 事件: item select / minutes
   container.querySelectorAll('.item-select').forEach(sel => {
     sel.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
@@ -798,6 +830,32 @@ function renderLogEntries() {
       logEntries[idx].minutes = parseInt(e.target.value) || 0;
     });
   });
+
+  // 事件: tempo note 切换
+  container.querySelectorAll('.tempo-note-mini').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      const row = container.querySelector(`.log-tempo-row[data-idx="${idx}"]`);
+      row.querySelectorAll('.tempo-note-mini').forEach(b => b.classList.remove('selected'));
+      e.target.classList.add('selected');
+      logEntries[idx].tempo_note = e.target.dataset.note;
+    });
+  });
+  // 事件: tempo bpm
+  container.querySelectorAll('.tempo-bpm-mini').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      logEntries[idx].tempo_bpm = parseInt(e.target.value) || 80;
+    });
+  });
+  // 事件: content
+  container.querySelectorAll('.tempo-content-mini').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      logEntries[idx].content = e.target.value;
+    });
+  });
+  // 事件: remove
   container.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       const idx = parseInt(e.target.dataset.idx);
@@ -835,17 +893,19 @@ document.getElementById('submitLogBtn').addEventListener('click', async () => {
   }
 
   for (const entry of validEntries) {
+    const body = {
+      date, item: entry.item, item_id: entry.item_id,
+      minutes: entry.minutes, log: note, practice_at: practiceAt,
+    };
+    if (entry.content && entry.content.trim()) {
+      body.tempo_note = entry.tempo_note || '♪';
+      body.tempo_bpm = entry.tempo_bpm || 80;
+      body.content = entry.content.trim();
+    }
     await fetch('/api/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date,
-        item: entry.item,
-        item_id: entry.item_id,
-        minutes: entry.minutes,
-        log: note,
-        practice_at: practiceAt,
-      }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -864,7 +924,28 @@ async function loadTodayHistory() {
     const data = await res.json();
     const card = document.getElementById('todayHistory');
     const content = document.getElementById('todayHistoryContent');
-    if (data.items && data.items.length) {
+    let html = '';
+    if (data.sessions && data.sessions.length) {
+      // 2026-07-27: 优先 sessions[] 展示细节
+      let lastItem = '';
+      data.sessions.forEach(s => {
+        if (s.item_name !== lastItem) {
+          if (lastItem) html += '</div>';
+          html += `<div style="margin-bottom:8px;padding:8px;background:#fdfdfb;border-radius:8px;border:1px solid #f0e8d0">
+            <div style="font-weight:700;color:#5D4037;margin-bottom:4px">${s.item_name}</div>`;
+          lastItem = s.item_name;
+        }
+        html += `<div style="display:flex;gap:8px;align-items:center;padding:2px 0 2px 8px;border-left:2px solid #e8d8b0;margin:2px 0;font-size:13px">
+          <span style="color:#8B6914;font-weight:600">${s.tempo_note}=${s.tempo_bpm}</span>
+          <span style="color:#5D4037;flex:1">${s.content || ''}</span>
+          <span style="color:#A88B5C;font-size:12px">${s.duration_minutes}min</span>
+        </div>`;
+      });
+      if (lastItem) html += '</div>';
+      if (data.log) html += `<p style="color:#7F8C8D;font-size:13px;margin-top:8px">📝 ${data.log}</p>`;
+      card.style.display = 'block';
+      content.innerHTML = html || '<p style="color:#aaa">无今日练习</p>';
+    } else if (data.items && data.items.length) {
       card.style.display = 'block';
       content.innerHTML = data.items.map(it =>
         `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)">

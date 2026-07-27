@@ -382,6 +382,68 @@
     .confirm-area p { font-size: 20px; color: #2E7D32; margin-bottom: 12px; }
     .confirm-area .confirm-mins { font-size: 48px; font-weight: bold; color: #27AE60; display: block; margin: 8px 0; }
 
+    /* ═══ 2026-07-27: 本次练习 panel (Q1/B+Q3/A 拍板) ═══
+       - 默认 ♪/80 (D 列 fallback / 切换科目重算 Q1=B)
+       - 内容必填 (Q3=A 提交按钮 disabled 状态机)
+       - 计时中 enabled (Q2=A 边练边改)
+       - dizicute token + SVG, 无 emoji */
+    .session-panel {
+      background: linear-gradient(180deg, #FFFDF8 0%, #FFF8F0 100%);
+      border: 1.5px solid #F0E0B8;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 8px 0 10px;
+      display: flex; flex-direction: column; gap: 10px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(0,0,0,0.04) inset, 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .sp-header {
+      font-size: 12px; font-weight: 700;
+      color: #8B6914; letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .sp-tempo-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .sp-tempo-label {
+      font-size: 13px; font-weight: 600; color: #5D4037;
+      min-width: 36px;
+    }
+    .sp-tempo-note-group {
+      display: flex; gap: 4px; background: #FFF; border: 1px solid #E0D0A0;
+      border-radius: 10px; padding: 2px;
+    }
+    .sp-tempo-note-btn {
+      background: transparent; border: none; padding: 6px 12px;
+      border-radius: 8px; font-size: 18px; font-weight: 600;
+      color: #8B6914; cursor: pointer; font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sp-tempo-note-btn.selected {
+      background: #FF6B6B; color: #fff;
+      box-shadow: 0 2px 4px rgba(255,107,107,0.3);
+    }
+    .sp-tempo-note-btn:not(.selected):hover { background: #FFF0D8; }
+    .sp-tempo-eq { font-size: 16px; font-weight: 600; color: #8B6914; }
+    .sp-tempo-bpm-input {
+      width: 64px; padding: 6px 8px; font-size: 16px; font-weight: 600;
+      border: 1px solid #E0D0A0; border-radius: 8px; text-align: center;
+      font-family: inherit; color: #5D4037; background: #fff;
+    }
+    .sp-tempo-bpm-input:focus { outline: 2px solid #FF6B6B; outline-offset: -2px; }
+    .sp-tempo-hint {
+      font-size: 12px; color: #A88B5C; margin-left: auto;
+      font-style: italic;
+    }
+    .sp-content-input {
+      width: 100%; padding: 8px 12px; font-size: 14px;
+      border: 1px solid #E0D0A0; border-radius: 10px;
+      font-family: inherit; color: #5D4037; background: #fff;
+      box-sizing: border-box;
+    }
+    .sp-content-input:focus { outline: 2px solid #FF6B6B; outline-offset: -2px; border-color: #FF6B6B; }
+    .sp-content-input::placeholder { color: #C0A878; font-style: italic; }
+    /* Q3=A 提交按钮 disabled 视觉提示 (不改色, 沿用现有 .btn-primary:disabled opacity) */
+
     /* 额外记录日志 */
     .extra-log-item {
       display: flex; align-items: center; justify-content: space-between;
@@ -397,6 +459,18 @@
     .dizi-picker-knob.dragging { cursor: grabbing; }
     .extra-log-item .extra-mins { color: #2E7D32; font-weight: bold; }
     .extra-log-item .extra-del { background: #FF6B6B; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+
+    /* 2026-07-27: session 记录展示 (科目分组 + 细节行) */
+    .record-group { margin-bottom: 10px; background: #FFFEFA; border-radius: 10px; padding: 8px 10px; border: 1px solid #F0E8D0; }
+    .record-group-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; border-bottom: 1px dashed #E8D8B0; margin-bottom: 4px; }
+    .rg-name { font-size: 14px; font-weight: 700; color: #5D4037; }
+    .rg-mins { font-size: 13px; font-weight: 600; color: #FF6B6B; }
+    .record-session { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px 8px; font-size: 13px; color: #6D5540; border-left: 2px solid #E8D8B0; margin: 2px 0; }
+    .rs-tempo { font-weight: 600; color: #8B6914; min-width: 50px; }
+    .rs-content { flex: 1; color: #5D4037; }
+    .rs-mins { color: #A88B5C; font-size: 12px; min-width: 40px; text-align: right; }
+    .rs-del { background: none; border: 1px solid #E0D0A0; color: #C06060; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer; }
+    .rs-del:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
 
     /* 练习科目 */
     .item-section { margin-bottom: 12px; }
@@ -721,6 +795,21 @@
               <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
             </div>
           </div>
+        </div>
+        <!-- ═══ 2026-07-27: 本次练习 (tempo + content) — 移出 picker-col, 占整宽, 布局更稳 ═══ -->
+        <div class="session-panel" id="sessionPanel">
+          <div class="sp-header">本次练习</div>
+          <div class="sp-tempo-row">
+            <div class="sp-tempo-label">速度</div>
+            <div class="sp-tempo-note-group" role="group" aria-label="音符">
+              <button type="button" class="sp-tempo-note-btn selected" data-note="♪" id="tempoNoteQuaver">♪</button>
+              <button type="button" class="sp-tempo-note-btn" data-note="♩" id="tempoNoteMinim">♩</button>
+            </div>
+            <span class="sp-tempo-eq">=</span>
+            <input type="number" class="sp-tempo-bpm-input" id="tempoBpmInput" min="40" max="150" step="1" value="80" aria-label="BPM">
+            <div class="sp-tempo-hint" id="tempoHint">♪ = 80 (默认)</div>
+          </div>
+          <input type="text" class="sp-content-input" id="sessionContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="本次练习内容">
         </div>
         <!-- 补录 picker -->
         <div class="picker-card" id="extraSection">
@@ -1181,42 +1270,80 @@
     }
 
     // ── 计时器主逻辑 ──
+    // ── 本次练习 速度默认值 ▼ (Q1=B: session 优先 → D 列 fallback, 2026-07-27) ──
+    let _defaultTempoLoaded = {};
+    async function fillSessionDefaults(itemId) {
+      if (!itemId || _defaultTempoLoaded[itemId]) return;
+      _defaultTempoLoaded[itemId] = true;
+      try {
+        let resp = await fetch('/api/practice-sessions/latest?item_id=' + itemId);
+        let d = await resp.json();
+        if (d.found) {
+          applyTempo(d.tempo_note, d.tempo_bpm, '上次');
+          return;
+        }
+      } catch(e) {}
+      // 2. fallback: 查 assignments 表
+      try {
+        let resp = await fetch('/api/assignments/latest?item_id=' + itemId);
+        let d = await resp.json();
+        if (d.found && d.tempo_note) {
+          applyTempo(d.tempo_note, d.tempo_bpm, '老师要求');
+          return;
+        }
+      } catch(e) {}
+      // 3. 默认 ♪/80
+      applyTempo('♪', 80, '默认');
+    }
+    function applyTempo(note, bpm, source) {
+      document.querySelectorAll('.sp-tempo-note-btn').forEach(b => b.classList.remove('selected'));
+      const targetBtn = note === '♩' ? document.getElementById('tempoNoteMinim') : document.getElementById('tempoNoteQuaver');
+      if (targetBtn) targetBtn.classList.add('selected');
+      const bpmInput = document.getElementById('tempoBpmInput');
+      if (bpmInput) bpmInput.value = bpm;
+      const hint = document.getElementById('tempoHint');
+      if (hint) hint.textContent = note + ' = ' + bpm + ' (' + source + ')';
+    }
+    // ── Q3=A 提交按钮状态机 (内容必填) ──
+    function updateStartBtnState() {
+      const btn = document.getElementById('startBtn');
+      if (!selectedItemId) { btn.disabled = true; return; }
+      const content = (document.getElementById('sessionContentInput')?.value || '').trim();
+      if (!content) { btn.disabled = true; return; }
+      const bpm = parseInt(document.getElementById('tempoBpmInput')?.value) || 0;
+      if (bpm < 40 || bpm > 150) { btn.disabled = true; return; }
+      btn.disabled = false;
+    }
+    // ── selectItem: 选科目 + 触发默认值填充 + 状态机 ──
     function selectItem(name, id, btn, e) {
       if (e) e.stopPropagation();
       document.querySelectorAll('.archived-item-btn').forEach(b => b.classList.remove('selected'));
       document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('selected'));
-      // 移除旧脉冲环
       document.querySelectorAll('.sel-ring').forEach(r => r.remove());
       if (btn) {
         btn.classList.add('selected');
-        // 添加脉冲环
-        const ring = document.createElement('div');
-        ring.className = 'sel-ring';
-        btn.appendChild(ring);
+        const ring = document.createElement('div'); ring.className = 'sel-ring'; btn.appendChild(ring);
         setTimeout(() => { if (ring.parentNode) ring.remove(); }, 1500);
       }
+      // 切科目时清空内容 + 重置 _defaultTempoLoaded (Q1=B 重新查)
+      const contentInput = document.getElementById('sessionContentInput');
+      if (contentInput) contentInput.value = '';
+      if (selectedItemId !== id) { delete _defaultTempoLoaded[id]; }
       selectedItem = name;
       selectedItemId = id;
       resetTimer();
       refreshExtraSection();
-
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(btn);
-
-      // 更新选中摘要
       updateSelectedSummary(name, id, reqText, btn);
-
-      // 收拢选择区
       collapseSelection();
-
-      // 更新选中科目气泡
       const bubble = document.getElementById('itemBubble');
       const bubbleName = document.getElementById('bubbleName');
-      bubbleName.textContent = name;
-      bubble.style.display = 'flex';
+      bubbleName.textContent = name; bubble.style.display = 'flex';
       bubble.classList.remove('animate');
       requestAnimationFrame(() => { bubble.classList.add('animate'); });
-      document.getElementById('startBtn').disabled = false;
+      fillSessionDefaults(id);
+      updateStartBtnState();
       document.getElementById('addExtraBtn').disabled = false;
       const addBtn = document.getElementById('addExtraBtn');
       if (addBtn) addBtn.disabled = !selectedItemId;
@@ -1240,8 +1367,9 @@
       const valueEl = document.getElementById('timerValue');
       if (valueEl) valueEl.textContent = '10';
       document.getElementById('timer-display').textContent = '00:00';
+      document.getElementById('startBtn').disabled = true;
       document.getElementById('startBtn').textContent = '开始';
-      document.getElementById('startBtn').disabled = !selectedItemId;
+      updateStartBtnState();
       document.getElementById('finishEarlyBtn').style.display = 'none';
       const confirmArea = document.getElementById('confirmArea');
       if (confirmArea) confirmArea.classList.remove('show');
@@ -1447,10 +1575,24 @@
       if (finalMins === 0) return;
       submitting = true;
       try {
+        let body = {
+          date: todayDate, item: selectedItem, item_id: selectedItemId,
+          minutes: finalMins, log: '',
+          behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]
+        };
+        // 2026-07-27: 本次练习 速度 + 内容 (Q3=A 必填, 后端/前端双检)
+        const noteEl = document.querySelector('.sp-tempo-note-btn.selected');
+        const bpmEl = document.getElementById('tempoBpmInput');
+        const contentEl = document.getElementById('sessionContentInput');
+        if (noteEl && bpmEl && contentEl && contentEl.value.trim()) {
+          body.tempo_note = noteEl.dataset.note || '♪';
+          body.tempo_bpm = parseInt(bpmEl.value) || 80;
+          body.content = contentEl.value.trim();
+        }
         let res = await fetch('/api/log', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({date: todayDate, item: selectedItem, item_id: selectedItemId, minutes: finalMins, log: '', behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]})
+          body: JSON.stringify(body)
         });
         let json = await res.json();
         if (json.ok) {
@@ -1566,11 +1708,25 @@
       } catch(e) { console.error(e); }
     }
 
-    // Load today's records from API
-    function renderTodayRecords(items, total) {
+    // Load today's records from API (2026-07-27: sessions[] 优先)
+    function renderTodayRecords(items, total, sessions) {
       let recordsList = document.getElementById('recordsList');
       let card = document.querySelector('.today-records');
-      if (!items || items.length === 0) {
+      // 优先用 sessions[] 展示科目+细节分组
+      if (sessions && sessions.length > 0) {
+        let html = '';
+        let lastItem = '';
+        sessions.forEach(s => {
+          if (s.item_name !== lastItem) {
+            if (lastItem) html += '</div>';
+            html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + s.item_name + '</span><span class="rg-mins">' + (items.find(i => i.item_id === s.item_id)?.minutes || 0) + ' 分钟</span></div>';
+            lastItem = s.item_name;
+          }
+          html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
+        });
+        if (lastItem) html += '</div>';
+        recordsList.innerHTML = html || '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
+      } else if (!items || items.length === 0) {
         recordsList.innerHTML = '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
         card.classList.remove('visible');
       } else {
@@ -1583,10 +1739,10 @@
             <button class="delete-btn" onclick="deleteRecord(${it.item_id})">✕</button>
           </div>
         `).join('');
-        card.classList.add('visible');
-        gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
-        gsap.fromTo('.record-item', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
       }
+      card.classList.add('visible');
+      gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
+      gsap.fromTo('.record-item, .record-group', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
       document.querySelector('.today-stat').textContent = '今日已练习: ' + total + ' 分钟';
     }
 
@@ -1594,10 +1750,24 @@
       try {
         let res = await fetch('/api/practices/' + todayDate);
         let data = await res.json();
-        renderTodayRecords(data.items || [], data.total_minutes || 0);
+        renderTodayRecords(data.items || [], data.total_minutes || 0, data.sessions || []);
       } catch(e) {
         document.getElementById('recordsList').innerHTML = '<div class="empty-records">加载失败: ' + e.message + '</div>';
       }
+    }
+
+    // 2026-07-27: 删单条 session (不是旧 deleteRecord 整个 item 删)
+    async function deleteSession(sessionId) {
+      if (!confirm('确定要删除这条练习记录吗？')) return;
+      try {
+        let res = await fetch('/api/practice-sessions/' + sessionId, { method: 'DELETE' });
+        let result = await res.json();
+        if (result.ok) {
+          loadTodayRecords();
+        } else {
+          alert('删除失败: ' + (result.error || '未知错误'));
+        }
+      } catch(e) { console.error(e); }
     }
 
     async function deleteRecord(id) {
@@ -1879,6 +2049,35 @@
     // ── 页面加载整体弹入动画 ──
     const allCards = document.querySelectorAll('.floor, .card:not(.today-records)');
     gsap.fromTo(allCards, { opacity: 0, scale: 0.88, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "back.out(2)" });
+
+    // ── 2026-07-27: 本次练习 panel 事件绑定 (Q1=B + Q2=A + Q3=A) ──
+    (function() {
+      const quaver = document.getElementById('tempoNoteQuaver');
+      const minim = document.getElementById('tempoNoteMinim');
+      const bpmInput = document.getElementById('tempoBpmInput');
+      const contentInput = document.getElementById('sessionContentInput');
+      const hint = document.getElementById('tempoHint');
+      function syncHintText() {
+        if (!hint) return;
+        const note = document.querySelector('.sp-tempo-note-btn.selected')?.dataset?.note || '♪';
+        const bpm = bpmInput?.value || '80';
+        hint.textContent = note + ' = ' + bpm;
+      }
+      if (quaver) quaver.addEventListener('click', () => {
+        document.querySelectorAll('.sp-tempo-note-btn').forEach(b => b.classList.remove('selected'));
+        quaver.classList.add('selected');
+        syncHintText();
+        updateStartBtnState();
+      });
+      if (minim) minim.addEventListener('click', () => {
+        document.querySelectorAll('.sp-tempo-note-btn').forEach(b => b.classList.remove('selected'));
+        minim.classList.add('selected');
+        syncHintText();
+        updateStartBtnState();
+      });
+      if (bpmInput) bpmInput.addEventListener('input', () => { syncHintText(); updateStartBtnState(); });
+      if (contentInput) contentInput.addEventListener('input', () => { updateStartBtnState(); });
+    })();
   </script>
 </body>
 </html>
