@@ -422,15 +422,22 @@ class MySQLBackend:
                 return list(cur.fetchall())
 
     # ── Daily Practices ──
-    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y', images: Optional[List[str]] = None) -> None:
+    def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y', images: Optional[List[str]] = None, **kwargs) -> None:
         items_json = json.dumps(items, ensure_ascii=False) if items else '[]'
+        practice_at = kwargs.get('practice_at')
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 # MySQL daily_practices.date 有 UNIQUE, REPLACE 即可
-                cur.execute('''
-                    REPLACE INTO daily_practices (date, items_json, total_minutes, log, practiced)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (date.isoformat(), items_json, total_minutes, log, practiced))
+                if practice_at:
+                    cur.execute('''
+                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced, practice_at)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    ''', (date.isoformat(), items_json, total_minutes, log, practiced, practice_at))
+                else:
+                    cur.execute('''
+                        REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
+                        VALUES (%s, %s, %s, %s, %s)
+                    ''', (date.isoformat(), items_json, total_minutes, log, practiced))
             conn.commit()
 
     def log_practice_audit(self, channel: str, method: str, practice_date: dt.date, input_items: str, result_items: str, total_minutes: int, session_id: Optional[str] = None, error: Optional[str] = None) -> int:
@@ -479,7 +486,7 @@ class MySQLBackend:
             with conn.cursor() as cur:
                 cur.execute('''
                     UPDATE daily_practices
-                    SET items_json = JSON_ARRAY()
+                    SET items = JSON_ARRAY()
                     WHERE date = %s
                 ''', (date.isoformat(),))
             conn.commit()
