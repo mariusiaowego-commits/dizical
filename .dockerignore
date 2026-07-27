@@ -32,6 +32,7 @@ env/
 .git/
 .gitignore
 .gitattributes
+.worktrees/
 
 # 文档 (不进镜像)
 docs/
@@ -39,6 +40,10 @@ docs/
 LICENSE
 README.md
 AGENTS.md
+
+# PRD/AI 规划/任务追踪 (不进镜像)
+.hermes/
+PRDs/
 
 # 数据库 (本地 SQLite, 不进容器)
 *.db
@@ -58,6 +63,11 @@ logs/
 .DS_Store
 Thumbs.db
 
+# 测试/调试
+scripts/spike_*.sh
+.spike/
+
 # 部署配置 (用环境变量注入, 不进镜像)
 .cloudrun/
 spike-deploy.sh
+static/badges/streak_*.png
