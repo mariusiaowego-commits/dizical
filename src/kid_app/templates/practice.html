@@ -100,7 +100,7 @@
      * ════════════════════════════════════════════════ */
     .vertical-stack {
       display: flex; flex-direction: column; gap: 14px;
-      margin-bottom: 14px; width: 100%; max-width: 100%; box-sizing: border-box;
+      margin: 0 24px 14px; width: auto; max-width: 100%; box-sizing: border-box;
     }
     .floor {
       background: #FFFDF5;
@@ -133,6 +133,12 @@
     /* 楼层 2+3:计时器+补录 (统一卡片) */
     .floor-pickers { background: #FFFDF5; border-color: #F0D060; }
     .floor-pickers h3 { color: #8B6914; }
+    /* 2026-07-27: 计时器 block 布局 (dial + session-panel 垂直排) */
+    .timer-block { display: flex; flex-direction: column; gap: 10px; }
+    .section-divider {
+      border: none; border-top: 1px dashed #E8D8B0;
+      margin: 6px 0; height: 0;
+    }
     .pickers-row {
       display: flex;
       flex-direction: column;
@@ -772,8 +778,9 @@
       <h3>⏱️ 计时器 + ⚡ 补录 <div class="item-bubble" id="itemBubble" style="display:none">
         <span class="bubble-name" id="bubbleName"></span>
       </div></h3>
-      <div class="pickers-row">
-        <!-- 主计时 picker -->
+
+      <!-- 主计时 block (dial + session panel) -->
+      <div class="timer-block">
         <div class="picker-card">
           <div class="activity-wheel" id="timerWheel"></div>
           <div class="picker-col">
@@ -796,7 +803,7 @@
             </div>
           </div>
         </div>
-        <!-- ═══ 2026-07-27: 本次练习 (tempo + content) — 移出 picker-col, 占整宽, 布局更稳 ═══ -->
+        <!-- ═══ 2026-07-27: 本次练习 panel — 主计时下, 归属清晰 ═══ -->
         <div class="session-panel" id="sessionPanel">
           <div class="sp-header">本次练习</div>
           <div class="sp-tempo-row">
@@ -811,7 +818,12 @@
           </div>
           <input type="text" class="sp-content-input" id="sessionContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="本次练习内容">
         </div>
-        <!-- 补录 picker -->
+      </div>
+
+      <div class="section-divider"></div>
+
+      <!-- 补录 block -->
+      <div class="timer-block">
         <div class="picker-card" id="extraSection">
           <div class="activity-wheel" id="extraWheel"></div>
           <div class="picker-col">
