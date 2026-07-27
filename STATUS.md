@@ -1,12 +1,50 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-17 (微信提审准备完, verify-pin 严格模式上线)
-**当前 main**: 47f48e4 (含 PR #162 docs sync)
-**生产服务**: 8765 running PID 73634 (load main @ 47f48e4)
+**最后更新**: 2026-07-27 (PR #178/#180/#182 收尾, 今日总时长显眼卡片 + 同 item_name 合并 + MySQL conflict 清理)
+**当前 main**: 5b24a9a (含 PR #178 today-summary-bar + PR #180 group 合并 + PR #182 mysql conflict 清理 + docs 同步)
+**生产服务**: 8765 PID 36051 running main @ 5b24a9a (docs commit 不影响代码, 服务无需重启)
+**新分支**: `feat/p4-phase2-web-mac-to-cloud` (基于 main @ b43bc3b, 含 PRD + 备份, **未 merge main**, 等 dad 拍切云)
 **云托管**: dizical-prod @ commit 00a7e97 (DeployId 003, 2026-07-17 16:27 UTC 上线, verify-pin 严格模式)
-**pytest**: 13 failed / 294 passed (净回归 = 0, pre-existing baseline)
+**pytest**: 12 failed / 311 passed (净回归 = 0, pre-existing baseline, PR #182 新增 1 case PASS)
 
-### 已完成 (2026-07-17 提审准备 7 项)
+### 已完成 (2026-07-27 今日总时长显眼卡片 + 同 item_name 合并 + MySQL fix)
+
+**PR #182** (commit 5a9297b, 已 merge main) — dizical-agent 修复 main 上 database_mysql.py git merge conflict marker
+- src/database_mysql.py: 去掉 `<<<<<<< Updated upstream` / `>>>>>>> Stashed changes` 冲突标记
+- Python import 时 SyntaxError, 整个 database_mysql 全不可用 → 修复
+- tests/test_save_daily_practice_mysql.py: 新增 7 场景 pytest PASS (subprocess 隔离避开 SQLite 单例缓存)
+  + 新建 (5min) / 同 item 累加 / 不同 item 追加 / 跨 item_id 同名合并 / is_clear 清零 / 清零后写入 / 不传 practice_at 追加
+
+**PR #180** (commit 7a88ea2, 已 merge main) — 同 item_name session 合并到 1 个 group
+- dad 真机截图反馈: 萨丽哈被切成 2 个 group, 中间被西藏舞曲隔开
+- 根因 (PR #176 6c8ec0d 引入): `if (s.item_name !== lastItem)` 按 sessions 顺序切多个 group header
+- 修复: 用 `groupOrder + groups dict` 算法, 同 item_name 即使被穿插也合并成 1 个 group
+- 萨丽哈: 2 个 group (11+11) → 1 个 group (11 分钟, 下面 2 行 session: 5min + 6min)
+- 单文件 +16/-8 纯逻辑调整
+
+**PR #178** (commit 13df74d, 已 merge main) — 今日总时长显眼卡片 `.today-summary-bar`
+- HTML/CSS/JS 单文件 +56/-0 纯加法
+- 珊瑚红渐变背景, 44px Georgia 衬线大字, 副统计科目数 + session 数
+- 替换原 top-bar 那个 15px 蓝绿色小字 (dad 看不到位置)
+- `renderTodayRecords` 同步填值: sessions 是唯一真相源, 不依赖 daily.items 残量
+- 不破坏 main 6c8ec0d (PR #176) 的 subjectTotals dict 算法
+
+**7-27 data fix** (手工修 data/dizi.db, audit_log 留痕):
+- daily_practices.items[吸气长音].minutes 40→10
+- daily_practices.items[单吐tuku].minutes 8→6
+- daily_practices.total_minutes 81→49 (sessions SUM 一致)
+- audit_log 写 manual_fix entry (method=reset_to_sessions_sum, channel=manual_fix)
+- 备份: `data/backups/dizi-pre-fix-81to49-20260727-213631.db` (602K)
+
+**dad 拍板方向** (4 轮反馈澄清):
+1. "明显 60 是对的, 81 是错的" → 81 = extra 残量污染, 49 = sessions 唯一真相
+2. "萨丽哈是两次各 11min, 一共 22" → dad 后来更正: 5+6=11
+3. "练习 tab 给今天练习总时长的展示, 明显一点位置" → 显眼卡片
+4. "2 个萨丽哈应该按科目合并在一起" → PR #180 group 合并算法
+
+### 已完成 (2026-07-27 phase2 起步)
+
+**branch**: `feat/p4-phase2-web-mac-to-cloud` (基于 main @ b43bc3b, **未 commit 未 push**)
 
 **commit 00a7e97** (待 push): `fix(cloudrun): revert verify-pin 临时方案, 严格白名单模式`
 - commit 02cf4d6: `security: 移除硬编码 MySQL 密码, 改从 env MYSQL_PASSWORD 读取` (未 push)
