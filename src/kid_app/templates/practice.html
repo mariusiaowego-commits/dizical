@@ -1738,12 +1738,17 @@
       let card = document.querySelector('.today-records');
       // 优先用 sessions[] 展示科目+细节分组
       if (sessions && sessions.length > 0) {
+        // 从 sessions 算科目合计 (不用 items[] — 旧数据可能不同步)
+        const subjectTotals = {};
+        sessions.forEach(s => {
+          subjectTotals[s.item_name] = (subjectTotals[s.item_name] || 0) + s.duration_minutes;
+        });
         let html = '';
         let lastItem = '';
         sessions.forEach(s => {
           if (s.item_name !== lastItem) {
             if (lastItem) html += '</div>';
-            html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + s.item_name + '</span><span class="rg-mins">' + (items.find(i => i.item_id === s.item_id)?.minutes || 0) + ' 分钟</span></div>';
+            html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + s.item_name + '</span><span class="rg-mins">' + (subjectTotals[s.item_name] || 0) + ' 分钟</span></div>';
             lastItem = s.item_name;
           }
           html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
