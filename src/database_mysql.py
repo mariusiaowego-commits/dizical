@@ -809,8 +809,9 @@ class MySQLBackend:
                 row = cur.fetchone()
                 if not row:
                     raise ValueError(f"session_id={session_id} 不存在")
-                row['practice_date'] = self._parse_date(row['practice_date'])
+                row['practice_date'] = str(row.get('practice_date', ''))
                 row['created_at'] = str(row.get('created_at', ''))
+                row['is_extra'] = int(row.get('is_extra', 0))
                 return row
 
     def get_practice_sessions(self, practice_date: dt.date, item_id: Optional[int] = None) -> List[Dict]:
@@ -829,8 +830,9 @@ class MySQLBackend:
                 cur.execute(sql, params)
                 rows = list(cur.fetchall())
                 for r in rows:
-                    r['practice_date'] = self._parse_date(r['practice_date'])
+                    r['practice_date'] = str(r.get('practice_date', ''))
                     r['created_at'] = str(r.get('created_at', ''))
+                    r['is_extra'] = int(r.get('is_extra', 0))
                 return rows
 
     def get_latest_session_tempo(self, item_id: int) -> Optional[Dict]:
