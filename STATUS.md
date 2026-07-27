@@ -1,9 +1,19 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-14 (PR #161 MERGED, 3 个 recovery_first_practice 7/14/21 天徽章上线)
-**当前 main**: ea3b44b (PR #161 merge feat/recovery-first-practice-badge-pad)
-**生产服务**: 8765 running PID 73634 (load main @ ea3b44b, 3 张病愈徽章殿堂可见, locked)
-**pytest**: 13 failed / 294 passed (净回归 = 0, 跟 PR #159 merge baseline 一致)
+**最后更新**: 2026-07-27 (PR #170 feat/practice-session-detail: 练习计时细分内容)
+**当前 main**: 0754b87 (PR #169 fix/add-lesson-422)
+**生产服务**: 8765
+**pytest**: 13 failed / 306 passed (0 新增 fail)
+
+### 进行中 (2026-07-27 feat/practice-session-detail, 未 merge)
+
+**PR #170** — `feat(practice): 练习计时细分内容 (tempo + content)`
+- **数据**: 新建 `practice_sessions` 表 + 迁移 610 legacy session + `practice_items` 冗余列
+- **API**: 6 端点 (POST /api/log 扩, GET /api/practices/{date} 扩, 4 新)
+- **前端**: practice.html "本次练习" panel (♪/♩ + BPM + 内容, Q1=B 默认值, Q3=A 必填)
+- **补录**: config-practice-log.html tempo row
+- **分支**: feat/practice-session-detail (worktree)
+- **待办**: PR review → merge → 主仓迁移 → 重启服务
 
 ### 已完成 (2026-07-14 PR #161 3 个 recovery_first_practice 7/14/21 天徽章)
 
