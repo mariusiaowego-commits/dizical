@@ -1213,16 +1213,8 @@ async def api_log(request: Request):
             return JSONResponse({"ok": False, "error": "练习内容不能为空"}, status_code=400)
 
         if is_extra:
-            # extra 追加：创建独立 item 条目，通过 save_daily_practice 合并
-            # 同名 item 累加分钟数；不同 item 追加
-            items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
-            db.save_daily_practice(date, items, minutes, '',
-                                   channel='kid_app', method='extra',
-                                   practice_at=practice_at)
-            # extra 追加也要记录 behavior_log
-            for entry in behavior_entries:
-                db.append_behavior_log(date, entry)
-            # 2026-07-27: extra 也可带细节 (新前端会传)
+            # 2026-07-29 fix: 有 session detail 时只走 save_practice_session_and_daily_summary,
+            # 避免 save_daily_practice + save_practice_session_and_daily_summary 双重合并 items
             if has_session_detail:
                 try:
                     s = db.save_practice_session_and_daily_summary(
@@ -1230,9 +1222,18 @@ async def api_log(request: Request):
                         tempo_note, tempo_bpm, content, content_source,
                         practice_at=practice_at, is_extra=True,
                     )
+                    for entry in behavior_entries:
+                        db.append_behavior_log(date, entry)
                     return JSONResponse({"ok": True, "total": minutes, "session": s})
                 except ValueError as e:
                     return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+            # 旧路径: 无 session detail, 只走 save_daily_practice
+            items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
+            db.save_daily_practice(date, items, minutes, '',
+                                   channel='kid_app', method='extra',
+                                   practice_at=practice_at)
+            for entry in behavior_entries:
+                db.append_behavior_log(date, entry)
             return JSONResponse({"ok": True, "total": minutes})
 
         # 正常打卡路径
