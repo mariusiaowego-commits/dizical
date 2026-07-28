@@ -1,3 +1,16 @@
+## [2026-07-29] Fix: BPM步进1 + 内容必填 + 今日记录改版
+
+**范围**: BPM步进精度 / 内容必填双重校验 / today-records展示改版
+
+**修复**:
+1. **BPM步进器**: 步进5→1，移除吸附逻辑(80/90/100/120)，92等中间值可调
+2. **练习内容必填**: submitPractice/addExtraFromPicker前端拦截+后端_validate_session_fields非空校验+API路由validate+补录按钮联动
+3. **今日记录改版**: sessions优先展示(分组+明细); 旧记录items转伪session统一格式; 编辑/删除仅今日有效; 补录内容标签后联动按钮状态
+
+**分支**: fix/practice-bugs-20260729
+
+---
+
 ## [2026-07-28] Practice V3.1 UI — 卡片合并 + BPM 步进 + content_options 配置
 
 **范围**: practice 页效率升级 + config 配置入口

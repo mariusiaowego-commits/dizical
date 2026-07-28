@@ -1034,8 +1034,8 @@ class Database:
             raise ValueError(f"tempo_bpm 必须在 {self._BPM_MIN}-{self._BPM_MAX} 之间, 收到 {tempo_bpm}")
         if duration_minutes <= 0:
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
-        if not isinstance(content, str) or len(content) > self._CONTENT_MAX_LEN:
-            raise ValueError(f"content 必须是 ≤{self._CONTENT_MAX_LEN} 字符的字符串, 收到 {content!r}")
+        if not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN:
+            raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
 
     def create_practice_session(self, practice_date: dt.date, item_id: int, item_name: str,
                                  duration_minutes: int, tempo_note: str = "♪", tempo_bpm: int = 80,
@@ -1202,7 +1202,15 @@ class Database:
         """更新 session 的 tempo/content/duration.
         duration_minutes 变化时自动重算 daily 汇总 + 写 audit.
         """
-        self._validate_session_fields(tempo_note or '♪', tempo_bpm or 80, duration_minutes or 1, content or 'x')
+        # 2026-07-29: 对实际要更新的字段做校验, 避免 OR fallback 绕过空 content 检查
+        if tempo_note is not None and tempo_note not in self._ALLOWED_TEMPO_NOTES:
+            raise ValueError(f"tempo_note 必须是 {self._ALLOWED_TEMPO_NOTES} 之一, 收到 {tempo_note!r}")
+        if tempo_bpm is not None and not (self._BPM_MIN <= tempo_bpm <= self._BPM_MAX):
+            raise ValueError(f"tempo_bpm 必须在 {self._BPM_MIN}-{self._BPM_MAX} 之间, 收到 {tempo_bpm}")
+        if duration_minutes is not None and duration_minutes <= 0:
+            raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
+        if content is not None and (not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN):
+            raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM practice_sessions WHERE id = ?", (session_id,))

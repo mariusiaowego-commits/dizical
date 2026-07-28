@@ -923,9 +923,9 @@
             </div>
             <span class="sp-tempo-eq">=</span>
             <div class="bpm-stepper" aria-label="BPM">
-              <button type="button" class="bpm-step" onclick="stepBpm(-5)" aria-label="减5">−</button>
+              <button type="button" class="bpm-step" onclick="stepBpm(-1)" aria-label="减1">−</button>
               <span class="bpm-value" id="tempoBpmDisplay">80</span>
-              <button type="button" class="bpm-step" onclick="stepBpm(5)" aria-label="加5">+</button>
+              <button type="button" class="bpm-step" onclick="stepBpm(1)" aria-label="加1">+</button>
             </div>
             <input type="hidden" id="tempoBpmInput" value="80">
             <div class="sp-tempo-hint" id="tempoHint">♪ = 80 (默认)</div>
@@ -972,9 +972,9 @@
             </div>
             <span class="sp-tempo-eq">=</span>
             <div class="bpm-stepper" aria-label="补录BPM">
-              <button type="button" class="bpm-step" onclick="stepExtraBpm(-5)" aria-label="减5">−</button>
+              <button type="button" class="bpm-step" onclick="stepExtraBpm(-1)" aria-label="减1">−</button>
               <span class="bpm-value" id="extraBpmDisplay">80</span>
-              <button type="button" class="bpm-step" onclick="stepExtraBpm(5)" aria-label="加5">+</button>
+              <button type="button" class="bpm-step" onclick="stepExtraBpm(1)" aria-label="加1">+</button>
             </div>
             <input type="hidden" id="extraBpmInput" value="80">
           </div>
@@ -1473,10 +1473,6 @@
       const input = document.getElementById('tempoBpmInput');
       let v = parseInt(input?.value) || 80;
       v = Math.max(40, Math.min(150, v + delta));
-      // 靠近常用点时吸附
-      for (const s of [80, 90, 100, 120]) {
-        if (Math.abs(v - s) <= 2) { v = s; break; }
-      }
       setBpmValue(v);
       const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
       const hint = document.getElementById('tempoHint');
@@ -1494,9 +1490,6 @@
       const input = document.getElementById('extraBpmInput');
       let v = parseInt(input?.value) || 80;
       v = Math.max(40, Math.min(150, v + delta));
-      for (const s of [80, 90, 100, 120]) {
-        if (Math.abs(v - s) <= 2) { v = s; break; }
-      }
       setExtraBpmValue(v);
     }
 
@@ -1794,6 +1787,12 @@
       if (!selectedItem) return;
       let finalMins = parseInt(document.getElementById('confirmMins').textContent) || 0;
       if (finalMins === 0) return;
+      // 2026-07-29: 内容必填校验 (dos 不能提交空明细)
+      const contentEl = document.getElementById('sessionContentInput');
+      if (!contentEl || !contentEl.value.trim()) {
+        alert('请填写本次练习内容后再打卡');
+        return;
+      }
       submitting = true;
       try {
         let body = {
@@ -1937,7 +1936,8 @@
     function updateExtraBtnState() {
       const btn = document.getElementById('addExtraBtn');
       const select = document.getElementById('extraItemSelect');
-      if (btn) btn.disabled = !select.value;
+      const extraContent = (document.getElementById('extraContentInput')?.value || '').trim();
+      if (btn) btn.disabled = !(select.value && extraContent);
     }
     
     // 设置补录音符
@@ -1970,7 +1970,7 @@
         tag.textContent = opt;
         tag.onclick = () => {
           const input = document.getElementById('extraContentInput');
-          if (input) input.value = opt;
+          if (input) { input.value = opt; updateExtraBtnState(); }
         };
         tagsContainer.appendChild(tag);
       });
@@ -1992,11 +1992,18 @@
         return;
       }
       
+      // 2026-07-29: 补录内容必填
+      const extraContent = document.getElementById('extraContentInput').value.trim();
+      if (!extraContent) {
+        alert('请填写补录练习内容');
+        return;
+      }
+      
       // 从补录独立输入获取
       const noteBtn = document.querySelector('#extraSessionPanel .sp-tempo-note-btn.selected');
       const tempo_note = noteBtn ? noteBtn.getAttribute('data-note') : '♪';
       const tempo_bpm = parseInt(document.getElementById('extraBpmInput').value) || 80;
-      const content = document.getElementById('extraContentInput').value || '';
+      const content = extraContent;
       
       await addExtraMins(pendingExtraMins, item, { tempo_note, tempo_bpm, content });
       
@@ -2026,69 +2033,94 @@
     function renderTodayRecords(items, total, sessions) {
       let recordsList = document.getElementById('recordsList');
       let card = document.querySelector('.today-records');
-      // 优先用 sessions[] 展示科目+细节分组
-      if (sessions && sessions.length > 0) {
-        // 从 sessions 算科目合计 (不用 items[] — 旧数据可能不同步)
-        const subjectTotals = {};
-        sessions.forEach(s => {
-          subjectTotals[s.item_name] = (subjectTotals[s.item_name] || 0) + s.duration_minutes;
-        });
-        // 2026-07-27 fix: 按 item_name 分组合并, 即使穿插其他科目 (如 萨丽哈-西藏-萨丽哈) 也合并成 1 个 group
-        // 旧算法 (if item_name !== lastItem) 会按 sessions 顺序切多个 group header, 同 item 被切成 2 段
+      
+      // 2026-07-29: 只有今天的记录显示编辑/删除按钮
+      const isToday = todayDate === new Date().toISOString().slice(0, 10);
+
+      // 优先用 sessions[] 展示科目+细节分组；sessions 为空时从 items 构造(旧记录兼容)
+      let displaySessions = (sessions && sessions.length > 0) ? sessions : null;
+      if (!displaySessions && items && items.length > 0) {
+        // 旧记录没有 sessions 表数据，从 daily_practices.items 构造伪 session
+        displaySessions = items.map((it, idx) => ({
+          id: -(it.item_id || idx + 1),  // 负数 id 表示伪 session (不可编辑/删除)
+          item_id: it.item_id || 0,
+          item_name: it.item || '未知科目',
+          tempo_note: '♪',
+          tempo_bpm: 0,
+          content: it.content || '',
+          duration_minutes: it.minutes || 0,
+          is_extra: it.is_extra || false,
+        }));
+      }
+
+      if (displaySessions && displaySessions.length > 0) {
+        // 按 item_name 分组显示
         const groupOrder = [];
         const groups = {};
-        sessions.forEach(s => {
+        const subjectTotals = {};
+        displaySessions.forEach(s => {
           if (!groups[s.item_name]) {
             groups[s.item_name] = [];
             groupOrder.push(s.item_name);
           }
           groups[s.item_name].push(s);
+          subjectTotals[s.item_name] = (subjectTotals[s.item_name] || 0) + (s.duration_minutes || 0);
         });
+
         let html = '';
         groupOrder.forEach(name => {
           html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + name + '</span><span class="rg-mins">' + (subjectTotals[name] || 0) + ' 分钟</span></div>';
           groups[name].forEach(s => {
-            html += '<div class="record-session"><span class="rs-tempo">' + s.tempo_note + '=' + s.tempo_bpm + '</span><span class="rs-content">' + (s.content || '未填写练习内容') + '</span><span class="rs-mins">' + s.duration_minutes + 'min</span><button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button></div>';
+            const contentText = s.content || '未填写练习内容';
+            const tempoText = s.tempo_bpm ? s.tempo_note + '=' + s.tempo_bpm : '';
+            // 负 id = 旧记录无 session, 不显示编辑/删除; 正 id 且是今天才显示
+            const isRealSession = s.id > 0;
+            const actionsHtml = (isToday && isRealSession)
+              ? '<button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button>'
+              : '';
+            html += '<div class="record-session">' +
+              (tempoText ? '<span class="rs-tempo">' + tempoText + '</span>' : '') +
+              '<span class="rs-content">' + contentText + '</span>' +
+              '<span class="rs-mins">' + s.duration_minutes + 'min</span>' + actionsHtml +
+              '</div>';
           });
           html += '</div>';
         });
-        recordsList.innerHTML = html || '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
+        recordsList.innerHTML = html;
+        card.classList.add('visible');
       } else if (!items || items.length === 0) {
         recordsList.innerHTML = '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
         card.classList.remove('visible');
-      } else {
-        recordsList.innerHTML = items.map(it => `
-          <div class="record-item">
-            <div>
-              <div class="item-name">${it.item}</div>
-              <div class="item-mins">${it.minutes} 分钟</div>
-            </div>
-            <button class="delete-btn" onclick="deleteRecord(${it.item_id})">✕</button>
-          </div>
-        `).join('');
       }
-      card.classList.add('visible');
-      gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
-      gsap.fromTo('.record-item, .record-group', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
-      // 2026-07-27 fix: 同步显眼总时长卡片 (.today-summary-bar), sessions 是唯一真相源
+
+      // 同步总时长/科目数/session 数
       const totalEl = document.getElementById('todayTotalMins');
       const itemEl = document.getElementById('todayItemCount');
       const sessEl = document.getElementById('todaySessionCount');
       if (totalEl && itemEl && sessEl) {
         if (sessions && sessions.length > 0) {
-          const sessionTotal = sessions.reduce((s, x) => s + x.duration_minutes, 0);
+          const sessionTotal = sessions.reduce((s, x) => s + (x.duration_minutes || 0), 0);
           const itemSet = new Set(sessions.map(s => s.item_name));
           totalEl.textContent = sessionTotal;
           itemEl.textContent = itemSet.size;
           sessEl.textContent = sessions.length;
-        } else {
-          const itemTotal = (items || []).reduce((s, x) => s + (x.minutes || 0), 0);
+        } else if (items && items.length > 0) {
+          const itemTotal = items.reduce((s, x) => s + (x.minutes || 0), 0);
           totalEl.textContent = itemTotal;
-          itemEl.textContent = (items || []).length;
+          itemEl.textContent = items.length;
+          sessEl.textContent = 0;
+        } else {
+          totalEl.textContent = 0;
+          itemEl.textContent = 0;
           sessEl.textContent = 0;
         }
       }
-      document.querySelector('.today-stat').textContent = '今日已练习: ' + total + ' 分钟';
+      // GSAP 入场动画
+      card.classList.add('visible');
+      gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
+      gsap.fromTo('.record-item, .record-group', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
+      const todayStat = document.querySelector('.today-stat');
+      if (todayStat) todayStat.textContent = '今日已练习: ' + total + ' 分钟';
     }
 
     async function loadTodayRecords() {
@@ -2489,6 +2521,9 @@
         updateStartBtnState();
       });
       if (contentInput) contentInput.addEventListener('input', () => { updateStartBtnState(); });
+      // 2026-07-29: 补录内容输入监听 (内容必填校验)
+      const extraContentInput = document.getElementById('extraContentInput');
+      if (extraContentInput) extraContentInput.addEventListener('input', () => { updateExtraBtnState(); });
     })();
     
     // 加载科目列表（补录下拉 + content_options 标签）

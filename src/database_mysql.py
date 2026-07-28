@@ -808,8 +808,8 @@ class MySQLBackend:
             raise ValueError(f"tempo_bpm 必须是 40-150 int, 收到 {tempo_bpm!r}")
         if duration_minutes <= 0:
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
-        if not isinstance(content, str) or len(content) > self._CONTENT_MAX_LEN:
-            raise ValueError(f"content 必须是 ≤{self._CONTENT_MAX_LEN} 字符的字符串, 收到 {content!r}")
+        if not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN:
+            raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
 
     def get_practice_session_by_id(self, session_id: int) -> Dict:
         self._ensure_practice_sessions_schema()
