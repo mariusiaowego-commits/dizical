@@ -1,7 +1,7 @@
 # STATUS.md - dizical 项目状态
 
 **最后更新**: 2026-07-28 (Practice V3.1 UI: 卡片合并 + BPM 步进 + content_options 配置)
-**当前分支**: feat/practice-v3.1-ui
+**已 merge**: PR #188 → main @ f3bd8d3
 **配置入口**: http://localhost:8765/config/practice → 科目行点「内容」
 **pytest**: pre-existing baseline fails 未变；本 PR 以浏览器实机 + API 手测为主
 
