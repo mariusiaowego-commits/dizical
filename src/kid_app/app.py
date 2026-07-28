@@ -1208,6 +1208,10 @@ async def api_log(request: Request):
         content = body.get("content", "")
         content_source = body.get("content_source", "manual")
 
+        # 2026-07-29: 后端也验证内容必填 (前/后端双重校验)
+        if has_session_detail and not (content and content.strip()):
+            return JSONResponse({"ok": False, "error": "练习内容不能为空"}, status_code=400)
+
         if is_extra:
             # extra 追加：创建独立 item 条目，通过 save_daily_practice 合并
             # 同名 item 累加分钟数；不同 item 追加

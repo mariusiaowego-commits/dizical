@@ -1,5 +1,17 @@
 # Practice Session Detail — API 变更
 
+**日期**: 2026-07-29
+**分支**: fix/practice-bugs-20260729
+**类型**: 🔴 不兼容
+
+## 变更
+
+### 1. POST /api/log — content 必填
+
+`content` 字段从可选变为必填 (前端+后端双重校验). 传空字符串 `""` 或缺失返回 400.
+
+---
+
 **日期**: 2026-07-27
 **分支**: feat/practice-session-detail
 **类型**: 🟡 部分兼容
