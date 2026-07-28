@@ -795,6 +795,35 @@
       .timer-layout { grid-template-columns: 1fr; }
       .panel-req .req-empty { padding: 20px 0; }
     }
+
+    /* ── V4 Tab 切换 ── */
+    .tab-bar { display: flex; gap: 0; margin: 12px 0 0; border-radius: 12px; overflow: hidden; }
+    .tab-btn { flex: 1; padding: 10px 0; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .tab-btn.timer-tab { background: #FFE8E0; color: #D45A4A; }
+    .tab-btn.timer-tab.active { background: #FF6B6B; color: #fff; }
+    .tab-btn.extra-tab { background: #FFF0E8; color: #E07840; }
+    .tab-btn.extra-tab.active { background: #FF8C5A; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── V4 Dashboard 表盘 ── */
+    .dash-card { display: none; margin: 10px 0; background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%); border-radius: 16px; padding: 14px 18px; color: #fff; box-shadow: 0 4px 16px rgba(44,62,80,0.25); }
+    .dash-card.visible { display: flex; align-items: center; gap: 16px; }
+    .dash-item { min-width: 80px; text-align: center; }
+    .dash-item-name { font-size: 20px; font-weight: 700; color: #FF6B6B; line-height: 1.2; }
+    .dash-item-id { font-size: 11px; color: #8899AA; margin-top: 2px; }
+    .dash-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
+    .dash-details { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .dash-tempo { font-size: 15px; font-weight: 600; color: #FFD93D; }
+    .dash-content { font-size: 14px; color: #E8ECF0; }
+    .dash-mins { font-size: 13px; color: #8899AA; }
+    .dash-empty { font-size: 13px; color: #667788; font-style: italic; }
+
+    /* 补录 item grid (替换 select) */
+    .extra-item-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .extra-item-btn { padding: 6px 12px; background: #FFFEFA; border: 2px solid #E8D8B0; border-radius: 8px; font-size: 13px; color: #5D4037; cursor: pointer; transition: all 0.15s; }
+    .extra-item-btn:hover { border-color: #FF8C5A; background: #FFF5EC; }
+    .extra-item-btn.selected { background: #FF8C5A; color: #fff; border-color: #FF8C5A; }
   </style>
 </head>
 <body class="has-sidebar">
@@ -881,15 +910,36 @@
     </div>
   </div>
 
+  <!-- V4 Dashboard 表盘 -->
+  <div class="dash-card" id="dashCard">
+    <div class="dash-item">
+      <div class="dash-item-name" id="dashItemName">—</div>
+      <div class="dash-item-id" id="dashItemId"></div>
+    </div>
+    <div class="dash-divider"></div>
+    <div class="dash-details">
+      <div class="dash-tempo" id="dashTempo">选择科目开始练习</div>
+      <div class="dash-content" id="dashContent"></div>
+    </div>
+    <div class="dash-mins" id="dashMins"></div>
+  </div>
+
+  <!-- V4 Tab 切换 -->
+  <div class="tab-bar">
+    <button class="tab-btn timer-tab active" onclick="switchTab('timer')">⏱️ 计时练习</button>
+    <button class="tab-btn extra-tab" onclick="switchTab('extra')">⚡ 快速补录</button>
+  </div>
+
   <!-- 垂直卡片：计时器 + 补录 -->
   <div class="vertical-stack" id="vertical-stack">
 
     <div class="floor floor-pickers">
-      <h3>⏱️ 计时器 + ⚡ 补录 <div class="item-bubble" id="itemBubble" style="display:none">
+      <h3> <div class="item-bubble" id="itemBubble" style="display:none">
         <span class="bubble-name" id="bubbleName"></span>
       </div></h3>
 
-      <!-- 主计时：picker-card 保持 wheel | knob 左右；session-panel 在下方 -->
+      <!-- 主计时 -->
+      <div class="tab-panel active" id="tabTimer">
       <div class="timer-block">
         <div class="picker-card">
           <div class="activity-wheel" id="timerWheel"></div>
@@ -934,10 +984,10 @@
           <input type="text" class="sp-content-input" id="sessionContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="本次练习内容">
         </div>
       </div>
+      </div><!-- /tabTimer -->
 
-      <div class="section-divider"></div>
-
-      <!-- 补录：同样 wheel | knob 左右，详情在下方 -->
+      <div class="tab-panel" id="tabExtra">
+      <!-- 补录 -->
       <div class="timer-block" id="extraSection">
         <div class="picker-card">
           <div class="activity-wheel" id="extraWheel"></div>
@@ -982,6 +1032,7 @@
           <input type="text" class="sp-content-input" id="extraContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="补录内容">
         </div>
       </div>
+      </div><!-- /tabExtra -->
     </div>
 
   </div>
@@ -1478,6 +1529,7 @@
       const hint = document.getElementById('tempoHint');
       if (hint) hint.textContent = note + ' = ' + v;
       updateStartBtnState();
+      updateDashboard();
     }
     function setExtraBpmValue(bpm) {
       bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
@@ -1513,7 +1565,7 @@
         tag.textContent = opt;
         tag.onclick = () => {
           const input = document.getElementById('sessionContentInput');
-          if (input) { input.value = opt; updateStartBtnState(); }
+          if (input) { input.value = opt; updateStartBtnState(); updateDashboard(); }
         };
         tagsContainer.appendChild(tag);
       });
@@ -1561,6 +1613,8 @@
       updateStartBtnState();
       // 补录按钮只看补录自己的科目选择，不跟主计时绑定
       updateExtraBtnState();
+      // V4: 更新 Dashboard
+      updateDashboard();
     }
 
     function setPickerTime(mins) {
@@ -2127,6 +2181,34 @@
       if (todayStat) todayStat.textContent = '今日已练习: ' + total + ' 分钟';
     }
 
+    // ── V4 Tab 切换 ──
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      if (tab === 'timer') {
+        document.querySelector('.tab-btn.timer-tab').classList.add('active');
+        document.getElementById('tabTimer').classList.add('active');
+      } else {
+        document.querySelector('.tab-btn.extra-tab').classList.add('active');
+        document.getElementById('tabExtra').classList.add('active');
+      }
+    }
+
+    // ── V4 Dashboard 更新 ──
+    function updateDashboard() {
+      const card = document.getElementById('dashCard');
+      if (!selectedItemId) { card.classList.remove('visible'); return; }
+      const name = selectedItem || '';
+      const bpm = document.getElementById('tempoBpmInput')?.value || '';
+      const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
+      const content = (document.getElementById('sessionContentInput')?.value || '').trim();
+      document.getElementById('dashItemName').textContent = name;
+      document.getElementById('dashItemId').textContent = selectedItemId ? '#' + selectedItemId : '';
+      document.getElementById('dashTempo').textContent = note + '=' + bpm;
+      document.getElementById('dashContent').textContent = content || '未填写练习内容';
+      card.classList.add('visible');
+    }
+
     async function loadTodayRecords() {
       try {
         let res = await fetch('/api/practices/' + todayDate);
@@ -2517,14 +2599,16 @@
         quaver.classList.add('selected');
         syncHintText();
         updateStartBtnState();
+        updateDashboard();
       });
       if (minim) minim.addEventListener('click', () => {
         document.querySelectorAll('#sessionPanel .sp-tempo-note-btn').forEach(b => b.classList.remove('selected'));
         minim.classList.add('selected');
         syncHintText();
         updateStartBtnState();
+        updateDashboard();
       });
-      if (contentInput) contentInput.addEventListener('input', () => { updateStartBtnState(); });
+      if (contentInput) contentInput.addEventListener('input', () => { updateStartBtnState(); updateDashboard(); });
       // 2026-07-29: 补录内容输入监听 (内容必填校验)
       const extraContentInput = document.getElementById('extraContentInput');
       if (extraContentInput) extraContentInput.addEventListener('input', () => { updateExtraBtnState(); });
