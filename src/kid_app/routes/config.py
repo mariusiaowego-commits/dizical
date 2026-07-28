@@ -494,7 +494,11 @@ def api_get_record(date_str: str):
 
 @router.post("/api/records")
 async def api_save_record(request: Request):
-    """新增/覆盖练习记录"""
+    """新增/覆盖练习记录
+
+    改 7-27: 有 tempo_note/tempo_bpm/content 字段时走 save_practice_session_and_daily_summary
+    (dizical PR #170/#172 对应, 配套 mp PR#24 session-panel)
+    """
     try:
         body = json.loads(await request.body())
         date_str = body.get('date')
@@ -512,6 +516,32 @@ async def api_save_record(request: Request):
         if total_minutes == 0 and items:
             total_minutes = sum(i.get('minutes', 0) for i in items)
 
+        # 7-27: session 细节分支 (tempo_note/tempo_bpm/content 三个字段都在 → 走整事务)
+        has_session_detail = all(k in body for k in ("tempo_note", "tempo_bpm", "content"))
+        if has_session_detail and items:
+            tempo_note = body.get("tempo_note", "♪")
+            tempo_bpm = int(body.get("tempo_bpm", 80))
+            content = body.get("content", "")
+            content_source = body.get("content_source", "manual")
+            item_name = items[0].get("item", "")
+            item_id = int(items[0].get("item_id", 0))
+            minutes = items[0].get("minutes", 0)
+            try:
+                s = db.save_practice_session_and_daily_summary(
+                    date, item_name, item_id, minutes,
+                    tempo_note, tempo_bpm, content, content_source,
+                    practice_at=None, is_extra=False,
+                )
+                daily = db.get_daily_practice(date)
+                return JSONResponse({
+                    "ok": True,
+                    "total": daily.get("total_minutes", minutes) if daily else minutes,
+                    "session": s,
+                })
+            except ValueError as e:
+                return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+        # 旧路径 (无 session 字段)
         db.save_daily_practice(
             date=date,
             items=items,
