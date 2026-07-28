@@ -1010,9 +1010,8 @@
         <div class="session-panel" id="extraSessionPanel">
           <div class="sp-header">补录详情</div>
           <div class="sp-item-select">
-            <select id="extraItemSelect" class="extra-item-select" onchange="updateExtraBtnState(); renderExtraContentTags(this.value);">
-              <option value="">选择科目...</option>
-            </select>
+            <input type="text" id="extraItemFilter" placeholder="搜索科目..." oninput="renderExtraItemGrid()" style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:8px;border:1px solid #E8D8B0;font-size:13px">
+            <div class="extra-item-grid" id="extraItemGrid"></div>
           </div>
           <div class="sp-tempo-row">
             <div class="sp-tempo-label">速度</div>
@@ -1110,6 +1109,8 @@
     let finishPending = false;  // 提前结束但未打卡
     let submitting = false;  // 防重放：打卡请求进行中
     let pendingExtraMins = 10;  // 副半圆 picker 当前选值
+    let selectedExtraItemId = null;  // V4: 补录 grid 选中的 item_id
+    let selectedExtraItemName = null; // V4: 补录 grid 选中的 item_name
     let timerPicker = null;  // dial knob picker 实例
     let extraPicker = null;  // dial knob picker 实例
     let timerWheel = null;   // activity wheel 实例
@@ -1479,15 +1480,7 @@
     async function fillSessionDefaults(itemId) {
       if (!itemId || _defaultTempoLoaded[itemId]) return;
       _defaultTempoLoaded[itemId] = true;
-      try {
-        let resp = await fetch('/api/practice-sessions/latest?item_id=' + itemId);
-        let d = await resp.json();
-        if (d.found) {
-          applyTempo(d.tempo_note, d.tempo_bpm, '上次');
-          return;
-        }
-      } catch(e) {}
-      // 2. fallback: 查 assignments 表
+      // V4: assignment (老师要求) 优先 → session (上次练习) → 默认
       try {
         let resp = await fetch('/api/assignments/latest?item_id=' + itemId);
         let d = await resp.json();
@@ -1496,7 +1489,14 @@
           return;
         }
       } catch(e) {}
-      // 3. 默认 ♪/80
+      try {
+        let resp = await fetch('/api/practice-sessions/latest?item_id=' + itemId);
+        let d = await resp.json();
+        if (d.found) {
+          applyTempo(d.tempo_note, d.tempo_bpm, '上次');
+          return;
+        }
+      } catch(e) {}
       applyTempo('♪', 80, '默认');
     }
     function applyTempo(note, bpm, source) {
@@ -1973,25 +1973,46 @@
     }
 
     // 初始化补录科目下拉
-    function initExtraItemSelect() {
-      const select = document.getElementById('extraItemSelect');
-      if (!select || !ALL_ITEMS) return;
-      select.innerHTML = '<option value="">选择科目...</option>';
-      ALL_ITEMS.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item.item_id;
-        opt.textContent = item.name;
-        opt.dataset.item = JSON.stringify(item);
-        select.appendChild(opt);
-      });
+    // V4: 补录 item-grid 渲染 (替换 select)
+    function renderExtraItemGrid() {
+      const grid = document.getElementById('extraItemGrid');
+      if (!grid || !ALL_ITEMS) return;
+      const q = (document.getElementById('extraItemFilter')?.value || '').trim().toLowerCase();
+      const filtered = ALL_ITEMS.filter(it => !q || it.name.toLowerCase().includes(q));
+      grid.innerHTML = filtered.map(it => {
+        const sel = selectedExtraItemId == it.item_id ? ' selected' : '';
+        return '<button class="extra-item-btn' + sel + '" onclick="selectExtraItem(' + it.item_id + ',\'' + it.name.replace(/'/g,"\\'") + '\')">' + it.name + '</button>';
+      }).join('');
     }
     
-    // 更新补录按钮状态
+    function selectExtraItem(itemId, itemName) {
+      selectedExtraItemId = itemId;
+      selectedExtraItemName = itemName;
+      renderExtraItemGrid();
+      renderExtraContentTags(itemId);
+      updateExtraBtnState();
+      // 自动填充速度默认值
+      fillExtraDefaults(itemId);
+    }
+    
+    async function fillExtraDefaults(itemId) {
+      try {
+        let resp = await fetch('/api/practice-sessions/latest?item_id=' + itemId);
+        let d = await resp.json();
+        if (d.found) { setExtraNote(d.tempo_note || '♪'); setExtraBpmValue(d.tempo_bpm || 80); return; }
+      } catch(e) {}
+      try {
+        let resp = await fetch('/api/assignments/latest?item_id=' + itemId);
+        let d = await resp.json();
+        if (d.found && d.tempo_note) { setExtraNote(d.tempo_note); setExtraBpmValue(d.tempo_bpm); return; }
+      } catch(e) {}
+      setExtraNote('♪'); setExtraBpmValue(80);
+    }
+
     function updateExtraBtnState() {
       const btn = document.getElementById('addExtraBtn');
-      const select = document.getElementById('extraItemSelect');
       const extraContent = (document.getElementById('extraContentInput')?.value || '').trim();
-      if (btn) btn.disabled = !(select.value && extraContent);
+      if (btn) btn.disabled = !(selectedExtraItemId && extraContent);
     }
     
     // 设置补录音符
@@ -2031,14 +2052,12 @@
     }
 
     async function addExtraFromPicker() {
-      const select = document.getElementById('extraItemSelect');
-      const itemId = select ? select.value : null;
-      if (!itemId) {
-        alert('请先选择科目');
+      if (!selectedExtraItemId) {
+        alert('请先在下方科目列表中选择');
         return;
       }
       
-      const item = ALL_ITEMS.find(i => i.item_id == itemId);
+      const item = ALL_ITEMS.find(i => i.item_id == selectedExtraItemId);
       if (!item) return;
       
       if (!pendingExtraMins || pendingExtraMins < 1) {
@@ -2148,7 +2167,7 @@
             const actionsHtml = (isToday && isRealSession)
               ? '<button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button>'
               : '';
-            html += '<div class="record-session">' +
+            html += '<div class="record-session" data-item-id="' + s.item_id + '">' +
               (tempoText ? '<span class="rs-tempo">' + tempoText + '</span>' : '') +
               '<span class="rs-content">' + contentText + '</span>' +
               '<span class="rs-mins">' + s.duration_minutes + 'min</span>' + actionsHtml +
@@ -2243,6 +2262,9 @@
       document.getElementById('emBpm').value = bpmStr || '80';
       document.getElementById('emContent').value = content;
       document.getElementById('emDuration').value = mins;
+      // V4: 渲染编辑弹窗 content_tags
+      const itemId = row?.getAttribute('data-item-id');
+      if (itemId) renderEmContentTags(itemId);
       document.getElementById('editSessionModal').classList.add('open');
       gsap.fromTo('#editSessionModal .edit-modal-box', { scale:0.85, opacity:0 }, { scale:1, opacity:1, duration:0.2, ease:'back.out(1.5)' });
       // 音符切换事件
@@ -2254,6 +2276,31 @@
       });
       // 保存按钮
       document.getElementById('emSaveBtn').onclick = () => saveSessionEdit();
+    }
+
+    // V4: 编辑弹窗 content_tags 渲染
+    function renderEmContentTags(itemId) {
+      const tagsContainer = document.getElementById('emContentTags');
+      if (!tagsContainer) return;
+      tagsContainer.innerHTML = '';
+      let options = [];
+      if (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS) {
+        const item = ALL_ITEMS.find(i => String(i.item_id) === String(itemId));
+        if (item && item.content_options) {
+          options = String(item.content_options).split(/[,，]/).map(s => s.trim()).filter(Boolean);
+        }
+      }
+      if (!options.length) options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
+      options.forEach(opt => {
+        const tag = document.createElement('span');
+        tag.className = 'sp-content-tag';
+        tag.textContent = opt;
+        tag.onclick = () => {
+          const input = document.getElementById('emContent');
+          if (input) input.value = opt;
+        };
+        tagsContainer.appendChild(tag);
+      });
     }
 
     async function saveSessionEdit() {
@@ -2622,7 +2669,7 @@
         const data = await res.json();
         ALL_ITEMS = data.items || [];
         window.ALL_ITEMS = ALL_ITEMS;
-        if (typeof initExtraItemSelect === 'function') initExtraItemSelect();
+        if (typeof renderExtraItemGrid === 'function') renderExtraItemGrid();
       } catch (e) {
         console.warn('loadAllItems failed', e);
       }
@@ -2640,6 +2687,9 @@
       <span style="margin-left:12px">时长</span>
       <input type="number" id="emDuration" min="1" max="60" value="1" style="width:50px;padding:4px 6px;border-radius:6px;border:1px solid #ddd;text-align:center">
       <span>min</span>
+    </div>
+    <div class="em-row" style="flex-wrap:wrap">
+      <div class="sp-content-tags" id="emContentTags" style="flex:none;width:100%;margin-bottom:4px"></div>
     </div>
     <div class="em-row">
       <input type="text" class="form-input" id="emContent" maxlength="200" placeholder="练什么?" style="flex:1">
