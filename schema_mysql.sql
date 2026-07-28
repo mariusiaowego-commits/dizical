@@ -1,7 +1,7 @@
 -- dizical MySQL Schema (从 SQLite 自动转换)
 -- 生成时间: extract_schema.py
 -- 来源 DB: /Users/mt16/dev/dizical/data/dizi.db
--- 表数: 13, 索引数: 7
+-- 表数: 14, 索引数: 9
 
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -110,7 +110,7 @@ CREATE TABLE `practice_items` (
             is_active TINYINT(1) NOT NULL DEFAULT 1,
             is_archived TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
+        , last_tempo_note TEXT, last_tempo_bpm BIGINT, last_session_at DATETIME);
 
 DROP TABLE IF EXISTS `practice_reports`;
 CREATE TABLE practice_reports (
@@ -121,6 +121,23 @@ CREATE TABLE practice_reports (
   prompt TEXT,
   image_path TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS `practice_sessions`;
+CREATE TABLE practice_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    practice_date DATE NOT NULL,
+    item_id BIGINT NOT NULL,
+    item_name TEXT NOT NULL,
+    duration_minutes BIGINT NOT NULL,
+    tempo_note TEXT NOT NULL ,
+    tempo_bpm BIGINT NOT NULL DEFAULT 80,
+    content TEXT NOT NULL ,
+    content_source TEXT NOT NULL ,
+    is_extra TINYINT(1) NOT NULL DEFAULT 0,
+    started_at TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES practice_items(item_id)
 );
 
 DROP TABLE IF EXISTS `schema_migrations`;
@@ -154,5 +171,7 @@ CREATE TABLE `weekly_assignments` (
 -- SKIP: CREATE INDEX idx_audit_channel ON practice_audit_log(channel)  (col channel is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);
 -- SKIP: CREATE INDEX idx_audit_date ON practice_audit_log(practice_date)  (col practice_date is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);
 -- SKIP: CREATE INDEX idx_lessons_date ON lessons(date)  (col date is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);
+-- SKIP: CREATE INDEX idx_practice_sessions_date ON practice_sessions(practice_date)  (col practice_date is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);
+CREATE INDEX idx_practice_sessions_item_date ON practice_sessions(item_id, practice_date);
 -- SKIP: CREATE INDEX idx_practices_date ON daily_practices(date)  (col date is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);
 SET FOREIGN_KEY_CHECKS=1;
