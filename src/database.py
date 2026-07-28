@@ -521,6 +521,16 @@ class Database:
             cursor.execute('UPDATE practice_items SET name = ? WHERE item_id = ?', (name, item_id))
             conn.commit()
 
+    def update_practice_item_content_options(self, item_id: int, content_options: str) -> None:
+        """更新练习内容预置选项。存逗号分隔字符串，空串表示走全局默认。"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE practice_items SET content_options = ? WHERE item_id = ?',
+                (content_options or '', item_id),
+            )
+            conn.commit()
+
     def update_practice_item_sort_order(self, item_id: int, sort_order: int) -> None:
         with self._get_connection() as conn:
             cursor = conn.cursor()

@@ -1,5 +1,22 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-28 (Practice V3.1 UI: 卡片合并 + BPM 步进 + content_options 配置)
+**当前分支**: feat/practice-v3.1-ui
+**配置入口**: http://localhost:8765/config/practice → 科目行点「内容」
+**pytest**: pre-existing baseline fails 未变；本 PR 以浏览器实机 + API 手测为主
+
+### 已完成 (2026-07-28 Practice V3.1 UI)
+
+1. 练习页卡片合并: item-section + 老师要求 → 2:8（左 tag+重选 / 右要求高亮+story）
+2. BPM 步进器 −/+（步长 5，吸附 80/90/100/120），不弹键盘
+3. content_options 预置标签 + config 编辑 UI + PUT API + DB 字段 + 幂等迁移
+4. picker-card 恢复 activity-wheel | picker-col 左右；session-panel 在下
+5. 补录独立科目/速度/内容；大旋钮吸附 5/10/15/20/25/30
+6. 文档: PRD §11 + tech-spec + API-CHANGELOG
+
+---
+
+
 **最后更新**: 2026-07-27 (PR #178/#180/#182 收尾, 今日总时长显眼卡片 + 同 item_name 合并 + MySQL conflict 清理)
 **当前 main**: 5b24a9a (含 PR #178 today-summary-bar + PR #180 group 合并 + PR #182 mysql conflict 清理 + docs 同步)
 **生产服务**: 8765 PID 36051 running main @ 5b24a9a (docs commit 不影响代码, 服务无需重启)

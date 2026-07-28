@@ -110,7 +110,7 @@ CREATE TABLE `practice_items` (
             is_active TINYINT(1) NOT NULL DEFAULT 1,
             is_archived TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        , last_tempo_note TEXT, last_tempo_bpm BIGINT, last_session_at DATETIME);
+        , last_tempo_note TEXT, last_tempo_bpm BIGINT, last_session_at DATETIME, content_options TEXT);
 
 DROP TABLE IF EXISTS `practice_reports`;
 CREATE TABLE practice_reports (

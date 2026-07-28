@@ -1637,10 +1637,12 @@ def practice_page():
             has_req = bool(combined)
             has_req_class = "has-req" if has_req else ""
             req_dot = "<span class='req-dot'></span>" if has_req else ""
+            content_opts = (it.get("content_options") or "").replace("'", "&#39;")
             items_html += (
                 "<button class='item-btn " + has_req_class + "' data-id='" + str(it["item_id"]) + "' "
                 + "data-req='" + combined.replace("'", "&#39;") + "' "
                 + "data-name='" + name.replace("'", "&#39;") + "' "
+                + "data-content-options='" + content_opts + "' "
                 + "onclick=\"selectItem('" + name.replace("'", "\\'") + "', " + str(it["item_id"]) + ", this, event)\">"
                 + req_dot
                 + "<span class='btn-name'>" + name + "</span>"
