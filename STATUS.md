@@ -1,5 +1,18 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-29 (fix: BPM步进1 + 内容必填 + today-records合并)
+**已 merge**: PR #190 → main @ 3902df9 (fix/practice-bugs-20260729)
+**pytest**: practice sessions 12/13 PASS, 0 新回归
+
+### 已完成 (2026-07-29 Bug Fixes)
+
+1. BPM 步进器: 步长 5→1，移除吸附逻辑，92 等任意值可调
+2. 内容必填双重校验: submitPractice/addExtraFromPicker 前端拦截 + _validate_session_fields 后端 + API 路由
+3. today-records 合并渲染: sessions + items 互补显示，消除 minutes 缺失 — 总时长始终以 items 为准
+4. 编辑/删除按钮仅今日 + 真实 session 显示；补录按钮内容联动；补录标签点击联动
+
+---
+
 **最后更新**: 2026-07-28 (Practice V3.1 UI: 卡片合并 + BPM 步进 + content_options 配置)
 **已 merge**: PR #188 → main @ f3bd8d3
 **配置入口**: http://localhost:8765/config/practice → 科目行点「内容」
