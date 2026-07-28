@@ -2037,43 +2037,59 @@
       // 2026-07-29: 只有今天的记录显示编辑/删除按钮
       const isToday = todayDate === new Date().toISOString().slice(0, 10);
 
-      // 优先用 sessions[] 展示科目+细节分组；sessions 为空时从 items 构造(旧记录兼容)
-      let displaySessions = (sessions && sessions.length > 0) ? sessions : null;
-      if (!displaySessions && items && items.length > 0) {
-        // 旧记录没有 sessions 表数据，从 daily_practices.items 构造伪 session
-        displaySessions = items.map((it, idx) => ({
-          id: -(it.item_id || idx + 1),  // 负数 id 表示伪 session (不可编辑/删除)
-          item_id: it.item_id || 0,
-          item_name: it.item || '未知科目',
-          tempo_note: '♪',
-          tempo_bpm: 0,
-          content: it.content || '',
-          duration_minutes: it.minutes || 0,
-          is_extra: it.is_extra || false,
-        }));
-      }
+      // 构建显示用 session 列表: 合并 sessions + items 中未被覆盖的分钟数
+      const itemMinutes = {};   // item_id → 总分钟 (来自 items)
+      const itemNames = {};    // item_id → name
+      (items || []).forEach(it => {
+        itemMinutes[it.item_id] = (itemMinutes[it.item_id] || 0) + (it.minutes || 0);
+        itemNames[it.item_id] = it.item || '未知科目';
+      });
 
-      if (displaySessions && displaySessions.length > 0) {
+      const sessionMinutes = {};  // item_id → 已由 sessions 覆盖的分钟数
+      const displaySessions = [...(sessions || [])];
+      (sessions || []).forEach(s => {
+        sessionMinutes[s.item_id] = (sessionMinutes[s.item_id] || 0) + (s.duration_minutes || 0);
+      });
+
+      // 对 items 中每个科目, 补上 sessions 未覆盖的分钟数
+      Object.keys(itemMinutes).forEach(itemId => {
+        const totalForItem = itemMinutes[itemId];
+        const coveredBySessions = sessionMinutes[itemId] || 0;
+        if (totalForItem > coveredBySessions) {
+          displaySessions.push({
+            id: -(itemId),  // 负 id = 伪 session (不可编辑/删除)
+            item_id: itemId,
+            item_name: itemNames[itemId] || '未知科目',
+            tempo_note: '',
+            tempo_bpm: 0,
+            content: '',
+            duration_minutes: totalForItem - coveredBySessions,
+            is_extra: false,
+          });
+        }
+      });
+
+      if (displaySessions.length > 0) {
         // 按 item_name 分组显示
         const groupOrder = [];
         const groups = {};
         const subjectTotals = {};
         displaySessions.forEach(s => {
-          if (!groups[s.item_name]) {
-            groups[s.item_name] = [];
-            groupOrder.push(s.item_name);
+          const key = s.item_name;
+          if (!groups[key]) {
+            groups[key] = [];
+            groupOrder.push(key);
           }
-          groups[s.item_name].push(s);
-          subjectTotals[s.item_name] = (subjectTotals[s.item_name] || 0) + (s.duration_minutes || 0);
+          groups[key].push(s);
+          subjectTotals[key] = (subjectTotals[key] || 0) + (s.duration_minutes || 0);
         });
 
         let html = '';
         groupOrder.forEach(name => {
           html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + name + '</span><span class="rg-mins">' + (subjectTotals[name] || 0) + ' 分钟</span></div>';
           groups[name].forEach(s => {
-            const contentText = s.content || '未填写练习内容';
+            const contentText = s.content || (s.tempo_bpm ? '未填写练习内容' : '');
             const tempoText = s.tempo_bpm ? s.tempo_note + '=' + s.tempo_bpm : '';
-            // 负 id = 旧记录无 session, 不显示编辑/删除; 正 id 且是今天才显示
             const isRealSession = s.id > 0;
             const actionsHtml = (isToday && isRealSession)
               ? '<button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button>'
@@ -2088,32 +2104,20 @@
         });
         recordsList.innerHTML = html;
         card.classList.add('visible');
-      } else if (!items || items.length === 0) {
+      } else {
         recordsList.innerHTML = '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
         card.classList.remove('visible');
       }
 
-      // 同步总时长/科目数/session 数
+      // 同步总时长/科目数/session 数: 始终以 items 为准 (真实总计)
       const totalEl = document.getElementById('todayTotalMins');
       const itemEl = document.getElementById('todayItemCount');
       const sessEl = document.getElementById('todaySessionCount');
       if (totalEl && itemEl && sessEl) {
-        if (sessions && sessions.length > 0) {
-          const sessionTotal = sessions.reduce((s, x) => s + (x.duration_minutes || 0), 0);
-          const itemSet = new Set(sessions.map(s => s.item_name));
-          totalEl.textContent = sessionTotal;
-          itemEl.textContent = itemSet.size;
-          sessEl.textContent = sessions.length;
-        } else if (items && items.length > 0) {
-          const itemTotal = items.reduce((s, x) => s + (x.minutes || 0), 0);
-          totalEl.textContent = itemTotal;
-          itemEl.textContent = items.length;
-          sessEl.textContent = 0;
-        } else {
-          totalEl.textContent = 0;
-          itemEl.textContent = 0;
-          sessEl.textContent = 0;
-        }
+        const itemTotal = (items || []).reduce((s, x) => s + (x.minutes || 0), 0);
+        totalEl.textContent = itemTotal || (sessions || []).reduce((s, x) => s + (x.duration_minutes || 0), 0);
+        itemEl.textContent = (items || []).length || new Set((sessions || []).map(s => s.item_name)).size;
+        sessEl.textContent = (sessions || []).length;
       }
       // GSAP 入场动画
       card.classList.add('visible');
