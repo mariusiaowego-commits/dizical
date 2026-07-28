@@ -1,3 +1,20 @@
+## [2026-07-28] Practice V3.1 UI — 卡片合并 + BPM 步进 + content_options 配置
+
+**范围**: practice 页效率升级 + config 配置入口
+
+**做了**:
+1. item-section 与老师要求合并，2:8 布局 + SoftPill 重选
+2. BPM 步进器（不弹键盘），session 默认值仍走 latest/session→assignment→♪80
+3. practice_items.content_options + config「内容」编辑 + 练习页标签
+4. 恢复 wheel|knob 左右；补录独立；旋钮吸附 5/10/15/20/25/30
+5. 文档双写 PRD/tech-spec/API-CHANGELOG
+
+**配置**: `/config/practice` → 点「内容」→ 每行一个 → 保存
+
+**分支**: feat/practice-v3.1-ui
+
+---
+
 ## [2026-07-27] PR #178/#180/#182 收尾 - 今日总时长显眼卡片 + 同 item_name 合并 + MySQL conflict 清理 (已 merge main @ 5a9297b)
 
 **dad 反馈 4 轮澄清** (21:30-22:30):

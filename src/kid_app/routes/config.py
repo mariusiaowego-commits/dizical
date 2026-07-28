@@ -328,6 +328,61 @@ async def api_delete_item(item_id: int):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@router.put("/api/practice/items/{item_id}/content-options")
+async def api_update_item_content_options(item_id: int, request: Request):
+    """更新小科目的练习内容预置选项。
+
+    接受:
+    - content_options: "第一分句,第二分句" 或 "第一分句\\n第二分句"
+    - content_options: ["第一分句", "第二分句"]
+    落库为逗号分隔字符串；空 = 练习页用全局默认。
+    """
+    try:
+        body = json.loads(await request.body())
+        raw = body.get("content_options", "")
+
+        if isinstance(raw, list):
+            raw_parts = [str(x).strip() for x in raw if str(x).strip()]
+        else:
+            text = str(raw or "").replace("，", ",").replace("\r", "")
+            raw_parts = []
+            for line in text.split("\n"):
+                for p in line.split(","):
+                    p = p.strip()
+                    if p:
+                        raw_parts.append(p)
+
+        # 去重保序 + 单条长度保护
+        seen = set()
+        parts = []
+        for p in raw_parts:
+            if p in seen:
+                continue
+            if len(p) > 50:
+                return JSONResponse(
+                    {"ok": False, "error": f"选项「{p[:12]}…」超过 50 字"},
+                    status_code=400,
+                )
+            seen.add(p)
+            parts.append(p)
+
+        if len(parts) > 20:
+            return JSONResponse({"ok": False, "error": "最多 20 个选项"}, status_code=400)
+
+        content_options = ",".join(parts)
+
+        items = db.get_practice_items(active_only=False, include_archived=True)
+        target = next((i for i in items if i["item_id"] == item_id), None)
+        if not target:
+            return JSONResponse({"ok": False, "error": "小科目不存在"}, status_code=404)
+
+        db.update_practice_item_content_options(item_id, content_options)
+        return JSONResponse({"ok": True, "content_options": content_options, "options": parts})
+
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 # ─── API: 归属关系 ───────────────────────────────────────────────────────────
 
 @router.put("/api/practice/items/{item_id}/category")

@@ -308,6 +308,103 @@
       position: relative;
     }
 
+    .item-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .item-card.open .item-row {
+      border-radius: 16px 16px 0 0;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .item-content-panel {
+      display: none;
+      background: #FAFCFA;
+      border: 1px solid rgba(168, 213, 186, 0.35);
+      border-top: none;
+      border-radius: 0 0 16px 16px;
+      padding: 14px 18px 16px;
+    }
+
+    .item-card.open .item-content-panel {
+      display: block;
+    }
+
+    .item-content-panel label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5D6D5D;
+      margin-bottom: 8px;
+    }
+
+    .item-content-panel textarea {
+      width: 100%;
+      min-height: 96px;
+      resize: vertical;
+      border: 1.5px solid #D5E8D8;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      box-sizing: border-box;
+      line-height: 1.5;
+    }
+
+    .item-content-panel textarea:focus {
+      outline: none;
+      border-color: var(--sage);
+      box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.25);
+    }
+
+    .item-content-panel .panel-hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #8A9A8A;
+      line-height: 1.4;
+    }
+
+    .item-content-panel .panel-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+
+    .item-content-panel .panel-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+    }
+
+    .item-content-panel .panel-btn.cancel {
+      background: rgba(0,0,0,0.06);
+      color: #7F8C8D;
+    }
+
+    .item-content-panel .panel-btn.save {
+      background: var(--sage);
+      color: #fff;
+    }
+
+    .item-content-badge {
+      font-size: 11px;
+      color: #6B8F71;
+      background: rgba(168, 213, 186, 0.22);
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
     .item-row:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
@@ -1075,33 +1172,106 @@
     function renderItemRow(item) {
       const catName = item.category_name || '未归属';
       const isArchived = item.is_archived;
-      
+      const rawOpts = (item.content_options || '').trim();
+      const optLines = rawOpts
+        ? rawOpts.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+        : [];
+      const textareaValue = optLines.join('\n')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      const safeName = String(item.name || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'");
+      const badge = optLines.length
+        ? `<span class="item-content-badge">${optLines.length} 个预设</span>`
+        : '';
+
       return `
-        <div class="item-row ${isArchived ? 'archived' : ''}" data-id="${item.item_id}">
-          <div class="item-info">
-            <span class="item-name" onclick="startEditItemName(${item.item_id}, '${item.name}')">${item.name}</span>
-            <span class="item-id">${item.item_id}</span>
-            ${!isArchived && !state.selectedCatId ? `<span class="item-category">${catName}</span>` : ''}
+        <div class="item-card" data-id="${item.item_id}">
+          <div class="item-row ${isArchived ? 'archived' : ''}" data-id="${item.item_id}">
+            <div class="item-info">
+              <span class="item-name" onclick="startEditItemName(${item.item_id}, '${safeName}')">${item.name}</span>
+              <span class="item-id">${item.item_id}</span>
+              ${badge}
+              ${!isArchived && !state.selectedCatId ? `<span class="item-category">${catName}</span>` : ''}
+            </div>
+            <div class="item-actions">
+              ${!isArchived ? `
+                <button class="item-action-btn" onclick="toggleContentOptions(${item.item_id})">
+                  内容
+                </button>
+                <button class="item-action-btn" onclick="showCategoryDropdown(${item.item_id}, ${item.category_id})">
+                  归属
+                </button>
+                <button class="item-action-btn archive" onclick="archiveItem(${item.item_id})">
+                  📦 归档
+                </button>
+              ` : `
+                <button class="item-action-btn unarchive" onclick="unarchiveItem(${item.item_id})">
+                  📤 取消归档
+                </button>
+              `}
+              <button class="item-action-btn delete" onclick="confirmDeleteItem(${item.item_id}, '${safeName}')">
+                🗑️
+              </button>
+            </div>
           </div>
-          <div class="item-actions">
-            ${!isArchived ? `
-              <button class="item-action-btn" onclick="showCategoryDropdown(${item.item_id}, ${item.category_id})">
-                归属
-              </button>
-              <button class="item-action-btn archive" onclick="archiveItem(${item.item_id})">
-                📦 归档
-              </button>
-            ` : `
-              <button class="item-action-btn unarchive" onclick="unarchiveItem(${item.item_id})">
-                📤 取消归档
-              </button>
-            `}
-            <button class="item-action-btn delete" onclick="confirmDeleteItem(${item.item_id}, '${item.name}')">
-              🗑️
-            </button>
+          <div class="item-content-panel" id="contentPanel-${item.item_id}">
+            <label>练习内容预置选项</label>
+            <textarea id="contentOpts-${item.item_id}" placeholder="每行一个，例如：&#10;第一分句&#10;第二分句&#10;整首连奏">${textareaValue}</textarea>
+            <div class="panel-hint">每行一个选项。留空 = 练习页用默认（长音/吐音/连吐/换气）。最多 20 个，每个 ≤50 字。</div>
+            <div class="panel-actions">
+              <button type="button" class="panel-btn cancel" onclick="toggleContentOptions(${item.item_id}, false)">取消</button>
+              <button type="button" class="panel-btn save" onclick="saveContentOptions(${item.item_id})">保存</button>
+            </div>
           </div>
         </div>
       `;
+    }
+
+    async function saveContentOptions(itemId) {
+      const ta = document.getElementById(`contentOpts-${itemId}`);
+      if (!ta) return;
+      const text = ta.value || '';
+      try {
+        const res = await fetch(`/config/api/practice/items/${itemId}/content-options`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content_options: text }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('success', data.options?.length ? `已保存 ${data.options.length} 个选项` : '已清空，将用默认选项');
+          await fetchItems();
+        } else {
+          showToast('error', data.error || '保存失败');
+        }
+      } catch (e) {
+        showToast('error', '网络错误');
+      }
+    }
+
+    function toggleContentOptions(itemId, forceOpen) {
+      const card = document.querySelector(`.item-card[data-id="${itemId}"]`);
+      if (!card) return;
+      // 关闭其它
+      document.querySelectorAll('.item-card.open').forEach(el => {
+        if (el !== card) el.classList.remove('open');
+      });
+      if (forceOpen === false) {
+        card.classList.remove('open');
+        return;
+      }
+      if (forceOpen === true) {
+        card.classList.add('open');
+      } else {
+        card.classList.toggle('open');
+      }
+      if (card.classList.contains('open')) {
+        const ta = document.getElementById(`contentOpts-${itemId}`);
+        if (ta) setTimeout(() => ta.focus(), 50);
+      }
     }
 
     // ── 交互函数 ──────────────────────────────────────────────────────────────
