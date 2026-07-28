@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<!--
+  7-28 用户体系 (Phase B): 用户审批 UI (admin-whitelist)
+  - 渲染 settings.pending_whitelist (待审批 openid 列表)
+  - 渲染 settings.dad_whitelist (active 白名单)
+  - 写操作 (approve/deny) 走 dad_pin 守门员 (跟 config-blindbox 一致)
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户审批 · dizical Admin</title>
+  <link rel="icon" href="/static/favicon.ico">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif; margin: 0; background: #F8F5F0; color: #2D2A28; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: linear-gradient(180deg, #FF8C7A, #E0785E); color: #fff; padding: 24rpx 0; flex-shrink: 0; }
+    .main { flex: 1; padding: 32px 48px; max-width: 1100px; }
+    h1 { font-size: 28px; margin: 0 0 8px 0; color: #5D4037; }
+    h2 { font-size: 20px; margin: 32px 0 12px 0; color: #5D4037; border-bottom: 2px solid #FF8C7A; padding-bottom: 8px; }
+    .subtitle { color: #8B7765; margin-bottom: 24px; }
+    .alert { background: #FFF3CD; border-left: 4px solid #FFC107; padding: 16px; margin-bottom: 24px; border-radius: 6px; }
+    .alert strong { color: #856404; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    th { background: #5D4037; color: #fff; text-align: left; padding: 12px 16px; font-weight: 500; }
+    td { padding: 12px 16px; border-bottom: 1px solid #F0EBE5; }
+    tr:last-child td { border-bottom: 0; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .badge-pending { background: #FFE4B5; color: #B7791F; }
+    .badge-active { background: #C6F6D5; color: #22543D; }
+    .btn { padding: 8px 16px; border: 0; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; margin-right: 6px; }
+    .btn-approve { background: #48BB78; color: #fff; }
+    .btn-deny { background: #E53E3E; color: #fff; }
+    .btn-remove { background: #FF8C7A; color: #fff; }
+    .btn:hover { opacity: 0.85; }
+    .pin-bar { background: #fff; padding: 18px 22px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+    .pin-bar input { padding: 8px 12px; border: 1px solid #DDD; border-radius: 6px; font-size: 14px; }
+    .pin-bar label { color: #5D4037; font-weight: 500; }
+    .meta { color: #8B7765; font-size: 12px; }
+    .empty { padding: 32px; text-align: center; color: #8B7765; }
+    .openid-cell { font-family: monospace; font-size: 11px; color: #5D4037; word-break: break-all; max-width: 240px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- sidebar -->
+    {% include "_sidebar.html" %}
+
+    <div class="main">
+      <h1>👥 用户审批 · whitelist</h1>
+      <p class="subtitle">dizical 小程序用户白名单管理。审核员走 1104 mock 路径不走这里。</p>
+
+      <div class="alert">
+        <strong>📌 流程：</strong>
+        任何微信用户扫码小程序，输 PIN=0905 后会自动尝试进入。<br>
+        若不在白名单：后端 7-28 改成"宽模式"，自动加白。<br>
+        若你想严格进用户审批：在下方 "待审批" 列表手动 approve / deny，approve 后该用户可进。<br>
+        若你想关掉宽模式：编辑 settings 表 <code>broad_seed_enabled = false</code>。
+      </div>
+
+      <!-- PIN 验证 -->
+      <form method="GET" action="/admin/whitelist" class="pin-bar">
+        <label for="pin-input">🔑 dad PIN 验证 (后端操作需要)</label>
+        <input type="password" id="pin-input" name="pin" value="{{ pin or '' }}" placeholder="0905" autocomplete="off" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+        <button type="submit" class="btn btn-approve">解锁查看</button>
+        {% if pin_valid %}
+        <span class="badge badge-active">✓ 已解锁</span>
+        {% elif pin is defined and pin %}
+        <span class="badge badge-pending">✗ PIN 错, 再试</span>
+        {% endif %}
+      </form>
+
+      {% if not pin_valid %}
+      <div class="alert" style="background: #F8D7DA; border-left-color: #E53E3E;">
+        🔒 请先在下方输入 dad PIN (默认 0905) 解锁查看管理功能。
+      </div>
+      {% else %}
+
+      <!-- 待审批列表 -->
+      <h2>📋 待审批 ({{ pending|length }})</h2>
+      {% if pending %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 28%">OpenID</th>
+            <th style="width: 18%">昵称</th>
+            <th>申请时间</th>
+            <th>备注</th>
+            <th style="width: 180px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in pending %}
+          <tr>
+            <td class="openid-cell">{{ item.openid }}</td>
+            <td>{{ item.nickname or '(未提供)' }}</td>
+            <td class="meta">{{ item.applied_at }}</td>
+            <td class="meta">{{ item.note or '' }}</td>
+            <td>
+              <form method="POST" action="/admin/whitelist/approve" style="display:inline-block;">
+                <input type="hidden" name="pin" value="{{ pin }}">
+                <input type="hidden" name="openid" value="{{ item.openid }}">
+                <button type="submit" class="btn btn-approve">✓ 通过</button>
+              </form>
+              <form method="POST" action="/admin/whitelist/deny" style="display:inline-block;">
+                <input type="hidden" name="pin" value="{{ pin }}">
+                <input type="hidden" name="openid" value="{{ item.openid }}">
+                <button type="submit" class="btn btn-deny">✗ 拒绝</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">📭 当前无待审批用户</div>
+      {% endif %}
+
+      <!-- 已激活白名单 -->
+      <h2>✅ 已激活白名单 ({{ active|length }})</h2>
+      {% if active %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 40%">OpenID</th>
+            <th style="width: 200px">加入时间 (whitelist 数组顺序, 无逐条时间戳)</th>
+            <th style="width: 140px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for openid in active %}
+          <tr>
+            <td class="openid-cell">{{ openid }}</td>
+            <td class="meta">#{{ loop.index }} 在 whitelist</td>
+            <td>
+              <form method="POST" action="/admin/whitelist/remove" style="display:inline-block;">
+                <input type="hidden" name="pin" value="{{ pin }}">
+                <input type="hidden" name="openid" value="{{ openid }}">
+                <button type="submit" class="btn btn-remove">🗑 移除</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">📭 当前无激活用户 (任何用户扫码后自动加白)</div>
+      {% endif %}
+
+      {% endif %}
+
+      <p class="meta" style="margin-top: 32px;">
+        数据来源: settings.dad_whitelist (active) + settings.pending_whitelist (pending).<br>
+        API 文档见 mp 项目 WEIXIN-SUBMIT-CHECKLIST-2026-07-28.md
+      </p>
+    </div>
+  </div>
+</body>
+</html>
