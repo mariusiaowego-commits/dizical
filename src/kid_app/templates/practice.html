@@ -134,7 +134,7 @@
     .floor-pickers { background: #FFFDF5; border-color: #F0D060; }
     .floor-pickers h3 { color: #8B6914; }
     /* V4: timer-block 横向排列 (picker-card left + session-panel right), iPad横屏友好 */
-    .timer-block { display: flex; flex-direction: row; gap: 10px; align-items: flex-start; }
+    .timer-block { display: flex; flex-direction: row; gap: 10px; align-items: stretch; }
     .timer-block .picker-card { flex: 0 0 auto; }
     .timer-block .session-panel { flex: 1; min-width: 0; margin: 0; }
     
@@ -393,25 +393,16 @@
 
     /* ═══ 2026-07-27: 本次练习 panel (Q1/B+Q3/A 拍板) ═══
        - 默认 ♪/80 (D 列 fallback / 切换科目重算 Q1=B)
-       - 内容必填 (Q3=A 提交按钮 disabled 状态机)
-       - 计时中 enabled (Q2=A 边练边改)
-       - dizicute token + SVG, 无 emoji */
+    /* V4: session-panel 精简 (去边框, 去背景, 透明融入) */
     .session-panel {
-      background: linear-gradient(180deg, #FFFDF8 0%, #FFF8F0 100%);
-      border: 1.5px solid #F0E0B8;
-      border-radius: 14px;
-      padding: 12px 14px;
-      margin: 8px 0 10px;
+      background: transparent; border: none; border-radius: 0;
+      padding: 0; margin: 0;
       display: flex; flex-direction: column; gap: 10px;
-      box-shadow: 0 1px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(0,0,0,0.04) inset, 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: none;
     }
-    .sp-header {
-      font-size: 12px; font-weight: 700;
-      color: #8B6914; letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
+    .sp-header { display: none; }
     .sp-tempo-row {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
     }
     .sp-tempo-label {
       font-size: 13px; font-weight: 600; color: #5D4037;
@@ -806,16 +797,19 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    /* ── V4 Dashboard (计时器卡片内部) ── */
+    /* V4: Dashboard (计时器卡片内部, 三列1:1:2) */
     .dash-card-inline { display: none; background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; color: #fff; }
-    .dash-card-inline.visible { display: flex; align-items: center; gap: 12px; }
-    .dci-item { min-width: 56px; text-align: center; }
-    .dci-name { font-size: 16px; font-weight: 700; color: #FF6B6B; display: block; line-height: 1.2; }
-    .dci-id { font-size: 10px; color: #8899AA; display: block; }
-    .dci-sep { width: 1px; height: 28px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
-    .dci-detail { flex: 1; display: flex; flex-direction: column; gap: 3px; }
-    .dci-tempo { font-size: 14px; font-weight: 600; color: #FFD93D; }
-    .dci-content { font-size: 13px; color: #E8ECF0; }
+    .dash-card-inline.visible { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 0; align-items: start; }
+    .dci-item { text-align: center; padding-right: 10px; }
+    .dci-name { font-size: 18px; font-weight: 700; color: #FF6B6B; display: block; line-height: 1.3; }
+    .dci-id { font-size: 10px; color: #8899AA; display: block; margin-top: 2px; }
+    .dci-sep { width: 1px; background: rgba(255,255,255,0.15); flex-shrink: 0; margin: 0 10px; }
+    .dci-detail { display: flex; flex-direction: column; gap: 4px; padding: 0 10px; }
+    .dci-detail .dci-tempo { font-size: 14px; font-weight: 600; color: #FFD93D; }
+    .dci-detail .dci-content { font-size: 13px; color: #E8ECF0; }
+    .dci-assign { display: flex; flex-direction: column; gap: 3px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,0.15); }
+    .dci-assign-label { font-size: 11px; color: #FF8C5A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dci-assign-text { font-size: 12px; color: #C8D6E5; line-height: 1.4; }
 
     /* ── BPM 预设按钮 ── */
     .bpm-presets { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
@@ -922,17 +916,14 @@
         <button class="tab-btn timer-tab active" onclick="switchTab('timer')">计时练习</button>
         <button class="tab-btn extra-tab" onclick="switchTab('extra')">快速补录</button>
       </div>
-      <div class="item-bubble" id="itemBubble" style="display:none">
-        <span class="bubble-name" id="bubbleName"></span>
-      </div>
 
       <!-- 主计时 -->
       <div class="tab-panel active" id="tabTimer">
       <!-- V4: Dashboard 内嵌在计时器卡片里 -->
       <div class="dash-card-inline" id="dashCardInline">
         <div class="dci-item"><span class="dci-name" id="dciName">—</span><span class="dci-id" id="dciId"></span></div>
-        <div class="dci-sep"></div>
         <div class="dci-detail"><span class="dci-tempo" id="dciTempo">选择科目</span><span class="dci-content" id="dciContent"></span></div>
+        <div class="dci-assign"><span class="dci-assign-label">老师要求</span><span class="dci-assign-text" id="dciAssignText">—</span></div>
       </div>
       <div class="timer-block">
         <div class="picker-card">
