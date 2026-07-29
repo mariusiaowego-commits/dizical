@@ -133,8 +133,10 @@
     /* 楼层 2+3:计时器+补录 (统一卡片) */
     .floor-pickers { background: #FFFDF5; border-color: #F0D060; }
     .floor-pickers h3 { color: #8B6914; }
-    /* 2026-07-27: 计时器 block 布局 (dial + session-panel 垂直排) */
-    .timer-block { display: flex; flex-direction: column; gap: 10px; }
+    /* V4: timer-block 横向排列 (picker-card left + session-panel right), iPad横屏友好 */
+    .timer-block { display: flex; flex-direction: row; gap: 10px; align-items: flex-start; }
+    .timer-block .picker-card { flex: 0 0 auto; }
+    .timer-block .session-panel { flex: 1; min-width: 0; margin: 0; }
     
     .section-divider {
       border: none; border-top: 1px dashed #E8D8B0;
@@ -796,28 +798,29 @@
       .panel-req .req-empty { padding: 20px 0; }
     }
 
-    /* ── V4 Tab 切换 ── */
-    .tab-bar { display: flex; gap: 0; margin: 12px 0 0; border-radius: 12px; overflow: hidden; }
-    .tab-btn { flex: 1; padding: 10px 0; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
-    .tab-btn.timer-tab { background: #FFE8E0; color: #D45A4A; }
-    .tab-btn.timer-tab.active { background: #FF6B6B; color: #fff; }
-    .tab-btn.extra-tab { background: #FFF0E8; color: #E07840; }
-    .tab-btn.extra-tab.active { background: #FF8C5A; color: #fff; }
+    /* ── V4 Tab header (卡片内部标签) ── */
+    .v4-tab-header { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; background: #F5EDE0; padding: 3px; }
+    .v4-tab-header .tab-btn { flex: 1; padding: 8px 0; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: transparent; color: #A09080; }
+    .v4-tab-header .tab-btn.timer-tab.active { background: #FF6B6B; color: #fff; box-shadow: 0 1px 3px rgba(255,107,107,0.3); }
+    .v4-tab-header .tab-btn.extra-tab.active { background: #FF8C5A; color: #fff; box-shadow: 0 1px 3px rgba(255,140,90,0.3); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    /* ── V4 Dashboard 表盘 ── */
-    .dash-card { display: none; margin: 10px 0; background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%); border-radius: 16px; padding: 14px 18px; color: #fff; box-shadow: 0 4px 16px rgba(44,62,80,0.25); }
-    .dash-card.visible { display: flex; align-items: center; gap: 16px; }
-    .dash-item { min-width: 80px; text-align: center; }
-    .dash-item-name { font-size: 20px; font-weight: 700; color: #FF6B6B; line-height: 1.2; }
-    .dash-item-id { font-size: 11px; color: #8899AA; margin-top: 2px; }
-    .dash-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
-    .dash-details { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-    .dash-tempo { font-size: 15px; font-weight: 600; color: #FFD93D; }
-    .dash-content { font-size: 14px; color: #E8ECF0; }
-    .dash-mins { font-size: 13px; color: #8899AA; }
-    .dash-empty { font-size: 13px; color: #667788; font-style: italic; }
+    /* ── V4 Dashboard (计时器卡片内部) ── */
+    .dash-card-inline { display: none; background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; color: #fff; }
+    .dash-card-inline.visible { display: flex; align-items: center; gap: 12px; }
+    .dci-item { min-width: 56px; text-align: center; }
+    .dci-name { font-size: 16px; font-weight: 700; color: #FF6B6B; display: block; line-height: 1.2; }
+    .dci-id { font-size: 10px; color: #8899AA; display: block; }
+    .dci-sep { width: 1px; height: 28px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
+    .dci-detail { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .dci-tempo { font-size: 14px; font-weight: 600; color: #FFD93D; }
+    .dci-content { font-size: 13px; color: #E8ECF0; }
+
+    /* ── BPM 预设按钮 ── */
+    .bpm-presets { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .bpm-preset { padding: 2px 8px; background: #FFF8F0; border: 1px solid #E8D8B0; border-radius: 6px; font-size: 11px; color: #8B6914; cursor: pointer; transition: all 0.15s; }
+    .bpm-preset:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
 
     /* 补录 item grid (替换 select) */
     .extra-item-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -910,36 +913,27 @@
     </div>
   </div>
 
-  <!-- V4 Dashboard 表盘 -->
-  <div class="dash-card" id="dashCard">
-    <div class="dash-item">
-      <div class="dash-item-name" id="dashItemName">—</div>
-      <div class="dash-item-id" id="dashItemId"></div>
-    </div>
-    <div class="dash-divider"></div>
-    <div class="dash-details">
-      <div class="dash-tempo" id="dashTempo">选择科目开始练习</div>
-      <div class="dash-content" id="dashContent"></div>
-    </div>
-    <div class="dash-mins" id="dashMins"></div>
-  </div>
-
-  <!-- V4 Tab 切换 -->
-  <div class="tab-bar">
-    <button class="tab-btn timer-tab active" onclick="switchTab('timer')">⏱️ 计时练习</button>
-    <button class="tab-btn extra-tab" onclick="switchTab('extra')">⚡ 快速补录</button>
-  </div>
-
   <!-- 垂直卡片：计时器 + 补录 -->
   <div class="vertical-stack" id="vertical-stack">
 
     <div class="floor floor-pickers">
-      <h3> <div class="item-bubble" id="itemBubble" style="display:none">
+      <!-- V4: Tab 在卡片内部标题栏 -->
+      <div class="v4-tab-header">
+        <button class="tab-btn timer-tab active" onclick="switchTab('timer')">计时练习</button>
+        <button class="tab-btn extra-tab" onclick="switchTab('extra')">快速补录</button>
+      </div>
+      <div class="item-bubble" id="itemBubble" style="display:none">
         <span class="bubble-name" id="bubbleName"></span>
-      </div></h3>
+      </div>
 
       <!-- 主计时 -->
       <div class="tab-panel active" id="tabTimer">
+      <!-- V4: Dashboard 内嵌在计时器卡片里 -->
+      <div class="dash-card-inline" id="dashCardInline">
+        <div class="dci-item"><span class="dci-name" id="dciName">—</span><span class="dci-id" id="dciId"></span></div>
+        <div class="dci-sep"></div>
+        <div class="dci-detail"><span class="dci-tempo" id="dciTempo">选择科目</span><span class="dci-content" id="dciContent"></span></div>
+      </div>
       <div class="timer-block">
         <div class="picker-card">
           <div class="activity-wheel" id="timerWheel"></div>
@@ -979,7 +973,8 @@
             </div>
             <input type="hidden" id="tempoBpmInput" value="80">
             <div class="sp-tempo-hint" id="tempoHint">♪ = 80 (默认)</div>
-          </div>
+                <div class="bpm-presets" id="bpmPresets"></div>
+              </div>
           <div class="sp-content-tags" id="sessionContentTags"></div>
           <input type="text" class="sp-content-input" id="sessionContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="本次练习内容">
         </div>
@@ -1508,8 +1503,27 @@
       const hint = document.getElementById('tempoHint');
       if (hint) hint.textContent = note + ' = ' + bpm + ' (' + source + ')';
       updateStartBtnState();
+      updateDashboard();
     }
 
+    // V4: BPM 预设按钮 (从 assignments 获取, fallback 60/80/100/120)
+    async function renderBpmPresets(itemId) {
+      const container = document.getElementById('bpmPresets');
+      if (!container) return;
+      let presets = [60, 80, 100, 120];
+      try {
+        let resp = await fetch('/api/assignments/latest?item_id=' + itemId);
+        let d = await resp.json();
+        if (d.found && d.tempo_bpm) {
+          presets = [d.tempo_bpm];
+        }
+      } catch(e) {}
+      // 去重, 限制 5 个
+      presets = [...new Set(presets)].slice(0, 5);
+      container.innerHTML = presets.map(v =>
+        '<span class="bpm-preset" onclick="setBpmValue(' + v + ');updateDashboard()">' + v + '</span>'
+      ).join('');
+    }
     function setBpmValue(bpm) {
       bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
       const input = document.getElementById('tempoBpmInput');
@@ -1609,6 +1623,7 @@
       bubble.classList.remove('animate');
       requestAnimationFrame(() => { bubble.classList.add('animate'); });
       fillSessionDefaults(id);
+      renderBpmPresets(id);
       renderContentTags(id, btn);
       updateStartBtnState();
       // 补录按钮只看补录自己的科目选择，不跟主计时绑定
@@ -2215,16 +2230,16 @@
 
     // ── V4 Dashboard 更新 ──
     function updateDashboard() {
-      const card = document.getElementById('dashCard');
+      const card = document.getElementById('dashCardInline');
       if (!selectedItemId) { card.classList.remove('visible'); return; }
       const name = selectedItem || '';
       const bpm = document.getElementById('tempoBpmInput')?.value || '';
       const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
       const content = (document.getElementById('sessionContentInput')?.value || '').trim();
-      document.getElementById('dashItemName').textContent = name;
-      document.getElementById('dashItemId').textContent = selectedItemId ? '#' + selectedItemId : '';
-      document.getElementById('dashTempo').textContent = note + '=' + bpm;
-      document.getElementById('dashContent').textContent = content || '未填写练习内容';
+      document.getElementById('dciName').textContent = name;
+      document.getElementById('dciId').textContent = selectedItemId ? '#' + selectedItemId : '';
+      document.getElementById('dciTempo').textContent = note + '=' + bpm;
+      document.getElementById('dciContent').textContent = content || '未填写练习内容';
       card.classList.add('visible');
     }
 
