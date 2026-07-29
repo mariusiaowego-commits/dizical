@@ -32,21 +32,21 @@ _DEDUP_WINDOW_SECONDS = 5
 _dedup_cache: Dict[tuple, tuple] = {}
 
 
-def _check_dedup(item_id: int, minutes: int) -> Optional[dict]:
-    """5s 内 (item_id, minutes) 重复 → 返回缓存 response JSON."""
-    if not (item_id and minutes):
+def _check_dedup(date: str, item_id: int, minutes: int) -> Optional[dict]:
+    """5s 内 (date, item_id, minutes) 重复 → 返回缓存 response JSON."""
+    if not date or not (item_id and minutes):
         return None
-    cached = _dedup_cache.get((item_id, minutes))
+    cached = _dedup_cache.get((date, item_id, minutes))
     if cached and (time.time() - cached[0]) < _DEDUP_WINDOW_SECONDS:
         return cached[1]
     return None
 
 
-def _record_dedup(item_id: int, minutes: int, body_json: dict) -> None:
-    """记录 (item_id, minutes) → response JSON."""
-    if not (item_id and minutes):
+def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict) -> None:
+    """记录 (date, item_id, minutes) → response JSON."""
+    if not date or not (item_id and minutes):
         return
-    _dedup_cache[(item_id, minutes)] = (time.time(), body_json)
+    _dedup_cache[(date, item_id, minutes)] = (time.time(), body_json)
     if len(_dedup_cache) > 100:
         cutoff = time.time() - _DEDUP_WINDOW_SECONDS
         for k in list(_dedup_cache.keys()):
@@ -1242,8 +1242,11 @@ async def api_log(request: Request):
     behavior_entries = [e.model_dump() for e in req.behavior_log]
     log_note = req.log
 
-    # PR-D: 5s dedup — 同 (item_id, minutes) 5s 内重复 → 返缓存, 不再写 session/daily.
-    dedup_cached = _check_dedup(int(item_id), int(minutes))
+    # 用 str(date) 统一 key 格式 (ISO YYYY-MM-DD)
+    date_key = str(date)
+
+    # PR-D: 5s dedup — 同 (date, item_id, minutes) 5s 内重复 → 返缓存, 不再写 session/daily.
+    dedup_cached = _check_dedup(date_key, int(item_id), int(minutes))
     if dedup_cached is not None:
         return JSONResponse(dedup_cached)
 
@@ -1259,7 +1262,7 @@ async def api_log(request: Request):
                 )
                 # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
                 resp = {"ok": True, "total": minutes, "session": s}
-                _record_dedup(int(item_id), int(minutes), resp)
+                _record_dedup(date_key, int(item_id), int(minutes), resp)
                 return JSONResponse(resp)
             # 旧路径: 无 session detail, 只走 save_daily_practice
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
@@ -1269,7 +1272,7 @@ async def api_log(request: Request):
             for entry in behavior_entries:
                 db.append_behavior_log(date, entry)
             resp_legacy = {"ok": True, "total": minutes}
-            _record_dedup(int(item_id), int(minutes), resp_legacy)
+            _record_dedup(date_key, int(item_id), int(minutes), resp_legacy)
             return JSONResponse(resp_legacy)
 
         # 正常打卡路径
@@ -1287,7 +1290,7 @@ async def api_log(request: Request):
                 "total": daily["total_minutes"] if daily else minutes,
                 "session": s,
             }
-            _record_dedup(int(item_id), int(minutes), resp_normal)
+            _record_dedup(date_key, int(item_id), int(minutes), resp_normal)
             return JSONResponse(resp_normal)
 
         # 旧路径: 走 save_daily_practice 兼容逻辑 (不创建空 session, 避免污染 sessions 表)
@@ -1303,7 +1306,7 @@ async def api_log(request: Request):
             db.append_behavior_log(date, entry)
 
         resp_legacy_normal = {"ok": True, "total": total}
-        _record_dedup(int(item_id), int(minutes), resp_legacy_normal)
+        _record_dedup(date_key, int(item_id), int(minutes), resp_legacy_normal)
         return JSONResponse(resp_legacy_normal)
 
     except ValueError as e:
