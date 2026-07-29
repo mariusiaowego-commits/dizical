@@ -5,9 +5,10 @@ from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 from .models import Lesson, Payment, LessonStatus, settings
+from .database_base import BaseBackend
 
 
-class Database:
+class Database(BaseBackend):
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or settings.db_path
         self._ensure_db_directory()
