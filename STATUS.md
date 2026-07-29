@@ -1,5 +1,79 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-29 (PR #200 V4 tile 修复, 2 commit)
+**已 merge**: PR #198 + #199 (main @ 30a58d3), PR #200 OPEN, 待 dad merge
+**新分支**: `fix/practice-v4-timer-req-tile-20260729` (HEAD: 3c5a410)
+**pytest**: 新文件 27 passed / 6 skipped, 全套 13 failed / 338 passed (与 main baseline 一致, 0 新增回归)
+**服务**: 8765 running branch @ 3c5a410 (PID 77816, 加载新代码)
+
+### 已完成 (2026-07-29 PR #200 V4 tile 修复)
+
+**PR #200** (2 commit, 待 dad merge):
+- `79544a3` `feat(practice): dashboard 老师要求字段填充 + 字体协调`
+  - 修 dashboard 第三列"老师要求"一直显示 "—" 的根因 (JS 从未写 dciAssignText)
+  - `updateDashboard(reqText)` 接受参数, `selectItem` 传 `reqText` (源: `btn.getAttribute('data-req')`)
+  - 模块级 `_lastReqText`: BPM/content 变更的 `updateDashboard()` 无参调用不重置老师要求
+  - 字体协调: `dci-assign-label` 11→13px, `dci-assign-text` 12→13px + `white-space: pre-wrap`
+  - 不限高: 长 requirements 让 dashboard 卡片自然变高 (dad 拍板)
+- `3c5a410` `refactor(practice): V4 tile 布局重排 — wheel 去 desc + sp-tempo-row 拆 2 行`
+  - 删 `.wheel-desc` CSS + HTML render, `.activity-wheel` 180→80px
+  - `.sp-tempo-row` 拆 `.sp-tempo-row-1` (核心控制) + `.sp-tempo-row-2` (hint/presets)
+  - 主计时 + 补录 两处都拆
+  - `.bpm-value` 加 `font-variant-numeric: tabular-nums`
+  - `@media (max-width: 800px)` 紧凑模式: BPM 步进 36→32px (iPad mini 横屏 ~600px session-panel)
+
+**部署验证**:
+1. DevTools 真机: 选"萨丽哈" → dashboard 完整 3 行 requirements 显示
+2. DevTools 真机: 选"考试" (无 req) → dashboard "—"
+3. DevTools 真机: BPM 92→94 老师要求保持 (_lastReqText 修复验证)
+4. DevTools 真机: 切"快速补录" tab → wheel 变窄无 desc, session-panel 紧凑
+5. HTTP: /practice 200 + 152KB + 所有 commit 标记齐全
+6. 待 dad 真机 iPad mini 1024×768 验证 (我只有 DevTools 模拟)
+
+**Plan 文档**:
+- 主仓: `.hermes/plans/2026-07-29_practice-v4-timer-req-tile.md`
+- Obsidian: `tqob/05-Coding/project-dizical/PRDs/AI-PRD-练习修复-v4-tile-260729.md`
+- md5: `f80b046b06ebb456f2ec32af048b490b` (一致)
+- handoff: `tqob/05-Coding/project-dizical/AI-handoff-2026-07-29-v4-tile.md`
+
+**已知问题 (下个 session)**:
+1. `updateReqPanel` 内仍用 `innerHTML` 拼字符串 (旧 XSS 隐患, 不在本 PR 范围, 单独工单)
+2. dad 真机 iPad 验证 (我自己只验 DevTools 模拟)
+3. (历史, 7-29 前遗留) item-section compact 选完后内容仍残留 / session-panel 右侧 waza-ui 重设计 / reselect-float 按钮 / MySQL subprocess test / Phase 5 历史 tab
+
+**PR 链接**: https://github.com/mariusiaowego-commits/dizical/pull/200
+
+---
+
+**PR #198 (4 commit, squash)**:
+- PR-A: Pydantic schema + BaseBackend ABC
+- PR-B: MySQL session CRUD + behavior_log dedup
+- PR-C: Web 4 修复 (practice_at / 归档状态机 / isToday CST / XSS)
+- PR-D: 5s dedup + API-CHANGELOG
+
+**PR #199 (架构修复 3 项)**:
+- dedup key 加 date → (date, item_id, minutes)
+- MySQL _validate_session_fields 用类常量替代硬编码
+- MySQL 3 新方法加类型注解 (与 ABC 签名一致)
+
+**部署验证**:
+1. /health 200 db=ok
+2. /practice HTML 含 all fixes
+3. behavior_log 长度=1 (dedup 成功)
+4. 5s dedup 命中
+5. Pydantic 422 触发
+6. PUT session 200
+7. 备份保留: data/backups/dizi-pre-pr-deploy-20260729-154030.db
+
+**已知问题 (下个session)**:
+1. item-section compact 选完后内容仍残留 (CSS display:none不够)
+2. session-panel 右侧区域需要 waza-ui 重设计
+3. reselect-float 按钮位置未完成
+4. MySQL subprocess 测试待 CloudRun 部署后用 MYSQL_TEST_URL 跑
+5. Phase 5: move_session_to_item + config 历史 tab + mp 白名单扩展
+
+---
+
 **最后更新**: 2026-07-29 (V4 practice页重组: Tab+Dashboard+布局精修)
 **已 merge**: PR #190 → #196 (6个PR, steps 1-4)
 **pytest**: 12/12 PASS, 0 回归

@@ -1,3 +1,85 @@
+## [2026-07-29] PR #200 V4 tile 修复: dashboard 老师要求 + wheel 去 desc + sp-tempo-row 拆 2 行
+
+**触发**: dad "开分支修 practice 上的问题" — 4 个 UI/逻辑问题一次性拍板
+
+**dad 拍板**:
+1. 拆 2 个 commit (逻辑自洽)
+2. wheel 宽度 = `.activity-wheel` 容器 (180→80px)
+3. dashboard 老师要求**不限高** (卡片自然变高)
+4. 媒体查询临界 800px (我决定)
+
+**4 个问题**:
+1. **dci-assign 老师要求为空** (dashboard 卡片第三列): HTML 元素存在但 JS 0 处写 `dciAssignText`. `data-req` 已在 server 端 (app.py:1688) 注入, `updateReqPanel(btn)` 用, dashboard 没用. 修法: `updateDashboard(reqText)` 接受参数, `selectItem` 传 `reqText` (源: `btn.getAttribute('data-req')`), textContent 写入
+2. **sp-tempo-row 拥挤 / iPad 不友好**: 6 元素 nowrap + iPad 1024 横屏 session-panel ~600px 放不下. 修法: 拆 `sp-tempo-row-1` (核心控制) + `sp-tempo-row-2` (hint/presets) 两行 + `@media (max-width: 800px)` 缩 BPM 步进 36→32px
+3. **dash-card-inline 字体倒挂 + 老师要求空**: 修法与 #1 同. 字体同时: `dci-assign-label` 11→13px, `dci-assign-text` 12→13px + `white-space: pre-wrap` 保留换行
+4. **wheel-desc 占地方**: 删 `.wheel-desc` CSS + HTML render, `.activity-wheel` 180→80px, `.wheel-right` 加 `margin: 0 auto` 让 pill 居中
+
+**关键发现 (实测)**: commit 1 单独跑时序问题:
+- `updateDashboard()` 无参调用 6 处 (BPM/content 变化触发) 会清空老师要求
+- 模块级 `_lastReqText` 保留, 无参调用不重置 — 已修
+- 验证: BPM 92→94 步进 2 次, 老师要求保持 ✓
+
+**2 commit**:
+- `79544a3` `feat(practice): dashboard 老师要求字段填充 + 字体协调` (+13/-5)
+- `3c5a410` `refactor(practice): V4 tile 布局重排 — wheel 去 desc + sp-tempo-row 拆 2 行 (iPad 友好)` (+24/-27)
+
+**分支**: `fix/practice-v4-timer-req-tile-20260729` → PR #200 (https://github.com/mariusiaowego-commits/dizical/pull/200)
+
+**验证**:
+- pytest 新文件 6 个: 27 passed / 6 skipped
+- pytest 全套: 13 failed / 338 passed / 7 skipped — 与 main baseline 完全一致, 0 新增回归
+- HTTP: /practice 200 + 152KB + 所有 commit 标记齐全
+- DevTools 真机 (4 项全过):
+  - 选"萨丽哈" → dashboard 完整 3 行 requirements 显示
+  - 选"考试" (无 req) → dashboard "—"
+  - BPM 92→94 → 老师要求保持
+  - 切"快速补录" tab → wheel 变窄无 desc, session-panel 紧凑
+
+**未做 (待 dad 拍板)**:
+- dad 真机 iPad mini 1024×768 验证 (我只有 DevTools 模拟)
+- `updateReqPanel` 内仍用 `innerHTML` 拼字符串 (旧 XSS 隐患, 不在本 PR 范围, 单独工单)
+
+**沉淀**:
+- 模块级状态变量 (let _lastReqText = '') 是处理 "无参调用不重置某字段" 的 JS 模式, 比每个调用点显式传参更鲁棒
+- Dad 拍板 4 选项 (Q1=拆 2 commit / Q2=wheel 宽度 / Q3=不限高 / Q4=我决定 800px) — 严格执行, 无追加
+- waza-check 不发现的 bug: commit 1 单独验通过, commit 2 真实运行时序暴露 6 处无参调用清空问题. **逐 commit 视觉验真 + 步进多次验证** 是发现此类问题的关键
+- dad 拍"不限高"决策正确: 长 requirements (萨丽哈 60+ 字) 让 dashboard 卡片变高, 远比 80px max-height 滚动条自然
+
+**Plan 文档** (双写, md5 一致 `f80b046b06ebb456f2ec32af048b490b`):
+- 主仓: `.hermes/plans/2026-07-29_practice-v4-timer-req-tile.md`
+- Obsidian: `tqob/05-Coding/project-dizical/PRDs/AI-PRD-练习修复-v4-tile-260729.md`
+
+---
+
+## [2026-07-29] PR-A/B/C/D + 架构修复: 部署 + 合并到 main
+
+**范围**: 后端 + Web 5 回归修复 + 3 架构修复 (waza-check 发现)
+
+**PR #198 (4 commit squashed)**:
+1. **MySQL session CRUD 补齐**: create/update/delete_practice_session MySQL 端整事务版本
+2. **behavior_log dedup**: session 路径移除外层 append, 消除双写
+3. **Pydantic 校验**: PracticeLogRequest 422 + 详细 details
+4. **BaseBackend ABC**: 抽象基类独立模块, 防 7-28 再发生
+5. **Web 4 修复**: practice_at 补全; 归档科目 V4 状态机; isToday CST; XSS createElement+textContent
+6. **5s dedup**: 同 (item_id, minutes) 5s 内返缓存
+
+**PR #199 (架构修复 3 项)**:
+1. dedup key 加 date → (date, item_id, minutes) — 防跨天重放
+2. MySQL _validate_session_fields 用类常量 (删重复 _CONTENT_MAX_LEN)
+3. MySQL 3 新方法加类型注解
+
+**分支**: fix/practice-pr-a → PR #198 → main; fix/architecture-fixes → PR #199 → main
+**最终 commit**: main @ 30a58d3
+**pytest**: 39/39 PASS (12 baseline + 9 schemas + 5 base + 4 api_log + 9 dedup)
+**服务**: 8765 跑新代码, 8 项真实 HTTP 验证全过
+
+**沉淀**:
+- waza-check 发现的 3 个架构问题: 常量重复 / dedup key 无 date / 缺类型注解
+- 7-28 教训 (续): ABC + Pydantic 双重防线, 但真正修法是 reviewer 发现
+- GitHub API EOF / 网络不稳: 用 curl REST API 绕过 gh CLI GraphQL, 成功 merge
+
+---
+
 ## [2026-07-29] Fix: BPM步进1 + 内容必填 + 今日记录改版
 
 **范围**: BPM步进精度 / 内容必填双重校验 / today-records展示改版
