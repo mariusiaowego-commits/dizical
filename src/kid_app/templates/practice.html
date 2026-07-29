@@ -808,8 +808,8 @@
     .dci-detail .dci-tempo { font-size: 14px; font-weight: 600; color: #FFD93D; }
     .dci-detail .dci-content { font-size: 13px; color: #E8ECF0; }
     .dci-assign { display: flex; flex-direction: column; gap: 3px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,0.15); }
-    .dci-assign-label { font-size: 11px; color: #FF8C5A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .dci-assign-text { font-size: 12px; color: #C8D6E5; line-height: 1.4; }
+    .dci-assign-label { font-size: 13px; color: #FF8C5A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dci-assign-text { font-size: 13px; color: #C8D6E5; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
 
     /* ── BPM 预设按钮 ── */
     .bpm-presets { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
@@ -1612,8 +1612,8 @@
       updateStartBtnState();
       // 补录按钮只看补录自己的科目选择，不跟主计时绑定
       updateExtraBtnState();
-      // V4: 更新 Dashboard
-      updateDashboard();
+      // V4: 更新 Dashboard (传 reqText 让第三列显示老师要求)
+      updateDashboard(reqText);
     }
 
     function setPickerTime(mins) {
@@ -2259,9 +2259,13 @@
     }
 
     // ── V4 Dashboard 更新 ──
-    function updateDashboard() {
+    // reqText: 老师要求原文 (含 metronome 前缀), 从 selectItem 传.
+    // 模块级 _lastReqText: BPM/content 变更的 updateDashboard() 无参调用不重置老师要求.
+    let _lastReqText = '';
+    function updateDashboard(reqText) {
       const card = document.getElementById('dashCardInline');
       if (!selectedItemId) { card.classList.remove('visible'); return; }
+      if (reqText !== undefined && reqText !== null) _lastReqText = reqText;
       const name = selectedItem || '';
       const bpm = document.getElementById('tempoBpmInput')?.value || '';
       const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
@@ -2270,6 +2274,10 @@
       document.getElementById('dciId').textContent = selectedItemId ? '#' + selectedItemId : '';
       document.getElementById('dciTempo').textContent = note + '=' + bpm;
       document.getElementById('dciContent').textContent = content || '未填写练习内容';
+      // 老师要求: textContent 安全注入 (server 端 data-req 已转义单引号, 反正不渲染 HTML)
+      // 不限高: 长 requirements 让 dashboard 卡片自然变高, 不滚条.
+      const assignEl = document.getElementById('dciAssignText');
+      if (assignEl) assignEl.textContent = (_lastReqText && _lastReqText.trim()) ? _lastReqText.trim() : '—';
       card.classList.add('visible');
     }
 
