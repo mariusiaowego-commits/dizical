@@ -828,6 +828,13 @@
     .item-section.compact .item-filter-wrap { display: none; }
     .item-section.compact .selection-area { display: none; }
     .item-section.compact .summary-right { display: none; }
+    .item-section.compact .summary-layout { padding: 6px 0; }
+    .item-section.compact { padding: 10px 24px; margin-bottom: 4px; }
+
+    /* V4: 重新选择浮动按钮 */
+    .reselect-float { display: inline-block; padding: 6px 16px; background: #FFFEFA; border: 1.5px solid #E8D8B0; border-radius: 8px; font-size: 14px; color: #FF6B6B; cursor: pointer; margin: 0 0 8px 24px; transition: all 0.2s; }
+    .reselect-float:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
+    .reselect-float.visible { display: inline-block; }
   </style>
 </head>
 <body class="has-sidebar">
@@ -913,6 +920,9 @@
       <div id="archivedToggleWrap"></div>
     </div>
   </div>
+
+  <!-- V4: 重新选择按钮 (选item后出现在vertical-stack上方) -->
+  <button class="reselect-float" id="reselectFloat" onclick="toggleReselect()" style="display:none">重新选择</button>
 
   <!-- 垂直卡片：计时器 + 补录 -->
   <div class="vertical-stack" id="vertical-stack">
