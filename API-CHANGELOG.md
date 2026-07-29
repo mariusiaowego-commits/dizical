@@ -12,6 +12,63 @@
 
 ---
 
+# Practice V3.1+ — API 变更 (PR-A/B/C/D, 2026-07-29)
+
+**日期**: 2026-07-29
+**分支**: fix/practice-pr-a (合并前); PR-A / PR-B / PR-C / PR-D 4 个独立 PR
+**类型**: 🟡 部分兼容 (mp 端无需改)
+
+## 变更
+
+### 1. POST /api/log — Pydantic 校验 (PR-B)
+
+替换手写 `body.get()` 类型转换, 用 `PracticeLogRequest` Pydantic model 校验.
+校验失败返 422 + details (Pydantic 错误结构).
+- 缺 `date` / `item` / `item_id` / `minutes` → 422
+- `tempo_bpm` 越界 (40-150) → 422
+- `content` 仅空白 → 422 (session 路径下)
+- `tempo_note` 非 ♪/♩/♬ → 422
+
+### 2. POST /api/log — `session_detail` 嵌套 alias (PR-B)
+
+Web 快速补录实际把 tempo_note/tempo_bpm/content 嵌套在 `body.session_detail`, 后端 schema 自动合并到顶层. 兼容旧 / 新两种调用方式.
+
+### 3. POST /api/log — `behavior_log` dedup (PR-B)
+
+`save_practice_session_and_daily_summary()` 事务内已 append 1 条 behavior_log.
+旧路由在事务后再次 `append_behavior_log` 造成双写. PR-B 在 session 路径下移除外部 append.
+- 旧路径 (无 session 字段): 继续 `append_behavior_log` 兼容旧前端
+- session 路径: 事务内 1 条, 外部不再写
+
+### 4. POST /api/log — 5s dedup 防重 (PR-D)
+
+同 `(item_id, minutes)` 5s 内重复请求 → 返回首次响应缓存, 不再写 session/daily.
+- 进程级 dict, 5s 后自动清理
+- 进程重启失效 (无副作用)
+
+### 5. PUT /api/log — MySQL session CRUD 补齐 (PR-B)
+
+`update_practice_session` / `delete_practice_session` 之前仅 SQLite 端实现 (PR #190-#196 漏).
+PR-B 移植到 MySQLBackend, 整事务 + 重算 daily + 写 audit + 同步冗余列.
+- 7-28 CloudRun PUT/DELETE 必 500 → 修复
+- MySQL DDL 字段类型与 `schema_mysql.sql` 对齐 (BIGINT)
+
+### 6. GET /api/practice-sessions/{date} 兼容
+
+字段不变, 但 `practice_sessions.started_at` 之前常为 NULL. PR-C 前端 `submitPractice` / `addExtraMins` body 加 `practice_at: nowCstLocal()` (CST ISO 无 Z), session.started_at 写入新值.
+
+## 数据库
+
+`src/database_base.py` 新增 `BaseBackend(ABC)` 抽象基类, 4 个 session 方法 (create/update/delete/save) 强制所有 backend 实现. 防止 7-28 那种"漏方法导致运行时 500"再发生.
+
+`src/database_mysql.py` 修复 `append_behavior_log` 用 `JSON_ARRAY_APPEND` 原子追加 (旧 `|| %s` 字符串拼接破坏 JSON 结构).
+
+## minip 端
+
+无变化. mp 端 `submitRecord` 已使用顶层 `tempo_note/tempo_bpm/content` 字段, 走 `/config/api/records` 路由, 与本次 `/api/log` 改动无关.
+
+---
+
 **日期**: 2026-07-27
 **分支**: feat/practice-session-detail
 **类型**: 🟡 部分兼容
