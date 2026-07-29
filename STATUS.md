@@ -1,5 +1,24 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-29 (V4 practice页重组: Tab+Dashboard+布局精修)
+**已 merge**: PR #190 → #196 (6个PR, steps 1-4)
+**pytest**: 12/12 PASS, 0 回归
+**服务**: 8765 running main @ b25c7db
+
+### 已完成 (2026-07-29 V4 Practice 重构)
+
+**PR #193 (Step 1)**: Tab切换 + Dashboard表盘 + 宽度修复
+**PR #194 (Step 2-4)**: 补录item-grid + 编辑弹窗tags + BPM优先老师要求
+**PR #195 (布局精修)**: 等高去框 + 三列dashboard + item收拢 + 补录简化 + 去bubble/emoji
+**PR #196**: dci-assign获取老师要求 + item-section紧凑
+
+### 已知问题 (下个session)
+1. item-section compact 选完后内容仍残留 (CSS display:none不够, 需结构级移除)
+2. session-panel 右侧区域需要 waza-ui 重设计
+3. reselect-float 按钮位置未完成
+
+---
+
 **最后更新**: 2026-07-29 (fix: BPM步进1 + 内容必填 + today-records合并)
 **已 merge**: PR #190 → main @ 3902df9 (fix/practice-bugs-20260729)
 **pytest**: practice sessions 12/13 PASS, 0 新回归
