@@ -1395,6 +1395,8 @@
       summary.classList.remove('visible');
       area.classList.remove('collapsed');
       area.classList.add('expanded');
+      // V4: 展开 item-section
+      document.querySelector('.item-section').classList.remove('compact');
       area.style.maxHeight = area.scrollHeight + 'px';
       setTimeout(() => { area.style.maxHeight = ''; }, 350);
     }
@@ -1613,11 +1615,11 @@
       updateReqPanel(btn);
       updateSelectedSummary(name, id, reqText, btn);
       collapseSelection();
-      const bubble = document.getElementById('itemBubble');
-      const bubbleName = document.getElementById('bubbleName');
-      bubbleName.textContent = name; bubble.style.display = 'flex';
-      bubble.classList.remove('animate');
-      requestAnimationFrame(() => { bubble.classList.add('animate'); });
+      // V4: item-section 收拢
+      document.querySelector('.item-section').classList.add('compact');
+      // V4: 补录用计时选择的 item
+      const extraCur = document.getElementById('extraCurrentItem');
+      if (extraCur) { extraCur.textContent = '当前科目: ' + name; extraCur.classList.remove('empty'); }
       fillSessionDefaults(id);
       renderBpmPresets(id);
       renderContentTags(id, btn);
@@ -2023,7 +2025,7 @@
     function updateExtraBtnState() {
       const btn = document.getElementById('addExtraBtn');
       const extraContent = (document.getElementById('extraContentInput')?.value || '').trim();
-      if (btn) btn.disabled = !(selectedExtraItemId && extraContent);
+      if (btn) btn.disabled = !(selectedItemId && extraContent);
     }
     
     // 设置补录音符
@@ -2063,12 +2065,12 @@
     }
 
     async function addExtraFromPicker() {
-      if (!selectedExtraItemId) {
-        alert('请先在下方科目列表中选择');
+      if (!selectedItemId) {
+        alert('请先在计时练习中选择科目');
         return;
       }
       
-      const item = ALL_ITEMS.find(i => i.item_id == selectedExtraItemId);
+      const item = ALL_ITEMS.find(i => i.item_id == selectedItemId);
       if (!item) return;
       
       if (!pendingExtraMins || pendingExtraMins < 1) {
