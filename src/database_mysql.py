@@ -8,6 +8,7 @@ import datetime as dt
 import json
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlparse
+from src.database_base import BaseBackend
 
 import pymysql
 from pymysql.cursors import DictCursor
@@ -32,7 +33,7 @@ def parse_database_url(url: str) -> Dict[str, Any]:
     }
 
 
-class MySQLBackend:
+class MySQLBackend(BaseBackend):
     """完全镜像 Database 类接口, 53 个方法全部实现"""
 
     def __init__(self, url: str):
@@ -536,12 +537,21 @@ class MySQLBackend:
             return new_id
 
     def append_behavior_log(self, date: dt.date, entry: Dict) -> None:
+        """原子追加 1 条 entry 到 behavior_log JSON 数组.
+
+        PR-A-4 修复: 旧实现用 `behavior_log || %s` 字符串拼接, 会破坏已有 JSON 结构
+        (变成 '[entry1][entry2]'). 新实现用 JSON_ARRAY_APPEND 原子追加.
+        """
         behavior_log_json = json.dumps([entry], ensure_ascii=False)
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
                     UPDATE daily_practices
-                    SET behavior_log = COALESCE(behavior_log, JSON_ARRAY()) || %s
+                    SET behavior_log = JSON_ARRAY_APPEND(
+                        COALESCE(behavior_log, JSON_ARRAY()),
+                        '$',
+                        CAST(%s AS JSON)
+                    )
                     WHERE date = %s
                 ''', (behavior_log_json, date.isoformat()))
             conn.commit()
@@ -768,13 +778,14 @@ class MySQLBackend:
     _PRACTICE_SESSIONS_DDL = [
         '''
         CREATE TABLE IF NOT EXISTS practice_sessions (
-            id INT PRIMARY KEY AUTO_INCREMENT,
+            -- PR-A-3: 字段类型与 schema_mysql.sql 对齐 (id/item_id/duration_minutes/tempo_bpm 一律 BIGINT)
+            id BIGINT PRIMARY KEY AUTO_INCREMENT,
             practice_date DATE NOT NULL,
-            item_id INT NOT NULL,
+            item_id BIGINT NOT NULL,
             item_name VARCHAR(128) NOT NULL,
-            duration_minutes INT NOT NULL,
+            duration_minutes BIGINT NOT NULL,
             tempo_note VARCHAR(16) NOT NULL DEFAULT '♪',
-            tempo_bpm INT NOT NULL DEFAULT 80,
+            tempo_bpm BIGINT NOT NULL DEFAULT 80,
             content VARCHAR(512) NOT NULL DEFAULT '',
             content_source VARCHAR(32) NOT NULL DEFAULT 'manual',
             is_extra TINYINT(1) NOT NULL DEFAULT 0,
@@ -787,6 +798,12 @@ class MySQLBackend:
     ]
 
     _PRACTICE_SESSIONS_DDL_DONE = False
+
+    # PR-B: 与 schemas.py 常量对齐 (单一事实源).
+    _ALLOWED_TEMPO_NOTES = ('♪', '♩', '♬')
+    _BPM_MIN = 40
+    _BPM_MAX = 150
+    _CONTENT_MAX_LEN = 200
 
     def _ensure_practice_sessions_schema(self) -> None:
         """Lazy DDL. 第一次访问 MySQLBackend 时拉起 practice_sessions 表 + 索引."""
@@ -873,9 +890,206 @@ class MySQLBackend:
                     return {
                         'last_tempo_note': fb['last_tempo_note'],
                         'last_tempo_bpm': int(fb['last_tempo_bpm']),
-                        'last_session_at': str(fb['last_session_at']) if fb.get('last_session_at') else None,
+                        'last_session_at': str(fb['created_at']) if fb.get('created_at') else None,
                     }
                 return None
+
+    # PR-B: MySQL 缺 create/update/delete 三个方法 (7-28 教训).
+    # 整事务: 写 session + 重算 daily + 写 audit + 更新冗余列.
+    def create_practice_session(
+        self,
+        practice_date,
+        item_id,
+        item_name,
+        duration_minutes,
+        tempo_note='♪',
+        tempo_bpm=80,
+        content='',
+        content_source='manual',
+        is_extra=False,
+        started_at=None,
+    ):
+        """插入 1 条 practice_session, 返回 dict (含 id). 不动 daily_practices 汇总."""
+        self._ensure_practice_sessions_schema()
+        self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content)
+        if isinstance(practice_date, str):
+            practice_date = dt.date.fromisoformat(practice_date)
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                cur.execute('''
+                    INSERT INTO practice_sessions
+                    (practice_date, item_id, item_name, duration_minutes,
+                     tempo_note, tempo_bpm, content, content_source,
+                     is_extra, started_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (practice_date.isoformat(), int(item_id), item_name, int(duration_minutes),
+                      tempo_note, int(tempo_bpm), content, content_source,
+                      1 if is_extra else 0, started_at))
+                new_id = cur.lastrowid
+                if not new_id:
+                    raise RuntimeError("INSERT session 后 lastrowid 为空")
+            conn.commit()
+        return self.get_practice_session_by_id(new_id)
+
+    def update_practice_session(
+        self,
+        session_id,
+        tempo_note=None,
+        tempo_bpm=None,
+        content=None,
+        duration_minutes=None,
+    ):
+        """更新 session tempo/content/duration, duration 变化时重算 daily."""
+        self._ensure_practice_sessions_schema()
+        # 逐字段校验 (避免 OR fallback 绕过空 content)
+        if tempo_note is not None and tempo_note not in self._ALLOWED_TEMPO_NOTES:
+            raise ValueError(f"tempo_note 必须是 {self._ALLOWED_TEMPO_NOTES} 之一, 收到 {tempo_note!r}")
+        if tempo_bpm is not None and not (self._BPM_MIN <= tempo_bpm <= self._BPM_MAX):
+            raise ValueError(f"tempo_bpm 必须在 {self._BPM_MIN}-{self._BPM_MAX} 之间, 收到 {tempo_bpm}")
+        if duration_minutes is not None and duration_minutes <= 0:
+            raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
+        if content is not None and (not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN):
+            raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                # 1. 读旧 session
+                cur.execute('SELECT * FROM practice_sessions WHERE id = %s', (int(session_id),))
+                row = cur.fetchone()
+                if not row:
+                    raise ValueError(f"session_id={session_id} 不存在")
+                old_duration = int(row['duration_minutes'])
+                new_duration = int(duration_minutes) if duration_minutes is not None else old_duration
+                # 2. UPDATE session 字段
+                updates, params = [], []
+                if tempo_note is not None:
+                    updates.append('tempo_note = %s'); params.append(tempo_note)
+                if tempo_bpm is not None:
+                    updates.append('tempo_bpm = %s'); params.append(int(tempo_bpm))
+                if content is not None:
+                    updates.append('content = %s'); params.append(content)
+                if duration_minutes is not None:
+                    updates.append('duration_minutes = %s'); params.append(int(duration_minutes))
+                if updates:
+                    params.append(int(session_id))
+                    cur.execute(
+                        f'UPDATE practice_sessions SET {", ".join(updates)} WHERE id = %s',
+                        params,
+                    )
+                # 3. duration 变了 → 重算 daily
+                if duration_minutes is not None and new_duration != old_duration:
+                    delta = new_duration - old_duration
+                    practice_date = str(row['practice_date'])
+                    item_id = int(row['item_id'])
+                    cur.execute('SELECT items FROM daily_practices WHERE date = %s', (practice_date,))
+                    drow = cur.fetchone()
+                    if drow and drow.get('items'):
+                        items = json.loads(drow['items'])
+                    else:
+                        items = []
+                    new_total = 0
+                    found = False
+                    for it in items:
+                        if int(it.get('item_id', -1)) == item_id:
+                            it['minutes'] = max(0, int(it.get('minutes', 0)) + delta)
+                            found = True
+                        new_total += int(it.get('minutes', 0))
+                    if not found:
+                        items.append({
+                            'item': str(row['item_name']),
+                            'item_id': item_id,
+                            'minutes': max(0, delta),
+                        })
+                        new_total += max(0, delta)
+                    if items:
+                        cur.execute(
+                            'UPDATE daily_practices SET items = %s, total_minutes = %s WHERE date = %s',
+                            (json.dumps(items, ensure_ascii=False), new_total, practice_date),
+                        )
+                    else:
+                        cur.execute(
+                            "UPDATE daily_practices SET items = JSON_ARRAY(), total_minutes = 0 WHERE date = %s",
+                            (practice_date,),
+                        )
+                    # 写 audit
+                    cur.execute('''
+                        INSERT INTO practice_audit_log
+                        (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ''', (
+                        'internal', 'update_session_duration', practice_date,
+                        json.dumps([{'session_id': int(session_id), 'old_minutes': old_duration, 'new_minutes': new_duration}], ensure_ascii=False),
+                        json.dumps([], ensure_ascii=False), delta, None, str(int(session_id)),
+                    ))
+                # 4. 同步冗余列 (任意字段 update 都同步, 跟 save 行为一致)
+                if updates:
+                    cur.execute('SELECT tempo_note, tempo_bpm FROM practice_sessions WHERE id = %s', (int(session_id),))
+                    s = cur.fetchone()
+                    if s and s.get('tempo_note'):
+                        cur.execute('''
+                            UPDATE practice_items
+                            SET last_tempo_note = %s, last_tempo_bpm = %s, last_session_at = CURRENT_TIMESTAMP
+                            WHERE item_id = %s
+                        ''', (s['tempo_note'], int(s['tempo_bpm']), int(row['item_id'])))
+            conn.commit()
+        return self.get_practice_session_by_id(int(session_id))
+
+    def delete_practice_session(self, session_id):
+        """删单条 session + 重算 daily + 写 audit. 整事务."""
+        self._ensure_practice_sessions_schema()
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                cur.execute(
+                    'SELECT practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = %s',
+                    (int(session_id),),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise ValueError(f"session_id={session_id} 不存在")
+                practice_date = str(row['practice_date'])
+                item_id = int(row['item_id'])
+                item_name = str(row['item_name'])
+                removed_minutes = int(row['duration_minutes'])
+                # 1. 删 session
+                cur.execute('DELETE FROM practice_sessions WHERE id = %s', (int(session_id),))
+                # 2. 重算 daily
+                cur.execute('SELECT items FROM daily_practices WHERE date = %s', (practice_date,))
+                drow = cur.fetchone()
+                if drow and drow.get('items'):
+                    new_items = []
+                    total = 0
+                    changed = False
+                    for it in json.loads(drow['items']):
+                        if int(it.get('item_id', -1)) == item_id:
+                            it['minutes'] = max(0, int(it.get('minutes', 0)) - removed_minutes)
+                            changed = True
+                            if it['minutes'] > 0:
+                                new_items.append(it)
+                                total += it['minutes']
+                        else:
+                            new_items.append(it)
+                            total += int(it.get('minutes', 0))
+                    if changed:
+                        if new_items:
+                            cur.execute(
+                                'UPDATE daily_practices SET items = %s, total_minutes = %s WHERE date = %s',
+                                (json.dumps(new_items, ensure_ascii=False), total, practice_date),
+                            )
+                        else:
+                            cur.execute(
+                                "UPDATE daily_practices SET items = JSON_ARRAY(), total_minutes = 0 WHERE date = %s",
+                                (practice_date,),
+                            )
+                # 3. 写 audit
+                cur.execute('''
+                    INSERT INTO practice_audit_log
+                    (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    'internal', 'delete_session', practice_date,
+                    json.dumps([{'item': item_name, 'item_id': item_id, 'minutes': removed_minutes}], ensure_ascii=False),
+                    json.dumps([], ensure_ascii=False), -removed_minutes, None, str(int(session_id)),
+                ))
+            conn.commit()
 
     def save_practice_session_and_daily_summary(self, practice_date, item, item_id, minutes,
                                                   tempo_note, tempo_bpm, content,

@@ -7,7 +7,7 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -20,12 +20,42 @@ from fastapi.staticfiles import StaticFiles
 from src.database import db
 from src import practice as practice_module
 from src.kid_app.subject_info import get_subject_info
+from src.kid_app.schemas import PracticeLogRequest  # PR-B: Pydantic 校验
+from pydantic import ValidationError
 
 # ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bamboo Flute Practice")
 
+# PR-D: 同 item + 同 minutes 5s 内防重窗口 (防双击 / 网络重传导致 2 条 session).
+# 进程级 dict, 路由层 _dedup_practice_log() 入口检查; 不下到 middleware 改 body.
+_DEDUP_WINDOW_SECONDS = 5
+_dedup_cache: Dict[tuple, tuple] = {}
+
+
+def _check_dedup(item_id: int, minutes: int) -> Optional[dict]:
+    """5s 内 (item_id, minutes) 重复 → 返回缓存 response JSON."""
+    if not (item_id and minutes):
+        return None
+    cached = _dedup_cache.get((item_id, minutes))
+    if cached and (time.time() - cached[0]) < _DEDUP_WINDOW_SECONDS:
+        return cached[1]
+    return None
+
+
+def _record_dedup(item_id: int, minutes: int, body_json: dict) -> None:
+    """记录 (item_id, minutes) → response JSON."""
+    if not (item_id and minutes):
+        return
+    _dedup_cache[(item_id, minutes)] = (time.time(), body_json)
+    if len(_dedup_cache) > 100:
+        cutoff = time.time() - _DEDUP_WINDOW_SECONDS
+        for k in list(_dedup_cache.keys()):
+            if _dedup_cache[k][0] < cutoff:
+                del _dedup_cache[k]
+
+
 # CORS: web / Mac app 调 CloudRun 公网 HTTPS 时需要
-# Phase 1 收紧: 只允许 dizical-prod-xxx 域名, spike 阶段先全开
+# Phase 1 收紧: 只允许 dizical-prod-xxx 域名, spike 阶段先开
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # spike 阶段全开, Phase 1 改成具体域名
@@ -1182,51 +1212,55 @@ async def api_unarchive_item(item_id: int):
 # ─── API: 打卡 ─────────────────────────────────────────────────────────────
 @app.post("/api/log")
 async def api_log(request: Request):
+    """PR-B: 用 PracticeLogRequest Pydantic 校验 + behavior_log dedup.
+
+    双路径:
+    - has_session_detail() == True  → save_practice_session_and_daily_summary (事务内写 behavior_log)
+    - has_session_detail() == False → save_daily_practice (兼容旧前端, append_behavior_log)
+    """
     try:
-        body = json.loads(await request.body())
-        date_str = body.get("date")
-        item_name = body.get("item")
-        minutes = int(body.get("minutes", 0))
-        log_note = body.get("log", "")
-        is_extra = body.get("is_extra", False)
-        behavior_entries = body.get("behavior_log", [])  # [{enter_time, item, minutes}, ...]
-        # 2026-06-13: 接受 practice_at (CST ISO) — 来自 practice 页 (前端 nowCstLocal) 或
-        # 补录页 (用户填写的时分). None 时 save_daily_practice 不动 practice_at 列.
-        practice_at = body.get("practice_at")
-
-        date = dt.date.fromisoformat(date_str) if date_str else dt.date.today()
-
-        item_id = body.get("item_id")
-
-        # 2026-07-27: 练习计时细分内容 (PRD: AI-PRD-练习计时细分内容-260727.md)
-        # 路由: 有 4 字段全部传 → 走事务方法, 否则走旧 save_daily_practice 兼容
-        has_session_detail = all(
-            k in body for k in ("tempo_note", "tempo_bpm", "content")
+        req = PracticeLogRequest.model_validate(json.loads(await request.body()))
+    except ValidationError as e:
+        # Pydantic v2: e.errors() 含 ctx.error (ValueError), json 序列化失败.
+        # 用 json(e.json()) 字符串避免 ValueError 落到 ctx.
+        return JSONResponse(
+            {"ok": False, "error": "请求参数校验失败", "details": json.loads(e.json())},
+            status_code=422,
         )
-        tempo_note = body.get("tempo_note", "♪")
-        tempo_bpm = int(body.get("tempo_bpm", 80))
-        content = body.get("content", "")
-        content_source = body.get("content_source", "manual")
 
-        # 2026-07-29: 后端也验证内容必填 (前/后端双重校验)
-        if has_session_detail and not (content and content.strip()):
-            return JSONResponse({"ok": False, "error": "练习内容不能为空"}, status_code=400)
+    date = req.date
+    item_name = req.item
+    item_id = req.item_id
+    minutes = req.minutes
+    is_extra = req.is_extra
+    practice_at = req.practice_at
+    has_session_detail = req.has_session_detail()
+    tempo_note = req.tempo_note or "♪"
+    tempo_bpm = req.tempo_bpm or 80
+    content = req.content or ""
+    content_source = req.content_source
+    behavior_entries = [e.model_dump() for e in req.behavior_log]
+    log_note = req.log
 
+    # PR-D: 5s dedup — 同 (item_id, minutes) 5s 内重复 → 返缓存, 不再写 session/daily.
+    dedup_cached = _check_dedup(int(item_id), int(minutes))
+    if dedup_cached is not None:
+        return JSONResponse(dedup_cached)
+
+    try:
         if is_extra:
             # 2026-07-29 fix: 有 session detail 时只走 save_practice_session_and_daily_summary,
             # 避免 save_daily_practice + save_practice_session_and_daily_summary 双重合并 items
             if has_session_detail:
-                try:
-                    s = db.save_practice_session_and_daily_summary(
-                        date, item_name, int(item_id), minutes,
-                        tempo_note, tempo_bpm, content, content_source,
-                        practice_at=practice_at, is_extra=True,
-                    )
-                    for entry in behavior_entries:
-                        db.append_behavior_log(date, entry)
-                    return JSONResponse({"ok": True, "total": minutes, "session": s})
-                except ValueError as e:
-                    return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+                s = db.save_practice_session_and_daily_summary(
+                    date, item_name, int(item_id), minutes,
+                    tempo_note, tempo_bpm, content, content_source,
+                    practice_at=practice_at, is_extra=True,
+                )
+                # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
+                resp = {"ok": True, "total": minutes, "session": s}
+                _record_dedup(int(item_id), int(minutes), resp)
+                return JSONResponse(resp)
             # 旧路径: 无 session detail, 只走 save_daily_practice
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
             db.save_daily_practice(date, items, minutes, '',
@@ -1234,29 +1268,27 @@ async def api_log(request: Request):
                                    practice_at=practice_at)
             for entry in behavior_entries:
                 db.append_behavior_log(date, entry)
-            return JSONResponse({"ok": True, "total": minutes})
+            resp_legacy = {"ok": True, "total": minutes}
+            _record_dedup(int(item_id), int(minutes), resp_legacy)
+            return JSONResponse(resp_legacy)
 
         # 正常打卡路径
         if has_session_detail:
             # 新路径: 写 session + 同步 daily + 写 audit + 更新冗余列 (整事务)
-            try:
-                s = db.save_practice_session_and_daily_summary(
-                    date, item_name, int(item_id), minutes,
-                    tempo_note, tempo_bpm, content, content_source,
-                    practice_at=practice_at, is_extra=False,
-                )
-                # 保留旧 behavior_log 行为, 但新前端不再发 behavior_log, 这里降级处理
-                for entry in behavior_entries:
-                    db.append_behavior_log(date, entry)
-                daily = db.get_daily_practice(date)
-                return JSONResponse({
-                    "ok": True,
-                    "total": daily["total_minutes"] if daily else minutes,
-                    "session": s,
-                })
-            except ValueError as e:
-                # 后端兜底校验 (防绕过, 但不向用户展示技术细节)
-                return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+            s = db.save_practice_session_and_daily_summary(
+                date, item_name, int(item_id), minutes,
+                tempo_note, tempo_bpm, content, content_source,
+                practice_at=practice_at, is_extra=False,
+            )
+            # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
+            daily = db.get_daily_practice(date)
+            resp_normal = {
+                "ok": True,
+                "total": daily["total_minutes"] if daily else minutes,
+                "session": s,
+            }
+            _record_dedup(int(item_id), int(minutes), resp_normal)
+            return JSONResponse(resp_normal)
 
         # 旧路径: 走 save_daily_practice 兼容逻辑 (不创建空 session, 避免污染 sessions 表)
         # 注意：只传 [{item, item_id, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
@@ -1266,12 +1298,17 @@ async def api_log(request: Request):
                                channel='kid_app', method='timer',
                                practice_at=practice_at)
 
-        # 打卡成功后，追加行为日志（在 save_daily_practice 之后）
+        # 打卡成功后，追加行为日志（仅旧路径，session 路径已在事务内写）
         for entry in behavior_entries:
             db.append_behavior_log(date, entry)
 
-        return JSONResponse({"ok": True, "total": total})
+        resp_legacy_normal = {"ok": True, "total": total}
+        _record_dedup(int(item_id), int(minutes), resp_legacy_normal)
+        return JSONResponse(resp_legacy_normal)
 
+    except ValueError as e:
+        # 后端兜底校验 (防绕过, 但不向用户展示技术细节)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except Exception as e:
         import traceback
         import logging

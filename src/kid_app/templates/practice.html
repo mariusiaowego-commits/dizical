@@ -1412,36 +1412,11 @@
       setTimeout(() => { area.style.maxHeight = ''; }, 350);
     }
 
+    // PR-C: 归档科目选择直接复用 selectItem 状态机.
+    // 删除旧的 selectArchivedItem (访问已删 DOM + 缺 V4 调用), 改用 selectItem.
     function selectArchivedItem(name, id, btn, e) {
-      if (e) e.stopPropagation();
-      document.querySelectorAll('.archived-item-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('selected'));
-      selectedItem = name;
-      selectedItemId = id;
-      resetTimer();
-      refreshExtraSection();
-
-      const reqText = btn ? btn.getAttribute('data-req') : null;
-      updateReqPanel(btn);
-
-      // 更新选中摘要
-      updateSelectedSummary(name, id, reqText, btn);
-
-      // 收拢选择区
-      collapseSelection();
-
-      // 更新选中科目气泡
-      const bubble = document.getElementById('itemBubble');
-      const bubbleName = document.getElementById('bubbleName');
-      bubbleName.textContent = name;
-      bubble.style.display = 'flex';
-      bubble.classList.remove('animate');
-      requestAnimationFrame(() => { bubble.classList.add('animate'); });
-      document.getElementById('startBtn').disabled = false;
-      document.getElementById('addExtraBtn').disabled = false;
-      const addBtn = document.getElementById('addExtraBtn');
-      if (addBtn) addBtn.disabled = !selectedItemId;
+      // 转发到 selectItem (传 e 让 stopPropagation 生效)
+      selectItem(name, id, btn, e);
     }
 
     // 更新左栏老师要求显示
@@ -1876,6 +1851,9 @@
         let body = {
           date: todayDate, item: selectedItem, item_id: selectedItemId,
           minutes: finalMins, log: '',
+          // PR-C: 传 practice_at 让 session.started_at 有值 (CST ISO 无 Z)
+          // save_practice_session_and_daily_summary 用它写 started_at 列
+          practice_at: nowCstLocal(),
           behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]
         };
         // 2026-07-27: 本次练习 速度 + 内容 (Q3=A 必填, 后端/前端双检)
@@ -1965,7 +1943,7 @@
     async function addExtraMins(mins, item = null, sessionDetail = null) {
       const theItem = item || { name: selectedItem, item_id: selectedItemId };
       if (!theItem.name) return;
-      
+
       try {
         const body = {
           date: todayDate,
@@ -1974,9 +1952,11 @@
           minutes: mins,
           log: '',
           is_extra: true,
+          // PR-C: 传 practice_at (CST ISO), session.started_at 有值
+          practice_at: nowCstLocal(),
           behavior_log: [{enter_time: enterTime, item: theItem.name, minutes: mins}]
         };
-        
+
         // 如果有 session detail，一起传
         if (sessionDetail) {
           body.session_detail = sessionDetail;
@@ -2132,7 +2112,13 @@
       let card = document.querySelector('.today-records');
       
       // 2026-07-29: 只有今天的记录显示编辑/删除按钮
-      const isToday = todayDate === new Date().toISOString().slice(0, 10);
+      // PR-C: 用 CST 本地日期 (项目统一用 CST, 服务端 today_date 也是 CST), 不用 UTC ISO.
+      // 凌晨 00:00-07:59 CST 时, new Date().toISOString() 仍是 UTC, 跟 todayDate 差一天 → 误判.
+      const isToday = todayDate === (() => {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      })();
 
       // 构建显示用 session 列表: 合并 sessions + items 中未被覆盖的分钟数
       const itemMinutes = {};   // item_id → 总分钟 (来自 items)
@@ -2181,25 +2167,60 @@
           subjectTotals[key] = (subjectTotals[key] || 0) + (s.duration_minutes || 0);
         });
 
-        let html = '';
+        // PR-C: 用 DOM 节点 + textContent 替代 innerHTML 拼接, 防 XSS.
+        recordsList.innerHTML = '';
+        const escape = (s) => String(s == null ? '' : s);
         groupOrder.forEach(name => {
-          html += '<div class="record-group"><div class="record-group-header"><span class="rg-name">' + name + '</span><span class="rg-mins">' + (subjectTotals[name] || 0) + ' 分钟</span></div>';
+          const groupDiv = document.createElement('div');
+          groupDiv.className = 'record-group';
+          const header = document.createElement('div');
+          header.className = 'record-group-header';
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'rg-name';
+          nameSpan.textContent = escape(name);
+          const minsSpan = document.createElement('span');
+          minsSpan.className = 'rg-mins';
+          minsSpan.textContent = `${escape(subjectTotals[name] || 0)} 分钟`;
+          header.appendChild(nameSpan);
+          header.appendChild(minsSpan);
+          groupDiv.appendChild(header);
           groups[name].forEach(s => {
             const contentText = s.content || (s.tempo_bpm ? '未填写练习内容' : '');
             const tempoText = s.tempo_bpm ? s.tempo_note + '=' + s.tempo_bpm : '';
             const isRealSession = s.id > 0;
-            const actionsHtml = (isToday && isRealSession)
-              ? '<button class="rs-edit" onclick="editSession(' + s.id + ')">✎</button><button class="rs-del" onclick="deleteSession(' + s.id + ')">✕</button>'
-              : '';
-            html += '<div class="record-session" data-item-id="' + s.item_id + '">' +
-              (tempoText ? '<span class="rs-tempo">' + tempoText + '</span>' : '') +
-              '<span class="rs-content">' + contentText + '</span>' +
-              '<span class="rs-mins">' + s.duration_minutes + 'min</span>' + actionsHtml +
-              '</div>';
+            const row = document.createElement('div');
+            row.className = 'record-session';
+            row.setAttribute('data-item-id', escape(s.item_id));
+            if (tempoText) {
+              const tempoSpan = document.createElement('span');
+              tempoSpan.className = 'rs-tempo';
+              tempoSpan.textContent = escape(tempoText);
+              row.appendChild(tempoSpan);
+            }
+            const contentSpan = document.createElement('span');
+            contentSpan.className = 'rs-content';
+            contentSpan.textContent = escape(contentText);
+            row.appendChild(contentSpan);
+            const minsSpan2 = document.createElement('span');
+            minsSpan2.className = 'rs-mins';
+            minsSpan2.textContent = `${escape(s.duration_minutes)}min`;
+            row.appendChild(minsSpan2);
+            if (isToday && isRealSession) {
+              const editBtn = document.createElement('button');
+              editBtn.className = 'rs-edit';
+              editBtn.textContent = '✎';
+              editBtn.addEventListener('click', () => window.editSession(s.id));
+              row.appendChild(editBtn);
+              const delBtn = document.createElement('button');
+              delBtn.className = 'rs-del';
+              delBtn.textContent = '✕';
+              delBtn.addEventListener('click', () => window.deleteSession(s.id));
+              row.appendChild(delBtn);
+            }
+            groupDiv.appendChild(row);
           });
-          html += '</div>';
+          recordsList.appendChild(groupDiv);
         });
-        recordsList.innerHTML = html;
         card.classList.add('visible');
       } else {
         recordsList.innerHTML = '<div class="empty-records">还没有练习记录，开始练习吧！</div>';
