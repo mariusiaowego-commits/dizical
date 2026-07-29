@@ -816,11 +816,17 @@
     .bpm-preset { padding: 2px 8px; background: #FFF8F0; border: 1px solid #E8D8B0; border-radius: 6px; font-size: 11px; color: #8B6914; cursor: pointer; transition: all 0.15s; }
     .bpm-preset:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
 
-    /* 补录 item grid (替换 select) */
-    .extra-item-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-    .extra-item-btn { padding: 6px 12px; background: #FFFEFA; border: 2px solid #E8D8B0; border-radius: 8px; font-size: 13px; color: #5D4037; cursor: pointer; transition: all 0.15s; }
-    .extra-item-btn:hover { border-color: #FF8C5A; background: #FFF5EC; }
-    .extra-item-btn.selected { background: #FF8C5A; color: #fff; border-color: #FF8C5A; }
+    .extra-current-item { font-size: 13px; color: #FF8C5A; font-weight: 600; }
+    .extra-current-item.empty { color: #BDBDBD; font-weight: 400; }
+
+    /* item-section 收拢动画 */
+    .selection-area { overflow: hidden; transition: max-height 0.35s ease, opacity 0.25s ease; }
+    .selection-area.collapsed { max-height: 0 !important; opacity: 0; padding: 0; margin: 0; }
+    .selection-area.expanded { max-height: 2000px; opacity: 1; }
+    .item-section h2 { transition: margin 0.25s ease; }
+    .item-section.compact h2 { display: none; }
+    .item-section.compact .item-filter-wrap { display: none; }
+    .item-section.compact .selection-area { display: none; }
   </style>
 </head>
 <body class="has-sidebar">
@@ -996,8 +1002,7 @@
         <div class="session-panel" id="extraSessionPanel">
           <div class="sp-header">补录详情</div>
           <div class="sp-item-select">
-            <input type="text" id="extraItemFilter" placeholder="搜索科目..." oninput="renderExtraItemGrid()" style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:8px;border:1px solid #E8D8B0;font-size:13px">
-            <div class="extra-item-grid" id="extraItemGrid"></div>
+            <span class="extra-current-item" id="extraCurrentItem">上方未选择科目 — 请先在计时练习中选择</span>
           </div>
           <div class="sp-tempo-row">
             <div class="sp-tempo-label">速度</div>
