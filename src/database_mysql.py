@@ -816,13 +816,12 @@ class MySQLBackend(BaseBackend):
             conn.commit()
         self._PRACTICE_SESSIONS_DDL_DONE = True
 
-    _CONTENT_MAX_LEN = 200  # 跟 SQLite 对齐
-
     def _validate_session_fields(self, tempo_note: str, tempo_bpm: int, duration_minutes: int, content: str) -> None:
-        if tempo_note not in ('♪', '♩', '♬'):
-            raise ValueError(f"tempo_note 必须是 ♪/♩/♬, 收到 {tempo_note!r}")
-        if not isinstance(tempo_bpm, int) or tempo_bpm < 40 or tempo_bpm > 150:
-            raise ValueError(f"tempo_bpm 必须是 40-150 int, 收到 {tempo_bpm!r}")
+        # 用类常量替代硬编码值, 与 schemas.py 保持单一事实源
+        if tempo_note not in self._ALLOWED_TEMPO_NOTES:
+            raise ValueError(f"tempo_note 必须是 {self._ALLOWED_TEMPO_NOTES} 之一, 收到 {tempo_note!r}")
+        if not isinstance(tempo_bpm, int) or tempo_bpm < self._BPM_MIN or tempo_bpm > self._BPM_MAX:
+            raise ValueError(f"tempo_bpm 必须是 {self._BPM_MIN}-{self._BPM_MAX} int, 收到 {tempo_bpm!r}")
         if duration_minutes <= 0:
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
         if not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN:
@@ -898,17 +897,17 @@ class MySQLBackend(BaseBackend):
     # 整事务: 写 session + 重算 daily + 写 audit + 更新冗余列.
     def create_practice_session(
         self,
-        practice_date,
-        item_id,
-        item_name,
-        duration_minutes,
-        tempo_note='♪',
-        tempo_bpm=80,
-        content='',
-        content_source='manual',
-        is_extra=False,
-        started_at=None,
-    ):
+        practice_date: dt.date,
+        item_id: int,
+        item_name: str,
+        duration_minutes: int,
+        tempo_note: str = '♪',
+        tempo_bpm: int = 80,
+        content: str = '',
+        content_source: str = 'manual',
+        is_extra: bool = False,
+        started_at: Optional[str] = None,
+    ) -> Dict:
         """插入 1 条 practice_session, 返回 dict (含 id). 不动 daily_practices 汇总."""
         self._ensure_practice_sessions_schema()
         self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content)
@@ -933,12 +932,12 @@ class MySQLBackend(BaseBackend):
 
     def update_practice_session(
         self,
-        session_id,
-        tempo_note=None,
-        tempo_bpm=None,
-        content=None,
-        duration_minutes=None,
-    ):
+        session_id: int,
+        tempo_note: Optional[str] = None,
+        tempo_bpm: Optional[int] = None,
+        content: Optional[str] = None,
+        duration_minutes: Optional[int] = None,
+    ) -> Optional[Dict]:
         """更新 session tempo/content/duration, duration 变化时重算 daily."""
         self._ensure_practice_sessions_schema()
         # 逐字段校验 (避免 OR fallback 绕过空 content)
@@ -1033,7 +1032,7 @@ class MySQLBackend(BaseBackend):
             conn.commit()
         return self.get_practice_session_by_id(int(session_id))
 
-    def delete_practice_session(self, session_id):
+    def delete_practice_session(self, session_id: int) -> None:
         """删单条 session + 重算 daily + 写 audit. 整事务."""
         self._ensure_practice_sessions_schema()
         with self._get_connection() as conn:
