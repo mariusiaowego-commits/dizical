@@ -233,7 +233,7 @@
     /* ── Activity Wheel — vertical strip ── */
     .activity-wheel {
       position: relative;
-      width: 180px;
+      width: 80px;
       height: 200px;
       overflow: hidden;
       touch-action: none;
@@ -253,29 +253,12 @@
                   opacity 200ms ease;
       will-change: transform, opacity;
     }
-    .wheel-desc {
-      flex: 1;
-      font-size: 11px;
-      font-weight: 500;
-      color: #B0A898;
-      text-align: right;
-      padding-right: 8px;
-      transition: color 250ms ease;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: clip;
-    }
-    .wheel-item.selected .wheel-desc {
-      color: #c8860a;
-      font-weight: 600;
-      font-size: 10px;
-    }
     .wheel-right {
       display: flex;
       align-items: center;
       gap: 5px;
       flex-shrink: 0;
+      margin: 0 auto;
     }
     .wheel-pill {
       padding: 4px 12px;
@@ -401,8 +384,12 @@
       box-shadow: none;
     }
     .sp-header { display: none; }
-    .sp-tempo-row {
+    .sp-tempo-row-1 {
       display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+    }
+    .sp-tempo-row-2 {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-top: 2px;
     }
     .sp-tempo-label {
       font-size: 13px; font-weight: 600; color: #5D4037;
@@ -437,7 +424,7 @@
     .bpm-step:active { background: #FFE8C0; }
     .bpm-value {
       min-width: 48px; text-align: center; font-size: 16px; font-weight: 700;
-      color: #5D4037; padding: 0 6px;
+      color: #5D4037; padding: 0 6px; font-variant-numeric: tabular-nums;
     }
     .sp-tempo-bpm-input { display: none; }
     .sp-content-tag {
@@ -448,8 +435,16 @@
     .sp-content-tag:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
     .sp-content-tags:empty { display: none; }
     .sp-tempo-hint {
-      font-size: 12px; color: #A88B5C; margin-left: auto;
+      font-size: 12px; color: #A88B5C;
       font-style: italic;
+    }
+    /* V4 紧凑模式: session-panel 在窄屏 (iPad mini 横屏 ~600px) 时缩 BPM 步进器 */
+    @media (max-width: 800px) {
+      .sp-tempo-row-1 { gap: 6px; }
+      .sp-tempo-note-btn { padding: 5px 10px; font-size: 16px; }
+      .bpm-step { width: 32px; height: 32px; font-size: 16px; }
+      .bpm-value { min-width: 40px; font-size: 15px; padding: 0 4px; }
+      .sp-tempo-label { min-width: 32px; font-size: 12px; }
     }
     .sp-content-input {
       width: 100%; padding: 8px 12px; font-size: 14px;
@@ -808,8 +803,8 @@
     .dci-detail .dci-tempo { font-size: 14px; font-weight: 600; color: #FFD93D; }
     .dci-detail .dci-content { font-size: 13px; color: #E8ECF0; }
     .dci-assign { display: flex; flex-direction: column; gap: 3px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,0.15); }
-    .dci-assign-label { font-size: 11px; color: #FF8C5A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .dci-assign-text { font-size: 12px; color: #C8D6E5; line-height: 1.4; }
+    .dci-assign-label { font-size: 13px; color: #FF8C5A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dci-assign-text { font-size: 13px; color: #C8D6E5; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
 
     /* ── BPM 预设按钮 ── */
     .bpm-presets { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
@@ -967,7 +962,7 @@
         </div>
         <div class="session-panel" id="sessionPanel">
           <div class="sp-header">本次练习</div>
-          <div class="sp-tempo-row">
+          <div class="sp-tempo-row-1">
             <div class="sp-tempo-label">速度</div>
             <div class="sp-tempo-note-group" role="group" aria-label="音符">
               <button type="button" class="sp-tempo-note-btn selected" data-note="♪" id="tempoNoteQuaver">♪</button>
@@ -980,9 +975,11 @@
               <button type="button" class="bpm-step" onclick="stepBpm(1)" aria-label="加1">+</button>
             </div>
             <input type="hidden" id="tempoBpmInput" value="80">
+          </div>
+          <div class="sp-tempo-row-2">
             <div class="sp-tempo-hint" id="tempoHint">♪ = 80 (默认)</div>
-                <div class="bpm-presets" id="bpmPresets"></div>
-              </div>
+            <div class="bpm-presets" id="bpmPresets"></div>
+          </div>
           <div class="sp-content-tags" id="sessionContentTags"></div>
           <input type="text" class="sp-content-input" id="sessionContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="本次练习内容">
         </div>
@@ -1015,7 +1012,7 @@
           <div class="sp-item-select">
             <span class="extra-current-item" id="extraCurrentItem">上方未选择科目 — 请先在计时练习中选择</span>
           </div>
-          <div class="sp-tempo-row">
+          <div class="sp-tempo-row-1">
             <div class="sp-tempo-label">速度</div>
             <div class="sp-tempo-note-group" role="group" aria-label="音符">
               <button type="button" class="sp-tempo-note-btn selected" data-note="♪" onclick="setExtraNote('♪')">♪</button>
@@ -1612,8 +1609,8 @@
       updateStartBtnState();
       // 补录按钮只看补录自己的科目选择，不跟主计时绑定
       updateExtraBtnState();
-      // V4: 更新 Dashboard
-      updateDashboard();
+      // V4: 更新 Dashboard (传 reqText 让第三列显示老师要求)
+      updateDashboard(reqText);
     }
 
     function setPickerTime(mins) {
@@ -2259,9 +2256,13 @@
     }
 
     // ── V4 Dashboard 更新 ──
-    function updateDashboard() {
+    // reqText: 老师要求原文 (含 metronome 前缀), 从 selectItem 传.
+    // 模块级 _lastReqText: BPM/content 变更的 updateDashboard() 无参调用不重置老师要求.
+    let _lastReqText = '';
+    function updateDashboard(reqText) {
       const card = document.getElementById('dashCardInline');
       if (!selectedItemId) { card.classList.remove('visible'); return; }
+      if (reqText !== undefined && reqText !== null) _lastReqText = reqText;
       const name = selectedItem || '';
       const bpm = document.getElementById('tempoBpmInput')?.value || '';
       const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
@@ -2270,6 +2271,10 @@
       document.getElementById('dciId').textContent = selectedItemId ? '#' + selectedItemId : '';
       document.getElementById('dciTempo').textContent = note + '=' + bpm;
       document.getElementById('dciContent').textContent = content || '未填写练习内容';
+      // 老师要求: textContent 安全注入 (server 端 data-req 已转义单引号, 反正不渲染 HTML)
+      // 不限高: 长 requirements 让 dashboard 卡片自然变高, 不滚条.
+      const assignEl = document.getElementById('dciAssignText');
+      if (assignEl) assignEl.textContent = (_lastReqText && _lastReqText.trim()) ? _lastReqText.trim() : '—';
       card.classList.add('visible');
     }
 
@@ -2564,7 +2569,7 @@
       const items = values.map((v, i) => {
         const el = document.createElement('div'); el.className = 'wheel-item';
         const iconSvg = icons ? icons[i % icons.length] : '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
-        el.innerHTML = '<span class="wheel-desc">' + (descs[v] || '') + '</span><div class="wheel-right"><span class="wheel-pill">' + v + '</span><div class="wheel-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + iconSvg + '</svg></div><div class="wheel-indicator"></div></div>';
+        el.innerHTML = '<div class="wheel-right"><span class="wheel-pill">' + v + '</span><div class="wheel-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + iconSvg + '</svg></div><div class="wheel-indicator"></div></div>';
         el.addEventListener('click', () => { selectedIdx = i; updateWheel(true); if (onChange) onChange(values[selectedIdx]); });
         containerEl.appendChild(el); return el;
       });
