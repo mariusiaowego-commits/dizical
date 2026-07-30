@@ -202,48 +202,54 @@
       background: #3d2e1e; color: #fffef9;
       font-weight: 600; text-align: center;
       border: 0.25pt solid #2a2015;
-      padding: 0.5mm 0.3mm;
-      line-height: 1.15;
+      padding: 0.4mm 0.15mm;
+      line-height: 1.1;
     }
     table.matrix thead th.th-item {
-      background: #2a2015; width: 14mm; font-size: 6pt;
+      background: #2a2015; width: 12mm; font-size: 6pt;
     }
     table.matrix thead th.th-day {
-      font-size: 6.2pt; letter-spacing: 0.2px;
+      font-size: 6pt; letter-spacing: 0.15px;
       border-left: 1pt solid #c9a030;
     }
+    /* 短列极窄：总时长 / 速度 / 单次；明细吃宽 */
     table.matrix thead th.th-sub {
-      background: #5c4a36; font-size: 5.2pt; font-weight: 500;
-      padding: 0.35mm 0.2mm;
+      background: #5c4a36; font-size: 4.8pt; font-weight: 500;
+      padding: 0.25mm 0.1mm;
     }
-    table.matrix thead th.th-sub.th-first {
-      border-left: 1pt solid #c9a030;
-    }
+    table.matrix thead th.th-sub.th-first { border-left: 1pt solid #c9a030; }
+    table.matrix thead th.th-sub.th-detail { font-size: 5pt; }
     table.matrix tbody td {
       border: 0.25pt solid #e0d4c0;
-      padding: 0.35mm 0.35mm;
+      padding: 0.3mm 0.15mm;
       vertical-align: middle;
       text-align: center;
-      line-height: 1.15;
+      line-height: 1.1;
       word-break: break-word;
     }
     table.matrix tbody tr:nth-child(even) td:not(.m-item) { background: #faf6ee; }
     table.matrix td.m-item {
-      background: #f5f0e6; font-weight: 700; font-size: 6pt;
-      text-align: center; width: 14mm;
+      background: #f5f0e6; font-weight: 700; font-size: 5.8pt;
+      text-align: center; width: 12mm;
       border-right: 1pt solid #c9a030;
-      word-break: break-all;
+      word-break: break-all; padding: 0.3mm 0.2mm;
     }
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
+      font-size: 5.5pt; width: 6mm; padding: 0.2mm 0.1mm;
     }
-    table.matrix td.m-sess { color: var(--muted); white-space: nowrap; font-size: 5.5pt; }
-    table.matrix td.m-tempo { color: var(--gold); font-weight: 600; white-space: nowrap; font-size: 5.5pt; }
-    table.matrix td.m-once { font-weight: 600; white-space: nowrap; }
+    table.matrix td.m-tempo {
+      color: var(--gold); font-weight: 600; white-space: nowrap;
+      font-size: 5.2pt; width: 7mm; padding: 0.2mm 0.1mm;
+    }
+    table.matrix td.m-once {
+      font-weight: 600; white-space: nowrap;
+      font-size: 5.5pt; width: 5.5mm; padding: 0.2mm 0.1mm;
+    }
     table.matrix td.m-detail {
-      text-align: left; padding: 0.35mm 0.6mm;
-      font-size: 5.5pt; overflow-wrap: anywhere;
+      text-align: left; padding: 0.3mm 0.5mm;
+      font-size: 5.4pt; overflow-wrap: anywhere;
     }
     table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
     table.matrix .det-extra {
@@ -251,11 +257,18 @@
       padding: 0 0.8mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 1px;
     }
     table.matrix tfoot td {
-      background: #f3efe6; font-weight: 700; font-size: 5.8pt;
-      border: 0.25pt solid #e0d4c0; padding: 0.5mm;
+      background: #f3efe6; font-weight: 700; font-size: 5.5pt;
+      border: 0.25pt solid #e0d4c0; padding: 0.45mm 0.3mm;
       text-align: center;
     }
     table.matrix tfoot td.m-item { background: #ebe4d6; }
+    table.matrix tfoot td.m-summary {
+      text-align: left; padding: 0.6mm 1.2mm;
+      font-weight: 600; font-size: 5.6pt; line-height: 1.35;
+    }
+    table.matrix tfoot td.m-summary .sum-item {
+      display: inline-block; margin-right: 2mm; white-space: nowrap;
+    }
 
     .pf {
       margin-top: 1.5mm;
@@ -514,8 +527,8 @@
 
   /**
    * 表格视图：A4 横向矩阵
-   * 行 = 科目；列组 = 每个日期 × (总时长 | session序号 | 速度 | 单次时长 | 明细)
-   * 同科目同日多 session → 多行；科目名 rowspan；总时长 rowspan
+   * 行 = 科目；列组 = 每个日期 × (总时长 | 速度 | 单次 | 明细)  — 无 session 列
+   * 短列极窄，明细吃宽；同科同日多 session 多行
    */
   function renderBodyTable(data) {
     var sum = data.summary || {};
@@ -527,14 +540,15 @@
       return html;
     }
 
-    // 科目顺序：优先 by_item，再补 days 里出现的
     var itemOrder = [];
     var itemNames = {};
+    var itemTotals = {}; // 全阶段每科合计，供小结
     (data.by_item || []).forEach(function (it) {
       var id = it.item_id;
       if (id == null) return;
       if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
       itemNames[id] = it.item_name || ('科目' + id);
+      itemTotals[id] = it.minutes || 0;
     });
     days.forEach(function (day) {
       (day.groups || []).forEach(function (g) {
@@ -542,10 +556,10 @@
         if (id == null) return;
         if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
         itemNames[id] = g.item_name || itemNames[id] || ('科目' + id);
+        if (itemTotals[id] == null) itemTotals[id] = 0;
       });
     });
 
-    // dayKey -> itemId -> { minutes, sessions[] }
     var grid = {};
     var dateList = [];
     days.forEach(function (day) {
@@ -561,31 +575,37 @@
     });
 
     var nDays = dateList.length;
-    var subLabels = ['总时长', 'session', '速度', '单次', '明细'];
-    // 明细列相对更宽：用 colgroup 比例 总:session:速度:单次:明细 ≈ 1:0.7:1:0.8:2.5
-    var subWeights = [1, 0.7, 1, 0.8, 2.8];
+    var COLS_PER_DAY = 4; // 总时长 速度 单次 明细
+    var subLabels = ['总时长', '速度', '单次', '明细'];
+    // colgroup：科目 + 每天(窄窄窄 + 明细宽)
+    var dayColW = ['5.5%', '6%', '5%', 'auto']; // 总/速度/单次/明细 — 明细用剩余
 
-    html += '<table class="matrix">';
-    // 表头行1：科目 + 各日期
+    html += '<table class="matrix"><colgroup>';
+    html += '<col style="width:9%">';
+    dateList.forEach(function () {
+      html += '<col style="width:5.5%"><col style="width:6%"><col style="width:5%"><col>';
+    });
+    html += '</colgroup>';
+
     html += '<thead><tr>';
     html += '<th class="th-item" rowspan="2">科目</th>';
     dateList.forEach(function (d) {
-      html += '<th class="th-day" colspan="5">' + esc(fmtCnDate(d)) + '</th>';
+      html += '<th class="th-day" colspan="' + COLS_PER_DAY + '">' + esc(fmtCnDate(d)) + '</th>';
     });
     html += '</tr><tr>';
     dateList.forEach(function () {
       subLabels.forEach(function (lab, i) {
-        html += '<th class="th-sub' + (i === 0 ? ' th-first' : '') + '">' + lab + '</th>';
+        var cls = 'th-sub' + (i === 0 ? ' th-first' : '') + (i === 3 ? ' th-detail' : '');
+        html += '<th class="' + cls + '">' + lab + '</th>';
       });
     });
     html += '</tr></thead><tbody>';
 
     if (!itemOrder.length) {
-      html += '<tr><td colspan="' + (1 + nDays * 5) + '" class="empty-content">无科目</td></tr>';
+      html += '<tr><td colspan="' + (1 + nDays * COLS_PER_DAY) + '" class="empty-content">无科目</td></tr>';
     }
 
     itemOrder.forEach(function (itemId) {
-      // 该科目在各天 session 数，行数 = max
       var maxS = 1;
       dateList.forEach(function (d) {
         var cell = grid[d][itemId];
@@ -605,30 +625,25 @@
           var total = cell ? cell.minutes : 0;
 
           if (!cell || (!sess.length && !total)) {
-            // 该天无练习
             if (ri === 0) {
               html += '<td class="m-total m-empty" rowspan="' + maxS + '">—</td>';
-              html += '<td class="m-empty" rowspan="' + maxS + '" colspan="4"></td>';
+              html += '<td class="m-empty" rowspan="' + maxS + '" colspan="3"></td>';
             }
-            // ri>0: 已 rowspan，不输出
             return;
           }
 
           if (sess.length === 0) {
             if (ri === 0) {
               html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
-              html += '<td class="m-sess">—</td>';
               html += '<td class="m-tempo">—</td>';
               html += '<td class="m-once">—</td>';
               html += '<td class="m-detail empty-content">—</td>';
             } else {
-              html += '<td class="m-empty" colspan="4"></td>';
+              html += '<td class="m-empty" colspan="3"></td>';
             }
             return;
           }
 
-          // 有 session：总时长 rowspan = sess.length（相对本科目该天），但表格行是 maxS
-          // 用本天 sess.length 作为该天合并高度
           var daySessN = sess.length;
           if (ri === 0) {
             html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
@@ -637,22 +652,20 @@
             var s = sess[ri];
             var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
             var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
-            html += '<td class="m-sess">' + (ri + 1) + '/' + daySessN + '</td>';
             html += '<td class="m-tempo">' + esc(tempo) + '</td>';
             html += '<td class="m-once">' + esc(s.duration_minutes || 0) + '′</td>';
             html += '<td class="m-detail">' + content;
             if (s.is_extra) html += '<span class="det-extra">额外</span>';
             html += '</td>';
           } else {
-            // 该天 session 数少于 maxS：补空
-            html += '<td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td>';
+            html += '<td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td>';
           }
         });
         html += '</tr>';
       }
     });
 
-    // 表尾：每日合计分钟
+    // 日合计：只显示总练习时长
     html += '</tbody><tfoot><tr>';
     html += '<td class="m-item">日合计</td>';
     dateList.forEach(function (d) {
@@ -661,14 +674,31 @@
         if (days[i].date === d) { dayObj = days[i]; break; }
       }
       var t = dayObj ? dayObj.total_minutes : 0;
-      html += '<td class="m-total" colspan="5">' + esc(t) + '′ · ' + esc(dayObj ? dayObj.session_count : 0) + '次</td>';
+      html += '<td class="m-total" colspan="' + COLS_PER_DAY + '">' + esc(t) + '′</td>';
     });
-    html += '</tr><tr>';
-    html += '<td class="m-item">阶段</td>';
-    html += '<td colspan="' + (nDays * 5) + '">' + esc(sum.total_minutes || 0) + '′ · '
-      + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · '
-      + esc(sum.item_count || 0) + ' 科 · A4 横向</td>';
-    html += '</tr></tfoot></table></div>';
+    html += '</tr>';
+
+    // 小结：本周练习 x 天 总时长 xxx 分 每科 xx分(xx%) …
+    var grand = sum.total_minutes || 0;
+    var dayN = sum.practice_days || 0;
+    var parts = [];
+    itemOrder.forEach(function (id) {
+      var m = itemTotals[id] || 0;
+      if (m <= 0) return;
+      var pct = grand ? Math.round(m / grand * 100) : 0;
+      parts.push(esc(itemNames[id]) + m + '分(' + pct + '%)');
+    });
+    html += '<tr>';
+    html += '<td class="m-item">小结</td>';
+    html += '<td class="m-summary" colspan="' + (nDays * COLS_PER_DAY) + '">';
+    html += '本周练习' + esc(dayN) + '天　总时长' + esc(grand) + '分';
+    if (parts.length) {
+      html += '　';
+      parts.forEach(function (p) {
+        html += '<span class="sum-item">' + p + '</span>';
+      });
+    }
+    html += '</td></tr></tfoot></table></div>';
     return html;
   }
 
