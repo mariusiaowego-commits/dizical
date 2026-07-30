@@ -185,86 +185,141 @@
     .empty-content { color: #b0a090; font-style: italic; }
 
     /* ── 表格视图 · A4 横向 · 科目×日期矩阵 ── */
-    .paper.is-table .ph-title { font-size: 10pt; }
-    .paper.is-table .ph-sub { font-size: 6.5pt; }
-    .paper.is-table .assign-card { padding: 1.2mm 2mm; margin-bottom: 1.2mm; }
-    .paper.is-table .assign-card h2 { font-size: 7pt; margin-bottom: 0.8mm; }
-    .paper.is-table .assign-item { font-size: 6pt; margin-bottom: 0.5mm; padding-bottom: 0.5mm; }
-    .paper.is-table .overview { font-size: 5.8pt; margin-bottom: 1.2mm; gap: 0.8mm 1.5mm; }
+    /* 上区(页眉+老师要求+小计) : 下区(表格) ≈ 2:8 */
+    .paper.is-table.is-landscape {
+      display: flex;
+      flex-direction: column;
+    }
+    .paper.is-table .table-chrome {
+      flex: 0 0 auto;
+      max-height: 20%;
+      overflow: hidden;
+      margin-bottom: 1mm;
+    }
+    .paper.is-table .view-table-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .paper.is-table .ph {
+      padding-bottom: 1mm; margin-bottom: 1mm;
+    }
+    .paper.is-table .ph-title { font-size: 9pt; }
+    .paper.is-table .ph-sub { font-size: 6pt; }
+    .paper.is-table .ph-stats { font-size: 6.5pt; }
+    .paper.is-table .ph-stats strong { font-size: 9pt; }
+
+    /* 老师要求：多列紧凑，禁止一行一条拉高 */
+    .paper.is-table .assign-card {
+      padding: 0.8mm 1.5mm;
+      margin-bottom: 0.8mm;
+      max-height: 12mm;
+      overflow: hidden;
+    }
+    .paper.is-table .assign-card h2 {
+      font-size: 6pt; margin: 0 0 0.5mm; line-height: 1.1;
+    }
+    .paper.is-table .assign-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4mm 1.5mm;
+    }
+    .paper.is-table .assign-grid .assign-item {
+      font-size: 5.5pt;
+      margin: 0;
+      padding: 0.3mm 0.5mm;
+      border: 1px solid #efe6d6;
+      border-radius: 1px;
+      background: #fffef9;
+      line-height: 1.15;
+      max-height: 8mm;
+      overflow: hidden;
+    }
+    .paper.is-table .assign-grid .assign-item .ai-req {
+      margin-top: 0.2mm;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: normal;
+    }
+    .paper.is-table .overview {
+      font-size: 5.5pt; margin-bottom: 0.6mm; gap: 0.5mm 1.2mm;
+    }
+    .paper.is-table .pf { margin-top: 0.8mm; font-size: 5.5pt; }
 
     .view-table-wrap { margin-top: 0; overflow-x: auto; }
     table.matrix {
       width: 100%; border-collapse: collapse;
-      font-size: 5.8pt;
+      font-size: 8pt; /* 主表可读字号 */
       table-layout: fixed;
     }
     table.matrix thead th {
       background: #3d2e1e; color: #fffef9;
       font-weight: 600; text-align: center;
       border: 0.25pt solid #2a2015;
-      padding: 0.4mm 0.15mm;
-      line-height: 1.1;
+      padding: 0.7mm 0.3mm;
+      line-height: 1.15;
     }
     table.matrix thead th.th-item {
-      background: #2a2015; width: 12mm; font-size: 6pt;
+      background: #2a2015; width: 14mm; font-size: 8pt;
     }
     table.matrix thead th.th-day {
-      font-size: 6pt; letter-spacing: 0.15px;
+      font-size: 8pt; letter-spacing: 0.15px;
       border-left: 1pt solid #c9a030;
     }
-    /* 短列极窄：总时长 / 速度 / 单次；明细吃宽 */
     table.matrix thead th.th-sub {
-      background: #5c4a36; font-size: 4.8pt; font-weight: 500;
-      padding: 0.25mm 0.1mm;
+      background: #5c4a36; font-size: 6.5pt; font-weight: 500;
+      padding: 0.45mm 0.2mm;
     }
     table.matrix thead th.th-sub.th-first { border-left: 1pt solid #c9a030; }
-    table.matrix thead th.th-sub.th-detail { font-size: 5pt; }
+    table.matrix thead th.th-sub.th-detail { font-size: 7pt; }
     table.matrix tbody td {
       border: 0.25pt solid #e0d4c0;
-      padding: 0.3mm 0.15mm;
+      padding: 0.55mm 0.35mm;
       vertical-align: middle;
       text-align: center;
-      line-height: 1.1;
+      line-height: 1.2;
       word-break: break-word;
     }
     table.matrix tbody tr:nth-child(even) td:not(.m-item) { background: #faf6ee; }
     table.matrix td.m-item {
-      background: #f5f0e6; font-weight: 700; font-size: 5.8pt;
-      text-align: center; width: 12mm;
+      background: #f5f0e6; font-weight: 700; font-size: 8pt;
+      text-align: center; width: 14mm;
       border-right: 1pt solid #c9a030;
-      word-break: break-all; padding: 0.3mm 0.2mm;
+      word-break: break-all; padding: 0.5mm 0.4mm;
     }
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 5.5pt; width: 6mm; padding: 0.2mm 0.1mm;
+      font-size: 7.5pt; width: 7mm; padding: 0.4mm 0.2mm;
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 5.2pt; width: 7mm; padding: 0.2mm 0.1mm;
+      font-size: 7.5pt; width: 9mm; padding: 0.4mm 0.2mm;
     }
     table.matrix td.m-once {
       font-weight: 600; white-space: nowrap;
-      font-size: 5.5pt; width: 5.5mm; padding: 0.2mm 0.1mm;
+      font-size: 7.5pt; width: 7mm; padding: 0.4mm 0.2mm;
     }
     table.matrix td.m-detail {
-      text-align: left; padding: 0.3mm 0.5mm;
-      font-size: 5.4pt; overflow-wrap: anywhere;
+      text-align: left; padding: 0.5mm 0.8mm;
+      font-size: 7.5pt; overflow-wrap: anywhere;
     }
     table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
     table.matrix .det-extra {
-      display: inline-block; font-size: 5pt; margin-left: 1px;
+      display: inline-block; font-size: 6pt; margin-left: 1px;
       padding: 0 0.8mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 1px;
     }
     table.matrix tfoot td {
-      background: #f3efe6; font-weight: 700; font-size: 5.5pt;
-      border: 0.25pt solid #e0d4c0; padding: 0.45mm 0.3mm;
+      background: #f3efe6; font-weight: 700; font-size: 7.5pt;
+      border: 0.25pt solid #e0d4c0; padding: 0.6mm 0.4mm;
       text-align: center;
     }
-    table.matrix tfoot td.m-item { background: #ebe4d6; }
+    table.matrix tfoot td.m-item { background: #ebe4d6; font-size: 7.5pt; }
     table.matrix tfoot td.m-summary {
-      text-align: left; padding: 0.6mm 1.2mm;
-      font-weight: 600; font-size: 5.6pt; line-height: 1.35;
+      text-align: left; padding: 0.7mm 1.2mm;
+      font-weight: 600; font-size: 7.5pt; line-height: 1.35;
     }
     table.matrix tfoot td.m-summary .sum-item {
       display: inline-block; margin-right: 2mm; white-space: nowrap;
@@ -438,12 +493,15 @@
     }
   }
 
-  /** 共用页眉（分组 / 表格） */
+  /** 共用页眉（分组 / 表格）；表格模式多列紧凑 assignment，占比约 2/10 */
   function renderHeader(data) {
     var sum = data.summary || {};
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
     var styleLabel = viewMode === 'table' ? '表格 · 科目×日期 · A4 横向' : '分组 · A4 竖向';
+    var isTable = viewMode === 'table';
     var html = '';
+    if (isTable) html += '<div class="table-chrome">';
+
     html += '<div class="ph">';
     html += '<div>';
     html += '<div class="ph-title">' + esc(title) + '</div>';
@@ -458,14 +516,27 @@
     html += '</div>';
     html += '<div class="ph-stats">';
     html += '<div><strong>' + esc(sum.total_minutes || 0) + '</strong> 分钟</div>';
-    html += '<div>' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.session_count || 0) + ' 次明细 · ' + esc(sum.item_count || 0) + ' 科</div>';
+    html += '<div>' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.item_count || 0) + ' 科</div>';
     html += '</div></div>';
 
     html += '<div class="assign-card">';
-    html += '<h2>老师要求（本阶段全文）</h2>';
+    html += '<h2>老师要求</h2>';
     var assigns = data.assignment_items || [];
     if (!assigns.length) {
       html += '<div class="ai-req empty-content">本阶段暂无作业条目</div>';
+    } else if (isTable) {
+      // 多列网格，避免一行一条占高
+      var cols = assigns.length <= 3 ? assigns.length : (assigns.length <= 6 ? 3 : 4);
+      html += '<div class="assign-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">';
+      assigns.forEach(function (a) {
+        html += '<div class="assign-item">';
+        html += '<span class="ai-name">' + esc(a.item) + '</span>';
+        if (a.metronome) html += '<span class="ai-metro">' + esc(a.metronome) + '</span>';
+        var req = a.requirements || '';
+        html += '<div class="ai-req">' + (req ? esc(req) : '<span class="empty-content">（无）</span>') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
     } else {
       assigns.forEach(function (a) {
         html += '<div class="assign-item">';
@@ -477,8 +548,9 @@
     }
     html += '</div>';
 
+    // 表格模式省空间：小计并入页眉一行，不单独大块
     var byItem = data.by_item || [];
-    if (byItem.length) {
+    if (byItem.length && !isTable) {
       html += '<div class="overview">';
       byItem.forEach(function (it) {
         var pct = sum.total_minutes ? Math.round(it.minutes / sum.total_minutes * 100) : 0;
@@ -486,6 +558,8 @@
       });
       html += '</div>';
     }
+
+    if (isTable) html += '</div>'; // .table-chrome
     return html;
   }
 
