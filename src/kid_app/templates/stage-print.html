@@ -198,44 +198,59 @@
     }
     table.flat thead th {
       background: #3d2e1e; color: #fffef9;
-      font-weight: 600; font-size: 6.5pt;
-      text-align: left; padding: 0.8mm 1.2mm;
+      font-weight: 600; font-size: 6.2pt;
+      text-align: center; padding: 0.7mm 0.6mm;
       border: 0.3pt solid #3d2e1e;
     }
+    table.flat thead th.th-detail { text-align: left; padding-left: 1.2mm; }
     table.flat tbody td {
-      padding: 0.7mm 1.2mm; vertical-align: top;
+      padding: 0.55mm 0.6mm; vertical-align: middle;
       border: 0.3pt solid #e0d4c0;
       line-height: 1.25;
     }
     table.flat tbody tr:nth-child(even) { background: #faf6ee; }
+    /* 窄列：日期 / 科目 / 合计时长 / 速度 / 单次时长 → 把宽度留给明细 */
+    table.flat col.c-date { width: 11mm; }
+    table.flat col.c-item { width: 14mm; }
+    table.flat col.c-mins { width: 8mm; }
+    table.flat col.c-tempo { width: 10mm; }
+    table.flat col.c-once { width: 8mm; }
+    table.flat col.c-detail { width: auto; }
     table.flat td.c-date {
-      width: 16mm; font-weight: 700; color: var(--ink);
-      background: #f5f0e6; vertical-align: middle; text-align: center;
-      white-space: nowrap;
+      font-weight: 700; color: var(--ink); font-size: 6.2pt;
+      background: #f5f0e6; text-align: center; white-space: normal;
+      padding: 0.5mm 0.4mm;
+    }
+    table.flat td.c-date .d-sub {
+      display: block; font-weight: 500; color: #8b6914; font-size: 5.5pt; margin-top: 0.3mm;
     }
     table.flat td.c-item {
-      width: 20mm; font-weight: 600; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
+      font-weight: 600; font-size: 6.2pt; text-align: center;
+      white-space: normal; word-break: break-all; line-height: 1.15;
+      padding: 0.5mm 0.4mm;
     }
     table.flat td.c-mins {
-      width: 9mm; text-align: right; font-weight: 700; white-space: nowrap;
-      vertical-align: middle;
+      text-align: center; font-weight: 700; white-space: nowrap; font-size: 6.5pt;
     }
-    table.flat td.c-detail { /* 明细吃满 */ }
-    table.flat .det-line {
-      display: block; padding: 0.2mm 0;
-      border-bottom: 1px dotted #efe6d6;
+    table.flat td.c-tempo {
+      text-align: center; color: var(--gold); font-weight: 600;
+      white-space: nowrap; font-size: 6.5pt;
     }
-    table.flat .det-line:last-child { border-bottom: none; }
-    table.flat .det-tempo { color: var(--gold); font-weight: 600; margin-right: 2px; }
-    table.flat .det-mins { color: var(--muted); margin-left: 2px; }
+    table.flat td.c-once {
+      text-align: center; font-weight: 600; white-space: nowrap; font-size: 6.5pt;
+    }
+    table.flat td.c-detail {
+      text-align: left; padding: 0.5mm 1.2mm;
+      word-break: break-word; overflow-wrap: anywhere;
+    }
     table.flat .det-extra {
       display: inline-block; font-size: 5.5pt; margin-left: 2px;
       padding: 0 1mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 2px;
+      vertical-align: middle;
     }
     table.flat tfoot td {
-      background: #f3efe6; font-weight: 700; padding: 1mm 1.2mm;
-      border: 0.3pt solid #e0d4c0; font-size: 6.8pt;
+      background: #f3efe6; font-weight: 700; padding: 0.8mm 1mm;
+      border: 0.3pt solid #e0d4c0; font-size: 6.5pt;
     }
 
     .pf {
@@ -481,10 +496,8 @@
 
   /**
    * 表格视图：竖向 A4
-   * - 日期按天 rowspan 合并
-   * - 科目按天内聚合一行（不拆 session）
-   * - 无时间列、无备注列；session 细节写在「明细」格
-   * - is_extra 在明细行内标「额外」
+   * 列：日期(天合并) | 科目(科合并) | 时长(科合计) | 速度 | 单次时长 | 明细(内容)
+   * 短列窄宽，明细列吃满剩余宽度
    */
   function renderBodyTable(data) {
     var sum = data.summary || {};
@@ -495,56 +508,71 @@
       html += '</div>';
       return html;
     }
-    html += '<table class="flat"><thead><tr>';
-    html += '<th class="c-date">日期</th>';
-    html += '<th class="c-item">科目</th>';
-    html += '<th class="c-mins">时长</th>';
-    html += '<th class="c-detail">明细（速度 · 内容 · 单次时长）</th>';
+    html += '<table class="flat">';
+    html += '<colgroup>';
+    html += '<col class="c-date"><col class="c-item"><col class="c-mins">';
+    html += '<col class="c-tempo"><col class="c-once"><col class="c-detail">';
+    html += '</colgroup>';
+    html += '<thead><tr>';
+    html += '<th>日期</th><th>科目</th><th>时长</th>';
+    html += '<th>速度</th><th>单次</th>';
+    html += '<th class="th-detail">明细</th>';
     html += '</tr></thead><tbody>';
 
     days.forEach(function (day) {
       var groups = day.groups || [];
-      var rowspan = Math.max(groups.length, 1);
+      // 一天总 session 行数（用于日期 rowspan）
+      var dayRows = 0;
+      groups.forEach(function (g) {
+        dayRows += Math.max((g.sessions || []).length, 1);
+      });
+      if (!dayRows) dayRows = 1;
+
       if (!groups.length) {
         html += '<tr>';
-        html += '<td class="c-date">' + esc(fmtCnDate(day.date)) + '<br><span style="font-weight:400;color:#a89880;font-size:6pt">' + esc(day.total_minutes) + '′</span></td>';
-        html += '<td colspan="3" class="empty-content">无科目记录</td>';
+        html += '<td class="c-date">' + esc(fmtCnDate(day.date));
+        html += '<span class="d-sub">' + esc(day.total_minutes) + '′</span></td>';
+        html += '<td colspan="5" class="empty-content">无科目记录</td>';
         html += '</tr>';
         return;
       }
-      groups.forEach(function (g, gi) {
-        html += '<tr>';
-        if (gi === 0) {
-          html += '<td class="c-date" rowspan="' + rowspan + '">';
-          html += esc(fmtCnDate(day.date));
-          html += '<br><span style="font-weight:500;color:#8b6914;font-size:6pt">' + esc(day.total_minutes) + '′ · ' + esc(day.session_count) + '次</span>';
-          html += '</td>';
+
+      var dayFirst = true;
+      groups.forEach(function (g) {
+        var sess = g.sessions || [];
+        if (!sess.length) {
+          sess = [{ duration_minutes: g.minutes || 0, tempo_note: '', tempo_bpm: 0, content: '', is_extra: false }];
         }
-        html += '<td class="c-item" title="' + esc(g.item_name) + '">' + esc(g.item_name) + '</td>';
-        html += '<td class="c-mins">' + esc(g.minutes) + '′</td>';
-        html += '<td class="c-detail">';
-        (g.sessions || []).forEach(function (s) {
-          var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '';
-          var content = s.content || '（未填写）';
-          html += '<span class="det-line">';
-          if (tempo) html += '<span class="det-tempo">' + esc(tempo) + '</span>';
-          html += esc(content);
-          html += '<span class="det-mins">' + esc(s.duration_minutes) + '′</span>';
+        var gRows = sess.length;
+        sess.forEach(function (s, si) {
+          html += '<tr>';
+          if (dayFirst) {
+            html += '<td class="c-date" rowspan="' + dayRows + '">';
+            html += esc(fmtCnDate(day.date));
+            html += '<span class="d-sub">' + esc(day.total_minutes) + '′·' + esc(day.session_count) + '次</span>';
+            html += '</td>';
+            dayFirst = false;
+          }
+          if (si === 0) {
+            html += '<td class="c-item" rowspan="' + gRows + '" title="' + esc(g.item_name) + '">' + esc(g.item_name) + '</td>';
+            html += '<td class="c-mins" rowspan="' + gRows + '">' + esc(g.minutes) + '′</td>';
+          }
+          var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+          var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
+          html += '<td class="c-tempo">' + esc(tempo) + '</td>';
+          html += '<td class="c-once">' + esc(s.duration_minutes || 0) + '′</td>';
+          html += '<td class="c-detail">' + content;
           if (s.is_extra) html += '<span class="det-extra">额外</span>';
-          html += '</span>';
+          html += '</td>';
+          html += '</tr>';
         });
-        if (!(g.sessions || []).length) {
-          html += '<span class="empty-content">无 session</span>';
-        }
-        html += '</td>';
-        html += '</tr>';
       });
     });
 
     html += '</tbody><tfoot><tr>';
     html += '<td colspan="2">合计</td>';
     html += '<td class="c-mins">' + esc(sum.total_minutes || 0) + '′</td>';
-    html += '<td>' + esc(sum.session_count || 0) + ' 次明细 · ' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.item_count || 0) + ' 科</td>';
+    html += '<td colspan="3">' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.item_count || 0) + ' 科</td>';
     html += '</tr></tfoot></table></div>';
     return html;
   }
