@@ -46,8 +46,46 @@
     }
     .btn-print { background: var(--accent); color: #fff; font-weight: 600; }
     .btn-back { background: #ede8e0; color: var(--ink); }
+    .btn-ghost {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; color: var(--ink);
+    }
+    .btn-ghost:hover { background: #f5f0e8; }
+    .btn-apply {
+      appearance: none; border: none; background: #3d2e1e; color: #fffef9;
+      border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-apply:hover { background: #5c4a36; }
     .toolbar .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
     .status { font-size: 12px; color: var(--muted); }
+
+    /* 练习日勾选条 */
+    .day-filter {
+      display: none;
+      flex-wrap: wrap; align-items: center; gap: 8px 10px;
+      padding: 8px 16px 10px;
+      background: #faf6ee;
+      border-bottom: 1px solid var(--line);
+    }
+    .day-filter.visible { display: flex; }
+    .day-filter .df-label {
+      font-size: 12px; font-weight: 600; color: #8b6914; flex-shrink: 0;
+    }
+    .day-filter .df-checks {
+      display: flex; flex-wrap: wrap; gap: 6px 10px; flex: 1; min-width: 0;
+    }
+    .day-filter .df-item {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--ink);
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 14px; padding: 3px 10px 3px 6px;
+      cursor: pointer; user-select: none;
+    }
+    .day-filter .df-item:hover { border-color: #c9a030; }
+    .day-filter .df-item input { margin: 0; accent-color: #c45c26; }
+    .day-filter .df-item .df-mins { color: var(--muted); font-size: 11px; }
+    .day-filter .df-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+    .day-filter .df-hint { font-size: 11px; color: var(--muted); width: 100%; }
     /* 视图切换: 分组 / 表格 */
     .view-toggle {
       display: inline-flex; border: 1px solid var(--line); border-radius: 8px;
@@ -339,6 +377,21 @@
     table.matrix tfoot td.m-summary .sum-item {
       display: inline-block; margin-right: 2mm; white-space: nowrap;
     }
+    /* 天数少时字号略放大，适配更宽明细 */
+    table.matrix.days-1,
+    table.matrix.days-2 { font-size: 9pt; }
+    table.matrix.days-1 thead th.th-day,
+    table.matrix.days-2 thead th.th-day,
+    table.matrix.days-1 td.m-item,
+    table.matrix.days-2 td.m-item,
+    table.matrix.days-1 td.m-detail,
+    table.matrix.days-2 td.m-detail { font-size: 9pt; }
+    table.matrix.days-1 td.m-total,
+    table.matrix.days-2 td.m-total,
+    table.matrix.days-1 td.m-tempo,
+    table.matrix.days-2 td.m-tempo,
+    table.matrix.days-1 td.m-once,
+    table.matrix.days-2 td.m-once { font-size: 8.5pt; }
 
     .pf {
       margin-top: 1.5mm;
@@ -391,8 +444,20 @@
       <button type="button" id="viewTable" data-view="table">表格</button>
     </div>
     <button type="button" class="btn btn-print" id="btnPrint">打印 / PDF</button>
-    <span class="hint">A4 · 可切换 分组 / 表格</span>
+    <span class="hint">A4 · 勾选练习日 → 确认展示</span>
     <span class="status" id="statusMsg"></span>
+  </div>
+
+  <!-- 选 stage 后：勾选要展示的练习日 -->
+  <div class="day-filter no-print" id="dayFilter" aria-label="选择练习日">
+    <span class="df-label">练习日</span>
+    <div class="df-checks" id="dayChecks"></div>
+    <div class="df-actions">
+      <button type="button" class="btn-ghost" id="daySelectAll">全选</button>
+      <button type="button" class="btn-ghost" id="daySelectNone">清空</button>
+      <button type="button" class="btn-apply" id="dayApply">确认展示</button>
+    </div>
+    <div class="df-hint" id="dayFilterHint">勾选要出现在表格中的日期，点「确认展示」刷新</div>
   </div>
 
   <div class="stage-wrap">
@@ -410,7 +475,9 @@
   var paperScale = document.getElementById('paperScale');
   var statusMsg = document.getElementById('statusMsg');
   var stagesCache = [];
-  var lastPayload = null;
+  var lastPayload = null;       // 全量 stage 数据
+  var draftDays = {};           // 勾选草稿 date -> true
+  var appliedDays = null;       // 已确认展示的日期 Set；null=尚未确认用全选
 
   function qsInit(name) {
     try {
@@ -455,14 +522,171 @@
     return u.searchParams.get(name);
   }
 
-  function setQuery(stageOrder, view) {
+  function parseDaysParam() {
+    var raw = qsInit('days');
+    if (!raw) return null;
+    var set = {};
+    raw.split(',').forEach(function (d) {
+      d = d.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) set[d] = true;
+    });
+    return Object.keys(set).length ? set : null;
+  }
+
+  function setQuery(stageOrder, view, daysMap) {
     var u = new URL(window.location.href);
     if (stageOrder != null && stageOrder !== '') {
       u.searchParams.set('stage_order', stageOrder);
       u.searchParams.delete('date');
     }
     if (view) u.searchParams.set('view', view);
+    if (daysMap && Object.keys(daysMap).length) {
+      var keys = Object.keys(daysMap).filter(function (k) { return daysMap[k]; }).sort();
+      if (keys.length) u.searchParams.set('days', keys.join(','));
+      else u.searchParams.delete('days');
+    }
     history.replaceState(null, '', u.pathname + u.search);
+  }
+
+  /** 从全量 payload 按已确认日期过滤，并重算 summary / by_item */
+  function filterPayloadByDays(data, daysMap) {
+    if (!data) return data;
+    var allDays = data.days || [];
+    if (!daysMap) {
+      // null = 全部
+      return data;
+    }
+    var filtered = allDays.filter(function (d) { return daysMap[d.date]; });
+    var total = 0;
+    var sessN = 0;
+    var itemMap = {};
+    filtered.forEach(function (day) {
+      total += day.total_minutes || 0;
+      sessN += day.session_count || 0;
+      (day.groups || []).forEach(function (g) {
+        var id = g.item_id;
+        if (id == null) return;
+        if (!itemMap[id]) {
+          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0 };
+        }
+        itemMap[id].minutes += g.minutes || 0;
+        itemMap[id].session_count += (g.sessions || []).length;
+        if (g.item_name) itemMap[id].item_name = g.item_name;
+      });
+    });
+    var byItem = Object.keys(itemMap).map(function (k) { return itemMap[k]; });
+    byItem.sort(function (a, b) { return b.minutes - a.minutes; });
+    return {
+      ok: data.ok,
+      stage_order: data.stage_order,
+      lesson_date: data.lesson_date,
+      stage_start: data.stage_start,
+      stage_end: data.stage_end,
+      effective_end: data.effective_end,
+      notes: data.notes,
+      assignment_items: data.assignment_items || [],
+      summary: {
+        total_minutes: total,
+        practice_days: filtered.length,
+        session_count: sessN,
+        item_count: byItem.length
+      },
+      by_item: byItem,
+      days: filtered
+    };
+  }
+
+  function availableDayList(data) {
+    return (data && data.days ? data.days : []).map(function (d) {
+      return { date: d.date, total_minutes: d.total_minutes || 0, session_count: d.session_count || 0 };
+    });
+  }
+
+  function renderDayPicker(data) {
+    var panel = document.getElementById('dayFilter');
+    var box = document.getElementById('dayChecks');
+    var hint = document.getElementById('dayFilterHint');
+    if (!panel || !box) return;
+    var list = availableDayList(data);
+    if (!list.length) {
+      panel.classList.remove('visible');
+      box.innerHTML = '';
+      return;
+    }
+    panel.classList.add('visible');
+    // 初始化草稿：优先已确认 / URL / 全选
+    if (!Object.keys(draftDays).length) {
+      if (appliedDays) {
+        draftDays = Object.assign({}, appliedDays);
+      } else {
+        list.forEach(function (d) { draftDays[d.date] = true; });
+      }
+    }
+    box.innerHTML = '';
+    list.forEach(function (d) {
+      var lab = document.createElement('label');
+      lab.className = 'df-item';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = d.date;
+      cb.checked = !!draftDays[d.date];
+      cb.addEventListener('change', function () {
+        draftDays[d.date] = cb.checked;
+        updateDayFilterHint();
+      });
+      lab.appendChild(cb);
+      var t = document.createElement('span');
+      t.textContent = fmtCnDate(d.date);
+      lab.appendChild(t);
+      var m = document.createElement('span');
+      m.className = 'df-mins';
+      m.textContent = d.total_minutes + '′';
+      lab.appendChild(m);
+      box.appendChild(lab);
+    });
+    updateDayFilterHint();
+  }
+
+  function updateDayFilterHint() {
+    var hint = document.getElementById('dayFilterHint');
+    if (!hint || !lastPayload) return;
+    var list = availableDayList(lastPayload);
+    var n = 0;
+    list.forEach(function (d) { if (draftDays[d.date]) n++; });
+    var appliedN = 0;
+    if (appliedDays) {
+      list.forEach(function (d) { if (appliedDays[d.date]) appliedN++; });
+    } else {
+      appliedN = list.length;
+    }
+    hint.textContent = '已勾选 ' + n + '/' + list.length + ' 天 · 当前展示 ' + appliedN + ' 天 · 改勾选后点「确认展示」';
+  }
+
+  function applyDaySelection() {
+    if (!lastPayload) return;
+    var list = availableDayList(lastPayload);
+    var map = {};
+    var n = 0;
+    list.forEach(function (d) {
+      if (draftDays[d.date]) {
+        map[d.date] = true;
+        n++;
+      }
+    });
+    if (n === 0) {
+      statusMsg.textContent = '请至少勾选一天';
+      statusMsg.style.color = '#b23a48';
+      return;
+    }
+    statusMsg.style.color = '';
+    appliedDays = map;
+    var order = stageSelect.value || lastPayload.stage_order;
+    setQuery(order, viewMode, appliedDays);
+    try {
+      localStorage.setItem('stage-print-days-' + order, Object.keys(map).join(','));
+    } catch (e) {}
+    renderPayload(lastPayload);
+    updateDayFilterHint();
   }
 
   function syncViewToggle() {
@@ -640,11 +864,17 @@
     var nDays = dateList.length;
     var COLS_PER_DAY = 4; // 总时长 速度 单次 明细
     var subLabels = ['总时长', '速度', '单次', '明细'];
-    // colgroup：总时长/速度/单次 再缩 50%，明细吃满剩余
-    html += '<table class="matrix"><colgroup>';
-    html += '<col style="width:8%">';
+    // 按展示天数自适应：天越少，短列可略宽、明细更宽
+    var itemW = nDays <= 2 ? 10 : nDays <= 4 ? 8 : 7;
+    var shortW = nDays <= 1 ? 5 : nDays <= 2 ? 4 : nDays <= 4 ? 3 : nDays <= 6 ? 2.4 : 2;
+    var tempoW = shortW + 0.5;
+    html += '<table class="matrix days-' + nDays + '"><colgroup>';
+    html += '<col style="width:' + itemW + '%">';
     dateList.forEach(function () {
-      html += '<col style="width:2.75%"><col style="width:3%"><col style="width:2.5%"><col>';
+      html += '<col style="width:' + shortW + '%">';
+      html += '<col style="width:' + tempoW + '%">';
+      html += '<col style="width:' + shortW + '%">';
+      html += '<col>'; // 明细
     });
     html += '</colgroup>';
 
@@ -765,8 +995,13 @@
 
   function renderPayload(data) {
     lastPayload = data;
+    // 展示用：按已确认日期过滤
+    var viewData = filterPayloadByDays(data, appliedDays);
+    var nShow = (viewData.days || []).length;
+    var nAll = (data.days || []).length;
+
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
-    document.title = title + (viewMode === 'table' ? ' · 表格' : ' · 分组');
+    document.title = title + (viewMode === 'table' ? ' · 表格' : ' · 分组') + (nShow < nAll ? ' · ' + nShow + '天' : '');
 
     var now = new Date();
     var pad = function (n) { return String(n).padStart(2, '0'); };
@@ -774,15 +1009,22 @@
       + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
 
     syncPaperMode();
-    var html = renderHeader(data);
-    html += viewMode === 'table' ? renderBodyTable(data) : renderBodyGroup(data);
-    html += '<div class="pf"><span>数据: practice_sessions · 观摩/家校沟通用</span>';
-    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '矩阵表格 · A4 横向一页' : '分组 · A4 竖向') + '</span></div>';
+    var html = renderHeader(viewData);
+    if (viewMode === 'table') {
+      if (!nShow) {
+        html += '<div class="err" style="padding:20px;">未选择练习日，请在上方勾选后点「确认展示」</div>';
+      } else {
+        html += renderBodyTable(viewData);
+      }
+    } else {
+      html += nShow ? renderBodyGroup(viewData) : '<div class="err" style="padding:20px;">未选择练习日</div>';
+    }
+    html += '<div class="pf"><span>数据: practice_sessions · 展示 ' + esc(nShow) + '/' + esc(nAll) + ' 天</span>';
+    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '矩阵 · A4 横向' : '分组 · A4 竖向') + '</span></div>';
 
     paper.innerHTML = html;
     syncViewToggle();
-    // 表格模式：行高均分，撑满 A4 到页脚
-    if (viewMode === 'table') {
+    if (viewMode === 'table' && nShow) {
       requestAnimationFrame(function () {
         fillMatrixToPaper();
         updatePreviewStatus();
@@ -839,10 +1081,42 @@
     viewMode = mode;
     try { localStorage.setItem('stage-print-view', mode); } catch (e) {}
     var order = stageSelect.value || (lastPayload && lastPayload.stage_order);
-    setQuery(order, viewMode);
+    setQuery(order, viewMode, appliedDays);
     syncPaperMode();
     syncViewToggle();
     if (lastPayload) renderPayload(lastPayload);
+  }
+
+  /** 加载 stage 后初始化日期勾选（URL / localStorage / 全选） */
+  function initDaysForPayload(data) {
+    draftDays = {};
+    appliedDays = null;
+    var list = availableDayList(data);
+    var fromUrl = parseDaysParam();
+    var fromLs = null;
+    try {
+      var raw = localStorage.getItem('stage-print-days-' + data.stage_order);
+      if (raw) {
+        fromLs = {};
+        raw.split(',').forEach(function (d) {
+          d = d.trim();
+          if (d) fromLs[d] = true;
+        });
+      }
+    } catch (e) {}
+    var seed = fromUrl || fromLs;
+    var valid = {};
+    list.forEach(function (d) {
+      if (seed && seed[d.date]) valid[d.date] = true;
+    });
+    if (Object.keys(valid).length) {
+      appliedDays = valid;
+      draftDays = Object.assign({}, valid);
+    } else {
+      list.forEach(function (d) { draftDays[d.date] = true; });
+      appliedDays = Object.assign({}, draftDays);
+    }
+    renderDayPicker(data);
   }
 
   /** 打印前：强制缩放到不超过一页（横向用 210mm 高） */
@@ -903,11 +1177,11 @@
           paper.innerHTML = '<div class="err">' + esc((res.j && res.j.error) || '加载失败') + '</div>';
           return;
         }
-        // 同步 select
         if (res.j.stage_order != null) {
           stageSelect.value = String(res.j.stage_order);
-          setQuery(res.j.stage_order, viewMode);
         }
+        initDaysForPayload(res.j);
+        setQuery(res.j.stage_order, viewMode, appliedDays);
         renderPayload(res.j);
       })
       .catch(function () {
@@ -917,6 +1191,9 @@
 
   stageSelect.addEventListener('change', function () {
     var v = stageSelect.value;
+    // 换 stage 清草稿，避免串日
+    draftDays = {};
+    appliedDays = null;
     if (v) loadDetail({ stage_order: v });
   });
 
@@ -926,6 +1203,21 @@
   document.getElementById('viewTable').addEventListener('click', function () {
     setViewMode('table');
   });
+
+  document.getElementById('daySelectAll').addEventListener('click', function () {
+    if (!lastPayload) return;
+    availableDayList(lastPayload).forEach(function (d) { draftDays[d.date] = true; });
+    renderDayPicker(lastPayload);
+  });
+  document.getElementById('daySelectNone').addEventListener('click', function () {
+    if (!lastPayload) return;
+    availableDayList(lastPayload).forEach(function (d) { draftDays[d.date] = false; });
+    renderDayPicker(lastPayload);
+  });
+  document.getElementById('dayApply').addEventListener('click', function () {
+    applyDaySelection();
+  });
+
   syncViewToggle();
   syncPaperMode();
 
