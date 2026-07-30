@@ -47,26 +47,27 @@
     .btn-print { background: var(--accent); color: #fff; font-weight: 600; }
     .btn-back { background: #ede8e0; color: var(--ink); }
     .toolbar .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
-    .status { font-size: 12px; color: #b23a48; }
+    .status { font-size: 12px; color: var(--muted); }
 
-    /* ── 纸张预览 ── */
+    /* ── 纸张预览：屏上 100% 可读，可增高滚动；缩放仅打印 ── */
     .stage-wrap {
       padding: 18px 12px 40px;
       display: flex; justify-content: center;
     }
     .paper-scale {
-      /* JS 可设 transform scale 以逼近一页 */
+      transform: none !important; /* 屏上禁止 scale，避免小纸片 */
       transform-origin: top center;
     }
     .paper {
       width: 210mm;
       min-height: 297mm;
-      max-height: 297mm;
-      overflow: hidden;
+      max-height: none; /* 屏上允许长于 A4，滚动查看 */
+      overflow: visible;
       background: var(--paper);
       box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-      padding: 8mm 9mm 7mm;
+      padding: 8mm 9mm 10mm;
       position: relative;
+      zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -163,7 +164,7 @@
     .empty-content { color: #b0a090; font-style: italic; }
 
     .pf {
-      position: absolute; bottom: 4mm; left: 9mm; right: 9mm;
+      margin-top: 3mm;
       font-size: 6.5pt; color: #a89880;
       display: flex; justify-content: space-between;
       border-top: 1px solid var(--line); padding-top: 1mm;
@@ -174,7 +175,7 @@
     }
     .err { color: #b23a48; }
 
-    /* ── 打印: 强制单页 ── */
+    /* ── 打印: 单页 fit（仅此时缩放；屏上预览始终 100%） ── */
     @page {
       size: A4 portrait;
       margin: 0;
@@ -184,19 +185,18 @@
       .toolbar { display: none !important; }
       .stage-wrap { padding: 0; }
       .paper-scale {
-        transform: none !important; /* 打印用 zoom 或 @page; scale 由 JS 设 paper */
+        transform: none !important;
       }
       .paper {
-        box-shadow: none;
+        box-shadow: none !important;
         width: 210mm;
         min-height: 297mm;
-        max-height: 297mm;
-        overflow: hidden;
-        padding: 7mm 8mm 9mm;
-        /* JS 写入 --print-scale 时用 zoom (Chrome 打印友好) */
-        zoom: var(--print-zoom, 1);
+        max-height: none;
+        overflow: visible;
+        padding: 7mm 8mm 8mm;
+        /* 覆盖屏上 zoom:1 !important；值由 preparePrintZoom 写入 */
+        zoom: var(--print-zoom, 1) !important;
       }
-      .pf { position: absolute; }
     }
   </style>
 </head>
@@ -351,35 +351,32 @@
     html += '<div class="pf"><span>数据: practice_sessions · 观摩/家校沟通用</span><span>生成 ' + esc(gen) + ' · 单页 A4</span></div>';
 
     paper.innerHTML = html;
-    fitOnePage();
-  }
-
-  /** 将内容缩放到不超过 A4 一页高度 (297mm 可视区) */
-  function fitOnePage() {
-    // 先重置
-    paper.style.zoom = '';
+    // 屏上 100% 预览，不缩放；仅提示内容是否超出一页
     paper.style.setProperty('--print-zoom', '1');
     paperScale.style.transform = '';
-
-    // 内容真实高度 vs 纸高
-    var paperH = paper.clientHeight; // max-height 297mm
-    // 量内部内容: 临时放开 max-height
-    var prevMax = paper.style.maxHeight;
-    paper.style.maxHeight = 'none';
+    var a4px = Math.round(297 * (96 / 25.4)); // ~1123px @96dpi
     var contentH = paper.scrollHeight;
-    paper.style.maxHeight = prevMax || '';
-
-    if (contentH <= paperH + 2) {
-      statusMsg.textContent = '';
-      return;
+    if (contentH > a4px + 8) {
+      var pct = Math.max(55, Math.min(100, Math.round((a4px / contentH) * 100)));
+      statusMsg.textContent = '预览 100%（可滚动）· 打印时将缩至约 ' + pct + '% 以塞入一页';
+    } else {
+      statusMsg.textContent = '预览 100% · 内容已在一页内';
     }
-    var scale = Math.max(0.55, Math.min(1, (paperH - 4) / contentH));
-    // 屏上用 transform 预览; 打印用 zoom (Chrome)
-    paperScale.style.transform = 'scale(' + scale.toFixed(4) + ')';
+  }
+
+  /**
+   * 仅打印前调用：按 A4 高度算 --print-zoom，不改屏上显示。
+   * 屏上用 !important zoom:1；@media print 用 var(--print-zoom)。
+   */
+  function preparePrintZoom() {
+    var a4px = Math.round(297 * (96 / 25.4));
+    var contentH = paper.scrollHeight;
+    var scale = 1;
+    if (contentH > a4px + 8) {
+      scale = Math.max(0.55, Math.min(1, (a4px - 8) / contentH));
+    }
     paper.style.setProperty('--print-zoom', String(scale.toFixed(4)));
-    // zoom 在屏上也可辅助 (Safari 不认 zoom 时 transform 兜底)
-    paper.style.zoom = scale;
-    statusMsg.textContent = '已缩放至 ' + Math.round(scale * 100) + '% 以塞入一页';
+    return scale;
   }
 
   function loadStagesThenDetail() {
@@ -437,13 +434,25 @@
   });
 
   document.getElementById('btnPrint').addEventListener('click', function () {
-    fitOnePage();
-    setTimeout(function () { window.print(); }, 50);
+    var scale = preparePrintZoom();
+    statusMsg.textContent = scale < 0.999
+      ? '打印缩放 ' + Math.round(scale * 100) + '% · 预览仍为 100%'
+      : '打印 100%';
+    setTimeout(function () { window.print(); }, 80);
   });
 
-  window.addEventListener('resize', function () {
-    // 仅屏预览重算 scale
-    if (paper.querySelector('.ph')) fitOnePage();
+  // 打印结束恢复提示（预览始终 100%）
+  window.addEventListener('afterprint', function () {
+    if (paper.querySelector('.ph')) {
+      var a4px = Math.round(297 * (96 / 25.4));
+      var contentH = paper.scrollHeight;
+      if (contentH > a4px + 8) {
+        var pct = Math.max(55, Math.min(100, Math.round((a4px / contentH) * 100)));
+        statusMsg.textContent = '预览 100%（可滚动）· 打印时将缩至约 ' + pct + '% 以塞入一页';
+      } else {
+        statusMsg.textContent = '预览 100% · 内容已在一页内';
+      }
+    }
   });
 
   // boot
