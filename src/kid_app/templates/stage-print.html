@@ -299,15 +299,15 @@
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 7.5pt; width: 7mm; padding: 0.4mm 0.2mm;
+      font-size: 7pt; width: 3.5mm; max-width: 4.5mm; padding: 0.3mm 0.05mm;
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 7.5pt; width: 9mm; padding: 0.4mm 0.2mm;
+      font-size: 7pt; width: 4.5mm; max-width: 5.5mm; padding: 0.3mm 0.05mm;
     }
     table.matrix td.m-once {
       font-weight: 600; white-space: nowrap;
-      font-size: 7.5pt; width: 7mm; padding: 0.4mm 0.2mm;
+      font-size: 7pt; width: 3.5mm; max-width: 4.5mm; padding: 0.3mm 0.05mm;
     }
     table.matrix td.m-detail {
       text-align: left; padding: 0.5mm 0.8mm;
@@ -380,7 +380,7 @@
       <button type="button" id="viewTable" data-view="table">表格</button>
     </div>
     <button type="button" class="btn btn-print" id="btnPrint">打印 / PDF</button>
-    <span class="hint">A4 · 老师要求全文 · 可切换 分组 / 表格</span>
+    <span class="hint">A4 · 可切换 分组 / 表格</span>
     <span class="status" id="statusMsg"></span>
   </div>
 
@@ -476,7 +476,7 @@
     if (hint) {
       hint.textContent = isTable
         ? '表格 · A4 横向 · 科目×日期矩阵 · 打印一页'
-        : '分组 · A4 竖向 · 老师要求全文 · 可切换表格';
+        : '分组 · A4 竖向 · 可切换表格';
     }
   }
 
@@ -500,7 +500,7 @@
     }
   }
 
-  /** 共用页眉（分组 / 表格）；表格模式多列紧凑 assignment，占比约 2/10 */
+  /** 页眉：无老师要求模块；分组视图保留科目小计 chips */
   function renderHeader(data) {
     var sum = data.summary || {};
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
@@ -526,36 +526,7 @@
     html += '<div>' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.item_count || 0) + ' 科</div>';
     html += '</div></div>';
 
-    html += '<div class="assign-card">';
-    html += '<h2>老师要求</h2>';
-    var assigns = data.assignment_items || [];
-    if (!assigns.length) {
-      html += '<div class="ai-req empty-content">本阶段暂无作业条目</div>';
-    } else if (isTable) {
-      // 多列网格，避免一行一条占高
-      var cols = assigns.length <= 3 ? assigns.length : (assigns.length <= 6 ? 3 : 4);
-      html += '<div class="assign-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">';
-      assigns.forEach(function (a) {
-        html += '<div class="assign-item">';
-        html += '<span class="ai-name">' + esc(a.item) + '</span>';
-        if (a.metronome) html += '<span class="ai-metro">' + esc(a.metronome) + '</span>';
-        var req = a.requirements || '';
-        html += '<div class="ai-req">' + (req ? esc(req) : '<span class="empty-content">（无）</span>') + '</div>';
-        html += '</div>';
-      });
-      html += '</div>';
-    } else {
-      assigns.forEach(function (a) {
-        html += '<div class="assign-item">';
-        html += '<span class="ai-name">' + esc(a.item) + '</span>';
-        if (a.metronome) html += '<span class="ai-metro">' + esc(a.metronome) + '</span>';
-        html += '<div class="ai-req">' + (a.requirements ? esc(a.requirements) : '<span class="empty-content">（无文字要求）</span>') + '</div>';
-        html += '</div>';
-      });
-    }
-    html += '</div>';
-
-    // 表格模式省空间：小计并入页眉一行，不单独大块
+    // 分组视图保留科目小计；表格视图靠表内数据
     var byItem = data.by_item || [];
     if (byItem.length && !isTable) {
       html += '<div class="overview">';
@@ -658,13 +629,11 @@
     var nDays = dateList.length;
     var COLS_PER_DAY = 4; // 总时长 速度 单次 明细
     var subLabels = ['总时长', '速度', '单次', '明细'];
-    // colgroup：科目 + 每天(窄窄窄 + 明细宽)
-    var dayColW = ['5.5%', '6%', '5%', 'auto']; // 总/速度/单次/明细 — 明细用剩余
-
+    // colgroup：总时长/速度/单次 再缩 50%，明细吃满剩余
     html += '<table class="matrix"><colgroup>';
-    html += '<col style="width:9%">';
+    html += '<col style="width:8%">';
     dateList.forEach(function () {
-      html += '<col style="width:5.5%"><col style="width:6%"><col style="width:5%"><col>';
+      html += '<col style="width:2.75%"><col style="width:3%"><col style="width:2.5%"><col>';
     });
     html += '</colgroup>';
 
