@@ -405,31 +405,56 @@
     }
     .err { color: #b23a48; }
 
-    /* ── 打印 ── */
+    /* ── 打印：严格一页 A4，禁止溢出到第 2 页 ── */
     @media print {
-      html, body { background: #fff; }
-      .toolbar { display: none !important; }
-      .stage-wrap { padding: 0; }
-      .paper-scale { transform: none !important; }
+      html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100%;
+        height: auto;
+        overflow: hidden !important;
+      }
+      .no-print,
+      .toolbar,
+      .day-filter { display: none !important; }
+      .stage-wrap {
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+      .paper-scale {
+        transform: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
       .paper {
         box-shadow: none !important;
-        max-height: none;
-        overflow: visible;
+        margin: 0 auto !important;
         zoom: var(--print-zoom, 1) !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
       .paper:not(.is-landscape) {
-        width: 210mm;
-        min-height: 297mm;
-        padding: 6mm 7mm 6mm;
+        width: 210mm !important;
+        height: 297mm !important;
+        max-height: 297mm !important;
+        min-height: 0 !important;
+        padding: 5mm 6mm !important;
+        overflow: hidden !important;
       }
       .paper.is-landscape {
         width: 297mm !important;
         height: 210mm !important;
-        min-height: 210mm !important;
         max-height: 210mm !important;
-        padding: 4mm 5mm 3.5mm !important;
+        min-height: 0 !important;
+        padding: 3.5mm 4.5mm !important;
         overflow: hidden !important;
       }
+      /* 禁止 thead 在下一页重复出空表头 */
+      table.matrix thead { display: table-row-group !important; }
+      table.matrix { page-break-inside: avoid !important; break-inside: avoid !important; }
     }
   </style>
   <style id="printPageRule">@page { size: A4 portrait; margin: 0; }</style>
@@ -1034,7 +1059,7 @@
     }
   }
 
-  /** 横向 A4 固定高度内，矩阵表 tbody 行均分剩余高度，贴到页脚 */
+  /** 横向 A4 固定高度内，矩阵表 tbody 行均分剩余高度，贴到页脚（绝不撑破一页） */
   function fillMatrixToPaper() {
     if (viewMode !== 'table') return;
     var wrap = paper.querySelector('.view-table-wrap');
@@ -1043,34 +1068,42 @@
     var pf = paper.querySelector('.pf');
     if (!wrap || !table) return;
 
-    // 固定纸高
+    // 固定纸高 = A4 横向
     paper.style.height = '210mm';
     paper.style.maxHeight = '210mm';
+    paper.style.minHeight = '210mm';
+    paper.style.overflow = 'hidden';
 
+    // 用 offsetHeight（含 padding 的 border-box 内容区）
     var paperH = paper.clientHeight;
-    var padTop = parseFloat(getComputedStyle(paper).paddingTop) || 0;
-    var padBot = parseFloat(getComputedStyle(paper).paddingBottom) || 0;
     var chromeH = chrome ? chrome.offsetHeight : 0;
     var pfH = pf ? pf.offsetHeight : 0;
-    var gap = 4; // chrome/table 间距
-    var avail = paperH - padTop - padBot - chromeH - pfH - gap;
-    if (avail < 80) avail = 80;
+    var gap = 2;
+    var avail = paperH - chromeH - pfH - gap;
+    if (avail < 60) avail = 60;
 
     wrap.style.height = avail + 'px';
+    wrap.style.maxHeight = avail + 'px';
+    wrap.style.overflow = 'hidden';
     wrap.style.flex = '1 1 auto';
-    table.style.height = '100%';
-    table.style.minHeight = avail + 'px';
+    table.style.height = avail + 'px';
+    table.style.maxHeight = avail + 'px';
+    table.style.minHeight = '0';
 
     var thead = table.querySelector('thead');
     var tfoot = table.querySelector('tfoot');
+    // 先清行高再量 thead/tfoot 自然高度
+    var rows = table.querySelectorAll('tbody tr');
+    rows.forEach(function (r) { r.style.height = ''; });
     var headH = thead ? thead.offsetHeight : 0;
     var footH = tfoot ? tfoot.offsetHeight : 0;
     var bodyAvail = avail - headH - footH;
-    var rows = table.querySelectorAll('tbody tr');
     var n = rows.length || 1;
-    if (bodyAvail < n * 12) bodyAvail = n * 12;
+    // 行高只能缩小不能强行放大到溢出：最低 10px，且总和 ≤ bodyAvail
     var rowH = Math.floor(bodyAvail / n);
-    if (rowH < 14) rowH = 14;
+    if (rowH < 10) rowH = 10;
+    // 若 n*rowH 仍可能因边框略超，留 2px 余量
+    while (rowH > 10 && n * rowH > bodyAvail - 2) rowH -= 1;
     rows.forEach(function (r) {
       r.style.height = rowH + 'px';
     });
@@ -1119,23 +1152,24 @@
     renderDayPicker(data);
   }
 
-  /** 打印前：强制缩放到不超过一页（横向用 210mm 高） */
+  /**
+   * 打印前：按 A4 尺寸缩放，保证物理上只有 1 页。
+   * 表格模式目标高 210mm / 宽 297mm，略留 2% 余量防浏览器页边距。
+   */
   function preparePrintZoom() {
-    var a4px = a4PageHeightPx();
-    var contentH = paper.scrollHeight;
+    var isLs = viewMode === 'table';
+    var targetH = Math.round((isLs ? 210 : 297) * (96 / 25.4) * 0.98);
+    var targetW = Math.round((isLs ? 297 : 210) * (96 / 25.4) * 0.98);
+    // 量自然溢出（含 min-height 撑开的内容）
+    var contentH = Math.max(paper.scrollHeight, paper.offsetHeight);
+    var contentW = Math.max(paper.scrollWidth, paper.offsetWidth);
     var scale = 1;
-    if (contentH > a4px + 4) {
-      scale = Math.max(0.40, Math.min(1, (a4px - 6) / contentH));
-    }
-    // 横向时若内容过宽也压一点（zoom 等比）
-    if (viewMode === 'table') {
-      var a4w = Math.round(297 * (96 / 25.4));
-      var contentW = paper.scrollWidth;
-      if (contentW > a4w + 4) {
-        var sw = Math.max(0.40, Math.min(1, (a4w - 6) / contentW));
-        if (sw < scale) scale = sw;
-      }
-    }
+    if (contentH > targetH) scale = Math.min(scale, targetH / contentH);
+    if (contentW > targetW) scale = Math.min(scale, targetW / contentW);
+    // 下限 40%；表格模式允许略低到 35% 仍单页
+    var floor = isLs ? 0.35 : 0.40;
+    if (scale < floor) scale = floor;
+    if (scale > 1) scale = 1;
     paper.style.setProperty('--print-zoom', String(scale.toFixed(4)));
     return scale;
   }
@@ -1223,17 +1257,14 @@
 
   document.getElementById('btnPrint').addEventListener('click', function () {
     syncPaperMode();
+    // 打印前：收紧布局 → 再量缩放，禁止强制 100% 导致第 2 页
     if (viewMode === 'table') fillMatrixToPaper();
     var scale = preparePrintZoom();
-    // 表格已按 210mm 排满，尽量 100% 打印
-    if (viewMode === 'table' && scale > 0.92) {
-      paper.style.setProperty('--print-zoom', '1');
-      scale = 1;
-    }
     statusMsg.textContent = scale < 0.999
-      ? '打印缩放 ' + Math.round(scale * 100) + '% 塞入一页 · 预览仍 100%'
-      : (viewMode === 'table' ? '打印 100% · A4 横向撑满' : '打印 100% · A4 竖向一页');
-    setTimeout(function () { window.print(); }, 80);
+      ? '打印缩放 ' + Math.round(scale * 100) + '% · 强制 1 页 A4'
+      : (viewMode === 'table' ? '打印 100% · A4 横向 1 页' : '打印 100% · A4 竖向 1 页');
+    // 给浏览器一点时间应用 --print-zoom / 行高
+    setTimeout(function () { window.print(); }, 120);
   });
 
   window.addEventListener('resize', function () {
