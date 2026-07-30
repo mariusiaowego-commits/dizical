@@ -185,21 +185,24 @@
     .empty-content { color: #b0a090; font-style: italic; }
 
     /* ── 表格视图 · A4 横向 · 科目×日期矩阵 ── */
-    /* 上区(页眉+老师要求+小计) : 下区(表格) ≈ 2:8 */
+    /* 上区(页眉+老师要求) : 下区(表格) ≈ 3:7；assignment 全文完整显示 */
     .paper.is-table.is-landscape {
       display: flex;
       flex-direction: column;
     }
     .paper.is-table .table-chrome {
       flex: 0 0 auto;
-      max-height: 20%;
-      overflow: hidden;
-      margin-bottom: 1mm;
+      /* 约 30% 上限，内容少则更矮；不裁切文字 */
+      max-height: none;
+      overflow: visible;
+      margin-bottom: 1.2mm;
     }
     .paper.is-table .view-table-wrap {
       flex: 1 1 auto;
       min-height: 0;
-      overflow: hidden;
+      /* 主表至少占约 70% 视觉空间 */
+      min-height: 70%;
+      overflow: visible;
     }
     .paper.is-table .ph {
       padding-bottom: 1mm; margin-bottom: 1mm;
@@ -209,39 +212,43 @@
     .paper.is-table .ph-stats { font-size: 6.5pt; }
     .paper.is-table .ph-stats strong { font-size: 9pt; }
 
-    /* 老师要求：多列紧凑，禁止一行一条拉高 */
+    /* 老师要求：多列紧凑铺开，全文显示、不截断 */
     .paper.is-table .assign-card {
-      padding: 0.8mm 1.5mm;
+      padding: 1mm 1.8mm;
       margin-bottom: 0.8mm;
-      max-height: 12mm;
-      overflow: hidden;
+      max-height: none;
+      overflow: visible;
     }
     .paper.is-table .assign-card h2 {
-      font-size: 6pt; margin: 0 0 0.5mm; line-height: 1.1;
+      font-size: 6.5pt; margin: 0 0 0.8mm; line-height: 1.15;
     }
     .paper.is-table .assign-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 0.4mm 1.5mm;
+      gap: 0.8mm 2mm;
     }
     .paper.is-table .assign-grid .assign-item {
-      font-size: 5.5pt;
+      font-size: 6.2pt;
       margin: 0;
-      padding: 0.3mm 0.5mm;
+      padding: 0.6mm 0.8mm;
       border: 1px solid #efe6d6;
-      border-radius: 1px;
+      border-radius: 2px;
       background: #fffef9;
-      line-height: 1.15;
-      max-height: 8mm;
-      overflow: hidden;
+      line-height: 1.25;
+      max-height: none;
+      overflow: visible;
+    }
+    .paper.is-table .assign-grid .assign-item .ai-name {
+      font-size: 6.5pt;
     }
     .paper.is-table .assign-grid .assign-item .ai-req {
-      margin-top: 0.2mm;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      white-space: normal;
+      margin-top: 0.4mm;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: visible;
+      /* 取消 line-clamp，全文可见 */
+      display: block;
+      -webkit-line-clamp: unset;
     }
     .paper.is-table .overview {
       font-size: 5.5pt; margin-bottom: 0.6mm; gap: 0.5mm 1.2mm;
