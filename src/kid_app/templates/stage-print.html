@@ -84,9 +84,11 @@
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
-    /* 表格视图仍 A4 竖向，略紧凑边距以便一页 */
-    .paper.is-table {
-      padding: 6mm 7mm 7mm;
+    /* 表格视图: A4 横向 297×210 */
+    .paper.is-table.is-landscape {
+      width: 297mm;
+      min-height: 210mm;
+      padding: 4mm 5mm 5mm;
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -182,82 +184,84 @@
     }
     .empty-content { color: #b0a090; font-style: italic; }
 
-    /* ── 表格视图 · A4 竖向 · 日/科目聚合 ── */
-    .paper.is-table .ph-title { font-size: 11pt; }
-    .paper.is-table .ph-sub { font-size: 7pt; }
-    .paper.is-table .assign-card { padding: 1.5mm 2mm; margin-bottom: 1.5mm; }
-    .paper.is-table .assign-card h2 { font-size: 7.5pt; margin-bottom: 1mm; }
-    .paper.is-table .assign-item { font-size: 6.5pt; margin-bottom: 0.8mm; padding-bottom: 0.8mm; }
-    .paper.is-table .overview { font-size: 6.2pt; margin-bottom: 1.5mm; gap: 1mm 2mm; }
+    /* ── 表格视图 · A4 横向 · 科目×日期矩阵 ── */
+    .paper.is-table .ph-title { font-size: 10pt; }
+    .paper.is-table .ph-sub { font-size: 6.5pt; }
+    .paper.is-table .assign-card { padding: 1.2mm 2mm; margin-bottom: 1.2mm; }
+    .paper.is-table .assign-card h2 { font-size: 7pt; margin-bottom: 0.8mm; }
+    .paper.is-table .assign-item { font-size: 6pt; margin-bottom: 0.5mm; padding-bottom: 0.5mm; }
+    .paper.is-table .overview { font-size: 5.8pt; margin-bottom: 1.2mm; gap: 0.8mm 1.5mm; }
 
-    .view-table-wrap { margin-top: 0; }
-    table.flat {
+    .view-table-wrap { margin-top: 0; overflow-x: auto; }
+    table.matrix {
       width: 100%; border-collapse: collapse;
-      font-size: 6.8pt;
+      font-size: 5.8pt;
       table-layout: fixed;
     }
-    table.flat thead th {
+    table.matrix thead th {
       background: #3d2e1e; color: #fffef9;
-      font-weight: 600; font-size: 6.2pt;
-      text-align: center; padding: 0.7mm 0.6mm;
-      border: 0.3pt solid #3d2e1e;
+      font-weight: 600; text-align: center;
+      border: 0.25pt solid #2a2015;
+      padding: 0.5mm 0.3mm;
+      line-height: 1.15;
     }
-    table.flat thead th.th-detail { text-align: left; padding-left: 1.2mm; }
-    table.flat tbody td {
-      padding: 0.55mm 0.6mm; vertical-align: middle;
-      border: 0.3pt solid #e0d4c0;
-      line-height: 1.25;
+    table.matrix thead th.th-item {
+      background: #2a2015; width: 14mm; font-size: 6pt;
     }
-    table.flat tbody tr:nth-child(even) { background: #faf6ee; }
-    /* 窄列：日期 / 科目 / 合计时长 / 速度 / 单次时长 → 把宽度留给明细 */
-    table.flat col.c-date { width: 11mm; }
-    table.flat col.c-item { width: 14mm; }
-    table.flat col.c-mins { width: 8mm; }
-    table.flat col.c-tempo { width: 10mm; }
-    table.flat col.c-once { width: 8mm; }
-    table.flat col.c-detail { width: auto; }
-    table.flat td.c-date {
-      font-weight: 700; color: var(--ink); font-size: 6.2pt;
-      background: #f5f0e6; text-align: center; white-space: normal;
-      padding: 0.5mm 0.4mm;
+    table.matrix thead th.th-day {
+      font-size: 6.2pt; letter-spacing: 0.2px;
+      border-left: 1pt solid #c9a030;
     }
-    table.flat td.c-date .d-sub {
-      display: block; font-weight: 500; color: #8b6914; font-size: 5.5pt; margin-top: 0.3mm;
+    table.matrix thead th.th-sub {
+      background: #5c4a36; font-size: 5.2pt; font-weight: 500;
+      padding: 0.35mm 0.2mm;
     }
-    table.flat td.c-item {
-      font-weight: 600; font-size: 6.2pt; text-align: center;
-      white-space: normal; word-break: break-all; line-height: 1.15;
-      padding: 0.5mm 0.4mm;
+    table.matrix thead th.th-sub.th-first {
+      border-left: 1pt solid #c9a030;
     }
-    table.flat td.c-mins {
-      text-align: center; font-weight: 700; white-space: nowrap; font-size: 6.5pt;
-    }
-    table.flat td.c-tempo {
-      text-align: center; color: var(--gold); font-weight: 600;
-      white-space: nowrap; font-size: 6.5pt;
-    }
-    table.flat td.c-once {
-      text-align: center; font-weight: 600; white-space: nowrap; font-size: 6.5pt;
-    }
-    table.flat td.c-detail {
-      text-align: left; padding: 0.5mm 1.2mm;
-      word-break: break-word; overflow-wrap: anywhere;
-    }
-    table.flat .det-extra {
-      display: inline-block; font-size: 5.5pt; margin-left: 2px;
-      padding: 0 1mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 2px;
+    table.matrix tbody td {
+      border: 0.25pt solid #e0d4c0;
+      padding: 0.35mm 0.35mm;
       vertical-align: middle;
+      text-align: center;
+      line-height: 1.15;
+      word-break: break-word;
     }
-    table.flat tfoot td {
-      background: #f3efe6; font-weight: 700; padding: 0.8mm 1mm;
-      border: 0.3pt solid #e0d4c0; font-size: 6.5pt;
+    table.matrix tbody tr:nth-child(even) td:not(.m-item) { background: #faf6ee; }
+    table.matrix td.m-item {
+      background: #f5f0e6; font-weight: 700; font-size: 6pt;
+      text-align: center; width: 14mm;
+      border-right: 1pt solid #c9a030;
+      word-break: break-all;
     }
+    table.matrix td.m-total {
+      font-weight: 700; color: var(--accent); white-space: nowrap;
+      border-left: 1pt solid #c9a030; background: #fff8f0;
+    }
+    table.matrix td.m-sess { color: var(--muted); white-space: nowrap; font-size: 5.5pt; }
+    table.matrix td.m-tempo { color: var(--gold); font-weight: 600; white-space: nowrap; font-size: 5.5pt; }
+    table.matrix td.m-once { font-weight: 600; white-space: nowrap; }
+    table.matrix td.m-detail {
+      text-align: left; padding: 0.35mm 0.6mm;
+      font-size: 5.5pt; overflow-wrap: anywhere;
+    }
+    table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
+    table.matrix .det-extra {
+      display: inline-block; font-size: 5pt; margin-left: 1px;
+      padding: 0 0.8mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 1px;
+    }
+    table.matrix tfoot td {
+      background: #f3efe6; font-weight: 700; font-size: 5.8pt;
+      border: 0.25pt solid #e0d4c0; padding: 0.5mm;
+      text-align: center;
+    }
+    table.matrix tfoot td.m-item { background: #ebe4d6; }
 
     .pf {
-      margin-top: 2mm;
-      font-size: 6pt; color: #a89880;
+      margin-top: 1.5mm;
+      font-size: 5.5pt; color: #a89880;
       display: flex; justify-content: space-between;
-      border-top: 1px solid var(--line); padding-top: 0.8mm;
+      border-top: 1px solid var(--line); padding-top: 0.6mm;
     }
 
     .loading, .err {
@@ -265,7 +269,7 @@
     }
     .err { color: #b23a48; }
 
-    /* ── 打印: 始终 A4 竖向，单页 zoom fit ── */
+    /* ── 打印 ── */
     @media print {
       html, body { background: #fff; }
       .toolbar { display: none !important; }
@@ -273,12 +277,19 @@
       .paper-scale { transform: none !important; }
       .paper {
         box-shadow: none !important;
-        width: 210mm !important;
-        min-height: 297mm;
         max-height: none;
         overflow: visible;
-        padding: 6mm 7mm 6mm !important;
         zoom: var(--print-zoom, 1) !important;
+      }
+      .paper:not(.is-landscape) {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 6mm 7mm 6mm;
+      }
+      .paper.is-landscape {
+        width: 297mm !important;
+        min-height: 210mm;
+        padding: 4mm 5mm 4mm !important;
       }
     }
   </style>
@@ -375,22 +386,29 @@
     if (t) t.classList.toggle('active', viewMode === 'table');
   }
 
-  /** 两种视图均为 A4 竖向；表格模式加 is-table 紧凑样式 */
+  /** 分组=竖向；表格=横向矩阵 */
   function syncPaperMode() {
-    paper.classList.toggle('is-table', viewMode === 'table');
-    paper.classList.remove('is-landscape');
+    var isTable = viewMode === 'table';
+    paper.classList.toggle('is-table', isTable);
+    paper.classList.toggle('is-landscape', isTable);
     var rule = document.getElementById('printPageRule');
-    if (rule) rule.textContent = '@page { size: A4 portrait; margin: 0; }';
+    if (rule) {
+      rule.textContent = isTable
+        ? '@page { size: A4 landscape; margin: 0; }'
+        : '@page { size: A4 portrait; margin: 0; }';
+    }
     var hint = document.querySelector('.toolbar .hint');
     if (hint) {
-      hint.textContent = viewMode === 'table'
-        ? '表格 · A4 竖向 · 日/科目聚合 · 打印一页'
+      hint.textContent = isTable
+        ? '表格 · A4 横向 · 科目×日期矩阵 · 打印一页'
         : '分组 · A4 竖向 · 老师要求全文 · 可切换表格';
     }
   }
 
   function a4PageHeightPx() {
-    return Math.round(297 * (96 / 25.4));
+    // 竖向 297mm；横向 210mm
+    var mm = viewMode === 'table' ? 210 : 297;
+    return Math.round(mm * (96 / 25.4));
   }
 
   function updatePreviewStatus() {
@@ -398,10 +416,10 @@
     paperScale.style.transform = '';
     var a4px = a4PageHeightPx();
     var contentH = paper.scrollHeight;
-    var modeLabel = viewMode === 'table' ? '表格·竖向' : '分组·竖向';
+    var modeLabel = viewMode === 'table' ? '表格·横向' : '分组·竖向';
     if (contentH > a4px + 8) {
-      var pct = Math.max(45, Math.min(100, Math.round((a4px / contentH) * 100)));
-      statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印强制一页约 ' + pct + '%';
+      var pct = Math.max(40, Math.min(100, Math.round((a4px / contentH) * 100)));
+      statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印一页约 ' + pct + '%';
     } else {
       statusMsg.textContent = modeLabel + ' · 预览 100% · 已在一页内';
     }
@@ -411,7 +429,7 @@
   function renderHeader(data) {
     var sum = data.summary || {};
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
-    var styleLabel = viewMode === 'table' ? '表格 · 日/科目聚合 · A4 竖向' : '分组 · A4 竖向';
+    var styleLabel = viewMode === 'table' ? '表格 · 科目×日期 · A4 横向' : '分组 · A4 竖向';
     var html = '';
     html += '<div class="ph">';
     html += '<div>';
@@ -495,9 +513,9 @@
   }
 
   /**
-   * 表格视图：竖向 A4
-   * 列：日期(天合并) | 科目(科合并) | 时长(科合计) | 速度 | 单次时长 | 明细(内容)
-   * 短列窄宽，明细列吃满剩余宽度
+   * 表格视图：A4 横向矩阵
+   * 行 = 科目；列组 = 每个日期 × (总时长 | session序号 | 速度 | 单次时长 | 明细)
+   * 同科目同日多 session → 多行；科目名 rowspan；总时长 rowspan
    */
   function renderBodyTable(data) {
     var sum = data.summary || {};
@@ -508,71 +526,148 @@
       html += '</div>';
       return html;
     }
-    html += '<table class="flat">';
-    html += '<colgroup>';
-    html += '<col class="c-date"><col class="c-item"><col class="c-mins">';
-    html += '<col class="c-tempo"><col class="c-once"><col class="c-detail">';
-    html += '</colgroup>';
-    html += '<thead><tr>';
-    html += '<th>日期</th><th>科目</th><th>时长</th>';
-    html += '<th>速度</th><th>单次</th>';
-    html += '<th class="th-detail">明细</th>';
-    html += '</tr></thead><tbody>';
 
+    // 科目顺序：优先 by_item，再补 days 里出现的
+    var itemOrder = [];
+    var itemNames = {};
+    (data.by_item || []).forEach(function (it) {
+      var id = it.item_id;
+      if (id == null) return;
+      if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
+      itemNames[id] = it.item_name || ('科目' + id);
+    });
     days.forEach(function (day) {
-      var groups = day.groups || [];
-      // 一天总 session 行数（用于日期 rowspan）
-      var dayRows = 0;
-      groups.forEach(function (g) {
-        dayRows += Math.max((g.sessions || []).length, 1);
-      });
-      if (!dayRows) dayRows = 1;
-
-      if (!groups.length) {
-        html += '<tr>';
-        html += '<td class="c-date">' + esc(fmtCnDate(day.date));
-        html += '<span class="d-sub">' + esc(day.total_minutes) + '′</span></td>';
-        html += '<td colspan="5" class="empty-content">无科目记录</td>';
-        html += '</tr>';
-        return;
-      }
-
-      var dayFirst = true;
-      groups.forEach(function (g) {
-        var sess = g.sessions || [];
-        if (!sess.length) {
-          sess = [{ duration_minutes: g.minutes || 0, tempo_note: '', tempo_bpm: 0, content: '', is_extra: false }];
-        }
-        var gRows = sess.length;
-        sess.forEach(function (s, si) {
-          html += '<tr>';
-          if (dayFirst) {
-            html += '<td class="c-date" rowspan="' + dayRows + '">';
-            html += esc(fmtCnDate(day.date));
-            html += '<span class="d-sub">' + esc(day.total_minutes) + '′·' + esc(day.session_count) + '次</span>';
-            html += '</td>';
-            dayFirst = false;
-          }
-          if (si === 0) {
-            html += '<td class="c-item" rowspan="' + gRows + '" title="' + esc(g.item_name) + '">' + esc(g.item_name) + '</td>';
-            html += '<td class="c-mins" rowspan="' + gRows + '">' + esc(g.minutes) + '′</td>';
-          }
-          var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
-          var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
-          html += '<td class="c-tempo">' + esc(tempo) + '</td>';
-          html += '<td class="c-once">' + esc(s.duration_minutes || 0) + '′</td>';
-          html += '<td class="c-detail">' + content;
-          if (s.is_extra) html += '<span class="det-extra">额外</span>';
-          html += '</td>';
-          html += '</tr>';
-        });
+      (day.groups || []).forEach(function (g) {
+        var id = g.item_id;
+        if (id == null) return;
+        if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
+        itemNames[id] = g.item_name || itemNames[id] || ('科目' + id);
       });
     });
 
+    // dayKey -> itemId -> { minutes, sessions[] }
+    var grid = {};
+    var dateList = [];
+    days.forEach(function (day) {
+      var d = day.date;
+      dateList.push(d);
+      grid[d] = {};
+      (day.groups || []).forEach(function (g) {
+        grid[d][g.item_id] = {
+          minutes: g.minutes || 0,
+          sessions: (g.sessions && g.sessions.length) ? g.sessions.slice() : []
+        };
+      });
+    });
+
+    var nDays = dateList.length;
+    var subLabels = ['总时长', 'session', '速度', '单次', '明细'];
+    // 明细列相对更宽：用 colgroup 比例 总:session:速度:单次:明细 ≈ 1:0.7:1:0.8:2.5
+    var subWeights = [1, 0.7, 1, 0.8, 2.8];
+
+    html += '<table class="matrix">';
+    // 表头行1：科目 + 各日期
+    html += '<thead><tr>';
+    html += '<th class="th-item" rowspan="2">科目</th>';
+    dateList.forEach(function (d) {
+      html += '<th class="th-day" colspan="5">' + esc(fmtCnDate(d)) + '</th>';
+    });
+    html += '</tr><tr>';
+    dateList.forEach(function () {
+      subLabels.forEach(function (lab, i) {
+        html += '<th class="th-sub' + (i === 0 ? ' th-first' : '') + '">' + lab + '</th>';
+      });
+    });
+    html += '</tr></thead><tbody>';
+
+    if (!itemOrder.length) {
+      html += '<tr><td colspan="' + (1 + nDays * 5) + '" class="empty-content">无科目</td></tr>';
+    }
+
+    itemOrder.forEach(function (itemId) {
+      // 该科目在各天 session 数，行数 = max
+      var maxS = 1;
+      dateList.forEach(function (d) {
+        var cell = grid[d][itemId];
+        var n = cell && cell.sessions ? cell.sessions.length : 0;
+        if (n > maxS) maxS = n;
+      });
+      if (maxS < 1) maxS = 1;
+
+      for (var ri = 0; ri < maxS; ri++) {
+        html += '<tr>';
+        if (ri === 0) {
+          html += '<td class="m-item" rowspan="' + maxS + '">' + esc(itemNames[itemId] || itemId) + '</td>';
+        }
+        dateList.forEach(function (d) {
+          var cell = grid[d][itemId];
+          var sess = (cell && cell.sessions) ? cell.sessions : [];
+          var total = cell ? cell.minutes : 0;
+
+          if (!cell || (!sess.length && !total)) {
+            // 该天无练习
+            if (ri === 0) {
+              html += '<td class="m-total m-empty" rowspan="' + maxS + '">—</td>';
+              html += '<td class="m-empty" rowspan="' + maxS + '" colspan="4"></td>';
+            }
+            // ri>0: 已 rowspan，不输出
+            return;
+          }
+
+          if (sess.length === 0) {
+            if (ri === 0) {
+              html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
+              html += '<td class="m-sess">—</td>';
+              html += '<td class="m-tempo">—</td>';
+              html += '<td class="m-once">—</td>';
+              html += '<td class="m-detail empty-content">—</td>';
+            } else {
+              html += '<td class="m-empty" colspan="4"></td>';
+            }
+            return;
+          }
+
+          // 有 session：总时长 rowspan = sess.length（相对本科目该天），但表格行是 maxS
+          // 用本天 sess.length 作为该天合并高度
+          var daySessN = sess.length;
+          if (ri === 0) {
+            html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
+          }
+          if (ri < daySessN) {
+            var s = sess[ri];
+            var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+            var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
+            html += '<td class="m-sess">' + (ri + 1) + '/' + daySessN + '</td>';
+            html += '<td class="m-tempo">' + esc(tempo) + '</td>';
+            html += '<td class="m-once">' + esc(s.duration_minutes || 0) + '′</td>';
+            html += '<td class="m-detail">' + content;
+            if (s.is_extra) html += '<span class="det-extra">额外</span>';
+            html += '</td>';
+          } else {
+            // 该天 session 数少于 maxS：补空
+            html += '<td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td>';
+          }
+        });
+        html += '</tr>';
+      }
+    });
+
+    // 表尾：每日合计分钟
     html += '</tbody><tfoot><tr>';
-    html += '<td colspan="2">合计</td>';
-    html += '<td class="c-mins">' + esc(sum.total_minutes || 0) + '′</td>';
-    html += '<td colspan="3">' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.item_count || 0) + ' 科</td>';
+    html += '<td class="m-item">日合计</td>';
+    dateList.forEach(function (d) {
+      var dayObj = null;
+      for (var i = 0; i < days.length; i++) {
+        if (days[i].date === d) { dayObj = days[i]; break; }
+      }
+      var t = dayObj ? dayObj.total_minutes : 0;
+      html += '<td class="m-total" colspan="5">' + esc(t) + '′ · ' + esc(dayObj ? dayObj.session_count : 0) + '次</td>';
+    });
+    html += '</tr><tr>';
+    html += '<td class="m-item">阶段</td>';
+    html += '<td colspan="' + (nDays * 5) + '">' + esc(sum.total_minutes || 0) + '′ · '
+      + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · '
+      + esc(sum.item_count || 0) + ' 科 · A4 横向</td>';
     html += '</tr></tfoot></table></div>';
     return html;
   }
@@ -591,7 +686,7 @@
     var html = renderHeader(data);
     html += viewMode === 'table' ? renderBodyTable(data) : renderBodyGroup(data);
     html += '<div class="pf"><span>数据: practice_sessions · 观摩/家校沟通用</span>';
-    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '表格聚合 · A4 竖向一页' : '分组 · A4 竖向') + '</span></div>';
+    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '矩阵表格 · A4 横向一页' : '分组 · A4 竖向') + '</span></div>';
 
     paper.innerHTML = html;
     syncViewToggle();
@@ -609,14 +704,22 @@
     if (lastPayload) renderPayload(lastPayload);
   }
 
-  /** 打印前：强制缩放到不超过 A4 一页高度 */
+  /** 打印前：强制缩放到不超过一页（横向用 210mm 高） */
   function preparePrintZoom() {
     var a4px = a4PageHeightPx();
     var contentH = paper.scrollHeight;
     var scale = 1;
     if (contentH > a4px + 4) {
-      // 表格更挤时允许压到 45%，保证单页
-      scale = Math.max(0.45, Math.min(1, (a4px - 6) / contentH));
+      scale = Math.max(0.40, Math.min(1, (a4px - 6) / contentH));
+    }
+    // 横向时若内容过宽也压一点（zoom 等比）
+    if (viewMode === 'table') {
+      var a4w = Math.round(297 * (96 / 25.4));
+      var contentW = paper.scrollWidth;
+      if (contentW > a4w + 4) {
+        var sw = Math.max(0.40, Math.min(1, (a4w - 6) / contentW));
+        if (sw < scale) scale = sw;
+      }
     }
     paper.style.setProperty('--print-zoom', String(scale.toFixed(4)));
     return scale;
