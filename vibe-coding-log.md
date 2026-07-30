@@ -1,3 +1,10 @@
+## 2026-07-30 report 练习明细
+
+- 分支: `feat/report-session-detail`
+- report 页: 日历 dayDetail + 竹笛 modal 展示 practice_sessions 明细（按科目分组）
+- plan: `PRDs/AI-PLAN-report-session-detail-260730.md` + Obsidian 双写
+- API 无变更（已有 sessions[]）
+
 ## [2026-07-29] PR #200 V4 tile 修复: dashboard 老师要求 + wheel 去 desc + sp-tempo-row 拆 2 行
 
 **触发**: dad "开分支修 practice 上的问题" — 4 个 UI/逻辑问题一次性拍板

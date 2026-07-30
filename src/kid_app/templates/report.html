@@ -104,16 +104,20 @@
     position: relative; z-index: 1;
     background: var(--modal-bg);
     border-radius: 24px;
-    padding: 28px 32px 32px;
-    max-width: 760px; width: 94%;
+    padding: 24px 28px 28px;
+    max-width: 860px; width: 94%;
+    max-height: min(88vh, 720px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 28px 80px rgba(0,0,0,0.30);
+    box-sizing: border-box;
   }
-  #diziModal .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  #diziModal .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
   #diziModal .modal-title { font-size: 18px; font-weight: bold; color: #3D2E1E; }
   #diziModal .modal-total { font-size: 13px; color: #8B6914; background: #FEF3C7; padding: 4px 12px; border-radius: 20px; margin-top: 6px; display: inline-block; }
-  #diziModal .modal-close { width: 34px; height: 34px; border-radius: 50%; background: #EDE8E0; border: none; cursor: pointer; font-size: 20px; color: #7A6A5A; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  #diziModal .modal-close { width: 34px; height: 34px; border-radius: 50%; background: #EDE8E0; border: none; cursor: pointer; font-size: 20px; color: #7A6A5A; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0; }
   #diziModal .modal-close:hover { background: #D8CEBD; }
-  #diziModal #diziBg { width: 100%; height: auto; display: block; pointer-events: none; }
+  #diziModal #diziBg { width: 100%; height: auto; display: block; pointer-events: none; max-height: 160px; object-fit: contain; }
   #diziModal #segmentsContainer { position: relative; width: 100%; height: 52px; margin-top: 10px; }
   #diziModal .seg-item { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
   #diziModal .seg-text-col { display: flex; flex-direction: column; align-items: center; z-index: 2; gap: 10px; }
@@ -122,25 +126,67 @@
   #diziModal .seg-bar-line { height: 2px; border-radius: 1px; background: #C9A030; flex-grow: 1; }
   #diziModal .seg-name { font-family: 'Ma Shan Zheng','Noto Serif SC','SimSun',serif; font-size: 14px; color: #3D2E1E; background: var(--modal-bg); padding: 2px 6px; border-radius: 3px; white-space: nowrap; letter-spacing: 2px; }
   #diziModal .seg-mins { font-size: 11px; color: #8B6914; text-align: center; }
-  #diziModal .modal-footer { margin-top: 20px; font-size: 12px; color: #B0A090; text-align: center; }
-
-  /* ── 新弹窗样式已移到上方 #diziModal ── */
   #diziModal .modal-footer {
-    margin-top: 18px;
+    margin-top: 16px;
     font-size: 12px; color: #B0A090; text-align: center;
   }
+  #diziModal #modalSessionDetail { margin-top: 18px; }
 
   @media (max-width: 600px) {
     #stageChartCard { padding: 10px 10px 14px; }
     #stageChartTitle { font-size: 15px !important; }
+    #diziModal .modal-content { padding: 18px 16px 20px; max-height: 90vh; }
+    #diziModal .seg-name { font-size: 12px; letter-spacing: 1px; }
   }
   @media (min-width: 1024px) {
     #stageChartCard { padding: 16px 20px 20px; }
   }
+  /* iPad mini landscape ~1024×768: keep modal compact */
+  @media (max-height: 800px) {
+    #diziModal #diziBg { max-height: 120px; }
+    #diziModal .modal-content { max-height: 90vh; padding: 18px 22px 20px; }
+    #diziModal #segmentsContainer { height: 44px; margin-top: 6px; }
+  }
+
+  /* ── 共享: 科目 session 明细列表 (modal + dayDetail) ───── */
+  .rp-session-list { margin-top: 4px; }
+  .rp-session-heading {
+    font-size: 13px; color: #8B6914; font-weight: 600;
+    margin: 0 0 10px; letter-spacing: 0.3px;
+  }
+  .rp-group {
+    margin-bottom: 10px; background: #FFFEFA;
+    border-radius: 10px; padding: 8px 12px;
+    border: 1px solid #F0E8D0;
+  }
+  .rp-group-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 6px; border-bottom: 1px dashed #E8D8B0; margin-bottom: 4px;
+  }
+  .rp-g-name { font-size: 14px; font-weight: 600; color: #3D2E1E; }
+  .rp-g-mins { font-size: 13px; color: #8B6914; font-weight: 500; }
+  .rp-session {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0 5px 8px; font-size: 13px; color: #6D5540;
+    border-left: 2px solid #E8D8B0; margin: 2px 0;
+    flex-wrap: wrap;
+  }
+  .rp-tempo { font-weight: 600; color: #8B6914; min-width: 48px; flex-shrink: 0; }
+  .rp-content { flex: 1; color: #5D4037; min-width: 0; word-break: break-word; }
+  .rp-mins { color: #888; font-size: 12px; flex-shrink: 0; min-width: 36px; text-align: right; }
+  .rp-legacy { color: #B0A090; font-style: italic; }
+  .rp-session-empty { text-align: center; color: #BDBDBD; padding: 12px; font-size: 13px; }
 
   /* ── 日历 dayDetail ─────────────────────────────────── */
+  #dayDetail {
+    margin-top: 12px; margin-bottom: 12px;
+  }
   #dayDetail h3 { font-size: 17px !important; color: #FF6B6B !important; margin-bottom: 14px !important; }
-    .detail-empty { text-align: center; color: #BDBDBD; padding: 24px; font-size: 15px; }
+  #dayDetail .detail-total-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid #EEE; margin-bottom: 12px;
+  }
+  .detail-empty { text-align: center; color: #BDBDBD; padding: 24px; font-size: 15px; }
 
     /* 哑铃图 */
     .dumbbell-chart { width: 100%; }
@@ -211,6 +257,12 @@
     </div>
     <div class="cal-grid">{{cal_html}}</div>
 
+  <!-- 当天明细区域: 日历正下方 (feat/report-session-detail) -->
+  <div id="dayDetail" class="card" style="display:none;">
+    <h3 id="detailDate"></h3>
+    <div id="detailBody"></div>
+  </div>
+
   <!-- 月份堆叠柱状图卡片 (feat/month-chart) - 常驻, 跟 stage chart 共存, 切月自动刷 -->
   <div id="monthChartCard" class="card" style="margin-top:12px;">
     <h3 id="monthChartTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><img src="/static/icons/chart-bar.svg" width="16" height="16" alt=""><span id="monthChartTitleText">月练习</span></h3>
@@ -239,12 +291,6 @@
       <span style="width:16px;height:16px;background:#FFF8E1;border-radius:4px;display:inline-block;"></span> 中等
       <span style="width:16px;height:16px;background:#FFEBEE;border-radius:4px;display:inline-block;"></span> 充足
     </div>
-  </div>
-
-  <!-- 当天明细区域 -->
-  <div id="dayDetail" class="card" style="display:none;margin-top:12px;margin-bottom:12px;">
-    <h3 id="detailDate"></h3>
-    <div id="detailBody"></div>
   </div>
 </body>
 <script>
@@ -640,7 +686,134 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ── 竹笛弹窗（新线段模板） ────────────────────────────────
+  // ── 共享: 练习明细渲染 (feat/report-session-detail) ────────
+  // 与 practice.html renderTodayRecords 分组规则对齐: items 主序 + sessions 挂组 + legacy 补差
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatCnDate(iso) {
+    if (!iso || iso.length < 10) return iso || '';
+    var parts = iso.substring(0, 10).split('-');
+    if (parts.length < 3) return iso;
+    return parseInt(parts[1], 10) + '月' + parseInt(parts[2], 10) + '日';
+  }
+
+  function groupSessionsByItem(items, sessions) {
+    var itemMinutes = {};
+    var itemNames = {};
+    var itemOrder = [];
+    (items || []).forEach(function(it) {
+      var id = it.item_id;
+      if (id == null) return;
+      if (!itemMinutes.hasOwnProperty(id)) {
+        itemOrder.push(id);
+        itemMinutes[id] = 0;
+        itemNames[id] = it.item || '未知科目';
+      }
+      itemMinutes[id] += (it.minutes || 0);
+      if (it.item) itemNames[id] = it.item;
+    });
+
+    var sessionMinutes = {};
+    var sessionsByItem = {};
+    (sessions || []).forEach(function(s) {
+      var id = s.item_id;
+      if (id == null) return;
+      if (!sessionsByItem[id]) sessionsByItem[id] = [];
+      sessionsByItem[id].push(s);
+      sessionMinutes[id] = (sessionMinutes[id] || 0) + (s.duration_minutes || 0);
+      if (!itemNames.hasOwnProperty(id)) {
+        itemOrder.push(id);
+        itemNames[id] = s.item_name || '未知科目';
+      } else if (s.item_name && !itemMinutes.hasOwnProperty(id)) {
+        itemNames[id] = s.item_name;
+      }
+    });
+
+    // items 有分钟但 sessions 未覆盖 → 历史汇总伪行
+    itemOrder.forEach(function(id) {
+      if (!itemMinutes.hasOwnProperty(id)) return;
+      var totalForItem = itemMinutes[id] || 0;
+      var covered = sessionMinutes[id] || 0;
+      if (totalForItem > covered) {
+        if (!sessionsByItem[id]) sessionsByItem[id] = [];
+        sessionsByItem[id].push({
+          id: -id,
+          item_id: id,
+          item_name: itemNames[id],
+          tempo_note: '',
+          tempo_bpm: 0,
+          content: '历史汇总',
+          duration_minutes: totalForItem - covered,
+          is_legacy: true
+        });
+      }
+    });
+
+    return itemOrder.map(function(id) {
+      var rows = sessionsByItem[id] || [];
+      var sessSum = (sessionMinutes[id] || 0);
+      // 组头优先用 items 汇总 (含 legacy 补差后的真值), 否则 session 合计
+      var headerMins = itemMinutes.hasOwnProperty(id) ? itemMinutes[id] : sessSum;
+      return {
+        item_id: id,
+        name: itemNames[id] || '未知科目',
+        minutes: headerMins,
+        sessions: rows
+      };
+    }).filter(function(g) { return g.minutes > 0 || (g.sessions && g.sessions.length); });
+  }
+
+  function renderSessionGroupsHtml(items, sessions, opts) {
+    opts = opts || {};
+    var groups = groupSessionsByItem(items, sessions);
+    if (!groups.length) {
+      return '<div class="rp-session-empty">' + (opts.emptyText || '暂无练习明细') + '</div>';
+    }
+    var html = '<div class="rp-session-list">';
+    if (opts.heading !== false) {
+      html += '<div class="rp-session-heading">' + escapeHtml(opts.heading || '练习明细') + '</div>';
+    }
+    groups.forEach(function(g) {
+      html += '<div class="rp-group">';
+      html += '<div class="rp-group-header">';
+      html += '<span class="rp-g-name">' + escapeHtml(g.name) + '</span>';
+      html += '<span class="rp-g-mins">' + escapeHtml(g.minutes) + ' 分钟</span>';
+      html += '</div>';
+      if (g.sessions && g.sessions.length) {
+        g.sessions.forEach(function(s) {
+          var tempoText = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '';
+          var contentText = s.is_legacy
+            ? (s.content || '历史汇总')
+            : (s.content || (s.tempo_bpm ? '未填写练习内容' : ''));
+          html += '<div class="rp-session' + (s.is_legacy ? ' rp-legacy' : '') + '">';
+          if (tempoText) {
+            html += '<span class="rp-tempo">' + escapeHtml(tempoText) + '</span>';
+          }
+          html += '<span class="rp-content">' + escapeHtml(contentText) + '</span>';
+          html += '<span class="rp-mins">' + escapeHtml(s.duration_minutes || 0) + 'min</span>';
+          html += '</div>';
+        });
+      } else {
+        // 仅有汇总、无 session 行
+        html += '<div class="rp-session rp-legacy">';
+        html += '<span class="rp-content">科目汇总</span>';
+        html += '<span class="rp-mins">' + escapeHtml(g.minutes) + 'min</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  // ── 竹笛弹窗（新线段模板 + 下方 session 明细） ────────────
   var diziModal = document.getElementById('diziModal');
 
   function openDiziModal(date) {
@@ -678,9 +851,11 @@ document.addEventListener('DOMContentLoaded', function() {
       diziBgEl.onload = startBreath;
     }
 
-    document.getElementById('diziModalDate').textContent = date;
+    document.getElementById('diziModalDate').textContent = formatCnDate(date) + ' · ' + date;
     document.getElementById('diziModalTotal').textContent = '加载中...';
     document.getElementById('segmentsContainer').innerHTML = '';
+    var modalDetail = document.getElementById('modalSessionDetail');
+    if (modalDetail) modalDetail.innerHTML = '';
 
     var mask = document.getElementById('diziModalMask');
     var content = diziModal.querySelector('.modal-content');
@@ -691,30 +866,49 @@ document.addEventListener('DOMContentLoaded', function() {
       var total = data.total_minutes || 0;
       document.getElementById('diziModalTotal').textContent = '总练习 ' + total + ' 分钟';
       var items = data.items || [];
-      if (!items.length || !total) return;
+      var sessions = data.sessions || [];
 
-      var html = '';
-      var cumulative = 0;
-      items.forEach(function(it) {
-        var pct = (it.minutes / total * 100).toFixed(2);
-        var left = cumulative.toFixed(2) + '%';
-        cumulative += parseFloat(pct);
-        html += ''
-          + '<div class="seg-item" style="left:' + left + ';width:' + pct + '%;">'
-          +   '<div class="seg-line-wrap">'
-          +     '<div class="seg-bar"></div>'
-          +     '<div class="seg-bar-line"></div>'
-          +     '<div class="seg-bar"></div>'
-          +   '</div>'
-          +   '<div class="seg-text-col">'
-          +     '<div class="seg-name">' + (it.item || '未知') + '</div>'
-          +     '<div class="seg-mins">' + it.minutes + '分钟</div>'
-          +   '</div>'
-          + '</div>';
-      });
-      document.getElementById('segmentsContainer').innerHTML = html;
+      if (items.length && total) {
+        var html = '';
+        var cumulative = 0;
+        items.forEach(function(it) {
+          var pct = (it.minutes / total * 100).toFixed(2);
+          var left = cumulative.toFixed(2) + '%';
+          cumulative += parseFloat(pct);
+          html += ''
+            + '<div class="seg-item" style="left:' + left + ';width:' + pct + '%;">'
+            +   '<div class="seg-line-wrap">'
+            +     '<div class="seg-bar"></div>'
+            +     '<div class="seg-bar-line"></div>'
+            +     '<div class="seg-bar"></div>'
+            +   '</div>'
+            +   '<div class="seg-text-col">'
+            +     '<div class="seg-name">' + escapeHtml(it.item || '未知') + '</div>'
+            +     '<div class="seg-mins">' + escapeHtml(it.minutes) + '分钟</div>'
+            +   '</div>'
+            + '</div>';
+        });
+        document.getElementById('segmentsContainer').innerHTML = html;
+      }
+
+      // 科目下方练习明细 (session 分组列表)
+      if (modalDetail) {
+        if (!items.length && !sessions.length) {
+          modalDetail.innerHTML = '<div class="rp-session-empty">这天没有练习记录</div>';
+        } else {
+          modalDetail.innerHTML = renderSessionGroupsHtml(items, sessions, {
+            heading: '练习明细 · 共 ' + total + ' 分钟'
+          });
+          gsap.fromTo(modalDetail.querySelectorAll('.rp-group'), {
+            opacity: 0, y: 10
+          }, {
+            opacity: 1, y: 0, duration: 0.3, stagger: 0.05, ease: 'power2.out', delay: 0.15
+          });
+        }
+      }
     }).catch(function() {
       document.getElementById('diziModalTotal').textContent = '加载失败';
+      if (modalDetail) modalDetail.innerHTML = '<div class="rp-session-empty">加载失败</div>';
     });
   }
 
@@ -793,25 +987,28 @@ document.addEventListener('DOMContentLoaded', function() {
       var detailBody = document.getElementById('detailBody');
 
       detailDiv.style.display = 'block';
-      document.getElementById('detailDate').textContent = date;
+      document.getElementById('detailDate').textContent = formatCnDate(date) + ' · 练习明细';
       document.getElementById('detailDate').style.color = '#FF6B6B';
       detailBody.innerHTML = '<div style="text-align:center;color:#BDBDBD;padding:24px;">加载中...</div>';
       gsap.fromTo(detailDiv, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' });
 
-      var prevDate = new Date(date);
+      // 用本地日期解析, 避免 UTC toISOString 跨日偏差 (CST 项目惯例)
+      var dateParts = date.split('-').map(function(x) { return parseInt(x, 10); });
+      var prevDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
       prevDate.setDate(prevDate.getDate() - 1);
-      var prevDateStr = prevDate.toISOString().split('T')[0];
-      var isToday = (date === new Date().toISOString().split('T')[0]);
+      var pad = function(n) { return String(n).padStart(2, '0'); };
+      var prevDateStr = prevDate.getFullYear() + '-' + pad(prevDate.getMonth() + 1) + '-' + pad(prevDate.getDate());
+      var now = new Date();
+      var todayStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+      var isToday = (date === todayStr);
 
       Promise.all([
         fetch('/api/practices/' + date).then(function(r){ return r.json(); }),
-        isToday ? Promise.resolve({items: [], total_minutes: 0, behavior_log: []})
+        isToday ? Promise.resolve({items: [], total_minutes: 0, behavior_log: [], sessions: []})
                 : fetch('/api/practices/' + prevDateStr).then(function(r){ return r.json(); })
       ]).then(function(results) {
         var data = results[0];
         var prevData = results[1];
-        var prevItemsMap = {};
-        (prevData.items || []).forEach(function(it){ prevItemsMap[it.item] = it.minutes; });
 
         if (isToday && (data.total_minutes === 0 || (Array.isArray(data.items) && data.items.length === 0))) {
           detailBody.innerHTML = '<div class="detail-empty">今天还没过完，明天来看</div>';
@@ -819,24 +1016,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if ((data.total_minutes === 0 || (Array.isArray(data.items) && data.items.length === 0))
-            && (prevData.total_minutes === 0 || (Array.isArray(prevData.items) && prevData.items.length === 0))) {
-          detailBody.innerHTML = '<div class="detail-empty">这两天都没有练习记录</div>';
+            && (!(data.sessions && data.sessions.length))) {
+          detailBody.innerHTML = '<div class="detail-empty">这天没有练习记录</div>';
           return;
         }
 
-        var totalDiff = data.total_minutes - prevData.total_minutes;
-        var totalDiffStr = totalDiff > 0 ? '+' + totalDiff : String(totalDiff);
+        var totalDiff = (data.total_minutes || 0) - (prevData.total_minutes || 0);
         var totalDiffColor = totalDiff > 0 ? '#27AE60' : totalDiff < 0 ? '#E74C3C' : '#999';
         var diffLabel = totalDiff > 0 ? '↑' : totalDiff < 0 ? '↓' : '＝';
 
         var detailHtml = '';
-        detailHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #EEE;margin-bottom:8px;">';
+        detailHtml += '<div class="detail-total-row">';
         detailHtml += '<span style="font-size:14px;color:#333;">总时长</span>';
-        detailHtml += '<span style="font-size:14px;font-weight:bold;color:#333;">' + data.total_minutes + '分 <span style="font-size:12px;color:' + totalDiffColor + ';">' + diffLabel + ' ' + Math.abs(totalDiff) + '分</span></span>';
-        detailHtml += '</div>';
+        detailHtml += '<span style="font-size:14px;font-weight:bold;color:#333;">' + (data.total_minutes || 0) + ' 分钟';
+        if (!isToday) {
+          detailHtml += ' <span style="font-size:12px;color:' + totalDiffColor + ';">' + diffLabel + ' ' + Math.abs(totalDiff) + '分 vs 昨日</span>';
+        }
+        detailHtml += '</span></div>';
+
+        // 主内容: 科目组成 + session 明细 (55 分怎么来的)
+        detailHtml += renderSessionGroupsHtml(data.items || [], data.sessions || [], {
+          heading: formatCnDate(date) + ' 共 ' + (data.total_minutes || 0) + ' 分钟，组成如下'
+        });
 
         var trail = renderTrail(data.behavior_log || [], date);
         detailBody.innerHTML = detailHtml + trail;
+        gsap.fromTo(detailBody.querySelectorAll('.rp-group'), {
+          opacity: 0, x: -12
+        }, {
+          opacity: 1, x: 0, duration: 0.28, stagger: 0.06, ease: 'power2.out'
+        });
         if (trail) gsap.fromTo('.trail-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, stagger: 0.07, ease: 'power2.out' });
 
         fetch('/api/practices/stage/' + date).then(function(r){ return r.json(); }).then(function(stageData) {
@@ -880,6 +1089,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <img id="diziBg" src="" alt="">
     </div>
     <div id="segmentsContainer"></div>
+    <div id="modalSessionDetail"></div>
     <div class="modal-footer">点击遮罩或 × 关闭</div>
   </div>
 </div>
