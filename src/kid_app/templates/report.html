@@ -241,6 +241,12 @@
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4 L13.5 10 L7.5 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
+    <div style="display:flex;justify-content:center;margin:-6px 0 14px;">
+      <a href="/report/stage-print" target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;background:#FFF8F0;border:1px solid #E8D8B0;color:#8B6914;font-size:13px;font-weight:600;text-decoration:none;">
+        Stage 练习明细 · 打印 / 查历史
+      </a>
+    </div>
     <div style="display:flex;gap:12px;margin-bottom:16px;">
       <div style="flex:1;text-align:center;padding:12px;background:#E8F5E9;border-radius:12px;">
         <div style="font-size:28px;font-weight:bold;color:#27AE60;">{{total_mins}}</div>
@@ -280,7 +286,11 @@
 
   <!-- Stage堆叠柱状图卡片 -->
   <div id="stageChartCard" class="card" style="display:none;margin-top:12px;">
-    <h3 id="stageChartTitle" style="color:#4ECDC4;font-size:16px;margin-bottom:4px;"></h3>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">
+      <h3 id="stageChartTitle" style="color:#4ECDC4;font-size:16px;margin:0;"></h3>
+      <a id="stagePrintLink" href="/report/stage-print" target="_blank" rel="noopener"
+         style="flex-shrink:0;font-size:12px;color:#8B6914;background:#FFF8F0;border:1px solid #E8D8B0;padding:4px 10px;border-radius:12px;text-decoration:none;white-space:nowrap;">打印本阶段明细</a>
+    </div>
     <div id="stageChartSub" style="font-size:12px;color:#999;margin-bottom:16px;"></div>
     <div id="stageChartWrap" style="position:relative;overflow-x:auto;"></div>
     <div id="stageChartLegend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
@@ -1130,6 +1140,11 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('stageChartLegend').innerHTML = result.items.map(function(it) {
             return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;background:#F5F5F5;padding:3px 8px;border-radius:12px;"><span style="width:9px;height:9px;border-radius:2px;background:' + it.color + ';display:inline-block;"></span>' + it.name + '</span>';
           }).join('');
+          var printLink = document.getElementById('stagePrintLink');
+          if (printLink) {
+            // 用点击日期定位所属 stage (新页可再切历史)
+            printLink.href = '/report/stage-print?date=' + encodeURIComponent(date);
+          }
           chartCard.style.display = 'block';
           gsap.fromTo(chartCard, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
           bindBarHover();

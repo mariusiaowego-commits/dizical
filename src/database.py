@@ -1092,6 +1092,123 @@ class Database(BaseBackend):
             cursor.execute(sql, params)
             return [dict(r) for r in cursor.fetchall()]
 
+    def get_practice_sessions_in_range(
+        self, start: dt.date, end: dt.date, item_id: Optional[int] = None
+    ) -> List[Dict]:
+        """查日期闭区间 [start, end] 内全部 session. 顺序: practice_date, started_at, id."""
+        if isinstance(start, str):
+            start = dt.date.fromisoformat(start)
+        if isinstance(end, str):
+            end = dt.date.fromisoformat(end)
+        sql = (
+            "SELECT * FROM practice_sessions "
+            "WHERE practice_date >= ? AND practice_date <= ?"
+        )
+        params: List = [start.isoformat(), end.isoformat()]
+        if item_id is not None:
+            sql += " AND item_id = ?"
+            params.append(item_id)
+        sql += " ORDER BY practice_date ASC, COALESCE(started_at, created_at) ASC, id ASC"
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+            return [dict(r) for r in cursor.fetchall()]
+
+    def list_stages(self) -> List[Dict]:
+        """列出历史 stage (按 stage_order 降序). 同 order 多行取 id 最大一条."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, stage_order, lesson_date, stage_start, stage_end, items, notes
+                FROM weekly_assignments
+                WHERE stage_start IS NOT NULL AND stage_start != ''
+                ORDER BY COALESCE(stage_order, 0) DESC, id DESC
+                """
+            )
+            seen = set()
+            out: List[Dict] = []
+            for row in cursor.fetchall():
+                r = dict(row)
+                key = r.get("stage_order")
+                if key is None:
+                    key = r.get("stage_start")
+                if key in seen:
+                    continue
+                seen.add(key)
+                items = []
+                try:
+                    items = json.loads(r["items"] or "[]")
+                except Exception:
+                    items = []
+                out.append({
+                    "id": r["id"],
+                    "stage_order": r["stage_order"],
+                    "lesson_date": r["lesson_date"],
+                    "stage_start": r["stage_start"],
+                    "stage_end": r["stage_end"],
+                    "item_count": len(items),
+                    "notes": r.get("notes") or "",
+                })
+            return out
+
+    def get_stage_by_order(self, stage_order: int) -> Optional[Dict]:
+        """按 stage_order 取最新一条 assignment (含 items)."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM weekly_assignments
+                WHERE stage_order = ?
+                ORDER BY id DESC LIMIT 1
+                """,
+                (int(stage_order),),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row["id"],
+                "lesson_date": row["lesson_date"],
+                "stage_start": row["stage_start"],
+                "stage_end": row["stage_end"],
+                "stage_order": row["stage_order"],
+                "items": json.loads(row["items"]) if row["items"] else [],
+                "notes": row["notes"],
+                "images": json.loads(row["images"]) if row["images"] else [],
+            }
+
+    def get_stage_containing_date(self, day: dt.date) -> Optional[Dict]:
+        """找包含 day 的 stage (stage_start <= day <= stage_end)."""
+        if isinstance(day, str):
+            day = dt.date.fromisoformat(day)
+        day_s = day.isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM weekly_assignments
+                WHERE stage_start IS NOT NULL AND stage_start != ''
+                  AND stage_start <= ?
+                  AND (stage_end IS NULL OR stage_end = '' OR stage_end >= ?)
+                ORDER BY id DESC LIMIT 1
+                """,
+                (day_s, day_s),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row["id"],
+                "lesson_date": row["lesson_date"],
+                "stage_start": row["stage_start"],
+                "stage_end": row["stage_end"],
+                "stage_order": row["stage_order"],
+                "items": json.loads(row["items"]) if row["items"] else [],
+                "notes": row["notes"],
+                "images": json.loads(row["images"]) if row["images"] else [],
+            }
+
     def get_latest_session_tempo(self, item_id: int) -> Optional[Dict]:
         """读 practice_items 冗余列 (Q1=B). NULL → 回退查 sessions 表."""
         with self._get_connection() as conn:

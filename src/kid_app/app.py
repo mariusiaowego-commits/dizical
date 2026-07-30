@@ -969,6 +969,191 @@ def api_practices_monthly(month: str):
     })
 
 
+# ─── API: stage 列表 + stage 维 session 明细 (feat/stage-session-print) ─────
+# 必须注册在 /api/practices/{date_str} 之前, 避免 "stages"/"stage-detail" 被当日期
+
+def _iso_date_field(v) -> Optional[str]:
+    """date/str/None → ISO 字符串 (JSON 安全)."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, dt.date) and not isinstance(v, dt.datetime):
+        return v.isoformat()
+    if isinstance(v, dt.datetime):
+        return v.date().isoformat()
+    return str(v)[:10]
+
+
+def _build_stage_detail_payload(stage: dict) -> dict:
+    """把 assignment row + sessions 聚合成打印页 payload."""
+    stage_start = _iso_date_field(stage.get("stage_start"))
+    stage_end = _iso_date_field(stage.get("stage_end"))
+    if not stage_start:
+        return {"error": "stage 缺少 stage_start"}
+    today_s = dt.date.today().isoformat()
+    effective_end = stage_end or today_s
+    # 进行中 stage: 明细截止今天; 历史 stage: 用 stage_end
+    end_for_sessions = min(effective_end, today_s) if stage_end is None or stage_end >= today_s else effective_end
+
+    start_d = dt.date.fromisoformat(stage_start)
+    end_d = dt.date.fromisoformat(end_for_sessions)
+    sessions = db.get_practice_sessions_in_range(start_d, end_d)
+
+    # by_item 聚合
+    by_item_map = {}  # item_id -> {item_name, minutes, session_count}
+    for s in sessions:
+        iid = s.get("item_id")
+        if iid is None:
+            continue
+        if iid not in by_item_map:
+            by_item_map[iid] = {
+                "item_id": iid,
+                "item_name": s.get("item_name") or "未知科目",
+                "minutes": 0,
+                "session_count": 0,
+            }
+        by_item_map[iid]["minutes"] += int(s.get("duration_minutes") or 0)
+        by_item_map[iid]["session_count"] += 1
+        if s.get("item_name"):
+            by_item_map[iid]["item_name"] = s["item_name"]
+
+    by_item = sorted(by_item_map.values(), key=lambda x: (-x["minutes"], x["item_id"]))
+    total_minutes = sum(x["minutes"] for x in by_item)
+    practice_dates = sorted({s.get("practice_date") for s in sessions if s.get("practice_date")})
+
+    # days: 按日 → 科目 → session (dad 拍板 A)
+    days_map = {}  # date -> {item_id -> {meta, sessions[]}}
+    item_order_in_day = {}
+    for s in sessions:
+        d = s.get("practice_date")
+        if not d:
+            continue
+        if isinstance(d, dt.date):
+            d = d.isoformat()
+        else:
+            d = str(d)[:10]
+        iid = s.get("item_id")
+        if d not in days_map:
+            days_map[d] = {}
+            item_order_in_day[d] = []
+        if iid not in days_map[d]:
+            days_map[d][iid] = {
+                "item_id": iid,
+                "item_name": s.get("item_name") or "未知科目",
+                "minutes": 0,
+                "sessions": [],
+            }
+            item_order_in_day[d].append(iid)
+        row = {
+            "id": s.get("id"),
+            "started_at": s.get("started_at"),
+            "duration_minutes": int(s.get("duration_minutes") or 0),
+            "tempo_note": s.get("tempo_note") or "",
+            "tempo_bpm": s.get("tempo_bpm") or 0,
+            "content": s.get("content") or "",
+            "content_source": s.get("content_source") or "",
+            "is_extra": bool(s.get("is_extra")),
+        }
+        days_map[d][iid]["sessions"].append(row)
+        days_map[d][iid]["minutes"] += row["duration_minutes"]
+        if s.get("item_name"):
+            days_map[d][iid]["item_name"] = s["item_name"]
+
+    days = []
+    for d in sorted(days_map.keys()):
+        groups = []
+        day_total = 0
+        sess_n = 0
+        for iid in item_order_in_day[d]:
+            g = days_map[d][iid]
+            groups.append(g)
+            day_total += g["minutes"]
+            sess_n += len(g["sessions"])
+        days.append({
+            "date": d,
+            "total_minutes": day_total,
+            "session_count": sess_n,
+            "groups": groups,
+        })
+
+    # assignment 老师要求全文 (单独卡片)
+    assign_items = []
+    for it in (stage.get("items") or []):
+        assign_items.append({
+            "item_id": it.get("item_id"),
+            "item": it.get("item") or it.get("item_name") or "未知",
+            "metronome": it.get("metronome") or "",
+            "requirements": it.get("requirements") or it.get("requirement") or "",
+        })
+
+    return {
+        "ok": True,
+        "stage_order": stage.get("stage_order"),
+        "lesson_date": _iso_date_field(stage.get("lesson_date")),
+        "stage_start": stage_start,
+        "stage_end": stage_end,
+        "effective_end": end_for_sessions,
+        "notes": stage.get("notes") or "",
+        "summary": {
+            "total_minutes": total_minutes,
+            "practice_days": len(practice_dates),
+            "session_count": len(sessions),
+            "item_count": len(by_item),
+        },
+        "assignment_items": assign_items,
+        "by_item": by_item,
+        "days": days,
+    }
+
+
+@app.get("/api/practices/stages")
+def api_practices_stages():
+    """历史 stage 列表 (打印页切换器用). 字段全字符串, JSON 安全."""
+    stages = db.list_stages()
+    out = []
+    for s in stages:
+        out.append({
+            "id": s["id"],
+            "stage_order": s.get("stage_order"),
+            "lesson_date": _iso_date_field(s.get("lesson_date")),
+            "stage_start": _iso_date_field(s.get("stage_start")),
+            "stage_end": _iso_date_field(s.get("stage_end")),
+            "item_count": s.get("item_count") or 0,
+        })
+    return JSONResponse({"ok": True, "count": len(out), "stages": out})
+
+
+@app.get("/api/practices/stage-detail")
+def api_practices_stage_detail(
+    date: Optional[str] = None,
+    stage_order: Optional[int] = None,
+):
+    """Stage 维 session 明细 (按日→科目→session). 打印页数据源.
+
+    查询优先级: stage_order > date(所属 stage) > 今天所属 stage.
+    """
+    stage = None
+    if stage_order is not None:
+        stage = db.get_stage_by_order(int(stage_order))
+        if not stage:
+            return JSONResponse({"ok": False, "error": f"找不到 Stage {stage_order}"}, status_code=404)
+    else:
+        day_s = date
+        if not day_s:
+            day_s = dt.date.today().isoformat()
+        try:
+            day = dt.date.fromisoformat(day_s)
+        except ValueError:
+            return JSONResponse({"ok": False, "error": "date 格式必须 YYYY-MM-DD"}, status_code=400)
+        stage = db.get_stage_containing_date(day)
+        if not stage:
+            return JSONResponse({"ok": False, "error": f"{day_s} 不在任何 stage 中"}, status_code=404)
+
+    payload = _build_stage_detail_payload(stage)
+    if payload.get("error"):
+        return JSONResponse({"ok": False, "error": payload["error"]}, status_code=400)
+    return JSONResponse(payload)
+
+
 @app.get("/api/practices/{date_str}")
 def api_practice_day(date_str: str):
     """返回指定日期的练习明细 (兼容旧 items 字段, 2026-07-27 新增 sessions[])"""
@@ -1938,6 +2123,12 @@ def badges_page():
         total_count=total_count,
         earned_count=earned_count,
     )
+
+
+@app.get("/report/stage-print", response_class=HTMLResponse)
+def report_stage_print_page(request: Request):
+    """Stage 维 session 明细打印页 (A4 单页). 独立页可查历史 stage."""
+    return render("stage-print", child_name=child_name())
 
 
 @app.get("/report", response_class=HTMLResponse)
