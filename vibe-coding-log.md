@@ -1,3 +1,9 @@
+## 2026-07-30 Stage session 打印页 · 收尾
+
+- PR #203 merge: Stage 明细打印 + 分组/表格矩阵 + 练习日勾选
+- 入口: `/report/stage-print` · API stages / stage-detail (🟡)
+- plan: `PRDs/AI-PLAN-stage-session-print-260730.md` 双写 done
+
 ## 2026-07-30 Stage session 打印页
 
 - 分支: `feat/stage-session-print-report`
