@@ -279,3 +279,5 @@ stage (课次周期)
 | 2026-07-30 | dad 拍板 A/全文卡片/report 新页历史/单页；落地 API + stage-print.html + report 入口 |
 
 | 2026-07-30 | 落地完成：矩阵表格横向、练习日勾选、PR #203 merge |
+
+| 2026-07-30 | PR #204 打印单页 fix merge；收尾完成 |

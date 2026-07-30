@@ -1,3 +1,9 @@
+## 2026-07-30 stage-print 打印单页 · 收尾
+
+- PR #204 merge: 打印强制 1 页 A4（修 PDF 预览 2 页空表头）
+- PR #203 已 merge: Stage session 打印页全功能
+- main @ 4864cb1 · 入口 `/report/stage-print`
+
 ## 2026-07-30 Stage session 打印页 · 收尾
 
 - PR #203 merge: Stage 明细打印 + 分组/表格矩阵 + 练习日勾选
