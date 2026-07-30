@@ -83,6 +83,13 @@
       padding: 8mm 9mm 10mm;
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
+      transition: width 0.15s ease;
+    }
+    /* 表格视图: A4 横向 297×210 */
+    .paper.is-landscape {
+      width: 297mm;
+      min-height: 210mm;
+      padding: 6mm 7mm 7mm;
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -178,34 +185,102 @@
     }
     .empty-content { color: #b0a090; font-style: italic; }
 
-    /* ── 表格视图 (flat) ── */
-    .view-table-wrap { margin-top: 1mm; }
+    /* ── 表格视图 · A4 横向布局 ── */
+    .ls-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4mm 6mm;
+      align-items: start;
+      border-bottom: 1.5px solid var(--ink);
+      padding-bottom: 2.5mm;
+      margin-bottom: 2.5mm;
+    }
+    .ls-title { font-size: 12pt; font-weight: 700; letter-spacing: 0.4px; line-height: 1.15; }
+    .ls-meta { font-size: 7.5pt; color: var(--muted); margin-top: 1mm; line-height: 1.4; }
+    .ls-stats {
+      display: flex; gap: 3mm; align-items: stretch;
+    }
+    .ls-stat {
+      text-align: center; min-width: 18mm;
+      background: #f3efe6; border: 1px solid var(--line);
+      border-radius: 3px; padding: 1.5mm 2.5mm;
+    }
+    .ls-stat b {
+      display: block; font-size: 12pt; color: var(--accent);
+      font-weight: 700; line-height: 1.1;
+    }
+    .ls-stat span { font-size: 6.5pt; color: var(--muted); }
+
+    /* 老师要求：横向多列卡片 */
+    .ls-assign {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      padding: 2mm 2.5mm;
+      margin-bottom: 2mm;
+    }
+    .ls-assign h2 {
+      margin: 0 0 1.5mm; font-size: 8pt; color: var(--gold);
+      font-weight: 700;
+    }
+    .ls-assign-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5mm 3mm;
+    }
+    .ls-ai {
+      font-size: 6.8pt; line-height: 1.3;
+      padding: 1mm 1.5mm;
+      background: #fffef9;
+      border: 1px solid #efe6d6;
+      border-radius: 2px;
+      break-inside: avoid;
+    }
+    .ls-ai-name { font-weight: 700; color: var(--ink); }
+    .ls-ai-metro { color: var(--gold); font-weight: 600; margin-left: 2px; }
+    .ls-ai-req {
+      color: #4a3f32; white-space: pre-wrap; margin-top: 0.6mm;
+      max-height: 18mm; overflow: hidden;
+    }
+    .ls-overview {
+      display: flex; flex-wrap: wrap; gap: 1mm 2.5mm;
+      margin-bottom: 2mm; font-size: 6.8pt; color: var(--muted);
+    }
+    .ls-overview .ov {
+      background: #f3efe6; border-radius: 2px; padding: 0.5mm 1.5mm;
+    }
+    .ls-overview .ov b { color: var(--ink); font-weight: 600; }
+
+    .view-table-wrap { margin-top: 0; }
     table.flat {
       width: 100%; border-collapse: collapse;
-      font-size: 7pt;
+      font-size: 7.2pt;
+      table-layout: fixed;
     }
     table.flat thead th {
       background: #3d2e1e; color: #fffef9;
-      font-weight: 600; font-size: 6.8pt;
-      text-align: left; padding: 1mm 1.2mm;
+      font-weight: 600; font-size: 7pt;
+      text-align: left; padding: 1.2mm 1.5mm;
       border: 0.3pt solid #3d2e1e;
     }
     table.flat tbody td {
-      padding: 0.6mm 1.2mm; vertical-align: top;
+      padding: 0.8mm 1.5mm; vertical-align: middle;
       border: 0.3pt solid #e0d4c0;
-      line-height: 1.3;
+      line-height: 1.25;
     }
     table.flat tbody tr:nth-child(even) { background: #faf6ee; }
     table.flat tbody tr.row-day-start td { border-top: 1pt solid #8b6914; }
-    table.flat .c-date { width: 14mm; white-space: nowrap; color: var(--muted); }
-    table.flat .c-time { width: 9mm; white-space: nowrap; color: var(--muted); }
-    table.flat .c-item { width: 18mm; font-weight: 600; white-space: nowrap; }
-    table.flat .c-mins { width: 7mm; text-align: right; font-weight: 700; white-space: nowrap; }
-    table.flat .c-tempo { width: 12mm; color: var(--gold); font-weight: 600; white-space: nowrap; }
-    table.flat .c-extra { width: 8mm; text-align: center; }
+    table.flat .c-n { width: 7mm; text-align: center; color: #a89880; }
+    table.flat .c-date { width: 16mm; white-space: nowrap; color: var(--muted); }
+    table.flat .c-time { width: 11mm; white-space: nowrap; color: var(--muted); }
+    table.flat .c-item { width: 22mm; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    table.flat .c-mins { width: 9mm; text-align: right; font-weight: 700; white-space: nowrap; }
+    table.flat .c-tempo { width: 14mm; color: var(--gold); font-weight: 600; white-space: nowrap; }
+    table.flat .c-content { /* 吃掉横向剩余宽度 */ }
+    table.flat .c-extra { width: 10mm; text-align: center; }
     table.flat tfoot td {
-      background: #f3efe6; font-weight: 700; padding: 1mm 1.2mm;
-      border: 0.3pt solid #e0d4c0; font-size: 7pt;
+      background: #f3efe6; font-weight: 700; padding: 1.2mm 1.5mm;
+      border: 0.3pt solid #e0d4c0; font-size: 7.2pt;
     }
 
     .pf {
@@ -220,11 +295,7 @@
     }
     .err { color: #b23a48; }
 
-    /* ── 打印: 单页 fit（仅此时缩放；屏上预览始终 100%） ── */
-    @page {
-      size: A4 portrait;
-      margin: 0;
-    }
+    /* ── 打印: 单页 fit（@page 方向由 #printPageRule 动态切换） ── */
     @media print {
       html, body { background: #fff; }
       .toolbar { display: none !important; }
@@ -234,16 +305,25 @@
       }
       .paper {
         box-shadow: none !important;
-        width: 210mm;
-        min-height: 297mm;
         max-height: none;
         overflow: visible;
-        padding: 7mm 8mm 8mm;
-        /* 覆盖屏上 zoom:1 !important；值由 preparePrintZoom 写入 */
         zoom: var(--print-zoom, 1) !important;
       }
+      .paper:not(.is-landscape) {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 7mm 8mm 8mm;
+      }
+      .paper.is-landscape {
+        width: 297mm;
+        min-height: 210mm;
+        padding: 5mm 6mm 5mm;
+      }
+      .ls-ai-req { max-height: none; overflow: visible; }
     }
   </style>
+  <!-- 打印纸张方向: group=竖向 / table=横向，JS 切换 -->
+  <style id="printPageRule">@page { size: A4 portrait; margin: 0; }</style>
 </head>
 <body>
   <div class="toolbar no-print">
@@ -336,12 +416,36 @@
     if (t) t.classList.toggle('active', viewMode === 'table');
   }
 
+  /** 表格=横向纸 + landscape @page；分组=竖向 */
+  function syncPaperOrientation() {
+    var isLs = viewMode === 'table';
+    paper.classList.toggle('is-landscape', isLs);
+    var rule = document.getElementById('printPageRule');
+    if (rule) {
+      rule.textContent = isLs
+        ? '@page { size: A4 landscape; margin: 0; }'
+        : '@page { size: A4 portrait; margin: 0; }';
+    }
+    var hint = document.querySelector('.toolbar .hint');
+    if (hint) {
+      hint.textContent = isLs
+        ? '表格 · A4 横向 · 老师要求多列 · 可切换分组'
+        : '分组 · A4 竖向 · 老师要求全文 · 可切换表格';
+    }
+  }
+
+  function a4PageHeightPx() {
+    // 竖向高 297mm；横向高 210mm
+    var mm = viewMode === 'table' ? 210 : 297;
+    return Math.round(mm * (96 / 25.4));
+  }
+
   function updatePreviewStatus() {
     paper.style.setProperty('--print-zoom', '1');
     paperScale.style.transform = '';
-    var a4px = Math.round(297 * (96 / 25.4));
+    var a4px = a4PageHeightPx();
     var contentH = paper.scrollHeight;
-    var modeLabel = viewMode === 'table' ? '表格' : '分组';
+    var modeLabel = viewMode === 'table' ? '表格·横向' : '分组·竖向';
     if (contentH > a4px + 8) {
       var pct = Math.max(55, Math.min(100, Math.round((a4px / contentH) * 100)));
       statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印约 ' + pct + '%';
@@ -350,10 +454,10 @@
     }
   }
 
-  function renderHeader(data) {
+  /** 分组用竖向页眉 */
+  function renderHeaderGroup(data) {
     var sum = data.summary || {};
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
-    document.title = title + (viewMode === 'table' ? ' · 表格' : '');
     var html = '';
     html += '<div class="ph">';
     html += '<div>';
@@ -361,7 +465,7 @@
     html += '<div class="ph-sub">周期 ' + esc(data.stage_start || '') + ' ~ ' + esc(data.stage_end || data.effective_end || '');
     html += ' · 上课日 ' + esc(data.lesson_date || '—');
     html += ' · 截止 ' + esc(data.effective_end || '');
-    html += ' · 样式：' + (viewMode === 'table' ? '表格' : '分组');
+    html += ' · 样式：分组 · A4 竖向';
     html += '</div>';
     if (data.notes) {
       html += '<div class="ph-sub">备注：' + esc(data.notes) + '</div>';
@@ -391,6 +495,60 @@
     var byItem = data.by_item || [];
     if (byItem.length) {
       html += '<div class="overview">';
+      byItem.forEach(function (it) {
+        var pct = sum.total_minutes ? Math.round(it.minutes / sum.total_minutes * 100) : 0;
+        html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次 ' + pct + '%</span>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  /** 表格用横向页眉：标题+统计横排，老师要求 4 列网格 */
+  function renderHeaderLandscape(data) {
+    var sum = data.summary || {};
+    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
+    var html = '';
+    html += '<div class="ls-top">';
+    html += '<div>';
+    html += '<div class="ls-title">' + esc(title) + '</div>';
+    html += '<div class="ls-meta">';
+    html += '周期 ' + esc(data.stage_start || '') + ' ~ ' + esc(data.stage_end || data.effective_end || '');
+    html += ' · 上课日 ' + esc(data.lesson_date || '—');
+    html += ' · 截止 ' + esc(data.effective_end || '');
+    html += ' · <b>A4 横向 · 表格</b>';
+    if (data.notes) html += '<br>备注：' + esc(data.notes);
+    html += '</div></div>';
+    html += '<div class="ls-stats">';
+    html += '<div class="ls-stat"><b>' + esc(sum.total_minutes || 0) + '</b><span>分钟</span></div>';
+    html += '<div class="ls-stat"><b>' + esc(sum.practice_days || 0) + '</b><span>练习天</span></div>';
+    html += '<div class="ls-stat"><b>' + esc(sum.session_count || 0) + '</b><span>次明细</span></div>';
+    html += '<div class="ls-stat"><b>' + esc(sum.item_count || 0) + '</b><span>科目</span></div>';
+    html += '</div></div>';
+
+    html += '<div class="ls-assign">';
+    html += '<h2>老师要求（本阶段全文）</h2>';
+    var assigns = data.assignment_items || [];
+    if (!assigns.length) {
+      html += '<div class="empty-content">本阶段暂无作业条目</div>';
+    } else {
+      var n = assigns.length;
+      var cols = n <= 3 ? n : (n <= 6 ? 3 : 4);
+      html += '<div class="ls-assign-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">';
+      assigns.forEach(function (a) {
+        html += '<div class="ls-ai">';
+        html += '<span class="ls-ai-name">' + esc(a.item) + '</span>';
+        if (a.metronome) html += '<span class="ls-ai-metro">' + esc(a.metronome) + '</span>';
+        html += '<div class="ls-ai-req">' + (a.requirements ? esc(a.requirements) : '<span class="empty-content">（无文字要求）</span>') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    var byItem = data.by_item || [];
+    if (byItem.length) {
+      html += '<div class="ls-overview">';
       byItem.forEach(function (it) {
         var pct = sum.total_minutes ? Math.round(it.minutes / sum.total_minutes * 100) : 0;
         html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次 ' + pct + '%</span>';
@@ -436,7 +594,7 @@
     return html;
   }
 
-  /** 表格视图：扁平大表，每行一条 session */
+  /** 表格视图：横向宽表，每行一条 session */
   function renderBodyTable(data) {
     var sum = data.summary || {};
     var days = data.days || [];
@@ -447,53 +605,61 @@
       return html;
     }
     html += '<table class="flat"><thead><tr>';
+    html += '<th class="c-n">#</th>';
     html += '<th class="c-date">日期</th>';
     html += '<th class="c-time">时间</th>';
     html += '<th class="c-item">科目</th>';
     html += '<th class="c-mins">时长</th>';
     html += '<th class="c-tempo">速度</th>';
-    html += '<th>内容</th>';
+    html += '<th class="c-content">练习内容</th>';
     html += '<th class="c-extra">备注</th>';
     html += '</tr></thead><tbody>';
+    var n = 0;
     days.forEach(function (day) {
       var firstInDay = true;
       (day.groups || []).forEach(function (g) {
         (g.sessions || []).forEach(function (s) {
+          n += 1;
           var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
           var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
           var rowCls = firstInDay ? ' class="row-day-start"' : '';
           firstInDay = false;
           html += '<tr' + rowCls + '>';
+          html += '<td class="c-n">' + n + '</td>';
           html += '<td class="c-date">' + esc(fmtCnDate(day.date)) + '</td>';
           html += '<td class="c-time">' + esc(fmtTime(s.started_at)) + '</td>';
-          html += '<td class="c-item">' + esc(g.item_name) + '</td>';
+          html += '<td class="c-item" title="' + esc(g.item_name) + '">' + esc(g.item_name) + '</td>';
           html += '<td class="c-mins">' + esc(s.duration_minutes) + '′</td>';
           html += '<td class="c-tempo">' + esc(tempo) + '</td>';
-          html += '<td>' + content + '</td>';
+          html += '<td class="c-content">' + content + '</td>';
           html += '<td class="c-extra">' + (s.is_extra ? '<span class="tag-extra">额外</span>' : '') + '</td>';
           html += '</tr>';
         });
       });
     });
     html += '</tbody><tfoot><tr>';
-    html += '<td colspan="3">合计</td>';
+    html += '<td colspan="4">合计</td>';
     html += '<td class="c-mins">' + esc(sum.total_minutes || 0) + '′</td>';
-    html += '<td colspan="3">' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.item_count || 0) + ' 科</td>';
+    html += '<td colspan="3">' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.item_count || 0) + ' 科 · A4 横向</td>';
     html += '</tr></tfoot></table></div>';
     return html;
   }
 
   function renderPayload(data) {
     lastPayload = data;
+    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
+    document.title = title + (viewMode === 'table' ? ' · 表格横向' : ' · 分组');
+
     var now = new Date();
     var pad = function (n) { return String(n).padStart(2, '0'); };
     var gen = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
       + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
 
-    var html = renderHeader(data);
+    syncPaperOrientation();
+    var html = viewMode === 'table' ? renderHeaderLandscape(data) : renderHeaderGroup(data);
     html += viewMode === 'table' ? renderBodyTable(data) : renderBodyGroup(data);
     html += '<div class="pf"><span>数据: practice_sessions · 观摩/家校沟通用</span>';
-    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '表格' : '分组') + ' · 单页 A4</span></div>';
+    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '表格 · A4 横向' : '分组 · A4 竖向') + '</span></div>';
 
     paper.innerHTML = html;
     syncViewToggle();
@@ -506,16 +672,16 @@
     try { localStorage.setItem('stage-print-view', mode); } catch (e) {}
     var order = stageSelect.value || (lastPayload && lastPayload.stage_order);
     setQuery(order, viewMode);
+    syncPaperOrientation();
     syncViewToggle();
     if (lastPayload) renderPayload(lastPayload);
   }
 
   /**
-   * 仅打印前调用：按 A4 高度算 --print-zoom，不改屏上显示。
-   * 屏上用 !important zoom:1；@media print 用 var(--print-zoom)。
+   * 仅打印前调用：按当前方向 A4 高度算 --print-zoom。
    */
   function preparePrintZoom() {
-    var a4px = Math.round(297 * (96 / 25.4));
+    var a4px = a4PageHeightPx();
     var contentH = paper.scrollHeight;
     var scale = 1;
     if (contentH > a4px + 8) {
@@ -586,27 +752,19 @@
     setViewMode('table');
   });
   syncViewToggle();
+  syncPaperOrientation();
 
   document.getElementById('btnPrint').addEventListener('click', function () {
+    syncPaperOrientation();
     var scale = preparePrintZoom();
     statusMsg.textContent = scale < 0.999
-      ? '打印缩放 ' + Math.round(scale * 100) + '% · 预览仍为 100%'
-      : '打印 100%';
+      ? '打印缩放 ' + Math.round(scale * 100) + '% · 预览仍为 100% · ' + (viewMode === 'table' ? '横向' : '竖向')
+      : '打印 100% · ' + (viewMode === 'table' ? 'A4 横向' : 'A4 竖向');
     setTimeout(function () { window.print(); }, 80);
   });
 
-  // 打印结束恢复提示（预览始终 100%）
   window.addEventListener('afterprint', function () {
-    if (paper.querySelector('.ph')) {
-      var a4px = Math.round(297 * (96 / 25.4));
-      var contentH = paper.scrollHeight;
-      if (contentH > a4px + 8) {
-        var pct = Math.max(55, Math.min(100, Math.round((a4px / contentH) * 100)));
-        statusMsg.textContent = '预览 100%（可滚动）· 打印时将缩至约 ' + pct + '% 以塞入一页';
-      } else {
-        statusMsg.textContent = '预览 100% · 内容已在一页内';
-      }
-    }
+    if (lastPayload) updatePreviewStatus();
   });
 
   // boot
