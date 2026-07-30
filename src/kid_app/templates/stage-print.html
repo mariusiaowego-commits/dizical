@@ -48,6 +48,21 @@
     .btn-back { background: #ede8e0; color: var(--ink); }
     .toolbar .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
     .status { font-size: 12px; color: var(--muted); }
+    /* 视图切换: 分组 / 表格 */
+    .view-toggle {
+      display: inline-flex; border: 1px solid var(--line); border-radius: 8px;
+      overflow: hidden; background: #fff;
+    }
+    .view-toggle button {
+      appearance: none; border: none; background: transparent; cursor: pointer;
+      padding: 6px 12px; font-size: 12px; color: var(--muted);
+      border-right: 1px solid var(--line);
+    }
+    .view-toggle button:last-child { border-right: none; }
+    .view-toggle button.active {
+      background: #3d2e1e; color: #fffef9; font-weight: 600;
+    }
+    .view-toggle button:hover:not(.active) { background: #f5f0e8; }
 
     /* ── 纸张预览：屏上 100% 可读，可增高滚动；缩放仅打印 ── */
     .stage-wrap {
@@ -163,6 +178,36 @@
     }
     .empty-content { color: #b0a090; font-style: italic; }
 
+    /* ── 表格视图 (flat) ── */
+    .view-table-wrap { margin-top: 1mm; }
+    table.flat {
+      width: 100%; border-collapse: collapse;
+      font-size: 7pt;
+    }
+    table.flat thead th {
+      background: #3d2e1e; color: #fffef9;
+      font-weight: 600; font-size: 6.8pt;
+      text-align: left; padding: 1mm 1.2mm;
+      border: 0.3pt solid #3d2e1e;
+    }
+    table.flat tbody td {
+      padding: 0.6mm 1.2mm; vertical-align: top;
+      border: 0.3pt solid #e0d4c0;
+      line-height: 1.3;
+    }
+    table.flat tbody tr:nth-child(even) { background: #faf6ee; }
+    table.flat tbody tr.row-day-start td { border-top: 1pt solid #8b6914; }
+    table.flat .c-date { width: 14mm; white-space: nowrap; color: var(--muted); }
+    table.flat .c-time { width: 9mm; white-space: nowrap; color: var(--muted); }
+    table.flat .c-item { width: 18mm; font-weight: 600; white-space: nowrap; }
+    table.flat .c-mins { width: 7mm; text-align: right; font-weight: 700; white-space: nowrap; }
+    table.flat .c-tempo { width: 12mm; color: var(--gold); font-weight: 600; white-space: nowrap; }
+    table.flat .c-extra { width: 8mm; text-align: center; }
+    table.flat tfoot td {
+      background: #f3efe6; font-weight: 700; padding: 1mm 1.2mm;
+      border: 0.3pt solid #e0d4c0; font-size: 7pt;
+    }
+
     .pf {
       margin-top: 3mm;
       font-size: 6.5pt; color: #a89880;
@@ -205,8 +250,12 @@
     <a class="btn btn-back" href="/report">← 报告</a>
     <label for="stageSelect">阶段</label>
     <select id="stageSelect" aria-label="选择 Stage"></select>
+    <div class="view-toggle" role="group" aria-label="展示样式">
+      <button type="button" id="viewGroup" class="active" data-view="group">分组</button>
+      <button type="button" id="viewTable" data-view="table">表格</button>
+    </div>
     <button type="button" class="btn btn-print" id="btnPrint">打印 / PDF</button>
-    <span class="hint">A4 单页 · 按日→科目→明细 · 老师要求全文在上方卡片</span>
+    <span class="hint">A4 · 老师要求全文 · 可切换 分组 / 表格</span>
     <span class="status" id="statusMsg"></span>
   </div>
 
@@ -225,6 +274,24 @@
   var paperScale = document.getElementById('paperScale');
   var statusMsg = document.getElementById('statusMsg');
   var stagesCache = [];
+  var lastPayload = null;
+
+  function qsInit(name) {
+    try {
+      return new URL(window.location.href).searchParams.get(name);
+    } catch (e) { return null; }
+  }
+
+  // view: group | table  默认分组；URL ?view= 与 localStorage 可记
+  var viewMode = (function () {
+    var fromUrl = qsInit('view');
+    if (fromUrl === 'table' || fromUrl === 'group') return fromUrl;
+    try {
+      var ls = localStorage.getItem('stage-print-view');
+      if (ls === 'table' || ls === 'group') return ls;
+    } catch (e) {}
+    return 'group';
+  })();
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -252,20 +319,41 @@
     return u.searchParams.get(name);
   }
 
-  function setQuery(stageOrder) {
+  function setQuery(stageOrder, view) {
     var u = new URL(window.location.href);
     if (stageOrder != null && stageOrder !== '') {
       u.searchParams.set('stage_order', stageOrder);
       u.searchParams.delete('date');
     }
+    if (view) u.searchParams.set('view', view);
     history.replaceState(null, '', u.pathname + u.search);
   }
 
-  function renderPayload(data) {
+  function syncViewToggle() {
+    var g = document.getElementById('viewGroup');
+    var t = document.getElementById('viewTable');
+    if (g) g.classList.toggle('active', viewMode === 'group');
+    if (t) t.classList.toggle('active', viewMode === 'table');
+  }
+
+  function updatePreviewStatus() {
+    paper.style.setProperty('--print-zoom', '1');
+    paperScale.style.transform = '';
+    var a4px = Math.round(297 * (96 / 25.4));
+    var contentH = paper.scrollHeight;
+    var modeLabel = viewMode === 'table' ? '表格' : '分组';
+    if (contentH > a4px + 8) {
+      var pct = Math.max(55, Math.min(100, Math.round((a4px / contentH) * 100)));
+      statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印约 ' + pct + '%';
+    } else {
+      statusMsg.textContent = modeLabel + ' · 预览 100% · 已在一页内';
+    }
+  }
+
+  function renderHeader(data) {
     var sum = data.summary || {};
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
-    document.title = title;
-
+    document.title = title + (viewMode === 'table' ? ' · 表格' : '');
     var html = '';
     html += '<div class="ph">';
     html += '<div>';
@@ -273,6 +361,7 @@
     html += '<div class="ph-sub">周期 ' + esc(data.stage_start || '') + ' ~ ' + esc(data.stage_end || data.effective_end || '');
     html += ' · 上课日 ' + esc(data.lesson_date || '—');
     html += ' · 截止 ' + esc(data.effective_end || '');
+    html += ' · 样式：' + (viewMode === 'table' ? '表格' : '分组');
     html += '</div>';
     if (data.notes) {
       html += '<div class="ph-sub">备注：' + esc(data.notes) + '</div>';
@@ -283,7 +372,6 @@
     html += '<div>' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.session_count || 0) + ' 次明细 · ' + esc(sum.item_count || 0) + ' 科</div>';
     html += '</div></div>';
 
-    // 老师要求全文 — 独立卡片
     html += '<div class="assign-card">';
     html += '<h2>老师要求（本阶段全文）</h2>';
     var assigns = data.assignment_items || [];
@@ -300,7 +388,6 @@
     }
     html += '</div>';
 
-    // 科目小计
     var byItem = data.by_item || [];
     if (byItem.length) {
       html += '<div class="overview">';
@@ -310,9 +397,12 @@
       });
       html += '</div>';
     }
+    return html;
+  }
 
-    // 按日 → 科目 → session
-    html += '<div class="days">';
+  /** 分组视图：日 → 科目 → session（原样式） */
+  function renderBodyGroup(data) {
+    var html = '<div class="days">';
     var days = data.days || [];
     if (!days.length) {
       html += '<div class="err" style="padding:12px;">本阶段暂无练习明细 (session)</div>';
@@ -343,25 +433,81 @@
       html += '</div>';
     });
     html += '</div>';
+    return html;
+  }
 
+  /** 表格视图：扁平大表，每行一条 session */
+  function renderBodyTable(data) {
+    var sum = data.summary || {};
+    var days = data.days || [];
+    var html = '<div class="view-table-wrap">';
+    if (!days.length) {
+      html += '<div class="err" style="padding:12px;">本阶段暂无练习明细 (session)</div>';
+      html += '</div>';
+      return html;
+    }
+    html += '<table class="flat"><thead><tr>';
+    html += '<th class="c-date">日期</th>';
+    html += '<th class="c-time">时间</th>';
+    html += '<th class="c-item">科目</th>';
+    html += '<th class="c-mins">时长</th>';
+    html += '<th class="c-tempo">速度</th>';
+    html += '<th>内容</th>';
+    html += '<th class="c-extra">备注</th>';
+    html += '</tr></thead><tbody>';
+    days.forEach(function (day) {
+      var firstInDay = true;
+      (day.groups || []).forEach(function (g) {
+        (g.sessions || []).forEach(function (s) {
+          var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+          var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
+          var rowCls = firstInDay ? ' class="row-day-start"' : '';
+          firstInDay = false;
+          html += '<tr' + rowCls + '>';
+          html += '<td class="c-date">' + esc(fmtCnDate(day.date)) + '</td>';
+          html += '<td class="c-time">' + esc(fmtTime(s.started_at)) + '</td>';
+          html += '<td class="c-item">' + esc(g.item_name) + '</td>';
+          html += '<td class="c-mins">' + esc(s.duration_minutes) + '′</td>';
+          html += '<td class="c-tempo">' + esc(tempo) + '</td>';
+          html += '<td>' + content + '</td>';
+          html += '<td class="c-extra">' + (s.is_extra ? '<span class="tag-extra">额外</span>' : '') + '</td>';
+          html += '</tr>';
+        });
+      });
+    });
+    html += '</tbody><tfoot><tr>';
+    html += '<td colspan="3">合计</td>';
+    html += '<td class="c-mins">' + esc(sum.total_minutes || 0) + '′</td>';
+    html += '<td colspan="3">' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.item_count || 0) + ' 科</td>';
+    html += '</tr></tfoot></table></div>';
+    return html;
+  }
+
+  function renderPayload(data) {
+    lastPayload = data;
     var now = new Date();
     var pad = function (n) { return String(n).padStart(2, '0'); };
     var gen = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
       + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-    html += '<div class="pf"><span>数据: practice_sessions · 观摩/家校沟通用</span><span>生成 ' + esc(gen) + ' · 单页 A4</span></div>';
+
+    var html = renderHeader(data);
+    html += viewMode === 'table' ? renderBodyTable(data) : renderBodyGroup(data);
+    html += '<div class="pf"><span>数据: practice_sessions · 观摩/家校沟通用</span>';
+    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '表格' : '分组') + ' · 单页 A4</span></div>';
 
     paper.innerHTML = html;
-    // 屏上 100% 预览，不缩放；仅提示内容是否超出一页
-    paper.style.setProperty('--print-zoom', '1');
-    paperScale.style.transform = '';
-    var a4px = Math.round(297 * (96 / 25.4)); // ~1123px @96dpi
-    var contentH = paper.scrollHeight;
-    if (contentH > a4px + 8) {
-      var pct = Math.max(55, Math.min(100, Math.round((a4px / contentH) * 100)));
-      statusMsg.textContent = '预览 100%（可滚动）· 打印时将缩至约 ' + pct + '% 以塞入一页';
-    } else {
-      statusMsg.textContent = '预览 100% · 内容已在一页内';
-    }
+    syncViewToggle();
+    updatePreviewStatus();
+  }
+
+  function setViewMode(mode) {
+    if (mode !== 'group' && mode !== 'table') return;
+    viewMode = mode;
+    try { localStorage.setItem('stage-print-view', mode); } catch (e) {}
+    var order = stageSelect.value || (lastPayload && lastPayload.stage_order);
+    setQuery(order, viewMode);
+    syncViewToggle();
+    if (lastPayload) renderPayload(lastPayload);
   }
 
   /**
@@ -419,7 +565,7 @@
         // 同步 select
         if (res.j.stage_order != null) {
           stageSelect.value = String(res.j.stage_order);
-          setQuery(res.j.stage_order);
+          setQuery(res.j.stage_order, viewMode);
         }
         renderPayload(res.j);
       })
@@ -432,6 +578,14 @@
     var v = stageSelect.value;
     if (v) loadDetail({ stage_order: v });
   });
+
+  document.getElementById('viewGroup').addEventListener('click', function () {
+    setViewMode('group');
+  });
+  document.getElementById('viewTable').addEventListener('click', function () {
+    setViewMode('table');
+  });
+  syncViewToggle();
 
   document.getElementById('btnPrint').addEventListener('click', function () {
     var scale = preparePrintZoom();
