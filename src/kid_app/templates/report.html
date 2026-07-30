@@ -404,9 +404,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var RIGHT_PAD = 10;
     // month 图 30 天柱窄, 每周只标 "周一" 减少拥挤 (feat/month-chart)
     var labelStride = opts.labelStride || 1;
-    var labelY = opts.labelY || (CHART_H + 40);
-    var subY = opts.subY || (CHART_H + 52);
-    var SVG_H = 40 + CHART_H + 52;
+    // compactTopLabels: 月图窄柱适配 (iPad mini 横屏 ~1024 下 30 天「N分」叠字)
+    // - 0 分不画
+    // - 窄柱: 去掉「分」、缩小字号、奇偶交错 y
+    // - 极窄: 仅隔天/隔 N 天标 (非 0 才计)
+    var compactTop = !!opts.compactTopLabels;
+    var TOP_PAD = compactTop ? 44 : 40;
+    var labelY = opts.labelY || (TOP_PAD + CHART_H + 20);
+    var subY = opts.subY || (TOP_PAD + CHART_H + 32);
+    var SVG_H = TOP_PAD + CHART_H + 52;
     var SVG_W = LABEL_W + n * BAR_W + (n - 1) * BAR_GAP + RIGHT_PAD;
     var weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
 
@@ -426,6 +432,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function minsToH(mins) { return mins * hScale; }
 
+    // 顶标策略 (仅 compact 月图): 按柱宽决定密度
+    // bar 槽宽 = BAR_W + BAR_GAP; 「55分」约 22–26px, 纯数字约 12–16px
+    var slotW = BAR_W + BAR_GAP;
+    var topLabelStride = 1;
+    var topLabelFont = 10;
+    var topLabelSuffix = '分';
+    var topLabelStagger = false;
+    if (compactTop) {
+      if (slotW < 18) {
+        topLabelStride = 3;
+        topLabelFont = 9;
+        topLabelSuffix = '';
+        topLabelStagger = true;
+      } else if (slotW < 24) {
+        topLabelStride = 2;
+        topLabelFont = 9;
+        topLabelSuffix = '';
+        topLabelStagger = true;
+      } else if (slotW < 32) {
+        topLabelStride = 1;
+        topLabelFont = 9;
+        topLabelSuffix = '';
+        topLabelStagger = true;
+      } else {
+        topLabelStride = 1;
+        topLabelFont = 10;
+        topLabelSuffix = '分';
+        topLabelStagger = false;
+      }
+    }
+
+    // 在「有练习的天」里取序号, 用 stride 抽稀 (避免 0 分占掉步长导致该看的天被跳过)
+    var practiceDayIdx = {};
+    var practiceCount = 0;
+    dates.forEach(function(d) {
+      if ((dailyTotals[d] || 0) > 0) {
+        practiceDayIdx[d] = practiceCount;
+        practiceCount += 1;
+      }
+    });
+
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + SVG_W + '" style="display:block;" height="' + SVG_H + '">';
     svg += '<defs>';
     for (var gi = 0; gi < STAGE_GRAD_IDS.length; gi++) {
@@ -438,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
     dates.forEach(function(d, i) {
       var x = LABEL_W + i * (BAR_W + BAR_GAP);
       var dayTotal = dailyTotals[d] || 0;
-      var stackY = 40 + CHART_H;
+      var stackY = TOP_PAD + CHART_H;
 
       items.forEach(function(it, idx) {
         var v = data[d] && data[d][it.id];
@@ -451,15 +498,33 @@ document.addEventListener('DOMContentLoaded', function() {
         stackY = barY;
       });
 
-      // 数字标签 (全部显示)
-      svg += '<text x="' + (x + BAR_W / 2) + '" y="32" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
+      // 数字标签
+      if (compactTop) {
+        // 0 分不标; 按有练习天数 stride 抽稀; 奇偶交错 y 防相邻叠字
+        if (dayTotal > 0) {
+          var pIdx = practiceDayIdx[d];
+          var isLastPractice = (pIdx === practiceCount - 1);
+          if (pIdx % topLabelStride === 0 || isLastPractice) {
+            var ty = topLabelStagger
+              ? (pIdx % 2 === 0 ? 14 : 28)
+              : 32;
+            var labelText = Math.round(dayTotal) + topLabelSuffix;
+            // title 给完整「N分」, 窄屏 hover/长按可读
+            svg += '<text x="' + (x + BAR_W / 2) + '" y="' + ty + '" text-anchor="middle" font-size="' + topLabelFont + '" fill="#666" font-weight="500" class="bar-label">'
+              + '<title>' + Math.round(dayTotal) + '分 · ' + d + '</title>'
+              + labelText + '</text>';
+          }
+        }
+      } else {
+        // stage 图: 全部显示 (天数少, 柱宽够)
+        svg += '<text x="' + (x + BAR_W / 2) + '" y="32" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
+      }
 
       // 日期 + 周几 (labelStride 控制密度, feat/month-chart 用 stride=3 简化后每 i%stride 都标)
       if (i % labelStride === 0 || i === n - 1) {
         var dtParts = d.split('-');
         var label = dtParts[1] + '/' + dtParts[2];
         var wd = weekdayNames[new Date(d + 'T00:00:00').getDay()];
-        var wdLabel = (wd === '周一') ? '一' : (wd === '周三') ? '三' : (wd === '周五') ? '五' : (wd === '周日') ? '日' : '';
         if (labelStride === 1) {
           // stage 图: 全部日期 + 周几
           svg += '<text x="' + (x + BAR_W / 2) + '" y="' + labelY + '" text-anchor="middle" font-size="11" fill="#888" font-weight="500">' + label + '</text>';
@@ -484,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return renderStackedChart(stageData);
   }
 
-  // 月份图渲染 (feat/month-chart): 走公共渲染函数, 窄柱+稀疏 label
+  // 月份图渲染 (feat/month-chart): 走公共渲染函数, 窄柱+稀疏顶标 (iPad mini 横屏适配)
   function renderMonthChart(monthData) {
     // 响应式: BAR_W 跟随 wrap 宽度, 上限 28px (修当月被拉宽问题)
     var wrapW = document.getElementById('monthChartWrap');
@@ -492,9 +557,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var n = monthData.dates.length;
     var LABEL_W = 44, RIGHT_PAD = 10;
     var availableForBars = Math.max(containerW - LABEL_W - RIGHT_PAD, 200);
-    var barW = Math.max(4, Math.min(28, Math.floor((availableForBars - (n - 1) * 6) / n)));
+    // 窄屏略收 gap, 给柱和字多一点空间 (1024 宽约 30 天)
+    var barGap = availableForBars / n < 28 ? 4 : 6;
+    var barW = Math.max(4, Math.min(28, Math.floor((availableForBars - (n - 1) * barGap) / n)));
     return renderStackedChart(monthData, {
-      barW: barW, barGap: 6, chartH: 140, labelStride: 3, labelY: 192
+      barW: barW,
+      barGap: barGap,
+      chartH: 140,
+      labelStride: 3,
+      labelY: 192,
+      compactTopLabels: true
     });
   }
 
