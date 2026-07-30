@@ -84,11 +84,15 @@
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
-    /* 表格视图: A4 横向 297×210 */
+    /* 表格视图: A4 横向 297×210，固定高度撑满页脚 */
     .paper.is-table.is-landscape {
       width: 297mm;
+      height: 210mm;
       min-height: 210mm;
-      padding: 4mm 5mm 5mm;
+      max-height: 210mm;
+      padding: 4mm 5mm 4mm;
+      box-sizing: border-box;
+      overflow: hidden;
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -184,25 +188,29 @@
     }
     .empty-content { color: #b0a090; font-style: italic; }
 
-    /* ── 表格视图 · A4 横向 · 科目×日期矩阵 ── */
-    /* 上区(页眉+老师要求) : 下区(表格) ≈ 3:7；assignment 全文完整显示 */
+    /* ── 表格视图 · A4 横向 · 科目×日期矩阵 · 撑满至页脚 ── */
     .paper.is-table.is-landscape {
       display: flex;
       flex-direction: column;
     }
     .paper.is-table .table-chrome {
       flex: 0 0 auto;
-      /* 约 30% 上限，内容少则更矮；不裁切文字 */
-      max-height: none;
-      overflow: visible;
-      margin-bottom: 1.2mm;
+      margin-bottom: 1mm;
     }
     .paper.is-table .view-table-wrap {
       flex: 1 1 auto;
       min-height: 0;
-      /* 主表至少占约 70% 视觉空间 */
-      min-height: 70%;
-      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .paper.is-table .view-table-wrap table.matrix {
+      flex: 1 1 auto;
+      height: 100%;
+    }
+    .paper.is-table .pf {
+      flex: 0 0 auto;
+      margin-top: auto;
     }
     .paper.is-table .ph {
       padding-bottom: 1mm; margin-bottom: 1mm;
@@ -363,8 +371,11 @@
       }
       .paper.is-landscape {
         width: 297mm !important;
-        min-height: 210mm;
-        padding: 4mm 5mm 4mm !important;
+        height: 210mm !important;
+        min-height: 210mm !important;
+        max-height: 210mm !important;
+        padding: 4mm 5mm 3.5mm !important;
+        overflow: hidden !important;
       }
     }
   </style>
@@ -770,7 +781,57 @@
 
     paper.innerHTML = html;
     syncViewToggle();
-    updatePreviewStatus();
+    // 表格模式：行高均分，撑满 A4 到页脚
+    if (viewMode === 'table') {
+      requestAnimationFrame(function () {
+        fillMatrixToPaper();
+        updatePreviewStatus();
+      });
+    } else {
+      updatePreviewStatus();
+    }
+  }
+
+  /** 横向 A4 固定高度内，矩阵表 tbody 行均分剩余高度，贴到页脚 */
+  function fillMatrixToPaper() {
+    if (viewMode !== 'table') return;
+    var wrap = paper.querySelector('.view-table-wrap');
+    var table = paper.querySelector('table.matrix');
+    var chrome = paper.querySelector('.table-chrome');
+    var pf = paper.querySelector('.pf');
+    if (!wrap || !table) return;
+
+    // 固定纸高
+    paper.style.height = '210mm';
+    paper.style.maxHeight = '210mm';
+
+    var paperH = paper.clientHeight;
+    var padTop = parseFloat(getComputedStyle(paper).paddingTop) || 0;
+    var padBot = parseFloat(getComputedStyle(paper).paddingBottom) || 0;
+    var chromeH = chrome ? chrome.offsetHeight : 0;
+    var pfH = pf ? pf.offsetHeight : 0;
+    var gap = 4; // chrome/table 间距
+    var avail = paperH - padTop - padBot - chromeH - pfH - gap;
+    if (avail < 80) avail = 80;
+
+    wrap.style.height = avail + 'px';
+    wrap.style.flex = '1 1 auto';
+    table.style.height = '100%';
+    table.style.minHeight = avail + 'px';
+
+    var thead = table.querySelector('thead');
+    var tfoot = table.querySelector('tfoot');
+    var headH = thead ? thead.offsetHeight : 0;
+    var footH = tfoot ? tfoot.offsetHeight : 0;
+    var bodyAvail = avail - headH - footH;
+    var rows = table.querySelectorAll('tbody tr');
+    var n = rows.length || 1;
+    if (bodyAvail < n * 12) bodyAvail = n * 12;
+    var rowH = Math.floor(bodyAvail / n);
+    if (rowH < 14) rowH = 14;
+    rows.forEach(function (r) {
+      r.style.height = rowH + 'px';
+    });
   }
 
   function setViewMode(mode) {
@@ -870,11 +931,23 @@
 
   document.getElementById('btnPrint').addEventListener('click', function () {
     syncPaperMode();
+    if (viewMode === 'table') fillMatrixToPaper();
     var scale = preparePrintZoom();
+    // 表格已按 210mm 排满，尽量 100% 打印
+    if (viewMode === 'table' && scale > 0.92) {
+      paper.style.setProperty('--print-zoom', '1');
+      scale = 1;
+    }
     statusMsg.textContent = scale < 0.999
       ? '打印缩放 ' + Math.round(scale * 100) + '% 塞入一页 · 预览仍 100%'
-      : '打印 100% · A4 竖向一页';
+      : (viewMode === 'table' ? '打印 100% · A4 横向撑满' : '打印 100% · A4 竖向一页');
     setTimeout(function () { window.print(); }, 80);
+  });
+
+  window.addEventListener('resize', function () {
+    if (viewMode === 'table' && paper.querySelector('table.matrix')) {
+      fillMatrixToPaper();
+    }
   });
 
   window.addEventListener('afterprint', function () {
