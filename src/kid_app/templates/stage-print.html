@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stage 练习明细 · 打印</title>
+  <style>
+    :root {
+      --ink: #2c2416;
+      --muted: #7a6a5a;
+      --line: #e8dcc8;
+      --paper: #fffef9;
+      --accent: #c45c26;
+      --gold: #8b6914;
+      --card: #faf6ee;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: "Noto Serif SC", "Songti SC", "SimSun", "PingFang SC", serif;
+      color: var(--ink);
+      background: #e8e4dc;
+    }
+
+    /* ── 屏上工具条 (打印隐藏) ── */
+    .toolbar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 10px 16px;
+      background: rgba(255,253,248,0.96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(6px);
+    }
+    .toolbar label { font-size: 13px; color: var(--muted); }
+    .toolbar select {
+      min-width: 220px; max-width: 360px;
+      padding: 6px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: #fff;
+      font-size: 13px; color: var(--ink);
+    }
+    .toolbar button, .toolbar a.btn {
+      appearance: none; border: none; cursor: pointer;
+      padding: 7px 14px; border-radius: 8px;
+      font-size: 13px; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-print { background: var(--accent); color: #fff; font-weight: 600; }
+    .btn-back { background: #ede8e0; color: var(--ink); }
+    .btn-ghost {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; color: var(--ink);
+    }
+    .btn-ghost:hover { background: #f5f0e8; }
+    .btn-apply {
+      appearance: none; border: none; background: #3d2e1e; color: #fffef9;
+      border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-apply:hover { background: #5c4a36; }
+    .toolbar .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
+    .status { font-size: 12px; color: var(--muted); }
+
+    /* 练习日勾选条 */
+    .day-filter {
+      display: none;
+      flex-wrap: wrap; align-items: center; gap: 8px 10px;
+      padding: 8px 16px 10px;
+      background: #faf6ee;
+      border-bottom: 1px solid var(--line);
+    }
+    .day-filter.visible { display: flex; }
+    .day-filter .df-label {
+      font-size: 12px; font-weight: 600; color: #8b6914; flex-shrink: 0;
+    }
+    .day-filter .df-checks {
+      display: flex; flex-wrap: wrap; gap: 6px 10px; flex: 1; min-width: 0;
+    }
+    .day-filter .df-item {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--ink);
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 14px; padding: 3px 10px 3px 6px;
+      cursor: pointer; user-select: none;
+    }
+    .day-filter .df-item:hover { border-color: #c9a030; }
+    .day-filter .df-item input { margin: 0; accent-color: #c45c26; }
+    .day-filter .df-item .df-mins { color: var(--muted); font-size: 11px; }
+    .day-filter .df-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+    .day-filter .df-hint { font-size: 11px; color: var(--muted); width: 100%; }
+    /* 视图切换: 分组 / 表格 */
+    .view-toggle {
+      display: inline-flex; border: 1px solid var(--line); border-radius: 8px;
+      overflow: hidden; background: #fff;
+    }
+    .view-toggle button {
+      appearance: none; border: none; background: transparent; cursor: pointer;
+      padding: 6px 12px; font-size: 12px; color: var(--muted);
+      border-right: 1px solid var(--line);
+    }
+    .view-toggle button:last-child { border-right: none; }
+    .view-toggle button.active {
+      background: #3d2e1e; color: #fffef9; font-weight: 600;
+    }
+    .view-toggle button:hover:not(.active) { background: #f5f0e8; }
+
+    /* ── 纸张预览：屏上 100% 可读，可增高滚动；缩放仅打印 ── */
+    .stage-wrap {
+      padding: 18px 12px 40px;
+      display: flex; justify-content: center;
+    }
+    .paper-scale {
+      transform: none !important; /* 屏上禁止 scale，避免小纸片 */
+      transform-origin: top center;
+    }
+    .paper {
+      width: 210mm;
+      min-height: 297mm;
+      max-height: none; /* 屏上允许长于 A4，滚动查看 */
+      overflow: visible;
+      background: var(--paper);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      padding: 8mm 9mm 10mm;
+      position: relative;
+      zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
+    }
+    /* 表格视图: A4 横向 297×210，固定高度撑满页脚 */
+    .paper.is-table.is-landscape {
+      width: 297mm;
+      height: 210mm;
+      min-height: 210mm;
+      max-height: 210mm;
+      padding: 4mm 5mm 4mm;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* ── 内容紧凑排版 (A4 单页) ── */
+    .ph {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 1.5px solid var(--ink); padding-bottom: 3mm; margin-bottom: 2.5mm;
+      gap: 8px;
+    }
+    .ph-title { font-size: 13pt; font-weight: 700; letter-spacing: 0.5px; line-height: 1.2; }
+    .ph-sub { font-size: 8pt; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+    .ph-stats {
+      text-align: right; font-size: 8pt; color: var(--ink); line-height: 1.4;
+      white-space: nowrap;
+    }
+    .ph-stats strong { font-size: 11pt; color: var(--accent); }
+
+    .assign-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 2mm 2.5mm;
+      margin-bottom: 2.5mm;
+    }
+    .assign-card h2 {
+      margin: 0 0 1.5mm; font-size: 8.5pt; color: var(--gold);
+      font-weight: 700; letter-spacing: 0.3px;
+    }
+    .assign-item {
+      margin-bottom: 1.2mm; padding-bottom: 1.2mm;
+      border-bottom: 1px dashed #e5d9c4;
+      font-size: 7.5pt; line-height: 1.35;
+      break-inside: avoid;
+    }
+    .assign-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .ai-name { font-weight: 700; color: var(--ink); }
+    .ai-metro { color: var(--gold); margin-left: 4px; font-weight: 600; }
+    .ai-req { color: #4a3f32; white-space: pre-wrap; margin-top: 0.5mm; }
+
+    .overview {
+      display: flex; flex-wrap: wrap; gap: 1.5mm 3mm;
+      margin-bottom: 2mm; font-size: 7pt; color: var(--muted);
+    }
+    .overview .ov {
+      background: #f3efe6; border-radius: 3px; padding: 0.6mm 1.5mm;
+    }
+    .overview .ov b { color: var(--ink); font-weight: 600; }
+
+    .days { font-size: 7.2pt; }
+    .day-block {
+      margin-bottom: 1.8mm;
+      break-inside: avoid;
+    }
+    .day-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      background: #3d2e1e; color: #fffef9;
+      padding: 0.8mm 1.8mm; border-radius: 2px;
+      font-size: 7.5pt; font-weight: 600;
+      margin-bottom: 0.8mm;
+    }
+    .day-head .dh-meta { font-weight: 400; opacity: 0.9; font-size: 7pt; }
+
+    .item-block { margin: 0 0 1mm 0.5mm; }
+    .item-head {
+      font-weight: 700; font-size: 7.4pt; color: var(--ink);
+      border-left: 2px solid var(--accent); padding-left: 1.5mm;
+      margin-bottom: 0.4mm;
+    }
+    .item-head span { font-weight: 500; color: var(--muted); margin-left: 3px; }
+
+    table.sess {
+      width: 100%; border-collapse: collapse;
+      font-size: 6.8pt;
+    }
+    table.sess th {
+      text-align: left; font-weight: 600; color: var(--muted);
+      border-bottom: 1px solid var(--line); padding: 0.3mm 0.8mm;
+      font-size: 6.5pt;
+    }
+    table.sess td {
+      padding: 0.35mm 0.8mm; vertical-align: top;
+      border-bottom: 1px dotted #efe6d6;
+      line-height: 1.3;
+    }
+    table.sess .c-time { width: 9mm; white-space: nowrap; color: var(--muted); }
+    table.sess .c-mins { width: 7mm; white-space: nowrap; font-weight: 600; text-align: right; }
+    table.sess .c-tempo { width: 12mm; white-space: nowrap; color: var(--gold); font-weight: 600; }
+    table.sess .c-extra {
+      width: 8mm; text-align: center;
+    }
+    .tag-extra {
+      display: inline-block; font-size: 6pt; padding: 0 1.2mm;
+      border: 1px solid var(--accent); color: var(--accent); border-radius: 2px;
+    }
+    .empty-content { color: #b0a090; font-style: italic; }
+
+    /* ── 表格视图 · A4 横向 · 科目×日期矩阵 · 撑满至页脚 ── */
+    .paper.is-table.is-landscape {
+      display: flex;
+      flex-direction: column;
+    }
+    .paper.is-table .table-chrome {
+      flex: 0 0 auto;
+      margin-bottom: 1mm;
+    }
+    .paper.is-table .view-table-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .paper.is-table .view-table-wrap table.matrix {
+      flex: 1 1 auto;
+      height: 100%;
+    }
+    .paper.is-table .pf {
+      flex: 0 0 auto;
+      margin-top: auto;
+      font-size: 5.5pt;
+    }
+    .paper.is-table .ph {
+      padding-bottom: 1mm; margin-bottom: 1mm;
+    }
+    .paper.is-table .ph-title { font-size: 9pt; }
+    .paper.is-table .ph-sub { font-size: 6pt; }
+    .paper.is-table .ph-stats { font-size: 6.5pt; }
+    .paper.is-table .ph-stats strong { font-size: 9pt; }
+
+    /* 老师要求：多列紧凑铺开，全文显示、不截断 */
+    .paper.is-table .assign-card {
+      padding: 1mm 1.8mm;
+      margin-bottom: 0.8mm;
+      max-height: none;
+      overflow: visible;
+    }
+    .paper.is-table .assign-card h2 {
+      font-size: 6.5pt; margin: 0 0 0.8mm; line-height: 1.15;
+    }
+    .paper.is-table .assign-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8mm 2mm;
+    }
+    .paper.is-table .assign-grid .assign-item {
+      font-size: 6.2pt;
+      margin: 0;
+      padding: 0.6mm 0.8mm;
+      border: 1px solid #efe6d6;
+      border-radius: 2px;
+      background: #fffef9;
+      line-height: 1.25;
+      max-height: none;
+      overflow: visible;
+    }
+    .paper.is-table .assign-grid .assign-item .ai-name {
+      font-size: 6.5pt;
+    }
+    .paper.is-table .assign-grid .assign-item .ai-req {
+      margin-top: 0.4mm;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: visible;
+      /* 取消 line-clamp，全文可见 */
+      display: block;
+      -webkit-line-clamp: unset;
+    }
+    .paper.is-table .overview {
+      font-size: 5.5pt; margin-bottom: 0.6mm; gap: 0.5mm 1.2mm;
+    }
+
+    .view-table-wrap { margin-top: 0; overflow-x: auto; }
+    table.matrix {
+      width: 100%; border-collapse: collapse;
+      font-size: 8pt; /* 主表可读字号 */
+      table-layout: fixed;
+    }
+    table.matrix thead th {
+      background: #3d2e1e; color: #fffef9;
+      font-weight: 600; text-align: center;
+      border: 0.25pt solid #2a2015;
+      padding: 0.7mm 0.3mm;
+      line-height: 1.15;
+    }
+    table.matrix thead th.th-item {
+      background: #2a2015; width: 14mm; font-size: 8pt;
+    }
+    table.matrix thead th.th-day {
+      font-size: 8pt; letter-spacing: 0.15px;
+      border-left: 1pt solid #c9a030;
+    }
+    table.matrix thead th.th-sub {
+      background: #5c4a36; font-size: 6.5pt; font-weight: 500;
+      padding: 0.45mm 0.2mm;
+    }
+    table.matrix thead th.th-sub.th-first { border-left: 1pt solid #c9a030; }
+    table.matrix thead th.th-sub.th-detail { font-size: 7pt; }
+    table.matrix tbody td {
+      border: 0.25pt solid #e0d4c0;
+      padding: 0.55mm 0.35mm;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    table.matrix tbody tr:nth-child(even) td:not(.m-item) { background: #faf6ee; }
+    table.matrix td.m-item {
+      background: #f5f0e6; font-weight: 700; font-size: 8pt;
+      text-align: center; width: 14mm;
+      border-right: 1pt solid #c9a030;
+      word-break: break-all; padding: 0.5mm 0.4mm;
+    }
+    table.matrix td.m-total {
+      font-weight: 700; color: var(--accent); white-space: nowrap;
+      border-left: 1pt solid #c9a030; background: #fff8f0;
+      font-size: 7pt; width: 3.5mm; max-width: 4.5mm; padding: 0.3mm 0.05mm;
+    }
+    table.matrix td.m-tempo {
+      color: var(--gold); font-weight: 600; white-space: nowrap;
+      font-size: 7pt; width: 4.5mm; max-width: 5.5mm; padding: 0.3mm 0.05mm;
+    }
+    table.matrix td.m-once {
+      font-weight: 600; white-space: nowrap;
+      font-size: 7pt; width: 3.5mm; max-width: 4.5mm; padding: 0.3mm 0.05mm;
+    }
+    table.matrix td.m-detail {
+      text-align: left; padding: 0.5mm 0.8mm;
+      font-size: 7.5pt; overflow-wrap: anywhere;
+    }
+    table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
+    table.matrix .det-extra {
+      display: inline-block; font-size: 6pt; margin-left: 1px;
+      padding: 0 0.8mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 1px;
+    }
+    table.matrix tfoot td {
+      background: #f3efe6; font-weight: 700; font-size: 7.5pt;
+      border: 0.25pt solid #e0d4c0; padding: 0.6mm 0.4mm;
+      text-align: center;
+    }
+    table.matrix tfoot td.m-item { background: #ebe4d6; font-size: 7.5pt; }
+    table.matrix tfoot td.m-summary {
+      text-align: left; padding: 0.7mm 1.2mm;
+      font-weight: 600; font-size: 7.5pt; line-height: 1.35;
+    }
+    table.matrix tfoot td.m-summary .sum-item {
+      display: inline-block; margin-right: 2mm; white-space: nowrap;
+    }
+    /* 天数少时字号略放大，适配更宽明细 */
+    table.matrix.days-1,
+    table.matrix.days-2 { font-size: 9pt; }
+    table.matrix.days-1 thead th.th-day,
+    table.matrix.days-2 thead th.th-day,
+    table.matrix.days-1 td.m-item,
+    table.matrix.days-2 td.m-item,
+    table.matrix.days-1 td.m-detail,
+    table.matrix.days-2 td.m-detail { font-size: 9pt; }
+    table.matrix.days-1 td.m-total,
+    table.matrix.days-2 td.m-total,
+    table.matrix.days-1 td.m-tempo,
+    table.matrix.days-2 td.m-tempo,
+    table.matrix.days-1 td.m-once,
+    table.matrix.days-2 td.m-once { font-size: 8.5pt; }
+
+    .pf {
+      margin-top: 1.5mm;
+      font-size: 5.5pt; color: #a89880;
+      display: flex; justify-content: space-between;
+      border-top: 1px solid var(--line); padding-top: 0.6mm;
+    }
+
+    .loading, .err {
+      padding: 40px; text-align: center; color: var(--muted); font-size: 14px;
+    }
+    .err { color: #b23a48; }
+
+    /* ── 打印 ── */
+    @media print {
+      html, body { background: #fff; }
+      .toolbar { display: none !important; }
+      .stage-wrap { padding: 0; }
+      .paper-scale { transform: none !important; }
+      .paper {
+        box-shadow: none !important;
+        max-height: none;
+        overflow: visible;
+        zoom: var(--print-zoom, 1) !important;
+      }
+      .paper:not(.is-landscape) {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 6mm 7mm 6mm;
+      }
+      .paper.is-landscape {
+        width: 297mm !important;
+        height: 210mm !important;
+        min-height: 210mm !important;
+        max-height: 210mm !important;
+        padding: 4mm 5mm 3.5mm !important;
+        overflow: hidden !important;
+      }
+    }
+  </style>
+  <style id="printPageRule">@page { size: A4 portrait; margin: 0; }</style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <a class="btn btn-back" href="/report">← 报告</a>
+    <label for="stageSelect">阶段</label>
+    <select id="stageSelect" aria-label="选择 Stage"></select>
+    <div class="view-toggle" role="group" aria-label="展示样式">
+      <button type="button" id="viewGroup" class="active" data-view="group">分组</button>
+      <button type="button" id="viewTable" data-view="table">表格</button>
+    </div>
+    <button type="button" class="btn btn-print" id="btnPrint">打印 / PDF</button>
+    <span class="hint">A4 · 勾选练习日 → 确认展示</span>
+    <span class="status" id="statusMsg"></span>
+  </div>
+
+  <!-- 选 stage 后：勾选要展示的练习日 -->
+  <div class="day-filter no-print" id="dayFilter" aria-label="选择练习日">
+    <span class="df-label">练习日</span>
+    <div class="df-checks" id="dayChecks"></div>
+    <div class="df-actions">
+      <button type="button" class="btn-ghost" id="daySelectAll">全选</button>
+      <button type="button" class="btn-ghost" id="daySelectNone">清空</button>
+      <button type="button" class="btn-apply" id="dayApply">确认展示</button>
+    </div>
+    <div class="df-hint" id="dayFilterHint">勾选要出现在表格中的日期，点「确认展示」刷新</div>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="paper-scale" id="paperScale">
+      <div class="paper" id="paper">
+        <div class="loading" id="bootMsg">加载中…</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var stageSelect = document.getElementById('stageSelect');
+  var paper = document.getElementById('paper');
+  var paperScale = document.getElementById('paperScale');
+  var statusMsg = document.getElementById('statusMsg');
+  var stagesCache = [];
+  var lastPayload = null;       // 全量 stage 数据
+  var draftDays = {};           // 勾选草稿 date -> true
+  var appliedDays = null;       // 已确认展示的日期 Set；null=尚未确认用全选
+
+  function qsInit(name) {
+    try {
+      return new URL(window.location.href).searchParams.get(name);
+    } catch (e) { return null; }
+  }
+
+  // view: group | table  默认分组；URL ?view= 与 localStorage 可记
+  var viewMode = (function () {
+    var fromUrl = qsInit('view');
+    if (fromUrl === 'table' || fromUrl === 'group') return fromUrl;
+    try {
+      var ls = localStorage.getItem('stage-print-view');
+      if (ls === 'table' || ls === 'group') return ls;
+    } catch (e) {}
+    return 'group';
+  })();
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function fmtCnDate(iso) {
+    if (!iso || iso.length < 10) return iso || '';
+    var p = iso.substring(0, 10).split('-');
+    return parseInt(p[1], 10) + '月' + parseInt(p[2], 10) + '日';
+  }
+
+  function fmtTime(startedAt) {
+    if (!startedAt) return '—';
+    var s = String(startedAt);
+    var sep = s.indexOf('T') >= 0 ? 'T' : ' ';
+    var parts = s.split(sep);
+    if (parts.length < 2) return '—';
+    return parts[1].substring(0, 5);
+  }
+
+  function qs(name) {
+    var u = new URL(window.location.href);
+    return u.searchParams.get(name);
+  }
+
+  function parseDaysParam() {
+    var raw = qsInit('days');
+    if (!raw) return null;
+    var set = {};
+    raw.split(',').forEach(function (d) {
+      d = d.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) set[d] = true;
+    });
+    return Object.keys(set).length ? set : null;
+  }
+
+  function setQuery(stageOrder, view, daysMap) {
+    var u = new URL(window.location.href);
+    if (stageOrder != null && stageOrder !== '') {
+      u.searchParams.set('stage_order', stageOrder);
+      u.searchParams.delete('date');
+    }
+    if (view) u.searchParams.set('view', view);
+    if (daysMap && Object.keys(daysMap).length) {
+      var keys = Object.keys(daysMap).filter(function (k) { return daysMap[k]; }).sort();
+      if (keys.length) u.searchParams.set('days', keys.join(','));
+      else u.searchParams.delete('days');
+    }
+    history.replaceState(null, '', u.pathname + u.search);
+  }
+
+  /** 从全量 payload 按已确认日期过滤，并重算 summary / by_item */
+  function filterPayloadByDays(data, daysMap) {
+    if (!data) return data;
+    var allDays = data.days || [];
+    if (!daysMap) {
+      // null = 全部
+      return data;
+    }
+    var filtered = allDays.filter(function (d) { return daysMap[d.date]; });
+    var total = 0;
+    var sessN = 0;
+    var itemMap = {};
+    filtered.forEach(function (day) {
+      total += day.total_minutes || 0;
+      sessN += day.session_count || 0;
+      (day.groups || []).forEach(function (g) {
+        var id = g.item_id;
+        if (id == null) return;
+        if (!itemMap[id]) {
+          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0 };
+        }
+        itemMap[id].minutes += g.minutes || 0;
+        itemMap[id].session_count += (g.sessions || []).length;
+        if (g.item_name) itemMap[id].item_name = g.item_name;
+      });
+    });
+    var byItem = Object.keys(itemMap).map(function (k) { return itemMap[k]; });
+    byItem.sort(function (a, b) { return b.minutes - a.minutes; });
+    return {
+      ok: data.ok,
+      stage_order: data.stage_order,
+      lesson_date: data.lesson_date,
+      stage_start: data.stage_start,
+      stage_end: data.stage_end,
+      effective_end: data.effective_end,
+      notes: data.notes,
+      assignment_items: data.assignment_items || [],
+      summary: {
+        total_minutes: total,
+        practice_days: filtered.length,
+        session_count: sessN,
+        item_count: byItem.length
+      },
+      by_item: byItem,
+      days: filtered
+    };
+  }
+
+  function availableDayList(data) {
+    return (data && data.days ? data.days : []).map(function (d) {
+      return { date: d.date, total_minutes: d.total_minutes || 0, session_count: d.session_count || 0 };
+    });
+  }
+
+  function renderDayPicker(data) {
+    var panel = document.getElementById('dayFilter');
+    var box = document.getElementById('dayChecks');
+    var hint = document.getElementById('dayFilterHint');
+    if (!panel || !box) return;
+    var list = availableDayList(data);
+    if (!list.length) {
+      panel.classList.remove('visible');
+      box.innerHTML = '';
+      return;
+    }
+    panel.classList.add('visible');
+    // 初始化草稿：优先已确认 / URL / 全选
+    if (!Object.keys(draftDays).length) {
+      if (appliedDays) {
+        draftDays = Object.assign({}, appliedDays);
+      } else {
+        list.forEach(function (d) { draftDays[d.date] = true; });
+      }
+    }
+    box.innerHTML = '';
+    list.forEach(function (d) {
+      var lab = document.createElement('label');
+      lab.className = 'df-item';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = d.date;
+      cb.checked = !!draftDays[d.date];
+      cb.addEventListener('change', function () {
+        draftDays[d.date] = cb.checked;
+        updateDayFilterHint();
+      });
+      lab.appendChild(cb);
+      var t = document.createElement('span');
+      t.textContent = fmtCnDate(d.date);
+      lab.appendChild(t);
+      var m = document.createElement('span');
+      m.className = 'df-mins';
+      m.textContent = d.total_minutes + '′';
+      lab.appendChild(m);
+      box.appendChild(lab);
+    });
+    updateDayFilterHint();
+  }
+
+  function updateDayFilterHint() {
+    var hint = document.getElementById('dayFilterHint');
+    if (!hint || !lastPayload) return;
+    var list = availableDayList(lastPayload);
+    var n = 0;
+    list.forEach(function (d) { if (draftDays[d.date]) n++; });
+    var appliedN = 0;
+    if (appliedDays) {
+      list.forEach(function (d) { if (appliedDays[d.date]) appliedN++; });
+    } else {
+      appliedN = list.length;
+    }
+    hint.textContent = '已勾选 ' + n + '/' + list.length + ' 天 · 当前展示 ' + appliedN + ' 天 · 改勾选后点「确认展示」';
+  }
+
+  function applyDaySelection() {
+    if (!lastPayload) return;
+    var list = availableDayList(lastPayload);
+    var map = {};
+    var n = 0;
+    list.forEach(function (d) {
+      if (draftDays[d.date]) {
+        map[d.date] = true;
+        n++;
+      }
+    });
+    if (n === 0) {
+      statusMsg.textContent = '请至少勾选一天';
+      statusMsg.style.color = '#b23a48';
+      return;
+    }
+    statusMsg.style.color = '';
+    appliedDays = map;
+    var order = stageSelect.value || lastPayload.stage_order;
+    setQuery(order, viewMode, appliedDays);
+    try {
+      localStorage.setItem('stage-print-days-' + order, Object.keys(map).join(','));
+    } catch (e) {}
+    renderPayload(lastPayload);
+    updateDayFilterHint();
+  }
+
+  function syncViewToggle() {
+    var g = document.getElementById('viewGroup');
+    var t = document.getElementById('viewTable');
+    if (g) g.classList.toggle('active', viewMode === 'group');
+    if (t) t.classList.toggle('active', viewMode === 'table');
+  }
+
+  /** 分组=竖向；表格=横向矩阵 */
+  function syncPaperMode() {
+    var isTable = viewMode === 'table';
+    paper.classList.toggle('is-table', isTable);
+    paper.classList.toggle('is-landscape', isTable);
+    var rule = document.getElementById('printPageRule');
+    if (rule) {
+      rule.textContent = isTable
+        ? '@page { size: A4 landscape; margin: 0; }'
+        : '@page { size: A4 portrait; margin: 0; }';
+    }
+    var hint = document.querySelector('.toolbar .hint');
+    if (hint) {
+      hint.textContent = isTable
+        ? '表格 · A4 横向 · 科目×日期矩阵 · 打印一页'
+        : '分组 · A4 竖向 · 可切换表格';
+    }
+  }
+
+  function a4PageHeightPx() {
+    // 竖向 297mm；横向 210mm
+    var mm = viewMode === 'table' ? 210 : 297;
+    return Math.round(mm * (96 / 25.4));
+  }
+
+  function updatePreviewStatus() {
+    paper.style.setProperty('--print-zoom', '1');
+    paperScale.style.transform = '';
+    var a4px = a4PageHeightPx();
+    var contentH = paper.scrollHeight;
+    var modeLabel = viewMode === 'table' ? '表格·横向' : '分组·竖向';
+    if (contentH > a4px + 8) {
+      var pct = Math.max(40, Math.min(100, Math.round((a4px / contentH) * 100)));
+      statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印一页约 ' + pct + '%';
+    } else {
+      statusMsg.textContent = modeLabel + ' · 预览 100% · 已在一页内';
+    }
+  }
+
+  /** 页眉：无老师要求模块；分组视图保留科目小计 chips */
+  function renderHeader(data) {
+    var sum = data.summary || {};
+    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
+    var styleLabel = viewMode === 'table' ? '表格 · 科目×日期 · A4 横向' : '分组 · A4 竖向';
+    var isTable = viewMode === 'table';
+    var html = '';
+    if (isTable) html += '<div class="table-chrome">';
+
+    html += '<div class="ph">';
+    html += '<div>';
+    html += '<div class="ph-title">' + esc(title) + '</div>';
+    html += '<div class="ph-sub">周期 ' + esc(data.stage_start || '') + ' ~ ' + esc(data.stage_end || data.effective_end || '');
+    html += ' · 上课日 ' + esc(data.lesson_date || '—');
+    html += ' · 截止 ' + esc(data.effective_end || '');
+    html += ' · ' + styleLabel;
+    html += '</div>';
+    if (data.notes) {
+      html += '<div class="ph-sub">备注：' + esc(data.notes) + '</div>';
+    }
+    html += '</div>';
+    html += '<div class="ph-stats">';
+    html += '<div><strong>' + esc(sum.total_minutes || 0) + '</strong> 分钟</div>';
+    html += '<div>' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.item_count || 0) + ' 科</div>';
+    html += '</div></div>';
+
+    // 分组视图保留科目小计；表格视图靠表内数据
+    var byItem = data.by_item || [];
+    if (byItem.length && !isTable) {
+      html += '<div class="overview">';
+      byItem.forEach(function (it) {
+        var pct = sum.total_minutes ? Math.round(it.minutes / sum.total_minutes * 100) : 0;
+        html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次 ' + pct + '%</span>';
+      });
+      html += '</div>';
+    }
+
+    if (isTable) html += '</div>'; // .table-chrome
+    return html;
+  }
+
+  /** 分组视图：日 → 科目 → session（原样式） */
+  function renderBodyGroup(data) {
+    var html = '<div class="days">';
+    var days = data.days || [];
+    if (!days.length) {
+      html += '<div class="err" style="padding:12px;">本阶段暂无练习明细 (session)</div>';
+    }
+    days.forEach(function (day) {
+      html += '<div class="day-block">';
+      html += '<div class="day-head"><span>' + esc(fmtCnDate(day.date)) + ' · ' + esc(day.date) + '</span>';
+      html += '<span class="dh-meta">' + esc(day.total_minutes) + ' 分钟 · ' + esc(day.session_count) + ' 次</span></div>';
+      (day.groups || []).forEach(function (g) {
+        html += '<div class="item-block">';
+        html += '<div class="item-head">' + esc(g.item_name) + '<span>' + esc(g.minutes) + ' 分钟 · ' + esc((g.sessions || []).length) + ' 次</span></div>';
+        html += '<table class="sess"><thead><tr>';
+        html += '<th class="c-time">时间</th><th class="c-mins">时长</th><th class="c-tempo">速度</th><th>内容</th><th class="c-extra"></th>';
+        html += '</tr></thead><tbody>';
+        (g.sessions || []).forEach(function (s) {
+          var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+          var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
+          html += '<tr>';
+          html += '<td class="c-time">' + esc(fmtTime(s.started_at)) + '</td>';
+          html += '<td class="c-mins">' + esc(s.duration_minutes) + '′</td>';
+          html += '<td class="c-tempo">' + esc(tempo) + '</td>';
+          html += '<td>' + content + '</td>';
+          html += '<td class="c-extra">' + (s.is_extra ? '<span class="tag-extra">额外</span>' : '') + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * 表格视图：A4 横向矩阵
+   * 行 = 科目；列组 = 每个日期 × (总时长 | 速度 | 单次 | 明细)  — 无 session 列
+   * 短列极窄，明细吃宽；同科同日多 session 多行
+   */
+  function renderBodyTable(data) {
+    var sum = data.summary || {};
+    var days = data.days || [];
+    var html = '<div class="view-table-wrap">';
+    if (!days.length) {
+      html += '<div class="err" style="padding:12px;">本阶段暂无练习明细 (session)</div>';
+      html += '</div>';
+      return html;
+    }
+
+    var itemOrder = [];
+    var itemNames = {};
+    var itemTotals = {}; // 全阶段每科合计，供小结
+    (data.by_item || []).forEach(function (it) {
+      var id = it.item_id;
+      if (id == null) return;
+      if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
+      itemNames[id] = it.item_name || ('科目' + id);
+      itemTotals[id] = it.minutes || 0;
+    });
+    days.forEach(function (day) {
+      (day.groups || []).forEach(function (g) {
+        var id = g.item_id;
+        if (id == null) return;
+        if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
+        itemNames[id] = g.item_name || itemNames[id] || ('科目' + id);
+        if (itemTotals[id] == null) itemTotals[id] = 0;
+      });
+    });
+
+    var grid = {};
+    var dateList = [];
+    days.forEach(function (day) {
+      var d = day.date;
+      dateList.push(d);
+      grid[d] = {};
+      (day.groups || []).forEach(function (g) {
+        grid[d][g.item_id] = {
+          minutes: g.minutes || 0,
+          sessions: (g.sessions && g.sessions.length) ? g.sessions.slice() : []
+        };
+      });
+    });
+
+    var nDays = dateList.length;
+    var COLS_PER_DAY = 4; // 总时长 速度 单次 明细
+    var subLabels = ['总时长', '速度', '单次', '明细'];
+    // 按展示天数自适应：天越少，短列可略宽、明细更宽
+    var itemW = nDays <= 2 ? 10 : nDays <= 4 ? 8 : 7;
+    var shortW = nDays <= 1 ? 5 : nDays <= 2 ? 4 : nDays <= 4 ? 3 : nDays <= 6 ? 2.4 : 2;
+    var tempoW = shortW + 0.5;
+    html += '<table class="matrix days-' + nDays + '"><colgroup>';
+    html += '<col style="width:' + itemW + '%">';
+    dateList.forEach(function () {
+      html += '<col style="width:' + shortW + '%">';
+      html += '<col style="width:' + tempoW + '%">';
+      html += '<col style="width:' + shortW + '%">';
+      html += '<col>'; // 明细
+    });
+    html += '</colgroup>';
+
+    html += '<thead><tr>';
+    html += '<th class="th-item" rowspan="2">科目</th>';
+    dateList.forEach(function (d) {
+      html += '<th class="th-day" colspan="' + COLS_PER_DAY + '">' + esc(fmtCnDate(d)) + '</th>';
+    });
+    html += '</tr><tr>';
+    dateList.forEach(function () {
+      subLabels.forEach(function (lab, i) {
+        var cls = 'th-sub' + (i === 0 ? ' th-first' : '') + (i === 3 ? ' th-detail' : '');
+        html += '<th class="' + cls + '">' + lab + '</th>';
+      });
+    });
+    html += '</tr></thead><tbody>';
+
+    if (!itemOrder.length) {
+      html += '<tr><td colspan="' + (1 + nDays * COLS_PER_DAY) + '" class="empty-content">无科目</td></tr>';
+    }
+
+    itemOrder.forEach(function (itemId) {
+      var maxS = 1;
+      dateList.forEach(function (d) {
+        var cell = grid[d][itemId];
+        var n = cell && cell.sessions ? cell.sessions.length : 0;
+        if (n > maxS) maxS = n;
+      });
+      if (maxS < 1) maxS = 1;
+
+      for (var ri = 0; ri < maxS; ri++) {
+        html += '<tr>';
+        if (ri === 0) {
+          html += '<td class="m-item" rowspan="' + maxS + '">' + esc(itemNames[itemId] || itemId) + '</td>';
+        }
+        dateList.forEach(function (d) {
+          var cell = grid[d][itemId];
+          var sess = (cell && cell.sessions) ? cell.sessions : [];
+          var total = cell ? cell.minutes : 0;
+
+          if (!cell || (!sess.length && !total)) {
+            if (ri === 0) {
+              html += '<td class="m-total m-empty" rowspan="' + maxS + '">—</td>';
+              html += '<td class="m-empty" rowspan="' + maxS + '" colspan="3"></td>';
+            }
+            return;
+          }
+
+          if (sess.length === 0) {
+            if (ri === 0) {
+              html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
+              html += '<td class="m-tempo">—</td>';
+              html += '<td class="m-once">—</td>';
+              html += '<td class="m-detail empty-content">—</td>';
+            } else {
+              html += '<td class="m-empty" colspan="3"></td>';
+            }
+            return;
+          }
+
+          var daySessN = sess.length;
+          if (ri === 0) {
+            html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
+          }
+          if (ri < daySessN) {
+            var s = sess[ri];
+            var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+            var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
+            html += '<td class="m-tempo">' + esc(tempo) + '</td>';
+            html += '<td class="m-once">' + esc(s.duration_minutes || 0) + '′</td>';
+            html += '<td class="m-detail">' + content;
+            if (s.is_extra) html += '<span class="det-extra">额外</span>';
+            html += '</td>';
+          } else {
+            html += '<td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td>';
+          }
+        });
+        html += '</tr>';
+      }
+    });
+
+    // 日合计：只显示总练习时长
+    html += '</tbody><tfoot><tr>';
+    html += '<td class="m-item">日合计</td>';
+    dateList.forEach(function (d) {
+      var dayObj = null;
+      for (var i = 0; i < days.length; i++) {
+        if (days[i].date === d) { dayObj = days[i]; break; }
+      }
+      var t = dayObj ? dayObj.total_minutes : 0;
+      html += '<td class="m-total" colspan="' + COLS_PER_DAY + '">' + esc(t) + '′</td>';
+    });
+    html += '</tr>';
+
+    // 小结：本周练习 x 天 总时长 xxx 分 每科 xx分(xx%) …
+    var grand = sum.total_minutes || 0;
+    var dayN = sum.practice_days || 0;
+    var parts = [];
+    itemOrder.forEach(function (id) {
+      var m = itemTotals[id] || 0;
+      if (m <= 0) return;
+      var pct = grand ? Math.round(m / grand * 100) : 0;
+      parts.push(esc(itemNames[id]) + m + '分(' + pct + '%)');
+    });
+    html += '<tr>';
+    html += '<td class="m-item">小结</td>';
+    html += '<td class="m-summary" colspan="' + (nDays * COLS_PER_DAY) + '">';
+    html += '本周练习' + esc(dayN) + '天　总时长' + esc(grand) + '分';
+    if (parts.length) {
+      html += '　';
+      parts.forEach(function (p) {
+        html += '<span class="sum-item">' + p + '</span>';
+      });
+    }
+    html += '</td></tr></tfoot></table></div>';
+    return html;
+  }
+
+  function renderPayload(data) {
+    lastPayload = data;
+    // 展示用：按已确认日期过滤
+    var viewData = filterPayloadByDays(data, appliedDays);
+    var nShow = (viewData.days || []).length;
+    var nAll = (data.days || []).length;
+
+    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
+    document.title = title + (viewMode === 'table' ? ' · 表格' : ' · 分组') + (nShow < nAll ? ' · ' + nShow + '天' : '');
+
+    var now = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var gen = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
+      + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+    syncPaperMode();
+    var html = renderHeader(viewData);
+    if (viewMode === 'table') {
+      if (!nShow) {
+        html += '<div class="err" style="padding:20px;">未选择练习日，请在上方勾选后点「确认展示」</div>';
+      } else {
+        html += renderBodyTable(viewData);
+      }
+    } else {
+      html += nShow ? renderBodyGroup(viewData) : '<div class="err" style="padding:20px;">未选择练习日</div>';
+    }
+    html += '<div class="pf"><span>数据: practice_sessions · 展示 ' + esc(nShow) + '/' + esc(nAll) + ' 天</span>';
+    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '矩阵 · A4 横向' : '分组 · A4 竖向') + '</span></div>';
+
+    paper.innerHTML = html;
+    syncViewToggle();
+    if (viewMode === 'table' && nShow) {
+      requestAnimationFrame(function () {
+        fillMatrixToPaper();
+        updatePreviewStatus();
+      });
+    } else {
+      updatePreviewStatus();
+    }
+  }
+
+  /** 横向 A4 固定高度内，矩阵表 tbody 行均分剩余高度，贴到页脚 */
+  function fillMatrixToPaper() {
+    if (viewMode !== 'table') return;
+    var wrap = paper.querySelector('.view-table-wrap');
+    var table = paper.querySelector('table.matrix');
+    var chrome = paper.querySelector('.table-chrome');
+    var pf = paper.querySelector('.pf');
+    if (!wrap || !table) return;
+
+    // 固定纸高
+    paper.style.height = '210mm';
+    paper.style.maxHeight = '210mm';
+
+    var paperH = paper.clientHeight;
+    var padTop = parseFloat(getComputedStyle(paper).paddingTop) || 0;
+    var padBot = parseFloat(getComputedStyle(paper).paddingBottom) || 0;
+    var chromeH = chrome ? chrome.offsetHeight : 0;
+    var pfH = pf ? pf.offsetHeight : 0;
+    var gap = 4; // chrome/table 间距
+    var avail = paperH - padTop - padBot - chromeH - pfH - gap;
+    if (avail < 80) avail = 80;
+
+    wrap.style.height = avail + 'px';
+    wrap.style.flex = '1 1 auto';
+    table.style.height = '100%';
+    table.style.minHeight = avail + 'px';
+
+    var thead = table.querySelector('thead');
+    var tfoot = table.querySelector('tfoot');
+    var headH = thead ? thead.offsetHeight : 0;
+    var footH = tfoot ? tfoot.offsetHeight : 0;
+    var bodyAvail = avail - headH - footH;
+    var rows = table.querySelectorAll('tbody tr');
+    var n = rows.length || 1;
+    if (bodyAvail < n * 12) bodyAvail = n * 12;
+    var rowH = Math.floor(bodyAvail / n);
+    if (rowH < 14) rowH = 14;
+    rows.forEach(function (r) {
+      r.style.height = rowH + 'px';
+    });
+  }
+
+  function setViewMode(mode) {
+    if (mode !== 'group' && mode !== 'table') return;
+    viewMode = mode;
+    try { localStorage.setItem('stage-print-view', mode); } catch (e) {}
+    var order = stageSelect.value || (lastPayload && lastPayload.stage_order);
+    setQuery(order, viewMode, appliedDays);
+    syncPaperMode();
+    syncViewToggle();
+    if (lastPayload) renderPayload(lastPayload);
+  }
+
+  /** 加载 stage 后初始化日期勾选（URL / localStorage / 全选） */
+  function initDaysForPayload(data) {
+    draftDays = {};
+    appliedDays = null;
+    var list = availableDayList(data);
+    var fromUrl = parseDaysParam();
+    var fromLs = null;
+    try {
+      var raw = localStorage.getItem('stage-print-days-' + data.stage_order);
+      if (raw) {
+        fromLs = {};
+        raw.split(',').forEach(function (d) {
+          d = d.trim();
+          if (d) fromLs[d] = true;
+        });
+      }
+    } catch (e) {}
+    var seed = fromUrl || fromLs;
+    var valid = {};
+    list.forEach(function (d) {
+      if (seed && seed[d.date]) valid[d.date] = true;
+    });
+    if (Object.keys(valid).length) {
+      appliedDays = valid;
+      draftDays = Object.assign({}, valid);
+    } else {
+      list.forEach(function (d) { draftDays[d.date] = true; });
+      appliedDays = Object.assign({}, draftDays);
+    }
+    renderDayPicker(data);
+  }
+
+  /** 打印前：强制缩放到不超过一页（横向用 210mm 高） */
+  function preparePrintZoom() {
+    var a4px = a4PageHeightPx();
+    var contentH = paper.scrollHeight;
+    var scale = 1;
+    if (contentH > a4px + 4) {
+      scale = Math.max(0.40, Math.min(1, (a4px - 6) / contentH));
+    }
+    // 横向时若内容过宽也压一点（zoom 等比）
+    if (viewMode === 'table') {
+      var a4w = Math.round(297 * (96 / 25.4));
+      var contentW = paper.scrollWidth;
+      if (contentW > a4w + 4) {
+        var sw = Math.max(0.40, Math.min(1, (a4w - 6) / contentW));
+        if (sw < scale) scale = sw;
+      }
+    }
+    paper.style.setProperty('--print-zoom', String(scale.toFixed(4)));
+    return scale;
+  }
+
+  function loadStagesThenDetail() {
+    return fetch('/api/practices/stages', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        stagesCache = (res && res.stages) || [];
+        stageSelect.innerHTML = '';
+        if (!stagesCache.length) {
+          stageSelect.innerHTML = '<option value="">无 stage 数据</option>';
+          return;
+        }
+        stagesCache.forEach(function (s) {
+          var opt = document.createElement('option');
+          opt.value = String(s.stage_order);
+          var label = 'Stage ' + s.stage_order + ' · ' + (s.stage_start || '') + ' ~ ' + (s.stage_end || '…');
+          if (s.lesson_date) label += ' (课 ' + s.lesson_date + ')';
+          opt.textContent = label;
+          stageSelect.appendChild(opt);
+        });
+      });
+  }
+
+  function loadDetail(params) {
+    statusMsg.textContent = '';
+    paper.innerHTML = '<div class="loading">加载明细…</div>';
+    var q = new URLSearchParams();
+    if (params.stage_order != null && params.stage_order !== '') {
+      q.set('stage_order', params.stage_order);
+    } else if (params.date) {
+      q.set('date', params.date);
+    }
+    return fetch('/api/practices/stage-detail?' + q.toString(), { cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j.ok) {
+          paper.innerHTML = '<div class="err">' + esc((res.j && res.j.error) || '加载失败') + '</div>';
+          return;
+        }
+        if (res.j.stage_order != null) {
+          stageSelect.value = String(res.j.stage_order);
+        }
+        initDaysForPayload(res.j);
+        setQuery(res.j.stage_order, viewMode, appliedDays);
+        renderPayload(res.j);
+      })
+      .catch(function () {
+        paper.innerHTML = '<div class="err">网络错误</div>';
+      });
+  }
+
+  stageSelect.addEventListener('change', function () {
+    var v = stageSelect.value;
+    // 换 stage 清草稿，避免串日
+    draftDays = {};
+    appliedDays = null;
+    if (v) loadDetail({ stage_order: v });
+  });
+
+  document.getElementById('viewGroup').addEventListener('click', function () {
+    setViewMode('group');
+  });
+  document.getElementById('viewTable').addEventListener('click', function () {
+    setViewMode('table');
+  });
+
+  document.getElementById('daySelectAll').addEventListener('click', function () {
+    if (!lastPayload) return;
+    availableDayList(lastPayload).forEach(function (d) { draftDays[d.date] = true; });
+    renderDayPicker(lastPayload);
+  });
+  document.getElementById('daySelectNone').addEventListener('click', function () {
+    if (!lastPayload) return;
+    availableDayList(lastPayload).forEach(function (d) { draftDays[d.date] = false; });
+    renderDayPicker(lastPayload);
+  });
+  document.getElementById('dayApply').addEventListener('click', function () {
+    applyDaySelection();
+  });
+
+  syncViewToggle();
+  syncPaperMode();
+
+  document.getElementById('btnPrint').addEventListener('click', function () {
+    syncPaperMode();
+    if (viewMode === 'table') fillMatrixToPaper();
+    var scale = preparePrintZoom();
+    // 表格已按 210mm 排满，尽量 100% 打印
+    if (viewMode === 'table' && scale > 0.92) {
+      paper.style.setProperty('--print-zoom', '1');
+      scale = 1;
+    }
+    statusMsg.textContent = scale < 0.999
+      ? '打印缩放 ' + Math.round(scale * 100) + '% 塞入一页 · 预览仍 100%'
+      : (viewMode === 'table' ? '打印 100% · A4 横向撑满' : '打印 100% · A4 竖向一页');
+    setTimeout(function () { window.print(); }, 80);
+  });
+
+  window.addEventListener('resize', function () {
+    if (viewMode === 'table' && paper.querySelector('table.matrix')) {
+      fillMatrixToPaper();
+    }
+  });
+
+  window.addEventListener('afterprint', function () {
+    if (lastPayload) updatePreviewStatus();
+  });
+
+  // boot
+  var initOrder = qs('stage_order');
+  var initDate = qs('date');
+  loadStagesThenDetail().then(function () {
+    if (initOrder) {
+      loadDetail({ stage_order: initOrder });
+    } else if (initDate) {
+      loadDetail({ date: initDate });
+    } else if (stagesCache.length) {
+      loadDetail({ stage_order: stagesCache[0].stage_order });
+    } else {
+      paper.innerHTML = '<div class="err">没有可用的 stage</div>';
+    }
+  });
+})();
+</script>
+</body>
+</html>
