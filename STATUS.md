@@ -1,5 +1,53 @@
 # STATUS.md - dizical 项目状态
 
+**最后更新**: 2026-07-31 (分支清理: 18 个 merged 分支删除 + PR #181 关闭)
+
+---
+
+### 已完成 (2026-07-31 分支清理)
+
+**触发**: dad "其它能合并的合并，搞干净了"
+
+**清理结果**:
+| 类别 | 数量 | 说明 |
+|------|------|------|
+| 关闭 PR | 1 | PR #181 (修复已在 main by #180/#182/#179) |
+| 删远程分支 | 18 | 全部有 merge 证据 (PR MERGED 或被 main 覆盖) |
+| 保留分支 | 5 | p4-phase2-web-mac-to-cloud / practice-session-detail / mysql-merge-conflict / practice-group-same-item-name / p4-phase1b-staging |
+
+**证据表 (逐条核查 ahead=0 全在 main / ahead=1 全有 PR MERGED)**:
+- docs/api-changelog: main 包含 tip
+- docs/api-changelog-mechanism: main 包含 tip
+- docs/stage-print-wrap-204: PR #205 MERGED
+- docs/status-20260728-update: 仅改 STATUS.md 2 行 (main 已由后续 commit 覆盖)
+- docs/sync-pr-161-merge: PR #162 MERGED
+- feat/p4-cloudrun-deploy: PR #169 MERGED (覆盖)
+- feat/recovery-first-practice-badge-pad: PR #161 MERGED
+- feat/report-session-detail: PR #201 MERGED 2026-07-30
+- feat/session-edit: PR #173 MERGED
+- feat/stage-session-print-report: PR #203 MERGED
+- feat/practice-session-detail: 已并入 #199/#200 V4 链
+- fix/add-lesson-422: 已被 #189 覆盖
+- fix/confirm-lesson-422: 已被 #184 覆盖
+- fix/mysql-merge-conflict: PR #186 MERGED
+- fix/practice-pr-a: PR #198 MERGED
+- fix/report-month-chart-top-labels: PR #202 MERGED
+- fix/stage-print-one-page: PR #204 MERGED
+- fix/architecture-fixes-20260729: PR #199 MERGED
+
+**方法** (Q4=A): `git push origin --delete <分支>` + `git remote prune origin` 一次清干净 (只动远程, 不改 git history, 4 个分支已被 GH 自动清掉)
+
+**当前远程分支**: 6 个
+- origin/main
+- origin/feat/p4-phase1b-staging
+- origin/feat/p4-phase2-web-mac-to-cloud
+- origin/feat/practice-session-detail
+- origin/fix/practice-group-same-item-name (#181 已关但分支保留 7 天让 dad 复核)
+
+**未动**: 5 个 untracked 工作笔记 (.hermes/plans/, .hermes/practice-moa-review.md, PRDs/AI-PRD-纰漏修复-260729.md) - dad 工作笔记保留
+
+---
+
 **最后更新**: 2026-07-29 (PR #200 V4 tile 修复, 2 commit)
 **已 merge**: PR #198 + #199 (main @ 30a58d3), PR #200 OPEN, 待 dad merge
 **新分支**: `fix/practice-v4-timer-req-tile-20260729` (HEAD: 3c5a410)

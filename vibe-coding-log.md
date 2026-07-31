@@ -1,3 +1,14 @@
+## 2026-07-31 分支清理 · 收尾
+
+- 关闭 PR #181 (修复已在 main by #180/#182/#179)
+- 删除 18 个 merged 远程分支 (13 直接删 + 4 被 GH 自动清理 + 1 PR-已关)
+- 保留 5 个 (p4-phase2-web-mac-to-cloud / practice-session-detail / mysql-merge-conflict / practice-group-same-item-name / p4-phase1b-staging)
+- 现状: 远程分支 22 → 6, 干净了
+- 方法: `git push origin --delete <b>` + `git remote prune origin`
+- 证据表全 ahead=0 已并 main / ahead=1 全有 PR MERGED
+- STATUS.md 顶部加 2026-07-31 分支清理段
+- 保留 5 个 untracked dad 工作笔记 (.hermes/plans/, .hermes/practice-moa-review.md, PRDs/AI-PRD-纰漏修复-260729.md)
+
 ## 2026-07-30 stage-print 打印单页 · 收尾
 
 - PR #204 merge: 打印强制 1 页 A4（修 PDF 预览 2 页空表头）
