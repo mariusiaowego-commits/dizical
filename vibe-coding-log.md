@@ -1,3 +1,21 @@
+## 2026-08-01 Sprint 26080103 收尾 · /report/stage-print iPad mini + 导出图片 + A3 横向 (main 2351ff1)
+
+- 触发: dad 反馈 (1) iPad mini 横屏表格字太小看不清 (2) 表格限制高度内容不全 (3) 想要图片导出 (4) 实战发现 6 天表格 A4 装不下 (5) 8mm 列数字贴边没居中 (6) CDN 下载 SSL UNEXPECTED_EOF
+- 5 commit 链, 都在 main:
+  - b0b0634 docs: PLAN/PRD/TECH-SPEC/TEST-PLAN
+  - 15f47a3 feat: iPad mini 适配 (矩阵 8pt→11pt, 取消死宽) + 导出图片工具条按钮
+  - 17a10f6 docs: 任务清单 + Sprint 回顾 + PDR
+  - f10d4c0 fix(v2): A3 横向 420x297mm 装 7 天 + 8mm 加粗 + max-width 32mm 换行
+  - 2351ff1 fix(v2.1): 8mm 列显式居中 + CDN 下载 retry 3 次 + 显式 SSL context
+- pytest 净零回归: 14 fail baseline 不变, 314 → 375 passed (+61 全过我新加的)
+- TDD 抽纯函数: extract_image_source (14/14) + _download_image_with_retry (5/5)
+- 关键根因: urlretrieve 缺 retry + timeout → FAL CDN 偶发 UNEXPECTED_EOF → 改 urlopen + 显式 SSL + chunk 8KB + retry 3 次 (2s/4s/8s 退避)
+- 关键根因 2: 表格死宽 3.5mm 在 iPad 1133px 屏宽被压看不清 → 改 table-layout: auto + min-width 保底
+- 关键根因 3: 6 天表格 A4 横向 297mm 物理装不下 → 改 A3 横向 420x297mm 装 7 天
+- sprint 工作流: 完整走完 3 阶段 (Brief → PR → Closeout), 8-01 早上启动, 23:00 main 落地
+- 实战教训: v1 静态测试全过, 部署到 production 才暴露 MEDIA URL 解析 + SSL EOF 真 bug → TDD 抽纯函数让 0 回归
+- 部署: 8765 (Mac 本地) 跑 v2.1, production CloudRun 048 仍跑 v1 (跟 main 差 2 commit, 后续 sprint 同步)
+
 ## 2026-08-01 Sprint 1 v2 收尾 · practice-log 多 session + 字号放大 (PR #208 MERGED)
 
 - dad 反馈 3 选: (1) 1 科目录多个练习细节 (2) BPM 数据错误 西藏舞曲 7-26 应该是 ♪=80 不是 ♩=66 (3) 应用默认按钮太麻烦
