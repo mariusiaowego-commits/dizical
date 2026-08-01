@@ -1267,27 +1267,38 @@ def api_assignments_latest(item_id: int):
     """返回某 item_id 最近一次 assignment 的 metronome 字段 (Q1=B fallback 用).
 
     metronome 字段格式: '♩=82' / '♪=85' (跟 weekly_assignments.items[].metronome 保持一致).
-    解析失败 → 返回 found=False, 让前端走硬编码 ♪/80 fallback.
+    解析失败 → 尝试宽松匹配 (从 '4/4 ♪=80, 2/4 ♪=69-80' 抓任何一个 ♪=N / ♩=N).
+    全部失败 → 返回 found=False, 让前端走硬编码 ♪/80 fallback.
+
+    2026-08-01 fix: 改自己倒序遍历 (DB 是升序), 同时返回 requirements 供前端 tooltip.
     """
     import re
     if not item_id:
         return JSONResponse({"ok": False, "error": "缺少 item_id"}, status_code=400)
     target_id = int(item_id)
     assignments = practice_module.query_assignments(weeks=8)
-    # 按 lesson_date 倒序 (最新在前), 找 metronome 含目标 item_id 的第一条
-    for a in assignments:
+    # 倒序遍历 (DB 返的是升序, 最新在最后)
+    for a in reversed(assignments):
         for it in a.get("items", []):
             if it.get("item_id") == target_id:
                 metronome = (it.get("metronome") or "").strip()
+                # 严格匹配 ♪=N / ♩=N
                 m = re.match(r"^([♪♩♬♯])=(\d+)$", metronome)
+                # 宽松匹配: 从长串里抓任一 ♪=N / ♩=N
+                if not m:
+                    m = re.search(r"([♪♩♬♯])=(\d+)", metronome)
                 if m:
+                    ld = a.get("lesson_date")
+                    reqs = it.get("requirements") or it.get("requirement") or ""
                     return JSONResponse({
                         "ok": True,
                         "found": True,
                         "item_id": target_id,
                         "tempo_note": m.group(1),
                         "tempo_bpm": int(m.group(2)),
-                        "lesson_date": a.get("lesson_date"),
+                        "lesson_date": str(ld) if ld else None,
+                        "requirements": reqs,
+                        "metronome_raw": metronome,
                     })
     return JSONResponse({
         "ok": True,
