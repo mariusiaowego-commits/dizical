@@ -124,11 +124,11 @@
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
-    /* 表格视图: A4 横向，屏上不限制高度（可滚动），打印自然分页 */
+    /* 表格视图: A3 横向 (sprint-26080103 v2: 420x297mm 装 7 天) */
     .paper.is-table.is-landscape {
-      width: 297mm;
-      min-height: 210mm;
-      max-height: none;  /* sprint 26080103: 屏上允许超出 A4, 滚动查看 */
+      width: 420mm;
+      min-height: 297mm;
+      max-height: none;  /* sprint 26080103 v2: 不限制, 屏上可滚 */
       padding: 4mm 5mm 4mm;
       box-sizing: border-box;
       overflow: visible;
@@ -346,19 +346,19 @@
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 9pt; min-width: 14mm; padding: 0.5mm 0.3mm;
+      font-size: 9.5pt; min-width: 8mm; max-width: 10mm; padding: 0.5mm 0.2mm;  /* v2: 缩窄 8mm 加粗 */
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 9pt; min-width: 16mm; padding: 0.5mm 0.3mm;
+      font-size: 9pt; min-width: 12mm; padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-once {
-      font-weight: 600; white-space: nowrap;
-      font-size: 9pt; min-width: 12mm; padding: 0.5mm 0.3mm;
+      font-weight: 700; white-space: nowrap;  /* v2: 加粗 */
+      font-size: 9.5pt; min-width: 8mm; max-width: 10mm; padding: 0.5mm 0.2mm;  /* v2: 缩窄 8mm 加粗 */
     }
     table.matrix td.m-detail {
       text-align: left; padding: 0.8mm 1.2mm;
-      font-size: 10pt; overflow-wrap: anywhere; min-width: 30mm;
+      font-size: 9pt; overflow-wrap: anywhere; min-width: 18mm; max-width: 32mm;  /* v2: 设上限, 文字换行不跨列 */
     }
     table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
     table.matrix .det-extra {
@@ -440,8 +440,8 @@
         overflow: visible !important;
       }
       .paper.is-landscape {
-        width: 297mm !important;
-        min-height: 210mm;
+        width: 420mm !important;  /* sprint 26080103 v2: A3 横向 */
+        min-height: 297mm;
         padding: 3.5mm 4.5mm !important;
         overflow: visible !important;
       }
@@ -451,7 +451,7 @@
       table.matrix tfoot { display: table-row-group !important; break-before: avoid !important; page-break-before: avoid !important; }
     }
   </style>
-  <style id="printPageRule">@page { size: A4 portrait; margin: 0; }</style>
+  <style id="printPageRule">@page { size: A4 portrait; margin: 0; }</style>  <!-- sprint 26080103 v2: 表格视图走 A3 横向 (JS 动态改) -->
 </head>
 <body>
   <div class="toolbar no-print">
@@ -724,7 +724,7 @@
     var rule = document.getElementById('printPageRule');
     if (rule) {
       rule.textContent = isTable
-        ? '@page { size: A4 landscape; margin: 0; }'
+        ? '@page { size: A3 landscape; margin: 0; }'  /* sprint 26080103 v2: A3 横向装 7 天 */
         : '@page { size: A4 portrait; margin: 0; }';
     }
     var hint = document.querySelector('.toolbar .hint');
@@ -735,20 +735,20 @@
     }
   }
 
-  function a4PageHeightPx() {
-    // 竖向 297mm；横向 210mm
-    var mm = viewMode === 'table' ? 210 : 297;
+  function a3PageHeightPx() {
+    // sprint 26080103 v2: 表格视图 A3 横向 297mm, 分组视图 A4 竖向 297mm
+    var mm = viewMode === 'table' ? 297 : 297;
     return Math.round(mm * (96 / 25.4));
   }
 
   function updatePreviewStatus() {
     paper.style.setProperty('--print-zoom', '1');
     paperScale.style.transform = '';
-    var a4px = a4PageHeightPx();
+    var a3px = a3PageHeightPx();  /* sprint 26080103 v2: A3 横向 */
     var contentH = paper.scrollHeight;
     var modeLabel = viewMode === 'table' ? '表格·横向' : '分组·竖向';
-    if (contentH > a4px + 8) {
-      var pct = Math.max(40, Math.min(100, Math.round((a4px / contentH) * 100)));
+    if (contentH > a3px + 8) {
+      var pct = Math.max(40, Math.min(100, Math.round((a3px / contentH) * 100)));
       statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印一页约 ' + pct + '%';
     } else {
       statusMsg.textContent = modeLabel + ' · 预览 100% · 已在一页内';
@@ -1133,8 +1133,9 @@
    */
   function preparePrintZoom() {
     var isLs = viewMode === 'table';
-    var targetH = Math.round((isLs ? 210 : 297) * (96 / 25.4) * 0.98);
-    var targetW = Math.round((isLs ? 297 : 210) * (96 / 25.4) * 0.98);
+    // sprint 26080103 v2: 表格视图 A3 横向 420x297mm, 分组视图 A4 竖向 210x297mm
+    var targetH = Math.round((isLs ? 297 : 297) * (96 / 25.4) * 0.98);
+    var targetW = Math.round((isLs ? 420 : 210) * (96 / 25.4) * 0.98);
     var contentH = Math.max(paper.scrollHeight, paper.offsetHeight);
     var contentW = Math.max(paper.scrollWidth, paper.offsetWidth);
     var scale = 1;
