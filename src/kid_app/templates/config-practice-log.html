@@ -517,14 +517,14 @@
     }
 
     .log-entry-row .entry-total {
-      font-size: 12px; color: #7F8C8D; font-weight: 600;
+      font-size: 16px; color: #7F8C8D; font-weight: 600;
       padding: 2px 8px; background: #fff; border-radius: 6px;
       border: 1px solid #e0e0e0;
     }
 
 /* 老师要求 hint (Q2=C 小字) */
     .entry-assign-hint {
-      font-size: 11px; color: #8B6914; background: #FFF8F0;
+      font-size: 14px; color: #8B6914; background: #FFF8F0;
       padding: 6px 10px; border-radius: 6px;
       border-left: 2px solid #FF6B6B;
       margin-top: 2px;
@@ -566,34 +566,37 @@
     }
 
     .session-sub-row .sub-minutes-input {
-      width: 56px; padding: 2px 4px; font-size: 12px;
+      width: 56px; padding: 2px 4px; font-size: 16px;
       border-radius: 6px; border: 1px solid #ddd; text-align: center;
     }
 
     .session-sub-row .sub-content-input {
-      width: 100%; padding: 4px 8px; font-size: 12px;
+      width: 100%; padding: 4px 8px; font-size: 16px;
       border-radius: 6px; border: 1px solid #ddd;
     }
 
     .session-sub-row .sub-remove-btn {
       width: 22px; height: 22px; border-radius: 50%; border: none;
       background: rgba(255,107,107,0.1); color: #FF6B6B;
-      cursor: pointer; font-size: 14px; flex-shrink: 0;
+      cursor: pointer; font-size: 18px; flex-shrink: 0;
     }
     .session-sub-row .sub-remove-btn:hover { background: rgba(255,107,107,0.2); }
 
-    .session-sub-row .sub-add-mini-btn {
-      padding: 4px 10px; font-size: 11px;
+    .session-sub-row .sub-add-mini-btn,
+    .session-sub-rows .sub-add-mini-btn {
+      padding: 6px 14px; font-size: 14px;
       border: 1px dashed #a8d5ba; background: transparent;
       color: #2E7D32; border-radius: 6px; cursor: pointer;
       align-self: flex-start;
+      margin-top: 4px;
     }
-    .session-sub-row .sub-add-mini-btn:hover { background: rgba(168,213,186,0.15); }
+    .session-sub-row .sub-add-mini-btn:hover,
+    .session-sub-rows .sub-add-mini-btn:hover { background: rgba(168,213,186,0.15); }
 
     /* 子 session 内 BPM / 音符 / 标签 */
     .session-sub-row .tempo-note-mini {
       width: 32px; height: 26px; padding: 0; border-radius: 6px;
-      border: 1px solid #ddd; font-size: 13px; cursor: pointer;
+      border: 1px solid #ddd; font-size: 17px; cursor: pointer;
       background: #fff; color: #8B6914; font-weight: 600;
     }
     .session-sub-row .tempo-note-mini.selected {
@@ -606,22 +609,22 @@
     }
     .session-sub-row .bpm-step {
       width: 22px; height: 22px; border: none; background: transparent;
-      cursor: pointer; font-size: 14px; font-weight: 700; color: #8B6914;
+      cursor: pointer; font-size: 18px; font-weight: 700; color: #8B6914;
       border-radius: 4px;
     }
     .session-sub-row .bpm-step:hover { background: #F5E6C8; }
     .session-sub-row .bpm-value {
       min-width: 30px; text-align: center; font-weight: 600; color: #5D4037;
-      font-size: 13px;
+      font-size: 17px;
     }
     .session-sub-row .bpm-preset-mini {
       padding: 2px 6px; background: #FFF8F0; border: 1px solid #E8D8B0;
-      border-radius: 6px; font-size: 10px; color: #8B6914; cursor: pointer;
+      border-radius: 6px; font-size: 13px; color: #8B6914; cursor: pointer;
     }
     .session-sub-row .bpm-preset-mini:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
     .session-sub-row .sp-content-tag-mini {
       padding: 2px 8px; background: #F0E8D0; border: 1px solid #D4B886;
-      border-radius: 12px; font-size: 10px; color: #5D4037; cursor: pointer;
+      border-radius: 12px; font-size: 13px; color: #5D4037; cursor: pointer;
     }
     .session-sub-row .sp-content-tag-mini:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
 
@@ -634,7 +637,7 @@
       background: rgba(255,107,107,0.1);
       color: #FF6B6B;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 21px;
       flex-shrink: 0;
     }
 
