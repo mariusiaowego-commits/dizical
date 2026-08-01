@@ -32,21 +32,35 @@ _DEDUP_WINDOW_SECONDS = 5
 _dedup_cache: Dict[tuple, tuple] = {}
 
 
-def _check_dedup(date: str, item_id: int, minutes: int) -> Optional[dict]:
-    """5s 内 (date, item_id, minutes) 重复 → 返回缓存 response JSON."""
+def _check_dedup(date: str, item_id: int, minutes: int,
+                 tempo_bpm: int = 0, content: str = "",
+                 practice_at: str = "") -> Optional[dict]:
+    """5s 内 (date, item_id, minutes, tempo_bpm, content, practice_at) 重复 → 返回缓存 response JSON.
+
+    2026-08-01 fix: 把 tempo_bpm / content / practice_at 加进 dedup key,
+    解决 1 科目录 8 条 session 都被屏蔽的 bug (原 key 只看 minutes, 8 条同 5min 全算重复).
+    副作用: 防双击/网络重传仍有效 (同一前端同一时刻连续 POST 仍被屏蔽).
+    """
     if not date or not (item_id and minutes):
         return None
-    cached = _dedup_cache.get((date, item_id, minutes))
+    key = (date, int(item_id), int(minutes), int(tempo_bpm or 0),
+           content or "", practice_at or "")
+    cached = _dedup_cache.get(key)
     if cached and (time.time() - cached[0]) < _DEDUP_WINDOW_SECONDS:
         return cached[1]
     return None
 
 
-def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict) -> None:
-    """记录 (date, item_id, minutes) → response JSON."""
+def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict,
+                   tempo_bpm: int = 0, content: str = "",
+                   practice_at: str = "") -> None:
+    """记录 (date, item_id, minutes, tempo_bpm, content, practice_at) → response JSON.
+    2026-08-01 fix: key 扩展 (见 _check_dedup docstring)."""
     if not date or not (item_id and minutes):
         return
-    _dedup_cache[(date, item_id, minutes)] = (time.time(), body_json)
+    key = (date, int(item_id), int(minutes), int(tempo_bpm or 0),
+           content or "", practice_at or "")
+    _dedup_cache[key] = (time.time(), body_json)
     if len(_dedup_cache) > 100:
         cutoff = time.time() - _DEDUP_WINDOW_SECONDS
         for k in list(_dedup_cache.keys()):
@@ -1442,7 +1456,8 @@ async def api_log(request: Request):
     date_key = str(date)
 
     # PR-D: 5s dedup — 同 (date, item_id, minutes) 5s 内重复 → 返缓存, 不再写 session/daily.
-    dedup_cached = _check_dedup(date_key, int(item_id), int(minutes))
+    dedup_cached = _check_dedup(date_key, int(item_id), int(minutes),
+                                  tempo_bpm, content, practice_at)
     if dedup_cached is not None:
         return JSONResponse(dedup_cached)
 
@@ -1458,7 +1473,8 @@ async def api_log(request: Request):
                 )
                 # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
                 resp = {"ok": True, "total": minutes, "session": s}
-                _record_dedup(date_key, int(item_id), int(minutes), resp)
+                _record_dedup(date_key, int(item_id), int(minutes), resp,
+                       tempo_bpm, content, practice_at)
                 return JSONResponse(resp)
             # 旧路径: 无 session detail, 只走 save_daily_practice
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
@@ -1468,7 +1484,8 @@ async def api_log(request: Request):
             for entry in behavior_entries:
                 db.append_behavior_log(date, entry)
             resp_legacy = {"ok": True, "total": minutes}
-            _record_dedup(date_key, int(item_id), int(minutes), resp_legacy)
+            _record_dedup(date_key, int(item_id), int(minutes), resp_legacy,
+                       tempo_bpm, content, practice_at)
             return JSONResponse(resp_legacy)
 
         # 正常打卡路径
@@ -1486,7 +1503,8 @@ async def api_log(request: Request):
                 "total": daily["total_minutes"] if daily else minutes,
                 "session": s,
             }
-            _record_dedup(date_key, int(item_id), int(minutes), resp_normal)
+            _record_dedup(date_key, int(item_id), int(minutes), resp_normal,
+                       tempo_bpm, content, practice_at)
             return JSONResponse(resp_normal)
 
         # 旧路径: 走 save_daily_practice 兼容逻辑 (不创建空 session, 避免污染 sessions 表)
@@ -1502,7 +1520,8 @@ async def api_log(request: Request):
             db.append_behavior_log(date, entry)
 
         resp_legacy_normal = {"ok": True, "total": total}
-        _record_dedup(date_key, int(item_id), int(minutes), resp_legacy_normal)
+        _record_dedup(date_key, int(item_id), int(minutes), resp_legacy_normal,
+                       tempo_bpm, content, practice_at)
         return JSONResponse(resp_legacy_normal)
 
     except ValueError as e:
