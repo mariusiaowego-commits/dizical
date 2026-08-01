@@ -1313,9 +1313,15 @@ async def api_practices_stage_image(
                 filename = f"stage-{order}-{ts}.png"
                 dest_path = os.path.join(report_dir, filename)
 
-                import urllib.request
+                # sprint-26080103 v2.1: 改用 urlopen + retry + ssl context, 解决 SSL EOF + timeout
+                # 老代码 urlretrieve 缺 retry + 缺 timeout, FAL CDN 偶发 UNEXPECTED_EOF
                 if image_source.startswith("http"):
-                    urllib.request.urlretrieve(image_source, dest_path)
+                    from src.kid_app.utils.image_extractor import _download_image_with_retry
+                    try:
+                        _download_image_with_retry(image_source, dest_path, result_queue=result_queue)
+                    except Exception as dl_err:
+                        result_queue.put(("error", f"下载 CDN 图片失败: {dl_err}"))
+                        return
                 else:
                     import shutil
                     shutil.copy2(image_source, dest_path)

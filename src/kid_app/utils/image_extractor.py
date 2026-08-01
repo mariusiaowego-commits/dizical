@@ -77,3 +77,51 @@ def extract_image_source(output: str) -> Optional[str]:
                 return cand
 
     return None
+
+
+def _download_image_with_retry(url: str, dest_path: str, result_queue=None,
+                                 max_retries: int = 3, backoff_base: float = 2.0,
+                                 timeout: int = 60) -> None:
+    """下载 URL 到本地, 失败 retry 3 次 (退避 2s/4s/8s), SSL/timeout 错误触发 retry.
+
+    Args:
+        url: 图片 URL (http/https)
+        dest_path: 本地保存路径
+        result_queue: 可选, SSE 状态队列 (跟前端通信)
+        max_retries: 最大重试次数
+        backoff_base: 退避基数秒 (第 N 次 = 2^N)
+        timeout: 单次超时秒
+
+    Raises:
+        Exception: 3 次都失败, 抛最后 1 次的 exception
+    """
+    import urllib.request
+    import urllib.error
+    import ssl
+    import socket
+    import time as _time
+
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = True
+    ssl_ctx.verify_mode = ssl.CERT_REQUIRED
+
+    last_err: Exception = RuntimeError("no attempt made")
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "dizical/1.0"})
+            with urllib.request.urlopen(req, timeout=timeout, context=ssl_ctx) as resp:
+                with open(dest_path, "wb") as f:
+                    while True:
+                        chunk = resp.read(8192)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+            return
+        except (urllib.error.URLError, ssl.SSLError, socket.timeout) as e:
+            last_err = e
+            if result_queue is not None:
+                result_queue.put(("status", f"下载失败重试 {attempt+1}/{max_retries}: {type(e).__name__}"))
+            if attempt < max_retries - 1:
+                _time.sleep(backoff_base ** attempt)  # 2s, 4s, 8s
+
+    raise last_err

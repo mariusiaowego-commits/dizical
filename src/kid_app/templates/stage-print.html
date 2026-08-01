@@ -346,15 +346,21 @@
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 9.5pt; min-width: 8mm; max-width: 10mm; padding: 0.5mm 0.2mm;  /* v2: 缩窄 8mm 加粗 */
+      font-size: 9.5pt; min-width: 8mm; max-width: 10mm;
+      text-align: center !important; vertical-align: middle !important;  /* v2.1: 显式居中 */
+      padding: 0.5mm 0;  /* v2.1: 去左右 padding 让数字真居中 */
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 9pt; min-width: 12mm; padding: 0.5mm 0.3mm;
+      font-size: 9pt; min-width: 12mm;
+      text-align: center !important; vertical-align: middle !important;  /* v2.1: 显式居中 */
+      padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-once {
       font-weight: 700; white-space: nowrap;  /* v2: 加粗 */
-      font-size: 9.5pt; min-width: 8mm; max-width: 10mm; padding: 0.5mm 0.2mm;  /* v2: 缩窄 8mm 加粗 */
+      font-size: 9.5pt; min-width: 8mm; max-width: 10mm;
+      text-align: center !important; vertical-align: middle !important;  /* v2.1: 显式居中 */
+      padding: 0.5mm 0;  /* v2.1: 去左右 padding 让数字真居中 */
     }
     table.matrix td.m-detail {
       text-align: left; padding: 0.8mm 1.2mm;
