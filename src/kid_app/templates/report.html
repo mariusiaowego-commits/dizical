@@ -216,6 +216,8 @@
     .trail-time { color: #999; font-size: 13px; min-width: 38px; }
     .trail-item-tag { background: #E3F2FD; padding: 3px 10px; border-radius: 12px; color: #1565C0; font-size: 14px; }
     .trail-mins { color: #888; font-size: 14px; }
+  .trail-content { color: #555; font-size: 14px; background: #F5F5F5; padding: 2px 8px; border-radius: 4px; }
+  .trail-tempo { color: #8B6914; font-size: 13px; background: #FDF6E3; padding: 2px 6px; border-radius: 4px; }
 
     /* 图例 */
     .dumbbell-legend { display: flex; gap: 16px; margin-top: 12px; font-size: 13px; color: #7F8C8D; flex-wrap: wrap; }
@@ -1033,6 +1035,12 @@ document.addEventListener('DOMContentLoaded', function() {
       html += '<div class="trail-item">';
       html += '<span class="trail-time">' + timeStr + '</span>';
       html += '<span class="trail-item-tag">' + (entry.item || '未知') + '</span>';
+      if (entry.content) {
+        html += '<span class="trail-content">' + escapeHtml(entry.content) + '</span>';
+      }
+      if (entry.tempo_bpm) {
+        html += '<span class="trail-tempo">' + (entry.tempo_note || '♪') + '=' + entry.tempo_bpm + '</span>';
+      }
       html += '<span class="trail-mins">' + (entry.minutes || 0) + '分钟</span>';
       html += '</div>';
     });

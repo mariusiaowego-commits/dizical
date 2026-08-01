@@ -2188,6 +2188,7 @@
             const row = document.createElement('div');
             row.className = 'record-session';
             row.setAttribute('data-item-id', escape(s.item_id));
+            row.setAttribute('data-session-id', s.id);
             if (tempoText) {
               const tempoSpan = document.createElement('span');
               tempoSpan.className = 'rs-tempo';
@@ -2293,7 +2294,8 @@
 
     function editSession(sessionId) {
       // 从 DOM 读当前行的 tempo + content 回填弹窗
-      const row = document.querySelector('.record-session:has(button[onclick*="editSession(' + sessionId + ')"])');
+      // 2026-08-01 fix: 改用 data-session-id 找行, 不依赖 inline onclick
+      const row = document.querySelector('.record-session[data-session-id="' + sessionId + '"]');
       if (!row) return;
       const tempoText = row.querySelector('.rs-tempo')?.textContent || '♪=80';
       const [note, bpmStr] = tempoText.split('=');
