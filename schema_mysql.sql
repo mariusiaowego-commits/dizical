@@ -123,6 +123,18 @@ CREATE TABLE practice_reports (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TABLE IF EXISTS `report_artifacts`;
+CREATE TABLE report_artifacts (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  kind TEXT NOT NULL,            -- 'stage_image' | 'badge_image' | 留扩展
+  ref_id TEXT,                   -- stage_order / badge_id
+  prompt TEXT,
+  image_path TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_kind (kind),
+  INDEX idx_ref (ref_id)
+);
+
 DROP TABLE IF EXISTS `practice_sessions`;
 CREATE TABLE practice_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

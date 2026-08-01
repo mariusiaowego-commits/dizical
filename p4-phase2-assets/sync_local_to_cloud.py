@@ -193,7 +193,7 @@ def main():
     # ─── Step 7: 其余表 (已等行) skip, 只报差异 ───
     other_tables = ['practice_categories','weekly_assignments','payments',
                     'achievements','achievement_stats','achievement_badges',
-                    'practice_reports','schema_migrations']
+                    'practice_reports','report_artifacts','schema_migrations']
     for t in other_tables:
         lc = local.execute(f'SELECT COUNT(*) FROM [{t}]').fetchone()[0]
         cloud.cursor().execute(f'SELECT COUNT(*) FROM {t}')

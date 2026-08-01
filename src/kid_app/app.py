@@ -1168,6 +1168,277 @@ def api_practices_stage_detail(
     return JSONResponse(payload)
 
 
+# ─── API: stage 维 report 图片 (sprint-26080103) ──────────────────────────────
+# 走 hermes chat + FAL GPT Image 2, 跟月报 /api/practice-report/generate 同模式
+# 落盘到 data/reports/stage-{order}-{timestamp}.png, 写 report_artifacts 表 (新表)
+
+
+def _resolve_stage(stage_order: Optional[int], date: Optional[str]) -> Optional[dict]:
+    """复用 api_practices_stage_detail 内部 stage 查询逻辑 (提取为共用 helper)."""
+    if stage_order is not None:
+        return db.get_stage_by_order(int(stage_order))
+    day_s = date
+    if not day_s:
+        day_s = dt.date.today().isoformat()
+    try:
+        day = dt.date.fromisoformat(day_s)
+    except ValueError:
+        return None
+    return db.get_stage_containing_date(day)
+
+
+def _filter_payload_by_days(payload: dict, days_csv: Optional[str]) -> dict:
+    """按 days CSV (逗号分隔 YYYY-MM-DD) 过滤 payload.days, 重算 summary / by_item."""
+    if not days_csv:
+        return payload
+    keep = {d.strip() for d in days_csv.split(",") if d.strip()}
+    if not keep:
+        return payload
+    days = [d for d in (payload.get("days") or []) if d.get("date") in keep]
+    total = sum(int(d.get("total_minutes") or 0) for d in days)
+    sess_n = sum(int(d.get("session_count") or 0) for d in days)
+    item_map: dict = {}
+    for d in days:
+        for g in d.get("groups") or []:
+            gid = g.get("item_id")
+            if gid is None:
+                continue
+            if gid not in item_map:
+                item_map[gid] = {
+                    "item_id": gid,
+                    "item_name": g.get("item_name") or "未知科目",
+                    "minutes": 0,
+                    "session_count": 0,
+                }
+            item_map[gid]["minutes"] += int(g.get("minutes") or 0)
+            item_map[gid]["session_count"] += len(g.get("sessions") or [])
+            if g.get("item_name"):
+                item_map[gid]["item_name"] = g["item_name"]
+    by_item = sorted(item_map.values(), key=lambda x: (-x["minutes"], x["item_id"]))
+    payload["days"] = days
+    payload["by_item"] = by_item
+    payload["summary"] = {
+        "total_minutes": total,
+        "practice_days": len(days),
+        "session_count": sess_n,
+        "item_count": len(by_item),
+    }
+    return payload
+
+
+@app.post("/api/practices/stage-image")
+async def api_practices_stage_image(
+    stage_order: Optional[int] = None,
+    date: Optional[str] = None,
+    days: Optional[str] = None,
+):
+    """生成 stage 维 report 图片 (SSE 流式状态).
+
+    复用 _build_stage_detail_payload 的数据, 走 hermes + FAL GPT Image 2.
+    days: 可选, "2026-07-01,2026-07-02,..." 过滤; 不传=全 stage 日子.
+    落盘: data/reports/stage-{order}-{timestamp}.png
+    写表: report_artifacts (kind='stage_image', ref_id=stage_order)
+    """
+    from src.report_templates import build_stage_image_prompt
+    from src.database import db as _db  # noqa: F401  # 用 _db._get_connection() 写表
+
+    stage = _resolve_stage(stage_order, date)
+    if not stage:
+        return JSONResponse(
+            {"ok": False, "error": "找不到 stage (stage_order/date 都不在已有 stage 范围内)"},
+            status_code=404,
+        )
+    payload = _build_stage_detail_payload(stage)
+    if payload.get("error"):
+        return JSONResponse({"ok": False, "error": payload["error"]}, status_code=400)
+    payload = _filter_payload_by_days(payload, days)
+
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
+    from fastapi.responses import StreamingResponse
+    import json as _json
+    import threading
+    import queue as _q
+    from datetime import datetime as _dt
+
+    def _generate_stream():
+        result_queue: "_q.Queue" = _q.Queue()
+
+        def run_generation():
+            try:
+                result_queue.put(("status", "构建 prompt..."))
+                prompt, aspect_ratio = build_stage_image_prompt(payload, child_name())
+                result_queue.put(("status", f"Prompt 已构建（{len(prompt)} 字符）· {aspect_ratio}"))
+
+                import subprocess
+                import tempfile
+                result_queue.put(("status", "正在调用 hermes + FAL gpt-image-2 生成图片，约需 30-60 秒..."))
+                query = f"用 image_generate 工具生成图片，prompt 如下，aspect_ratio 用 {aspect_ratio}：\n\n{prompt}"
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+                    f.write(query)
+                    tmp_path = f.name
+                shell_cmd = f'hermes chat -q "$(cat {tmp_path})" -t image_gen --yolo -Q'
+                proc = subprocess.Popen(
+                    shell_cmd, shell=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    cwd=project_root, bufsize=1, text=True,
+                )
+                output_lines = []
+                stdout = proc.stdout
+                if stdout is not None:
+                    for line in stdout:
+                        line = line.rstrip()
+                        output_lines.append(line)
+                        result_queue.put(("output", line))
+                proc.wait(timeout=120)
+                output = "\n".join(output_lines)
+                result_queue.put(("status", f"hermes 进程结束 (exit={proc.returncode})"))
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+                image_source = None
+                for line in output.split("\n"):
+                    line = line.strip()
+                    if "MEDIA:" in line:
+                        parts = line.split("MEDIA:")
+                        if len(parts) > 1:
+                            cand = parts[1].strip().split()[0]
+                            if os.path.exists(cand):
+                                image_source = cand
+                                break
+                    if line.startswith("http") and (".png" in line or ".jpg" in line or "fal" in line):
+                        image_source = line
+                        break
+                    if line.startswith("/") and (line.endswith(".png") or line.endswith(".jpg")):
+                        if os.path.exists(line):
+                            image_source = line
+                            break
+                if not image_source:
+                    result_queue.put(("error", f"未找到图片。hermes 输出:\n{output[:300]}"))
+                    return
+
+                result_queue.put(("status", "图片已获取，正在保存..."))
+                report_dir = os.path.join(project_root, "data", "reports")
+                os.makedirs(report_dir, exist_ok=True)
+                ts = _dt.now().strftime("%Y%m%d-%H%M")
+                order = payload.get("stage_order")
+                filename = f"stage-{order}-{ts}.png"
+                dest_path = os.path.join(report_dir, filename)
+
+                import urllib.request
+                if image_source.startswith("http"):
+                    urllib.request.urlretrieve(image_source, dest_path)
+                else:
+                    import shutil
+                    shutil.copy2(image_source, dest_path)
+
+                result_queue.put(("status", "图片已保存，正在记录到数据库..."))
+                with _db._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "CREATE TABLE IF NOT EXISTS report_artifacts ("
+                        " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        " kind TEXT NOT NULL,"
+                        " ref_id TEXT,"
+                        " prompt TEXT,"
+                        " image_path TEXT NOT NULL,"
+                        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                        ")"
+                    )
+                    cur.execute(
+                        "INSERT INTO report_artifacts (kind, ref_id, prompt, image_path) VALUES (?, ?, ?, ?)",
+                        ("stage_image", str(order) if order is not None else None, prompt, dest_path),
+                    )
+                    artifact_id = cur.lastrowid
+                    conn.commit()
+
+                result_queue.put(("done", {
+                    "ok": True,
+                    "report_id": artifact_id,
+                    "image_path": dest_path,
+                    "image_url": f"/api/practices/stage-image/file/{artifact_id}",
+                    "stage_order": order,
+                }))
+            except Exception as e:
+                result_queue.put(("error", str(e)))
+
+        thread = threading.Thread(target=run_generation, daemon=True)
+        thread.start()
+
+        while True:
+            try:
+                msg_type, msg_data = result_queue.get(timeout=125)
+            except _q.Empty:
+                yield f"data: {_json.dumps({'type': 'error', 'message': '生成超时（125秒）'})}\n\n"
+                break
+            if msg_type == "status":
+                yield f"data: {_json.dumps({'type': 'status', 'message': msg_data})}\n\n"
+            elif msg_type == "output":
+                yield f"data: {_json.dumps({'type': 'output', 'message': msg_data})}\n\n"
+            elif msg_type == "error":
+                yield f"data: {_json.dumps({'type': 'error', 'message': msg_data})}\n\n"
+                break
+            elif msg_type == "done":
+                yield f"data: {_json.dumps({'type': 'done', 'data': msg_data})}\n\n"
+                break
+
+        thread.join(timeout=5)
+
+    return StreamingResponse(
+        _generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.get("/api/practices/stage-image/file/{artifact_id}")
+def api_stage_image_file(artifact_id: int):
+    """返回 stage 维 report 图片文件 (跟月报 /api/practice-report/image/{id} 同款)."""
+    from src.database import db as _db
+    from fastapi.responses import FileResponse
+    with _db._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT image_path FROM report_artifacts WHERE id=?", (artifact_id,))
+        row = cur.fetchone()
+    if not row:
+        return JSONResponse({"ok": False, "error": "report not found"}, status_code=404)
+    image_path = row["image_path"] if isinstance(row, dict) else row[0]
+    if not image_path or not os.path.exists(image_path):
+        return JSONResponse({"ok": False, "error": "image file missing"}, status_code=404)
+    return FileResponse(image_path, media_type="image/png")
+
+
+@app.get("/api/practices/stage-image/history")
+def api_stage_image_history(limit: int = 20):
+    """查最近 N 个 stage 维 report artifact."""
+    from src.database import db as _db
+    with _db._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, kind, ref_id, image_path, created_at FROM report_artifacts "
+            "WHERE kind='stage_image' ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cur.fetchall()
+    out = []
+    for r in rows:
+        out.append({
+            "id": r["id"] if isinstance(r, dict) else r[0],
+            "kind": r["kind"] if isinstance(r, dict) else r[1],
+            "stage_order": r["ref_id"] if isinstance(r, dict) else r[2],
+            "image_path": r["image_path"] if isinstance(r, dict) else r[3],
+            "image_url": f"/api/practices/stage-image/file/{r['id'] if isinstance(r, dict) else r[0]}",
+            "created_at": r["created_at"] if isinstance(r, dict) else r[4],
+        })
+    return JSONResponse({"ok": True, "artifacts": out})
+
+
 @app.get("/api/practices/{date_str}")
 def api_practice_day(date_str: str):
     """返回指定日期的练习明细 (兼容旧 items 字段, 2026-07-27 新增 sessions[])"""
