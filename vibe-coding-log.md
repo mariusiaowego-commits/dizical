@@ -1,3 +1,30 @@
+## 2026-08-01 Sprint 1 v2 收尾 · practice-log 多 session + 字号放大 (PR #208 MERGED)
+
+- dad 反馈 3 选: (1) 1 科目录多个练习细节 (2) BPM 数据错误 西藏舞曲 7-26 应该是 ♪=80 不是 ♩=66 (3) 应用默认按钮太麻烦
+- 4 commit 链 squash merge → main a1fb1b8:
+  - 89db23c v1: 选中科目后展示 session 细节 + 默认速度
+  - 1defd15 fix(api): assignments/latest lesson_date 序列化 (date→str, Pydantic V2 兼容)
+  - 586695c v2: 1 科目多 session 录入 + 修复 BPM 错误
+  - 8f46b19 polish: v2 字号 × 1.3 + 加一次按钮样式
+- 关键根因: /api/assignments/latest 遍历 DB 升序返最早一条 (6-13 ♩=66) → 改 reversed() 倒序 + 宽松匹配
+- 关键根因 2: date 对象 JSON 序列化 throw → str(ld) 兜底
+- dad 拍板: Q1=A 1 科目多 session / Q2=A 替换 / Q3=A 立刻填 / Q4=C 加按钮 (v2 改为自动)
+- 验证: 浏览器 E2E (date / sel 11 items / subRows 1 / hint "📋 2026-07-26 ♪=80 · 上次老师要求...") + pytest 25/25
+- 文档: `tqob/05-Coding/project-dizical/sprints/sprint-01-practice-log-defaults-2026-08-01/`
+- 实测 v2 字段: entry.sessions[] (分钟+音符+BPM+预设+标签+内容, 选科目自动加 1 个空 session, 加一次复制上一 session tempo)
+- 提交: 走 N 次 /api/log (5s dedup 兜底 + 100ms 间隔, batch API 下期 sprint)
+
+## 2026-08-01 Phase2 research + 云直连验证 · 暂停
+
+- PR #200 确认已 MERGED (94d5e66, 7-29) — "OPEN 待合"是过时信息
+- Issue #207 开: updateReqPanel innerHTML XSS 遗留
+- 双仓库 MOA research 完成 → `.hermes/plans/2026-07-31-phase2-research-reference.md` (全证据)
+- **核心结论: web/mac 能用云数据库** — CloudBase MySQL 直连服务外网地址 (数据库设置 tab, 非连接管理), 7-17 迁移 792 行已实测
+- dad 拍板: Q1=A 本地覆盖云 / Q2=A 幂等键 / Q3=B 拆 3 步 / Q4=A 解除红线
+- 关键发现: MySQL 端读改写无锁无幂等 (唯一防线 5s 单实例 dedup); minip apiCall 8s 超时双发 → 落两条风险
+- ⚠️ dad 误销毁云 MySQL 实例, 数据恢复中 → 联云暂停, handoff 详细待续
+- 叫停: dad 差点切资源点计费 (连接器≠直连服务, 已说明, 未切)
+
 ## 2026-07-31 分支清理 · 收尾
 
 - 关闭 PR #181 (修复已在 main by #180/#182/#179)

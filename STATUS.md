@@ -1,6 +1,48 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-07-31 (分支清理: 18 个 merged 分支删除 + PR #181 关闭)
+**最后更新**: 2026-08-01 (sprint 1 v2 merged, PR #208 done)
+
+---
+
+### 2026-08-01 Sprint 1 收尾 — practice-log 默认值 + 多 session 录入 (PR #208 MERGED)
+
+**触发**: dad 3 反馈: (1) 1 科目录多个练习细节 (2) BPM 数据错误 西藏舞曲 7-26 应该是 ♪=80 不是 ♩=66 (3) 应用默认按钮太麻烦, 选中科目立刻填
+
+**完成 (4 commit 链 squash merge)**:
+- ✅ 89db23c v1: 选中科目后展示 session 细节 + 默认速度 (sprint 1 v1)
+- ✅ 1defd15 fix(api): assignments/latest lesson_date 序列化 (date→str, Pydantic V2 兼容)
+- ✅ 586695c v2: 1 科目多 session 录入 + 修复 BPM 错误 (Q1+Q2 全部解决)
+- ✅ 8f46b19 polish: v2 字号 × 1.3 + 加一次按钮样式 (Q4 polish)
+- ✅ PR #208 squash merged → main a1fb1b8 (4 commits)
+- ✅ Service E2E 实跑: date 2026-08-01, sel 11 items, subRows 1, hintText "📋 2026-07-26 ♪=80 · 上次老师要求..."
+- ✅ pytest 25/25 passed (test_practice_sessions + test_api_log_dedup + test_schemas_practice_log)
+
+**dad 拍板 (Q1-Q4)**: Q1=A 1 科目多 session / Q2=A 替换 / Q3=A 立刻填 / Q4=C 加按钮 (后 v2 改为自动)
+
+**根因记录 (sprint 1 实战)**:
+- /api/assignments/latest 之前返 6-13 那条 ♩=66, 因 DB 升序返了最早一条 → 改 reversed() + 宽松匹配
+- /api/assignments/latest 之前 500, 返 found=True 时 lesson_date (date 对象) JSON 序列化 throw → str(ld) 兜底
+
+**Sprint 文档**: `tqob/05-Coding/project-dizical/sprints/sprint-01-practice-log-defaults-2026-08-01/`
+
+---
+
+### 2026-08-01 Phase2 重新规划 research (云数据事故, 联云暂停)
+
+**触发**: dad "三端统一云数据库 + CRUD 加锁防多端重复添加, 重新 plan" + "web/mac 能不能用云数据库"
+
+**完成**:
+- ✅ 确认 PR #200 已 MERGED (94d5e66, 7-29) — 信息过时, 无需动作
+- ✅ Issue #207 已开 (updateReqPanel innerHTML XSS 遗留)
+- ✅ 双仓库 MOA research (dizical + dizical-minip, 全证据 file:line) → `.hermes/plans/2026-07-31-phase2-research-reference.md`
+- ✅ 核心验证: **web/mac 能用云数据库** (CloudBase MySQL 直连服务外网地址, 7-17 已实测)
+- ✅ dad 拍板: Q1=A 本地覆盖云 / Q2=A 幂等键 / Q3=B 拆 3 步 / Q4=A 解除红线
+
+**意外**: dad 误销毁云 MySQL 实例, 数据恢复中 → 联云测试暂停, 下次再做
+
+**下次接续**: 云恢复 → 建 dizical 专用账号 → 本地实测连接 → Q3=B 三步实施 (① 2 fix+幂等键 ② 迁移+同步 ③ 切云+验证+备份)
+
+**详细**: `handoff-2026-08-01-phase2-research-clouddb.md` (双写 md5 971d4d86 一致)
 
 ---
 
