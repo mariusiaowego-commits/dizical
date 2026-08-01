@@ -1281,13 +1281,14 @@ def api_assignments_latest(item_id: int):
                 metronome = (it.get("metronome") or "").strip()
                 m = re.match(r"^([♪♩♬♯])=(\d+)$", metronome)
                 if m:
+                    ld = a.get("lesson_date")
                     return JSONResponse({
                         "ok": True,
                         "found": True,
                         "item_id": target_id,
                         "tempo_note": m.group(1),
                         "tempo_bpm": int(m.group(2)),
-                        "lesson_date": a.get("lesson_date"),
+                        "lesson_date": str(ld) if ld else None,
                     })
     return JSONResponse({
         "ok": True,
