@@ -510,14 +510,49 @@
     .log-tempo-row .tempo-note-mini.selected {
       background: #FF6B6B; color: #fff; border-color: #FF6B6B;
     }
-    .log-tempo-row .tempo-bpm-mini {
-      width: 56px; padding: 4px 6px; font-size: 13px; border-radius: 6px;
-      border: 1px solid #ddd; text-align: center;
+    .log-tempo-row .bpm-stepper {
+      display: inline-flex; align-items: center; gap: 2px;
+      background: #FFF8F0; border: 1px solid #E8D8B0; border-radius: 8px;
+      padding: 1px 4px;
     }
-    .log-tempo-row .tempo-content-mini {
-      flex: 1; min-width: 120px; padding: 4px 8px; font-size: 13px;
-      border-radius: 6px; border: 1px solid #ddd;
+    .log-tempo-row .bpm-step {
+      width: 22px; height: 22px; border: none; background: transparent;
+      cursor: pointer; font-size: 14px; font-weight: 700; color: #8B6914;
+      border-radius: 4px;
     }
+    .log-tempo-row .bpm-step:hover { background: #F5E6C8; }
+    .log-tempo-row .bpm-value {
+      min-width: 30px; text-align: center; font-weight: 600; color: #5D4037;
+      font-size: 13px;
+    }
+    .log-tempo-hint {
+      font-size: 11px; color: #8B6914; margin-top: 2px; width: 100%;
+    }
+    .log-bpm-presets {
+      display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; width: 100%;
+    }
+    .bpm-preset-mini {
+      padding: 2px 8px; background: #FFF8F0; border: 1px solid #E8D8B0;
+      border-radius: 6px; font-size: 11px; color: #8B6914; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .bpm-preset-mini:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
+    .log-content-tags {
+      display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; width: 100%;
+    }
+    .sp-content-tag-mini {
+      padding: 3px 10px; background: #F0E8D0; border: 1px solid #D4B886;
+      border-radius: 14px; font-size: 11px; color: #5D4037; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sp-content-tag-mini:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
+    .apply-default-btn {
+      padding: 4px 10px; font-size: 11px; border: 1px solid #a8d5ba;
+      background: rgba(168,213,186,0.15); color: #2E7D32;
+      border-radius: 6px; cursor: pointer; flex-shrink: 0;
+    }
+    .apply-default-btn:hover { background: rgba(168,213,186,0.3); }
+    .apply-default-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .log-entry-row .entry-bottom textarea {
       flex: 1;
@@ -796,6 +831,7 @@ function renderLogEntries() {
     if (!entry.content) entry.content = '';
     const row = document.createElement('div');
     row.className = 'log-entry-row';
+    row.setAttribute('data-idx', i);
     row.innerHTML = `
       <div class="entry-top">
         <select class="form-select item-select" data-idx="${i}">
@@ -803,25 +839,60 @@ function renderLogEntries() {
           ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
         </select>
         <input type="number" class="form-input minutes-input" data-idx="${i}" placeholder="分钟" value="${entry.minutes || ''}" min="1" style="width:80px">
+        <button type="button" class="apply-default-btn" data-idx="${i}" ${entry.item_id ? '' : 'disabled'}>应用默认</button>
         <button class="remove-btn" data-idx="${i}">×</button>
       </div>
       <div class="log-tempo-row" data-idx="${i}">
         <button type="button" class="tempo-note-mini${entry.tempo_note === '♪' ? ' selected' : ''}" data-note="♪" data-idx="${i}">♪</button>
         <button type="button" class="tempo-note-mini${entry.tempo_note === '♩' ? ' selected' : ''}" data-note="♩" data-idx="${i}">♩</button>
         <span>=</span>
-        <input type="number" class="tempo-bpm-mini" data-idx="${i}" value="${entry.tempo_bpm}" min="40" max="150">
-        <input type="text" class="tempo-content-mini" data-idx="${i}" placeholder="练什么?" value="${entry.content || ''}" maxlength="200">
-      </div>`;
+        <div class="bpm-stepper">
+          <button type="button" class="bpm-step" data-idx="${i}" data-delta="-1">−</button>
+          <span class="bpm-value" data-idx="${i}">${entry.tempo_bpm}</span>
+          <button type="button" class="bpm-step" data-idx="${i}" data-delta="1">+</button>
+        </div>
+        <input type="hidden" class="tempo-bpm-input" data-idx="${i}" value="${entry.tempo_bpm}">
+      </div>
+      <div class="log-tempo-hint" data-idx="${i}">♪ = ${entry.tempo_bpm} (默认)</div>
+      <div class="log-bpm-presets" data-idx="${i}"></div>
+      <div class="log-content-tags" data-idx="${i}"></div>
+      <input type="text" class="log-content-input" data-idx="${i}" placeholder="练什么? 例如: 第一分句连吐" value="${entry.content || ''}" maxlength="200" style="width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-top:2px">
+    `;
     container.appendChild(row);
   });
 
-  // 事件: item select / minutes
+  // 事件: item select (切科目清空 entry.speed, 启用应用默认按钮)
   container.querySelectorAll('.item-select').forEach(sel => {
     sel.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
-      logEntries[idx].item_id = parseInt(e.target.value);
+      const itemId = parseInt(e.target.value);
+      logEntries[idx].item_id = itemId || null;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       logEntries[idx].item = item ? item.name : '';
+      // 切换科目清空 entry 的 tempo/content, 跟 practice 一致
+      logEntries[idx].tempo_note = '♪';
+      logEntries[idx].tempo_bpm = 80;
+      logEntries[idx].content = '';
+      // 启用/禁用 应用默认按钮
+      const applyBtn = container.querySelector(`.apply-default-btn[data-idx="${idx}"]`);
+      if (applyBtn) applyBtn.disabled = !itemId;
+      // 重置 DOM 状态
+      const row = container.querySelector(`.log-entry-row[data-idx="${idx}"]`);
+      if (row) {
+        row.querySelectorAll('.tempo-note-mini').forEach(b => b.classList.remove('selected'));
+        row.querySelector('.tempo-note-mini[data-note="♪"]')?.classList.add('selected');
+        row.querySelector(`.bpm-value[data-idx="${idx}"]`).textContent = '80';
+        row.querySelector(`.tempo-bpm-input[data-idx="${idx}"]`).value = '80';
+        const hint = row.querySelector('.log-tempo-hint');
+        if (hint) hint.textContent = '♪ = 80 (默认)';
+        const contentInput = row.querySelector('.log-content-input');
+        if (contentInput) contentInput.value = '';
+        // 清空 presets/tags (等点了应用默认才渲染)
+        const presets = row.querySelector('.log-bpm-presets');
+        const tags = row.querySelector('.log-content-tags');
+        if (presets) presets.innerHTML = '';
+        if (tags) tags.innerHTML = '';
+      }
     });
   });
   container.querySelectorAll('.minutes-input').forEach(inp => {
@@ -835,24 +906,36 @@ function renderLogEntries() {
   container.querySelectorAll('.tempo-note-mini').forEach(btn => {
     btn.addEventListener('click', e => {
       const idx = parseInt(e.target.dataset.idx);
-      const row = container.querySelector(`.log-tempo-row[data-idx="${idx}"]`);
+      const row = container.querySelector(`.log-entry-row[data-idx="${idx}"]`);
       row.querySelectorAll('.tempo-note-mini').forEach(b => b.classList.remove('selected'));
       e.target.classList.add('selected');
       logEntries[idx].tempo_note = e.target.dataset.note;
+      // 同步 hint (去掉 source 后缀)
+      const bpm = parseInt(row.querySelector('.tempo-bpm-input').value) || 80;
+      const hint = row.querySelector('.log-tempo-hint');
+      if (hint) hint.textContent = e.target.dataset.note + ' = ' + bpm;
     });
   });
-  // 事件: tempo bpm
-  container.querySelectorAll('.tempo-bpm-mini').forEach(inp => {
-    inp.addEventListener('change', e => {
+  // 事件: BPM stepper +/−
+  container.querySelectorAll('.bpm-step').forEach(btn => {
+    btn.addEventListener('click', e => {
       const idx = parseInt(e.target.dataset.idx);
-      logEntries[idx].tempo_bpm = parseInt(e.target.value) || 80;
+      const delta = parseInt(e.target.dataset.delta);
+      stepEntryBpm(delta, idx);
     });
   });
   // 事件: content
-  container.querySelectorAll('.tempo-content-mini').forEach(inp => {
+  container.querySelectorAll('.log-content-input').forEach(inp => {
     inp.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
       logEntries[idx].content = e.target.value;
+    });
+  });
+  // 事件: 应用默认按钮
+  container.querySelectorAll('.apply-default-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      applyDefaultBtnHandler(idx);
     });
   });
   // 事件: remove
@@ -869,6 +952,143 @@ document.getElementById('addEntryBtn').addEventListener('click', () => {
   logEntries.push({ item_id: null, item: '', minutes: 0 });
   renderLogEntries();
 });
+
+// ── 应用默认: 复用 practice 的 3 级 fallback 链 (老师要求 → 上次 → 默认) ──
+async function fillEntryDefaults(idx) {
+  const entry = logEntries[idx];
+  if (!entry || !entry.item_id) return;
+  const itemId = entry.item_id;
+
+  // 1. 老师要求
+  try {
+    let r = await fetch('/api/assignments/latest?item_id=' + itemId);
+    let d = await r.json();
+    if (d.found && d.tempo_note) {
+      applyEntryTempo(idx, d.tempo_note, d.tempo_bpm, '老师要求');
+      return;
+    }
+  } catch(e) {}
+
+  // 2. 上次
+  try {
+    let r = await fetch('/api/practice-sessions/latest?item_id=' + itemId);
+    let d = await r.json();
+    if (d.found && d.tempo_note) {
+      applyEntryTempo(idx, d.tempo_note, d.tempo_bpm, '上次');
+      return;
+    }
+  } catch(e) {}
+
+  // 3. 默认
+  applyEntryTempo(idx, '♪', 80, '默认');
+}
+
+function applyEntryTempo(idx, note, bpm, source) {
+  const row = document.querySelector(`.log-entry-row[data-idx="${idx}"]`);
+  if (!row) return;
+  // 音符按钮
+  row.querySelectorAll('.tempo-note-mini').forEach(b => b.classList.remove('selected'));
+  row.querySelector(`.tempo-note-mini[data-note="${note}"]`)?.classList.add('selected');
+  // BPM 显示 + 隐藏 input
+  row.querySelector(`.bpm-value[data-idx="${idx}"]`).textContent = bpm;
+  row.querySelector(`.tempo-bpm-input[data-idx="${idx}"]`).value = bpm;
+  // hint
+  row.querySelector('.log-tempo-hint').textContent = note + ' = ' + bpm + ' (' + source + ')';
+  // 同步到 logEntries[idx]
+  logEntries[idx].tempo_note = note;
+  logEntries[idx].tempo_bpm = bpm;
+  // 渲染预设 + 标签
+  renderEntryBpmPresets(idx);
+  renderEntryContentTags(idx);
+}
+
+function stepEntryBpm(delta, idx) {
+  const input = document.querySelector(`.tempo-bpm-input[data-idx="${idx}"]`);
+  let v = parseInt(input.value) || 80;
+  v = Math.max(40, Math.min(150, v + delta));
+  input.value = v;
+  document.querySelector(`.bpm-value[data-idx="${idx}"]`).textContent = v;
+  logEntries[idx].tempo_bpm = v;
+  // 同步 hint (去掉 source 后缀)
+  const note = document.querySelector(`.log-entry-row[data-idx="${idx}"] .tempo-note-mini.selected`)?.dataset?.note || '♪';
+  const hint = document.querySelector(`.log-tempo-hint[data-idx="${idx}"]`);
+  if (hint) hint.textContent = note + ' = ' + v;
+}
+
+function setEntryBpm(bpm, idx) {
+  bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
+  document.querySelector(`.tempo-bpm-input[data-idx="${idx}"]`).value = bpm;
+  document.querySelector(`.bpm-value[data-idx="${idx}"]`).textContent = bpm;
+  logEntries[idx].tempo_bpm = bpm;
+  // 同步 hint (去掉 source)
+  const note = document.querySelector(`.log-entry-row[data-idx="${idx}"] .tempo-note-mini.selected`)?.dataset?.note || '♪';
+  const hint = document.querySelector(`.log-tempo-hint[data-idx="${idx}"]`);
+  if (hint) hint.textContent = note + ' = ' + bpm;
+}
+
+function renderEntryBpmPresets(idx) {
+  const entry = logEntries[idx];
+  if (!entry || !entry.item_id) return;
+  const container = document.querySelector(`.log-bpm-presets[data-idx="${idx}"]`);
+  if (!container) return;
+  const presets = [60, 80, 100, 120];
+  // 当前 BPM 提前
+  const cur = parseInt(entry.tempo_bpm) || 80;
+  const list = [cur, ...presets.filter(p => p !== cur)];
+  // 去重 + 限制 5 个
+  const uniq = [...new Set(list)].slice(0, 5);
+  container.innerHTML = uniq.map(p =>
+    `<span class="bpm-preset-mini" data-bpm="${p}">${p}</span>`
+  ).join('');
+  // 事件 (render 时再绑, 避免多次 bind)
+  container.querySelectorAll('.bpm-preset-mini').forEach(btn => {
+    btn.addEventListener('click', () => setEntryBpm(btn.dataset.bpm, idx));
+  });
+}
+
+function renderEntryContentTags(idx) {
+  const entry = logEntries[idx];
+  if (!entry || !entry.item_id) return;
+  const container = document.querySelector(`.log-content-tags[data-idx="${idx}"]`);
+  if (!container) return;
+  const item = practiceItems.find(it => it.item_id == entry.item_id);
+  let options = [];
+  if (item && item.content_options) {
+    options = String(item.content_options).split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  }
+  if (!options.length) options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
+  container.innerHTML = options.map(opt => {
+    const safe = opt.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    return `<span class="sp-content-tag-mini" data-content="${safe}">${opt}</span>`;
+  }).join('');
+  // 事件
+  container.querySelectorAll('.sp-content-tag-mini').forEach(btn => {
+    btn.addEventListener('click', () => setEntryContent(btn.dataset.content, idx));
+  });
+}
+
+function setEntryContent(text, idx) {
+  const input = document.querySelector(`.log-content-input[data-idx="${idx}"]`);
+  if (input) {
+    input.value = text;
+    logEntries[idx].content = text;
+  }
+}
+
+function applyDefaultBtnHandler(idx) {
+  const entry = logEntries[idx];
+  if (!entry || !entry.item_id) {
+    alert('请先选择科目');
+    return;
+  }
+  // R4: 防误覆盖 — 只在 content 已填时确认
+  if (entry.content && entry.content.trim()) {
+    if (!confirm('已填写练习内容, 应用默认将保留你填的速度但重置内容标签, 继续?')) {
+      return;
+    }
+  }
+  fillEntryDefaults(idx);
+}
 
 document.getElementById('submitLogBtn').addEventListener('click', async () => {
   const date = document.getElementById('logDate').value;
