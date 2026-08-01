@@ -45,6 +45,8 @@
       display: inline-flex; align-items: center; gap: 4px;
     }
     .btn-print { background: var(--accent); color: #fff; font-weight: 600; }
+    .btn-image { background: #4ecdc4; color: #fff; font-weight: 600; }
+    .btn-image:disabled { background: #b0d8d4; cursor: wait; opacity: 0.7; }
     .btn-back { background: #ede8e0; color: var(--ink); }
     .btn-ghost {
       appearance: none; border: 1px solid var(--line); background: #fff;
@@ -122,15 +124,14 @@
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
-    /* 表格视图: A4 横向 297×210，固定高度撑满页脚 */
+    /* 表格视图: A4 横向，屏上不限制高度（可滚动），打印自然分页 */
     .paper.is-table.is-landscape {
       width: 297mm;
-      height: 210mm;
       min-height: 210mm;
-      max-height: 210mm;
+      max-height: none;  /* sprint 26080103: 屏上允许超出 A4, 滚动查看 */
       padding: 4mm 5mm 4mm;
       box-sizing: border-box;
-      overflow: hidden;
+      overflow: visible;
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -177,8 +178,7 @@
       background: #f3efe6; border-radius: 3px; padding: 0.6mm 1.5mm;
     }
     .overview .ov b { color: var(--ink); font-weight: 600; }
-
-    .days { font-size: 7.2pt; }
+    .days { font-size: 9.5pt; }  /* sprint 26080103: iPad mini 上从 7.2pt 提 */
     .day-block {
       margin-bottom: 1.8mm;
       break-inside: avoid;
@@ -187,14 +187,14 @@
       display: flex; justify-content: space-between; align-items: baseline;
       background: #3d2e1e; color: #fffef9;
       padding: 0.8mm 1.8mm; border-radius: 2px;
-      font-size: 7.5pt; font-weight: 600;
+      font-size: 9.5pt; font-weight: 600;
       margin-bottom: 0.8mm;
     }
-    .day-head .dh-meta { font-weight: 400; opacity: 0.9; font-size: 7pt; }
+    .day-head .dh-meta { font-weight: 400; opacity: 0.9; font-size: 8.5pt; }
 
     .item-block { margin: 0 0 1mm 0.5mm; }
     .item-head {
-      font-weight: 700; font-size: 7.4pt; color: var(--ink);
+      font-weight: 700; font-size: 9.2pt; color: var(--ink);
       border-left: 2px solid var(--accent); padding-left: 1.5mm;
       margin-bottom: 0.4mm;
     }
@@ -202,23 +202,23 @@
 
     table.sess {
       width: 100%; border-collapse: collapse;
-      font-size: 6.8pt;
+      font-size: 8.8pt;  /* sprint 26080103: 从 6.8pt 提 */
     }
     table.sess th {
       text-align: left; font-weight: 600; color: var(--muted);
-      border-bottom: 1px solid var(--line); padding: 0.3mm 0.8mm;
-      font-size: 6.5pt;
+      border-bottom: 1px solid var(--line); padding: 0.6mm 1.2mm;
+      font-size: 8pt;
     }
     table.sess td {
-      padding: 0.35mm 0.8mm; vertical-align: top;
+      padding: 0.8mm 1.2mm; vertical-align: top;
       border-bottom: 1px dotted #efe6d6;
-      line-height: 1.3;
+      line-height: 1.4;
     }
-    table.sess .c-time { width: 9mm; white-space: nowrap; color: var(--muted); }
-    table.sess .c-mins { width: 7mm; white-space: nowrap; font-weight: 600; text-align: right; }
-    table.sess .c-tempo { width: 12mm; white-space: nowrap; color: var(--gold); font-weight: 600; }
+    table.sess .c-time { min-width: 12mm; white-space: nowrap; color: var(--muted); }
+    table.sess .c-mins { min-width: 8mm; white-space: nowrap; font-weight: 600; text-align: right; }
+    table.sess .c-tempo { min-width: 14mm; white-space: nowrap; color: var(--gold); font-weight: 600; }
     table.sess .c-extra {
-      width: 8mm; text-align: center;
+      width: 10mm; text-align: center;
     }
     .tag-extra {
       display: inline-block; font-size: 6pt; padding: 0 1.2mm;
@@ -304,94 +304,95 @@
     .view-table-wrap { margin-top: 0; overflow-x: auto; }
     table.matrix {
       width: 100%; border-collapse: collapse;
-      font-size: 8pt; /* 主表可读字号 */
-      table-layout: fixed;
+      font-size: 11pt; /* sprint 26080103: iPad mini 横屏主表可读字号 (从 8pt) */
+      table-layout: auto;  /* sprint 26080103: 取消 fixed, 改自适应, min-width 保底 */
     }
     table.matrix thead th {
       background: #3d2e1e; color: #fffef9;
       font-weight: 600; text-align: center;
       border: 0.25pt solid #2a2015;
-      padding: 0.7mm 0.3mm;
-      line-height: 1.15;
+      padding: 1mm 0.5mm;
+      line-height: 1.2;
     }
     table.matrix thead th.th-item {
-      background: #2a2015; width: 14mm; font-size: 8pt;
+      background: #2a2015; min-width: 22mm; font-size: 11pt;
     }
     table.matrix thead th.th-day {
-      font-size: 8pt; letter-spacing: 0.15px;
+      font-size: 11pt; letter-spacing: 0.15px;
       border-left: 1pt solid #c9a030;
     }
     table.matrix thead th.th-sub {
-      background: #5c4a36; font-size: 6.5pt; font-weight: 500;
-      padding: 0.45mm 0.2mm;
+      background: #5c4a36; font-size: 8.5pt; font-weight: 500;
+      padding: 0.6mm 0.3mm;
     }
     table.matrix thead th.th-sub.th-first { border-left: 1pt solid #c9a030; }
-    table.matrix thead th.th-sub.th-detail { font-size: 7pt; }
+    table.matrix thead th.th-sub.th-detail { font-size: 9pt; }
     table.matrix tbody td {
       border: 0.25pt solid #e0d4c0;
-      padding: 0.55mm 0.35mm;
+      padding: 0.8mm 0.5mm;
       vertical-align: middle;
       text-align: center;
-      line-height: 1.2;
+      line-height: 1.25;
       word-break: break-word;
     }
+    table.matrix tbody tr { min-height: 8mm; }  /* sprint 26080103: 触摸友好行高 */
     table.matrix tbody tr:nth-child(even) td:not(.m-item) { background: #faf6ee; }
     table.matrix td.m-item {
-      background: #f5f0e6; font-weight: 700; font-size: 8pt;
-      text-align: center; width: 14mm;
+      background: #f5f0e6; font-weight: 700; font-size: 11pt;
+      text-align: center; min-width: 22mm;
       border-right: 1pt solid #c9a030;
-      word-break: break-all; padding: 0.5mm 0.4mm;
+      word-break: break-all; padding: 0.7mm 0.5mm;
     }
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 7pt; width: 3.5mm; max-width: 4.5mm; padding: 0.3mm 0.05mm;
+      font-size: 9pt; min-width: 14mm; padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 7pt; width: 4.5mm; max-width: 5.5mm; padding: 0.3mm 0.05mm;
+      font-size: 9pt; min-width: 16mm; padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-once {
       font-weight: 600; white-space: nowrap;
-      font-size: 7pt; width: 3.5mm; max-width: 4.5mm; padding: 0.3mm 0.05mm;
+      font-size: 9pt; min-width: 12mm; padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-detail {
-      text-align: left; padding: 0.5mm 0.8mm;
-      font-size: 7.5pt; overflow-wrap: anywhere;
+      text-align: left; padding: 0.8mm 1.2mm;
+      font-size: 10pt; overflow-wrap: anywhere; min-width: 30mm;
     }
     table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
     table.matrix .det-extra {
-      display: inline-block; font-size: 6pt; margin-left: 1px;
+      display: inline-block; font-size: 7pt; margin-left: 1px;
       padding: 0 0.8mm; border: 1px solid var(--accent); color: var(--accent); border-radius: 1px;
     }
     table.matrix tfoot td {
-      background: #f3efe6; font-weight: 700; font-size: 7.5pt;
-      border: 0.25pt solid #e0d4c0; padding: 0.6mm 0.4mm;
+      background: #f3efe6; font-weight: 700; font-size: 9pt;
+      border: 0.25pt solid #e0d4c0; padding: 0.7mm 0.5mm;
       text-align: center;
     }
-    table.matrix tfoot td.m-item { background: #ebe4d6; font-size: 7.5pt; }
+    table.matrix tfoot td.m-item { background: #ebe4d6; font-size: 9pt; }
     table.matrix tfoot td.m-summary {
-      text-align: left; padding: 0.7mm 1.2mm;
-      font-weight: 600; font-size: 7.5pt; line-height: 1.35;
+      text-align: left; padding: 0.8mm 1.2mm;
+      font-weight: 600; font-size: 9pt; line-height: 1.4;
     }
     table.matrix tfoot td.m-summary .sum-item {
       display: inline-block; margin-right: 2mm; white-space: nowrap;
     }
-    /* 天数少时字号略放大，适配更宽明细 */
+    /* 天数少时字号略放大, 适配更宽明细 */
     table.matrix.days-1,
-    table.matrix.days-2 { font-size: 9pt; }
+    table.matrix.days-2 { font-size: 12pt; }
     table.matrix.days-1 thead th.th-day,
     table.matrix.days-2 thead th.th-day,
     table.matrix.days-1 td.m-item,
     table.matrix.days-2 td.m-item,
     table.matrix.days-1 td.m-detail,
-    table.matrix.days-2 td.m-detail { font-size: 9pt; }
+    table.matrix.days-2 td.m-detail { font-size: 12pt; }
     table.matrix.days-1 td.m-total,
     table.matrix.days-2 td.m-total,
     table.matrix.days-1 td.m-tempo,
     table.matrix.days-2 td.m-tempo,
     table.matrix.days-1 td.m-once,
-    table.matrix.days-2 td.m-once { font-size: 8.5pt; }
+    table.matrix.days-2 td.m-once { font-size: 10.5pt; }
 
     .pf {
       margin-top: 1.5mm;
@@ -405,7 +406,7 @@
     }
     .err { color: #b23a48; }
 
-    /* ── 打印：严格一页 A4，禁止溢出到第 2 页 ── */
+    /* ── 打印：可多页（A4 横向/竖向均可），sprint 26080103 不再强制单页 ── */
     @media print {
       html, body {
         background: #fff !important;
@@ -413,7 +414,6 @@
         padding: 0 !important;
         width: 100%;
         height: auto;
-        overflow: hidden !important;
       }
       .no-print,
       .toolbar,
@@ -432,29 +432,23 @@
         box-shadow: none !important;
         margin: 0 auto !important;
         zoom: var(--print-zoom, 1) !important;
-        page-break-after: avoid !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
       }
       .paper:not(.is-landscape) {
         width: 210mm !important;
-        height: 297mm !important;
-        max-height: 297mm !important;
-        min-height: 0 !important;
+        min-height: 297mm;
         padding: 5mm 6mm !important;
-        overflow: hidden !important;
+        overflow: visible !important;
       }
       .paper.is-landscape {
         width: 297mm !important;
-        height: 210mm !important;
-        max-height: 210mm !important;
-        min-height: 0 !important;
+        min-height: 210mm;
         padding: 3.5mm 4.5mm !important;
-        overflow: hidden !important;
+        overflow: visible !important;
       }
-      /* 禁止 thead 在下一页重复出空表头 */
-      table.matrix thead { display: table-row-group !important; }
-      table.matrix { page-break-inside: avoid !important; break-inside: avoid !important; }
+      /* thead 在多页重复; 行不跨页; tfoot 不被孤立到新页 */
+      table.matrix thead { display: table-header-group !important; }
+      table.matrix tbody tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+      table.matrix tfoot { display: table-row-group !important; break-before: avoid !important; page-break-before: avoid !important; }
     }
   </style>
   <style id="printPageRule">@page { size: A4 portrait; margin: 0; }</style>
@@ -468,6 +462,7 @@
       <button type="button" id="viewGroup" class="active" data-view="group">分组</button>
       <button type="button" id="viewTable" data-view="table">表格</button>
     </div>
+    <button type="button" class="btn btn-image" id="btnImage">导出图片</button>
     <button type="button" class="btn btn-print" id="btnPrint">打印 / PDF</button>
     <span class="hint">A4 · 勾选练习日 → 确认展示</span>
     <span class="status" id="statusMsg"></span>
@@ -1059,54 +1054,35 @@
     }
   }
 
-  /** 横向 A4 固定高度内，矩阵表 tbody 行均分剩余高度，贴到页脚（绝不撑破一页） */
+  /** 屏上: 矩阵可撑高, 不强制 fit. 打印前由 fillMatrixForPrint 处理. */
   function fillMatrixToPaper() {
     if (viewMode !== 'table') return;
     var wrap = paper.querySelector('.view-table-wrap');
     var table = paper.querySelector('table.matrix');
-    var chrome = paper.querySelector('.table-chrome');
-    var pf = paper.querySelector('.pf');
     if (!wrap || !table) return;
-
-    // 固定纸高 = A4 横向
-    paper.style.height = '210mm';
-    paper.style.maxHeight = '210mm';
+    // sprint 26080103: 不再 paper.style.height=210mm, 让纸自然撑高
+    paper.style.height = '';
+    paper.style.maxHeight = '';
     paper.style.minHeight = '210mm';
-    paper.style.overflow = 'hidden';
-
-    // 用 offsetHeight（含 padding 的 border-box 内容区）
-    var paperH = paper.clientHeight;
-    var chromeH = chrome ? chrome.offsetHeight : 0;
-    var pfH = pf ? pf.offsetHeight : 0;
-    var gap = 2;
-    var avail = paperH - chromeH - pfH - gap;
-    if (avail < 60) avail = 60;
-
-    wrap.style.height = avail + 'px';
-    wrap.style.maxHeight = avail + 'px';
-    wrap.style.overflow = 'hidden';
-    wrap.style.flex = '1 1 auto';
-    table.style.height = avail + 'px';
-    table.style.maxHeight = avail + 'px';
-    table.style.minHeight = '0';
-
-    var thead = table.querySelector('thead');
-    var tfoot = table.querySelector('tfoot');
-    // 先清行高再量 thead/tfoot 自然高度
+    paper.style.overflow = 'visible';
+    wrap.style.height = '';
+    wrap.style.maxHeight = '';
+    wrap.style.overflow = 'visible';
+    wrap.style.flex = '';
+    table.style.height = '';
+    table.style.maxHeight = '';
+    table.style.minHeight = '';
+    // 行高清空, 改由 CSS min-height 8mm 控制
     var rows = table.querySelectorAll('tbody tr');
     rows.forEach(function (r) { r.style.height = ''; });
-    var headH = thead ? thead.offsetHeight : 0;
-    var footH = tfoot ? tfoot.offsetHeight : 0;
-    var bodyAvail = avail - headH - footH;
-    var n = rows.length || 1;
-    // 行高只能缩小不能强行放大到溢出：最低 10px，且总和 ≤ bodyAvail
-    var rowH = Math.floor(bodyAvail / n);
-    if (rowH < 10) rowH = 10;
-    // 若 n*rowH 仍可能因边框略超，留 2px 余量
-    while (rowH > 10 && n * rowH > bodyAvail - 2) rowH -= 1;
-    rows.forEach(function (r) {
-      r.style.height = rowH + 'px';
-    });
+  }
+
+  /** 打印前: 不缩放, 让浏览器自然分页 (Q2=A 多页). */
+  function fillMatrixForPrint() {
+    if (viewMode !== 'table') return;
+    // 确保行不被强制高
+    var rows = paper.querySelectorAll('table.matrix tbody tr');
+    rows.forEach(function (r) { r.style.height = ''; r.style.minHeight = '8mm'; });
   }
 
   function setViewMode(mode) {
@@ -1153,21 +1129,19 @@
   }
 
   /**
-   * 打印前：按 A4 尺寸缩放，保证物理上只有 1 页。
-   * 表格模式目标高 210mm / 宽 297mm，略留 2% 余量防浏览器页边距。
+   * 打印前: 按 A4 尺寸缩放 (Q2=A 不强制单页, floor 改 0.65 让短 stage 保持 100%, 长 stage 自然分页).
    */
   function preparePrintZoom() {
     var isLs = viewMode === 'table';
     var targetH = Math.round((isLs ? 210 : 297) * (96 / 25.4) * 0.98);
     var targetW = Math.round((isLs ? 297 : 210) * (96 / 25.4) * 0.98);
-    // 量自然溢出（含 min-height 撑开的内容）
     var contentH = Math.max(paper.scrollHeight, paper.offsetHeight);
     var contentW = Math.max(paper.scrollWidth, paper.offsetWidth);
     var scale = 1;
     if (contentH > targetH) scale = Math.min(scale, targetH / contentH);
     if (contentW > targetW) scale = Math.min(scale, targetW / contentW);
-    // 下限 40%；表格模式允许略低到 35% 仍单页
-    var floor = isLs ? 0.35 : 0.40;
+    // sprint 26080103: floor 改 0.65, 不到溢出 1 页就不缩
+    var floor = isLs ? 0.65 : 0.70;
     if (scale < floor) scale = floor;
     if (scale > 1) scale = 1;
     paper.style.setProperty('--print-zoom', String(scale.toFixed(4)));
@@ -1257,15 +1231,97 @@
 
   document.getElementById('btnPrint').addEventListener('click', function () {
     syncPaperMode();
-    // 打印前：收紧布局 → 再量缩放，禁止强制 100% 导致第 2 页
-    if (viewMode === 'table') fillMatrixToPaper();
+    // sprint 26080103: 打印前 fillMatrixForPrint (不清行高, 让浏览器自然分页)
+    if (viewMode === 'table') fillMatrixForPrint();
     var scale = preparePrintZoom();
+    statusMsg.style.color = '';
     statusMsg.textContent = scale < 0.999
-      ? '打印缩放 ' + Math.round(scale * 100) + '% · 强制 1 页 A4'
-      : (viewMode === 'table' ? '打印 100% · A4 横向 1 页' : '打印 100% · A4 竖向 1 页');
-    // 给浏览器一点时间应用 --print-zoom / 行高
+      ? '打印缩放 ' + Math.round(scale * 100) + '% · 自然分页'
+      : (viewMode === 'table' ? '打印 100% · A4 横向' : '打印 100% · A4 竖向');
     setTimeout(function () { window.print(); }, 120);
   });
+
+  // ── 导出图片 (sprint 26080103) ──
+  document.getElementById('btnImage').addEventListener('click', function () {
+    if (!lastPayload) {
+      statusMsg.textContent = '请先加载 stage';
+      statusMsg.style.color = '#b23a48';
+      return;
+    }
+    var btn = this;
+    var order = stageSelect.value || (lastPayload && lastPayload.stage_order);
+    var daysParam = '';
+    if (appliedDays) {
+      var keys = Object.keys(appliedDays).filter(function (k) { return appliedDays[k]; }).sort();
+      if (keys.length) daysParam = '&days=' + encodeURIComponent(keys.join(','));
+    }
+    var url = '/api/practices/stage-image?stage_order=' + encodeURIComponent(order) + daysParam;
+    btn.disabled = true;
+    var oldText = btn.textContent;
+    btn.textContent = '正在生成…';
+    statusMsg.style.color = '';
+    statusMsg.textContent = '正在生成图片…';
+    fetch(url, { method: 'POST', cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        var reader = r.body.getReader();
+        var dec = new TextDecoder();
+        var buf = '';
+        function pump() {
+          return reader.read().then(function (res) {
+            if (res.done) return;
+            buf += dec.decode(res.value, { stream: true });
+            var chunks = buf.split('\n\n');
+            buf = chunks.pop() || '';
+            chunks.forEach(function (chunk) {
+              var m = chunk.match(/^data: (.+)$/m);
+              if (!m) return;
+              var evt;
+              try { evt = JSON.parse(m[1]); } catch (e) { return; }
+              if (evt.type === 'status') {
+                statusMsg.textContent = evt.message;
+                statusMsg.style.color = '';
+              } else if (evt.type === 'error') {
+                statusMsg.textContent = '图片生成失败: ' + evt.message;
+                statusMsg.style.color = '#b23a48';
+                btn.disabled = false;
+                btn.textContent = oldText;
+              } else if (evt.type === 'done') {
+                statusMsg.textContent = '图片已存到 ' + evt.data.image_path;
+                statusMsg.style.color = '';
+                btn.disabled = false;
+                btn.textContent = oldText;
+                showImageModal(evt.data);
+              }
+            });
+            return pump();
+          });
+        }
+        return pump();
+      })
+      .catch(function (e) {
+        statusMsg.textContent = '图片生成失败: ' + e.message;
+        statusMsg.style.color = '#b23a48';
+        btn.disabled = false;
+        btn.textContent = oldText;
+      });
+  });
+
+  function showImageModal(data) {
+    var modal = document.createElement('div');
+    modal.id = 'imageModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = '<div style="background:#fffef9;padding:24px;border-radius:12px;max-width:560px;width:90%;">' +
+      '<h3 style="margin:0 0 12px;color:#2c2416;font-size:18px;">图片已生成 ✓</h3>' +
+      '<p style="font-size:13px;color:#7a6a5a;margin:0 0 8px;">路径:</p>' +
+      '<pre style="background:#f5f0e6;padding:8px;border-radius:6px;font-size:12px;overflow-x:auto;margin:0 0 12px;">' + esc(data.image_path) + '</pre>' +
+      '<p style="font-size:13px;color:#7a6a5a;margin:0 0 12px;">Artifact ID: ' + esc(data.report_id) + ' · Stage ' + esc(data.stage_order) + '</p>' +
+      '<button type="button" class="btn-apply" id="modalClose" style="margin-right:8px;">好</button>' +
+      '<a href="' + esc(data.image_url) + '" target="_blank" rel="noopener" class="btn-apply" style="text-decoration:none;display:inline-block;">在浏览器打开</a>' +
+      '</div>';
+    document.body.appendChild(modal);
+    document.getElementById('modalClose').addEventListener('click', function () { modal.remove(); });
+  }
 
   window.addEventListener('resize', function () {
     if (viewMode === 'table' && paper.querySelector('table.matrix')) {

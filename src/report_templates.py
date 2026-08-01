@@ -193,3 +193,143 @@ def build_monthly_report_prompt(
     data = get_month_summary(year, month)
     prompt, aspect_ratio = build_prompt(year, month, data, template_id, extra_params)
     return prompt, aspect_ratio, data
+
+
+# ---------------------------------------------------------------------------
+# Stage 维 report 图片 (sprint-26080103)
+# ---------------------------------------------------------------------------
+
+TEMPLATES["stage_academic"] = {
+    "name": "Stage 表格 · 学术风",
+    "description": "Stage 维 session 明细的 AI 配图, 数学讲义风, 跟月报同款色板",
+    "style": """创作一张关于「竹笛练习明细 (Stage 维)」的可视化信息图, 目的是让老师在 1 张图里快速看清本阶段女儿的练习情况.
+
+画面要像高质量数学讲义 + 手绘教育海报, 优雅、清晰、信息丰富, 但不要杂乱. 横版 (landscape) 构图.
+
+视觉风格:
+- 横版, 干净的浅色纸张背景 (off-white parchment)
+- 深蓝标题, 黑色/深灰正文线条
+- 少量优雅的蓝色、青绿色、金色、红色强调色
+- 圆角卡片、细线边框、编号标签、手绘箭头、局部放大框和总结栏
+- 整体要美观、平衡、有学术感""",
+    "layout": """请将以上数据转化为信息图布局 (横版, 1 张), 包含:
+1. 标题区: "竹笛练习明细 · Stage {stage_order}" (深蓝大字)
+2. 周期副标题: "周期 {stage_start} ~ {stage_end} · 上课日 {lesson_date}"
+3. 核心指标卡: 总时长 {total_minutes} 分钟, 练习天数 {practice_days} 天, 共 {session_count} 次
+4. 科目小计 (横向柱状图风格): {item_bar_chart} — 每科一行: 名称 + 时长 + 占比%
+5. 按日练习表 (简化矩阵): 日期 | 总时长 | 主要科目 | 主要内容片段
+6. 总结栏: 一句话评语 ("本期总时长 xx 分钟, 主要练习了 X / Y, 节奏稳定")""",
+    "data_fields": """数据说明:
+- stage_order: stage 编号
+- stage_start / stage_end: 周期起止
+- lesson_date: 上课日 (本节课日期)
+- total_minutes: 本阶段总练习时长 (分钟)
+- practice_days: 实际练习天数
+- session_count: 总 session 数
+- item_totals: 各项练习时长 {"项目名": 分钟, ...}
+- days: [{date, total_minutes, item_summaries:[{name, content_preview}]}]""",
+    "aspect_ratio": "landscape",
+}
+
+
+def _truncate(s: str, n: int = 30) -> str:
+    """内容预览截断: 避免 prompt 过长."""
+    s = (s or "").strip()
+    if len(s) <= n:
+        return s
+    return s[: n - 1] + "…"
+
+
+def _build_stage_item_bar_chart(by_item: list, total_minutes: int) -> str:
+    """科目小计 (text 形式的 bar chart 给 LLM 拼图)."""
+    if not by_item or total_minutes <= 0:
+        return "(暂无数据)"
+    lines = []
+    for it in by_item[:5]:
+        m = it.get("minutes", 0) or 0
+        pct = round(m / total_minutes * 100) if total_minutes else 0
+        bar = "█" * max(1, pct // 5)
+        lines.append(f"- {it.get('item_name', '?')}: {m} 分钟 ({pct}%) {bar}")
+    return "\n".join(lines)
+
+
+def _build_stage_day_summary(days: list) -> str:
+    """按日练习摘要 (text form)."""
+    if not days:
+        return "(暂无练习日)"
+    lines = []
+    for d in days:
+        item_summaries = []
+        for g in d.get("groups", []) or []:
+            contents = [
+                _truncate(s.get("content", ""), 30)
+                for s in (g.get("sessions") or [])
+            ]
+            contents = [c for c in contents if c]
+            preview = " / ".join(contents[:2]) if contents else "(无内容)"
+            item_summaries.append(f"{g.get('item_name', '?')}: {preview}")
+        joined = " · ".join(item_summaries) or "(无)"
+        lines.append(f"- {d.get('date', '?')} ({d.get('total_minutes', 0)} 分钟): {joined}")
+    return "\n".join(lines)
+
+
+def build_stage_image_prompt(
+    payload: dict,
+    child_name: str = "YoYo",
+) -> tuple[str, str]:
+    """构造 stage 维 report 图片的 prompt.
+
+    payload 来自 _build_stage_detail_payload, 含:
+      stage_order / stage_start / stage_end / lesson_date /
+      summary / by_item / days[]
+
+    Returns: (prompt_text, aspect_ratio)
+    """
+    summary = payload.get("summary", {}) or {}
+    template = TEMPLATES["stage_academic"]
+    style_para = template["style"]
+    aspect = template["aspect_ratio"]
+    layout_tpl = template["layout"]
+    data_fields = template["data_fields"]
+
+    by_item = payload.get("by_item") or []
+    total_m = int(summary.get("total_minutes", 0) or 0)
+    practice_days = int(summary.get("practice_days", 0) or 0)
+    session_count = int(summary.get("session_count", 0) or 0)
+    item_bar_chart = _build_stage_item_bar_chart(by_item, total_m)
+    days_text = _build_stage_day_summary(payload.get("days") or [])
+
+    stage_order = payload.get("stage_order", "?")
+    stage_start = payload.get("stage_start") or "?"
+    stage_end = payload.get("stage_end") or payload.get("effective_end") or "?"
+    lesson_date = payload.get("lesson_date") or "?"
+
+    try:
+        layout_filled = layout_tpl.format(
+            stage_order=stage_order,
+            stage_start=stage_start,
+            stage_end=stage_end,
+            lesson_date=lesson_date,
+            total_minutes=total_m,
+            practice_days=practice_days,
+            session_count=session_count,
+            item_bar_chart=item_bar_chart,
+        )
+    except KeyError as e:
+        # 容错: 任何缺失字段都用 "?" 兜底
+        layout_filled = layout_tpl.replace("{" + str(e).strip("'") + "}", "?")
+
+    days_block = "按日练习明细:\n" + days_text
+
+    prompt = f"""{style_para}
+
+{layout_filled}
+
+{days_block}
+
+{data_fields}
+
+学员名字: {child_name}
+数据真实, 不要编造. 用英文/中文混排都行, 但数字和日期要跟数据一致.
+"""
+    return prompt, aspect
