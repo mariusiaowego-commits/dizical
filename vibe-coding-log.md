@@ -1,3 +1,11 @@
+## 2026-08-02 practice-log HEIC 配图预览修复 (PR #216 MERGED)
+
+- dad 反馈: 配图(HEIC)在 Chrome 破图无法预览, 点击下载正常. 根因: 浏览器 `<img>` 不支持 HEIC 渲染 (Safari 可以)
+- 修复: 上传接口对 .heic/.heif 用 macOS 内置 `sips` 转 JPEG 后返回 jpg URL (零新依赖); sips 不可用(CloudRun)或失败 → 保留原 heic (Safari 仍可预览)
+- 回填: raw/ 3 个 heic 全转 jpg; row 71 (08-01 第17期) images 指向 jpg (3213×5712 有效)
+- 验证: pytest 14 failed (基线一致) + 380 passed, 0 新增回归; dad 刷新确认预览正常
+- 服务: 8765 重启 (PID 85572)
+
 ## 2026-08-02 practice-log 科目预填最近一次要求 (PR #214 MERGED)
 
 - dad 需求: 录入老师要求时选中科目, 要求输入框自动预填该科目最近一次的要求
