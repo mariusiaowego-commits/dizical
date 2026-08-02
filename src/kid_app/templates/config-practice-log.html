@@ -1290,7 +1290,20 @@ function renderAssignEntries() {
   container.querySelectorAll('.item-select').forEach(sel => {
     sel.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
-      assignEntries[idx].item_id = parseInt(e.target.value);
+      const newId = parseInt(e.target.value);
+      const oldId = assignEntries[idx].item_id;
+      if (newId) {
+        // 防呆: 同科目加两条 → 后端按科目名去重, 提交后只保留最后一条. 提示用户避免误操作丢内容
+        const dup = assignEntries.find((en, i) => i !== idx && en.item_id === newId);
+        if (dup) {
+          const ok = confirm(`「${dup.item}」已添加过，重复添加提交时会覆盖之前的内容（只保留最后一次）。确定要继续吗？`);
+          if (!ok) {
+            sel.value = oldId ? String(oldId) : '';
+            return;
+          }
+        }
+      }
+      assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
     });
