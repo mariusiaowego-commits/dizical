@@ -1,6 +1,7 @@
 """配置管理台路由 - 练习科目配置"""
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, List, Dict
@@ -1090,6 +1091,23 @@ import uuid as _uuid
 _UPLOAD_RAW = Path(__file__).resolve().parent.parent.parent.parent / "data" / "uploads" / "raw"
 _UPLOAD_RAW.mkdir(parents=True, exist_ok=True)
 
+_HEIC_EXTS = (".heic", ".heif")
+
+
+def _convert_heic_to_jpeg(src_path: Path, jpg_path: Path) -> bool:
+    """HEIC→JPEG: 用 macOS 内置 sips (零新依赖)。失败返回 False, 调用方保留原 heic。"""
+    sips = shutil.which("sips")
+    if not sips:
+        return False
+    try:
+        subprocess.run(
+            [sips, "-s", "format", "jpeg", str(src_path), "--out", str(jpg_path)],
+            check=True, capture_output=True, timeout=90,
+        )
+        return jpg_path.exists() and jpg_path.stat().st_size > 0
+    except Exception:
+        return False
+
 @router.post("/api/assignments/upload")
 async def api_upload_assignment_image(file: UploadFile = File(...)):
     """上传配图，保存到 data/uploads/raw/，返回 URL"""
@@ -1102,9 +1120,18 @@ async def api_upload_assignment_image(file: UploadFile = File(...)):
     content = await file.read()
     dest.write_bytes(content)
 
+    url = f"/uploads/raw/{fname}"
+    if ext in _HEIC_EXTS:
+        # Chrome 等浏览器 <img> 不支持 HEIC 渲染 (Safari 可以) → 转 JPEG 保证预览
+        jpg_name = f"{_uuid.uuid4().hex}.jpg"
+        jpg_path = _UPLOAD_RAW / jpg_name
+        if _convert_heic_to_jpeg(dest, jpg_path):
+            url = f"/uploads/raw/{jpg_name}"
+        # 转换失败则保留 heic 原样 (Safari 仍可预览)
+
     return JSONResponse({
         "ok": True,
-        "url": f"/uploads/raw/{fname}",
+        "url": url,
         "filename": fname,
     })
 
