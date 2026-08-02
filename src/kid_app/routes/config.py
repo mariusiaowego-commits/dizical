@@ -930,6 +930,37 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
     return JSONResponse({"assignments": result})
 
 
+@router.get("/api/assignments/latest-requirements")
+def api_latest_requirements():
+    """每科目最近一次的老师要求 (跨全部历史, 按 lesson_date 倒序取最新; 最新为空时回退到更早的非空要求)"""
+    import json as _json
+    result = {}
+    with db._get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT lesson_date, items FROM weekly_assignments ORDER BY lesson_date DESC")
+        rows = cursor.fetchall()
+    for row in rows:
+        try:
+            items = _json.loads(row["items"])
+        except Exception:
+            continue
+        for it in items:
+            iid = it.get("item_id")
+            if not iid:
+                continue
+            req = it.get("requirements") or it.get("requirement") or ""
+            if iid in result:
+                # 该科目已有更新的记录; 若更新的要求为空, 用这条旧的非空要求补
+                if not result[iid]["requirements"] and req:
+                    result[iid]["requirements"] = req
+                continue
+            result[iid] = {
+                "requirements": req,
+                "metronome": it.get("metronome") or "",
+            }
+    return JSONResponse({"items": result})
+
+
 @router.post("/api/assignments")
 async def api_create_assignment(request: Request):
     """录入老师要求"""

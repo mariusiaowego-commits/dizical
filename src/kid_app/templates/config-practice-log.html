@@ -850,6 +850,7 @@ let practiceItems = [];
 let logEntries = []; // 每个 entry: { item_id, item, sessions: [{ minutes, tempo_note, tempo_bpm, content, is_subfetched }] }
 let assignEntries = []; // 老师要求录入条目 (声明必须放这: id=assignEntries 的 div 会污染全局变量名)
 let assignImages = []; // 已上传配图 [{ url, name }]
+let latestRequirements = {}; // item_id → { requirements, metronome } 每科目最近一次要求 (预填用)
 // ── 切换 tab ──
 const tabs = document.querySelectorAll('.tab-item');
 const panels = document.querySelectorAll('.tab-panel');
@@ -877,6 +878,17 @@ async function loadItems() {
   const res = await fetch('/config/api/practice/items?include_archived=false');
   const data = await res.json();
   practiceItems = data.items || [];
+}
+
+// ── 加载每科目最近一次老师要求 (预填用) ──
+async function loadLatestRequirements() {
+  try {
+    const res = await fetch('/config/api/assignments/latest-requirements');
+    const data = await res.json();
+    latestRequirements = (data && data.items) || {};
+  } catch (e) {
+    latestRequirements = {}; // 失败不阻塞页面, 只是没有预填
+  }
 }
 
 // ── 日期默认今天 ──
@@ -1306,6 +1318,17 @@ function renderAssignEntries() {
       assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
+      // 预设: 选中科目且要求框为空(或仍是上一个科目自动填入的预设)时, 填入该科目最近一次的要求
+      if (newId && latestRequirements[newId]) {
+        const prevPreset = oldId && latestRequirements[oldId] ? (latestRequirements[oldId].requirements || '') : null;
+        const rowEl = sel.closest('.log-entry-row');
+        const ta = rowEl ? rowEl.querySelector('textarea') : null;
+        const isUntouchedPreset = prevPreset !== null && ta && ta.value === prevPreset;
+        if (ta && (!assignEntries[idx].requirement || isUntouchedPreset)) {
+          assignEntries[idx].requirement = latestRequirements[newId].requirements || '';
+          ta.value = assignEntries[idx].requirement;
+        }
+      }
     });
   });
   container.querySelectorAll('.metronome-input').forEach(inp => {
@@ -1651,6 +1674,7 @@ async function loadWeek() {
 (async function init() {
   setDefaultDate();
   await loadItems();
+  await loadLatestRequirements();
   renderLogEntries();
   renderAssignEntries();
   loadTodayHistory();
