@@ -1,8 +1,25 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-01 (sprint 26080103 stage-print v2.1 MERGED, main 2351ff1)
+**最后更新**: 2026-08-02 (practice-log 3 bug 修复 + 重复科目防呆 MERGED, main a0707ac)
 
 ---
+
+### 2026-08-02 practice-log 3 bug 修复 + 重复科目防呆 (PR #212 MERGED, main a0707ac)
+
+**触发**: dad 反馈 3 bug (1) 添加科目报错 `assignEntries.push is not a function` (2) 上传 heic 图片报"❌ 网络错误" (3) 历史老师要求 7/26 出现两次
+
+**修复 (2 commit 链, main a0707ac)**:
+- ✅ d1227c2 fix: 声明 assignEntries/assignImages（被 DOM id 全局污染）+ catch 显示真实错误 + 老师要求改真 upsert（INSERT OR REPLACE → ON CONFLICT DO UPDATE）+ migration v2（去重 + 唯一索引）
+- ✅ f82a632 feat: 同科目重复添加 confirm 防呆（提示"提交会覆盖只留最后一次"，取消还原下拉）
+
+**根因**:
+- bug 1+2 同源: HTML 元素 id 自动变 window 全局变量，JS 变量从未声明 → assignEntries 指向 `<div>`、assignImages 是 undefined。上传其实成功（raw/ 有 2 个 heic）
+- bug 3: weekly_assignments 无 UNIQUE(lesson_date)（旧 schema）→ INSERT OR REPLACE 每次纯插入 → 7/26 两行（id 69: 7项 / id 70: 8项全量）
+
+**DB 迁移（线上已执行）**: 删 7/26 重复行保留 8 项全量 + 建 idx_assignments_lesson_unique + integrity ok；备份 `backups/2026-08-02-practice-log-3bugfix/dizi.db.bak`
+- 教训: WAL 模式裸 cp 备份缺 -wal 数据 → 必须 sqlite3 `.backup` 才完整
+
+**部署**: 8765 已重启跑新代码（PID 26060）；模板改动 Jinja2 热加载无需重启
 
 ### 2026-08-01 Sprint 26080103 收尾 — /report/stage-print iPad mini + 导出图片 + A3 横向 (main 2351ff1)
 

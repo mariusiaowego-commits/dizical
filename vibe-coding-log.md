@@ -1,3 +1,13 @@
+## 2026-08-02 practice-log 3 bug 修复 + 重复科目防呆 (PR #212 MERGED)
+
+- dad 反馈 3 bug: ① 添加科目报错 `assignEntries.push is not a function` ② 上传图片报"❌ 网络错误"(heic) ③ 历史老师要求 7/26 出现两次
+- 根因 1+2 (同源): `assignEntries`/`assignImages` 从未声明 → HTML id 全局污染: `<div id="assignEntries">` 变全局变量指向元素 → `.push` 报错; `assignImages` undefined → TypeError 被 catch 吞成"网络错误"(实际上传成功, raw/ 有 2 个 heic)
+- 根因 3: `weekly_assignments` 表 lesson_date 无 UNIQUE 约束(旧 schema) → INSERT OR REPLACE 每次纯 INSERT → 同课二次提交产生两行 (id 69: 7项 / id 70: 8项全量)
+- 修复: 声明 let 变量 ×2 + catch 显示真实错误; 改 `INSERT ... ON CONFLICT(lesson_date) DO UPDATE` + migration v2 (每日期保 MAX(id) + 建唯一索引); 线上库已迁移 (备份 backups/2026-08-02-practice-log-3bugfix/)
+- 防呆(选项 A): 同科目重复添加 confirm 提示(提交会覆盖只留最后一次), 取消还原下拉
+- 关键教训: ① HTML id 自动成 window 全局 → JS 变量必须显式声明 ② SQLite `INSERT OR REPLACE` 无唯一约束 = 纯插入 → 要唯一索引 + ON CONFLICT ③ WAL 模式裸 cp 备份缺 -wal → 用 `sqlite3 .backup` 才完整
+- 部署: 8765 重启跑新代码 (PID 26060), 模板 Jinja2 热加载无需重启
+
 ## 2026-08-01 Sprint 26080103 收尾 · /report/stage-print iPad mini + 导出图片 + A3 横向 (main 2351ff1)
 
 - 触发: dad 反馈 (1) iPad mini 横屏表格字太小看不清 (2) 表格限制高度内容不全 (3) 想要图片导出 (4) 实战发现 6 天表格 A4 装不下 (5) 8mm 列数字贴边没居中 (6) CDN 下载 SSL UNEXPECTED_EOF
