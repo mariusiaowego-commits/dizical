@@ -1,3 +1,11 @@
+## 2026-08-02 practice-log 科目预填最近一次要求 (PR #214 MERGED)
+
+- dad 需求: 录入老师要求时选中科目, 要求输入框自动预填该科目最近一次的要求
+- 新接口 `GET /config/api/assignments/latest-requirements`: 每科目最近要求, 跨全部历史按 lesson_date 倒序取最新; 最新为空回退到更早的非空要求
+- 前端: 选中科目且要求框为空 → 填入预设; 换科目时若文字仍是上个科目的自动预设 → 替换为新预设; 用户手动改过 → 不覆盖
+- 验证: pytest 14 failed (基线一致) + 380 passed, 0 新增回归; dad 真机验收通过
+- 服务: 8765 重启跑新代码 (PID 44797)
+
 ## 2026-08-02 practice-log 3 bug 修复 + 重复科目防呆 (PR #212 MERGED)
 
 - dad 反馈 3 bug: ① 添加科目报错 `assignEntries.push is not a function` ② 上传图片报"❌ 网络错误"(heic) ③ 历史老师要求 7/26 出现两次
