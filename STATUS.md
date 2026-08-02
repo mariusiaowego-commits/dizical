@@ -1,8 +1,18 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-02 (practice-log 3 bug 修复 + 重复科目防呆 MERGED, main a0707ac)
+**最后更新**: 2026-08-02 (practice-log 3 bug 修复 + 重复科目防呆 + 科目预填最近要求, main efc240e)
 
 ---
+
+### 2026-08-02 practice-log 科目预填最近一次要求 (PR #214 MERGED, main efc240e)
+
+**触发**: dad 需求 — 录入老师要求时选中科目，要求输入框自动预填该科目最近一次的要求
+
+**实现**:
+- ✅ 3593b84 feat: 新接口 `GET /config/api/assignments/latest-requirements`（每科目最近要求，跨全部历史按 lesson_date 倒序，最新为空回退更早非空）+ 前端选中科目预填
+- 边界: 换科目时若要求框仍是上个科目的自动预设 → 替换；用户手动改过 → 不覆盖
+
+**验证**: pytest 14 failed（基线一致）+ 380 passed，0 新增回归；dad 真机验收通过后合并
 
 ### 2026-08-02 practice-log 3 bug 修复 + 重复科目防呆 (PR #212 MERGED, main a0707ac)
 
