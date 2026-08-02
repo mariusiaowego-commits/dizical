@@ -1298,25 +1298,11 @@ async def api_practices_stage_image(
                 except Exception:
                     pass
 
-                image_source = None
-                for line in output.split("\n"):
-                    line = line.strip()
-                    if "MEDIA:" in line:
-                        parts = line.split("MEDIA:")
-                        if len(parts) > 1:
-                            cand = parts[1].strip().split()[0]
-                            if os.path.exists(cand):
-                                image_source = cand
-                                break
-                    if line.startswith("http") and (".png" in line or ".jpg" in line or "fal" in line):
-                        image_source = line
-                        break
-                    if line.startswith("/") and (line.endswith(".png") or line.endswith(".jpg")):
-                        if os.path.exists(line):
-                            image_source = line
-                            break
+                # sprint-26080103 v2: 用新解析函数 (支持 markdown URL: 格式 + 4 种 pattern)
+                from src.kid_app.utils.image_extractor import extract_image_source
+                image_source = extract_image_source(output)
                 if not image_source:
-                    result_queue.put(("error", f"未找到图片。hermes 输出:\n{output[:300]}"))
+                    result_queue.put(("error", f"未找到图片。hermes 输出:\n{output[:500]}"))
                     return
 
                 result_queue.put(("status", "图片已获取，正在保存..."))
@@ -1327,9 +1313,15 @@ async def api_practices_stage_image(
                 filename = f"stage-{order}-{ts}.png"
                 dest_path = os.path.join(report_dir, filename)
 
-                import urllib.request
+                # sprint-26080103 v2.1: 改用 urlopen + retry + ssl context, 解决 SSL EOF + timeout
+                # 老代码 urlretrieve 缺 retry + 缺 timeout, FAL CDN 偶发 UNEXPECTED_EOF
                 if image_source.startswith("http"):
-                    urllib.request.urlretrieve(image_source, dest_path)
+                    from src.kid_app.utils.image_extractor import _download_image_with_retry
+                    try:
+                        _download_image_with_retry(image_source, dest_path, result_queue=result_queue)
+                    except Exception as dl_err:
+                        result_queue.put(("error", f"下载 CDN 图片失败: {dl_err}"))
+                        return
                 else:
                     import shutil
                     shutil.copy2(image_source, dest_path)
@@ -1420,6 +1412,18 @@ def api_stage_image_history(limit: int = 20):
     from src.database import db as _db
     with _db._get_connection() as conn:
         cur = conn.cursor()
+        # sprint-26080103: 同 POST handler, history 也建表 (老 db 没这表就建)
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS report_artifacts ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " kind TEXT NOT NULL,"
+            " ref_id TEXT,"
+            " prompt TEXT,"
+            " image_path TEXT NOT NULL,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        conn.commit()
         cur.execute(
             "SELECT id, kind, ref_id, image_path, created_at FROM report_artifacts "
             "WHERE kind='stage_image' ORDER BY id DESC LIMIT ?",

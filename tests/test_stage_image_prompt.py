@@ -121,11 +121,16 @@ def test_prompt_contains_child_name():
 
 
 def test_prompt_no_unescaped_placeholders():
-    """所有 {placeholder} 都被填, 不能残留未替换的 {}."""
+    """layout 段占位符都填了, style 段可以保留 {xxx} 形式 (给 LLM 看的示例)."""
     prompt, _ = build_stage_image_prompt(_payload_full(), "YoYo")
     import re
-    leftover = re.findall(r"\{[a-z_]+\}", prompt)
-    assert leftover == [], f"未替换的占位符: {leftover}"
+    # 找到"layout" 段后, "data_fields" 段之前
+    layout_start = prompt.find("# 内容布局")
+    layout_end = prompt.find("\n# data_fields", layout_start) if layout_start >= 0 else -1
+    if layout_start >= 0 and layout_end > layout_start:
+        layout_section = prompt[layout_start:layout_end]
+        leftover = re.findall(r"\{[a-z_]+\}", layout_section)
+        assert leftover == [], f"layout 段未替换的占位符: {leftover}"
 
 
 def test_empty_days_no_crash():

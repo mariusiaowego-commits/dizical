@@ -848,6 +848,8 @@
 // ── 状态 ──
 let practiceItems = [];
 let logEntries = []; // 每个 entry: { item_id, item, sessions: [{ minutes, tempo_note, tempo_bpm, content, is_subfetched }] }
+let assignEntries = []; // 老师要求录入条目 (声明必须放这: id=assignEntries 的 div 会污染全局变量名)
+let assignImages = []; // 已上传配图 [{ url, name }]
 // ── 切换 tab ──
 const tabs = document.querySelectorAll('.tab-item');
 const panels = document.querySelectorAll('.tab-panel');
@@ -1288,7 +1290,20 @@ function renderAssignEntries() {
   container.querySelectorAll('.item-select').forEach(sel => {
     sel.addEventListener('change', e => {
       const idx = parseInt(e.target.dataset.idx);
-      assignEntries[idx].item_id = parseInt(e.target.value);
+      const newId = parseInt(e.target.value);
+      const oldId = assignEntries[idx].item_id;
+      if (newId) {
+        // 防呆: 同科目加两条 → 后端按科目名去重, 提交后只保留最后一条. 提示用户避免误操作丢内容
+        const dup = assignEntries.find((en, i) => i !== idx && en.item_id === newId);
+        if (dup) {
+          const ok = confirm(`「${dup.item}」已添加过，重复添加提交时会覆盖之前的内容（只保留最后一次）。确定要继续吗？`);
+          if (!ok) {
+            sel.value = oldId ? String(oldId) : '';
+            return;
+          }
+        }
+      }
+      assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
     });
@@ -1344,7 +1359,7 @@ document.getElementById('assignImageInput').addEventListener('change', async (e)
         statusEl.textContent = `❌ ${f.name}: ${data.error || '上传失败'}`;
       }
     } catch (err) {
-      statusEl.textContent = `❌ ${f.name}: 网络错误`;
+      statusEl.textContent = `❌ ${f.name}: ${err && err.message ? err.message : '网络错误'}`;
     }
   }
   e.target.value = ''; // 允许重复选同一文件

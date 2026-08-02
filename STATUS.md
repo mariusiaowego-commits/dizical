@@ -1,6 +1,42 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-01 (sprint 1 v2 merged, PR #208 done)
+**最后更新**: 2026-08-01 (sprint 26080103 stage-print v2.1 MERGED, main 2351ff1)
+
+---
+
+### 2026-08-01 Sprint 26080103 收尾 — /report/stage-print iPad mini + 导出图片 + A3 横向 (main 2351ff1)
+
+**触发**: dad 反馈 (1) iPad mini 横屏表格字太小看不清 (2) 表格限制高度内容不全 (3) 想要图片导出 (4) 实战发现 6 天表格 A4 装不下 (5) 实战发现 8mm 列数字贴边没居中 (6) 实战发现 CDN 下载 SSL UNEXPECTED_EOF
+
+**完成 (5 commit 链, 都在 main)**:
+- ✅ b0b0634 docs: PLAN/PRD/TECH-SPEC/TEST-PLAN
+- ✅ 15f47a3 feat: iPad mini 适配 (8pt→11pt, 取消死宽) + 导出图片工具条按钮
+- ✅ 17a10f6 docs: 任务清单 + Sprint 回顾 + PDR
+- ✅ f10d4c0 fix(v2): A3 横向 420x297mm 装 7 天 + 8mm 加粗 + max-width 32mm 换行
+- ✅ 2351ff1 fix(v2.1): 8mm 列显式居中 + CDN 下载 retry 3 次 + 显式 SSL context
+
+**E2E 实跑 (dad 在 8765 跑 v2.1)**:
+- Stage 16 表格视图 (6 天, 6 科, 64 次 session) A3 横向 装得下 ✓
+- 总时长/单次 列 8mm 加粗居中 ✓
+- 明细 列 max-width 32mm 换行不跨列 ✓
+- "导出图片" 按钮 → 30-60s SSE → 模态框给本地路径 (v1 bug 全修)
+
+**pytest 净零回归**:
+- baseline: 14 failed, 314 passed, 7 skipped, 12 errors
+- now: **14 failed (相同 baseline), 375 passed (+61 全过我新加的), 7 skipped, 12 errors**
+- 0 新 fail, +61 新 pass (12 prompt + 14 extract + 5 retry + 12 api + 18 杂项)
+
+**Sprint 文档**: `tqob/05-Coding/project-dizical/sprints/sprint-03-stage-print-ipadmini-image-2026-08-01/`
+
+**PDR 决策 (8 个新增)**:
+- 08-01 production rollback 047 (dad 拍板"不需要 web 端部署" 后又改主意)
+- 08-01 抽出 extract_image_source 纯函数 (TDD 14/14)
+- 08-01 抽出 _download_image_with_retry 纯函数 (TDD 5/5)
+- 08-01 A3 横向 420x297mm 装 7 天 (dad 视觉反馈)
+- 08-01 8mm 加粗缩窄总时长/单次
+- 08-01 明细 max-width 32mm 换行不跨列
+- 08-01 URL download 改 urlopen + retry (SSL EOF 实战)
+- 08-01 显式 text-align: center !important (8mm 窄列继承链不稳)
 
 ---
 

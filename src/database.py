@@ -180,6 +180,22 @@ class Database(BaseBackend):
                     )
                 cursor.execute("INSERT INTO schema_migrations (version) VALUES (1)")
 
+            # Migration v2: weekly_assignments 去重 + lesson_date 唯一索引 (2026-08-02)
+            # 背景: 旧表无 UNIQUE(lesson_date) 约束时 INSERT OR REPLACE 是纯 INSERT,
+            #       同课重复提交会产生多行 (bug: 历史老师要求 7/26 出现两次).
+            # 代码已改 ON CONFLICT(lesson_date) DO UPDATE, 必须有唯一索引才生效.
+            # 去重策略: 每 lesson_date 保留 id 最大一行 (最后一次提交, 含增量合并的完整 items).
+            cursor.execute("PRAGMA index_list(weekly_assignments)")
+            wa_idx_names = [r['name'] for r in cursor.fetchall()]
+            if 'idx_assignments_lesson_unique' not in wa_idx_names:
+                cursor.execute('''
+                    DELETE FROM weekly_assignments
+                    WHERE id NOT IN (SELECT MAX(id) FROM weekly_assignments GROUP BY lesson_date)
+                ''')
+                cursor.execute('DROP INDEX IF EXISTS idx_assignments_lesson')
+                cursor.execute('CREATE UNIQUE INDEX idx_assignments_lesson_unique ON weekly_assignments(lesson_date)')
+                cursor.execute("INSERT INTO schema_migrations (version) VALUES (2)")
+
             # Daily practices table (每日分项打卡)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS daily_practices (
@@ -668,8 +684,15 @@ class Database(BaseBackend):
             stage_order = attended_dates.index(lesson_date) + 1 if lesson_date in attended_dates else None
 
             cursor.execute('''
-                INSERT OR REPLACE INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order, items, notes, images)
+                INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order, items, notes, images)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(lesson_date) DO UPDATE SET
+                    stage_start = excluded.stage_start,
+                    stage_end = excluded.stage_end,
+                    stage_order = excluded.stage_order,
+                    items = excluded.items,
+                    notes = excluded.notes,
+                    images = excluded.images
             ''', (lesson_date.isoformat(), stage_start, stage_end, stage_order,
                   json.dumps(merged_items, ensure_ascii=False), final_notes,
                   json.dumps(merged_images, ensure_ascii=False)))
