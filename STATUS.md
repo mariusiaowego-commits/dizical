@@ -1,8 +1,18 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-02 (practice-log 3 bug 修复 + 重复科目防呆 + 科目预填最近要求, main efc240e)
+**最后更新**: 2026-08-02 (practice-log 3 bug + 防呆 + 科目预填 + HEIC 预览修复, main f650082)
 
 ---
+
+### 2026-08-02 practice-log HEIC 配图预览修复 (PR #216 MERGED, main f650082)
+
+**触发**: dad 反馈 — 配图(HEIC)在 Chrome 破图无法预览，点击下载正常（浏览器 `<img>` 不支持 HEIC 渲染，Safari 可以）
+
+**修复**:
+- ✅ 31b542a fix: 上传接口对 .heic/.heif 用 macOS 内置 `sips` 转 JPEG 后返回 jpg URL（零新依赖）；sips 不可用(如 CloudRun)或转换失败保留原 heic
+- 已回填: raw/ 3 个 heic 全部转 jpg；row 71 (08-01 第17期) images 指向 jpg
+
+**验证**: sips 转换 3/3 OK（jpg 3213×5712）；pytest 14 failed（基线一致）+ 380 passed，0 新增回归；dad 刷新确认预览正常
 
 ### 2026-08-02 practice-log 科目预填最近一次要求 (PR #214 MERGED, main efc240e)
 
