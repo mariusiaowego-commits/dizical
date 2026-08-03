@@ -1,3 +1,12 @@
+## 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218, fix/badges-260803)
+
+- dad 浏览器逐个发现 5 个 badge 问题: 加练狂魔没亮, streak_7 图 404, streak_N/recovery_N 未解锁时不知进度, /badges 应加 "考级" tab 独立 grade_1..10, seasonal 7 个 badge 全显示同一行
+- 根因: `_has_double_practice` 旧 SQL `GROUP BY date HAVING cnt >= 2` 永远 False (daily_practices.date UNIQUE, 同日第二次练走 UPDATE 合并 items); streak_7 db url 指向已删的 `_v1.png`; modal 渲染 `condText` 优先 `cond`, 把用户友好的 desc 放前面覆盖了 calc 进度; `_calc_seasonal` dispatch bug — aid-specific 分支 (week_champ/full_month/top1/early_riser/total_60/threshold_map) 写在 `if seasonal_type == "monthly":` 块外永远走不到, db seasonal_type 全是 "monthly", 所以 7 个 badge 全命中月度通用 fallback
+- 修复: `_double_first_achieved_at` 改读 `behavior_log` JSON 数组里的 distinct session_id (一次保存 = 一个 session), 历史首次达成 2026-07-27 (4 sessions); streak_N / recovery_N 未解锁分支 cond 加 "当前连续 X 天, 还差 N-X 天"; `_get_consecutive_streak` 算法 today 没练时 fallback 到 yesterday (让 progress 拿到实际 streak); 新 `_recovery_current_streak` helper (过滤烫伤日 2026-07-08 之后日期); modal 优先级改成 `cond > condText > desc`; `badges_page` 后端加 `display_group` 字段; streak_7 图 db url 改回 streak_7.png, 走 PIL 245 + rembg U2-Net 重生火焰主题图 (跟 streak_3/14 同一系列); `_calc_seasonal` 把 aid-specific 分支移进 monthly 块, fallback 在最后; 顺手修 pre-existing `_get_top_items` SQL alias bug (用 `dp.date` 无 alias); tab emoji 换 koboyo.com SVG (trophy/treble-clef/star, fill=currentColor)
+- 测试: 26 个新测试 (double 5 + streak/recovery 8 + seasonal 6 + night_owl 兼容 7) 全过; 全套 399 passed + 14 pre-existing failed (基线一致, 与本次改动无关), 0 新增 regression
+- 服务: 8765 重启跑新代码 (PID 41270)
+- 沉淀: Obsidian sprint-04-badges-5fix-2026-08-03/ 完整 6 doc (sprint + prd + tech-spec + test-plan + verify + decision-log); 主仓 PRDs/AI-PRD-badges-5fix-260803.md + docs/tech-spec-badges-5fix-260803.md + docs/test-plan-badges-5fix-260803.md 双写 (MD5 一致)
+
 ## 2026-08-02 practice-log HEIC 配图预览修复 (PR #216 MERGED)
 
 - dad 反馈: 配图(HEIC)在 Chrome 破图无法预览, 点击下载正常. 根因: 浏览器 `<img>` 不支持 HEIC 渲染 (Safari 可以)
