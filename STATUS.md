@@ -1,8 +1,26 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-03 (badges 5 bug 修复 + tab SVG icon, PR #218 MERGED, main c1f714e)
+**最后更新**: 2026-08-03 (一次性徽章 雄鹰展翅, PR #221 MERGED, main 6aec99c)
 
 ---
+
+### 2026-08-03 一次性徽章 雄鹰展翅 (PR #221 MERGED, main 6aec99c)
+
+**触发**: 女儿 2026-08-03 完整背出笛子三级考级曲《萨丽哈最听毛主席的话》(文革版哈萨克族民歌, "要当雄鹰展翅飞, 不做温室一枝花")
+
+**修复 (1 commit d2af6b9 → squash 6aec99c, 1 文件 +1 PNG)**:
+- ✅ db INSERT achievements (eagle_spread_wings, 突破/milestone, immediate + achieved_at_override='2026-08-03', sort_order=37)
+- ✅ db INSERT achievement_badges (url=/static/badges/eagle_spread_wings.png, is_locked=0)
+- ✅ PNG 落盘 (1.5MB RGBA, 蓝衣辫子女孩双手举金色雄鹰悬头顶, chibi enamel pin, PIL 245 + rembg U2-Net 兜底)
+- ✅ 服务 8765 重启, /badges API 验证 achieved=True, condition="考出时间: 2026-08-03"
+- ✅ 9 个 Q 全部 dad 拍板 (sprint workflow Phase 1): 名字 雄鹰展翅 / 志向升华版 description / immediate + override 解锁 / chibi 蓝衣举鹰 placeholder / 简洁版故事 / 温暖版 cond_text
+- ✅ 关键发现: "萨丽哈" 是同名异曲陷阱, 至少有 3 个不同曲子 (文革版 (本次) / 塔吉克爱情悲剧 / 笛子考级改编), 必须先跟 dad 确认版本
+
+**测试**: 不需要新单测 (immediate + override 路径 sprint 04 PR #218 已验证); 全套 pytest 14 pre-existing failed 保持原状, 0 新增 regression
+
+**沉淀**: Obsidian sprint-05-eagle-spread-wings-2026-08-03/ 完整 6 doc (plan + sprint + prd + tech-spec + test-plan + verify) + decision-log append 7 条 PDR; 主仓 PRDs/AI-PRD-eagle-spread-wings-260803.md + docs/tech-spec-eagle-spread-wings-260803.md + docs/test-plan-eagle-spread-wings-260803.md 双写 (MD5 一致)
+
+**部署**: 8765 重启跑新代码; db 备份 `data/backups/dizi-pre-eagle-sprint05-20260803-173512.db`; db INSERT 不入 git (sprint 05 跟 sprint 04 一致)
 
 ### 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218 MERGED, main c1f714e)
 
