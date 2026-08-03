@@ -100,7 +100,8 @@ def _get_top_items(conn: sqlite3.Connection, limit: int = 3,
     where = ""
     params: list = []
     if start and end:
-        where = " AND dp.date >= ? AND dp.date <= ? "
+        # 2026-08-03 修: 原 SQL 是 dp.date 但 from 没 alias, 报 no such column: dp.date
+        where = " AND date >= ? AND date <= ? "
         params = [start.isoformat(), end.isoformat()]
     # 1. 拉所有 item_id -> name 映射 (活跃科目)
     cur = _exec(conn, "SELECT item_id, name FROM practice_items WHERE is_archived = 0")
@@ -131,15 +132,22 @@ def _get_top_items(conn: sqlite3.Connection, limit: int = 3,
 
 
 def _get_consecutive_streak(dates: list[str], today: date, min_mins: int = 10) -> int:
-    """从今天往前数，连续每天有练习的天数"""
+    """从 today 往前数, 连续每天有练习的天数.
+
+    2026-08-03 拍板: 若 today 没练, 从 yesterday 开始数 (之前 today 没练 → 0,
+    对 streak_N progress 展示不友好, 用户看不到 "当前连续 9 天" 的进度).
+
+    算法: 先尝试从 today 开始, 若 today 不在 dates, 从 today - 1 开始.
+    """
+    if not dates:
+        return 0
+    dset = set(dates)
+    start = today if today.isoformat() in dset else today - timedelta(days=1)
     streak = 0
-    check = today
-    for d in dates:
-        if d == check.isoformat():
-            streak += 1
-            check -= timedelta(days=1)
-        else:
-            break
+    check = start
+    while check.isoformat() in dset:
+        streak += 1
+        check -= timedelta(days=1)
     return streak
 
 
@@ -261,12 +269,13 @@ def _has_all_items_ever(conn: sqlite3.Connection) -> tuple[bool, str | None]:
 
 
 def _has_double_practice(conn: sqlite3.Connection) -> bool:
-    """是否存在同日 ≥2 条记录"""
-    cur = _exec(conn, """
-        SELECT date, COUNT(*) as cnt FROM daily_practices
-        GROUP BY date HAVING cnt >= 2
-    """)
-    return cur.fetchone() is not None
+    """是否存在同日 ≥2 个 distinct session.
+
+    daily_practices.date UNIQUE 约束导致同日第二次练习走 UPDATE 合并 items,
+    永远不会出现 ≥2 条记录. 真正的"加练"语义看 behavior_log 里 distinct session_id 数.
+    老 entries 没 session_id 算 1 个 session.
+    """
+    return _double_first_achieved_at(conn) is not None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -310,6 +319,30 @@ def _streak_first_achieved_at(conn: sqlite3.Connection, n: int) -> str | None:
         else:
             streak = 1
     return None
+
+
+def _recovery_current_streak(conn: sqlite3.Connection, injury_date: str, today: date) -> int:
+    """烫伤后当前连续天数 (从 today 往前数, 必须 >= injury_date).
+
+    2026-08-03 拍板: 跟 _get_consecutive_streak 一致 — today 没练时从 yesterday 开始数,
+    让用户看到 "当前连续 N/21" 的进度 (而不是 0).
+    """
+    cur = _exec(conn,
+        "SELECT DISTINCT date FROM daily_practices "
+        "WHERE total_minutes > 0 AND date >= ? AND date <= ? ORDER BY date DESC",
+        (injury_date, today.isoformat()),
+    )
+    dates = [r[0] for r in cur.fetchall()]
+    if not dates:
+        return 0
+    dset = set(dates)
+    start = today if today.isoformat() in dset else today - timedelta(days=1)
+    streak = 0
+    check = start
+    while check.isoformat() in dset and check.isoformat() >= injury_date:
+        streak += 1
+        check -= timedelta(days=1)
+    return streak
 
 
 def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: int) -> str | None:
@@ -356,14 +389,26 @@ def _total_first_achieved_at(conn: sqlite3.Connection, threshold_mins: int) -> s
 
 
 def _double_first_achieved_at(conn: sqlite3.Connection) -> str | None:
-    """史上首次同日 ≥2 条 daily_practices 行的最早日期.
-    语义同 _has_double_practice, 只是给出日期."""
-    cur = _exec(conn, 
-        "SELECT date, COUNT(*) c FROM daily_practices "
-        "GROUP BY date HAVING c >= 2 ORDER BY date LIMIT 1"
+    """史上首次同日 ≥2 个 distinct session 的最早日期.
+
+    算法: 遍历每日 behavior_log, 统计 distinct session_id 数, ≥2 则算达成.
+    老 entries (无 session_id) 算 1 个 session, 自然不会触发 false-positive.
+    """
+    cur = _exec(conn,
+        "SELECT date, behavior_log FROM daily_practices "
+        "WHERE behavior_log IS NOT NULL AND behavior_log != '[]' "
+        "ORDER BY date"
     )
-    row = cur.fetchone()
-    return row[0] if row else None
+    import json as _json
+    for date_str, log_str in cur.fetchall():
+        try:
+            entries = _json.loads(log_str)
+        except (ValueError, TypeError):
+            continue
+        sessions = {e["session_id"] for e in entries if e.get("session_id") is not None}
+        if len(sessions) >= 2:
+            return date_str
+    return None
 
 
 def _one_breath_first_achieved_at(conn: sqlite3.Connection) -> str | None:
@@ -408,7 +453,8 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
                     streak: int, total_mins: int,
                     top_items: list[tuple[str, int]],
                     has_all_items: bool, all_items_achieved_at: str | None,
-                    has_double: bool) -> CalcResult:
+                    has_double: bool,
+                    today: date) -> CalcResult:
     """计算单个 milestone 类型成就.
 
     achieved_at 优先 stats (历史已写入, 不可变), 否则用 helper 算首次达成日.
@@ -427,33 +473,39 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
     # ── streak_* 系列: 史上首次达成"连续 ≥ n 天"即永久解锁 ──────
     # 2026-07-01 拍板: 之前用"今日 streak"是错的 — 今天没练 streak=0
     # → milestone 永远不解锁. milestone 必须走历史首次.
+    # 2026-08-03 拍板: 未解锁时, 模板展示"当前连续 X 天, 还差 N-X 天"进度.
+    # computed_value 传 streak (当前), 让模板拼"还差多少".
     if aid.startswith("streak_") and aid[7:].isdigit():
         n = int(aid.split("_")[1])
         first_at = _streak_first_achieved_at(conn, n)
         achieved = first_at is not None
-        # 2026-07-01 拍板: cond 改成小朋友能懂 (原来"历史首次...不依赖当前 streak"
-        # 是工程视角, 不是孩子视角).
-        # unlocked: 达成日 + 天数;   locked: 直白条件.
         if achieved:
             cond = f"你在 {first_at} 第一次连着打卡 {n} 天"
         else:
-            cond = f"连着打卡 {n} 天就能拿到"
-        return CalcResult(achieved, n if achieved else 0, None, first_at, cond)
+            cur_streak_val = streak  # 全局 streak (从今天往前数)
+            gap = max(0, n - cur_streak_val)
+            cond = f"连着打卡 {n} 天就能拿到（当前连续 {cur_streak_val} 天，还差 {gap} 天）"
+        return CalcResult(achieved, n if achieved else streak, None, first_at, cond)
 
     # ── recovery_first_practice_7 / 14 / 21 系列: 烫伤后连练 7/14/21 天 ─────
     # 2026-07-14 拍板: 烫伤日 2026-07-08 (左手小臂烫伤, 脸大小一块)
     # 解锁条件: 7/8 以后连续练习 ≥ n 天
     # 跟 streak_* 区别: streak 是全历史, recovery 只算事故后的连续天数
+    # 2026-08-03 拍板: 未解锁时, 模板展示"自烫伤日 X 起算, 当前 Y/N 天".
+    # computed_value 传 recovery streak (从今天往前数, 含 injury_date 之后).
     if aid in ("recovery_first_practice_7", "recovery_first_practice_14", "recovery_first_practice_21"):
         n = int(aid.rsplit("_", 1)[-1])
         injury_date = "2026-07-08"  # 烫伤日 (2026-07-14 拍板, 写死, 后续事故再加新 aid)
         first_at = _recovery_first_achieved_at(conn, injury_date, n)
         achieved = first_at is not None
+        # 算 recovery 当前连续天数 (从今天往前数, 必须 ≥ injury_date)
+        cur_streak_val = _recovery_current_streak(conn, injury_date, today)
         if achieved:
             cond = f"你在 {first_at} 烫伤后连着打卡 {n} 天"
         else:
-            cond = f"烫伤后连着打卡 {n} 天就能拿到"
-        return CalcResult(achieved, n if achieved else 0, None, first_at, cond)
+            gap = max(0, n - cur_streak_val)
+            cond = f"自{injury_date}起累计打卡 {n} 天（当前 {cur_streak_val}/{n}，还差 {gap} 天）"
+        return CalcResult(achieved, n if achieved else cur_streak_val, None, first_at, cond)
 
     # ── lucky_61_YYYY 系列: 六一节永久里程碑 ─────────────────────
     # 2026-07-01 拍板: 用户认为这是 milestone (永久徽章, 像考级一样).
@@ -637,13 +689,17 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         return CalcResult(achieved, week_mins, None, None, cond)
 
     # ── monthly: 自然月周期 ────────────────────────────────────
+    # 2026-08-03 拍板: dispatch bug 修复. 之前 monthly fallback 走到 line 717 就 return,
+    # 导致 threshold_map / total_60 / week_champ / full_month / top1 等 aid-specific
+    # 分支永远走不到 (db 里所有 seasonal badge seasonal_type 都是 "monthly").
+    # 改为: 先尝试 aid-specific 分支, 都不命中才走月度通用 fallback.
     if seasonal_type == "monthly":
-        # 节日限定徽章（lucky_61_YYYY）走独立分支，不按"当月 60 分钟"判断
+        # 节日限定徽章（lucky_61_YYYY）
         if aid.startswith("lucky_61_") and len(aid) == len("lucky_61_2026"):
             try:
                 y = int(aid[-4:])
                 target = f"{y:04d}-06-01"
-                cur = _exec(conn, 
+                cur = _exec(conn,
                     "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date = ?",
                     (target,))
                 mins = int(cur.fetchone()[0])
@@ -656,6 +712,97 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                 return CalcResult(achieved, mins if achieved else 0, None, None, cond)
             except (ValueError, sqlite3.Error) as e:
                 return CalcResult(False, 0, None, None, f"节日徽章解析失败: {e}")
+
+        # 早练类（按小时判断, 永久解锁）
+        threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
+        if aid in threshold_map:
+            threshold = threshold_map[aid]
+            cur = _exec(conn,
+                "SELECT date, practice_at FROM daily_practices "
+                "WHERE practice_at IS NOT NULL AND practice_at != '' "
+                "ORDER BY date ASC"
+            )
+            from datetime import datetime
+            achieved = False
+            achieved_date = None
+            achieved_at = None
+            for date_str, p_at in cur.fetchall():
+                if not p_at:
+                    continue
+                try:
+                    ts = datetime.strptime(p_at[:19], "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    continue
+                if ts.hour < threshold:
+                    achieved = True
+                    achieved_date = date_str
+                    achieved_at = p_at
+                    break
+            if achieved:
+                cond = f"首次达成 {achieved_date} {achieved_at[11:16]} (需早于{threshold}:00)"
+            else:
+                cond = f"暂无 {threshold}:00 前的练习记录"
+            return CalcResult(achieved, threshold, None, achieved_at, cond)
+
+        # total_60: 当月累计 ≥ 60 分钟
+        if aid == "total_60":
+            month_start = date(now_year, now_month, 1)
+            if now_month == 12:
+                month_end = date(now_year + 1, 1, 1) - timedelta(days=1)
+            else:
+                month_end = date(now_year, now_month + 1, 1) - timedelta(days=1)
+            month_mins = _get_mins_in_range(conn, month_start, today)
+            achieved = month_mins >= 60
+            cond = f"当月累计 ≥ 60 分钟（当前 {month_mins} 分钟）"
+            return CalcResult(achieved, month_mins, None, None, cond)
+
+        # week_champ: 本周 vs 上周 stage 对比
+        if aid == "week_champ":
+            curr_stage, prev_stage = _get_stage_range(conn)
+            if not curr_stage or not prev_stage:
+                return CalcResult(False, 0, None, None, "暂无完整上下周数据")
+            if not curr_stage.get("stage_end") or not curr_stage.get("stage_start"):
+                return CalcResult(False, 0, None, None, "本周数据不完整")
+            if not prev_stage.get("stage_end") or not prev_stage.get("stage_start"):
+                return CalcResult(False, 0, None, None, "上周数据不完整")
+            curr_start = date.fromisoformat(curr_stage["stage_start"])
+            curr_end   = date.fromisoformat(curr_stage["stage_end"])
+            prev_start = date.fromisoformat(prev_stage["stage_start"])
+            prev_end   = date.fromisoformat(prev_stage["stage_end"])
+            curr_mins = _get_mins_in_range(conn, curr_start, curr_end)
+            prev_mins = _get_mins_in_range(conn, prev_start, prev_end)
+            achieved = curr_mins > prev_mins
+            cond = (f"本周 {curr_mins} > 上周 {prev_mins}，"
+                    f"阶段 {curr_stage.get('stage_order', '?')} vs {prev_stage.get('stage_order', '?')}")
+            return CalcResult(achieved, curr_mins, prev_mins, None, cond)
+
+        # full_month: 本月 vs 上月
+        if aid == "full_month":
+            this_month_start = date(now_year, now_month, 1)
+            if now_month == 1:
+                last_month_start = date(now_year - 1, 12, 1)
+                last_month_end  = date(now_year - 1, 12, 31)
+            else:
+                last_month_start = date(now_year, now_month - 1, 1)
+                last_month_end   = date(now_year, now_month, 1) - timedelta(days=1)
+            this_mins = _get_mins_in_range(conn, this_month_start, today)
+            last_mins = _get_mins_in_range(conn, last_month_start, last_month_end)
+            achieved = this_mins > last_mins
+            cond = f"本月 {this_mins} 分钟 > 上月 {last_mins} 分钟"
+            return CalcResult(achieved, this_mins, last_mins, None, cond)
+
+        # top1: 当月第 1 名科目
+        if aid == "top1":
+            month_start = date(now_year, now_month, 1)
+            month_top = _get_top_items(conn, limit=1, start=month_start, end=today)
+            if month_top:
+                item_name, mins = month_top[0]
+                cond = f"当月第1：{item_name}（{mins}分钟）"
+                return CalcResult(True, mins, item_name, None, cond)
+            else:
+                return CalcResult(False, 0, None, None, "当月第1科目（暂无数据）")
+
+        # ── fallback: 当月累计 ≥ 60 分钟 (其他未知 monthly badge) ──
         month_start = date(now_year, now_month, 1)
         if now_month == 12:
             month_end = date(now_year + 1, 1, 1) - timedelta(days=1)
@@ -665,100 +812,6 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
         achieved = month_mins >= 60
         cond = f"当月累计 ≥ 60 分钟（当前 {month_mins} 分钟）"
         return CalcResult(achieved, month_mins, None, None, cond)
-
-    # ── stage: 课程赛季周期 ────────────────────────────────────
-    # early_riser / little_chick_commander / first_to_act — 按小时判断
-    # 2026-06-13 拍板: 永久解锁版 — 历史任意一天 enter_time CST hour < 阈值 → 永久解锁
-    # (之前 "monthly_first_practice_before_X" 卡死 bug: 6/1 12:56 卡住全月, 6/13 早练不算)
-    threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
-    if aid in threshold_map:
-        threshold = threshold_map[aid]
-        # 找历史任意一天, 该天 practice_at 的 CST 小时 < threshold
-        # practice_at 是 CST ISO 字符串 'YYYY-MM-DD HH:MM:SS[.fff]'
-        cur = _exec(conn, 
-            "SELECT date, practice_at FROM daily_practices "
-            "WHERE practice_at IS NOT NULL AND practice_at != '' "
-            "ORDER BY date ASC"
-        )
-        from datetime import datetime
-        achieved = False
-        achieved_date = None
-        achieved_at = None
-        for date_str, p_at in cur.fetchall():
-            if not p_at:
-                continue
-            try:
-                # CST ISO 'YYYY-MM-DD HH:MM:SS[.fff]' 取前 19 字符
-                ts = datetime.strptime(p_at[:19], "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                continue
-            if ts.hour < threshold:
-                achieved = True
-                achieved_date = date_str
-                achieved_at = p_at
-                break  # 最早一次达成, 后续不用看
-        if achieved:
-            cond = f"首次达成 {achieved_date} {achieved_at[11:16]} (需早于{threshold}:00)"
-        else:
-            cond = f"暂无 {threshold}:00 前的练习记录"
-        return CalcResult(achieved, threshold, None, achieved_at, cond)
-
-    if aid == "total_60":
-        month_start = date(now_year, now_month, 1)
-        if now_month == 12:
-            month_end = date(now_year + 1, 1, 1) - timedelta(days=1)
-        else:
-            month_end = date(now_year, now_month + 1, 1) - timedelta(days=1)
-        month_mins = _get_mins_in_range(conn, month_start, today)
-        achieved = month_mins >= 60
-        cond = f"当月累计 ≥ 60 分钟（当前 {month_mins} 分钟）"
-        return CalcResult(achieved, month_mins, None, None, cond)
-
-    if aid == "week_champ":
-        curr_stage, prev_stage = _get_stage_range(conn)
-        if not curr_stage or not prev_stage:
-            return CalcResult(False, 0, None, None,
-                              "暂无完整上下周数据")
-        if not curr_stage.get("stage_end") or not curr_stage.get("stage_start"):
-            return CalcResult(False, 0, None, None,
-                              "本周数据不完整")
-        if not prev_stage.get("stage_end") or not prev_stage.get("stage_start"):
-            return CalcResult(False, 0, None, None,
-                              "上周数据不完整")
-        curr_start = date.fromisoformat(curr_stage["stage_start"])
-        curr_end   = date.fromisoformat(curr_stage["stage_end"])
-        prev_start = date.fromisoformat(prev_stage["stage_start"])
-        prev_end   = date.fromisoformat(prev_stage["stage_end"])
-        curr_mins = _get_mins_in_range(conn, curr_start, curr_end)
-        prev_mins = _get_mins_in_range(conn, prev_start, prev_end)
-        achieved = curr_mins > prev_mins
-        cond = (f"本周 {curr_mins} > 上周 {prev_mins}，"
-                f"阶段 {curr_stage['stage_order']} vs {prev_stage['stage_order']}")
-        return CalcResult(achieved, curr_mins, prev_mins, None, cond)
-
-    if aid == "full_month":
-        this_month_start = date(now_year, now_month, 1)
-        if now_month == 1:
-            last_month_start = date(now_year - 1, 12, 1)
-            last_month_end  = date(now_year - 1, 12, 31)
-        else:
-            last_month_start = date(now_year, now_month - 1, 1)
-            last_month_end   = date(now_year, now_month, 1) - timedelta(days=1)
-        this_mins = _get_mins_in_range(conn, this_month_start, today)
-        last_mins = _get_mins_in_range(conn, last_month_start, last_month_end)
-        achieved = this_mins > last_mins
-        cond = f"本月 {this_mins} > 上月 {last_mins}"
-        return CalcResult(achieved, this_mins, last_mins, None, cond)
-
-    if aid == "top1":
-        month_start = date(now_year, now_month, 1)
-        month_top = _get_top_items(conn, limit=1, start=month_start, end=today)
-        if month_top:
-            item_name, mins = month_top[0]
-            cond = f"当月第1：{item_name}（{mins}分钟）"
-            return CalcResult(True, mins, item_name, None, cond)
-        else:
-            return CalcResult(False, 0, None, None, "当月第1科目（暂无数据）")
 
     return CalcResult(False, 0, None, None, "")
 
@@ -835,7 +888,7 @@ def calc_all() -> dict[str, CalcResult]:
         else:  # milestone
             results[aid] = _calc_milestone(
                 conn, aid, stats, streak, total_mins,
-                top_items, has_all_items, all_items_achieved_at, has_double)
+                top_items, has_all_items, all_items_achieved_at, has_double, today)
 
     # 持久化 hook: 把新解锁的 milestone 写进 stats
     _persist_unlocked_milestones(conn, results)

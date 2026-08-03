@@ -1,8 +1,31 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-02 (practice-log 3 bug + 防呆 + 科目预填 + HEIC 预览修复, main f650082)
+**最后更新**: 2026-08-03 (badges 5 bug 修复 + tab SVG icon, PR #218 待 MERGE, branch fix/badges-260803)
 
 ---
+
+### 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218, branch fix/badges-260803)
+
+**触发**: dad 浏览器逐个发现 5 个 badge 问题 (1) 加练狂魔没亮 (2) streak_7 图加载不出 (3) streak_N / recovery_N 未解锁时不知进度 (4) /badges 应加 "考级" tab 独立 grade_1..10 (5) seasonal 7 个 badge 全显示同一行 "当月累计 ≥ 60 分钟"
+
+**修复 (1 commit 6f60cc9, 11 文件 +649/-134)**:
+- ✅ `_has_double_practice` + `_double_first_achieved_at`: 改用 `behavior_log` distinct session_id (一次保存 = 一个 session). 历史首次达成 2026-07-27 (4 sessions)
+- ✅ `_calc_milestone` streak_N / recovery_N 未解锁分支: cond 含 "当前连续 X 天, 还差 N-X 天" / "自2026-07-08起累计打卡 21 天（当前 X/21, 还差 N-X 天）"
+- ✅ `_get_consecutive_streak` 算法: today 没练时 fallback 到 yesterday (让 progress 拿到实际 streak, 而不是 0)
+- ✅ `_recovery_current_streak` 新 helper: 烫伤日 (2026-07-08) 之后日期过滤
+- ✅ modal-cond 渲染优先级: `cond` (calc, 含进度) > `cond_text` > `desc`
+- ✅ `badges_page` 后端加 `display_group` 字段 (grade_1..10 走 "grade" tab)
+- ✅ badges.html TABS 加 `grade`, buildTab 用 display_group 过滤
+- ✅ streak_7 图: db url `_v1.png` (已删 404) → `streak_7.png` (火焰主题 chibi 女孩, PIL 245 + rembg U2-Net 兜底, 874KB RGBA)
+- ✅ `_calc_seasonal` dispatch bug: aid-specific 分支 (week_champ/full_month/top1/early_riser/total_60/threshold_map) 在 monthly 块外永远走不到 → 全部移到 monthly 块内, fallback 在最后
+- ✅ `_get_top_items` SQL alias bug (pre-existing): `dp.date` 无 alias → 改成 `date`. 之前 dispatch bug 让 top1 永远走不到, 修 dispatch 才暴露
+- ✅ tab emoji 🏆🎵🌟 → koboyo.com 手绘 SVG (trophy / treble-clef / star, fill=currentColor 跟主题色)
+
+**测试**: 26 个新测试 (test_double_practice_badge 5 + test_streak_recovery_progress 8 + test_seasonal_dispatch 6 + test_night_owl_calc 兼容 7) 全过; 全套 399 passed + 14 pre-existing failed (基线一致, 与本次改动无关), 0 新增 regression
+
+**沉淀**: Obsidian sprint-04-badges-5fix-2026-08-03/ (6 doc: sprint + prd + tech-spec + test-plan + verify + decision-log); 主仓 PRDs/AI-PRD-badges-5fix-260803.md + docs/tech-spec-badges-5fix-260803.md + docs/test-plan-badges-5fix-260803.md 双写 (MD5 一致)
+
+**部署**: 8765 重启跑新代码 (PID 41270); db 备份 `data/backups/dizi-pre-streak7-url-fix-20260803-133306.db` + `dizi-pre-streak7-url-fix2-20260803-154553.db`
 
 ### 2026-08-02 practice-log HEIC 配图预览修复 (PR #216 MERGED, main f650082)
 
