@@ -1,10 +1,10 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-03 (badges 5 bug 修复 + tab SVG icon, PR #218 待 MERGE, branch fix/badges-260803)
+**最后更新**: 2026-08-03 (badges 5 bug 修复 + tab SVG icon, PR #218 MERGED, main c1f714e)
 
 ---
 
-### 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218, branch fix/badges-260803)
+### 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218 MERGED, main c1f714e)
 
 **触发**: dad 浏览器逐个发现 5 个 badge 问题 (1) 加练狂魔没亮 (2) streak_7 图加载不出 (3) streak_N / recovery_N 未解锁时不知进度 (4) /badges 应加 "考级" tab 独立 grade_1..10 (5) seasonal 7 个 badge 全显示同一行 "当月累计 ≥ 60 分钟"
 

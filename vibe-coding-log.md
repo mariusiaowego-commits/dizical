@@ -1,4 +1,4 @@
-## 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218, fix/badges-260803)
+## 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218 MERGED, main c1f714e)
 
 - dad 浏览器逐个发现 5 个 badge 问题: 加练狂魔没亮, streak_7 图 404, streak_N/recovery_N 未解锁时不知进度, /badges 应加 "考级" tab 独立 grade_1..10, seasonal 7 个 badge 全显示同一行
 - 根因: `_has_double_practice` 旧 SQL `GROUP BY date HAVING cnt >= 2` 永远 False (daily_practices.date UNIQUE, 同日第二次练走 UPDATE 合并 items); streak_7 db url 指向已删的 `_v1.png`; modal 渲染 `condText` 优先 `cond`, 把用户友好的 desc 放前面覆盖了 calc 进度; `_calc_seasonal` dispatch bug — aid-specific 分支 (week_champ/full_month/top1/early_riser/total_60/threshold_map) 写在 `if seasonal_type == "monthly":` 块外永远走不到, db seasonal_type 全是 "monthly", 所以 7 个 badge 全命中月度通用 fallback
