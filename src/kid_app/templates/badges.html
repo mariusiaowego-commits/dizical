@@ -141,6 +141,16 @@
       font-weight: 500;
       cursor: pointer;
       transition: background 0.2s, color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    /* 2026-08-03 feat/badges-tab-icons: koboyo.com SVG tab icons */
+    .tab-icon {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
     }
     .tab-btn.active {
       background: #fff;
@@ -314,13 +324,17 @@ function cardHTML(d) {
 }
 
 const TABS = [
-  { key: 'milestone', label: '🏆 成就' },
-  { key: 'seasonal',  label: '🌟 赛季' },
+  // 2026-08-03 feat/badges-tab-icons: 用 koboyo.com SVG icons 替代 emoji.
+  // License: free commercial use, no attribution. SVG fill="currentColor" 跟随父元素 color.
+  { key: 'milestone', label: '成就',  icon: '/static/img/tab-icons/trophy.svg' },
+  { key: 'grade',     label: '考级',  icon: '/static/img/tab-icons/treble-clef.svg' },
+  { key: 'seasonal',  label: '赛季',  icon: '/static/img/tab-icons/star.svg' },
 ];
 
 function buildTab(group) {
-  const unlocked = DATA.filter(d => d.group === group && d.achieved);
-  const locked   = DATA.filter(d => d.group === group && !d.achieved);
+  // 2026-08-03: 改用 display_group (grade_1..10 走 grade tab, 其他走原 category)
+  const unlocked = DATA.filter(d => (d.display_group || d.group) === group && d.achieved);
+  const locked   = DATA.filter(d => (d.display_group || d.group) === group && !d.achieved);
   let html = '';
 
   if (unlocked.length) {
@@ -351,7 +365,10 @@ function buildTab(group) {
 
 function buildUI() {
   const tabBar = TABS.map(t =>
-    `<button class="tab-btn" id="tab-${t.key}" onclick="switchTab('${t.key}')">${t.label}</button>`
+    `<button class="tab-btn" id="tab-${t.key}" onclick="switchTab('${t.key}')">
+       <img class="tab-icon" src="${t.icon}" alt="" aria-hidden="true">
+       <span class="tab-label">${t.label}</span>
+     </button>`
   ).join('');
   document.getElementById('tab-bar').innerHTML = tabBar;
   switchTab('milestone');
@@ -377,7 +394,10 @@ function openModal(card) {
     locked ? 'saturate(0.55) brightness(0.85)' : '';
   document.getElementById('modal-name').textContent = card.dataset.name;
   document.getElementById('modal-tag').textContent  = card.dataset.tag;
-  document.getElementById('modal-cond').textContent = card.dataset.condText || card.dataset.cond || card.dataset.desc;
+  // 2026-08-03 feat/badges-progress-display: 优先展示 calc 出来的 cond (含 streak/recovery 进度),
+  // 再 fallback 到 condText (用户/AI 填的友好描述), 最后 desc (zh_story).
+  document.getElementById('modal-cond').textContent =
+    card.dataset.cond || card.dataset.condText || card.dataset.desc;
 
   const dateEl = document.getElementById('modal-date');
   if (card.dataset.date) {

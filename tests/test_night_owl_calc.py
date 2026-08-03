@@ -11,6 +11,7 @@ Tests for V2.5 (2026-06-16) feat/badge-night-owl-calc: night_owl calc 规则
 from __future__ import annotations
 import sqlite3
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -67,7 +68,8 @@ class TestNightOwlCalc:
         result = _calc_milestone(
             conn, "night_owl", stats={}, streak=1, total_mins=25,
             top_items=[], has_all_items=False, all_items_achieved_at=None,
-            has_double=False
+            has_double=False,
+            today=date(2026, 6, 13),
         )
         assert result.achieved is True
         assert result.achieved_at == "2026-06-13"
@@ -91,7 +93,8 @@ class TestNightOwlCalc:
         result = _calc_milestone(
             conn, "night_owl", stats={}, streak=1, total_mins=25,
             top_items=[], has_all_items=False, all_items_achieved_at=None,
-            has_double=False
+            has_double=False,
+            today=date(2026, 6, 13),
         )
         assert result.achieved is False
         assert result.achieved_at is None
@@ -115,6 +118,7 @@ class TestNightOwlCalc:
         result = _calc_milestone(
             conn, "night_owl", stats={}, streak=1, total_mins=25,
             top_items=[], has_all_items=False, all_items_achieved_at=None,
-            has_double=False
+            has_double=False,
+            today=date(2026, 6, 13),
         )
         assert result.achieved is True

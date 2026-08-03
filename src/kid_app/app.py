@@ -2399,6 +2399,8 @@ def badges_page():
             "name": ach["name"],
             "typ": ach["type"],   # 中文标签（突破/巅峰/执着/段位/晋级）
             "group": ach["category"],  # milestone / seasonal
+            # 2026-08-03 拍板: 考级类独立 tab — id 前缀 grade_ 单独分组
+            "display_group": "grade" if aid.startswith("grade_") else ach["category"],
             "description": ach["description"],
             "condition": res.condition,
             "cond_text": ach.get("cond_text") or "",  # V2.2 (2026-06-15) feat/badge-cond-text
