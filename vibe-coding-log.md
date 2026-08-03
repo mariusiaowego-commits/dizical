@@ -1,3 +1,12 @@
+## 2026-08-03 一次性徽章 雄鹰展翅 (PR #221 MERGED, main 6aec99c)
+
+- 触发: 女儿 2026-08-03 完整背出笛子三级考级曲《萨丽哈最听毛主席的话》(文革版哈萨克族民歌, 歌词"要当雄鹰展翅飞, 不做温室一枝花"). 一次性徽章纪念突破性时刻
+- dad 9 个 Q 全部拍板 (sprint workflow Phase 1): Q1 名字 雄鹰展翅 / Q2 志向升华版 description / Q3 突破/milestone / Q4 immediate + achieved_at_override='2026-08-03' / Q5 走 /badge-image skill / Q6 placeholder C 雄鹰印章 / Q7 description 简洁版 / Q8 cond_text 温暖版 / Q9 description 完整文字 简洁版
+- 修复: db INSERT achievements (eagle_spread_wings, sort_order=37) + INSERT achievement_badges (url=/static/badges/eagle_spread_wings.png); PNG 落盘 1.5MB RGBA (chibi 哈萨克蓝衣辫子女孩双手举金色雄鹰悬头顶, PIL 245 + rembg U2-Net 兜底); 服务 8765 重启跑新代码; /badges API 验证 achieved=True, condition="考出时间: 2026-08-03"
+- 关键发现: "萨丽哈" 同名异曲陷阱 — 至少有 3 个不同曲子 (文革版 (本次) / 塔吉克爱情悲剧《萨丽哈与萨曼》可汗女儿与牧羊少年殉情 / 笛子考级改编可能同源后者), 第一轮 research 我按塔吉克雪山瞎猜 placeholder, dad 拍板时纠正. 教训: 涉文化/历史背景徽章必须先跟 dad 确认"哪个版本", 不能瞎搜
+- 测试: 不需要新单测 (immediate + override 路径 sprint 04 PR #218 已验证); 全套 pytest 14 pre-existing failed 保持原状, 0 新增 regression
+- 沉淀: Obsidian sprint-05-eagle-spread-wings-2026-08-03/ 完整 6 doc (plan + sprint + prd + tech-spec + test-plan + verify) + decision-log append 7 条 PDR; 主仓 PRDs/AI-PRD-eagle-spread-wings-260803.md + docs/tech-spec-eagle-spread-wings-260803.md + docs/test-plan-eagle-spread-wings-260803.md 双写 (MD5 一致); db INSERT 不入 git (db 备份 `data/backups/dizi-pre-eagle-sprint05-20260803-173512.db`)
+
 ## 2026-08-03 /badges 5 bug 修复 + tab SVG icon (PR #218 MERGED, main c1f714e)
 
 - dad 浏览器逐个发现 5 个 badge 问题: 加练狂魔没亮, streak_7 图 404, streak_N/recovery_N 未解锁时不知进度, /badges 应加 "考级" tab 独立 grade_1..10, seasonal 7 个 badge 全显示同一行
