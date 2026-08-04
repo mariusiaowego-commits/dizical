@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.database import db
 from src import practice as practice_module
+from src import db_adapter  # Sprint 08: 双后端占位符适配 (conn.execute → db_adapter.execute)
 from src.kid_app.subject_info import get_subject_info
 from src.kid_app.schemas import PracticeLogRequest  # PR-B: Pydantic 校验
 from pydantic import ValidationError
@@ -77,6 +78,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Sprint 08: MAINTENANCE_MODE middleware (只读/维护窗口保护)
+# 必须注册在 CORSMiddleware 之后 — FastAPI 后注册先执行, middleware 内部放行 OPTIONS
+from starlette.middleware.base import BaseHTTPMiddleware
+from src.kid_app.maintenance import maintenance_middleware
+app.add_middleware(BaseHTTPMiddleware, dispatch=maintenance_middleware)
+
+
+# ─── Maintenance status (Sprint 08) ────────────────────────────────────────
+from src.kid_app.maintenance import MAINTENANCE_MODE, MAINTENANCE_STARTED_AT, MAINTENANCE_EXPECTED_RESUME
+
+@app.get("/api/__maintenance__")
+def maintenance_status():
+    """查询当前维护模式 (前端轮询用). 永不拦截. read-only."""
+    import datetime as _dt
+    started = None
+    if MAINTENANCE_STARTED_AT:
+        started = _dt.datetime.fromtimestamp(MAINTENANCE_STARTED_AT).strftime("%Y-%m-%d %H:%M:%S")
+    return {
+        "mode": MAINTENANCE_MODE,
+        "started_at": started,
+        "expected_resume": MAINTENANCE_EXPECTED_RESUME,
+        "writable": MAINTENANCE_MODE == "off",
+    }
 
 
 # ─── Health check (CloudRun 健康检查 + spike 验证) ──────────────────────
@@ -196,7 +221,7 @@ def streak_days():
 
 def total_practice_minutes():
     conn = db._get_connection()
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices WHERE date >= ?",
         (dt.date(2020, 1, 1).isoformat(),)
     )
@@ -353,14 +378,14 @@ def _calc_yesterday_mins(days_ago: int = 1):
 def _calc_total_all_time():
     """所有练习记录的总累计分钟数"""
     conn = db._get_connection()
-    row = conn.execute("SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices").fetchone()
+    row = db_adapter.execute(conn, "SELECT COALESCE(SUM(total_minutes), 0) FROM daily_practices").fetchone()
     return row[0] if row else 0
 
 
 def _calc_week_peak():
     """历史单周日累计时长最高值（自然周）"""
     conn = db._get_connection()
-    rows = conn.execute("""
+    rows = db_adapter.execute(conn, """
         SELECT date, total_minutes FROM daily_practices
         WHERE total_minutes > 0
         ORDER BY date
@@ -381,7 +406,7 @@ def _calc_week_peak():
 def _calc_month_peak():
     """历史单月日累计时长最高值"""
     conn = db._get_connection()
-    rows = conn.execute("""
+    rows = db_adapter.execute(conn, """
         SELECT date, total_minutes FROM daily_practices
         WHERE total_minutes > 0
         ORDER BY date
@@ -401,16 +426,42 @@ def _calc_top_items(conn: sqlite3.Connection,
                     start: dt.date,
                     end: dt.date,
                     limit: int = 2) -> list[tuple[str, int]]:
-    """指定日期范围内，按科目聚合取前N名"""
-    cur = conn.execute(f"""
-        SELECT pi.name, SUM(json_extract(je.value, '$.minutes')) as m
-        FROM daily_practices dp, json_each(dp.items) je
-        JOIN practice_items pi ON pi.item_id = json_extract(je.value, '$.item_id')
-        WHERE dp.date >= ? AND dp.date <= ?
-        AND pi.is_archived = 0
-        GROUP BY pi.name ORDER BY m DESC LIMIT ?
-    """, (start.isoformat(), end.isoformat(), limit))
-    return [(r[0], int(r[1])) for r in cur.fetchall()]
+    """指定日期范围内，按科目聚合取前N名。
+
+    Sprint 08: 原实现用 SQLite 专有 json_each/json_extract, MySQL 不兼容。
+    数据量小 (≤ 365 行/年), 改为纯 Python 聚合, 双后端一致。
+    """
+    import json as _json
+    item_id_to_name = {}
+    cur = db_adapter.execute(
+        conn,
+        "SELECT item_id, name FROM practice_items WHERE is_archived = 0")
+    for r in cur.fetchall():
+        item_id_to_name[int(r[0])] = r[1]
+
+    totals: Dict[int, int] = {}
+    cur = db_adapter.execute(
+        conn,
+        "SELECT items FROM daily_practices WHERE date >= ? AND date <= ?",
+        (start.isoformat(), end.isoformat()))
+    for (items_raw,) in cur.fetchall():
+        if not items_raw:
+            continue
+        try:
+            items = _json.loads(items_raw) if isinstance(items_raw, str) else items_raw
+        except Exception:
+            continue
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            iid = it.get("item_id")
+            mins = it.get("minutes", 0) or 0
+            if iid is not None:
+                totals[int(iid)] = totals.get(int(iid), 0) + int(mins)
+
+    ranked = sorted(((totals[iid], item_id_to_name.get(iid, f"#{iid}"))
+                     for iid in totals if totals[iid] > 0), reverse=True)
+    return [(name, mins) for mins, name in ranked[:limit]]
 
 
 def _calc_last_practice_top(limit: int = 2) -> dict:
@@ -423,7 +474,7 @@ def _calc_last_practice_top(limit: int = 2) -> dict:
     conn = db._get_connection()
 
     # 找最近一次有练习的日期
-    row = conn.execute("""
+    row = db_adapter.execute(conn, """
         SELECT date FROM daily_practices
         WHERE total_minutes > 0
         ORDER BY date DESC LIMIT 1
@@ -543,7 +594,7 @@ def _milestone_html(category: Optional[str] = None):
     results = calc_all()   # dict[aid] → CalcResult
 
     # ── 读 achievements 表元数据 ──────────────────────────────────
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT id, name, type, category, stat_logic, description, threshold, "
         "unlocked_template, placeholder, cond_text FROM achievements" +
         (" WHERE category = ?" if category else "") +
@@ -796,7 +847,7 @@ def _daily_blindbox_html():
     IMAGES, NAMES, DESCS, CONDS = theme["dicts"]
 
     # 获取当前stage
-    cur = conn.execute("""
+    cur = db_adapter.execute(conn, """
         SELECT stage_start, stage_end, stage_order
         FROM weekly_assignments
         WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
@@ -821,7 +872,7 @@ def _daily_blindbox_html():
     stage_day = min(stage_day, 7)
 
     # 计算本周打卡了几天
-    cur = conn.execute("""
+    cur = db_adapter.execute(conn, """
         SELECT COUNT(DISTINCT date)
         FROM daily_practices
         WHERE date >= ? AND date <= ?
@@ -830,7 +881,7 @@ def _daily_blindbox_html():
 
     # 查询每一天是否已打卡
     checked_days = set()
-    cur = conn.execute("""
+    cur = db_adapter.execute(conn, """
         SELECT DISTINCT date
         FROM daily_practices
         WHERE date >= ? AND date <= ?
@@ -2240,7 +2291,7 @@ def achievements_page():
     ws_cur, we_cur = _get_current_week_range()
     # 找当前周的 stage_order
     conn = db._get_connection()
-    cur_week_row = conn.execute("""
+    cur_week_row = db_adapter.execute(conn, """
         SELECT stage_order FROM weekly_assignments
         WHERE ? >= stage_start
           AND (stage_end IS NULL OR ? <= stage_end)
@@ -2249,7 +2300,7 @@ def achievements_page():
     week_days_prev = 0
     if cur_week_row and cur_week_row[0] is not None:
         cur_order = cur_week_row[0]
-        prev_week_row = conn.execute("""
+        prev_week_row = db_adapter.execute(conn, """
             SELECT stage_start, stage_end FROM weekly_assignments
             WHERE stage_order = ?
             LIMIT 1
@@ -2364,7 +2415,7 @@ def badges_page():
     results = calc_all()   # dict[aid] → CalcResult
 
     # ── 读所有需要展示的 achievements（排除神秘/晋级等纯统计类） ──────
-    cur = conn.execute(
+    cur = db_adapter.execute(conn, 
         "SELECT id, name, type, category, description, threshold, cond_text, "
         "unlock_strategy, achieved_at_override FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "

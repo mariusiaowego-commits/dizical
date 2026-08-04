@@ -91,12 +91,10 @@ print('PASS: 7-27 save_daily_practice 修复 7 场景全过')
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         capture_output=True, text=True, timeout=60,
         env={
-            **os.environ,
-            'DATABASE_URL': os.environ.get(
-                'TEST_DATABASE_URL',
-                'mysql+pymysql://dizical:Qpwoei1234@sh-cynosdbmysql-grp-7phqjce6.sql.tencentcdb.com:21743/cloud1-d4gfwyvsk1435e2e4'
-            ),
-        },
+                **os.environ,
+                # Sprint 08: 删旧 host:port 硬编码, 强制要求环境变量注入
+                'DATABASE_URL': os.environ['TEST_DATABASE_URL'],
+            },
     )
     if 'PASS' not in result.stdout:
         print('STDOUT:', result.stdout)
