@@ -29,7 +29,8 @@ app = FastAPI(title="Bamboo Flute Practice")
 
 # PR-D: 同 item + 同 minutes 5s 内防重窗口 (防双击 / 网络重传导致 2 条 session).
 # 进程级 dict, 路由层 _dedup_practice_log() 入口检查; 不下到 middleware 改 body.
-_DEDUP_WINDOW_SECONDS = 5
+# Sprint 09 P0-2: 5s → 10s, 防小程序 callContainer 8s timeout + HTTP fallback race 双发
+_DEDUP_WINDOW_SECONDS = 10
 _dedup_cache: Dict[tuple, tuple] = {}
 
 
@@ -104,20 +105,36 @@ def maintenance_status():
     }
 
 
-# ─── Health check (CloudRun 健康检查 + spike 验证) ──────────────────────
-@app.get("/health")
-def health():
-    """健康检查: 验证 FastAPI 跑通, 数据库连接 OK"""
+# ─── Health check (Sprint 09 P0-3: 拆 live + ready) ──────────────────────
+@app.get("/health/live")
+def health_live():
+    """K8s liveness probe: 仅验证 Python 进程存活. 永远 200.
+    CloudRun 容器 liveness 失败会触发容器重启, 不应被 DB 状态影响."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def health_ready():
+    """K8s readiness probe: 验证 DB 可达 + 业务 smoke test.
+    CloudRun readiness 失败会从流量池摘掉该实例, 但不重启."""
     db_status = "ok"
     db_error = None
     record_count = 0
     try:
-        # 用 get_all_lessons 当 smoke test (业务方法, 验证 ORM + SQLite 都通)
         lessons = db.get_all_lessons()
         record_count = len(lessons)
     except Exception as e:
         db_status = "error"
         db_error = str(e)
+        return {
+            "status": "not_ready",
+            "service": "dizical",
+            "env": os.getenv("ENV", "unknown"),
+            "database": db_status,
+            "db_error": db_error,
+            "lesson_count": 0,
+            "timestamp": dt.datetime.utcnow().isoformat() + "Z",
+        }, 503
 
     return {
         "status": "ok",
@@ -128,6 +145,12 @@ def health():
         "lesson_count": record_count,
         "timestamp": dt.datetime.utcnow().isoformat() + "Z",
     }
+
+
+@app.get("/health")
+def health():
+    """向后兼容: 等同 /health/ready. Sprint 09 前 K8s 用这个, 新部署应改 /health/live."""
+    return health_ready()
 
 static_path = Path(__file__).parent / "static"
 if static_path.exists():
