@@ -12,6 +12,7 @@ from fastapi.encoders import jsonable_encoder
 
 from src.database import db
 from src import practice as practice_module
+from src import db_adapter  # Sprint 08: conn.execute → db_adapter.execute (双后端占位符)
 from src.lesson_manager import LessonManager
 from src.payment import PaymentManager
 from src.models import Lesson, LessonStatus, PaymentStatus
@@ -1015,7 +1016,7 @@ async def api_create_assignment(request: Request):
         set_clause = ", ".join(f"{k} = ?" for k in stage_overrides)
         vals = list(stage_overrides.values()) + [lesson_date.isoformat()]
         with db._get_connection() as conn:
-            conn.execute(f"UPDATE weekly_assignments SET {set_clause} WHERE lesson_date = ?", vals)
+            db_adapter.execute(conn, f"UPDATE weekly_assignments SET {set_clause} WHERE lesson_date = ?", vals)
             conn.commit()
 
     return JSONResponse({"ok": True, "lesson_date": lesson_date.isoformat()})
@@ -1049,7 +1050,7 @@ async def api_update_assignment(lesson_date: str, request: Request):
 
     # 全量覆盖：先删旧数据再 insert
     with db._get_connection() as conn:
-        conn.execute("DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
+        db_adapter.execute(conn, "DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
         conn.commit()
     db.save_weekly_assignment(ld, formatted, notes=notes or None, images=images)
 
@@ -1068,7 +1069,7 @@ async def api_update_assignment(lesson_date: str, request: Request):
         set_clause = ", ".join(f"{k} = ?" for k in stage_overrides)
         vals = list(stage_overrides.values()) + [ld.isoformat()]
         with db._get_connection() as conn:
-            conn.execute(f"UPDATE weekly_assignments SET {set_clause} WHERE lesson_date = ?", vals)
+            db_adapter.execute(conn, f"UPDATE weekly_assignments SET {set_clause} WHERE lesson_date = ?", vals)
             conn.commit()
 
     return JSONResponse({"ok": True, "lesson_date": lesson_date})
@@ -1080,7 +1081,7 @@ def api_delete_assignment(lesson_date: str):
     import datetime as dt
     ld = dt.date.fromisoformat(lesson_date)
     with db._get_connection() as conn:
-        conn.execute("DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
+        db_adapter.execute(conn, "DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
         conn.commit()
     return JSONResponse({"ok": True})
 

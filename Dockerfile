@@ -24,8 +24,8 @@ COPY . /app
 ENV PYTHONPATH=/app
 # Phase 1b: DATABASE_URL 由 CloudRun 控制台 env 注入 (不进 Dockerfile, 避免密码泄露)
 # 容器默认用 SQLite /tmp (跟 spike 一致, 不会因缺 env 启动失败)
-# 部署时在 CloudRun → 服务设置 → 环境变量 填:
-#   DATABASE_URL=mysql+pymysql://<user>:<PASSWORD>@sh-cynosdbmysql-grp-o1j4rd8w.sql.tencentcdb.com:22661/dizical
+# Sprint 08: 删旧 host:port 注释, 改为通用提示 — 实际地址由 CloudRun env 注入
+# 部署时在 CloudRun → 服务设置 → 环境变量 填 DATABASE_URL
 ENV DB_PATH=/tmp/dizical.db
 
 # 健康检查 (CloudRun 用这个判断容器是否健康)

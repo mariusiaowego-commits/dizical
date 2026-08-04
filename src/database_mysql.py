@@ -57,13 +57,22 @@ class MySQLBackend(BaseBackend):
             )
 
     def _get_connection(self):
+        # Sprint 08: 加超时防 Serverless 唤醒期挂死
         if self.pool:
-            return self.pool.connection()
-        return pymysql.connect(
-            host=self._cfg['host'], port=self._cfg['port'],
-            user=self._cfg['user'], password=self._cfg['password'],
-            database=self._cfg['database'], charset='utf8mb4',
-        )
+            conn = self.pool.connection()
+        else:
+            conn = pymysql.connect(
+                host=self._cfg['host'], port=self._cfg['port'],
+                user=self._cfg['user'], password=self._cfg['password'],
+                database=self._cfg['database'], charset='utf8mb4',
+                connect_timeout=5, read_timeout=10, write_timeout=10,
+            )
+        # 注: pymysql 默认 autocommit=True. 业务方法用 with self._get_connection()
+        # 进入连接, 末尾 conn.commit() 单独提交 — 这是 MySQLBackend 已 merge 的契约.
+        # 不在这里显式 conn.begin(), 因为某些 helper (json_array_append 等) 依赖
+        # autocommit=True 的隐式行为, 显式 begin 会破坏它们.
+        # lost-update 防护依赖业务方法显式 BEGIN 包裹 SELECT FOR UPDATE.
+        return conn
 
     def _parse_datetime(self, v):
         """MySQL DATETIME 返 datetime 对象, DATE 返 date"""
@@ -381,43 +390,59 @@ class MySQLBackend(BaseBackend):
             conn.commit()
 
     # ── Weekly Assignments ──
+    # Sprint 08: MySQL 端对齐 SQLite 语义 — 单行存储 + items JSON 数组 + ON DUPLICATE KEY UPDATE
+    # SQLite (database.py:686-698) 用 ON CONFLICT(lesson_date) DO UPDATE, 同样的语义在 MySQL
+    # 用 INSERT ... ON DUPLICATE KEY UPDATE 实现. 不再 DELETE+逐 item INSERT.
     def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
+        import json as _json
+        items_json = _json.dumps(items, ensure_ascii=False)
+        images_json = _json.dumps(images, ensure_ascii=False) if images else None
+        # Sprint 08 fix: stage_start/stage_end/stage_order NOT NULL, 保留旧值 (跟 SQLite 语义一致)
+        # 先读出现有行的 stage_* 字段, 若不存在则用 lesson_date 作为 fallback (兼容老用法)
         with self._get_connection() as conn:
-            with conn.cursor() as cur:
-                # 删旧
-                cur.execute('DELETE FROM weekly_assignments WHERE lesson_date = %s', (lesson_date.isoformat(),))
-                # 插新 (避免主键冲突)
-                for item in items:
-                    cur.execute('''
-                        INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order, item_id, target_minutes, notes)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ''', (
-                        lesson_date.isoformat(),
-                        item.get('stage_start', lesson_date.isoformat()),
-                        item.get('stage_end', lesson_date.isoformat()),
-                        item.get('stage_order', 0),
-                        item.get('item_id'),
-                        item.get('target_minutes', 0),
-                        notes,
-                    ))
+            with conn.cursor(DictCursor) as cur:
+                cur.execute(
+                    "SELECT stage_start, stage_end, stage_order FROM weekly_assignments WHERE lesson_date = %s",
+                    (lesson_date.isoformat(),),
+                )
+                row = cur.fetchone()
+                stage_start = row.get("stage_start") if row else lesson_date.isoformat()
+                stage_end = row.get("stage_end") if row else lesson_date.isoformat()
+                stage_order = row.get("stage_order") if row else 0
+                cur.execute('''
+                    INSERT INTO weekly_assignments
+                    (lesson_date, items, notes, images, stage_start, stage_end, stage_order)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        items = VALUES(items),
+                        notes = VALUES(notes),
+                        images = VALUES(images)
+                ''', (lesson_date.isoformat(), items_json, notes, images_json,
+                      stage_start, stage_end, stage_order))
             conn.commit()
 
     def get_weekly_assignment_for_week(self, anchor_date: dt.date) -> Optional[Dict]:
+        import json as _json
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
                 cur.execute('''
                     SELECT * FROM weekly_assignments
-                    WHERE lesson_date = (
-                        SELECT lesson_date FROM weekly_assignments
-                        WHERE lesson_date >= %s
-                        ORDER BY lesson_date ASC LIMIT 1
-                    )
-                    ORDER BY stage_order
+                    WHERE lesson_date <= %s
+                    ORDER BY lesson_date DESC
+                    LIMIT 1
                 ''', (anchor_date.isoformat(),))
-                rows = list(cur.fetchall())
-        if not rows:
+                row = cur.fetchone()
+        if not row:
             return None
-        return {'lesson_date': rows[0]['lesson_date'], 'items': rows}
+        return {
+            'lesson_date': dt.date.fromisoformat(row['lesson_date']) if isinstance(row['lesson_date'], str) else row['lesson_date'],
+            'stage_start': dt.date.fromisoformat(row['stage_start']) if row.get('stage_start') and isinstance(row['stage_start'], str) else row.get('stage_start'),
+            'stage_end': dt.date.fromisoformat(row['stage_end']) if row.get('stage_end') and isinstance(row['stage_end'], str) else row.get('stage_end'),
+            'stage_order': row.get('stage_order'),
+            'items': _json.loads(row['items']) if row.get('items') else [],
+            'notes': row.get('notes'),
+            'images': _json.loads(row['images']) if row.get('images') else [],
+        }
 
     def get_weekly_assignment(self, week_start: dt.date) -> Optional[Dict]:
         return self.get_weekly_assignment_for_week(week_start)
@@ -861,6 +886,153 @@ class MySQLBackend(BaseBackend):
                     r['is_extra'] = int(r.get('is_extra', 0))
                 return rows
 
+    # ── Stage / Sessions queries (Sprint 08: 对齐 SQLite) ──
+    def list_stages(self) -> List[Dict]:
+        """列出历史 stage (按 stage_order 降序). 同 order 多行取 id 最大一条."""
+        import json as _json
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                # Sprint 08 fix: MySQL 8 不接受 '' 比较 DATETIME, 只用 IS NOT NULL
+                cur.execute(
+                    """
+                    SELECT id, stage_order, lesson_date, stage_start, stage_end, items, notes
+                    FROM weekly_assignments
+                    WHERE stage_start IS NOT NULL
+                    ORDER BY COALESCE(stage_order, 0) DESC, id DESC
+                    """
+                )
+                rows = list(cur.fetchall())
+        seen = set()
+        out: List[Dict] = []
+        for row in rows:
+            key = row.get("stage_order") if row.get("stage_order") is not None else row.get("stage_start")
+            if key in seen:
+                continue
+            seen.add(key)
+            items_raw = row.get("items") or "[]"
+            try:
+                items = _json.loads(items_raw) if isinstance(items_raw, str) else items_raw
+            except Exception:
+                items = []
+            out.append({
+                "id": row.get("id"),
+                "stage_order": row.get("stage_order"),
+                "lesson_date": str(row.get("lesson_date") or ""),
+                "stage_start": str(row.get("stage_start") or ""),
+                "stage_end": str(row.get("stage_end") or ""),
+                "item_count": len(items),
+                "notes": row.get("notes") or "",
+            })
+        return out
+
+    def get_stage_by_order(self, stage_order: int) -> Optional[Dict]:
+        """按 stage_order 取最新一条 assignment (含 items)."""
+        import json as _json
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT * FROM weekly_assignments
+                    WHERE stage_order = %s
+                    ORDER BY id DESC LIMIT 1
+                    """,
+                    (int(stage_order),),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        items_raw = row.get("items") or "[]"
+        images_raw = row.get("images") or "[]"
+        try:
+            items = _json.loads(items_raw) if isinstance(items_raw, str) else items_raw
+        except Exception:
+            items = []
+        try:
+            images = _json.loads(images_raw) if isinstance(images_raw, str) else images_raw
+        except Exception:
+            images = []
+        return {
+            "id": row.get("id"),
+            "lesson_date": str(row.get("lesson_date") or ""),
+            "stage_start": str(row.get("stage_start") or ""),
+            "stage_end": str(row.get("stage_end") or ""),
+            "stage_order": row.get("stage_order"),
+            "items": items,
+            "notes": row.get("notes"),
+            "images": images,
+        }
+
+    def get_stage_containing_date(self, day: dt.date) -> Optional[Dict]:
+        """找包含 day 的 stage (stage_start <= day <= stage_end)."""
+        import json as _json
+        if isinstance(day, str):
+            day = dt.date.fromisoformat(day)
+        day_s = day.isoformat()
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT * FROM weekly_assignments
+                    WHERE stage_start IS NOT NULL
+                      AND stage_start <= %s
+                      AND (stage_end IS NULL OR stage_end >= %s)
+                    ORDER BY id DESC LIMIT 1
+                    """,
+                    (day_s, day_s),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        items_raw = row.get("items") or "[]"
+        images_raw = row.get("images") or "[]"
+        try:
+            items = _json.loads(items_raw) if isinstance(items_raw, str) else items_raw
+        except Exception:
+            items = []
+        try:
+            images = _json.loads(images_raw) if isinstance(images_raw, str) else images_raw
+        except Exception:
+            images = []
+        return {
+            "id": row.get("id"),
+            "lesson_date": str(row.get("lesson_date") or ""),
+            "stage_start": str(row.get("stage_start") or ""),
+            "stage_end": str(row.get("stage_end") or ""),
+            "stage_order": row.get("stage_order"),
+            "items": items,
+            "notes": row.get("notes"),
+            "images": images,
+        }
+
+    def get_practice_sessions_in_range(
+        self, start: dt.date, end: dt.date, item_id: Optional[int] = None
+    ) -> List[Dict]:
+        """查日期闭区间 [start, end] 内全部 session."""
+        if isinstance(start, str):
+            start = dt.date.fromisoformat(start)
+        if isinstance(end, str):
+            end = dt.date.fromisoformat(end)
+        sql = (
+            "SELECT * FROM practice_sessions "
+            "WHERE practice_date >= %s AND practice_date <= %s"
+        )
+        params: List = [start.isoformat(), end.isoformat()]
+        if item_id is not None:
+            sql += " AND item_id = %s"
+            params.append(item_id)
+        sql += " ORDER BY practice_date ASC, COALESCE(started_at, created_at) ASC, id ASC"
+        with self._get_connection() as conn:
+            with conn.cursor(DictCursor) as cur:
+                cur.execute(sql, params)
+                rows = list(cur.fetchall())
+        for r in rows:
+            for k in ('practice_date', 'created_at', 'started_at'):
+                if r.get(k) is not None:
+                    r[k] = str(r[k])
+            if r.get('is_extra') is not None:
+                r['is_extra'] = int(r['is_extra'])
+        return rows
+
     def get_latest_session_tempo(self, item_id: int) -> Optional[Dict]:
         """读 practice_items 冗余列 (Q1=B). NULL → 回退查 sessions 表."""
         self._ensure_practice_sessions_schema()
@@ -1131,9 +1303,9 @@ class MySQLBackend(BaseBackend):
                     if not new_session_id:
                         raise RuntimeError("INSERT session 后 lastrowid 为空")
 
-                    # 2. 读 daily
+                    # 2. 读 daily (Sprint 08: 加 FOR UPDATE 行锁防 lost update + 双发 race)
                     cur.execute(
-                        'SELECT items, log, practiced, practice_at FROM daily_practices WHERE date = %s',
+                        'SELECT items, log, practiced, practice_at FROM daily_practices WHERE date = %s FOR UPDATE',
                         (practice_date.isoformat(),),
                     )
                     drow = cur.fetchone()
