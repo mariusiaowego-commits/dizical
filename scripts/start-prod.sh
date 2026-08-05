@@ -4,6 +4,11 @@
 # 用途: 固化启动参数，避免手工拼写遗漏 --host
 # 默认绑 0.0.0.0 (iPad/Tailscale 都能访问；绑 127.0.0.1 会导致 iPad 打不开)
 #
+# Sprint 09 (PR-A, 2026-08-05): 后端默认指云端 (Cloud MySQL 是唯一主库, 见 AGENTS.md 数据红线).
+#   - 本脚本仍启动本地 uvicorn (Q10=A: 8765 本地服务保留, kid_app 走云)
+#   - 数据源由 DATABASE_URL 环境变量决定: 设了 mysql:// → 连云; 未设 → 本地 SQLite (灾备/回滚)
+#   - mac app 的 DIZICAL_URL 切换 UI 在 mac 项目 (不在本仓)
+#
 # 用法:
 #   ./scripts/start-prod.sh              # 后台启动，写入 /tmp/dizical-8765.pid
 #   ./scripts/start-prod.sh foreground   # 前台运行（调试用）

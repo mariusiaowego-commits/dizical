@@ -1,3 +1,26 @@
+# Backend 切换 — API 变更
+
+**日期**: 2026-08-05
+**分支**: feat/sprint-09-cloud-cutover
+**类型**: 🟡 部分兼容（新增只读/写端点，minip 无需改）
+
+## 变更
+
+### 1. GET `/config/api/backend`（新）
+
+读当前后端模式 + 云端 URL。返回 `{mode: 'cloud'|'local', dizical_url: str}`。
+默认 `local`（settings 表无记录时）。minip 不调用。
+
+### 2. PUT `/config/api/backend`（新）
+
+写后端模式。body: `{mode: 'cloud'|'local', dizical_url?: str, pin?: str}`。
+- `mode` 非法 → 400
+- `dad_pin` 已设置且 pin 不匹配 → 403
+- 写 settings 表 `backend_mode` + `dizical_url`（仅 cloud 模式写 URL）
+minip 不调用。mac app 的 DIZICAL_URL 切换在 mac 项目（不在本仓）。
+
+---
+
 # Stage 维 Session 明细打印 — API 变更
 
 **日期**: 2026-07-30
