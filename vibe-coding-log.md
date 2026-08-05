@@ -1,3 +1,39 @@
+## 2026-08-05 云端测试数据全清: create_test session + prb_test_item 科目 + daily 修复
+
+- **发现**: practice_sessions 9 条 content='create_test' (id 1451-1467, item_id 999003, practice_date 7-28)
+  + practice_items 3 个 prb_test_item* (999001-999003) + daily 7-28 混入 prb_test_item 11 分钟
+- **溯源** (dad 质疑"是不是真实数据"): 铁证是测试 — item_name='prb_test_item_3' (PRactice Bug test),
+  item_id 999003 (虚构, 真实科目 1-47), 26 分钟 9 条自动化节奏, 8-04 上午 11:47-12:14 (昨天真云验证遗留)
+- **清理** (3 步): DELETE 9 session + DELETE 3 科目 + 重写 daily 7-28 items (去 prb_test, total 63→52)
+- **成果**: sessions 761→752, items 50→47 (与本地 SQLite 对齐!), daily 7-28 真实数据 52 分钟全保留
+- **印证 preflight**: 之前行数对账云端 practice_items 50 vs 本地 47 的 +3 差异 = 就是这 3 个测试科目
+- 教训: 删除云端数据前必须查完整字段 (item_name/item_id/content/created_at 节奏), 不只看 content;
+  真云验证的测试数据要带明显标记 (prb_test 已标识, 但应记入审计)
+
+## 2026-08-05 P0 生产事故: 049 上线后 /api/log session 路径 500 (MySQL updated_at 序列化)
+
+- **事故**: 049 部署后, 生产 POST /api/log (session 路径) 全挂 500: "Object of type datetime is not JSON serializable"
+- **根因**: PR-D 给 practice_sessions 加 updated_at DATETIME 列后, MySQLBackend 的
+  get_practice_session_by_id / get_practice_sessions 漏了把 updated_at 转 str
+  (practice_date/created_at 都转了, 唯独漏了它). MySQL 返 datetime 对象 → FastAPI JSONResponse 失败
+- **为什么本地没发现**: SQLite 无 datetime 类型 (存文本返 str), 单测走 SQLite → 不暴露;
+  MySQL 路径的 JSON 序列化没被测试覆盖 → 上线才炸
+- **发现过程**: 真云验证 POST /api/log 触发 lazy ALTER (version/updated_at 列补上) 后,
+  旧路径 (save_daily_practice) 成功, session 路径 (save_practice_session_and_daily_summary) 500 →
+  CLS 日志搜 "API error" 拿到真实错误 → 本地连云 MySQL 复现确认
+- **修复**: database_mysql.py 两处 updated_at → str (None 保持 None) + 4 个防复发测试
+  (test_mysql_session_updated_at_serializable.py)
+- **部署**: PR #225 merge → 050 部署 (MCP deploy 201M 包 180s 超时, 但第二次调用实际成功,
+  工具超时≠部署失败, 要查 getDeployLog/detail 确认) → 生产验证 session 路径正常 (version=1 生效)
+- **清理**: 删除验证产生的 4 session + 5 audit + 1 daily (8-05 云端原本无真实数据),
+  total_sessions 回到 761 基线
+- **教训**:
+  1. PR-D 这类 schema 变更后, 必须审计所有返回该表 dict 的方法的序列化 (datetime/date 列)
+  2. MySQL/SQLite 双后端 = 序列化行为差异 (SQLite str vs MySQL datetime), 测试必须双后端覆盖
+  3. MCP deploy 超时 ≠ 失败: 上传可能已完成, 查 detail/getDeployLog 确认构建状态
+  4. 真云验证 (TEST_DATABASE_URL) 不能省: 本地全绿 ≠ 生产 OK, 尤其 JSON 序列化类问题
+  5. CloudRun 环境变量 EnvParams 明文含 DB 密码 (queryCloudRun detail 可见) — 密码轮换必修
+
 ## 2026-08-05 全量测试清零 (434 passed / 0 failed) + 生产 streak badge 行污染修复
 
 - 目标: dad "先完整开发好, 整体测试后再合" → 修 4 个历史 failed + 生产 streak 污染

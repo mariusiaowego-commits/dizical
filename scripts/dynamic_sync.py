@@ -7,12 +7,15 @@ import re
 from datetime import datetime
 
 SQLITE_PATH = "/Users/mt16/dev/dizical/data/dizi.db"
+# P0-2026-08-05: 密码从环境变量读, 消除硬编码 (旧密码已作废轮换, 2026-08-05).
+# 来源: ~/.dizical/.env (0600) 或 shell 环境变量 MYSQL_PASSWORD.
+import os as _os
 MYSQL_CFG = {
-    "host": "sh-cynosdbmysql-grp-3nsxknle.sql.tencentcdb.com",
-    "port": 22209,
-    "user": "dizical",
-    "password": "qlAWThorx0Z6fTU5",
-    "database": "cloud1-d4gfwyvsk1435e2e4",
+    "host": _os.getenv("MYSQL_HOST", "sh-cynosdbmysql-grp-3nsxknle.sql.tencentcdb.com"),
+    "port": int(_os.getenv("MYSQL_PORT", "22209")),
+    "user": _os.getenv("MYSQL_USER", "dizical"),
+    "password": _os.getenv("MYSQL_PASSWORD", ""),
+    "database": _os.getenv("MYSQL_DATABASE", "cloud1-d4gfwyvsk1435e2e4"),
     "charset": "utf8mb4"
 }
 
