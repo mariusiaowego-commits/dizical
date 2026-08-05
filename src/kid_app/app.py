@@ -71,11 +71,34 @@ def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict,
                 del _dedup_cache[k]
 
 
-# CORS: web / Mac app 调 CloudRun 公网 HTTPS 时需要
-# Phase 1 收紧: 只允许 dizical-prod-xxx 域名, spike 阶段先开
+# CORS Sprint 09 PR-G: 收紧到 explicit 列表 + dizical-prod-* 子域正则
+# 背景: spike 阶段 allow_origins=["*"] 太松, 任何 origin 都能调. 切云前需收紧:
+#   - 本地开发 (web/iPad): http://localhost:8765, http://127.0.0.1:8765
+#   - 局域网 iPad: http://10.0.0.14:8765, http://172.20.10.2:8765 (Mac 当前 IP)
+#   - Tailscale iPad: http://100.67.215.121:8765 (AGENTS.md 写明, 实际 IP 跑 tailscale ip -4)
+#   - 公网 dizical-prod-*.run.tcloudbase.com (CloudRun 公网域, 子域)
+# 留 fallback: 环境变量 DIZICAL_ALLOW_ALL_ORIGINS=1 时退回 ["*"] (开发者本地放宽)
+# 参考 GLM-5 建议 (Reference 2 / 4): 不要过度收紧, 留本地 + iPad + 局域网 + Tailscale.
+#       mac app 是 WKWebView 包装 (AGENTS.md), 走同 127.0.0.1:8765, 不需要单独 origin.
+#       取消 ["*"] 之前先确保兼容路径不退化.
+import os as _os
+_ALLOW_ALL = _os.getenv("DIZICAL_ALLOW_ALL_ORIGINS", "") == "1"
+if _ALLOW_ALL:
+    _cors_origins = ["*"]
+    _cors_regex = None
+else:
+    _cors_origins = [
+        "http://localhost:8765",
+        "http://127.0.0.1:8765",
+        "http://10.0.0.14:8765",
+        "http://172.20.10.2:8765",
+        "http://100.67.215.121:8765",
+    ]
+    _cors_regex = r"https://dizical-prod(-[a-z0-9]+)?\.ap-shanghai\.run\.tcloudbase\.com"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # spike 阶段全开, Phase 1 改成具体域名
+    allow_origins=_cors_origins,
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
