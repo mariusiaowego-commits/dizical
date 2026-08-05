@@ -1,3 +1,15 @@
+## 2026-08-05 P0 生产库 test_* 残留清理 + badge 测试顺序污染根因修复 (防复发)
+
+- **发现**: data/dizi.db (生产库) 里有 14 个 test_* badge 残留 (42 行: achievements 14 + stats 14 + badges 14), 会显示在勋章墙 ("测试badge" + 破图)
+- **溯源** (dad 追问"是这次加的测试吗"): 不是! 三条铁证: ① created_at = 2026-08-05 凌晨 05:11-05:55 (我中午 12:40 才开始) ② 8-04 备份 0 残留 ③ 残留 badge_id 对应既有测试 (unlock_strategy/badge_commit_meta_mapping/badge_commit_version_sync/cond_text_meta_mapping), 非我今天加的 backend_switch/audit_log_transaction
+- **真凶**: 单兵 agent (handoff 交接者) 8-05 凌晨跑全量测试时触发 badge_db.py:20 模块顶层 `from src.database import db` 绑定 import 时原单例 → 别处替换 src.database.db 后 badge_db 写错库 → 写进 data/dizi.db
+- **修复** (防复发):
+  - isolated_db fixture: 显式 monkeypatch badge_db.db → real_db (badge 测试 commit 走 fake conn)
+  - test_backend_switch / test_audit_log_transaction fixture: 改 monkeypatch 自动恢复 (旧: 替换 db_module.db 不恢复)
+- **清理**: 备份 dizi-pre-testclean-20260805-144819.db → 删 3 表 42 行 → 校验真实 badge 44 个完好 (eagle_spread_wings 在) → /badges 页无 test_* → 删残留文件 (v2_test_*.png + test_*.json)
+- **成果**: 全量 26 failed → **5 failed** (428 passed), dizi.db md5 前后一致 = 零污染. 剩 5 个全是单独跑也挂的真 bug/需真云 (历史遗留, 非顺序污染)
+- 教训: fixture 替换全局单例必须用 monkeypatch 自动恢复; 写"测试隔离"注释前先验证 import 时机
+
 ## 2026-08-05 Sprint 09 PR-E audit 事务对齐 + dev 依赖组 (commit 75235ec, PR #224, 未 merge)
 
 - 触发: dad "继续后面的步骤" — PR-E (P0-22) 是 Sprint 09a 剩余可做项 (PR-F 需等 bucket 名)

@@ -18,7 +18,11 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def client():
-    """临时 SQLite + 注入 app 模块 db, 返回 TestClient."""
+    """临时 SQLite + 注入 app 模块 db, 返回 TestClient.
+
+    P0-2026-08-05 修复: 用 monkeypatch 自动恢复 (db_module.db / app_module.db / settings.db_path).
+    旧实现: 替换 db_module.db 后不恢复 → 全量跑时污染后续测试.
+    """
     from src.database import Database
     from src.kid_app.app import app as fastapi_app
     from src import models
@@ -28,15 +32,17 @@ def client():
     fd, path = tempfile.mkstemp(suffix='.db')
     os.close(fd)
     os.environ['DATABASE_URL'] = ''
-    original = models.settings.db_path
-    models.settings.db_path = path
-    db_module.db = Database(db_path=path)
-    app_module.db = db_module.db  # 注入 app 模块属性 (PR-D 修正的同样问题)
+    new_db = Database(db_path=path)
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(models.settings, "db_path", path)
+    monkeypatch.setattr(db_module, "db", new_db)
+    monkeypatch.setattr(app_module, "db", new_db)
 
     with TestClient(fastapi_app) as c:
-        yield c, db_module.db, path, original
+        yield c, new_db, path
 
-    models.settings.db_path = original
+    monkeypatch.undo()
     try:
         os.unlink(path)
     except Exception:
@@ -44,7 +50,7 @@ def client():
 
 
 def test_get_backend_default_local(client):
-    c, db, path, original = client
+    c, db, path = client
     r = c.get('/config/api/backend')
     assert r.status_code == 200
     d = r.json()
@@ -53,7 +59,7 @@ def test_get_backend_default_local(client):
 
 
 def test_put_cloud_persists(client):
-    c, db, path, original = client
+    c, db, path = client
     r = c.put('/config/api/backend', json={'mode': 'cloud', 'dizical_url': 'https://dizical-prod.example.com'})
     assert r.status_code == 200
     assert r.json()['ok'] is True
@@ -72,14 +78,14 @@ def test_put_cloud_persists(client):
 
 
 def test_put_invalid_mode_400(client):
-    c, db, path, original = client
+    c, db, path = client
     r = c.put('/config/api/backend', json={'mode': 'mars'})
     assert r.status_code == 400
     assert 'cloud' in r.json()['error']
 
 
 def test_put_pin_required_when_set(client):
-    c, db, path, original = client
+    c, db, path = client
     # 设置 dad_pin
     db.set_setting('dad_pin', '1234')
     # 不带 PIN → 403
@@ -95,7 +101,7 @@ def test_put_pin_required_when_set(client):
 
 
 def test_put_back_to_local(client):
-    c, db, path, original = client
+    c, db, path = client
     c.put('/config/api/backend', json={'mode': 'cloud', 'dizical_url': 'https://x'})
     r = c.put('/config/api/backend', json={'mode': 'local'})
     assert r.status_code == 200

@@ -18,21 +18,31 @@ import pytest
 
 @pytest.fixture()
 def db():
-    """临时 SQLite Database 实例, 每次测试独立文件."""
+    """临时 SQLite Database 实例, 每次测试独立文件.
+
+    P0-2026-08-05 修复: 用 monkeypatch 自动恢复 db_module.db + settings.db_path.
+    旧实现: 替换 db_module.db 后不恢复 → 全量跑时污染后续测试 (badge 组写错库).
+    """
     from src.database import Database
     from src import models
+    import src.database as db_module
+    import src.kid_app.app as app_module
 
     fd, path = tempfile.mkstemp(suffix='.db')
     os.close(fd)
     os.environ['DATABASE_URL'] = ''
-    original = models.settings.db_path
-    models.settings.db_path = path
+    new_db = Database(db_path=path)
+    original_db = db_module.db  # 保存原单例
 
-    import src.database as db_module
-    db_module.db = Database(db_path=path)
-    yield db_module.db, path
+    # 用 monkeypatch 替换, 测试后自动恢复 (不再手动赋值不恢复)
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(models.settings, "db_path", path)
+    monkeypatch.setattr(db_module, "db", new_db)
+    monkeypatch.setattr(app_module, "db", new_db)
 
-    models.settings.db_path = original
+    yield new_db, path
+
+    monkeypatch.undo()
     try:
         os.unlink(path)
     except Exception:
