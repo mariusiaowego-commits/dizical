@@ -118,18 +118,27 @@ class TestPaymentManagerAdvanced(TestCase):
         self.assertGreater(len(unpaid), 0)
 
     def test_should_send_reminder(self):
-        """测试是否应该发送提醒"""
-        self.lesson_manager.generate_monthly_lessons(2026, 5)
-        status = self.payment_manager.get_monthly_payment_status(2026, 5)
+        """测试是否应该发送提醒.
+
+        P0-2026-08-05 修正: 原测试用 2026-05 (过去月) → should_send_reminder 内部
+        get_monthly_payment_status(5月) → is_past_month → balance=total_fee-paid=0 → False.
+        系统只给当前月发提醒, 过去月场景业务上不发生. 改用当前月 (balance>0).
+        """
+        import datetime as dt
+        today = dt.date.today()
+        self.lesson_manager.generate_monthly_lessons(today.year, today.month)
+        status = self.payment_manager.get_monthly_payment_status(today.year, today.month)
 
         if status.payment_reminder_date:
-            # 在提醒日应该发送提醒
+            # 在提醒日应该发送提醒 (当前月, balance>0)
             self.assertTrue(self.payment_manager.should_send_reminder(status.payment_reminder_date))
 
     def test_should_not_send_reminder_when_paid(self):
-        """测试缴清后不应发送提醒"""
-        self.lesson_manager.generate_monthly_lessons(2026, 5)
-        status = self.payment_manager.get_monthly_payment_status(2026, 5)
+        """测试缴清后不应发送提醒."""
+        import datetime as dt
+        today = dt.date.today()
+        self.lesson_manager.generate_monthly_lessons(today.year, today.month)
+        status = self.payment_manager.get_monthly_payment_status(today.year, today.month)
 
         # 缴清所有费用：用 estimated_fee（因为当月课程尚未上课，余额基于 estimated_fee）
         self.payment_manager.record_payment(status.estimated_fee)

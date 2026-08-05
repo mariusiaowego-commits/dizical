@@ -22,6 +22,11 @@ import sys
 import pytest
 
 
+@pytest.mark.skipif(
+    not os.environ.get("TEST_DATABASE_URL"),
+    reason="需真云 MySQL TEST_DATABASE_URL (subprocess 隔离跑 8 场景). 本机无凭据时跳过, "
+           "切云验证时设 TEST_DATABASE_URL 再跑.",
+)
 def test_save_daily_practice_mysql_merge_semantics():
     """subprocess 隔离跑 8 个场景 (避开 pytest 进程内 MySQLBackend 单例缓存)."""
     code = """

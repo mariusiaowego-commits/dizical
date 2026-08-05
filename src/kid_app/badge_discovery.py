@@ -62,9 +62,11 @@ def scan_badge_data_dir() -> list[dict[str, Any]]:
         image_url = None
         badge_id = draft.meta.get("id")
         from pathlib import Path as _P
-        data_dir = badge_draft._badge_data_dir()
+        # 生产 static/badges/ 路径: 用 __file__ 推导项目根 (跟 badge_draft._badge_data_dir 同一来源).
+        # 不能依赖 data_dir 上溯 (测试 monkeypatch 后 data_dir 在 tmp, 上溯不到项目根).
+        _project_root = _P(__file__).resolve().parent.parent.parent
         if badge_id:
-            commit_static_path = data_dir.parent.parent.parent / "src" / "kid_app" / "static" / "badges" / f"{badge_id}_v{draft.version}.png"
+            commit_static_path = _project_root / "src" / "kid_app" / "static" / "badges" / f"{badge_id}_v{draft.version}.png"
             if commit_static_path.is_file():
                 # commit 后真存在 → 直接 web 路径 (走 StaticFiles mount, 高效)
                 image_url = f"/static/badges/{badge_id}_v{draft.version}.png"

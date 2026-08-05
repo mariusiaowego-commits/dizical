@@ -22,6 +22,7 @@ from src import practice as practice_module
 from src import db_adapter  # Sprint 08: 双后端占位符适配 (conn.execute → db_adapter.execute)
 from src.kid_app.subject_info import get_subject_info
 from src.kid_app.schemas import PracticeLogRequest  # PR-B: Pydantic 校验
+from src.kid_app.errors import ConflictError, NotFoundError, MaintenanceBlockedError  # Sprint 09 P0-12 (PR-D)
 from pydantic import ValidationError
 
 # ─── App ───────────────────────────────────────────────────────────────────
@@ -29,7 +30,8 @@ app = FastAPI(title="Bamboo Flute Practice")
 
 # PR-D: 同 item + 同 minutes 5s 内防重窗口 (防双击 / 网络重传导致 2 条 session).
 # 进程级 dict, 路由层 _dedup_practice_log() 入口检查; 不下到 middleware 改 body.
-_DEDUP_WINDOW_SECONDS = 5
+# Sprint 09 P0-2: 5s → 10s, 防小程序 callContainer 8s timeout + HTTP fallback race 双发
+_DEDUP_WINDOW_SECONDS = 10
 _dedup_cache: Dict[tuple, tuple] = {}
 
 
@@ -69,11 +71,34 @@ def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict,
                 del _dedup_cache[k]
 
 
-# CORS: web / Mac app 调 CloudRun 公网 HTTPS 时需要
-# Phase 1 收紧: 只允许 dizical-prod-xxx 域名, spike 阶段先开
+# CORS Sprint 09 PR-G: 收紧到 explicit 列表 + dizical-prod-* 子域正则
+# 背景: spike 阶段 allow_origins=["*"] 太松, 任何 origin 都能调. 切云前需收紧:
+#   - 本地开发 (web/iPad): http://localhost:8765, http://127.0.0.1:8765
+#   - 局域网 iPad: http://10.0.0.14:8765, http://172.20.10.2:8765 (Mac 当前 IP)
+#   - Tailscale iPad: http://100.67.215.121:8765 (AGENTS.md 写明, 实际 IP 跑 tailscale ip -4)
+#   - 公网 dizical-prod-*.run.tcloudbase.com (CloudRun 公网域, 子域)
+# 留 fallback: 环境变量 DIZICAL_ALLOW_ALL_ORIGINS=1 时退回 ["*"] (开发者本地放宽)
+# 参考 GLM-5 建议 (Reference 2 / 4): 不要过度收紧, 留本地 + iPad + 局域网 + Tailscale.
+#       mac app 是 WKWebView 包装 (AGENTS.md), 走同 127.0.0.1:8765, 不需要单独 origin.
+#       取消 ["*"] 之前先确保兼容路径不退化.
+import os as _os
+_ALLOW_ALL = _os.getenv("DIZICAL_ALLOW_ALL_ORIGINS", "") == "1"
+if _ALLOW_ALL:
+    _cors_origins = ["*"]
+    _cors_regex = None
+else:
+    _cors_origins = [
+        "http://localhost:8765",
+        "http://127.0.0.1:8765",
+        "http://10.0.0.14:8765",
+        "http://172.20.10.2:8765",
+        "http://100.67.215.121:8765",
+    ]
+    _cors_regex = r"https://dizical-prod(-[a-z0-9]+)?\.ap-shanghai\.run\.tcloudbase\.com"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # spike 阶段全开, Phase 1 改成具体域名
+    allow_origins=_cors_origins,
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -104,20 +129,36 @@ def maintenance_status():
     }
 
 
-# ─── Health check (CloudRun 健康检查 + spike 验证) ──────────────────────
-@app.get("/health")
-def health():
-    """健康检查: 验证 FastAPI 跑通, 数据库连接 OK"""
+# ─── Health check (Sprint 09 P0-3: 拆 live + ready) ──────────────────────
+@app.get("/health/live")
+def health_live():
+    """K8s liveness probe: 仅验证 Python 进程存活. 永远 200.
+    CloudRun 容器 liveness 失败会触发容器重启, 不应被 DB 状态影响."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def health_ready():
+    """K8s readiness probe: 验证 DB 可达 + 业务 smoke test.
+    CloudRun readiness 失败会从流量池摘掉该实例, 但不重启."""
     db_status = "ok"
     db_error = None
     record_count = 0
     try:
-        # 用 get_all_lessons 当 smoke test (业务方法, 验证 ORM + SQLite 都通)
         lessons = db.get_all_lessons()
         record_count = len(lessons)
     except Exception as e:
         db_status = "error"
         db_error = str(e)
+        return {
+            "status": "not_ready",
+            "service": "dizical",
+            "env": os.getenv("ENV", "unknown"),
+            "database": db_status,
+            "db_error": db_error,
+            "lesson_count": 0,
+            "timestamp": dt.datetime.utcnow().isoformat() + "Z",
+        }, 503
 
     return {
         "status": "ok",
@@ -128,6 +169,12 @@ def health():
         "lesson_count": record_count,
         "timestamp": dt.datetime.utcnow().isoformat() + "Z",
     }
+
+
+@app.get("/health")
+def health():
+    """向后兼容: 等同 /health/ready. Sprint 09 前 K8s 用这个, 新部署应改 /health/live."""
+    return health_ready()
 
 static_path = Path(__file__).parent / "static"
 if static_path.exists():
@@ -1568,13 +1615,26 @@ def api_practice_sessions(date_str: str, item_id: Optional[int] = None):
 
 
 @app.delete("/api/practice-sessions/{session_id}")
-async def api_delete_practice_session(session_id: int):
-    """删单条 session, 重算 daily 汇总, 写 audit."""
+async def api_delete_practice_session(session_id: int, request: Request):
+    """删单条 session, 重算 daily 汇总, 写 audit.
+
+    Sprint 09 P0-12 (PR-D): 接 If-Match header 乐观锁. 缺 header = 跳过校验 (兼容旧调用),
+    存在 header = 服务端校验 current_version == expected, 不匹配返 409.
+    """
     try:
-        db.delete_practice_session(int(session_id))
+        if_match = request.headers.get("if-match")
+        expected_version = int(if_match) if if_match is not None else None
+        db.delete_practice_session(int(session_id), expected_version=expected_version)
         return JSONResponse({"ok": True, "session_id": session_id})
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=404)
+    except ConflictError as e:
+        # Sprint 09 P0-12: 乐观锁冲突 409, body 携带 current_version 供前端刷新.
+        return JSONResponse(
+            {"ok": False, "error": str(e), "code": "VERSION_CONFLICT",
+             "current_version": e.current_version},
+            status_code=409,
+        )
     except Exception as e:
         import traceback, logging
         logging.error(f"API error: {e}\n{traceback.format_exc()}")
@@ -1583,17 +1643,34 @@ async def api_delete_practice_session(session_id: int):
 
 @app.put("/api/practice-sessions/{session_id}")
 async def api_update_practice_session(session_id: int, request: Request):
-    """更新 session 的 tempo/content (不改 duration)."""
+    """更新 session 的 tempo/content/duration (含乐观锁).
+
+    Sprint 09 P0-12 (PR-D): 接 If-Match header 乐观锁. 缺 header = 跳过校验 (兼容旧调用),
+    存在 header = 服务端校验, 不匹配返 409 + current_version.
+    成功 UPDATE 后 response 含新 version (前端 ETag 用).
+    """
     try:
         body = json.loads(await request.body())
+        if_match = request.headers.get("if-match")
+        expected_version = int(if_match) if if_match is not None else None
         tempo_note = body.get("tempo_note")
         tempo_bpm = body.get("tempo_bpm")
         content = body.get("content")
         duration_minutes = body.get("duration_minutes")
         if not any([tempo_note, tempo_bpm is not None, content, duration_minutes is not None]):
             return JSONResponse({"ok": False, "error": "至少传一个字段"}, status_code=400)
-        updated = db.update_practice_session(int(session_id), tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content, duration_minutes=duration_minutes)
+        updated = db.update_practice_session(
+            int(session_id),
+            tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content,
+            duration_minutes=duration_minutes, expected_version=expected_version,
+        )
         return JSONResponse({"ok": True, "session": updated})
+    except ConflictError as e:
+        return JSONResponse(
+            {"ok": False, "error": str(e), "code": "VERSION_CONFLICT",
+             "current_version": e.current_version},
+            status_code=409,
+        )
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except Exception as e:
@@ -2580,6 +2657,11 @@ def get_setting(key, default=""):
         return db.get_setting(key) or default
     except Exception:
         return default
+
+
+def set_setting(key, value):
+    """写 settings 表 (跟 get_setting 对称, Sprint 09 PR-A)."""
+    db.set_setting(key, value)
 
 
 @app.get("/api/bless-pool", response_class=JSONResponse)

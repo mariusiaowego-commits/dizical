@@ -1,3 +1,55 @@
+## 2026-08-05 全量测试清零 (434 passed / 0 failed) + 生产 streak badge 行污染修复
+
+- 目标: dad "先完整开发好, 整体测试后再合" → 修 4 个历史 failed + 生产 streak 污染
+- **badge_discovery image_url** (真 bug): 代码 67 行 `data_dir.parent.parent.parent` 依赖 data_dir 上溯推导 static 路径, 测试 monkeypatch 后 data_dir 在 tmp → 上溯不到项目根 → is_file() 永远 False → 永远走 draft-image. 修: 改用 `Path(__file__)` 推导项目根 (跟 _badge_data_dir 同源). 测试改为匹配 V2.6 行为 (文件存在→static, 不存在→draft-image)
+- **lesson/payment** (测试过时): 用 2026-05 (过去月) → payment.py:127 is_past_month → estimated=total (只算已上课) → 5 月课全 SCHEDULED → 0 是**业务正确**. 修: 测试改当前月 (estimated>0) + 补过去月断言 (=0 设计如此)
+- **replace_image_endpoint** (测试设计缺陷 P0): 注释声称"走 conftest tmp db 不碰 prod"从未成立 — conftest 只改 settings.db_path, api_replace 走 badge_db.db (顶层绑定原单例=prod). 单独跑 settings 恰好 prod 自洽通过(侥幸); 全量跑 settings=tmp 而 badge_db.db=prod → 失败. 修: fixture 自建独立 DB + 4 入口 (badge_db.db/db_module.db/app_module.db/settings.db_path) 全 patch 到它 + 建 badge 三表
+- **生产污染发现**: streak_7 有 90 行 badge 记录 (89 垃圾, replace_image 测试历史上每次跑 INSERT 累积), is_current=1 指向不存在的 streak_7_v1.png → 勋章墙破图. 8-03 commit c1f714e 明确"db url 从 _v1.png 修回 streak_7.png"→ 生产正确态是 streak_7.png. 修复: 备份 dizi-20260805-badgerows-repair.db → streak_7/3/1 重置为 1 行真实 .png → 0 破图风险
+- **save_daily_practice_mysql**: 需真云 TEST_DATABASE_URL, 加 @pytest.mark.skipif 本机优雅跳过 (切云验证时设 env 再跑)
+- **成果**: 全量 434 passed / 8 skipped / 0 failed, 生产库 md5 前后一致零污染
+- 教训: "测试隔离"注释必须真隔离 (patch 所有入口); 测试跑后必查生产库 streak 行数
+
+## 2026-08-05 P0 生产库 test_* 残留清理 + badge 测试顺序污染根因修复 (防复发)
+
+- **发现**: data/dizi.db (生产库) 里有 14 个 test_* badge 残留 (42 行: achievements 14 + stats 14 + badges 14), 会显示在勋章墙 ("测试badge" + 破图)
+- **溯源** (dad 追问"是这次加的测试吗"): 不是! 三条铁证: ① created_at = 2026-08-05 凌晨 05:11-05:55 (我中午 12:40 才开始) ② 8-04 备份 0 残留 ③ 残留 badge_id 对应既有测试 (unlock_strategy/badge_commit_meta_mapping/badge_commit_version_sync/cond_text_meta_mapping), 非我今天加的 backend_switch/audit_log_transaction
+- **真凶**: 单兵 agent (handoff 交接者) 8-05 凌晨跑全量测试时触发 badge_db.py:20 模块顶层 `from src.database import db` 绑定 import 时原单例 → 别处替换 src.database.db 后 badge_db 写错库 → 写进 data/dizi.db
+- **修复** (防复发):
+  - isolated_db fixture: 显式 monkeypatch badge_db.db → real_db (badge 测试 commit 走 fake conn)
+  - test_backend_switch / test_audit_log_transaction fixture: 改 monkeypatch 自动恢复 (旧: 替换 db_module.db 不恢复)
+- **清理**: 备份 dizi-pre-testclean-20260805-144819.db → 删 3 表 42 行 → 校验真实 badge 44 个完好 (eagle_spread_wings 在) → /badges 页无 test_* → 删残留文件 (v2_test_*.png + test_*.json)
+- **成果**: 全量 26 failed → **5 failed** (428 passed), dizi.db md5 前后一致 = 零污染. 剩 5 个全是单独跑也挂的真 bug/需真云 (历史遗留, 非顺序污染)
+- 教训: fixture 替换全局单例必须用 monkeypatch 自动恢复; 写"测试隔离"注释前先验证 import 时机
+
+## 2026-08-05 Sprint 09 PR-E audit 事务对齐 + dev 依赖组 (commit 75235ec, PR #224, 未 merge)
+
+- 触发: dad "继续后面的步骤" — PR-E (P0-22) 是 Sprint 09a 剩余可做项 (PR-F 需等 bucket 名)
+- **PR-E 实际改动范围 (比 handoff 估的小)**: 8 处 audit INSERT 里 6 处已在事务内 commit 前 (delete/update/save_session 双后端), 真正要改 2 处:
+  - SQLite save_daily_practice: audit 从事务外独立 commit 移入事务内 → 业务失败整事务 rollback → audit 不写 (数据溯源原子性)
+  - MySQL save_daily_practice: 补 2 处缺失 audit (merge 路径 + is_clear 清零路径) → 与 SQLite parity (旧实现 MySQL 完全不写 audit!)
+- **基建修复**: pyproject.toml 加 [dependency-groups] dev (13 个测试依赖) + uv.lock 锁入 → `uv sync --group dev` 一次装齐. 旧: `uv run --with` 临时带 → cli_ux_review 等 8 测试因缺 uvicorn/textual collection ERROR
+- **测试**: test_audit_log_transaction.py 5/5 (成功写 / 失败不写 / 无 channel 不写 / save_session / delete), 相关回归 38 passed
+- **顺序污染发现** (既有历史债): badge_commit_meta_mapping / cond_text_meta_mapping / unlock_strategy 全量跑挂 (26 failed), 单独跑全绿. 用 -x 定位在 16% 处 (70 测试后), 但 8 个前置文件逐个组合都复现不了 → 未深挖, 记 issue (不阻塞 Sprint 09, 非本 PR 引入)
+- **git**: commit 75235ec 已 push 到 feat/sprint-09-cloud-cutover (PR #224 更新 body), 未 merge (等 dad go)
+- 收尾: vibe-coding-log insert (绝不用 write_file 覆盖, 8-05 踩坑已固化)
+
+## 2026-08-05 Sprint 09 切云 review + 加固 (commit bcd3bc8, feat/sprint-09-cloud-cutover, 未 push)
+
+- 触发: dad 接续 Sprint 09, 先 review plan (切换风险 / 测试完善 / MCP 连接 / 回退), 拍板"一步步做 按plan执行"
+- **review 结论**: 方向对但当时 No-Go — MCP 无握手证据 / 测试基线不可信 / PR-D 真路径 skip / rollback 脚本缺闭环
+- **MCP 4 步握手全过**: auth READY (AUTO_BOUND cloud1-d4gfwyvsk1435e2e4) / CloudRun dizical-prod normal (048, 需 049) / MySQL 8.0.30-cynos 连通 / SHOW TABLES 15 张全在
+- **P0 发现 1**: 云端 practice_sessions **缺 version/updated_at 列** (schema 是 8-01 旧版, PR-D lazy migration 未跑过). 049 部署后首次访问会 lazy ALTER, 但 preflight 必须显式验证
+- **P0 发现 2**: 8-04 练习数据**未上云** (云端 max_id=1467/max_date=08-03, 本地 1483/08-04). 切云 SOP 必须含"最后覆盖同步带 8-04 数据"再冻结写入
+- **P1 安全**: scripts/dynamic_sync.py 硬编码 MySQL 生产密码 (待处理, 密码未在 chat 复述)
+- **PR-D 真路径修复** (2 个真 bug): ① database.py practice_items 建表 id→item_id (建表 SQL 与真实 schema 漂移, 全新库炸 WHERE item_id=?) ② endpoint 测试注入 app.py 模块 db 属性 (app.py 顶层 from src.database import db 绑定旧实例 → readonly). 移除从未生效的 pytestmark_optimistic — handoff 误报"10 skip"实际是 8 failed/2 passed → 现在 10/10 全绿
+- **PR-A web-only**: /config/api/backend GET/PUT (settings 表 backend_mode + dizical_url, PIN 保护) + config.html 后端连接卡片 + 5 测试全绿. 范围按 dad 拍板: 不碰 mac app 源
+- **脚本加固**: scripts/preflight_cloud.sh (新, 6 项只读预检: 连通/表对齐/乐观锁列/schema_migrations/行数/空表, 支持 ~/.dizical/.env 或环境变量凭据) + rollback_to_local.sh 增强 (DATABASE_URL 清除 + 服务重启 + /health/ready 验证闭环)
+- **基线**: 406 passed / 17 failed (全部改动前历史遗留: 8 缺 textual 依赖 + 4 badge/日期 + 3 顺序污染单跑绿 + 1 需真云 TEST_DATABASE_URL + 1 badge url) / 7 skipped
+- **handoff 修正**: "PR-D 10 测试 skip" 是错的 (实际 8 failed); "rollback 脚本没写" 过时 (已存在, 本次增强)
+- **MOA**: DeepSeek reference 4+ 次空响应 → dad 拍板只留 Luna (config.yaml 已改, 备份 config.yaml.bak-20260805-124738, 恢复指引留注释)
+- **沉淀**: preflight-2026-08-05.md 双写主仓+tqob (md5 357b6c25 一致)
+- 未 push (等 dad go): commit bcd3bc8 含 8 文件 610+/62-
+
 ## 2026-08-03 一次性徽章 雄鹰展翅 (PR #221 MERGED, main 6aec99c)
 
 - 触发: 女儿 2026-08-03 完整背出笛子三级考级曲《萨丽哈最听毛主席的话》(文革版哈萨克族民歌, 歌词"要当雄鹰展翅飞, 不做温室一枝花"). 一次性徽章纪念突破性时刻

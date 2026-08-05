@@ -67,9 +67,75 @@ def _read_body(resp) -> dict:
 
 
 @pytest.fixture
-def fresh_draft() -> Iterator[tuple[str, Path]]:
-    """建一个 draft_awaiting_confirm draft. 跑完 cleanup."""
-    _ensure_streak_7_in_db()  # 也保证 prod-style baseline
+def fresh_draft(monkeypatch, tmp_path) -> Iterator[tuple[str, Path]]:
+    """建一个 draft_awaiting_confirm draft. 跑完 cleanup.
+
+    P0-2026-08-05 修复: 自建独立临时 DB, 把 badge_db.db / db_module.db /
+    app_module.db / settings.db_path 全部 patch 到这一个库.
+    旧设计 (注释声称"走 conftest tmp db 不碰 prod") 从未成立:
+    conftest session fixture 只改 settings.db_path, 而 api_replace 走 badge_db.db
+    (模块顶层绑定原单例 = prod). 单独跑时 settings 恰好也是 prod 自洽通过;
+    全量跑时 settings=conftest tmp 而 badge_db.db=prod → 不一致 → 失败, 且污染生产库.
+    """
+    from src.kid_app import badge_db
+    from src import database as db_module
+    from src import models
+    import src.kid_app.app as app_module
+    from src.database import Database
+
+    # 1. 自建独立临时 DB (跟 conftest / 其他测试完全隔离)
+    db_file = tmp_path / "replace_test.db"
+    new_db = Database(db_path=str(db_file))
+
+    # 1b. 建 badge 三表 (Database 只建基础表, badge 表需手动建, 跟 conftest _ensure_badge_tables 同 SQL)
+    _conn = sqlite3.connect(str(db_file))
+    _conn.executescript("""
+        CREATE TABLE IF NOT EXISTS achievements (
+            id                TEXT PRIMARY KEY,
+            name              TEXT NOT NULL,
+            type              TEXT NOT NULL,
+            category          TEXT NOT NULL DEFAULT 'milestone',
+            stat_logic        TEXT NOT NULL,
+            description       TEXT NOT NULL,
+            display_format    TEXT NOT NULL,
+            threshold         INTEGER,
+            unlocked_template TEXT,
+            placeholder       TEXT,
+            locked_template   TEXT,
+            sort_order        INTEGER DEFAULT 0,
+            seasonal_type     TEXT DEFAULT 'monthly',
+            cond_text         TEXT,
+            unlock_strategy   TEXT DEFAULT 'calc',
+            achieved_at_override TEXT,
+            created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS achievement_stats (
+            achievement_id TEXT PRIMARY KEY,
+            achieved       TEXT NOT NULL DEFAULT 'N',
+            raw_stats      TEXT NOT NULL DEFAULT '{}',
+            achieved_at    DATETIME,
+            computed_value INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS achievement_badges (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            achievement_id  TEXT NOT NULL,
+            url             TEXT NOT NULL,
+            is_locked       INTEGER NOT NULL DEFAULT 0,
+            version         INTEGER NOT NULL DEFAULT 1,
+            is_current      INTEGER NOT NULL DEFAULT 1,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    _conn.commit()
+    _conn.close()
+
+    # 2. 四个入口全部指向这个库 (badge_db.db 是 api_replace 用的, 必须一致)
+    monkeypatch.setattr(models.settings, "db_path", str(db_file))
+    monkeypatch.setattr(db_module, "db", new_db)
+    monkeypatch.setattr(badge_db, "db", new_db)
+    monkeypatch.setattr(app_module, "db", new_db)
+
+    _ensure_streak_7_in_db()  # 往独立库注入 streak_7 baseline (非 prod)
 
     DRAFT_DIR.mkdir(parents=True, exist_ok=True)
     TMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -101,25 +167,8 @@ def fresh_draft() -> Iterator[tuple[str, Path]]:
     ]:
         if png.exists():
             png.unlink()
-    # DB cleanup: 把测试期间插入的 v1 行删掉 + 还原 streak_7 is_current=1
-    conn = sqlite3.connect(str(_tmp_db_path()))
-    try:
-        conn.execute(
-            "DELETE FROM achievement_badges WHERE url = ?",
-            ("/static/badges/streak_7_v1.png",),
-        )
-        # 重置: 把所有 is_current=0 改回 1, 但只保留一个
-        conn.execute(
-            "UPDATE achievement_badges SET is_current = 0 WHERE achievement_id = 'streak_7' "
-            "AND url != '/static/badges/streak_7.png'"
-        )
-        conn.execute(
-            "UPDATE achievement_badges SET is_current = 1 WHERE achievement_id = 'streak_7' "
-            "AND url = '/static/badges/streak_7.png'"
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    # DB cleanup: 独立临时库, monkeypatch 自动恢复, 无需手动清 (删库文件即可)
+    monkeypatch.undo()
 
 
 def test_replace_happy_path(fresh_draft):

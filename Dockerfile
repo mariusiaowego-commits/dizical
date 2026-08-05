@@ -31,7 +31,7 @@ ENV DB_PATH=/tmp/dizical.db
 # 健康检查 (CloudRun 用这个判断容器是否健康)
 # Research 2 修复: 端口必须跟 EXPOSE / CMD 完全一致 (8080)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8080/health/live || exit 1
 
 # Research 2 修复: CloudRun 默认 PORT=8080, 端口必须显式 EXPOSE
 EXPOSE 8080

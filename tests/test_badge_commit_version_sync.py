@@ -96,7 +96,15 @@ def isolated_db(tmp_path, monkeypatch):
 
     # 同时让 src.database.db._get_connection 走 fake
     monkeypatch.setattr(real_db, "_get_connection", _fake_get_connection)
-    # badge_db 引用 from src.database import db, 所以替换的就是同一个对象
+    # P0-2026-08-05 修复: badge_db 模块顶层 `from src.database import db` 绑定的是 import 时的对象,
+    # 不是 src.database.db 当前值! 全量跑时 badge_db 先被 import → badge_db.db 是独立原单例,
+    # isolated_db 只 patch database.db → badge 测试 commit 走 badge_db.db (原单例) → 写进 data/dizi.db (生产库污染!)
+    # 修法: 显式 patch badge_db.db, 让 badge 测试的 commit 也走 fake conn.
+    try:
+        from src.kid_app import badge_db as _badge_db
+        monkeypatch.setattr(_badge_db, "db", real_db)
+    except ImportError:
+        pass  # badge_db 未 import, database.db patch 已足够 (badge_db 之后 import 时会拿当前 database.db)
     yield tmp_db
 
     new_conn.close()
