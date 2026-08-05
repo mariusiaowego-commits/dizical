@@ -816,10 +816,19 @@ class MySQLBackend(BaseBackend):
             is_extra TINYINT(1) NOT NULL DEFAULT 0,
             started_at VARCHAR(64),
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            -- Sprint 09 P0-12 (PR-D): 乐观锁版本列 + 最后更新时间
+            version BIGINT NOT NULL DEFAULT 1,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_ps_date (practice_date),
             INDEX idx_ps_item_date (item_id, practice_date)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         '''
+    ]
+
+    # Sprint 09 P0-12 (PR-D): 历史表兼容 — 加 version / updated_at 列 (如果不存在).
+    _PRACTICE_SESSIONS_V3_ALTER = [
+        "ALTER TABLE practice_sessions ADD COLUMN version BIGINT NOT NULL DEFAULT 1",
+        "ALTER TABLE practice_sessions ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
     ]
 
     _PRACTICE_SESSIONS_DDL_DONE = False
@@ -831,13 +840,29 @@ class MySQLBackend(BaseBackend):
     _CONTENT_MAX_LEN = 200
 
     def _ensure_practice_sessions_schema(self) -> None:
-        """Lazy DDL. 第一次访问 MySQLBackend 时拉起 practice_sessions 表 + 索引."""
+        """Lazy DDL. 第一次访问 MySQLBackend 时拉起 practice_sessions 表 + 索引.
+
+        Sprint 09 P0-12 (PR-D): 已存在的旧表 (无 version/updated_at) 自动 ALTER 加上.
+        """
         if self._PRACTICE_SESSIONS_DDL_DONE:
             return
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 for ddl in self._PRACTICE_SESSIONS_DDL:
                     cur.execute(ddl)
+                # 历史表兼容: 检查列, 缺就 ALTER 加上 (MySQL 8 无 IF NOT EXISTS 语法, 用 information_schema)
+                cur.execute(
+                    """SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'practice_sessions'"""
+                )
+                existing_cols = {r[0] for r in cur.fetchall()}
+                if 'version' not in existing_cols:
+                    cur.execute("ALTER TABLE practice_sessions ADD COLUMN version BIGINT NOT NULL DEFAULT 1")
+                if 'updated_at' not in existing_cols:
+                    cur.execute(
+                        "ALTER TABLE practice_sessions ADD COLUMN updated_at "
+                        "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                    )
             conn.commit()
         self._PRACTICE_SESSIONS_DDL_DONE = True
 
@@ -1109,8 +1134,12 @@ class MySQLBackend(BaseBackend):
         tempo_bpm: Optional[int] = None,
         content: Optional[str] = None,
         duration_minutes: Optional[int] = None,
+        expected_version: Optional[int] = None,
     ) -> Optional[Dict]:
-        """更新 session tempo/content/duration, duration 变化时重算 daily."""
+        """更新 session tempo/content/duration, duration 变化时重算 daily.
+
+        Sprint 09 P0-12 (PR-D): 加 expected_version 乐观锁 (同 SQLite).
+        """
         self._ensure_practice_sessions_schema()
         # 逐字段校验 (避免 OR fallback 绕过空 content)
         if tempo_note is not None and tempo_note not in self._ALLOWED_TEMPO_NOTES:
@@ -1123,15 +1152,26 @@ class MySQLBackend(BaseBackend):
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
-                # 1. 读旧 session
+                # 1. 读旧 session (含 version)
                 cur.execute('SELECT * FROM practice_sessions WHERE id = %s', (int(session_id),))
                 row = cur.fetchone()
                 if not row:
                     raise ValueError(f"session_id={session_id} 不存在")
                 old_duration = int(row['duration_minutes'])
                 new_duration = int(duration_minutes) if duration_minutes is not None else old_duration
-                # 2. UPDATE session 字段
-                updates, params = [], []
+                current_version = int(row.get('version', 1))
+
+                # Sprint 09 P0-12: 乐观锁校验 — expected_version 不为 None 时检查
+                if expected_version is not None and int(expected_version) != current_version:
+                    from src.kid_app.errors import ConflictError
+                    raise ConflictError(
+                        f"session_id={session_id} version 冲突: 期望 {expected_version}, 当前 {current_version}",
+                        current_version=current_version,
+                    )
+
+                # 2. UPDATE session 字段 + version 自增
+                updates = ['version = version + 1']
+                params = []
                 if tempo_note is not None:
                     updates.append('tempo_note = %s'); params.append(tempo_note)
                 if tempo_bpm is not None:
@@ -1142,10 +1182,18 @@ class MySQLBackend(BaseBackend):
                     updates.append('duration_minutes = %s'); params.append(int(duration_minutes))
                 if updates:
                     params.append(int(session_id))
+                    # updated_at 由 ON UPDATE CURRENT_TIMESTAMP 自动维护
                     cur.execute(
                         f'UPDATE practice_sessions SET {", ".join(updates)} WHERE id = %s',
                         params,
                     )
+                    # 乐观锁二次校验: 实际写入行数 (防止并发双写绕过 expected_version)
+                    if expected_version is not None and cur.rowcount == 0:
+                        from src.kid_app.errors import ConflictError
+                        raise ConflictError(
+                            f"session_id={session_id} 行写入失败 (并发 race)",
+                            current_version=current_version,
+                        )
                 # 3. duration 变了 → 重算 daily
                 if duration_minutes is not None and new_duration != old_duration:
                     delta = new_duration - old_duration
@@ -1204,22 +1252,35 @@ class MySQLBackend(BaseBackend):
             conn.commit()
         return self.get_practice_session_by_id(int(session_id))
 
-    def delete_practice_session(self, session_id: int) -> None:
-        """删单条 session + 重算 daily + 写 audit. 整事务."""
+    def delete_practice_session(self, session_id: int, expected_version: Optional[int] = None) -> None:
+        """删单条 session + 重算 daily + 写 audit. 整事务.
+
+        Sprint 09 P0-12 (PR-D): 加 expected_version 乐观锁 (同 SQLite).
+        """
         self._ensure_practice_sessions_schema()
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
                 cur.execute(
-                    'SELECT practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = %s',
+                    'SELECT version, practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = %s',
                     (int(session_id),),
                 )
                 row = cur.fetchone()
                 if not row:
                     raise ValueError(f"session_id={session_id} 不存在")
+                current_version = int(row.get('version', 1))
                 practice_date = str(row['practice_date'])
                 item_id = int(row['item_id'])
                 item_name = str(row['item_name'])
                 removed_minutes = int(row['duration_minutes'])
+
+                # Sprint 09 P0-12: 乐观锁校验
+                if expected_version is not None and int(expected_version) != current_version:
+                    from src.kid_app.errors import ConflictError
+                    raise ConflictError(
+                        f"session_id={session_id} version 冲突: 期望 {expected_version}, 当前 {current_version}",
+                        current_version=current_version,
+                    )
+
                 # 1. 删 session
                 cur.execute('DELETE FROM practice_sessions WHERE id = %s', (int(session_id),))
                 # 2. 重算 daily

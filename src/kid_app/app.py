@@ -22,6 +22,7 @@ from src import practice as practice_module
 from src import db_adapter  # Sprint 08: 双后端占位符适配 (conn.execute → db_adapter.execute)
 from src.kid_app.subject_info import get_subject_info
 from src.kid_app.schemas import PracticeLogRequest  # PR-B: Pydantic 校验
+from src.kid_app.errors import ConflictError, NotFoundError, MaintenanceBlockedError  # Sprint 09 P0-12 (PR-D)
 from pydantic import ValidationError
 
 # ─── App ───────────────────────────────────────────────────────────────────
@@ -1591,13 +1592,26 @@ def api_practice_sessions(date_str: str, item_id: Optional[int] = None):
 
 
 @app.delete("/api/practice-sessions/{session_id}")
-async def api_delete_practice_session(session_id: int):
-    """删单条 session, 重算 daily 汇总, 写 audit."""
+async def api_delete_practice_session(session_id: int, request: Request):
+    """删单条 session, 重算 daily 汇总, 写 audit.
+
+    Sprint 09 P0-12 (PR-D): 接 If-Match header 乐观锁. 缺 header = 跳过校验 (兼容旧调用),
+    存在 header = 服务端校验 current_version == expected, 不匹配返 409.
+    """
     try:
-        db.delete_practice_session(int(session_id))
+        if_match = request.headers.get("if-match")
+        expected_version = int(if_match) if if_match is not None else None
+        db.delete_practice_session(int(session_id), expected_version=expected_version)
         return JSONResponse({"ok": True, "session_id": session_id})
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=404)
+    except ConflictError as e:
+        # Sprint 09 P0-12: 乐观锁冲突 409, body 携带 current_version 供前端刷新.
+        return JSONResponse(
+            {"ok": False, "error": str(e), "code": "VERSION_CONFLICT",
+             "current_version": e.current_version},
+            status_code=409,
+        )
     except Exception as e:
         import traceback, logging
         logging.error(f"API error: {e}\n{traceback.format_exc()}")
@@ -1606,17 +1620,34 @@ async def api_delete_practice_session(session_id: int):
 
 @app.put("/api/practice-sessions/{session_id}")
 async def api_update_practice_session(session_id: int, request: Request):
-    """更新 session 的 tempo/content (不改 duration)."""
+    """更新 session 的 tempo/content/duration (含乐观锁).
+
+    Sprint 09 P0-12 (PR-D): 接 If-Match header 乐观锁. 缺 header = 跳过校验 (兼容旧调用),
+    存在 header = 服务端校验, 不匹配返 409 + current_version.
+    成功 UPDATE 后 response 含新 version (前端 ETag 用).
+    """
     try:
         body = json.loads(await request.body())
+        if_match = request.headers.get("if-match")
+        expected_version = int(if_match) if if_match is not None else None
         tempo_note = body.get("tempo_note")
         tempo_bpm = body.get("tempo_bpm")
         content = body.get("content")
         duration_minutes = body.get("duration_minutes")
         if not any([tempo_note, tempo_bpm is not None, content, duration_minutes is not None]):
             return JSONResponse({"ok": False, "error": "至少传一个字段"}, status_code=400)
-        updated = db.update_practice_session(int(session_id), tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content, duration_minutes=duration_minutes)
+        updated = db.update_practice_session(
+            int(session_id),
+            tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content,
+            duration_minutes=duration_minutes, expected_version=expected_version,
+        )
         return JSONResponse({"ok": True, "session": updated})
+    except ConflictError as e:
+        return JSONResponse(
+            {"ok": False, "error": str(e), "code": "VERSION_CONFLICT",
+             "current_version": e.current_version},
+            status_code=409,
+        )
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except Exception as e:

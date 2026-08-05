@@ -196,6 +196,45 @@ class Database(BaseBackend):
                 cursor.execute('CREATE UNIQUE INDEX idx_assignments_lesson_unique ON weekly_assignments(lesson_date)')
                 cursor.execute("INSERT INTO schema_migrations (version) VALUES (2)")
 
+            # Migration v3: practice_sessions version + updated_at (Sprint 09 P0-12)
+            # 背景: 跨端写入冲突时 (web + mac app 同时改同 session), 旧版本会覆盖新版本.
+            # 修法: 加 version 列 (默认 1, UPDATE 时 +1), WHERE version=? 校验, 0 行受影响即 raise ConflictError.
+            # updated_at 列 NULL 可, 写入时 CURRENT_TIMESTAMP 由 Python 端填 (SQLite 不支持 ADD COLUMN DEFAULT CURRENT_TIMESTAMP).
+            # 幂等: CREATE TABLE IF NOT EXISTS 保证表存在 (跟 7-27 migrate_add_practice_sessions.py 同 schema),
+            #       ALTER ADD COLUMN 用 PRAGMA 检查列已存在则跳过 (跟 v2 模式一致).
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS practice_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    practice_date DATE NOT NULL,
+                    item_id INTEGER NOT NULL,
+                    item_name TEXT NOT NULL,
+                    duration_minutes INTEGER NOT NULL,
+                    tempo_note TEXT NOT NULL DEFAULT '♪',
+                    tempo_bpm INTEGER NOT NULL DEFAULT 80,
+                    content TEXT NOT NULL DEFAULT '',
+                    content_source TEXT NOT NULL DEFAULT 'manual',
+                    is_extra INTEGER NOT NULL DEFAULT 0,
+                    started_at TEXT,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    version INTEGER NOT NULL DEFAULT 1,
+                    updated_at DATETIME
+                )
+            ''')
+            cursor.execute("PRAGMA table_info(practice_sessions)")
+            ps_columns = {col['name'] for col in cursor.fetchall()}
+            if 'version' not in ps_columns:
+                cursor.execute("ALTER TABLE practice_sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+            if 'updated_at' not in ps_columns:
+                # SQLite 不支持 ALTER ADD COLUMN DEFAULT CURRENT_TIMESTAMP — 默认 NULL, 写入端填.
+                cursor.execute("ALTER TABLE practice_sessions ADD COLUMN updated_at DATETIME")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_ps_date ON practice_sessions(practice_date)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_ps_item_date ON practice_sessions(item_id, practice_date)")
+            # schema_migrations 标记 (幂等)
+            cur2 = conn.cursor()
+            cur2.execute("SELECT 1 FROM schema_migrations WHERE version = 3")
+            if cur2.fetchone() is None:
+                cur2.execute("INSERT INTO schema_migrations (version) VALUES (3)")
+
             # Daily practices table (每日分项打卡)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS daily_practices (
@@ -215,6 +254,12 @@ class Database(BaseBackend):
                 cursor.execute('ALTER TABLE daily_practices ADD COLUMN log TEXT')
             if 'behavior_log' not in columns:
                 cursor.execute('ALTER TABLE daily_practices ADD COLUMN behavior_log TEXT')
+            # 2026-08-05 Sprint 09: 'practiced' 列历史 migrate 加的, _init_tables 没补,
+            # 测试新库 + CloudRun 部署都遇到. 显式 ALTER 幂等补齐.
+            if 'practiced' not in columns:
+                cursor.execute("ALTER TABLE daily_practices ADD COLUMN practiced TEXT NOT NULL DEFAULT 'Y'")
+            if 'practice_at' not in columns:
+                cursor.execute("ALTER TABLE daily_practices ADD COLUMN practice_at DATETIME")
 
             # Migration: add category_id if practice_items doesn't have it
             cursor.execute("PRAGMA table_info(practice_items)")
@@ -1274,20 +1319,35 @@ class Database(BaseBackend):
                         pass
             return None
 
-    def delete_practice_session(self, session_id: int) -> None:
-        """删单条 session + 重算 daily 汇总 + 写 audit. 整事务."""
+    def delete_practice_session(self, session_id: int, expected_version: Optional[int] = None) -> None:
+        """删单条 session + 重算 daily 汇总 + 写 audit. 整事务.
+
+        Sprint 09 P0-12 (PR-D): 加 expected_version 乐观锁 (同 update).
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("BEGIN IMMEDIATE")
             try:
-                cursor.execute("SELECT practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = ?", (session_id,))
+                cursor.execute("SELECT version, practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = ?", (session_id,))
                 row = cursor.fetchone()
                 if not row:
                     raise ValueError(f"session_id={session_id} 不存在")
+                current_version = row["version"]
                 practice_date = row["practice_date"]
                 item_id = row["item_id"]
                 item_name = row["item_name"]
                 removed_minutes = row["duration_minutes"]
+
+                # Sprint 09 P0-12: 乐观锁校验
+                if expected_version is not None:
+                    if int(expected_version) != int(current_version):
+                        from src.kid_app.errors import ConflictError
+                        conn.rollback()
+                        raise ConflictError(
+                            f"session_id={session_id} version 冲突: 期望 {expected_version}, 当前 {current_version}",
+                            current_version=int(current_version),
+                        )
+
                 # 1. 删 session
                 cursor.execute("DELETE FROM practice_sessions WHERE id = ?", (session_id,))
                 # 2. 重算 daily 汇总
@@ -1339,9 +1399,14 @@ class Database(BaseBackend):
         tempo_bpm: Optional[int] = None,
         content: Optional[str] = None,
         duration_minutes: Optional[int] = None,
+        expected_version: Optional[int] = None,
     ) -> Optional[Dict]:
         """更新 session 的 tempo/content/duration.
         duration_minutes 变化时自动重算 daily 汇总 + 写 audit.
+
+        Sprint 09 P0-12 (PR-D): 加 expected_version 乐观锁. None=跳过校验 (兼容旧调用),
+        整数=WHERE id=? AND version=? 检查, affected_rows=0 即 raise ConflictError(409).
+        成功 UPDATE 后 version 自增 1, updated_at = CURRENT_TIMESTAMP.
         """
         # 2026-07-29: 对实际要更新的字段做校验, 避免 OR fallback 绕过空 content 检查
         if tempo_note is not None and tempo_note not in self._ALLOWED_TEMPO_NOTES:
@@ -1361,9 +1426,9 @@ class Database(BaseBackend):
             old_duration = row["duration_minutes"]
             new_duration = duration_minutes if duration_minutes is not None else old_duration
 
-            # 1. 更新 session 字段
-            updates = []
-            params = []
+            # 1. 更新 session 字段 + version 自增 (Sprint 09 P0-12)
+            updates = ["version = version + 1", "updated_at = CURRENT_TIMESTAMP"]
+            params: List = []
             if tempo_note:
                 updates.append("tempo_note = ?"); params.append(tempo_note)
             if tempo_bpm is not None:
@@ -1372,9 +1437,28 @@ class Database(BaseBackend):
                 updates.append("content = ?"); params.append(content)
             if duration_minutes is not None:
                 updates.append("duration_minutes = ?"); params.append(duration_minutes)
-            if updates:
+            # Sprint 09 P0-12: 乐观锁校验 — expected_version 不为 None 时加 WHERE version=?
+            if expected_version is not None:
+                params.extend([int(expected_version), session_id])
+                cursor.execute(
+                    f"UPDATE practice_sessions SET {', '.join(updates)} WHERE id = ? AND version = ?",
+                    params,
+                )
+            else:
                 params.append(session_id)
-                cursor.execute(f"UPDATE practice_sessions SET {', '.join(updates)} WHERE id = ?", params)
+                cursor.execute(
+                    f"UPDATE practice_sessions SET {', '.join(updates)} WHERE id = ?",
+                    params,
+                )
+            if expected_version is not None and cursor.rowcount == 0:
+                # 0 行受影响 = version 不匹配 (已被别人改过) 或记录不存在
+                current = self.get_practice_session_by_id(session_id)
+                from src.kid_app.errors import ConflictError
+                raise ConflictError(
+                    f"session_id={session_id} version 冲突: 期望 {expected_version}, 当前 {current.get('version', '?')}",
+                    current_state=current,
+                    current_version=current.get("version"),
+                )
 
             # 2. 时长变了 → 重算 daily 汇总
             if duration_minutes is not None and new_duration != old_duration:
