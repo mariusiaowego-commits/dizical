@@ -121,6 +121,48 @@ def config_praise():
     )
 
 
+# ─── API: 后端切换 (Sprint 09 PR-A, web-only) ────────────────────────────────
+# 作用: web 端配置页记录"当前应该连哪个后端". 存 settings 表:
+#   backend_mode = 'cloud' | 'local'
+#   dizical_url  = 云端 URL (CloudRun 或自托管) — 仅展示用, 不做连接.
+# 说明: 这是配置记录, 不是运行时代理. mac app 的 DIZICAL_URL 切换在 mac 项目里 (不在本仓).
+
+@router.get("/api/backend")
+def api_get_backend():
+    """读当前后端模式 + 云端 URL (settings 表)."""
+    from src.kid_app.app import get_setting
+    mode = get_setting("backend_mode") or "local"
+    url = get_setting("dizical_url") or ""
+    return JSONResponse({"mode": mode, "dizical_url": url})
+
+
+@router.put("/api/backend")
+async def api_set_backend(request: Request):
+    """写后端模式 + 云端 URL (settings 表). body: {mode: 'cloud'|'local', dizical_url?: str}."""
+    from src.kid_app.app import get_setting, set_setting
+    try:
+        body = json.loads(await request.body())
+    except Exception:
+        return JSONResponse({"ok": False, "error": "JSON 解析失败"}, status_code=400)
+
+    mode = body.get("mode", "")
+    if mode not in ("cloud", "local"):
+        return JSONResponse({"ok": False, "error": "mode 必须是 cloud 或 local"}, status_code=400)
+
+    # PIN 保护 (与 config 页一致)
+    stored_pin = get_setting("dad_pin")
+    pin = body.get("pin", "")
+    if stored_pin and pin != stored_pin:
+        return JSONResponse({"ok": False, "error": "PIN 不对哦，再试一次 😊"}, status_code=403)
+
+    set_setting("backend_mode", mode)
+    if mode == "cloud":
+        url = (body.get("dizical_url") or "").strip()
+        if url:
+            set_setting("dizical_url", url)
+    return JSONResponse({"ok": True, "mode": mode})
+
+
 # ─── API: 大科目 CRUD ───────────────────────────────────────────────────────
 
 @router.get("/api/practice/categories")

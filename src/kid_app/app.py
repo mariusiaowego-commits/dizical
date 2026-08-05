@@ -2659,6 +2659,11 @@ def get_setting(key, default=""):
         return default
 
 
+def set_setting(key, value):
+    """写 settings 表 (跟 get_setting 对称, Sprint 09 PR-A)."""
+    db.set_setting(key, value)
+
+
 @app.get("/api/bless-pool", response_class=JSONResponse)
 def api_get_bless_pool():
     """返回当前祝福语池（需 PIN 验证）"""

@@ -84,7 +84,7 @@ class Database(BaseBackend):
             # Practice items table (练习项目库)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS practice_items (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
                     category_id INTEGER REFERENCES practice_categories(id),
                     sort_order INTEGER NOT NULL DEFAULT 0,

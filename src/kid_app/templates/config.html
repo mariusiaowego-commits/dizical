@@ -436,6 +436,18 @@
         </div>
       </div>
 
+      <!-- 后端连接切换 (Sprint 09 PR-A, web-only) -->
+      <div class="config-card" data-color="sage" id="backendCard" style="cursor: default;">
+        <div class="card-icon">🔌</div>
+        <div class="card-content">
+          <h3>后端连接</h3>
+          <p id="backendStatus">读取中...</p>
+        </div>
+        <div class="card-link" style="color: var(--sage);">
+          <button id="backendToggle" style="border: none; background: var(--sage); color: white; padding: 8px 18px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer;">切换</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- 底部信息 -->
@@ -490,6 +502,7 @@
               pinOverlay.style.display = 'none';
               mainContent.style.display = 'block';
               initAnimations();
+              if (typeof loadBackend === 'function') loadBackend();  // PR-A: PIN 通过后加载后端状态
             }
           });
         } else {
@@ -546,6 +559,61 @@
     // 自动聚焦 PIN 输入框
     if (hasPin) {
       setTimeout(() => pinInput.focus(), 100);
+    }
+
+    // ── 后端连接切换 (Sprint 09 PR-A, web-only) ─────────────────────────
+    const backendStatus = document.getElementById('backendStatus');
+    const backendToggle = document.getElementById('backendToggle');
+
+    async function loadBackend() {
+      try {
+        const r = await fetch('/config/api/backend');
+        const d = await r.json();
+        renderBackend(d.mode, d.dizical_url);
+      } catch (e) {
+        backendStatus.textContent = '读取失败';
+      }
+    }
+
+    function renderBackend(mode, url) {
+      if (mode === 'cloud') {
+        backendStatus.textContent = '当前: 云端 (' + (url || 'CloudRun') + ')';
+        backendToggle.textContent = '切到本地';
+      } else {
+        backendStatus.textContent = '当前: 本地 (SQLite)';
+        backendToggle.textContent = '切到云端';
+      }
+    }
+
+    backendToggle.addEventListener('click', async () => {
+      try {
+        const cur = await (await fetch('/config/api/backend')).json();
+        const nextMode = cur.mode === 'cloud' ? 'local' : 'cloud';
+        let dizicalUrl = cur.dizical_url || '';
+        if (nextMode === 'cloud' && !dizicalUrl) {
+          dizicalUrl = prompt('请输入云端 URL (CloudRun 地址):', 'https://');
+          if (!dizicalUrl) return;
+        }
+        const pin = localStorage.getItem('config_pin') || '';
+        const r = await fetch('/config/api/backend', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: nextMode, dizical_url: dizicalUrl, pin })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          renderBackend(d.mode, dizicalUrl);
+        } else {
+          alert(d.error || '切换失败');
+        }
+      } catch (e) {
+        alert('切换失败，请重试');
+      }
+    });
+
+    // PIN 通过后加载后端状态 (savedPin 分支)
+    if (savedPin) {
+      loadBackend();
     }
   </script>
 

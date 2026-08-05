@@ -25,11 +25,29 @@ import sqlite3
 import pytest
 
 
-# 乐观锁真路径 (stale version → 409) 测试目前被 SQLite 单例 setup 卡住, skip 等真云
-pytestmark_optimistic = pytest.mark.skip(
-    reason="Sprint 09 PR-D 单兵实施: 乐观锁真路径待真云验证 (TEST_DATABASE_URL). "
-           "SQLite 测试 setup 单例 conn cleanup 问题不影响 PR-D 业务逻辑."
-)
+# 2026-08-05 修正: 之前这里定义了一个从未赋值给 pytestmark 的 skip 标记,
+# 导致 handoff 误报 "10 个测试 skip". 实际是 8 failed / 2 passed.
+# 真路径测试 (If-Match → 409) 现在由 _use_test_db() 正确注入 app.py 的 db 单例, 全绿.
+
+
+
+def _use_test_db(db):
+    """把测试 Database 实例注入 app.py 模块, 让 endpoint 测试走临时库.
+
+    之前只替换 src.database.db (db_module.db = db), 但 app.py 顶层
+    `from src.database import db` 绑定了首次 import 时的旧实例 → 写已 unlink
+    的临时文件 → "attempt to write a readonly database".
+
+    正确做法: 同时替换 app 模块属性 (app.db), 让 app.py 内的 db 引用指向新实例.
+    """
+    import src.database as db_module
+    db_module.db = db
+    # app.py 可能已 import 过, 直接替换模块属性
+    import src.kid_app.app as app_module
+    app_module.db = db
+    # 也处理函数内 `from src.database import db as _db` 的惰性引用 (它们每次调用时重新读,
+    # 只要 src.database.db 指向新实例即可, 上面已做)
+    return db
 
 
 # ── SQLite 端 (内存隔离, 跑得快) ──────────────────────────────────────────
@@ -223,9 +241,8 @@ def test_endpoint_put_if_match_correct_version_200():
     db, models, original = _make_sqlite_db()
     try:
         sid, ver = _seed_session(db)
-        # 替换全局 db 让 app.py 看到我们这个实例
-        import src.database as db_module
-        db_module.db = db
+        # 替换全局 db 让 app.py 看到我们这个实例 (注入 app 模块属性, 不只 src.database.db)
+        _use_test_db(db)
         from fastapi.testclient import TestClient
         from src.kid_app.app import app as fastapi_app
         client = TestClient(fastapi_app)
@@ -249,8 +266,7 @@ def test_endpoint_put_if_match_stale_version_409():
     db, models, original = _make_sqlite_db()
     try:
         sid, ver = _seed_session(db)
-        import src.database as db_module
-        db_module.db = db
+        _use_test_db(db)
         from fastapi.testclient import TestClient
         from src.kid_app.app import app as fastapi_app
         client = TestClient(fastapi_app)
@@ -284,8 +300,7 @@ def test_endpoint_put_without_if_match_skips_check():
     db, models, original = _make_sqlite_db()
     try:
         sid, ver = _seed_session(db)
-        import src.database as db_module
-        db_module.db = db
+        _use_test_db(db)
         from fastapi.testclient import TestClient
         from src.kid_app.app import app as fastapi_app
         client = TestClient(fastapi_app)
@@ -308,8 +323,7 @@ def test_endpoint_delete_if_match_stale_version_409():
     db, models, original = _make_sqlite_db()
     try:
         sid, ver = _seed_session(db)
-        import src.database as db_module
-        db_module.db = db
+        _use_test_db(db)
         from fastapi.testclient import TestClient
         from src.kid_app.app import app as fastapi_app
         client = TestClient(fastapi_app)
