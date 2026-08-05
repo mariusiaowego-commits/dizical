@@ -1,3 +1,15 @@
+## 2026-08-05 云端测试数据全清: create_test session + prb_test_item 科目 + daily 修复
+
+- **发现**: practice_sessions 9 条 content='create_test' (id 1451-1467, item_id 999003, practice_date 7-28)
+  + practice_items 3 个 prb_test_item* (999001-999003) + daily 7-28 混入 prb_test_item 11 分钟
+- **溯源** (dad 质疑"是不是真实数据"): 铁证是测试 — item_name='prb_test_item_3' (PRactice Bug test),
+  item_id 999003 (虚构, 真实科目 1-47), 26 分钟 9 条自动化节奏, 8-04 上午 11:47-12:14 (昨天真云验证遗留)
+- **清理** (3 步): DELETE 9 session + DELETE 3 科目 + 重写 daily 7-28 items (去 prb_test, total 63→52)
+- **成果**: sessions 761→752, items 50→47 (与本地 SQLite 对齐!), daily 7-28 真实数据 52 分钟全保留
+- **印证 preflight**: 之前行数对账云端 practice_items 50 vs 本地 47 的 +3 差异 = 就是这 3 个测试科目
+- 教训: 删除云端数据前必须查完整字段 (item_name/item_id/content/created_at 节奏), 不只看 content;
+  真云验证的测试数据要带明显标记 (prb_test 已标识, 但应记入审计)
+
 ## 2026-08-05 P0 生产事故: 049 上线后 /api/log session 路径 500 (MySQL updated_at 序列化)
 
 - **事故**: 049 部署后, 生产 POST /api/log (session 路径) 全挂 500: "Object of type datetime is not JSON serializable"
