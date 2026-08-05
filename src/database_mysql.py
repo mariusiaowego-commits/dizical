@@ -917,6 +917,8 @@ class MySQLBackend(BaseBackend):
                     raise ValueError(f"session_id={session_id} 不存在")
                 row['practice_date'] = str(row.get('practice_date', ''))
                 row['created_at'] = str(row.get('created_at', ''))
+                # PR-D P0-2026-08-05: updated_at 也是 DATETIME, 必须转 str (否则 JSONResponse 序列化失败 → 500)
+                row['updated_at'] = str(row.get('updated_at', '')) if row.get('updated_at') else None
                 row['is_extra'] = int(row.get('is_extra', 0))
                 return row
 
@@ -938,6 +940,8 @@ class MySQLBackend(BaseBackend):
                 for r in rows:
                     r['practice_date'] = str(r.get('practice_date', ''))
                     r['created_at'] = str(r.get('created_at', ''))
+                    # PR-D P0-2026-08-05: updated_at DATETIME → str (JSON 序列化)
+                    r['updated_at'] = str(r.get('updated_at', '')) if r.get('updated_at') else None
                     r['is_extra'] = int(r.get('is_extra', 0))
                 return rows
 
