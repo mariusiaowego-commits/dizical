@@ -1,3 +1,20 @@
+## 2026-08-05 Sprint 09 切云 review + 加固 (commit bcd3bc8, feat/sprint-09-cloud-cutover, 未 push)
+
+- 触发: dad 接续 Sprint 09, 先 review plan (切换风险 / 测试完善 / MCP 连接 / 回退), 拍板"一步步做 按plan执行"
+- **review 结论**: 方向对但当时 No-Go — MCP 无握手证据 / 测试基线不可信 / PR-D 真路径 skip / rollback 脚本缺闭环
+- **MCP 4 步握手全过**: auth READY (AUTO_BOUND cloud1-d4gfwyvsk1435e2e4) / CloudRun dizical-prod normal (048, 需 049) / MySQL 8.0.30-cynos 连通 / SHOW TABLES 15 张全在
+- **P0 发现 1**: 云端 practice_sessions **缺 version/updated_at 列** (schema 是 8-01 旧版, PR-D lazy migration 未跑过). 049 部署后首次访问会 lazy ALTER, 但 preflight 必须显式验证
+- **P0 发现 2**: 8-04 练习数据**未上云** (云端 max_id=1467/max_date=08-03, 本地 1483/08-04). 切云 SOP 必须含"最后覆盖同步带 8-04 数据"再冻结写入
+- **P1 安全**: scripts/dynamic_sync.py 硬编码 MySQL 生产密码 (待处理, 密码未在 chat 复述)
+- **PR-D 真路径修复** (2 个真 bug): ① database.py practice_items 建表 id→item_id (建表 SQL 与真实 schema 漂移, 全新库炸 WHERE item_id=?) ② endpoint 测试注入 app.py 模块 db 属性 (app.py 顶层 from src.database import db 绑定旧实例 → readonly). 移除从未生效的 pytestmark_optimistic — handoff 误报"10 skip"实际是 8 failed/2 passed → 现在 10/10 全绿
+- **PR-A web-only**: /config/api/backend GET/PUT (settings 表 backend_mode + dizical_url, PIN 保护) + config.html 后端连接卡片 + 5 测试全绿. 范围按 dad 拍板: 不碰 mac app 源
+- **脚本加固**: scripts/preflight_cloud.sh (新, 6 项只读预检: 连通/表对齐/乐观锁列/schema_migrations/行数/空表, 支持 ~/.dizical/.env 或环境变量凭据) + rollback_to_local.sh 增强 (DATABASE_URL 清除 + 服务重启 + /health/ready 验证闭环)
+- **基线**: 406 passed / 17 failed (全部改动前历史遗留: 8 缺 textual 依赖 + 4 badge/日期 + 3 顺序污染单跑绿 + 1 需真云 TEST_DATABASE_URL + 1 badge url) / 7 skipped
+- **handoff 修正**: "PR-D 10 测试 skip" 是错的 (实际 8 failed); "rollback 脚本没写" 过时 (已存在, 本次增强)
+- **MOA**: DeepSeek reference 4+ 次空响应 → dad 拍板只留 Luna (config.yaml 已改, 备份 config.yaml.bak-20260805-124738, 恢复指引留注释)
+- **沉淀**: preflight-2026-08-05.md 双写主仓+tqob (md5 357b6c25 一致)
+- 未 push (等 dad go): commit bcd3bc8 含 8 文件 610+/62-
+
 ## 2026-08-03 一次性徽章 雄鹰展翅 (PR #221 MERGED, main 6aec99c)
 
 - 触发: 女儿 2026-08-03 完整背出笛子三级考级曲《萨丽哈最听毛主席的话》(文革版哈萨克族民歌, 歌词"要当雄鹰展翅飞, 不做温室一枝花"). 一次性徽章纪念突破性时刻
