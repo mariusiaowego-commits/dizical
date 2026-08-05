@@ -1,3 +1,15 @@
+## 2026-08-05 Sprint 09 PR-E audit 事务对齐 + dev 依赖组 (commit 75235ec, PR #224, 未 merge)
+
+- 触发: dad "继续后面的步骤" — PR-E (P0-22) 是 Sprint 09a 剩余可做项 (PR-F 需等 bucket 名)
+- **PR-E 实际改动范围 (比 handoff 估的小)**: 8 处 audit INSERT 里 6 处已在事务内 commit 前 (delete/update/save_session 双后端), 真正要改 2 处:
+  - SQLite save_daily_practice: audit 从事务外独立 commit 移入事务内 → 业务失败整事务 rollback → audit 不写 (数据溯源原子性)
+  - MySQL save_daily_practice: 补 2 处缺失 audit (merge 路径 + is_clear 清零路径) → 与 SQLite parity (旧实现 MySQL 完全不写 audit!)
+- **基建修复**: pyproject.toml 加 [dependency-groups] dev (13 个测试依赖) + uv.lock 锁入 → `uv sync --group dev` 一次装齐. 旧: `uv run --with` 临时带 → cli_ux_review 等 8 测试因缺 uvicorn/textual collection ERROR
+- **测试**: test_audit_log_transaction.py 5/5 (成功写 / 失败不写 / 无 channel 不写 / save_session / delete), 相关回归 38 passed
+- **顺序污染发现** (既有历史债): badge_commit_meta_mapping / cond_text_meta_mapping / unlock_strategy 全量跑挂 (26 failed), 单独跑全绿. 用 -x 定位在 16% 处 (70 测试后), 但 8 个前置文件逐个组合都复现不了 → 未深挖, 记 issue (不阻塞 Sprint 09, 非本 PR 引入)
+- **git**: commit 75235ec 已 push 到 feat/sprint-09-cloud-cutover (PR #224 更新 body), 未 merge (等 dad go)
+- 收尾: vibe-coding-log insert (绝不用 write_file 覆盖, 8-05 踩坑已固化)
+
 ## 2026-08-05 Sprint 09 切云 review + 加固 (commit bcd3bc8, feat/sprint-09-cloud-cutover, 未 push)
 
 - 触发: dad 接续 Sprint 09, 先 review plan (切换风险 / 测试完善 / MCP 连接 / 回退), 拍板"一步步做 按plan执行"
