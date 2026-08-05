@@ -492,6 +492,20 @@ class MySQLBackend(BaseBackend):
                             ''', (date.isoformat(), json.dumps([], ensure_ascii=False)))
                         except Exception:
                             pass  # 已被另一进程写, race condition with auto-commit pool
+                    # Sprint 09 P0-22 (PR-E): 清零也写 audit (SQLite parity — SQLite merge 路径会写)
+                    channel = kwargs.get('channel')
+                    method = kwargs.get('method')
+                    if channel and method:
+                        cur.execute('''
+                            INSERT INTO practice_audit_log
+                            (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ''', (
+                            channel, method, date.isoformat(),
+                            json.dumps([], ensure_ascii=False),
+                            json.dumps([], ensure_ascii=False),
+                            0, None, kwargs.get('session_id'),
+                        ))
                     conn.commit()
                     return
 
@@ -548,6 +562,22 @@ class MySQLBackend(BaseBackend):
                             INSERT INTO daily_practices (date, items, total_minutes, log, practiced, behavior_log)
                             VALUES (%s, %s, %s, %s, %s, '')
                         ''', (date.isoformat(), items_json, total_minutes, log, practiced))
+
+                # Sprint 09 P0-22 (PR-E): audit 移入事务内 (commit 前), 与 SQLite parity.
+                # 旧实现: MySQL save_daily_practice 完全不写 audit (SQLite 有, MySQL 没有 = parity 缺口).
+                channel = kwargs.get('channel')
+                method = kwargs.get('method')
+                if channel and method:
+                    cur.execute('''
+                        INSERT INTO practice_audit_log
+                        (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ''', (
+                        channel, method, date.isoformat(),
+                        json.dumps(items, ensure_ascii=False),
+                        json.dumps(items, ensure_ascii=False),
+                        total_minutes, None, kwargs.get('session_id'),
+                    ))
             conn.commit()
 
     def log_practice_audit(self, channel: str, method: str, practice_date: dt.date, input_items: str, result_items: str, total_minutes: int, session_id: Optional[str] = None, error: Optional[str] = None) -> int:

@@ -26,6 +26,25 @@ dependencies = [
   "python-dotenv>=1.0.0",
 ]
 
+[dependency-groups]
+# Sprint 09 (2026-08-05): 测试依赖锁进 group, uv sync --group dev 一次装齐.
+# 之前靠 `uv run --with ...` 临时带, 导致 cli_ux_review 等 8 个测试因缺 uvicorn/textual 等依赖 collection ERROR.
+dev = [
+  "pytest>=8.0.0",
+  "fastapi>=0.100.0",
+  "uvicorn>=0.23.0",
+  "pymysql>=1.1.0",
+  "httpx>=0.24.0",
+  "python-multipart>=0.0.6",
+  "DBUtils>=3.0.0",
+  "jinja2>=3.1.0",
+  "textual>=0.60.0",
+  "Pillow>=10.0.0",
+  "requests>=2.31.0",
+  "wcwidth>=0.2.0",
+  "holidays>=0.40",
+]
+
 [project.scripts]
 dizical = "src.cli:app"
 dizical-kid = "src.kid_app.__main__:kid_app"

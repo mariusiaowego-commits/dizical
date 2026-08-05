@@ -879,11 +879,21 @@ class Database(BaseBackend):
                 ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log, practiced, practice_at))
                 audit_items = items
                 audit_total = total_minutes
+
+            # Sprint 09 P0-22 (PR-E): audit 移入事务内 (commit 前), 业务失败 → 整事务 rollback → audit 也不写.
+            # 旧实现: audit 在事务外独立 commit (log_practice_audit), 业务成功但 audit 写失败 = 数据溯源断裂.
+            if channel and method:
+                cursor.execute('''
+                    INSERT INTO practice_audit_log
+                    (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (channel, method, date.isoformat(),
+                      json.dumps(input_items, ensure_ascii=False),
+                      json.dumps(audit_items, ensure_ascii=False),
+                      audit_total, None, session_id))
             conn.commit()
 
-        # audit log 写在事务外（事务已提交，不会被回滚）
-        if channel and method:
-            self.log_practice_audit(channel, method, date, input_items, audit_items, audit_total, session_id=session_id)
+        # (PR-E: audit 已移入事务内, 这里不再有事务外 audit 调用)
 
     def log_practice_audit(self, channel: str, method: str, practice_date: dt.date,
                            input_items: List[Dict], result_items: List[Dict],
