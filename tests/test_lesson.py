@@ -183,13 +183,28 @@ class TestPaymentManager(TestCase):
         shutil.rmtree(self.temp_dir)
 
     def test_monthly_payment_status(self):
-        """测试月度缴费状态"""
-        self.lesson_manager.generate_monthly_lessons(2026, 5)
-        status = self.payment_manager.get_monthly_payment_status(2026, 5)
-        self.assertEqual(status.month, date(2026, 5, 1))
+        """测试月度缴费状态.
+
+        P0-2026-08-05 修正: 原测试查 2026-05 (过去月) → payment.py:127 is_past_month
+        走 estimated_fee = total_fee (只算已上课, 未上课不预计) → 5 月课全 SCHEDULED
+        → total_fee=0 是**业务正确的**. 改用当前月验证 estimated_fee > 0 (预计含待上课).
+        """
+        import datetime as dt
+        today = dt.date.today()
+        y, m = today.year, today.month
+        self.lesson_manager.generate_monthly_lessons(y, m)
+        status = self.payment_manager.get_monthly_payment_status(y, m)
+        self.assertEqual(status.month, date(y, m, 1))
         self.assertGreater(status.total_lessons, 0)
         self.assertGreater(status.estimated_fee, 0)
         self.assertEqual(status.paid_amount, 0)
+
+    def test_monthly_payment_status_past_month(self):
+        """过往月份: estimated_fee 只算已上课 (不预计待上). 5 月课全未上 → 0 (设计如此)."""
+        self.lesson_manager.generate_monthly_lessons(2026, 5)
+        status = self.payment_manager.get_monthly_payment_status(2026, 5)
+        self.assertEqual(status.total_lessons, 5)
+        self.assertEqual(status.estimated_fee, 0)  # 无已上课 → total_fee=0, 过去月不预计
 
     def test_record_payment(self):
         """测试记录缴费"""

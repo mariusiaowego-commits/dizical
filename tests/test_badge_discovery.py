@@ -1,4 +1,5 @@
 """tests/test_badge_discovery.py — V2 discovery 测试"""
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -70,7 +71,7 @@ class TestScanBadgeDataDir:
         assert len(items) == 0
 
     def test_image_url_extraction(self, tmp_badge_data):
-        """image.path 含 /static/badges/ → 转 web URL (V2.1 修: 优先用 meta.id + version 拼 web 路径, draft 写 .tmp/ 也能渲染)."""
+        """V2.6 (2026-06-30 #137): commit_static_path 文件真实存在 → 返 /static/badges/ web 路径."""
         meta = {
             "id": "v2_test_url_xyz", "name": "x", "type": "突破", "category": "milestone",
             "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
@@ -83,9 +84,35 @@ class TestScanBadgeDataDir:
             "alpha_verified": True,
             "version": 1,
         })
+        # V2.6: 文件真实存在 → 返回 /static/badges/{id}_v{version}.png (从 meta.id 拼)
+        import src.kid_app.badge_discovery as bd
+        real_static = Path(bd.__file__).parent / "static" / "badges"
+        real_static.mkdir(parents=True, exist_ok=True)
+        f = real_static / "v2_test_url_xyz_v1.png"
+        f.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 10)  # 最小 PNG
+        try:
+            items = badge_discovery.scan_badge_data_dir()
+            assert items[0]["image_url"] == "/static/badges/v2_test_url_xyz_v1.png"
+        finally:
+            f.unlink(missing_ok=True)
+
+    def test_image_url_draft_endpoint_when_file_missing(self, tmp_badge_data):
+        """V2.6: commit_static_path 文件不存在 → 走 draft-image 端点 (返 .tmp/ 真图, 防 404)."""
+        meta = {
+            "id": "v2_test_url_xyz2", "name": "x", "type": "突破", "category": "milestone",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
+        }
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": "/Users/mt16/dev/dizical/data/lib/badge_data/.tmp/x.png",
+            "model": "gpt-image-2",
+            "alpha_verified": True,
+            "version": 1,
+        })
         items = badge_discovery.scan_badge_data_dir()
-        # V2.1: image_url 走 /static/badges/{id}_v{version}.png (从 meta.id 拼)
-        assert items[0]["image_url"] == "/static/badges/v2_test_url_xyz_v1.png"
+        # 文件不存在 → draft-image 端点 (带 draft_id)
+        assert items[0]["image_url"] == f"/config/api/badge/draft-image?draft_id={d.draft_id}"
 
     def test_image_url_fallback_when_no_id(self, tmp_badge_data):
         """V2.1 兜底: 没 meta.id 时, 走旧逻辑 strip /static/badges/ 前缀."""

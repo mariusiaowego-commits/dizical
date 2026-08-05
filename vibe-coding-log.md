@@ -1,3 +1,14 @@
+## 2026-08-05 全量测试清零 (434 passed / 0 failed) + 生产 streak badge 行污染修复
+
+- 目标: dad "先完整开发好, 整体测试后再合" → 修 4 个历史 failed + 生产 streak 污染
+- **badge_discovery image_url** (真 bug): 代码 67 行 `data_dir.parent.parent.parent` 依赖 data_dir 上溯推导 static 路径, 测试 monkeypatch 后 data_dir 在 tmp → 上溯不到项目根 → is_file() 永远 False → 永远走 draft-image. 修: 改用 `Path(__file__)` 推导项目根 (跟 _badge_data_dir 同源). 测试改为匹配 V2.6 行为 (文件存在→static, 不存在→draft-image)
+- **lesson/payment** (测试过时): 用 2026-05 (过去月) → payment.py:127 is_past_month → estimated=total (只算已上课) → 5 月课全 SCHEDULED → 0 是**业务正确**. 修: 测试改当前月 (estimated>0) + 补过去月断言 (=0 设计如此)
+- **replace_image_endpoint** (测试设计缺陷 P0): 注释声称"走 conftest tmp db 不碰 prod"从未成立 — conftest 只改 settings.db_path, api_replace 走 badge_db.db (顶层绑定原单例=prod). 单独跑 settings 恰好 prod 自洽通过(侥幸); 全量跑 settings=tmp 而 badge_db.db=prod → 失败. 修: fixture 自建独立 DB + 4 入口 (badge_db.db/db_module.db/app_module.db/settings.db_path) 全 patch 到它 + 建 badge 三表
+- **生产污染发现**: streak_7 有 90 行 badge 记录 (89 垃圾, replace_image 测试历史上每次跑 INSERT 累积), is_current=1 指向不存在的 streak_7_v1.png → 勋章墙破图. 8-03 commit c1f714e 明确"db url 从 _v1.png 修回 streak_7.png"→ 生产正确态是 streak_7.png. 修复: 备份 dizi-20260805-badgerows-repair.db → streak_7/3/1 重置为 1 行真实 .png → 0 破图风险
+- **save_daily_practice_mysql**: 需真云 TEST_DATABASE_URL, 加 @pytest.mark.skipif 本机优雅跳过 (切云验证时设 env 再跑)
+- **成果**: 全量 434 passed / 8 skipped / 0 failed, 生产库 md5 前后一致零污染
+- 教训: "测试隔离"注释必须真隔离 (patch 所有入口); 测试跑后必查生产库 streak 行数
+
 ## 2026-08-05 P0 生产库 test_* 残留清理 + badge 测试顺序污染根因修复 (防复发)
 
 - **发现**: data/dizi.db (生产库) 里有 14 个 test_* badge 残留 (42 行: achievements 14 + stats 14 + badges 14), 会显示在勋章墙 ("测试badge" + 破图)
