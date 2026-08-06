@@ -1013,3 +1013,38 @@ pytest: 294 passed, 2 failed (pre-existing, 跟改动无关)
 
 - `/Users/mt16/dev/dizical/.hermes/plans/dizical-cli-ux-review.md`
 - Obsidian: `tqob/05-Coding/project-dizical/PRDs/AI-PRD-cli-ux-review-260619.md`
+
+## [2026-08-06] 部署 055 (PR-F COS + MySQL 兼容修复) — 进行中
+
+**分支**: feat/prf-cos-uploads (3 commits ahead of main: c973e05 + ce3b6fd + d648423)
+
+**自检通过**:
+- 全量 pytest: 443 passed / 8 skipped / 0 failed
+- MySQL 端到端冒烟 (DATABASE_URL=mysql+pymysql://...): 6/6 = 200 (badges/achievements/report/practice/stage-image-history/health-ready)
+- DESCRIBE report_artifacts: 6 字段创建成功 (id bigint PRI + 5 text)
+
+**部署前发现 2 个新 MySQL bug (handoff 8 处修复漏的)**:
+- Bug A: app.py:548 _calc_last_practice_top 用 dt.date.fromisoformat(row[0]), MySQL 返 date 对象 TypeError
+  → 改 _as_date(row[0]) + None 兜底
+- Bug B: app.py 2 处 CREATE TABLE report_artifacts 用 SQLite 语法 AUTOINCREMENT, MySQL 报 1064 syntax error
+  → 完整 DDL 走 db_adapter.is_mysql_env() 分支 (SQLite 走 INTEGER+AUTOINCREMENT+TEXT, MySQL 走 BIGINT+AUTO_INCREMENT+DATETIME)
+- 修复合在 commit d648423 (54+/21- 1 file)
+
+**055 deploy 状态** (报备 11:54):
+- DeployId=055, BuildId=2601540112, Status=creating (远端在跑, build docker image 9+ 分钟)
+- 触发: manageCloudRun.deploy action=deploy (MCP 客户端 180s 超时是已知行为, 远端真实收到任务 11:45:39)
+- EnvParams 已合并: DATABASE_URL + COS_BUCKET/REGION/SECRET_ID/KEY
+- online 仍 050 (FlowRatio=0), 切流量要等 build 完 + 健康检查过
+- /badges /achievements /report /api/practices/stage-image/history 在 050 仍 500 (handoff §6 风险 2 命中)
+
+**待办** (build 完自动继续):
+- 等 detail.Status=running/normal
+- curl 生产 6 路径验 200
+- merge PR #227 → main
+- 跑 migrate_uploads_to_cos.py 标 3 条历史图失效
+- PR-F3 素材本地备份 (后续 sprint)
+
+**教训**:
+- 部署前必跑 MySQL 端到端 (DATABASE_URL=mysql+pymysql://... 起服务 + curl), 不只信 SQLite 443 passed
+- handoff 8 处修复自己重新数过, 发现漏 2 处 — 萨丽哈教训 (dad 8-06) 再现: 不可信"已写完"
+- MCP 180s 超时是已知, 看 detail 判真实状态; deploy_failed 历史 054 也用同样判断恢复
