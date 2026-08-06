@@ -295,7 +295,15 @@ class MySQLBackend(BaseBackend):
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
                 cur.execute('SELECT * FROM practice_categories ORDER BY sort_order, name')
-                return list(cur.fetchall())
+                rows = cur.fetchall()
+                out = []
+                for row in rows:
+                    d = dict(row)
+                    # P0-2026-08-06: MySQL datetime → str, 否则 JSONResponse 500 (Object of type datetime)
+                    if d.get('created_at') is not None:
+                        d['created_at'] = str(d['created_at'])
+                    out.append(d)
+                return out
 
     def update_practice_category(self, cat_id: int, name: str, sort_order: Optional[int] = None) -> None:
         with self._get_connection() as conn:
