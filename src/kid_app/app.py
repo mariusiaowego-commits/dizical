@@ -545,7 +545,10 @@ def _calc_last_practice_top(limit: int = 2) -> dict:
         return {"date": "暂无", "top1_name": "", "top1_mins": 0,
                 "top2_name": "", "top2_mins": 0}
 
-    d = dt.date.fromisoformat(row[0])
+    d = _as_date(row[0])
+    if d is None:
+        return {"date": "暂无", "top1_name": "", "top1_mins": 0,
+                "top2_name": "", "top2_mins": 0}
     items = _calc_top_items(conn, d, d, limit)  # [(name, mins), ...]
 
     # 日期标签
@@ -1444,16 +1447,32 @@ async def api_practices_stage_image(
                 result_queue.put(("status", "图片已保存，正在记录到数据库..."))
                 with _db._get_connection() as conn:
                     cur = conn.cursor()
-                    cur.execute(
-                        "CREATE TABLE IF NOT EXISTS report_artifacts ("
-                        " id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                        " kind TEXT NOT NULL,"
-                        " ref_id TEXT,"
-                        " prompt TEXT,"
-                        " image_path TEXT NOT NULL,"
-                        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
-                        ")"
-                    )
+                    # P0-2026-08-06: SQLite 走 INTEGER PRIMARY KEY AUTOINCREMENT + created_at TEXT,
+                    # MySQL 走 BIGINT PRIMARY KEY AUTO_INCREMENT + created_at DATETIME.
+                    # 整个 DDL 分支避免 SQLite 不认 BIGINT AUTOINCREMENT 报错.
+                    if db_adapter.is_mysql_env():
+                        _ddl = (
+                            "CREATE TABLE IF NOT EXISTS report_artifacts ("
+                            " id BIGINT PRIMARY KEY AUTO_INCREMENT,"
+                            " kind TEXT NOT NULL,"
+                            " ref_id TEXT,"
+                            " prompt TEXT,"
+                            " image_path TEXT NOT NULL,"
+                            " created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                            ")"
+                        )
+                    else:
+                        _ddl = (
+                            "CREATE TABLE IF NOT EXISTS report_artifacts ("
+                            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                            " kind TEXT NOT NULL,"
+                            " ref_id TEXT,"
+                            " prompt TEXT,"
+                            " image_path TEXT NOT NULL,"
+                            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                            ")"
+                        )
+                    cur.execute(_ddl)
                     cur = db_adapter.execute(conn,
                         "INSERT INTO report_artifacts (kind, ref_id, prompt, image_path) VALUES (?, ?, ?, ?)",
                         ("stage_image", str(order) if order is not None else None, prompt, dest_path),
@@ -1528,16 +1547,30 @@ def api_stage_image_history(limit: int = 20):
     with _db._get_connection() as conn:
         cur = conn.cursor()
         # sprint-26080103: 同 POST handler, history 也建表 (老 db 没这表就建)
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS report_artifacts ("
-            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            " kind TEXT NOT NULL,"
-            " ref_id TEXT,"
-            " prompt TEXT,"
-            " image_path TEXT NOT NULL,"
-            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
-            ")"
-        )
+        # P0-2026-08-06: SQLite / MySQL DDL 走两套 (关键字 AUTOINCREMENT vs AUTO_INCREMENT + INTEGER vs BIGINT)
+        if db_adapter.is_mysql_env():
+            _ddl = (
+                "CREATE TABLE IF NOT EXISTS report_artifacts ("
+                " id BIGINT PRIMARY KEY AUTO_INCREMENT,"
+                " kind TEXT NOT NULL,"
+                " ref_id TEXT,"
+                " prompt TEXT,"
+                " image_path TEXT NOT NULL,"
+                " created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                ")"
+            )
+        else:
+            _ddl = (
+                "CREATE TABLE IF NOT EXISTS report_artifacts ("
+                " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                " kind TEXT NOT NULL,"
+                " ref_id TEXT,"
+                " prompt TEXT,"
+                " image_path TEXT NOT NULL,"
+                " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                ")"
+            )
+        cur.execute(_ddl)
         conn.commit()
         cur = db_adapter.execute(conn,
             "SELECT id, kind, ref_id, image_path, created_at FROM report_artifacts "
