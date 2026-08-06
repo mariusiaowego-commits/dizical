@@ -1048,3 +1048,71 @@ pytest: 294 passed, 2 failed (pre-existing, 跟改动无关)
 - 部署前必跑 MySQL 端到端 (DATABASE_URL=mysql+pymysql://... 起服务 + curl), 不只信 SQLite 443 passed
 - handoff 8 处修复自己重新数过, 发现漏 2 处 — 萨丽哈教训 (dad 8-06) 再现: 不可信"已写完"
 - MCP 180s 超时是已知, 看 detail 判真实状态; deploy_failed 历史 054 也用同样判断恢复
+
+
+## [2026-08-06 晚] 生产验收 + 数据同步 + 方案 A 本地连云 (全天闭环)
+
+**承接**: 上午 057 部署成功 + PR #227 merged (见上文 8-06 记录). 下午继续验收发现的问题 + 数据修复.
+
+### 一、生产验收发现的问题 (全部修复)
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| /api/assignments/latest 500 (老师要求空) | MySQL 端 get_weekly_assignments_in_range 返回原始 Dict, items 是 JSON 字符串, SQLite 端 json.loads 成 list | commit aa7b1a5: MySQL 端 items/images json.loads + lesson_date/stage datetime→date |
+| /config/api/practice/categories 500 (科目空) | MySQL 端 get_practice_categories created_at 是 datetime, JSONResponse 序列化崩 | commit 5a8ed61: MySQL 端 created_at str() |
+
+**教训**: 双后端不一致 (SQLite 存 str, MySQL 存 datetime/JSON串) 是 500 最大来源. 本地 443 passed 全绿 != 生产 OK, 必须本地连云 MySQL 跑端到端 + 浏览器验收.
+
+### 二、数据同步 (本地 SQLite 权威 → 云端 MySQL, dad 拍板"以本地为标准")
+
+**备份**: data/backups/cloud-mysql-pre-sync-20260806-170627.json (911KB, 15 表 1888 行)
+
+**清理云端脏数据**:
+- achievement_badges: streak_1/3/7 重复 74 条 → 各留 is_current=1 那条
+- weekly_assignments: id=77 (8-04 items=[] 空布置测试残留) → 删
+- daily_practices: 7-29/30/31 重复 48 条 (8-04 沙盒清空测试产生 items=[] 空记录) → 用本地权威覆盖, 各留 1 条
+- practice_sessions: prb_test_item 测试残留 → 删
+
+**补充本地独有数据**:
+- daily_practices: 8-04 (64分) + 8-06 (36分)
+- practice_sessions: 36 条 (8-03 差3 + 8-04 17 + 8-05 9 + 8-06 8)
+- achievements: eagle_spread_wings (雄鹰展翅) — 本地有云端无
+- achievement_badges: eagle_spread_wings 图
+- practice_audit_log: 38 条
+- report_artifacts: stage-1 图记录
+
+**同步后对比**: 13 表 12 完全一致. practice_audit_log 云端 542 vs 本地 519 (云端多 23 条 internal 沙盒日志, 保留).
+
+**写入速度**: 云端 MySQL 正常 (单条 115ms, 批量 executemany 72ms/条), 不慢.
+
+### 三、踩坑: database is locked (本地打卡失败)
+
+**症状**: 本地 8765 POST /config/api/records → "database is locked"
+**根因**: 同步时 sqlite3.connect 直接打开本地 dizi.db 做对比, 跟 uvicorn 写锁冲突, 留下挂起写事务 + WAL 8MB 未 checkpoint
+**修复**: stop-prod.sh → start-prod.sh 重启 + PRAGMA wal_checkpoint(TRUNCATE)
+**教训**: 同步本地 SQLite 时, 读取连接跟 uvicorn 抢锁. 以后同步前先确认服务无写入, 或同步后立即 checkpoint + 重启服务.
+**测试污染**: 测试打卡写的 5 分钟"吸气长音"已撤销 (8-06 回到 36 分钟对齐 sessions)
+
+### 四、方案 A: 本地 8765 连云 (dad 拍板)
+
+**背景**: 本地服务没设 DATABASE_URL → 回落本地 SQLite, 女儿通过本地录入只进本地, 云端不同步.
+
+**改动**: scripts/start-prod.sh 加自动拼 DATABASE_URL:
+- source ~/.dizical/.env (MYSQL_* 云凭据)
+- 若外部 DATABASE_URL 已设 → 用它; 否则 MYSQL_* 齐全 → 拼 mysql+pymysql:// URL; 否则回落本地 SQLite
+- commit 0addfaa
+
+**验证**: 本地 POST /config/api/records → 云端 MySQL 有记录. 女儿晚上 21:18 练的 3 条 (采茶扑蝶5+西藏舞曲4+颤音1) 直接进云端.
+
+**当前状态**: 云端是唯一权威库. 女儿用公网或本地录入都进云端. 本地 SQLite 落后 (灾备用, 不用管). 核心 config API 本地=云端字节一致.
+
+### 五、部署版本线
+
+055(失败) -> 056(失败) -> 057(成功) -> 058(失败) -> 059(成功) -> 060(成功) -> 061(成功) -> 062(成功)
+
+**部署铁律**:
+- MCP deploy 180s timeout 是客户端超时, 远端可能已收到 (查 queryCloudRun detail 验 DeployId)
+- force=true 能覆盖远端卡住的任务 (updateConfig 报"已有任务运行中"时)
+- .cloudrun-deploy 必须同步最新 requirements.txt/Dockerfile/pyproject.toml 再部署
+- 大包 (1.2GB) 触发 create_build_image 卡死, 精简包 (162M) 稳定
+- 生产验证必须: 6 路径 200 + 浏览器实测 + API 数据对比
