@@ -455,7 +455,38 @@ class MySQLBackend(BaseBackend):
                     WHERE lesson_date >= %s AND lesson_date <= %s
                     ORDER BY lesson_date, stage_order
                 ''', (start.isoformat(), end.isoformat()))
-                return list(cur.fetchall())
+                rows = cur.fetchall()
+                out = []
+                for row in rows:
+                    d = dict(row)
+                    # P0-2026-08-06: 对齐 SQLite (database.py:807-816), MySQL 端漏了 JSON parse + date 转换.
+                    # items/images 是 JSON 字符串 → json.loads; lesson_date/stage 是 datetime → date.
+                    def _to_date(v):
+                        if v is None:
+                            return None
+                        if isinstance(v, dt.datetime):
+                            return v.date()
+                        return dt.date.fromisoformat(str(v)[:10])
+                    try:
+                        items = json.loads(d['items']) if d.get('items') else []
+                    except (TypeError, ValueError):
+                        items = []
+                    try:
+                        images = json.loads(d['images']) if d.get('images') else []
+                    except (TypeError, ValueError):
+                        images = []
+                    out.append({
+                        'id': d['id'],
+                        'lesson_date': _to_date(d.get('lesson_date')),
+                        'stage_start': _to_date(d.get('stage_start')),
+                        'stage_end': _to_date(d.get('stage_end')),
+                        'stage_order': d.get('stage_order'),
+                        'items': items,
+                        'notes': d.get('notes'),
+                        'images': images,
+                        'created_at': d.get('created_at'),
+                    })
+                return out
 
     # ── Daily Practices ──
     def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y', images: Optional[List[str]] = None, **kwargs) -> None:
