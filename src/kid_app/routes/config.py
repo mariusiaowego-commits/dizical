@@ -1153,14 +1153,40 @@ def _convert_heic_to_jpeg(src_path: Path, jpg_path: Path) -> bool:
 
 @router.post("/api/assignments/upload")
 async def api_upload_assignment_image(file: UploadFile = File(...)):
-    """上传配图，保存到 data/uploads/raw/，返回 URL"""
+    """上传配图 (PR-F: 有 COS 配置存 COS, 否则回落本地 data/uploads/raw/)."""
     ext = Path(file.filename).suffix.lower() if file.filename else ""
     if ext not in (".jpg", ".jpeg", ".png", ".heic", ".heif"):
         return JSONResponse({"ok": False, "error": f"不支持的格式: {ext}"}, status_code=400)
 
     fname = f"{_uuid.uuid4().hex}{ext}"
-    dest = _UPLOAD_RAW / fname
     content = await file.read()
+
+    # PR-F: COS 可用 → 存云; 否则本地回落 (开发环境)
+    from ..cos_client import cos_uploader
+    if cos_uploader.is_available:
+        # 先按需 HEIC 转换 (转换后上传转换结果)
+        if ext in _HEIC_EXTS:
+            # 转换需要本地临时文件 → 先写本地再转, 成功后上传 jpg
+            tmp_heic = _UPLOAD_RAW / fname
+            tmp_heic.write_bytes(content)
+            jpg_name = f"{_uuid.uuid4().hex}.jpg"
+            jpg_path = _UPLOAD_RAW / jpg_name
+            if _convert_heic_to_jpeg(tmp_heic, jpg_path):
+                try:
+                    url = cos_uploader.upload(jpg_name, jpg_path.read_bytes(), "image/jpeg")
+                    return JSONResponse({"ok": True, "url": url, "filename": jpg_name})
+                except Exception as e:
+                    return JSONResponse({"ok": False, "error": f"COS 上传失败: {e}"}, status_code=500)
+            # 转换失败 → 直接传 heic 原样 (Safari 仍可预览)
+        try:
+            ctype = "image/png" if ext == ".png" else "image/jpeg"
+            url = cos_uploader.upload(fname, content, ctype)
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": f"COS 上传失败: {e}"}, status_code=500)
+        return JSONResponse({"ok": True, "url": url, "filename": fname})
+
+    # ---- 本地回落 (无 COS 配置, 开发环境) ----
+    dest = _UPLOAD_RAW / fname
     dest.write_bytes(content)
 
     url = f"/uploads/raw/{fname}"

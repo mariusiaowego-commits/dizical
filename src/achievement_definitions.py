@@ -719,7 +719,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             threshold = threshold_map[aid]
             cur = _exec(conn,
                 "SELECT date, practice_at FROM daily_practices "
-                "WHERE practice_at IS NOT NULL AND practice_at != '' "
+                "WHERE practice_at IS NOT NULL "
                 "ORDER BY date ASC"
             )
             from datetime import datetime
@@ -765,10 +765,12 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                 return CalcResult(False, 0, None, None, "本周数据不完整")
             if not prev_stage.get("stage_end") or not prev_stage.get("stage_start"):
                 return CalcResult(False, 0, None, None, "上周数据不完整")
-            curr_start = date.fromisoformat(curr_stage["stage_start"])
-            curr_end   = date.fromisoformat(curr_stage["stage_end"])
-            prev_start = date.fromisoformat(prev_stage["stage_start"])
-            prev_end   = date.fromisoformat(prev_stage["stage_end"])
+            curr_start = _to_date(curr_stage["stage_start"])
+            curr_end   = _to_date(curr_stage["stage_end"])
+            prev_start = _to_date(prev_stage["stage_start"])
+            prev_end   = _to_date(prev_stage["stage_end"])
+            if not (curr_start and curr_end and prev_start and prev_end):
+                return CalcResult(False, 0, None, None, "阶段日期解析失败")
             curr_mins = _get_mins_in_range(conn, curr_start, curr_end)
             prev_mins = _get_mins_in_range(conn, prev_start, prev_end)
             achieved = curr_mins > prev_mins
