@@ -1200,7 +1200,7 @@ class Database(BaseBackend):
                 """
                 SELECT id, stage_order, lesson_date, stage_start, stage_end, items, notes
                 FROM weekly_assignments
-                WHERE stage_start IS NOT NULL AND stage_start != ''
+                WHERE stage_start IS NOT NULL
                 ORDER BY COALESCE(stage_order, 0) DESC, id DESC
                 """
             )
@@ -1266,9 +1266,9 @@ class Database(BaseBackend):
             cursor.execute(
                 """
                 SELECT * FROM weekly_assignments
-                WHERE stage_start IS NOT NULL AND stage_start != ''
+                WHERE stage_start IS NOT NULL
                   AND stage_start <= ?
-                  AND (stage_end IS NULL OR stage_end = '' OR stage_end >= ?)
+                  AND (stage_end IS NULL OR stage_end >= ?)
                 ORDER BY id DESC LIMIT 1
                 """,
                 (day_s, day_s),

@@ -669,7 +669,7 @@ class MySQLBackend(BaseBackend):
             with conn.cursor() as cur:
                 cur.execute('''
                     UPDATE daily_practices
-                    SET progress_log = %s
+                    SET log = %s
                     WHERE date = %s
                 ''', (note, date.isoformat()))
             conn.commit()
@@ -677,18 +677,18 @@ class MySQLBackend(BaseBackend):
     def get_progress_from_log(self, date: dt.date) -> Optional[str]:
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
-                cur.execute('SELECT progress_log FROM daily_practices WHERE date = %s', (date.isoformat(),))
+                cur.execute('SELECT log FROM daily_practices WHERE date = %s', (date.isoformat(),))
                 row = cur.fetchone()
-                return row['progress_log'] if row else None
+                return row['log'] if row else None
 
     def get_progress_from_log_in_range(self, start: dt.date, end: dt.date) -> Dict[str, str]:
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
                 cur.execute('''
-                    SELECT date, progress_log FROM daily_practices
+                    SELECT date, log FROM daily_practices
                     WHERE date >= %s AND date <= %s
                 ''', (start.isoformat(), end.isoformat()))
-                return {r['date']: r['progress_log'] for r in cur.fetchall() if r.get('progress_log')}
+                return {r['date']: r['log'] for r in cur.fetchall() if r.get('log')}
 
     def migrate_daily_progress_to_log(self) -> int:
         """把旧的 progress 字段迁移到 progress_log, 业务代码自维护, Phase 1b 不必实现"""

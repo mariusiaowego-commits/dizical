@@ -275,6 +275,21 @@ def total_practice_minutes():
     return cur.fetchone()[0]
 
 
+def _as_date(v):
+    """统一日期类型: MySQL 返 datetime / SQLite 返 str → 都转 date.
+
+    P0-2026-08-06: 切云后 daily_practices.date 是 datetime 对象,
+    与 date 运算/比较会 TypeError. 统一在此归一化.
+    """
+    if v is None:
+        return None
+    if isinstance(v, dt.date) and not isinstance(v, dt.datetime):
+        return v
+    if isinstance(v, dt.datetime):
+        return v.date()
+    return dt.date.fromisoformat(str(v)[:10])
+
+
 def _calc_max_consecutive_streak():
     """计算历史最长连续练习天数（断掉后重新接上也能恢复）"""
     today = dt.date.today()
@@ -282,7 +297,7 @@ def _calc_max_consecutive_streak():
 
     # 只遍历有练习的日期，而非逐日遍历整个时间范围
     practice_dates = sorted(
-        p["date"] for p in practices if p.get("total_minutes", 0) > 0
+        _as_date(p["date"]) for p in practices if p.get("total_minutes", 0) > 0
     )
 
     if not practice_dates:
@@ -311,7 +326,7 @@ def _calc_current_streak():
     今天没练不影响——以昨天为终点计算。"""
     today = dt.date.today()
     practices = db.get_daily_practices_in_range(dt.date(2020, 1, 1), today)
-    day_mins = {p["date"]: p.get("total_minutes", 0) for p in practices}
+    day_mins = {_as_date(p["date"]): p.get("total_minutes", 0) for p in practices}
 
     if not day_mins:
         return 0
@@ -343,8 +358,8 @@ def _calc_peak_week():
         se = a.get("stage_end")
         if not ss or not se:
             continue
-        start = dt.date.fromisoformat(ss) if isinstance(ss, str) else ss
-        end = dt.date.fromisoformat(se) if isinstance(se, str) else se
+        start = dt.date.fromisoformat(ss) if isinstance(ss, str) else (ss.date() if hasattr(ss, "date") else ss)
+        end = dt.date.fromisoformat(se) if isinstance(se, str) else (se.date() if hasattr(se, "date") else se)
         practices = db.get_daily_practices_in_range(start, end)
         mins = sum(p.get("total_minutes", 0) for p in practices)
         if mins > best_mins:
@@ -391,8 +406,8 @@ def _get_current_week_range():
         se = a.get("stage_end")
         if not ss or not se:
             continue
-        start = dt.date.fromisoformat(ss) if isinstance(ss, str) else ss
-        end = dt.date.fromisoformat(se) if isinstance(se, str) else se
+        start = dt.date.fromisoformat(ss) if isinstance(ss, str) else (ss.date() if hasattr(ss, "date") else ss)
+        end = dt.date.fromisoformat(se) if isinstance(se, str) else (se.date() if hasattr(se, "date") else se)
         if start <= today <= end:
             return start, end
     # fallback: calendar week
@@ -666,7 +681,9 @@ def _milestone_html(category: Optional[str] = None):
         from src.achievement_definitions import CalcResult
         is_commemorative = (ach.get("unlock_strategy") == "immediate" or ach.get("achieved_at_override"))
         if is_commemorative:
-            cur.execute("SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
+            # P0-2026-08-06: 切云后 MySQL 不认 `?` 占位符 → 走统一入口自动转 %s
+            cur = db_adapter.execute(conn,
+                "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
             row = cur.fetchone()
             override_at = ach.get("achieved_at_override")
             if override_at:
@@ -907,8 +924,8 @@ def _daily_blindbox_html():
     if not stage_start_str:
         return "", 0
     # stage_end 为 NULL 时视为 today（当前 stage 尚未结束）
-    stage_end_date = dt.date.fromisoformat(stage_end_str) if stage_end_str else today
-    stage_start = dt.date.fromisoformat(stage_start_str)
+    stage_end_date = _as_date(stage_end_str) if stage_end_str else today
+    stage_start = _as_date(stage_start_str)
 
     # 计算今天是stage的第几天（1-7）
     stage_day = (today - stage_start).days + 1
@@ -1437,7 +1454,7 @@ async def api_practices_stage_image(
                         " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
                         ")"
                     )
-                    cur.execute(
+                    cur = db_adapter.execute(conn,
                         "INSERT INTO report_artifacts (kind, ref_id, prompt, image_path) VALUES (?, ?, ?, ?)",
                         ("stage_image", str(order) if order is not None else None, prompt, dest_path),
                     )
@@ -1494,7 +1511,7 @@ def api_stage_image_file(artifact_id: int):
     from fastapi.responses import FileResponse
     with _db._get_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT image_path FROM report_artifacts WHERE id=?", (artifact_id,))
+        cur = db_adapter.execute(conn, "SELECT image_path FROM report_artifacts WHERE id=?", (artifact_id,))
         row = cur.fetchone()
     if not row:
         return JSONResponse({"ok": False, "error": "report not found"}, status_code=404)
@@ -1522,11 +1539,10 @@ def api_stage_image_history(limit: int = 20):
             ")"
         )
         conn.commit()
-        cur.execute(
+        cur = db_adapter.execute(conn,
             "SELECT id, kind, ref_id, image_path, created_at FROM report_artifacts "
             "WHERE kind='stage_image' ORDER BY id DESC LIMIT ?",
-            (limit,),
-        )
+            (limit,))
         rows = cur.fetchall()
     out = []
     for r in rows:
@@ -2383,8 +2399,8 @@ def achievements_page():
             LIMIT 1
         """, (cur_order - 1,)).fetchone()
         if prev_week_row:
-            ps = dt.date.fromisoformat(prev_week_row[0])
-            pe = dt.date.fromisoformat(prev_week_row[1])
+            ps = _as_date(prev_week_row[0])
+            pe = _as_date(prev_week_row[1])
             practices_prev = db.get_daily_practices_in_range(ps, pe)
             week_days_prev = len([p for p in practices_prev if p.get("total_minutes", 0) > 0])
 
@@ -2514,7 +2530,9 @@ def badges_page():
         from src.achievement_definitions import CalcResult
         is_commemorative = (ach.get("unlock_strategy") == "immediate" or ach.get("achieved_at_override"))
         if is_commemorative:
-            cur.execute("SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
+            # P0-2026-08-06: 切云后 MySQL 不认 `?` 占位符 → 走统一入口自动转 %s
+            cur = db_adapter.execute(conn,
+                "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
             row = cur.fetchone()
             override_at = ach.get("achieved_at_override")
             if override_at:
@@ -2533,17 +2551,19 @@ def badges_page():
             "condition": res.condition,
             "cond_text": ach.get("cond_text") or "",  # V2.2 (2026-06-15) feat/badge-cond-text
             "achieved": res.achieved,
-            "achieved_at": res.achieved_at,
+            # P0-2026-08-06: MySQL 返 datetime → 统一转 str (json.dumps 需要)
+            "achieved_at": str(res.achieved_at) if res.achieved_at is not None else None,
             "badge_url": get_badge_url(aid),
             "unlock_strategy": ach.get("unlock_strategy") or "calc",
-            "achieved_at_override": ach.get("achieved_at_override") or "",
+            "achieved_at_override": str(ach.get("achieved_at_override")) if ach.get("achieved_at_override") else "",
         })
 
     # 分离已解锁/未解锁，各按 achieved_at 降序
     def sort_key(b):
+        # P0-2026-08-06: MySQL 返 datetime / SQLite 返 str → 统一转 str 才能比较
         if b["achieved_at"] is None:
             return (1, "")
-        return (0, b["achieved_at"])
+        return (0, str(b["achieved_at"]))
 
     unlocked = sorted([b for b in badges if b["achieved"]], key=sort_key, reverse=True)
     locked   = sorted([b for b in badges if not b["achieved"]], key=sort_key, reverse=True)
