@@ -24,6 +24,7 @@ dependencies = [
   "chinese-calendar>=1.8.0",
   "python-dateutil>=2.8.2",
   "python-dotenv>=1.0.0",
+  "cos-python-sdk-v5>=1.9.44",
 ]
 
 [dependency-groups]
