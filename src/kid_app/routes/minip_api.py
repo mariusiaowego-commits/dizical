@@ -345,7 +345,7 @@ def api_achievements():
     results = calc_all()
 
     # 2. 读 achievements 表
-    cur = db_adapter.execute(conn, 
+    cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
         "unlock_strategy, achieved_at_override FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
@@ -355,6 +355,9 @@ def api_achievements():
     ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
 
     # 3. 构建 badge 列表（复用 badges_page 逻辑）
+    # 2026-08-07 sprint 26080702: 提前查当前赛季, 拼 season_info 字符串
+    from src.kid_app.app import _get_current_season
+    current_season = _get_current_season(conn)
     badges = []
     for ach in ach_rows:
         aid = ach["id"]
@@ -391,6 +394,13 @@ def api_achievements():
             "achieved_at": res.achieved_at,
             "badge_url": get_badge_url(aid),
             "unlock_strategy": ach.get("unlock_strategy") or "calc",
+            # 2026-08-07 sprint 26080702: seasonal badge 显示赛季+累计次数
+            "season_info": (
+                f"当前第 {current_season.get('order', '?')} 赛季 ("
+                f"{current_season.get('start', '?').replace('-', '.')} - "
+                f"{current_season.get('end', '?').replace('-', '.')}), "
+                f"已累计获取 {res.extra_count if res.extra_count is not None else 0} 次"
+            ) if ach["category"] == "seasonal" and current_season else "",
         })
 
     # 4. 分离已解锁/未解锁
