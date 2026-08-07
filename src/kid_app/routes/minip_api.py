@@ -397,8 +397,8 @@ def api_achievements():
             # 2026-08-07 sprint 26080702: seasonal badge 显示赛季+累计次数
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("
-                f"{current_season.get('start', '?').replace('-', '.')} - "
-                f"{current_season.get('end', '?').replace('-', '.')}), "
+                f"{str(current_season.get('start', '?'))[:10].replace('-', '.')} - "
+                f"{str(current_season.get('end', '?'))[:10].replace('-', '.')}), "
                 f"已累计获取 {res.extra_count if res.extra_count is not None else 0} 次"
             ) if ach["category"] == "seasonal" and current_season else "",
         })

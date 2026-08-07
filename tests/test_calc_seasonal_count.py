@@ -268,6 +268,23 @@ def test_season_info_string_format():
     assert m is not None, f"格式不符: {sample}"
 
 
+def test_season_info_no_datetime_leak(monkeypatch, prod_db_copy):
+    """pitfall 35 follow-up: MySQL DATE 返 datetime 对象, season_info 不能含 'YYYY-MM-DD 00:00:00' 段.
+
+    sprint 26080702 follow-up 修: _get_current_season 用 str()[:10] 截断.
+    """
+    _wire_to_test_db(monkeypatch, prod_db_copy)
+    from src.kid_app.app import _get_current_season
+    from src import db_adapter
+    conn, _is_mysql = db_adapter.get_conn()
+    season = _get_current_season(conn)
+    # start/end 应是 'YYYY-MM-DD' (10 字符), 不是 'YYYY-MM-DD HH:MM:SS'
+    assert len(str(season["start"])) == 10, f"start 应 10 字符, actual {season['start']!r} ({len(str(season['start']))} 字符)"
+    assert len(str(season["end"])) == 10, f"end 应 10 字符, actual {season['end']!r} ({len(str(season['end']))} 字符)"
+    assert "00:00:00" not in str(season["start"])
+    assert "00:00:00" not in str(season["end"])
+
+
 # ─────────────────────────────────────────────────────────────────
 # 7. _get_current_season helper
 # ─────────────────────────────────────────────────────────────────
