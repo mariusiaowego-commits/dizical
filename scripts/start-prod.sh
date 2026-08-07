@@ -49,7 +49,24 @@ fi
 # 3. 必须在项目根目录运行（uvicorn src.kid_app.app:app 依赖相对路径）
 cd "$(dirname "$0")/.."
 
-# 4. 启动
+# 4. 数据源: 若 ~/.dizical/.env 存在则 source (含 MYSQL_* 云凭据)
+#    - 若 DATABASE_URL 已由外部设置 → 用它 (优先级最高)
+#    - 否则若 MYSQL_* 齐全 → 拼 mysql+pymysql:// URL (方案 A: 本地 8765 也连云)
+#    - 否则 → 回落本地 SQLite (灾备)
+DIZICAL_ENV_FILE="$HOME/.dizical/.env"
+if [[ -f "$DIZICAL_ENV_FILE" ]]; then
+  set -a; source "$DIZICAL_ENV_FILE"; set +a
+fi
+if [[ -z "${DATABASE_URL:-}" ]] && [[ -n "${MYSQL_HOST:-}" ]] && [[ -n "${MYSQL_PORT:-}" ]] && [[ -n "${MYSQL_USER:-}" ]] && [[ -n "${MYSQL_PASSWORD:-}" ]] && [[ -n "${MYSQL_DATABASE:-}" ]]; then
+  export DATABASE_URL="mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}"
+  echo "数据源: 云端 MySQL (DATABASE_URL 自动拼装)"
+elif [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "数据源: 云端 MySQL (外部 DATABASE_URL)"
+else
+  echo "数据源: 本地 SQLite (无 DATABASE_URL/MYSQL_*, 灾备模式)"
+fi
+
+# 5. 启动
 CMD=("${UVICORN_BIN}" src.kid_app.app:app --host "${HOST}" --port "${PORT}" --log-level warning)
 
 case "${MODE}" in
