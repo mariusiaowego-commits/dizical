@@ -1052,14 +1052,17 @@ def api_practices_monthly(month: str):
         dates_in_month.append(cur.isoformat())
         cur += dt.timedelta(days=1)
 
-    c = db._conn.cursor()
-    rows = c.execute(
+    # P0-2026-08-06: MySQL 后端没有 _conn 属性, 用 _get_connection; ? 占位符走 db_adapter
+    from src import db_adapter
+    c = db_adapter.execute(db._get_connection(),
         "SELECT date, items FROM daily_practices WHERE date BETWEEN ? AND ?",
-        (month_start.isoformat(), end_date.isoformat())
-    ).fetchall()
+        (month_start.isoformat(), end_date.isoformat()))
+    rows = c.fetchall()
     practices = {}
     for r in rows:
-        practices[r[0]] = {"items": json.loads(r[1])}
+        # P0-2026-08-06: MySQL date 返 datetime → str key 对齐 dates_in_month
+        d_key = r[0].strftime('%Y-%m-%d') if hasattr(r[0], 'strftime') else str(r[0])[:10]
+        practices[d_key] = {"items": json.loads(r[1])}
 
     all_item_ids = set()
     for p in practices.values():
@@ -1079,7 +1082,9 @@ def api_practices_monthly(month: str):
 
     item_names = {}
     for iid in all_item_ids:
-        nm = c.execute("SELECT name FROM practice_items WHERE item_id = ?", (iid,)).fetchone()
+        nm_c = db_adapter.execute(db._get_connection(),
+            "SELECT name FROM practice_items WHERE item_id = ?", (iid,))
+        nm = nm_c.fetchone()
         item_names[iid] = nm[0] if nm else f"科目{iid}"
 
     data = {}
@@ -1782,17 +1787,23 @@ def api_practice_stage(date_str: str):
     except ValueError:
         return JSONResponse({"error": "无效日期格式"}, status_code=400)
 
-    c = db._conn.cursor()
-    row = c.execute(
+    # P0-2026-08-06: MySQL 后端没有 _conn 属性, 用 _get_connection; ? 占位符走 db_adapter
+    from src import db_adapter
+    c = db_adapter.execute(db._get_connection(),
         """SELECT stage_start, stage_end FROM weekly_assignments
            WHERE ? >= stage_start
              AND (stage_end IS NULL OR ? <= stage_end)""",
-        (date_str, date_str)
-    ).fetchone()
+        (date_str, date_str))
+    row = c.fetchone()
     if not row:
         return JSONResponse({"error": "该日期不在任何stage中"}, status_code=404)
 
     stage_start, stage_end = row
+    # P0-2026-08-06: MySQL 返 datetime → str (统一 YYYY-MM-DD)
+    if hasattr(stage_start, 'strftime'):
+        stage_start = stage_start.strftime('%Y-%m-%d')
+    if stage_end and hasattr(stage_end, 'strftime'):
+        stage_end = stage_end.strftime('%Y-%m-%d')
     # 截止日期 = min(date_str, today)，不超过stage_end（stage_end为NULL则用today）
     today_str = dt.date.today().isoformat()
     effective_end = stage_end if stage_end else today_str
@@ -1810,12 +1821,14 @@ def api_practice_stage(date_str: str):
 
     # 收集所有练习数据（只查有数据的）
     practices = {}
-    rows = c.execute(
+    c2 = db_adapter.execute(db._get_connection(),
         "SELECT date, items, total_minutes FROM daily_practices WHERE date BETWEEN ? AND ?",
-        (stage_start, stage_end_actual)
-    ).fetchall()
+        (stage_start, end_date))
+    rows = c2.fetchall()
     for r in rows:
-        practices[r[0]] = {"items": json.loads(r[1]), "total_minutes": r[2]}
+        # P0-2026-08-06: MySQL date 返 datetime → str key 对齐 dates_in_stage
+        d_key = r[0].strftime('%Y-%m-%d') if hasattr(r[0], 'strftime') else str(r[0])[:10]
+        practices[d_key] = {"items": json.loads(r[1]), "total_minutes": r[2]}
 
     # 收集所有出现的科目（按item_id升序）
     all_item_ids = set()
@@ -1829,7 +1842,9 @@ def api_practice_stage(date_str: str):
     # 按item_id获取科目名
     item_names = {}
     for iid in all_item_ids:
-        nm = c.execute("SELECT name FROM practice_items WHERE item_id = ?", (iid,)).fetchone()
+        nm_c = db_adapter.execute(db._get_connection(),
+            "SELECT name FROM practice_items WHERE item_id = ?", (iid,))
+        nm = nm_c.fetchone()
         item_names[iid] = nm[0] if nm else f"科目{iid}"
 
     # 构建每个日期每科目的分钟数矩阵
