@@ -265,10 +265,12 @@ def _get_current_season(conn) -> dict:
     if not row:
         return {}
     order, start, end = row
+    # fix-2026-08-07 sprint 26080702 follow-up: MySQL DATE 返 datetime 对象
+    # 强制 str()[:10] 取 'YYYY-MM-DD' (避免 'YYYY-MM-DD 00:00:00' 默认时间泄露)
     return {
         "order": order,
-        "start": str(start) if start else "",
-        "end": str(end) if end else "",
+        "start": str(start)[:10] if start else "",
+        "end": str(end)[:10] if end else "",
     }
 
 def week_start_of(today):
@@ -2638,8 +2640,10 @@ def badges_page():
             # 2026-08-07 sprint 26080702: seasonal badge 显示「当前第N赛季 + 累计获取次数」文案
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("
-                f"{current_season.get('start', '?').replace('-', '.')} - "
-                f"{current_season.get('end', '?').replace('-', '.')}), "
+                # fix-2026-08-07 sprint 26080702 follow-up: MySQL date 返 datetime → str()[:10] 取日期段
+                # (避免 '2026.08.02 00:00:00' 默认时间泄露, 跟 pitfall 35 一致)
+                f"{str(current_season.get('start', '?'))[:10].replace('-', '.')} - "
+                f"{str(current_season.get('end', '?'))[:10].replace('-', '.')}), "
                 f"已累计获取 {res.extra_count if res.extra_count is not None else 0} 次"
             ) if ach["category"] == "seasonal" and current_season else "",
         })
