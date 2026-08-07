@@ -1116,3 +1116,35 @@ pytest: 294 passed, 2 failed (pre-existing, 跟改动无关)
 - .cloudrun-deploy 必须同步最新 requirements.txt/Dockerfile/pyproject.toml 再部署
 - 大包 (1.2GB) 触发 create_build_image 卡死, 精简包 (162M) 稳定
 - 生产验证必须: 6 路径 200 + 浏览器实测 + API 数据对比
+
+
+## [2026-08-07] report 4 处 MySQL 兼容修复 + 数据修正 (收尾)
+
+**承接**: 8-06 生产闭环 (062 部署) 后 dad 验收发现 /report 问题
+
+### 修复 (PR #231 → squash b46ff6f, 3 commit 全在 app.py)
+1. **f6e98cb** monthly/stage API 500: `db._conn` 是 SQLite 专属属性 (MySQL 没有) → `db_adapter.execute(db._get_connection(), ...)`; datetime key → strftime %Y-%m-%d; `?` 占位符走 db_adapter
+2. **66e63f0** 日历点日期"加载失败": `/api/practices/{date}` behavior_log 是 JSON 字符串, 前端 forEach 崩 → json.loads 成数组
+3. **74175ce** 日历色块消失: 服务端渲染 `p["date"].isoformat()` MySQL 返 datetime 带 T → 匹配不上 str key → strftime
+
+### 数据修正 (云端 daily 汇总被同步覆盖错)
+- 8-05: 云端只有"音阶 2分"但 sessions 46 分 → 用本地权威覆盖 (46 分, 6 科目)
+- 8-03: 云端 35 vs sessions 57 → 覆盖 (57 分)
+- 8-06: 云端 57 = 女儿新练 (本地 36 落后, 云端权威, 不覆盖)
+- 验证: 8 月 daily 全对齐 (除 8-06 云端权威)
+
+### 部署链
+063 (monthly/stage) → 064 (behavior_log) → 065 (色块) 全部成功, 生产 065
+
+### 验证
+- 443 pytest + 生产 11 路径 200 + 浏览器实测 (色块 6 天 high + 日历明细完整 + COS 上传 CDN 200)
+- 测试图已清 (COS aed2586b + 8-07 空 daily 记录已删)
+
+### 收尾
+- PR #231 MERGED, #209 CLOSED (代码已在 main), #230 OPEN (不急)
+- STATUS.md 更新, handoff 双写 (md5 31de0146)
+- Wiki: coding-pitfalls 新增 MySQL 双后端 pitfall
+
+### 教训
+- 同步数据时: daily 汇总必须用 sessions 校验, 不能盲目覆盖
+- 本地 443 pytest 全绿 ≠ 生产 OK: MySQL datetime/JSON 类型差异是 500 最大来源
