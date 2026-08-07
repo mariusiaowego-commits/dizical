@@ -730,7 +730,9 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                 if not p_at:
                     continue
                 try:
-                    ts = datetime.strptime(p_at[:19], "%Y-%m-%d %H:%M:%S")
+                    # 双后端兼容: SQLite practice_at 是 str, MySQL 是 datetime 对象
+                    # datetime 不支持切片, 必须先 str() (pitfall 38, sprint 26080701)
+                    ts = datetime.strptime(str(p_at)[:19], "%Y-%m-%d %H:%M:%S")
                 except Exception:
                     continue
                 if ts.hour < threshold:
@@ -739,7 +741,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                     achieved_at = p_at
                     break
             if achieved:
-                cond = f"首次达成 {achieved_date} {achieved_at[11:16]} (需早于{threshold}:00)"
+                cond = f"首次达成 {str(achieved_date)[:10]} {str(achieved_at)[11:16]} (需早于{threshold}:00)"
             else:
                 cond = f"暂无 {threshold}:00 前的练习记录"
             return CalcResult(achieved, threshold, None, achieved_at, cond)
