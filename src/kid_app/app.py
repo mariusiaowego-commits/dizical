@@ -1610,13 +1610,20 @@ def api_practice_day(date_str: str):
         })
     # 2026-07-27: 新增 sessions[] (按时间升序), 老客户端不读这个字段无影响
     sessions = db.get_practice_sessions(day)
+    # P0-2026-08-07: MySQL 端 behavior_log 存 JSON 字符串, SQLite 端已是数组 → 统一解析成数组
+    beh = practice.get("behavior_log", [])
+    if isinstance(beh, str):
+        try:
+            beh = json.loads(beh) if beh else []
+        except (TypeError, ValueError):
+            beh = []
     return JSONResponse({
         "date": date_str,
         "id": practice.get("id"),
         "items": practice.get("items", []),
         "total_minutes": practice.get("total_minutes", 0),
         "log": practice.get("log", ""),
-        "behavior_log": practice.get("behavior_log", []),
+        "behavior_log": beh,
         "sessions": sessions,
     })
 
