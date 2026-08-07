@@ -249,6 +249,28 @@ def get_badge_url(aid: str, default: str = "/static/badges/medal_badge.png") -> 
         _refresh_badge_url_cache()
     return _BADGE_URL_CACHE["data"].get(aid, default)
 
+
+def _get_current_season(conn) -> dict:
+    """查 weekly_assignments 最新 stage_order + stage_start + stage_end.
+
+    Returns:
+        {"order": int, "start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
+        没数据返 {} (template 处理空态)
+    """
+    cur = db_adapter.execute(conn,
+        "SELECT stage_order, stage_start, stage_end FROM weekly_assignments "
+        "ORDER BY stage_order DESC LIMIT 1"
+    )
+    row = cur.fetchone()
+    if not row:
+        return {}
+    order, start, end = row
+    return {
+        "order": order,
+        "start": str(start) if start else "",
+        "end": str(end) if end else "",
+    }
+
 def week_start_of(today):
     return today - dt.timedelta(days=today.weekday())
 
@@ -2573,6 +2595,8 @@ def badges_page():
 
     # 构建 badge 列表 (PR-B: badge_url 改读 DB + cache 60s)
     badges = []
+    # 2026-08-07 sprint 26080702: 提前查一次当前赛季 (避免每个 badge 都查 SQL)
+    current_season = _get_current_season(conn)
     for ach in ach_rows:
         aid = ach["id"]
         res = results.get(aid)
@@ -2611,6 +2635,13 @@ def badges_page():
             "badge_url": get_badge_url(aid),
             "unlock_strategy": ach.get("unlock_strategy") or "calc",
             "achieved_at_override": str(ach.get("achieved_at_override")) if ach.get("achieved_at_override") else "",
+            # 2026-08-07 sprint 26080702: seasonal badge 显示「当前第N赛季 + 累计获取次数」文案
+            "season_info": (
+                f"当前第 {current_season.get('order', '?')} 赛季 ("
+                f"{current_season.get('start', '?').replace('-', '.')} - "
+                f"{current_season.get('end', '?').replace('-', '.')}), "
+                f"已累计获取 {res.extra_count if res.extra_count is not None else 0} 次"
+            ) if ach["category"] == "seasonal" and current_season else "",
         })
 
     # 分离已解锁/未解锁，各按 achieved_at 降序
