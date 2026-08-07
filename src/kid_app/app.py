@@ -2674,7 +2674,11 @@ def report_page(request: Request, month: Optional[str] = None):
     else:
         end = dt.date(view_year, view_month + 1, 1) - dt.timedelta(days=1)
 
-    practices = {p["date"].isoformat(): p for p in db.get_daily_practices_in_range(start, end)}
+    practices = {}
+    for p in db.get_daily_practices_in_range(start, end):
+        # P0-2026-08-07: MySQL date 返 datetime → 统一 str key (YYYY-MM-DD), SQLite 是 str
+        d_key = p["date"].strftime('%Y-%m-%d') if hasattr(p["date"], 'strftime') else str(p["date"])[:10]
+        practices[d_key] = p
 
     cal_html = ""
     for _ in range(start.weekday()):
