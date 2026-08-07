@@ -239,6 +239,10 @@
     #modal-date {
       font-size: 13px; color: #ccc; margin-bottom: 14px;
     }
+    #modal-season-info {
+      font-size: 12px; color: #aaa; margin-bottom: 12px; font-style: italic;
+    }
+    #modal-season-info:empty { display: none; }
     #modal-desc {
       font-size: 16px; color: #a08060;
       text-align: center; font-style: italic;
@@ -280,6 +284,7 @@
         <div class="modal-divider"></div>
         <div id="modal-cond"></div>
         <div id="modal-date"></div>
+        <div id="modal-season-info"></div>  <!-- 2026-08-07 sprint 26080702 -->
       </div>
       <div class="modal-body">
         <div id="modal-desc"></div>
@@ -313,6 +318,7 @@ function cardHTML(d) {
     data-desc="${esc(d.description)}"
     data-img="${esc(d.badge_url)}"
     data-date="${d.achieved_at||''}"
+    data-season-info="${esc(d.season_info||'')}"
     data-group="${esc(d.group)}"
     data-locked="${d.achieved?'no':'yes'}"
     onclick="openModal(this)">
@@ -406,6 +412,15 @@ function openModal(card) {
     dateEl.style.display = '';
   } else {
     dateEl.style.display = 'none';
+  }
+
+  // 2026-08-07 sprint 26080702: 渲染赛季+累计次数 (seasonal badge 专属)
+  const seasonInfoEl = document.getElementById('modal-season-info');
+  if (card.dataset.seasonInfo) {
+    seasonInfoEl.textContent = card.dataset.seasonInfo;
+    seasonInfoEl.style.display = '';
+  } else {
+    seasonInfoEl.style.display = 'none';
   }
 
   document.getElementById('modal-desc').textContent = card.dataset.desc;

@@ -54,6 +54,9 @@ class CalcResult:
     achieved_at: str | None
     condition: str         # 显示用条件文案
     seasonal_type: str = "monthly"  # seasonal badge 的周期类型
+    # 2026-08-07 sprint 26080702: seasonal badge 全期累计激活次数
+    # milestone badge 默认 None, modal 不显示 season_info
+    extra_count: int | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -753,7 +756,10 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                 cond = f"{now_year}-{now_month:02d} 本月首次早于 {threshold}:00 练习: {str(achieved_date)[:10]} {str(achieved_at)[11:16]}"
             else:
                 cond = f"{now_year}-{now_month:02d} 本月暂无 {threshold}:00 前的练习记录"
-            return CalcResult(achieved, threshold, None, achieved_at, cond)
+            # 2026-08-07 sprint 26080702: 全期累计激活次数
+            cnt, _hist = _count_seasonal_activations(conn, aid, threshold=threshold)
+            return CalcResult(achieved, threshold, None, achieved_at, cond,
+                              extra_count=cnt)
 
         # total_60: 当月累计 ≥ 60 分钟
         if aid == "total_60":
@@ -765,7 +771,12 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             month_mins = _get_mins_in_range(conn, month_start, today)
             achieved = month_mins >= 60
             cond = f"当月累计 ≥ 60 分钟（当前 {month_mins} 分钟）"
-            return CalcResult(achieved, month_mins, None, None, cond)
+            # 2026-08-07 sprint 26080702: 全期累计 (当月 ≥ 60 分钟的月数)
+            cnt, _hist = _count_seasonal_activations(
+                conn, aid, threshold=None,
+                threshold_check_fn=lambda r: int(r.get("total_minutes", 0) or 0) >= 60,
+            )
+            return CalcResult(achieved, month_mins, None, None, cond, extra_count=cnt)
 
         # week_champ: 本周 vs 上周 stage 对比
         if aid == "week_champ":
@@ -787,7 +798,12 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             achieved = curr_mins > prev_mins
             cond = (f"本周 {curr_mins} > 上周 {prev_mins}，"
                     f"阶段 {curr_stage.get('stage_order', '?')} vs {prev_stage.get('stage_order', '?')}")
-            return CalcResult(achieved, curr_mins, prev_mins, None, cond)
+            # 2026-08-07 sprint 26080702: 全期累计 (MVP)
+            cnt, _hist = _count_seasonal_activations(
+                conn, aid, threshold=None,
+                threshold_check_fn=lambda r: True,
+            )
+            return CalcResult(achieved, curr_mins, prev_mins, None, cond, extra_count=cnt)
 
         # full_month: 本月 vs 上月
         if aid == "full_month":
@@ -802,7 +818,12 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             last_mins = _get_mins_in_range(conn, last_month_start, last_month_end)
             achieved = this_mins > last_mins
             cond = f"本月 {this_mins} 分钟 > 上月 {last_mins} 分钟"
-            return CalcResult(achieved, this_mins, last_mins, None, cond)
+            # 2026-08-07 sprint 26080702: 全期累计 (MVP)
+            cnt_fm, _hist = _count_seasonal_activations(
+                conn, aid, threshold=None,
+                threshold_check_fn=lambda r: True,
+            )
+            return CalcResult(achieved, this_mins, last_mins, None, cond, extra_count=cnt_fm)
 
         # top1: 当月第 1 名科目
         if aid == "top1":
@@ -811,9 +832,19 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             if month_top:
                 item_name, mins = month_top[0]
                 cond = f"当月第1：{item_name}（{mins}分钟）"
-                return CalcResult(True, mins, item_name, None, cond)
+                # 2026-08-07 sprint 26080702: 全期累计 (MVP)
+                cnt_top1s, _hist = _count_seasonal_activations(
+                    conn, aid, threshold=None,
+                    threshold_check_fn=lambda r: True,
+                )
+                return CalcResult(True, mins, item_name, None, cond, extra_count=cnt_top1s)
             else:
-                return CalcResult(False, 0, None, None, "当月第1科目（暂无数据）")
+                # 2026-08-07 sprint 26080702: 全期累计
+                cnt_top1f, _hist = _count_seasonal_activations(
+                    conn, aid, threshold=None,
+                    threshold_check_fn=lambda r: True,
+                )
+                return CalcResult(False, 0, None, None, "当月第1科目（暂无数据）", extra_count=cnt_top1f)
 
         # ── fallback: 当月累计 ≥ 60 分钟 (其他未知 monthly badge) ──
         month_start = date(now_year, now_month, 1)
@@ -837,36 +868,109 @@ def _persist_unlocked_milestones(conn: sqlite3.Connection,
                                 results: dict[str, CalcResult]) -> None:
     """把 calc_all() 算出来的新解锁 milestone 写进 achievement_stats.
 
-    设计: milestone 是 read-only path (从未自动持久化), 本函数是补缺口.
-    calc 完顺手 upsert stats, 让前端 /achievements 立刻看到 unlocked + 时间.
+    2026-08-07 sprint 26080702: 同时持久化 seasonal badge 的 extra_count + history_periods 到
+    raw_stats JSON (append-only, 老 raw_stats '{}' 兼容). 改 calc 不动 grade_*.
+
     条件: calc.achieved=True AND calc.achieved_at != None AND stats.achieved != 'Y'.
-    grade_* 不动 (走 stats 已有值, calc 不覆盖).
     """
+    import json as _json
     for aid, res in results.items():
         if not res.achieved or not res.achieved_at:
             continue
-        cur = _exec(conn, 
-            "SELECT achieved FROM achievement_stats WHERE achievement_id = ?", (aid,)
+        cur = _exec(conn,
+            "SELECT achieved, raw_stats FROM achievement_stats WHERE achievement_id = ?", (aid,)
         )
         row = cur.fetchone()
+        # 解析现有 raw_stats JSON (append 不覆盖)
+        existing_stats: dict = {}
+        if row is not None and row[1]:
+            try:
+                existing_stats = _json.loads(row[1])
+            except (TypeError, ValueError):
+                existing_stats = {}
+
+        # 2026-08-07 sprint 26080702: extra_count + history_periods (seasonal badge)
+        if res.extra_count is not None:
+            current_period = str(res.achieved_at)[:7]  # 'YYYY-MM'
+            history_periods = list(existing_stats.get("history_periods", []))
+            if current_period not in history_periods:
+                history_periods.append(current_period)
+            existing_stats["history_periods"] = history_periods
+            existing_stats["count"] = res.extra_count
+        raw_stats_json = _json.dumps(existing_stats, ensure_ascii=False, sort_keys=True)
+
         if row is None:
-            # stats 行不存在, INSERT (理论上 migrate_achievements 已经初始化过所有 aid,
-            # 兜底防御)
-            # stats 行不存在, INSERT (理论上 migrate_achievements 已经初始化过所有 aid,
-            # 兜底防御)
             _exec(conn,
                 "INSERT INTO achievement_stats "
                 "(achievement_id, achieved, achieved_at, raw_stats, computed_value) "
-                "VALUES (?, 'Y', ?, '{}', ?)",
-                (aid, res.achieved_at, str(res.computed_value or "1")),
+                "VALUES (?, 'Y', ?, ?, ?)",
+                (aid, res.achieved_at, raw_stats_json, str(res.computed_value or "1")),
             )
         elif row[0] != "Y":
             _exec(conn,
-                "UPDATE achievement_stats SET achieved='Y', achieved_at=? "
+                "UPDATE achievement_stats SET achieved='Y', achieved_at=?, raw_stats=? "
                 "WHERE achievement_id=? AND achieved != 'Y'",
-                (res.achieved_at, aid),
+                (res.achieved_at, raw_stats_json, aid),
+            )
+        else:
+            # 已 achieved, 只更新 raw_stats (count + history_periods)
+            _exec(conn,
+                "UPDATE achievement_stats SET raw_stats=? WHERE achievement_id=?",
+                (raw_stats_json, aid),
             )
     conn.commit()
+
+
+
+
+def _count_seasonal_activations(conn, aid: str, threshold: int | None = None,
+                                 threshold_check_fn=None) -> tuple[int, list[str]]:
+    """扫历史 daily_practices, 算全期累计激活次数 + 历史激活月份列表.
+
+    Args:
+        conn: db connection
+        aid: achievement_id (for future per-aid logic, currently unused)
+        threshold: 小时阈值 (e.g. 20 for early_riser). None 走 custom check fn.
+        threshold_check_fn: 自定义 check 函数, 接受 daily_practices row dict, 返 bool.
+            用于 week_champ/full_month/top1/total_60 这类非小时阈值.
+
+    Returns:
+        (count, history_periods) — count 全期累计激活月数, history_periods 升序 'YYYY-MM' 列表
+
+    性能: daily_practices ~250 行, 每月 group 一次 + dict count. <50ms.
+    """
+    from collections import defaultdict
+    cur = _exec(conn,
+        "SELECT date, practice_at, total_minutes, items FROM daily_practices "
+        "ORDER BY date ASC"
+    )
+    rows = cur.fetchall()
+    cols = [d[0] for d in cur.description]
+    rows_dict = [dict(zip(cols, r)) for r in rows]
+
+    monthly_achieved: dict[str, bool] = defaultdict(bool)
+    for row in rows_dict:
+        date_str = str(row.get("date", ""))[:7]  # YYYY-MM
+        if not date_str or date_str == "":
+            continue
+        if threshold_check_fn is not None:
+            if threshold_check_fn(row):
+                monthly_achieved[date_str] = True
+        elif threshold is not None:
+            pat = row.get("practice_at")
+            if not pat:
+                continue
+            from datetime import datetime
+            try:
+                ts = datetime.strptime(str(pat)[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                continue
+            if ts.hour < threshold:
+                monthly_achieved[date_str] = True
+
+    history_periods = sorted(monthly_achieved.keys())
+    count = sum(1 for v in monthly_achieved.values() if v)
+    return count, history_periods
 
 
 def calc_all() -> dict[str, CalcResult]:
