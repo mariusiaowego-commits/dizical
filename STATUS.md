@@ -1,6 +1,43 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-03 (一次性徽章 雄鹰展翅, PR #221 MERGED, main 6aec99c)
+**最后更新**: 2026-08-07 (report 4 处 MySQL 兼容修复, PR #231 MERGED, main b46ff6f)
+
+---
+
+### 2026-08-07 report 页 4 处 MySQL 双后端兼容修复 (PR #231 MERGED, main b46ff6f)
+
+**触发**: dad 验收生产 /report 发现: 月练习图空白 + 日历点日期"加载失败" + 日历色块消失
+
+**修复 (3 commit → squash b46ff6f, 1 文件 app.py)**:
+- ✅ `/api/practices/monthly` + `/api/practices/stage` 500: `db._conn` 是 SQLite 专属属性, MySQL 后端没有 → 改 `db_adapter.execute(db._get_connection(), ...)` + datetime→str key
+- ✅ `/api/practices/{date}` behavior_log 是 JSON 字符串, 前端 forEach 崩 → 统一 json.loads 成数组 (日历明细"加载失败")
+- ✅ 日历色块消失: practices date 是 datetime, isoformat 带 T 匹配不上 key → strftime %Y-%m-%d (8-01~8-06 恢复 high/mid/low)
+
+**数据修复**: 8-03/8-05 云端 daily 汇总被同步时覆盖错 (8-05 只有"音阶 2分"但 sessions 46分) → 用本地权威修正 (8-03: 57分, 8-05: 46分)
+
+**验证**: 443 passed / 8 skipped / 0 failed; 生产 11 路径 200; 浏览器实测日历色块 + 明细 + 月图全正常
+
+**部署**: 063 (monthly/stage 修复) → 064 (behavior_log) → 065 (色块) 全部成功, 生产当前 065
+
+### 2026-08-06 生产闭环: PR-F COS 上线 + 12 处 MySQL 兼容 + 数据同步 + 方案 A 本地连云 (PR #227/#229 MERGED)
+
+**触发**: 承接 handoff-2026-08-06-prf-badges (PR-F COS + badges 500 修复代码写完未部署)
+
+**修复 (12 处 MySQL 双后端兼容)**:
+- ✅ badges/achievements/report 500: 日期类型/占位符/列名 8 处 (ce3b6fd)
+- ✅ app.py fromisoformat + CREATE TABLE AUTOINCREMENT 2 处 (d648423)
+- ✅ get_weekly_assignments_in_range items JSON parse (aa7b1a5, 老师要求 500)
+- ✅ get_practice_categories created_at datetime→str (5a8ed61, 科目配置 500)
+
+**部署**: 055-056 失败 (1.2GB 包 create_build_image 卡死) → 057-062 成功 (精简 .cloudrun-deploy 162M 包), 最终 062
+
+**数据同步**: 本地 SQLite 权威 → 云端 MySQL (备份 911KB), 清 streak 重复 74 + 沙盒空记录 48, 补 daily 2 + sessions 36 + 雄鹰展翅 badge, 13 表 12 对齐
+
+**方案 A (dad 拍板)**: start-prod.sh 自动拼 DATABASE_URL 连云, 女儿本地/公网录入直接进云端
+
+**验证**: 443 passed; 生产 6 路径 200; COS 上传 tcb.qcloud.la CDN 200; 浏览器实测 config/practice 8 分类 47 科目
+
+**部署**: 055→062 (8 次部署 6 成功), 生产 062 → 8-07 升到 065
 
 ---
 
