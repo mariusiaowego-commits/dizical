@@ -713,14 +713,23 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
             except (ValueError, sqlite3.Error) as e:
                 return CalcResult(False, 0, None, None, f"节日徽章解析失败: {e}")
 
-        # 早练类（按小时判断, 永久解锁）
+        # 早练类（按小时判断, monthly 重置 — 跟 total_60 同模式）
+        # 2026-08-07 sprint 26080701: dad 拍板 "seasonal badge 应该按月算", 跟 DB 字段 category=seasonal/seasonal_type=monthly 一致.
+        # 之前代码是"全历史首次达成即永久解锁", 跟 category=seasonal 矛盾.
         threshold_map = {"early_riser": 20, "little_chick_commander": 17, "first_to_act": 12}
         if aid in threshold_map:
             threshold = threshold_map[aid]
+            month_start = date(now_year, now_month, 1)
+            if now_month == 12:
+                month_end = date(now_year + 1, 1, 1) - timedelta(days=1)
+            else:
+                month_end = date(now_year, now_month + 1, 1) - timedelta(days=1)
             cur = _exec(conn,
                 "SELECT date, practice_at FROM daily_practices "
                 "WHERE practice_at IS NOT NULL "
-                "ORDER BY date ASC"
+                "AND date >= ? AND date <= ? "
+                "ORDER BY date ASC",
+                (month_start.isoformat(), month_end.isoformat())
             )
             from datetime import datetime
             achieved = False
@@ -741,9 +750,9 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
                     achieved_at = p_at
                     break
             if achieved:
-                cond = f"首次达成 {str(achieved_date)[:10]} {str(achieved_at)[11:16]} (需早于{threshold}:00)"
+                cond = f"{now_year}-{now_month:02d} 本月首次早于 {threshold}:00 练习: {str(achieved_date)[:10]} {str(achieved_at)[11:16]}"
             else:
-                cond = f"暂无 {threshold}:00 前的练习记录"
+                cond = f"{now_year}-{now_month:02d} 本月暂无 {threshold}:00 前的练习记录"
             return CalcResult(achieved, threshold, None, achieved_at, cond)
 
         # total_60: 当月累计 ≥ 60 分钟
