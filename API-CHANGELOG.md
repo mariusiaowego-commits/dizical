@@ -1,3 +1,24 @@
+# dinghy 微信跳转录入 URL Link — API 变更
+
+**日期**: 2026-08-07
+**分支**: feat/miniprogram-url-link
+**类型**: 🟡 部分兼容（新增端点，现有逻辑零改动）
+
+## 变更
+
+### POST `/api/minip/url-link`（新）
+
+生成小程序 URL Link（微信内点击直达小程序页面并带参数）。dinghy bot 调用，实现"微信点链接 → 呦助预填录入"（配合 dizical-minip PR #33 前端预填）。
+
+- body: `{path, query}`；path 仅允许 `/pages/practice/practice`（白名单）
+- 需要环境变量：`WX_APPID` / `WX_SECRET`（CloudBase 配置，不进 git）
+- 可选鉴权：`DINGHY_URL_LINK_KEY` 设置后需带 header `X-Dinghy-Key` 匹配，否则 403
+- 返回 `{ok: true, url_link}`；30 天临时链接（is_expire=1, expire_type=1）
+- access_token 进程内缓存（7000s），避免每次请求拉 token
+- minip 前端无需改动
+
+---
+
 # Backend 切换 — API 变更
 
 **日期**: 2026-08-09
