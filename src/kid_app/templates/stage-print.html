@@ -124,7 +124,7 @@
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
-    /* 表格视图: A3 横向 (sprint-26080103 v2: 420x297mm 装 7 天) */
+    /* 表格视图: A3 横向 (sprint-26080103 v2: 420x297mm 装 7 天; sprint-26080801: iPad viewport 不再 420mm 硬限) */
     .paper.is-table.is-landscape {
       width: 420mm;
       min-height: 297mm;
@@ -132,6 +132,29 @@
       padding: 4mm 5mm 4mm;
       box-sizing: border-box;
       overflow: visible;
+    }
+
+    /* sprint-26080801: iPad 横屏 viewport ≤ 1180px 时 paper 不再 420mm 硬限, 按 viewport 自适应.
+       关键: 这个块必须在所有 .paper.is-table.is-landscape 块之后定义, 否则被后写覆盖. */
+    @media (max-width: 1180px) {
+      .paper.is-table.is-landscape {
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 8px 4px !important;
+      }
+      .paper.is-table .view-table-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      /* iPad 屏上: paper 边框阴影去掉, 让表格真正顶到 viewport 边缘 */
+      .stage-wrap { padding: 0 !important; }
+      .paper { box-shadow: none !important; }
+    }
+
+    /* sprint-26080801 第 2 处: 第二个 .paper.is-table.is-landscape 块 (line ~230) 必须再加 @media 兜底,
+       否则后写覆盖前写, 420mm 永远胜出, paper 不自适应. */
+    @media (max-width: 1180px) {
+      .paper.is-table.is-landscape { display: block !important; }  /* 屏上禁用 flex column, 让表格自然撑 */
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -437,19 +460,25 @@
       .paper {
         box-shadow: none !important;
         margin: 0 auto !important;
+        width: 100% !important;
         zoom: var(--print-zoom, 1) !important;
       }
       .paper:not(.is-landscape) {
-        width: 210mm !important;
+        max-width: 210mm !important;
         min-height: 297mm;
         padding: 5mm 6mm !important;
         overflow: visible !important;
       }
       .paper.is-landscape {
-        width: 420mm !important;  /* sprint 26080103 v2: A3 横向 */
+        max-width: 420mm !important;  /* sprint 26080103 v2: A3 横向; sprint-26080801: 改 max-width 防 iPad Safari 越界 */
         min-height: 297mm;
         padding: 3.5mm 4.5mm !important;
         overflow: visible !important;
+      }
+      /* sprint-26080801: 矩阵打印上下文锁列宽, 防 flex 压; 屏上仍 table-layout: auto */
+      table.matrix {
+        table-layout: fixed !important;
+        width: 100% !important;
       }
       /* thead 在多页重复; 行不跨页; tfoot 不被孤立到新页 */
       table.matrix thead { display: table-header-group !important; }
@@ -736,7 +765,7 @@
     var hint = document.querySelector('.toolbar .hint');
     if (hint) {
       hint.textContent = isTable
-        ? '表格 · A4 横向 · 科目×日期矩阵 · 打印一页'
+        ? '表格 · A3 横向 · 屏上可横滑 · 打印按内容自动分页'  /* sprint-26080801: 不再"打印一页约 X%"误导 */
         : '分组 · A4 竖向 · 可切换表格';
     }
   }
@@ -753,7 +782,13 @@
     var a3px = a3PageHeightPx();  /* sprint 26080103 v2: A3 横向 */
     var contentH = paper.scrollHeight;
     var modeLabel = viewMode === 'table' ? '表格·横向' : '分组·竖向';
-    if (contentH > a3px + 8) {
+    var nDays = (lastPayload && appliedDays)
+      ? Object.keys(appliedDays).filter(function (k) { return appliedDays[k]; }).length
+      : ((lastPayload && lastPayload.days) ? lastPayload.days.length : 0);
+    var overflow = paper.scrollWidth > (paper.clientWidth + 4);  /* sprint-26080801: 屏上溢出判断 */
+    if (overflow) {
+      statusMsg.textContent = modeLabel + ' · 已选 ' + nDays + ' 天 · 屏上可横滑 · 打印按内容自动分页';
+    } else if (contentH > a3px + 8) {
       var pct = Math.max(40, Math.min(100, Math.round((a3px / contentH) * 100)));
       statusMsg.textContent = modeLabel + ' · 预览 100%（可滚动）· 打印一页约 ' + pct + '%';
     } else {
@@ -892,7 +927,7 @@
     var subLabels = ['总时长', '速度', '单次', '明细'];
     // 按展示天数自适应：天越少，短列可略宽、明细更宽
     var itemW = nDays <= 2 ? 10 : nDays <= 4 ? 8 : 7;
-    var shortW = nDays <= 1 ? 5 : nDays <= 2 ? 4 : nDays <= 4 ? 3 : nDays <= 6 ? 2.4 : 2;
+    var shortW = nDays <= 1 ? 5 : nDays <= 2 ? 4 : nDays <= 4 ? 3 : nDays <= 6 ? 2.8 : 2.4;  /* sprint-26080801: 6 天时短列 2% → 2.8%, iPad viewport 1133px 上 ≈ 32px ≈ 8mm */
     var tempoW = shortW + 0.5;
     html += '<table class="matrix days-' + nDays + '"><colgroup>';
     html += '<col style="width:' + itemW + '%">';
@@ -1069,7 +1104,7 @@
     // sprint 26080103: 不再 paper.style.height=210mm, 让纸自然撑高
     paper.style.height = '';
     paper.style.maxHeight = '';
-    paper.style.minHeight = '210mm';
+    paper.style.minHeight = '';
     paper.style.overflow = 'visible';
     wrap.style.height = '';
     wrap.style.maxHeight = '';
@@ -1080,7 +1115,7 @@
     table.style.minHeight = '';
     // 行高清空, 改由 CSS min-height 8mm 控制
     var rows = table.querySelectorAll('tbody tr');
-    rows.forEach(function (r) { r.style.height = ''; });
+    rows.forEach(function (r) { r.style.height = ''; r.style.minHeight = '8mm'; });
   }
 
   /** 打印前: 不缩放, 让浏览器自然分页 (Q2=A 多页). */
@@ -1135,7 +1170,7 @@
   }
 
   /**
-   * 打印前: 按 A4 尺寸缩放 (Q2=A 不强制单页, floor 改 0.65 让短 stage 保持 100%, 长 stage 自然分页).
+   * 打印前: 按 A4/A3 尺寸缩放 (sprint-26080801: floor 0.95 防 iPad Safari zoom 压内容, 不到溢出 1 页就不缩).
    */
   function preparePrintZoom() {
     var isLs = viewMode === 'table';
@@ -1147,8 +1182,8 @@
     var scale = 1;
     if (contentH > targetH) scale = Math.min(scale, targetH / contentH);
     if (contentW > targetW) scale = Math.min(scale, targetW / contentW);
-    // sprint 26080103: floor 改 0.65, 不到溢出 1 页就不缩
-    var floor = isLs ? 0.65 : 0.70;
+    // sprint-26080801: floor 改 0.95 (从 0.65 / 0.70 改), iPad Safari 上 zoom 压到 65% 内容不可读
+    var floor = 0.95;
     if (scale < floor) scale = floor;
     if (scale > 1) scale = 1;
     paper.style.setProperty('--print-zoom', String(scale.toFixed(4)));
@@ -1244,9 +1279,46 @@
     statusMsg.style.color = '';
     statusMsg.textContent = scale < 0.999
       ? '打印缩放 ' + Math.round(scale * 100) + '% · 自然分页'
-      : (viewMode === 'table' ? '打印 100% · A4 横向' : '打印 100% · A4 竖向');
+      : (viewMode === 'table' ? '打印 100% · A3 横向' : '打印 100% · A4 竖向');
     setTimeout(function () { window.print(); }, 120);
   });
+
+  // sprint-26080801: iPad Safari WKWebView 忽略 @page A3 landscape, 实际渲染走 A4 portrait.
+  // 兜底: beforeprint 直接改 paper 元素 width/height, 让 iOS 物理渲染时按 paper 实际尺寸出图.
+  function applyPrintPaperFix() {
+    if (viewMode !== 'table') return;
+    var isLs = true;
+    var wMm = isLs ? 420 : 210;
+    var hMm = isLs ? 297 : 297;
+    paper.style.width = wMm + 'mm';
+    paper.style.minHeight = hMm + 'mm';
+    paper.style.maxWidth = 'none';
+    paper.style.maxHeight = 'none';
+    paper.style.margin = '0';
+    paper.style.overflow = 'visible';
+    // 矩阵在 iOS 打印强制走 fixed
+    var t = paper.querySelector('table.matrix');
+    if (t) {
+      t.style.tableLayout = 'fixed';
+      t.style.width = '100%';
+    }
+  }
+  function clearPrintPaperFix() {
+    paper.style.width = '';
+    paper.style.minHeight = '';
+    paper.style.maxWidth = '';
+    paper.style.maxHeight = '';
+    paper.style.margin = '';
+    var t = paper.querySelector('table.matrix');
+    if (t) {
+      t.style.tableLayout = '';
+      t.style.width = '';
+    }
+  }
+  if (window.matchMedia) {
+    window.addEventListener('beforeprint', applyPrintPaperFix);
+    window.addEventListener('afterprint', clearPrintPaperFix);
+  }
 
   // ── 导出图片 (sprint 26080103) ──
   document.getElementById('btnImage').addEventListener('click', function () {
