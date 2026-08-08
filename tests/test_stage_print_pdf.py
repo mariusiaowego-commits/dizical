@@ -20,15 +20,17 @@ def _read_html() -> str:
 
 
 def test_T1_paper_css_responsive_max_1180():
-    """iPad viewport ≤1180px 时 paper 不再 420mm 硬限."""
+    """iPad viewport ≤1180px 时 paper 不再 420mm 硬限, 用 !important 防后写覆盖."""
     html = _read_html()
     assert "@media (max-width: 1180px)" in html
     block = html.split("@media (max-width: 1180px)", 1)[1]
-    # 块内必须含 .paper.is-table.is-landscape { width: 100% } + .view-table-wrap overflow-x: auto
-    end = block.find("}", block.find("}", block.find("}") + 1) + 1)
-    sub = block[: end + 1] if end > 0 else block[:600]
-    assert "width: 100%" in sub
-    assert "overflow-x: auto" in sub
+    # 块内必须含 width: 100% !important + view-table-wrap overflow-x: auto !important + iPad 屏上 paper box-shadow none
+    assert "width: 100% !important" in block
+    assert "min-width: 0 !important" in block
+    assert "overflow-x: auto !important" in block
+    assert "box-shadow: none !important" in block
+    # 关键: sprint-26080801 round 2 修复 - 第二个 .paper.is-table.is-landscape 块 (display: flex column) 必须被 @media 兜底覆盖
+    assert ".paper.is-table.is-landscape { display: block !important" in block or "display: block !important" in block
 
 
 def test_T2_paper_css_print_max_width_420():

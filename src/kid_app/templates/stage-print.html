@@ -134,15 +134,27 @@
       overflow: visible;
     }
 
-    /* sprint-26080801: iPad 横屏 viewport ≤ 1180px 时 paper 不再 420mm 硬限, 按 viewport 自适应 */
+    /* sprint-26080801: iPad 横屏 viewport ≤ 1180px 时 paper 不再 420mm 硬限, 按 viewport 自适应.
+       关键: 这个块必须在所有 .paper.is-table.is-landscape 块之后定义, 否则被后写覆盖. */
     @media (max-width: 1180px) {
       .paper.is-table.is-landscape {
-        width: 100%;
-        min-width: 0;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 8px 4px !important;
       }
       .paper.is-table .view-table-wrap {
-        overflow-x: auto;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
       }
+      /* iPad 屏上: paper 边框阴影去掉, 让表格真正顶到 viewport 边缘 */
+      .stage-wrap { padding: 0 !important; }
+      .paper { box-shadow: none !important; }
+    }
+
+    /* sprint-26080801 第 2 处: 第二个 .paper.is-table.is-landscape 块 (line ~230) 必须再加 @media 兜底,
+       否则后写覆盖前写, 420mm 永远胜出, paper 不自适应. */
+    @media (max-width: 1180px) {
+      .paper.is-table.is-landscape { display: block !important; }  /* 屏上禁用 flex column, 让表格自然撑 */
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
