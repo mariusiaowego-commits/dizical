@@ -369,21 +369,22 @@
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 9.5pt; min-width: 8mm; max-width: 10mm;
-      text-align: center !important; vertical-align: middle !important;  /* v2.1: 显式居中 */
-      padding: 0.5mm 0;  /* v2.1: 去左右 padding 让数字真居中 */
+      font-size: 8pt; min-width: 8mm; max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt 防 iPad Safari 速度列文字溢出 */
+      text-align: center !important; vertical-align: middle !important;
+      padding: 0.5mm 0;
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 9pt; min-width: 12mm;
-      text-align: center !important; vertical-align: middle !important;  /* v2.1: 显式居中 */
+      font-size: 8pt; min-width: 12mm;  /* sprint-26080802: 9pt → 8pt */
+      overflow-wrap: anywhere;  /* sprint-26080802: 防 ♩=60-112 速度字符串溢出列 */
+      text-align: center !important; vertical-align: middle !important;
       padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-once {
-      font-weight: 700; white-space: nowrap;  /* v2: 加粗 */
-      font-size: 9.5pt; min-width: 8mm; max-width: 10mm;
-      text-align: center !important; vertical-align: middle !important;  /* v2.1: 显式居中 */
-      padding: 0.5mm 0;  /* v2.1: 去左右 padding 让数字真居中 */
+      font-weight: 700; white-space: nowrap;
+      font-size: 8pt; min-width: 8mm; max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt */
+      text-align: center !important; vertical-align: middle !important;
+      padding: 0.5mm 0;
     }
     table.matrix td.m-detail {
       text-align: left; padding: 0.8mm 1.2mm;
@@ -421,7 +422,7 @@
     table.matrix.days-1 td.m-tempo,
     table.matrix.days-2 td.m-tempo,
     table.matrix.days-1 td.m-once,
-    table.matrix.days-2 td.m-once { font-size: 10.5pt; }
+    table.matrix.days-2 td.m-once { font-size: 9.5pt; }  /* sprint-26080802: 10.5pt → 9.5pt (主表 11pt, 短列 9.5pt 已足) */
 
     .pf {
       margin-top: 1.5mm;
@@ -766,7 +767,7 @@
     if (hint) {
       hint.textContent = isTable
         ? '表格 · A3 横向 · 屏上可横滑 · 打印按内容自动分页'  /* sprint-26080801: 不再"打印一页约 X%"误导 */
-        : '分组 · A4 竖向 · 可切换表格';
+        : '分组 · 可切换表格';  /* sprint-26080802: 删 "A4 竖向" 冗余 */
     }
   }
 
@@ -800,7 +801,7 @@
   function renderHeader(data) {
     var sum = data.summary || {};
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
-    var styleLabel = viewMode === 'table' ? '表格 · 科目×日期 · A4 横向' : '分组 · A4 竖向';
+    /* sprint-26080802: 删 styleLabel 死代码 + 删 ph-sub 周期/上课日/截止/styleLabel 拼入 */
     var isTable = viewMode === 'table';
     var html = '';
     if (isTable) html += '<div class="table-chrome">';
@@ -808,11 +809,7 @@
     html += '<div class="ph">';
     html += '<div>';
     html += '<div class="ph-title">' + esc(title) + '</div>';
-    html += '<div class="ph-sub">周期 ' + esc(data.stage_start || '') + ' ~ ' + esc(data.stage_end || data.effective_end || '');
-    html += ' · 上课日 ' + esc(data.lesson_date || '—');
-    html += ' · 截止 ' + esc(data.effective_end || '');
-    html += ' · ' + styleLabel;
-    html += '</div>';
+    /* sprint-26080802: 删 ph-sub "周期 X ~ Y · 上课日 · 截止 · styleLabel" 冗余 */
     if (data.notes) {
       html += '<div class="ph-sub">备注：' + esc(data.notes) + '</div>';
     }
@@ -1064,6 +1061,7 @@
     var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
     document.title = title + (viewMode === 'table' ? ' · 表格' : ' · 分组') + (nShow < nAll ? ' · ' + nShow + '天' : '');
 
+    /* sprint-26080802: 删生成时间 + styleLabel 冗余, pf 块只保留数据源标识 */
     var now = new Date();
     var pad = function (n) { return String(n).padStart(2, '0'); };
     var gen = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
@@ -1080,8 +1078,8 @@
     } else {
       html += nShow ? renderBodyGroup(viewData) : '<div class="err" style="padding:20px;">未选择练习日</div>';
     }
-    html += '<div class="pf"><span>数据: practice_sessions · 展示 ' + esc(nShow) + '/' + esc(nAll) + ' 天</span>';
-    html += '<span>生成 ' + esc(gen) + ' · ' + (viewMode === 'table' ? '矩阵 · A4 横向' : '分组 · A4 竖向') + '</span></div>';
+    /* sprint-26080802: pf 块只保留 "数据: practice_sessions · 展示 N/M 天", 删生成时间 + styleLabel */
+    html += '<div class="pf"><span>数据: practice_sessions · 展示 ' + esc(nShow) + '/' + esc(nAll) + ' 天</span></div>';
 
     paper.innerHTML = html;
     syncViewToggle();
