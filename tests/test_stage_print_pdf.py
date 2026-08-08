@@ -117,3 +117,52 @@ def test_T10_fill_matrix_min_height_8mm():
     """sprint-26080801: fillMatrixToPaper 行高统一设 8mm (回归 sprint 26080103 v2 触摸友好行高)."""
     html = _read_html()
     assert "r.style.minHeight = '8mm'" in html
+
+
+def test_T11_m_total_m_tempo_m_once_font_size_8pt():
+    """sprint-26080802: 矩阵短列字号 9.5pt/9pt → 8pt 防 iPad Safari 速度列文字溢出."""
+    html = _read_html()
+    # m-total/m-tempo/m-once 必须 font-size: 8pt (含 sprint-26080802 注释)
+    assert "table.matrix td.m-total {" in html
+    block_total = html.split("table.matrix td.m-total {", 1)[1].split("}", 1)[0]
+    assert "font-size: 8pt" in block_total
+    assert "9.5pt → 8pt" in block_total  # sprint 标记
+    assert "table.matrix td.m-tempo {" in html
+    block_tempo = html.split("table.matrix td.m-tempo {", 1)[1].split("}", 1)[0]
+    assert "font-size: 8pt" in block_tempo
+    assert "overflow-wrap: anywhere" in block_tempo  # 防速度字符串溢出
+    assert "table.matrix td.m-once {" in html
+    block_once = html.split("table.matrix td.m-once {", 1)[1].split("}", 1)[0]
+    assert "font-size: 8pt" in block_once
+
+
+def test_T12_no_style_label_in_header():
+    """sprint-26080802: 表格视图不再含 '表格 · 科目×日期 · A4 横向' 冗余字符串."""
+    html = _read_html()
+    assert "表格 · 科目×日期 · A4 横向" not in html
+    # 但 JS 函数 styleLabel 变量可能还在 (已无引用), 验证无 ph-sub 拼入
+    assert "html += ' · ' + styleLabel;" not in html
+
+
+def test_T13_pf_no_generated_time():
+    """sprint-26080802: pf 块不含生成时间 + '矩阵 · A4 横向'."""
+    html = _read_html()
+    assert "生成 '" not in html
+    assert "矩阵 · A4 横向" not in html
+    assert "分组 · A4 竖向" not in html
+
+
+def test_T14_ph_sub_no_redundant_period():
+    """sprint-26080802: ph-sub 不含 '周期 X ~ Y · 上课日 · 截止' 冗余."""
+    html = _read_html()
+    assert "html += '<div class=\"ph-sub\">周期 ' + esc(data.stage_start || '')" not in html
+    assert "html += ' · 上课日 '" not in html
+    assert "html += ' · 截止 '" not in html
+
+
+def test_T15_dash_chars_unaffected_css():
+    """sprint-26080802: 8月1日列 m-tempo overflow-wrap 已加, days-1/2 短列字号 9.5pt 兜底."""
+    html = _read_html()
+    # days-1 / days-2 短列字号必须 9.5pt (sprint-26080802 10.5pt → 9.5pt)
+    assert "table.matrix.days-1 td.m-once," in html
+    assert "table.matrix.days-2 td.m-once { font-size: 9.5pt;" in html
