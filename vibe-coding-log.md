@@ -1,3 +1,27 @@
+## 2026-08-08 stage-print iPad Safari PDF 完整输出 (sprint 26080801)
+
+- **背景**: dad 反馈 iPad mini 横屏 `/report/stage-print?stage_order=16&view=table` 全选 6 天屏上不可读, iPad Safari 导出 PDF 4/6 天被截, 而 Mac Chrome 1 页完整 (6/6 天).
+- **根因 (pymupdf 抽 PDF page rect 验证)**:
+  - iPad Safari 输出的 PDF page rect = **595×841 (A4 portrait)**, 而 Mac PDF = **1191×841 (A3 landscape)**
+  - iOS Safari 的 `UIPrintInteractionController` **不读 `@page` CSS 尺寸**, 静默 fallback A4 portrait
+  - 因此 420mm 横向矩阵被压到 595px A4 纵向, 必然截内容
+- **修复**:
+  - [x] 新增 `applyPrintPaperFix` + `beforeprint`/`afterprint` 监听: 直接改 paper 元素 width=420mm / minHeight=297mm / maxWidth=none / tableLayout=fixed, 让 iOS 物理渲染按 paper 尺寸出图
+  - [x] `@media (max-width: 1180px)`: iPad 横屏 viewport 1133px paper 100% 自适应 + view-table-wrap overflow-x: auto 可横滑
+  - [x] `@media print`: paper `max-width: 420mm` (从 `width: 420mm` 改) + 矩阵 `table-layout: fixed !important; width: 100% !important`
+  - [x] `preparePrintZoom` floor 0.95 (从 0.65/0.70 改): iPad Safari paper.zoom 在 print 上下文支持不完整, 改 0.95 宁可分 2 页也别缩
+  - [x] colgroup 短列 6 天时 2.8% (从 2.4%): iPad viewport 1133px 上 ≈ 32px ≈ 8mm
+  - [x] 文案: 表格视图状态条改 "表格 · A3 横向 · 屏上可横滑 · 打印按内容自动分页"
+- **新单测 (10/10 PASSED, tests/test_stage_print_pdf.py)**: T1 viewport 适配 / T2 print max-width / T3 table-layout fixed / T4 colgroup 2.8 / T5 zoom 0.95 / T6 文案 / T7 回归 26080103 / T8 updatePreviewStatus / T9 beforeprint 兜底 / T10 row min-height 8mm
+- **验证**: pytest 470 passed / 8 skipped / 0 failed (净零回归); 8765 PID 23748; curl `/report/stage-print?stage_order=16&view=table` 200
+- **沉淀**: references/stage-print-ipad-safari-pdf-2026-08-08.md + 3 条 decision-log; 双写 Obsidian md5 一致
+- **教训**:
+  1. **iPad Safari WKWebView 忽略 `@page` 尺寸**, CSS 标准在 iOS UIPrintInteractionController 不生效, 必须 JS beforeprint 兜底改 paper 元素尺寸 (pymupdf 抽 PDF page rect 是验证 A4/A3 区分的硬证据)
+  2. **iPad Safari paper.zoom 在 print 上下文支持不完整**, floor 0.65 压到 65% 不可读, 改 0.95 宁可分 2 页也别缩
+  3. **pdftotext 抽 CJK PDF 时字体映射丢失**, pymupdf 抽文本块 + 坐标 + rect 是更可靠的对比方法
+  4. **断言"不能含 width: 420mm !important"会被 max-width: 420mm !important 误匹配**, 必须用前导空格或 `\n      width:` 限定避免子串冲突
+  5. **iPad 横屏 1133px viewport 把 420mm paper 压回视口宽**, colgroup 短列 2% 折算 22px ≈ 5mm 不可读, 屏上必须 paper 100% 自适应 + view-table-wrap overflow-x: auto
+
 ## 2026-08-05 云端测试数据全清: create_test session + prb_test_item 科目 + daily 修复
 
 - **发现**: practice_sessions 9 条 content='create_test' (id 1451-1467, item_id 999003, practice_date 7-28)

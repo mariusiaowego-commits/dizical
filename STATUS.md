@@ -1,6 +1,45 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-07 (report 4 处 MySQL 兼容修复, PR #231 MERGED, main b46ff6f)
+**最后更新**: 2026-08-08 (stage-print iPad Safari PDF 完整输出 + iPad 横屏可读, sprint 26080801)
+
+---
+
+### 2026-08-08 stage-print iPad 横屏适配 + iPad Safari PDF 完整输出 (sprint 26080801, feat/stage-print-ipad-pdf-260808)
+
+**触发**: dad 反馈 iPad mini 横屏 `/report/stage-print?stage_order=16&view=table` 全选 6 天屏上不可读, iPad Safari 导出 PDF 内容不全 (4/6 天 + 长 URL 残片), 而 Mac Chrome 1 页完整 (6/6 天).
+
+**根因 (pymupdf 抽 PDF page rect 验证)**:
+- iPad Safari 输出的 PDF page rect = **595×841 (A4 portrait)**, 而 Mac PDF = **1191×841 (A3 landscape)**
+- iOS Safari 的 `UIPrintInteractionController` **不读 `@page` CSS 尺寸**, 静默 fallback A4 portrait
+- 因此 420mm 横向矩阵被压到 595px A4 纵向, 必然截内容
+
+**修复 (5 处 CSS + 4 处 JS, 1 文件 stage-print.html)**:
+- [x] 新增 `applyPrintPaperFix` + `beforeprint`/`afterprint` 监听: 直接改 paper 元素 width=420mm / minHeight=297mm / maxWidth=none / tableLayout=fixed, 让 iOS 物理渲染按 paper 尺寸出图
+- [x] `@media (max-width: 1180px)`: iPad 横屏 viewport 1133px paper 100% 自适应 + view-table-wrap overflow-x: auto 可横滑
+- [x] `@media print`: paper `max-width: 420mm` (从 `width: 420mm` 改) + 矩阵 `table-layout: fixed !important; width: 100% !important`
+- [x] `preparePrintZoom` floor 0.95 (从 0.65/0.70 改): iPad Safari paper.zoom 在 print 上下文支持不完整, 改 0.95 宁可分 2 页也别缩
+- [x] colgroup 短列 6 天时 2.8% (从 2.4%): iPad viewport 1133px 上 ≈ 32px ≈ 8mm
+- [x] 文案: 表格视图状态条改 "表格 · A3 横向 · 屏上可横滑 · 打印按内容自动分页"
+
+**新单测 (10/10 PASSED, `tests/test_stage_print_pdf.py`)**:
+- T1: paper CSS viewport ≤1180px 时 100% 自适应
+- T2: @media print max-width 420mm (iPad Safari 兜底)
+- T3: @media print table-layout fixed (矩阵锁列)
+- T4: colgroup 短列 6 天 = 2.8%
+- T5: preparePrintZoom floor 0.95
+- T6: syncPaperMode 文案 "屏上可横滑 · 打印按内容自动分页"
+- T7: 回归 sprint 26080103 (min-width 8mm / break-inside avoid / table-header-group)
+- T8: updatePreviewStatus 屏上溢出消息
+- T9: beforeprint iPad Safari paper 元素尺寸兜底
+- T10: fillMatrixToPaper 行高统一设 8mm
+
+**验证**: pytest 470 passed / 8 skipped / 0 failed (净零回归); 8765 重启 PID 23748; curl `/report/stage-print?stage_order=16&view=table` 200 OK; 关键 CSS 字串 `applyPrintPaperFix / max-width: 420mm / table-layout: fixed` 全部就位
+
+**部署**: 本地 8765 已加载新代码; **CloudRun 待 dad 拍板部署** (沿用 sprint 26080701 MCP 流程)
+
+**沉淀**: `references/stage-print-ipad-safari-pdf-2026-08-08.md` + 3 条 decision-log (iPad Safari @page 失效兜底 / 屏上 viewport 自适应 / zoom floor 0.95)
+
+**风险**: R1 iOS 某些版本 `beforeprint` 不触发 → dad 真机验证; R2 colgroup 短列 8mm 仍偏小 → sprint 26080103 min-width 8mm 保底; R3 CloudRun 未部署 → dad 拍板
 
 ---
 
