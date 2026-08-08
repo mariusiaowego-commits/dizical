@@ -800,7 +800,8 @@
   /** 页眉：无老师要求模块；分组视图保留科目小计 chips */
   function renderHeader(data) {
     var sum = data.summary || {};
-    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
+    /* sprint-26080804: <title> 纯英文 (iOS Safari 把空格+中点转 -, 纯 ASCII 才能保干净文件名) */
+    var title = 'Dizical Practice Detail - Stage ' + (data.stage_order != null ? data.stage_order : '-');
     /* sprint-26080802: 删 styleLabel 死代码 + 删 ph-sub 周期/上课日/截止/styleLabel 拼入 */
     var isTable = viewMode === 'table';
     var html = '';
@@ -1058,8 +1059,9 @@
     var nShow = (viewData.days || []).length;
     var nAll = (data.days || []).length;
 
-    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
-    document.title = title + (viewMode === 'table' ? ' · 表格' : ' · 分组') + (nShow < nAll ? ' · ' + nShow + '天' : '');
+    /* sprint-26080804: document.title 纯英文 (iOS Safari 打印文件名源) */
+    var title = 'Dizical Practice Detail - Stage ' + (data.stage_order != null ? data.stage_order : '-');
+    document.title = title + (viewMode === 'table' ? ' - Table' : ' - Grouped') + (nShow < nAll ? ' - ' + nShow + 'days' : '');
 
     /* sprint-26080802: 删生成时间 + styleLabel 冗余, pf 块只保留数据源标识 */
     var now = new Date();
