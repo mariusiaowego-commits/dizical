@@ -166,3 +166,21 @@ def test_T15_dash_chars_unaffected_css():
     # days-1 / days-2 短列字号必须 9.5pt (sprint-26080802 10.5pt → 9.5pt)
     assert "table.matrix.days-1 td.m-once," in html
     assert "table.matrix.days-2 td.m-once { font-size: 9.5pt;" in html
+
+
+def test_T16_title_english_for_ios_safari_pdf_filename():
+    """sprint-26080804: <title> 纯英文 (iOS Safari 把空格+中点转 -, 纯 ASCII 才能保干净文件名).
+
+    修前: document.title = "竹笛练习明细 · Stage 16 · 表格 · 6天"
+          iOS Safari 打印 PDF 文件名: "竹笛练习明细-Stage-16-表格-6天.pdf" (含中文+全 -)
+    修后: document.title = "Dizical Practice Detail - Stage 16 - Table - 6days"
+          iOS Safari 打印 PDF 文件名: "Dizical-Practice-Detail-Stage-16-Table-6days.pdf" (纯 ASCII, 干净分隔)
+    """
+    html = _read_html()
+    # 不含中文 title 字串
+    assert "竹笛练习明细 · Stage " not in html
+    # 含纯英文 title
+    assert "Dizical Practice Detail - Stage " in html
+    assert " - Table" in html
+    assert " - Grouped" in html
+    assert " - " in html and "days" in html
