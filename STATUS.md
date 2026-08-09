@@ -1,6 +1,6 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-08 (sprint 26080803 清 prb_test 脏数据, main 8410005)
+**最后更新**: 2026-08-09 (stage-print iPad 系列 4 sprint 全收尾, main 8c8c152, 生产 074)
 
 ---
 
@@ -32,7 +32,26 @@
 
 ---
 
-### 2026-08-08 stage-print iPad 横屏适配 + iPad Safari PDF 完整输出 (sprint 26080801, feat/stage-print-ipad-pdf-260808)
+### 2026-08-08/09 sprint 26080804 stage-print PDF 文件名修复 (PR #240/#241/#242 MERGED, main 8c8c152, 生产 074)
+
+**触发**: dad 反馈 iPad Safari 导出 PDF 文件名全用 `-` 连接 (中文/中点/空格被 iOS 转义), 后要求文件名写 stage 日期范围而非 Stage 序号。
+
+**根因**: iOS Safari `UIPrintInteractionController` 用 `<title>` (document.title) 作为 PDF 文件名源, 把空格/中点/中文全部替换为 `-`。
+
+**修法 (3 rounds)**:
+- round 1 (PR #240): document.title 改纯英文 `Dizical Practice Detail - Stage 16 - Table`
+- round 2 (PR #241): dad 反馈标题不要空格 (空格 iOS 转义 bug) → 全 `-` 连接 `Dizical-Practice-Detail-Stage-16-Table`
+- round 3 (PR #242): dad 要求写日期范围不写 Stage 序号 → `Dizical-Practice-Detail-260727-260801-Table-6days` (toYYMMDD 转 stage_start/stage_end), 且恢复 PDF 内容标题为中文
+
+**最终 PDF 文件名**: `Dizical-Practice-Detail-260727-260801-Table-6days.pdf` (纯 ASCII, 全 `-` 连接, 日期范围格式)
+
+**验证**: pytest 476 passed / 8 skipped / 0 failed; 16/16 stage-print 单测 (T16 覆盖日期格式); 生产 074 curl verify: `toYYMMDD` 2 处 + 中文标题 1 处 + 无 Stage 序号文件名
+
+**部署**: 070 (26080801) → 071 (26080802) → 073 (26080804 r2) → 074 (26080804 r3), 全部 force deploy 成功
+
+---
+
+### 2026-08-08 sprint 26080803 清 prb_test 脏数据 (PR #238 MERGED, main 8410005)
 
 **触发**: dad 反馈 iPad mini 横屏 `/report/stage-print?stage_order=16&view=table` 全选 6 天屏上不可读, iPad Safari 导出 PDF 内容不全 (4/6 天 + 长 URL 残片), 而 Mac Chrome 1 页完整 (6/6 天).
 
