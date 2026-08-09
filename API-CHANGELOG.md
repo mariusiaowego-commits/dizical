@@ -1,8 +1,9 @@
 # Backend 切换 — API 变更
 
 **日期**: 2026-08-09
-**分支**: feat/s3-assignment-history3 (PR 待建)
+**分支**: feat/s3-assignment-history3 (PR #247)
 **类型**: 🟡 部分兼容（新增只读端点, minip 不调用无需改）
+**状态**: 已上线 (CloudRun 077, 2026-08-09)
 
 ## 变更
 
