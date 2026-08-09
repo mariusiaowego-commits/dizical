@@ -1,6 +1,24 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-09 (stage-print iPad 系列 4 sprint 全收尾, main 8c8c152, 生产 074)
+**最后更新**: 2026-08-09 (config 老师要求录入优化 6 需求全上线, main f2e852d, 生产 077)
+
+---
+
+### 2026-08-09 sprint 26080901 config 老师要求录入优化 (PR #244/#247/#248/#249 MERGED, 生产 077)
+
+**触发**: dad 需求 PRD `config配置-老师要求录入优化.md` (6 项: 草稿缓存/上周预填/历史3次/速度多档/picker只列active/配图预览)
+
+**全部上线 (CloudRun 077)**:
+- 需求5: 科目 picker 只列 active (MySQL 版过滤条件 bug 修复)
+- 需求6: heic 上传拦截 (400 中文提示) + 历史 2 张 heic 转 jpg + 配图点击 modal 预览
+- 需求2: 预填增强 (MySQL 空返回 bug 修复 + 填 metronome + 标来源日期)
+- 需求3: 历史 3 次展示 + 复制 (新 API by-item)
+- 需求1: 草稿缓存 + 刷新拦截 (localStorage)
+- 需求4: 速度多档 metronome_segments (A1 方案)
+
+**验证**: 509 passed / 8 skipped / 0 failed; 生产页面全 200; 预填防御 `♩=95 / 100` 解析出 95
+
+**部署**: 075 deploy_failed (Port 误传 8765, 容器实际 8080) → 076/077 传 Port=8080 成功
 
 ---
 

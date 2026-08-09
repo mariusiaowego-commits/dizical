@@ -1,3 +1,14 @@
+## 2026-08-09 config 老师要求录入优化 sprint 全部完成 (S1-S5, PR #244/#247/#248/#249, CloudRun 077)
+
+- **6 项需求全部上线**: 5 picker只列active / 6 配图heic拦截+modal预览 / 2 预填增强 / 3 历史3次 / 1 草稿缓存 / 4 速度多档
+- **测试**: 全量 509 passed / 8 skipped / 0 failed (新增 30+ 回归测试: mysql过滤5 + upload heic 3 + latest-requirements 4 + by-item 5 + draft 7 + segments 7 + modal 3)
+- **生产验证 (CloudRun 077)**: 页面全 200; picker 11 active 0 archived; by-item 返3条; 草稿/分段控件代码在位; **预填防御 `♩=95 / 100` 解析出 tempo_bpm=95** (之前 int() 抛错被吞, 练习页预填静默失效)
+- **部署踩坑 (2 个新坑)**:
+  1. **deploy Port 必须 8080 不是 8765**: Dockerfile EXPOSE 8080 + CMD --port 8080, 传 Port=8765 → 健康检查连 8765 被拒 → 075 deploy_failed. 076/077 传 Port=8080 一次过
+  2. **MCP 长会话 auth 过期**: deploy 返 AUTH_REQUIRED, 需 auth start_auth device → dad 浏览器输 user_code → 再 deploy. (skill 有记录但本 sprint 第一次实际触发)
+- **Git 协作坑**: S3/S4 顺序 merge 冲突 (都改 config-practice-log.html 行模板区域不同函数块), rebase 手动合并 (删除冲突标记保留两边), force push 更新 PR, 502→509 passed
+- **决策沉淀 (dad 拍板)**: 速度多档 A1 (保留 metronome 字符串 + 新增 metronome_segments [{label自由文本, tempo}], label 不限 range 覆盖 时间分段/交替/situation); 预填 B1 (日期前最近一次+标日期); 草稿 D1 (仅老师要求Tab)
+- **新增 API**: GET /config/api/assignments/by-item?item_id=X&limit=3 (按 item_id 优先, 其次科目名匹配 — 兼容历史 item_id 为 null 的记录)
 ## 2026-08-09 config 老师要求录入优化 sprint 启动 (S0 现状验证, 未提交代码)
 
 - **触发**: dad 需求 PRD `config配置-老师要求录入优化.md` (Obsidian tqob), 6 项需求: 草稿缓存/上周预填/历史3次/速度多档/picker只列active/配图预览
