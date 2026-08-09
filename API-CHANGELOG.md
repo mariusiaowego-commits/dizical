@@ -1,6 +1,23 @@
 # Backend 切换 — API 变更
 
 **日期**: 2026-08-09
+**分支**: feat/s3-assignment-history3 (PR 待建)
+**类型**: 🟡 部分兼容（新增只读端点, minip 不调用无需改）
+
+## 变更
+
+### 1. GET `/config/api/assignments/by-item`（新）
+
+查询某科目最近 N 次老师要求（默认 3 次）。参数: `item_id` 或 `item`（科目名）, `limit`。
+返回 `{history: [{lesson_date, metronome, requirements}]}` 倒序。
+按 item_id 优先, 其次科目名匹配（兼容历史 item_id 为 null 的记录）。
+minip 不调用。
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-08-09
 **分支**: fix/picker-active-only-s1 (PR #244)
 **类型**: ✅ 完全兼容（新增校验/格式拦截, minip 无需改动）
 
