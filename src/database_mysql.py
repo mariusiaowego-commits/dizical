@@ -339,10 +339,16 @@ class MySQLBackend(BaseBackend):
     def get_practice_items(self, active_only: bool = True, include_archived: bool = False) -> List[Dict]:
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
-                if active_only and not include_archived:
-                    cur.execute('SELECT * FROM practice_items WHERE is_archived = 0 ORDER BY sort_order, name')
-                else:
-                    cur.execute('SELECT * FROM practice_items ORDER BY sort_order, name')
+                where = []
+                if active_only:
+                    where.append('is_active = 1')
+                if not include_archived:
+                    where.append('is_archived = 0')
+                sql = 'SELECT * FROM practice_items'
+                if where:
+                    sql += ' WHERE ' + ' AND '.join(where)
+                sql += ' ORDER BY sort_order, name'
+                cur.execute(sql)
                 return list(cur.fetchall())
 
     def create_practice_item(self, name: str, category_id: Optional[int] = None) -> int:

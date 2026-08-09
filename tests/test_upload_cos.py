@@ -4,7 +4,7 @@
 1. 有 COS 配置 → 上传走 COS, 返回 COS URL
 2. 无 COS 配置 → 回落本地, 返回 /uploads/raw/ URL
 3. 格式白名单: 不支持的格式 → 400
-4. HEIC 转换: 成功返回 .jpg URL
+4. HEIC/HEIF 拒绝 (2026-08-09 需求6): 上传端拦截, 提示转 jpg/png
 5. COS 上传失败 → 500 (fail loud)
 """
 import io
@@ -124,28 +124,59 @@ class TestFormatWhitelist:
         assert "不支持的格式" in resp.json()["error"]
 
 
-class TestHeicConversion:
-    """HEIC 转换 (COS 分支)."""
+class TestHeicRejected:
+    """2026-08-09 (需求6): HEIC/HEIF 直接拒绝 (dad 拍板: 用户自行转 jpg/png).
 
-    def test_heic_converts_to_jpg_cos(self, client, monkeypatch):
+    旧行为是 sips 转换上传, 但 CloudRun Linux 容器无 sips → heic 原样存 COS →
+    Chrome 无法预览. 现在上传端拦截, 提示用户转格式.
+    """
+
+    def test_heic_rejected_400(self, client, monkeypatch):
         c, cfg = client
         from src.kid_app import cos_client as cos_mod
-        uploaded = {}
-        class FakeUploader:
+        class AnyUploader:
             is_available = True
-            def upload(self, filename, content, content_type="image/jpeg"):
-                uploaded["name"] = filename
-                return f"https://636c-cloud1-d4gfwyvsk1435e2e4-1454535414.tcb.qcloud.la/{filename}"
-        monkeypatch.setattr(cos_mod, "cos_uploader", FakeUploader())
-        # mock HEIC 转换成功
-        monkeypatch.setattr(cfg, "_convert_heic_to_jpeg", lambda src, dst: (dst.write_bytes(b"JPEG"), True)[1])
+            def upload(self, *a, **k):
+                raise AssertionError("不该被调用")
+        monkeypatch.setattr(cos_mod, "cos_uploader", AnyUploader())
 
         resp = c.post(
             "/config/api/assignments/upload",
             files={"file": ("photo.heic", b"\x00\x00\x00\x18ftypheic", "image/heic")},
         )
+        assert resp.status_code == 400
+        assert "HEIC" in resp.json()["error"]
+
+    def test_heif_rejected_400(self, client, monkeypatch):
+        c, cfg = client
+        from src.kid_app import cos_client as cos_mod
+        class AnyUploader:
+            is_available = True
+            def upload(self, *a, **k):
+                raise AssertionError("不该被调用")
+        monkeypatch.setattr(cos_mod, "cos_uploader", AnyUploader())
+
+        resp = c.post(
+            "/config/api/assignments/upload",
+            files={"file": ("photo.heif", b"\x00\x00\x00\x18ftypheic", "image/heif")},
+        )
+        assert resp.status_code == 400
+        assert "HEIC" in resp.json()["error"]
+
+    def test_jpg_still_ok(self, client, monkeypatch):
+        """jpg 正常上传不受影响."""
+        c, cfg = client
+        from src.kid_app import cos_client as cos_mod
+        class FakeUploader:
+            is_available = True
+            def upload(self, filename, content, content_type="image/jpeg"):
+                return f"https://636c-cloud1-d4gfwyvsk1435e2e4-1454535414.tcb.qcloud.la/{filename}"
+        monkeypatch.setattr(cos_mod, "cos_uploader", FakeUploader())
+
+        resp = c.post(
+            "/config/api/assignments/upload",
+            files={"file": ("photo.jpg", b"\xff\xd8\xff\xe0", "image/jpeg")},
+        )
         assert resp.status_code == 200
-        data = resp.json()
-        assert data["ok"] is True
-        assert uploaded["name"].endswith(".jpg")  # 上传的是转换后的 jpg
-        assert data["url"].endswith(".jpg")
+        assert resp.json()["ok"] is True
+        assert resp.json()["url"].endswith(".jpg")

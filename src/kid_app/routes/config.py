@@ -976,19 +976,24 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
 
 @router.get("/api/assignments/latest-requirements")
 def api_latest_requirements():
-    """每科目最近一次的老师要求 (跨全部历史, 按 lesson_date 倒序取最新; 最新为空时回退到更早的非空要求)"""
-    import json as _json
+    """每科目最近一次非空的老师要求 (预填用, B1 语义 2026-08-09).
+
+    - 用 db.get_weekly_assignments_in_range (双后端兼容), 不用裸 cursor
+      (裸 cursor 在 MySQL 返 tuple, row["items"] 抛错被吞 -> 线上一直空)
+    - 返回含 lesson_date 来源日期, 供前端标注 "上次 YYYY-MM-DD"
+    - 最近一次要求为空时回退到更早的非空要求
+    """
+    import datetime as _dt
     result = {}
-    with db._get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT lesson_date, items FROM weekly_assignments ORDER BY lesson_date DESC")
-        rows = cursor.fetchall()
-    for row in rows:
-        try:
-            items = _json.loads(row["items"])
-        except Exception:
-            continue
-        for it in items:
+    assignments = db.get_weekly_assignments_in_range(
+        _dt.date(2000, 1, 1), _dt.date.today() + _dt.timedelta(days=365)
+    )
+    # 按 lesson_date 倒序 (最新在前)
+    assignments.sort(key=lambda a: a["lesson_date"], reverse=True)
+    for a in assignments:
+        ld = a["lesson_date"]
+        ld_str = ld.isoformat() if hasattr(ld, "isoformat") else str(ld)[:10]
+        for it in a.get("items", []):
             iid = it.get("item_id")
             if not iid:
                 continue
@@ -997,10 +1002,13 @@ def api_latest_requirements():
                 # 该科目已有更新的记录; 若更新的要求为空, 用这条旧的非空要求补
                 if not result[iid]["requirements"] and req:
                     result[iid]["requirements"] = req
+                    result[iid]["metronome"] = it.get("metronome") or ""
+                    result[iid]["lesson_date"] = ld_str
                 continue
             result[iid] = {
                 "requirements": req,
                 "metronome": it.get("metronome") or "",
+                "lesson_date": ld_str,
             }
     return JSONResponse({"items": result})
 
@@ -1134,29 +1142,20 @@ import uuid as _uuid
 _UPLOAD_RAW = Path(__file__).resolve().parent.parent.parent.parent / "data" / "uploads" / "raw"
 _UPLOAD_RAW.mkdir(parents=True, exist_ok=True)
 
-_HEIC_EXTS = (".heic", ".heif")
+# 2026-08-09 (需求6): 只接受 jpg/png. HEIC/HEIF 直接拒绝 (CloudRun Linux 容器无 sips,
+# 历史 heic 配图在 Chrome 无法预览; dad 拍板: 用户自行转格式, 上传端拦截).
+_ALLOWED_EXTS = (".jpg", ".jpeg", ".png")
 
-
-def _convert_heic_to_jpeg(src_path: Path, jpg_path: Path) -> bool:
-    """HEIC→JPEG: 用 macOS 内置 sips (零新依赖)。失败返回 False, 调用方保留原 heic。"""
-    sips = shutil.which("sips")
-    if not sips:
-        return False
-    try:
-        subprocess.run(
-            [sips, "-s", "format", "jpeg", str(src_path), "--out", str(jpg_path)],
-            check=True, capture_output=True, timeout=90,
-        )
-        return jpg_path.exists() and jpg_path.stat().st_size > 0
-    except Exception:
-        return False
 
 @router.post("/api/assignments/upload")
 async def api_upload_assignment_image(file: UploadFile = File(...)):
     """上传配图 (PR-F: 有 COS 配置存 COS, 否则回落本地 data/uploads/raw/)."""
     ext = Path(file.filename).suffix.lower() if file.filename else ""
-    if ext not in (".jpg", ".jpeg", ".png", ".heic", ".heif"):
-        return JSONResponse({"ok": False, "error": f"不支持的格式: {ext}"}, status_code=400)
+    if ext not in _ALLOWED_EXTS:
+        hint = "支持 jpg / jpeg / png 格式"
+        if ext in (".heic", ".heif"):
+            hint = "不支持 HEIC/HEIF 格式, 请先转为 jpg 或 png 后再上传"
+        return JSONResponse({"ok": False, "error": f"不支持的格式: {ext}. {hint}"}, status_code=400)
 
     fname = f"{_uuid.uuid4().hex}{ext}"
     content = await file.read()
@@ -1164,20 +1163,6 @@ async def api_upload_assignment_image(file: UploadFile = File(...)):
     # PR-F: COS 可用 → 存云; 否则本地回落 (开发环境)
     from ..cos_client import cos_uploader
     if cos_uploader.is_available:
-        # 先按需 HEIC 转换 (转换后上传转换结果)
-        if ext in _HEIC_EXTS:
-            # 转换需要本地临时文件 → 先写本地再转, 成功后上传 jpg
-            tmp_heic = _UPLOAD_RAW / fname
-            tmp_heic.write_bytes(content)
-            jpg_name = f"{_uuid.uuid4().hex}.jpg"
-            jpg_path = _UPLOAD_RAW / jpg_name
-            if _convert_heic_to_jpeg(tmp_heic, jpg_path):
-                try:
-                    url = cos_uploader.upload(jpg_name, jpg_path.read_bytes(), "image/jpeg")
-                    return JSONResponse({"ok": True, "url": url, "filename": jpg_name})
-                except Exception as e:
-                    return JSONResponse({"ok": False, "error": f"COS 上传失败: {e}"}, status_code=500)
-            # 转换失败 → 直接传 heic 原样 (Safari 仍可预览)
         try:
             ctype = "image/png" if ext == ".png" else "image/jpeg"
             url = cos_uploader.upload(fname, content, ctype)
@@ -1189,18 +1174,9 @@ async def api_upload_assignment_image(file: UploadFile = File(...)):
     dest = _UPLOAD_RAW / fname
     dest.write_bytes(content)
 
-    url = f"/uploads/raw/{fname}"
-    if ext in _HEIC_EXTS:
-        # Chrome 等浏览器 <img> 不支持 HEIC 渲染 (Safari 可以) → 转 JPEG 保证预览
-        jpg_name = f"{_uuid.uuid4().hex}.jpg"
-        jpg_path = _UPLOAD_RAW / jpg_name
-        if _convert_heic_to_jpeg(dest, jpg_path):
-            url = f"/uploads/raw/{jpg_name}"
-        # 转换失败则保留 heic 原样 (Safari 仍可预览)
-
     return JSONResponse({
         "ok": True,
-        "url": url,
+        "url": f"/uploads/raw/{fname}",
         "filename": fname,
     })
 

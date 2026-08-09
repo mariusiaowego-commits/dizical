@@ -1,5 +1,21 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-08-09
+**分支**: fix/picker-active-only-s1 (PR #244)
+**类型**: ✅ 完全兼容（新增校验/格式拦截, minip 无需改动）
+
+## 变更
+
+### 1. POST `/config/api/assignments/upload` — 格式白名单收紧
+
+- 之前: 接受 jpg/jpeg/png/heic/heif (heic 依赖 macOS sips 转换, CloudRun Linux 无 sips 导致 heic 原样存 COS, Chrome 无法预览)
+- 现在: 只接受 jpg/jpeg/png; heic/heif 返 400 + 中文提示 (请先转为 jpg 或 png)
+- 影响: 业务上 heic 上传本来 Chrome 就看不了, 实际无损失. minip 不调用此端点.
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-08-05
 **分支**: feat/sprint-09-cloud-cutover
 **类型**: 🟡 部分兼容（新增只读/写端点，minip 无需改）

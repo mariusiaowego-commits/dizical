@@ -804,9 +804,9 @@
           <div class="form-group">
             <label>📷 配图（风格化卡片）</label>
             <div id="assignImagePreview" class="image-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
-            <input type="file" id="assignImageInput" accept="image/jpeg,image/png,image/heic,image/heif" multiple style="display:none">
+            <input type="file" id="assignImageInput" accept="image/jpeg,image/png" multiple style="display:none">
             <button class="btn btn-secondary" id="addAssignImageBtn">+ 选择图片</button>
-            <span style="font-size:11px;color:#aaa;margin-left:8px">选图后自动上传，等待风格化完成</span>
+            <span style="font-size:11px;color:#aaa;margin-left:8px">支持 jpg / png 格式</span>
             <div id="assignImageStatus" style="font-size:12px;color:#888;margin-top:4px"></div>
           </div>
           <button class="btn btn-primary" id="submitAssignBtn">✅ 提交要求</button>
@@ -843,7 +843,52 @@
 
 </div>
 
+<!-- 图片预览 Modal (2026-08-09 需求6: 点击配图打开预览, 不下载) -->
+<div id="imagePreviewModal" class="img-preview-overlay" style="display:none" onclick="closeImagePreview(event)">
+  <div class="img-preview-box" onclick="event.stopPropagation()">
+    <button class="img-preview-close" onclick="closeImagePreview(event)" aria-label="关闭">×</button>
+    <img id="imagePreviewImg" src="" alt="配图预览" style="max-width:92vw;max-height:82vh;object-fit:contain;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,0.35)">
+  </div>
+</div>
+
+<style>
+  .img-preview-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.72);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .img-preview-box { position: relative; display: flex; align-items: center; justify-content: center; }
+  .img-preview-close {
+    position: absolute; top: -14px; right: -14px; z-index: 1;
+    width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: #fff; color: #333;
+    font-size: 18px; line-height: 1; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .img-preview-close:hover { background: #f0e8d0; }
+</style>
+
 <script>
+// ── 图片预览 Modal (2026-08-09 需求6) ──
+function openImagePreview(url) {
+  const img = document.getElementById('imagePreviewImg');
+  if (!img) return;
+  img.src = url;
+  document.getElementById('imagePreviewModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeImagePreview(ev) {
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById('imagePreviewModal');
+  if (!m) return;
+  m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeImagePreview();
+});
+
 // ── 状态 ──
 // ── 状态 ──
 let practiceItems = [];
@@ -1291,6 +1336,7 @@ function renderAssignEntries() {
         <input class="form-input metronome-input" data-idx="${i}" value="${entry.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
         <button class="remove-btn" data-idx="${i}">×</button>
       </div>
+      <div class="entry-preset-hint" data-idx="${i}" style="display:none;font-size:12px;color:#8B6914;margin:2px 0 4px"></div>
       <div class="entry-bottom">
         <textarea class="form-textarea" data-idx="${i}" placeholder="每行一条要求，如：
 注意口风不要漏气
@@ -1318,16 +1364,42 @@ function renderAssignEntries() {
       assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
-      // 预设: 选中科目且要求框为空(或仍是上一个科目自动填入的预设)时, 填入该科目最近一次的要求
+      // 预设 (B1, 2026-08-09): 选中科目且内容未编辑时, 预填该科目最近一次非空要求
+      // 填 requirements + metronome + 标注来源日期
       if (newId && latestRequirements[newId]) {
         const prevPreset = oldId && latestRequirements[oldId] ? (latestRequirements[oldId].requirements || '') : null;
+        const prevMetro = oldId && latestRequirements[oldId] ? (latestRequirements[oldId].metronome || '') : null;
         const rowEl = sel.closest('.log-entry-row');
         const ta = rowEl ? rowEl.querySelector('textarea') : null;
+        const metroInput = rowEl ? rowEl.querySelector('.metronome-input') : null;
+        const hintEl = rowEl ? rowEl.querySelector('.entry-preset-hint') : null;
         const isUntouchedPreset = prevPreset !== null && ta && ta.value === prevPreset;
+        const isUntouchedMetro = prevMetro !== null && metroInput && metroInput.value === prevMetro;
         if (ta && (!assignEntries[idx].requirement || isUntouchedPreset)) {
           assignEntries[idx].requirement = latestRequirements[newId].requirements || '';
           ta.value = assignEntries[idx].requirement;
         }
+        // 速度预填: 若速度框未手动改过则一并填入
+        if (metroInput && (!assignEntries[idx].metronome || isUntouchedMetro)) {
+          assignEntries[idx].metronome = latestRequirements[newId].metronome || '';
+          metroInput.value = assignEntries[idx].metronome;
+        }
+        // 来源日期标注
+        if (hintEl) {
+          const ld = latestRequirements[newId].lesson_date || '';
+          const metro = latestRequirements[newId].metronome || '';
+          if (ld) {
+            hintEl.textContent = '📌 上次 ' + ld + (metro ? ' · ' + metro : '') + ' 已预填';
+            hintEl.style.display = 'block';
+          } else {
+            hintEl.style.display = 'none';
+          }
+        }
+      } else {
+        // 无预填数据 → 隐藏 hint
+        const rowEl = sel.closest('.log-entry-row');
+        const hintEl = rowEl ? rowEl.querySelector('.entry-preset-hint') : null;
+        if (hintEl) hintEl.style.display = 'none';
       }
     });
   });
@@ -1366,6 +1438,13 @@ document.getElementById('assignImageInput').addEventListener('change', async (e)
   const files = e.target.files;
   if (!files.length) return;
   const statusEl = document.getElementById('assignImageStatus');
+  // 前端预检: HEIC/HEIF 直接拦截 (后端同样拒绝; 提前提示省一次请求)
+  const unsupported = Array.from(files).filter(f => /\.(heic|heif)$/i.test(f.name || ''));
+  if (unsupported.length) {
+    statusEl.textContent = `❌ ${unsupported.map(f => f.name).join(', ')}: 不支持 HEIC/HEIF 格式, 请先转为 jpg 或 png 后再上传`;
+    e.target.value = '';
+    return;
+  }
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     statusEl.textContent = `⏳ 上传中 (${i+1}/${files.length})...`;
@@ -1469,7 +1548,7 @@ async function loadAssignments() {
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
         </div>`;
       }).join('');
-      const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : '';
+      const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" style="cursor:pointer" onclick="openImagePreview('${img}')">`).join('')}</div>` : '';
       const notesHtml = a.notes ? `<div class="assignment-notes">${a.notes}</div>` : '';
       return `<div class="assignment-card" data-lesson="${a.lesson_date}">
         <div class="assignment-card-header">
@@ -1657,7 +1736,7 @@ async function loadWeek() {
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
         </div>`;
       }).join('') + (
-        (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : ''
+        (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" style="cursor:pointer" onclick="openImagePreview('${img}')">`).join('')}</div>` : ''
       ) + (
         a.notes ? `<div class="assignment-notes" style="margin-top:10px">💬 ${a.notes}</div>` : ''
       );
