@@ -1,3 +1,13 @@
+## 2026-08-09 config 老师要求录入优化 sprint 启动 (S0 现状验证, 未提交代码)
+
+- **触发**: dad 需求 PRD `config配置-老师要求录入优化.md` (Obsidian tqob), 6 项需求: 草稿缓存/上周预填/历史3次/速度多档/picker只列active/配图预览
+- **决策定稿** (dad 拍板): 方案A 多 sprint; 速度多档 A1 (保留 metronome 字符串 + 新增 metronome_segments [{label自由文本, tempo}] 覆盖时间分段/交替/situation); 预填 B1 (日期前最近一次非空+标日期); 草稿 D1 (仅老师要求 Tab)
+- **S0 发现 (需求5根因已锁定)**: `GET /config/api/practice/items?include_archived=false` 与 `=true` 返回完全一致 (47项=37 archived+10 active)
+  - 根因: `src/database_mysql.py:342` `if active_only and not include_archived:` 条件依赖 active_only, 但路由 `config.py:292` 传 active_only=False → 永远全量返回
+  - SQLite 版 `database.py:542` (`if not include_archived:`) 逻辑正确, 不要动
+- **接续文档**: `PRDs/AI-PLAN-config-teacher-requirement-260809.md` (主计划) + `handoff-2026-08-09-config-teacher-requirement.md` (进度)
+- **下一步**: S1 修 MySQL 版需求5 bug + 配图预览截图实测 → PR; 然后 S2 预填 → S3 历史3次 → S4 草稿 → S5 速度多档
+- **教训**: token 额度受限时, 先把 AI-PLAN + handoff 双文件写好再接续, 接续 agent 读 2 个文件即可无缝继续
 ## 2026-08-08/09 sprint 26080804 stage-print PDF 文件名修复 (PR #240/#241/#242)
 
 - **触发**: dad 反馈 iPad Safari 导出 PDF 文件名全用 `-` 连接 (中文/中点/空格被 iOS 转义), 后要求写 stage 日期范围而非 Stage 序号
