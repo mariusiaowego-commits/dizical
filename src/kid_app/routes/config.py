@@ -974,6 +974,40 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
     return JSONResponse({"assignments": result})
 
 
+@router.get("/api/assignments/by-item")
+def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] = None, limit: int = 3):
+    """查询某科目最近 N 次老师要求 (需求3, 2026-08-09).
+
+    按 item_id 优先, 其次按科目名匹配 (兼容历史数据 item_id 为 null 的记录).
+    返回 [{lesson_date, metronome, requirements}] 倒序 (最新在前), 默认 3 条.
+    """
+    import datetime as _dt
+    if item_id is None and not item:
+        return JSONResponse({"ok": False, "error": "需要 item_id 或 item 参数"}, status_code=400)
+    assignments = db.get_weekly_assignments_in_range(
+        _dt.date(2000, 1, 1), _dt.date.today() + _dt.timedelta(days=365)
+    )
+    matches = []
+    for a in assignments:
+        for it in a.get("items", []):
+            if item_id is not None and it.get("item_id") == item_id:
+                pass
+            elif item and it.get("item") == item:
+                pass
+            else:
+                continue
+            ld = a["lesson_date"]
+            ld_str = ld.isoformat() if hasattr(ld, "isoformat") else str(ld)[:10]
+            matches.append({
+                "lesson_date": ld_str,
+                "metronome": it.get("metronome") or "",
+                "requirements": it.get("requirements") or it.get("requirement") or "",
+            })
+            break  # 同一条记录该科目只算一次
+    matches.sort(key=lambda x: x["lesson_date"], reverse=True)
+    return JSONResponse({"history": matches[:max(1, limit)]})
+
+
 @router.get("/api/assignments/latest-requirements")
 def api_latest_requirements():
     """每科目最近一次非空的老师要求 (预填用, B1 语义 2026-08-09).

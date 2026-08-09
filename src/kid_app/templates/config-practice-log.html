@@ -925,7 +925,58 @@ async function loadItems() {
   practiceItems = data.items || [];
 }
 
-// ── 加载每科目最近一次老师要求 (预填用) ──
+// ── 历史老师要求 (需求3, 2026-08-09): 选中科目后展示该科目历史 3 次, 可复制 ──
+let itemHistoryCache = {}; // idx -> [{lesson_date, metronome, requirements}]
+
+async function loadItemHistory(idx, itemId, itemName) {
+  const rowEl = document.querySelector(`.log-entry-row[data-idx="${idx}"]`);
+  const histEl = rowEl ? rowEl.querySelector('.entry-history') : null;
+  if (!histEl) return;
+  if (!itemId && !itemName) { histEl.style.display = 'none'; return; }
+  try {
+    const q = itemId ? `item_id=${itemId}` : `item=${encodeURIComponent(itemName)}`;
+    const res = await fetch('/config/api/assignments/by-item?' + q + '&limit=3');
+    const data = await res.json();
+    const hist = (data && data.history) || [];
+    itemHistoryCache[idx] = hist;
+    if (!hist.length) { histEl.style.display = 'none'; return; }
+    const rows = hist.map((h, hi) => {
+      const reqLines = (h.requirements || '').split('\n').filter(Boolean);
+      const reqHtml = reqLines.length ? reqLines.map(r => `<li>${r.replace(/</g, '&lt;')}</li>`).join('') : '<li style="opacity:0.5">无具体要求</li>';
+      const metro = h.metronome ? `<span class="assign-subject-metronome" style="display:inline-block;background:#FF6B6B;color:#fff;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px">${h.metronome}</span>` : '';
+      return `<div style="padding:5px 0;border-bottom:1px dashed #e8dcc0;font-size:12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-weight:600;color:#5D4037">${h.lesson_date}</span>${metro}
+          <button type="button" onclick="copyHistoryReq(${idx}, ${hi})" style="margin-left:auto;padding:2px 8px;border:1px solid #d4c9a8;border-radius:6px;background:#fff;color:#8B6914;cursor:pointer;font-size:11px">复制</button>
+        </div>
+        <ul style="margin:3px 0 0;padding-left:16px">${reqHtml}</ul>
+      </div>`;
+    }).join('');
+    histEl.innerHTML = `<div style="font-size:11px;color:#a09070;margin-bottom:2px">历史要求 (最近 ${hist.length} 次)</div>${rows}`;
+    histEl.style.display = 'block';
+  } catch (e) {
+    histEl.style.display = 'none';
+  }
+}
+
+function copyHistoryReq(idx, hi) {
+  const cache = itemHistoryCache[idx];
+  const h = cache && cache[hi];
+  const rowEl = document.querySelector(`.log-entry-row[data-idx="${idx}"]`);
+  const ta = rowEl ? rowEl.querySelector('textarea') : null;
+  if (!h || !ta) return;
+  const req = h.requirements || '';
+  // 若当前是预填内容且未编辑, 直接覆盖; 否则追加 (避免误删已录入内容)
+  if (!assignEntries[idx].requirement) {
+    assignEntries[idx].requirement = req;
+  } else {
+    assignEntries[idx].requirement = assignEntries[idx].requirement + (assignEntries[idx].requirement.endsWith('\n') ? '' : '\n') + req;
+  }
+  ta.value = assignEntries[idx].requirement;
+  alert('已复制到要求框');
+}
+
+
 async function loadLatestRequirements() {
   try {
     const res = await fetch('/config/api/assignments/latest-requirements');
@@ -1327,6 +1378,7 @@ function renderAssignEntries() {
   assignEntries.forEach((entry, i) => {
     const row = document.createElement('div');
     row.className = 'log-entry-row';
+    row.setAttribute('data-idx', i); // 2026-08-09 需求3: loadItemHistory 按 data-idx 定位行
     row.innerHTML = `
       <div class="entry-top">
         <select class="form-select item-select" data-idx="${i}">
@@ -1337,6 +1389,7 @@ function renderAssignEntries() {
         <button class="remove-btn" data-idx="${i}">×</button>
       </div>
       <div class="entry-preset-hint" data-idx="${i}" style="display:none;font-size:12px;color:#8B6914;margin:2px 0 4px"></div>
+      <div class="entry-history" data-idx="${i}" style="display:none;margin:2px 0 6px;padding:6px 8px;background:#faf7ef;border:1px solid #ece3cc;border-radius:8px"></div>
       <div class="entry-bottom">
         <textarea class="form-textarea" data-idx="${i}" placeholder="每行一条要求，如：
 注意口风不要漏气
@@ -1401,6 +1454,8 @@ function renderAssignEntries() {
         const hintEl = rowEl ? rowEl.querySelector('.entry-preset-hint') : null;
         if (hintEl) hintEl.style.display = 'none';
       }
+      // 历史 3 次 (需求3): 选中科目后加载该科目历史要求展示
+      loadItemHistory(idx, newId, assignEntries[idx].item);
     });
   });
   container.querySelectorAll('.metronome-input').forEach(inp => {
