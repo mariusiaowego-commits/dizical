@@ -169,20 +169,21 @@ def test_T15_dash_chars_unaffected_css():
 
 
 def test_T16_title_english_for_ios_safari_pdf_filename():
-    """sprint-26080804: <title> 纯英文 + 全 - 连接 (iOS Safari 空格转义 bug).
+    """sprint-26080804: document.title 用日期范围 YYMMDD-YYMMDD (iOS Safari 打印文件名源).
 
     修前: document.title = "竹笛练习明细 · Stage 16 · 表格 · 6天"
-          iOS Safari 打印 PDF 文件名: "竹笛练习明细-Stage-16-表格-6天.pdf" (含中文+全 -)
-    修后: document.title = "Dizical-Practice-Detail-Stage-16-Table-6days"
-          iOS Safari 打印 PDF 文件名: "Dizical-Practice-Detail-Stage-16-Table-6days.pdf" (纯 ASCII, 全 - 连接, 无空格)
+    修后: document.title = "Dizical-Practice-Detail-260727-260801-Table-6days"
+          PDF 文件名: "Dizical-Practice-Detail-260727-260801-Table-6days.pdf"
+          (纯 ASCII, 全 - 连接, 无空格, 无中文, 日期范围格式)
+
+    PDF 内容标题 (ph-title) 保留中文 "竹笛练习明细 · Stage 16".
     """
     html = _read_html()
-    # 不含中文 title 字串
-    assert "竹笛练习明细 · Stage " not in html
-    # 不含空格 title (空格在 iOS Safari 转义成 %20, 易 bug)
-    assert "Dizical Practice Detail" not in html
-    # 含全 - 连接纯英文 title
-    assert "Dizical-Practice-Detail-Stage-" in html
-    assert "-Table" in html
-    assert "-Grouped" in html
-    assert "days" in html
+    # document.title 含日期范围格式 (toYYMMDD + - 拼接)
+    assert "Dizical-Practice-Detail-" in html
+    assert "toYYMMDD(data.stage_start) + '-' + toYYMMDD(data.stage_end)" in html
+    assert "-Table" in html and "-Grouped" in html
+    # 不再用 Stage 序号做文件名
+    assert "Dizical-Practice-Detail-Stage-" not in html
+    # PDF 内容标题保留中文
+    assert "竹笛练习明细 · Stage " in html
