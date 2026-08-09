@@ -1002,6 +1002,7 @@ def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] =
                 "lesson_date": ld_str,
                 "metronome": it.get("metronome") or "",
                 "requirements": it.get("requirements") or it.get("requirement") or "",
+                "metronome_segments": it.get("metronome_segments") or [],  # 需求4: 多档速度
             })
             break  # 同一条记录该科目只算一次
     matches.sort(key=lambda x: x["lesson_date"], reverse=True)
@@ -1072,14 +1073,20 @@ async def api_create_assignment(request: Request):
     if not items:
         return JSONResponse({"ok": False, "error": "请提供练习项目和要求"}, status_code=400)
 
-    # 格式化 items
+    # 格式化 items (2026-08-09 需求4: 支持 metronome_segments 多档速度)
     formatted = []
     for it in items:
+        segments = it.get("metronome_segments") or []
+        metro = it.get("metronome", "") or ""
+        if segments:
+            # 组装 metronome = 各段 tempo 用 " / " 连接 (兼容老消费者读单值)
+            metro = " / ".join(s.get("tempo", "") for s in segments if s.get("tempo"))
         formatted.append({
             "item": it.get("item", ""),
             "item_id": it.get("item_id"),
-            "metronome": it.get("metronome", ""),
+            "metronome": metro,
             "requirements": it.get("requirement", it.get("requirements", "")),
+            "metronome_segments": segments or None,
         })
 
     db.save_weekly_assignment(lesson_date, formatted, notes=notes or None, images=images)
@@ -1125,11 +1132,16 @@ async def api_update_assignment(lesson_date: str, request: Request):
 
     formatted = []
     for it in items:
+        segments = it.get("metronome_segments") or []
+        metro = it.get("metronome", "") or ""
+        if segments:
+            metro = " / ".join(s.get("tempo", "") for s in segments if s.get("tempo"))
         formatted.append({
             "item": it.get("item", ""),
             "item_id": it.get("item_id"),
-            "metronome": it.get("metronome", ""),
+            "metronome": metro,
             "requirements": it.get("requirement", it.get("requirements", "")),
+            "metronome_segments": segments or None,
         })
 
     # 全量覆盖：先删旧数据再 insert
