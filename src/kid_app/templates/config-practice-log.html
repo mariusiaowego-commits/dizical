@@ -843,7 +843,52 @@
 
 </div>
 
+<!-- 图片预览 Modal (2026-08-09 需求6: 点击配图打开预览, 不下载) -->
+<div id="imagePreviewModal" class="img-preview-overlay" style="display:none" onclick="closeImagePreview(event)">
+  <div class="img-preview-box" onclick="event.stopPropagation()">
+    <button class="img-preview-close" onclick="closeImagePreview(event)" aria-label="关闭">×</button>
+    <img id="imagePreviewImg" src="" alt="配图预览" style="max-width:92vw;max-height:82vh;object-fit:contain;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,0.35)">
+  </div>
+</div>
+
+<style>
+  .img-preview-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.72);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .img-preview-box { position: relative; display: flex; align-items: center; justify-content: center; }
+  .img-preview-close {
+    position: absolute; top: -14px; right: -14px; z-index: 1;
+    width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: #fff; color: #333;
+    font-size: 18px; line-height: 1; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .img-preview-close:hover { background: #f0e8d0; }
+</style>
+
 <script>
+// ── 图片预览 Modal (2026-08-09 需求6) ──
+function openImagePreview(url) {
+  const img = document.getElementById('imagePreviewImg');
+  if (!img) return;
+  img.src = url;
+  document.getElementById('imagePreviewModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeImagePreview(ev) {
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById('imagePreviewModal');
+  if (!m) return;
+  m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeImagePreview();
+});
+
 // ── 状态 ──
 // ── 状态 ──
 let practiceItems = [];
@@ -1503,7 +1548,7 @@ async function loadAssignments() {
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
         </div>`;
       }).join('');
-      const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : '';
+      const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" style="cursor:pointer" onclick="openImagePreview('${img}')">`).join('')}</div>` : '';
       const notesHtml = a.notes ? `<div class="assignment-notes">${a.notes}</div>` : '';
       return `<div class="assignment-card" data-lesson="${a.lesson_date}">
         <div class="assignment-card-header">
@@ -1691,7 +1736,7 @@ async function loadWeek() {
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
         </div>`;
       }).join('') + (
-        (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" onclick="window.open('${img}','_blank')">`).join('')}</div>` : ''
+        (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" style="cursor:pointer" onclick="openImagePreview('${img}')">`).join('')}</div>` : ''
       ) + (
         a.notes ? `<div class="assignment-notes" style="margin-top:10px">💬 ${a.notes}</div>` : ''
       );
