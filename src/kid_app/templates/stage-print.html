@@ -800,8 +800,8 @@
   /** 页眉：无老师要求模块；分组视图保留科目小计 chips */
   function renderHeader(data) {
     var sum = data.summary || {};
-    /* sprint-26080804: <title> 纯英文 + 全 - 连接 (iOS Safari 空格转义 bug, 空格→%20 不安全) */
-    var title = 'Dizical-Practice-Detail-Stage-' + (data.stage_order != null ? data.stage_order : '0');
+    /* PDF 内容标题保留中文 (sprint-26080804 round 3: 只改 document.title 为日期格式, 内容标题恢复中文) */
+    var title = '竹笛练习明细 · Stage ' + (data.stage_order != null ? data.stage_order : '—');
     /* sprint-26080802: 删 styleLabel 死代码 + 删 ph-sub 周期/上课日/截止/styleLabel 拼入 */
     var isTable = viewMode === 'table';
     var html = '';
@@ -1059,8 +1059,15 @@
     var nShow = (viewData.days || []).length;
     var nAll = (data.days || []).length;
 
-    /* sprint-26080804: document.title 纯英文 + 全 - 连接 (iOS Safari 空格转义 bug) */
-    var title = 'Dizical-Practice-Detail-Stage-' + (data.stage_order != null ? data.stage_order : '0');
+    /* sprint-26080804 round 3: document.title 用日期范围 (YYMMDD-YYMMDD), 不用 Stage 序号.
+       iOS Safari 打印文件名源 = document.title, 全 - 连接无空格无中文. */
+    function toYYMMDD(s) {
+      if (!s) return '000000';
+      var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return m[1].slice(2) + m[2] + m[3];
+      return String(s).replace(/[^0-9]/g, '').slice(0, 6);
+    }
+    var title = 'Dizical-Practice-Detail-' + toYYMMDD(data.stage_start) + '-' + toYYMMDD(data.stage_end);
     document.title = title + (viewMode === 'table' ? '-Table' : '-Grouped') + (nShow < nAll ? '-' + nShow + 'days' : '');
 
     /* sprint-26080802: 删生成时间 + styleLabel 冗余, pf 块只保留数据源标识 */
