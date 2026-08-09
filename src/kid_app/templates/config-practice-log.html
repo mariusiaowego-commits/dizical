@@ -1291,6 +1291,7 @@ function renderAssignEntries() {
         <input class="form-input metronome-input" data-idx="${i}" value="${entry.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
         <button class="remove-btn" data-idx="${i}">×</button>
       </div>
+      <div class="entry-preset-hint" data-idx="${i}" style="display:none;font-size:12px;color:#8B6914;margin:2px 0 4px"></div>
       <div class="entry-bottom">
         <textarea class="form-textarea" data-idx="${i}" placeholder="每行一条要求，如：
 注意口风不要漏气
@@ -1318,16 +1319,42 @@ function renderAssignEntries() {
       assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
-      // 预设: 选中科目且要求框为空(或仍是上一个科目自动填入的预设)时, 填入该科目最近一次的要求
+      // 预设 (B1, 2026-08-09): 选中科目且内容未编辑时, 预填该科目最近一次非空要求
+      // 填 requirements + metronome + 标注来源日期
       if (newId && latestRequirements[newId]) {
         const prevPreset = oldId && latestRequirements[oldId] ? (latestRequirements[oldId].requirements || '') : null;
+        const prevMetro = oldId && latestRequirements[oldId] ? (latestRequirements[oldId].metronome || '') : null;
         const rowEl = sel.closest('.log-entry-row');
         const ta = rowEl ? rowEl.querySelector('textarea') : null;
+        const metroInput = rowEl ? rowEl.querySelector('.metronome-input') : null;
+        const hintEl = rowEl ? rowEl.querySelector('.entry-preset-hint') : null;
         const isUntouchedPreset = prevPreset !== null && ta && ta.value === prevPreset;
+        const isUntouchedMetro = prevMetro !== null && metroInput && metroInput.value === prevMetro;
         if (ta && (!assignEntries[idx].requirement || isUntouchedPreset)) {
           assignEntries[idx].requirement = latestRequirements[newId].requirements || '';
           ta.value = assignEntries[idx].requirement;
         }
+        // 速度预填: 若速度框未手动改过则一并填入
+        if (metroInput && (!assignEntries[idx].metronome || isUntouchedMetro)) {
+          assignEntries[idx].metronome = latestRequirements[newId].metronome || '';
+          metroInput.value = assignEntries[idx].metronome;
+        }
+        // 来源日期标注
+        if (hintEl) {
+          const ld = latestRequirements[newId].lesson_date || '';
+          const metro = latestRequirements[newId].metronome || '';
+          if (ld) {
+            hintEl.textContent = '📌 上次 ' + ld + (metro ? ' · ' + metro : '') + ' 已预填';
+            hintEl.style.display = 'block';
+          } else {
+            hintEl.style.display = 'none';
+          }
+        }
+      } else {
+        // 无预填数据 → 隐藏 hint
+        const rowEl = sel.closest('.log-entry-row');
+        const hintEl = rowEl ? rowEl.querySelector('.entry-preset-hint') : null;
+        if (hintEl) hintEl.style.display = 'none';
       }
     });
   });

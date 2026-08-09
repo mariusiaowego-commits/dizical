@@ -976,19 +976,24 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
 
 @router.get("/api/assignments/latest-requirements")
 def api_latest_requirements():
-    """每科目最近一次的老师要求 (跨全部历史, 按 lesson_date 倒序取最新; 最新为空时回退到更早的非空要求)"""
-    import json as _json
+    """每科目最近一次非空的老师要求 (预填用, B1 语义 2026-08-09).
+
+    - 用 db.get_weekly_assignments_in_range (双后端兼容), 不用裸 cursor
+      (裸 cursor 在 MySQL 返 tuple, row["items"] 抛错被吞 -> 线上一直空)
+    - 返回含 lesson_date 来源日期, 供前端标注 "上次 YYYY-MM-DD"
+    - 最近一次要求为空时回退到更早的非空要求
+    """
+    import datetime as _dt
     result = {}
-    with db._get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT lesson_date, items FROM weekly_assignments ORDER BY lesson_date DESC")
-        rows = cursor.fetchall()
-    for row in rows:
-        try:
-            items = _json.loads(row["items"])
-        except Exception:
-            continue
-        for it in items:
+    assignments = db.get_weekly_assignments_in_range(
+        _dt.date(2000, 1, 1), _dt.date.today() + _dt.timedelta(days=365)
+    )
+    # 按 lesson_date 倒序 (最新在前)
+    assignments.sort(key=lambda a: a["lesson_date"], reverse=True)
+    for a in assignments:
+        ld = a["lesson_date"]
+        ld_str = ld.isoformat() if hasattr(ld, "isoformat") else str(ld)[:10]
+        for it in a.get("items", []):
             iid = it.get("item_id")
             if not iid:
                 continue
@@ -997,10 +1002,13 @@ def api_latest_requirements():
                 # 该科目已有更新的记录; 若更新的要求为空, 用这条旧的非空要求补
                 if not result[iid]["requirements"] and req:
                     result[iid]["requirements"] = req
+                    result[iid]["metronome"] = it.get("metronome") or ""
+                    result[iid]["lesson_date"] = ld_str
                 continue
             result[iid] = {
                 "requirements": req,
                 "metronome": it.get("metronome") or "",
+                "lesson_date": ld_str,
             }
     return JSONResponse({"items": result})
 
