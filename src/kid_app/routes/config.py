@@ -1134,29 +1134,20 @@ import uuid as _uuid
 _UPLOAD_RAW = Path(__file__).resolve().parent.parent.parent.parent / "data" / "uploads" / "raw"
 _UPLOAD_RAW.mkdir(parents=True, exist_ok=True)
 
-_HEIC_EXTS = (".heic", ".heif")
+# 2026-08-09 (需求6): 只接受 jpg/png. HEIC/HEIF 直接拒绝 (CloudRun Linux 容器无 sips,
+# 历史 heic 配图在 Chrome 无法预览; dad 拍板: 用户自行转格式, 上传端拦截).
+_ALLOWED_EXTS = (".jpg", ".jpeg", ".png")
 
-
-def _convert_heic_to_jpeg(src_path: Path, jpg_path: Path) -> bool:
-    """HEIC→JPEG: 用 macOS 内置 sips (零新依赖)。失败返回 False, 调用方保留原 heic。"""
-    sips = shutil.which("sips")
-    if not sips:
-        return False
-    try:
-        subprocess.run(
-            [sips, "-s", "format", "jpeg", str(src_path), "--out", str(jpg_path)],
-            check=True, capture_output=True, timeout=90,
-        )
-        return jpg_path.exists() and jpg_path.stat().st_size > 0
-    except Exception:
-        return False
 
 @router.post("/api/assignments/upload")
 async def api_upload_assignment_image(file: UploadFile = File(...)):
     """上传配图 (PR-F: 有 COS 配置存 COS, 否则回落本地 data/uploads/raw/)."""
     ext = Path(file.filename).suffix.lower() if file.filename else ""
-    if ext not in (".jpg", ".jpeg", ".png", ".heic", ".heif"):
-        return JSONResponse({"ok": False, "error": f"不支持的格式: {ext}"}, status_code=400)
+    if ext not in _ALLOWED_EXTS:
+        hint = "支持 jpg / jpeg / png 格式"
+        if ext in (".heic", ".heif"):
+            hint = "不支持 HEIC/HEIF 格式, 请先转为 jpg 或 png 后再上传"
+        return JSONResponse({"ok": False, "error": f"不支持的格式: {ext}. {hint}"}, status_code=400)
 
     fname = f"{_uuid.uuid4().hex}{ext}"
     content = await file.read()
@@ -1164,20 +1155,6 @@ async def api_upload_assignment_image(file: UploadFile = File(...)):
     # PR-F: COS 可用 → 存云; 否则本地回落 (开发环境)
     from ..cos_client import cos_uploader
     if cos_uploader.is_available:
-        # 先按需 HEIC 转换 (转换后上传转换结果)
-        if ext in _HEIC_EXTS:
-            # 转换需要本地临时文件 → 先写本地再转, 成功后上传 jpg
-            tmp_heic = _UPLOAD_RAW / fname
-            tmp_heic.write_bytes(content)
-            jpg_name = f"{_uuid.uuid4().hex}.jpg"
-            jpg_path = _UPLOAD_RAW / jpg_name
-            if _convert_heic_to_jpeg(tmp_heic, jpg_path):
-                try:
-                    url = cos_uploader.upload(jpg_name, jpg_path.read_bytes(), "image/jpeg")
-                    return JSONResponse({"ok": True, "url": url, "filename": jpg_name})
-                except Exception as e:
-                    return JSONResponse({"ok": False, "error": f"COS 上传失败: {e}"}, status_code=500)
-            # 转换失败 → 直接传 heic 原样 (Safari 仍可预览)
         try:
             ctype = "image/png" if ext == ".png" else "image/jpeg"
             url = cos_uploader.upload(fname, content, ctype)
@@ -1189,18 +1166,9 @@ async def api_upload_assignment_image(file: UploadFile = File(...)):
     dest = _UPLOAD_RAW / fname
     dest.write_bytes(content)
 
-    url = f"/uploads/raw/{fname}"
-    if ext in _HEIC_EXTS:
-        # Chrome 等浏览器 <img> 不支持 HEIC 渲染 (Safari 可以) → 转 JPEG 保证预览
-        jpg_name = f"{_uuid.uuid4().hex}.jpg"
-        jpg_path = _UPLOAD_RAW / jpg_name
-        if _convert_heic_to_jpeg(dest, jpg_path):
-            url = f"/uploads/raw/{jpg_name}"
-        # 转换失败则保留 heic 原样 (Safari 仍可预览)
-
     return JSONResponse({
         "ok": True,
-        "url": url,
+        "url": f"/uploads/raw/{fname}",
         "filename": fname,
     })
 
