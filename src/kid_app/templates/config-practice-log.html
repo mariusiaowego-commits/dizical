@@ -977,6 +977,115 @@ function copyHistoryReq(idx, hi) {
 }
 
 
+// ── 草稿缓存 (需求1, 2026-08-09): 老师要求录入未提交内容自动存 localStorage ──
+const ASSIGN_DRAFT_KEY = 'dizical:assign-draft:v1';
+let _draftTimer = null;
+
+function collectAssignDraft() {
+  return {
+    v: 1,
+    saved_at: new Date().toISOString(),
+    lesson_date: document.getElementById('assignDate') ? document.getElementById('assignDate').value : '',
+    stage_start: document.getElementById('assignStageStart') ? document.getElementById('assignStageStart').value : '',
+    stage_end: document.getElementById('assignStageEnd') ? document.getElementById('assignStageEnd').value : '',
+    stage_order: document.getElementById('assignStageOrder') ? document.getElementById('assignStageOrder').value : '',
+    notes: document.getElementById('assignNotes') ? document.getElementById('assignNotes').value : '',
+    images: assignImages.map(i => i.url),
+    entries: assignEntries.map(e => ({
+      item_id: e.item_id, item: e.item || '',
+      metronome: e.metronome || '', requirement: e.requirement || '',
+    })),
+  };
+}
+
+function hasAssignDraftContent(d) {
+  if (!d) return false;
+  if (d.entries && d.entries.some(e => e.requirement || e.metronome || e.item_id)) return true;
+  if (d.notes) return true;
+  if (d.images && d.images.length) return true;
+  return false;
+}
+
+function saveAssignDraft() {
+  try {
+    const d = collectAssignDraft();
+    if (!hasAssignDraftContent(d)) {
+      localStorage.removeItem(ASSIGN_DRAFT_KEY);
+      return;
+    }
+    localStorage.setItem(ASSIGN_DRAFT_KEY, JSON.stringify(d));
+  } catch (e) { /* localStorage 满/禁用: 静默, 不阻塞录入 */ }
+}
+
+function scheduleAssignDraftSave() {
+  if (_draftTimer) clearTimeout(_draftTimer);
+  _draftTimer = setTimeout(saveAssignDraft, 500); // 防抖 500ms
+}
+
+function clearAssignDraft() {
+  try { localStorage.removeItem(ASSIGN_DRAFT_KEY); } catch (e) {}
+  if (_draftTimer) { clearTimeout(_draftTimer); _draftTimer = null; }
+}
+
+function restoreAssignDraft() {
+  let raw = null;
+  try { raw = localStorage.getItem(ASSIGN_DRAFT_KEY); } catch (e) { return; }
+  if (!raw) return;
+  let d = null;
+  try { d = JSON.parse(raw); } catch (e) { return; }
+  if (!d || !hasAssignDraftContent(d)) return;
+  // 恢复 entries (item_id 对应名字从 practiceItems 查)
+  assignEntries = (d.entries || []).map(e => {
+    const it = practiceItems.find(p => String(p.item_id) === String(e.item_id));
+    return { item_id: e.item_id, item: it ? it.name : (e.item || ''), metronome: e.metronome || '', requirement: e.requirement || '' };
+  });
+  // 恢复配图 URL (本地文件不可恢复, 只有已上传的 URL)
+  assignImages = (d.images || []).map(u => ({ url: u, name: '' }));
+  renderAssignEntries();
+  renderAssignImagePreview();
+  // 恢复表单字段
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  setVal('assignDate', d.lesson_date);
+  setVal('assignStageStart', d.stage_start);
+  setVal('assignStageEnd', d.stage_end);
+  setVal('assignStageOrder', d.stage_order);
+  const notesEl = document.getElementById('assignNotes');
+  if (notesEl && d.notes) notesEl.value = d.notes;
+  // 提示
+  let ts = '';
+  if (d.saved_at) {
+    try { ts = new Date(d.saved_at).toLocaleString('zh-CN', { hour12: false }); } catch (e) {}
+  }
+  alert('已恢复未提交的录入草稿' + (ts ? ' (' + ts + ')' : '') + ', 确认无误后提交');
+}
+
+// 刷新/离开拦截: 有未提交内容时提示 (需求1)
+window.addEventListener('beforeunload', function(e) {
+  try {
+    const d = collectAssignDraft();
+    if (hasAssignDraftContent(d)) {
+      e.preventDefault();
+      e.returnValue = ''; // 标准方式触发浏览器确认弹窗
+    }
+  } catch (err) {}
+});
+// 表单事件委托: 老师要求 Tab 内任何输入变化 -> 防抖存草稿
+document.addEventListener('input', function(e) {
+  const t = e.target;
+  if (!t || !t.closest || !t.closest('#tab-assign')) return;
+  if (t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.tagName === 'INPUT') {
+    scheduleAssignDraftSave();
+  }
+});
+document.addEventListener('change', function(e) {
+  const t = e.target;
+  if (!t || !t.closest || !t.closest('#tab-assign')) return;
+  if (t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.tagName === 'INPUT') {
+    scheduleAssignDraftSave();
+  }
+});
+
+// ── 加载每科目最近一次老师要求 (预填用) ──
 async function loadLatestRequirements() {
   try {
     const res = await fetch('/config/api/assignments/latest-requirements');
@@ -1475,6 +1584,7 @@ function renderAssignEntries() {
       const idx = parseInt(e.target.dataset.idx);
       assignEntries.splice(idx, 1);
       renderAssignEntries();
+      scheduleAssignDraftSave(); // 需求1: 删除行也存草稿
     });
   });
 }
@@ -1482,6 +1592,7 @@ function renderAssignEntries() {
 document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
   assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '' });
   renderAssignEntries();
+  scheduleAssignDraftSave(); // 需求1: 添加行也存草稿
 });
 
 // ── 配图上传 ──
@@ -1511,6 +1622,7 @@ document.getElementById('assignImageInput').addEventListener('change', async (e)
       if (data.ok) {
         assignImages.push({ url: data.url, name: f.name });
         renderAssignImagePreview();
+        scheduleAssignDraftSave(); // 需求1: 上传配图也存草稿
         statusEl.textContent = `✅ ${f.name} 已上传`;
       } else {
         statusEl.textContent = `❌ ${f.name}: ${data.error || '上传失败'}`;
@@ -1527,7 +1639,7 @@ function renderAssignImagePreview() {
   container.innerHTML = assignImages.map((img, i) => `
     <div style="position:relative;display:inline-block">
       <img src="${img.url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ddd" alt="${img.name}">
-      <button onclick="assignImages.splice(${i},1);renderAssignImagePreview()" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#FF6B6B;color:white;cursor:pointer;font-size:14px;line-height:22px;text-align:center">×</button>
+      <button onclick="assignImages.splice(${i},1);renderAssignImagePreview();scheduleAssignDraftSave()" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#FF6B6B;color:white;cursor:pointer;font-size:14px;line-height:22px;text-align:center">×</button>
     </div>
   `).join('');
 }
@@ -1571,6 +1683,7 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
     document.getElementById('assignStageStart').value = '';
     document.getElementById('assignStageEnd').value = '';
     document.getElementById('assignStageOrder').value = '';
+    clearAssignDraft(); // 需求1: 提交成功后清草稿
     loadAssignments();
     alert('✅ 老师要求已录入');
   } else {
@@ -1812,6 +1925,8 @@ async function loadWeek() {
   renderLogEntries();
   renderAssignEntries();
   loadTodayHistory();
+  // 草稿恢复 (需求1): 必须在 renderAssignEntries 之后 (填回 entries + 表单字段)
+  restoreAssignDraft();
 })();
 </script>
 
