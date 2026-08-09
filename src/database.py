@@ -1319,11 +1319,13 @@ class Database(BaseBackend):
             )
             ar = cursor3.fetchone()
             if ar and ar["metronome"]:
-                m = ar["metronome"]  # e.g. "♩=82"
+                m = ar["metronome"]  # e.g. "♩=82" 或 "♩=95 / 100" (多档速度, 2026-08-09 需求4)
                 if "=" in m:
                     note, bpm_str = m.split("=", 1)
                     try:
-                        bpm = int(bpm_str.strip())
+                        # 多档拼接 (如 "95 / 100") 取第一段; 单档直接取
+                        first = bpm_str.strip().split()[0]
+                        bpm = int(first)
                         return {"last_tempo_note": note.strip(), "last_tempo_bpm": bpm, "last_session_at": None}
                     except ValueError:
                         pass

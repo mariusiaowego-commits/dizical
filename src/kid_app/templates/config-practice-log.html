@@ -944,11 +944,14 @@ async function loadItemHistory(idx, itemId, itemName) {
       const reqLines = (h.requirements || '').split('\n').filter(Boolean);
       const reqHtml = reqLines.length ? reqLines.map(r => `<li>${r.replace(/</g, '&lt;')}</li>`).join('') : '<li style="opacity:0.5">无具体要求</li>';
       const metro = h.metronome ? `<span class="assign-subject-metronome" style="display:inline-block;background:#FF6B6B;color:#fff;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px">${h.metronome}</span>` : '';
+      const segsHtml = (h.metronome_segments && h.metronome_segments.length)
+        ? `<div style="margin:3px 0 0">${h.metronome_segments.map(s => `<span style="display:inline-block;background:#fff;border:1px solid #e0d4b0;color:#8B6914;border-radius:10px;padding:0 6px;font-size:11px;margin-right:4px">${(s.label || '').replace(/</g, '&lt;')} ${(s.tempo || '').replace(/</g, '&lt;')}</span>`).join('')}</div>` : '';
       return `<div style="padding:5px 0;border-bottom:1px dashed #e8dcc0;font-size:12px">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-weight:600;color:#5D4037">${h.lesson_date}</span>${metro}
           <button type="button" onclick="copyHistoryReq(${idx}, ${hi})" style="margin-left:auto;padding:2px 8px;border:1px solid #d4c9a8;border-radius:6px;background:#fff;color:#8B6914;cursor:pointer;font-size:11px">复制</button>
         </div>
+        ${segsHtml}
         <ul style="margin:3px 0 0;padding-left:16px">${reqHtml}</ul>
       </div>`;
     }).join('');
@@ -1495,7 +1498,13 @@ function renderAssignEntries() {
           ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
         </select>
         <input class="form-input metronome-input" data-idx="${i}" value="${entry.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <button type="button" class="seg-toggle-btn" data-idx="${i}" title="多档速度 (如: 前3天♩=95 / 后3天♩=100 / 交替)" style="padding:6px 8px;border:1px solid #d4c9a8;border-radius:6px;background:#faf7ef;color:#8B6914;cursor:pointer;font-size:12px">分段▾</button>
         <button class="remove-btn" data-idx="${i}">×</button>
+      </div>
+      <div class="entry-segments" data-idx="${i}" style="display:none;margin:4px 0 6px;padding:6px 8px;background:#fbf8f0;border:1px dashed #e0d4b0;border-radius:8px">
+        <div style="font-size:11px;color:#a09070;margin-bottom:4px">分段速度 (每段: 说明 + 速度, 如 前3天/♩=95, 交替/♩=95♩=100)</div>
+        <div class="seg-rows" data-idx="${i}"></div>
+        <button type="button" class="seg-add-btn" data-idx="${i}" style="margin-top:4px;padding:3px 10px;border:1px solid #d4c9a8;border-radius:6px;background:#fff;color:#8B6914;cursor:pointer;font-size:12px">＋ 添加分段</button>
       </div>
       <div class="entry-preset-hint" data-idx="${i}" style="display:none;font-size:12px;color:#8B6914;margin:2px 0 4px"></div>
       <div class="entry-history" data-idx="${i}" style="display:none;margin:2px 0 6px;padding:6px 8px;background:#faf7ef;border:1px solid #ece3cc;border-radius:8px"></div>
@@ -1587,10 +1596,92 @@ function renderAssignEntries() {
       scheduleAssignDraftSave(); // 需求1: 删除行也存草稿
     });
   });
+
+  // ── 分段速度 (需求4, 2026-08-09): 折叠控件 + 增删段 ──
+  const renderSegRows = (idx) => {
+    const segRowsEl = document.querySelector(`.seg-rows[data-idx="${idx}"]`);
+    if (!segRowsEl) return;
+    const segs = assignEntries[idx].segments || (assignEntries[idx].segments = []);
+    if (!segs.length) segs.push({ label: '', tempo: '' }); // 默认一行
+    segRowsEl.innerHTML = segs.map((s, si) => `
+      <div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
+        <input class="seg-label" data-idx="${idx}" data-si="${si}" value="${s.label || ''}" placeholder="说明 (如 前3天/交替/情况1)" style="flex:1.2;min-width:90px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+        <input class="seg-tempo" data-idx="${idx}" data-si="${si}" value="${s.tempo || ''}" placeholder="速度 (如 ♩=95)" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+        <button type="button" class="seg-del-btn" data-idx="${idx}" data-si="${si}" style="padding:2px 8px;border:1px solid #e0b0a0;border-radius:6px;background:#fff;color:#c06;cursor:pointer;font-size:12px">×</button>
+      </div>`).join('');
+    segRowsEl.querySelectorAll('.seg-label').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const d = e.target.dataset; const si = parseInt(d.si);
+        const segs = assignEntries[d.idx].segments;
+        segs[si].label = e.target.value;
+        syncMetronomeFromSegments(d.idx);
+        scheduleAssignDraftSave();
+      });
+    });
+    segRowsEl.querySelectorAll('.seg-tempo').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const d = e.target.dataset; const si = parseInt(d.si);
+        const segs = assignEntries[d.idx].segments;
+        segs[si].tempo = e.target.value;
+        syncMetronomeFromSegments(d.idx);
+        scheduleAssignDraftSave();
+      });
+    });
+    segRowsEl.querySelectorAll('.seg-del-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const d = e.target.dataset; const si = parseInt(d.si);
+        const segs = assignEntries[d.idx].segments;
+        segs.splice(si, 1);
+        if (!segs.length) segs.push({ label: '', tempo: '' });
+        renderSegRows(d.idx);
+        syncMetronomeFromSegments(d.idx);
+        scheduleAssignDraftSave();
+      });
+    });
+  };
+  container.querySelectorAll('.seg-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      const segEl = document.querySelector(`.entry-segments[data-idx="${idx}"]`);
+      if (!segEl) return;
+      const showing = segEl.style.display !== 'none';
+      segEl.style.display = showing ? 'none' : 'block';
+      e.target.textContent = showing ? '分段▾' : '分段▴';
+      if (!showing) renderSegRows(idx);
+    });
+  });
+  container.querySelectorAll('.seg-add-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      assignEntries[idx].segments.push({ label: '', tempo: '' });
+      renderSegRows(idx);
+      syncMetronomeFromSegments(idx);
+      scheduleAssignDraftSave();
+    });
+  });
+}
+
+// 需求4: 从 segments 组装 metronome 单值 (斜杠连接各段 tempo) 并同步输入框
+function syncMetronomeFromSegments(idx) {
+  const segs = assignEntries[idx].segments || [];
+  const tempos = segs.map(s => (s.tempo || '').trim()).filter(Boolean);
+  const metro = tempos.length ? tempos.join(' / ') : '';
+  assignEntries[idx].metronome = metro;
+  const metroInput = document.querySelector(`.metronome-input[data-idx="${idx}"]`);
+  if (metroInput) metroInput.value = metro;
+}
+
+// 需求4: 分段速度展示 (小胶囊, 无 segments 时返回空串)
+function segmentsBadgeHtml(it) {
+  const segs = it.metronome_segments;
+  if (!segs || !segs.length) return '';
+  return `<div style="margin-top:3px">${segs.map(s =>
+    `<span style="display:inline-block;background:#fff;border:1px solid #e0d4b0;color:#8B6914;border-radius:10px;padding:1px 8px;font-size:11px;margin-right:4px">${(s.label || '').replace(/</g, '&lt;')} ${(s.tempo || '').replace(/</g, '&lt;')}</span>`
+  ).join('')}</div>`;
 }
 
 document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
-  assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '' });
+  assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '', segments: [] }); // segments: 需求4 多档速度
   renderAssignEntries();
   scheduleAssignDraftSave(); // 需求1: 添加行也存草稿
 });
@@ -1660,7 +1751,13 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
 
   const body = {
     lesson_date: lessonDate,
-    items: validEntries.map(e => ({ item: e.item, item_id: e.item_id, metronome: e.metronome, requirement: e.requirement })),
+    items: validEntries.map(e => {
+      // 需求4: 有分段速度时传 metronome_segments (后端组装 metronome 斜杠串)
+      const segs = (e.segments || []).filter(s => s.tempo && s.tempo.trim());
+      const item = { item: e.item, item_id: e.item_id, metronome: e.metronome, requirement: e.requirement };
+      if (segs.length) item.metronome_segments = segs.map(s => ({ label: (s.label || '').trim(), tempo: s.tempo.trim() }));
+      return item;
+    }),
     notes,
   };
   if (assignImages.length) body.images = assignImages.map(i => i.url);
@@ -1713,6 +1810,7 @@ async function loadAssignments() {
             ${metro}
             <span class="assign-subject-id">(item_id: ${it.item_id || '?'})</span>
           </div>
+          ${segmentsBadgeHtml(it)}
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
         </div>`;
       }).join('');
@@ -1901,6 +1999,7 @@ async function loadWeek() {
             ${metro}
             <span class="assign-subject-id">(item_id: ${it.item_id || '?'})</span>
           </div>
+          ${segmentsBadgeHtml(it)}
           <ul class="assign-subject-reqs">${reqLines || '<li style="opacity:0.5">无具体要求</li>'}</ul>
         </div>`;
       }).join('') + (
