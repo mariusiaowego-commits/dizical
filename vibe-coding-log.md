@@ -1,3 +1,19 @@
+## 2026-08-08/09 sprint 26080804 stage-print PDF 文件名修复 (PR #240/#241/#242)
+
+- **触发**: dad 反馈 iPad Safari 导出 PDF 文件名全用 `-` 连接 (中文/中点/空格被 iOS 转义), 后要求写 stage 日期范围而非 Stage 序号
+- **根因**: iOS Safari `UIPrintInteractionController` 用 document.title 作为 PDF 文件名源, 把空格/中点/中文全部替换为 `-`
+- **修法 (3 rounds)**:
+  1. round 1 (PR #240): document.title 改纯英文 `Dizical Practice Detail - Stage 16 - Table`
+  2. round 2 (PR #241): dad 说标题不要空格 (空格 iOS 转义 bug) → 全 `-` 连接 `Dizical-Practice-Detail-Stage-16-Table`
+  3. round 3 (PR #242): dad 要求写日期范围不写 Stage 序号 → `Dizical-Practice-Detail-260727-260801-Table-6days` (toYYMMDD 转 stage_start/stage_end), 且恢复 PDF 内容标题为中文
+- **最终文件名**: `Dizical-Practice-Detail-260727-260801-Table-6days.pdf` (纯 ASCII, 全 `-`, 日期范围)
+- **验证**: pytest 476 passed / 8 skipped / 0 failed; 16/16 PASSED; 生产 074 curl verify (toYYMMDD 2 处 + 中文标题 1 处 + 无 Stage 序号)
+- **部署**: 070 → 071 → 073 → 074 (force deploy 全成功)
+- **教训**:
+  1. **iOS Safari 打印文件名源 = document.title**: 改 PDF 文件名只需改 document.title, 不要动 PDF 内容标题 (renderHeader ph-title 应保留中文)
+  2. **document.title 空格在 iOS 转义成 %20 易 bug**: 文件名一律全 `-` 连接无空格
+  3. **日期格式做文件名更稳**: Stage 序号会随 stage 变化, 日期范围 (YYMMDD-YYMMDD) 稳定可识别, 老师拿 PDF 文件名就知道覆盖哪个周期
+  4. **protected branch 流程**: 本地 main commit 被拒 (protected hook), 任何改动包括文档必须走 PR 分支 (PR #239 docs 也走 PR)
 ## 2026-08-08 sprint 26080803 清 prb_test 脏数据 (PR #238 MERGED, main 8410005)
 
 - **触发**: dad 反馈云端 MySQL 仍存 prb_test_item + prb_test_item_2 + prb_test_item_3 (item_id 999001/999002/999003) + 4 条 create_test session (id 1548/1550/1552/1554)
