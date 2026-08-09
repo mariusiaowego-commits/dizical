@@ -1,6 +1,34 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-08 (stage-print iPad Safari PDF 完整输出 + iPad 横屏可读, sprint 26080801)
+**最后更新**: 2026-08-08 (sprint 26080803 清 prb_test 脏数据, main 8410005)
+
+---
+
+### 2026-08-08 sprint 26080803 清 prb_test 脏数据 (PR #238 MERGED, main 8410005)
+
+**触发**: dad 8-08 反馈云端 MySQL 仍存 prb_test_item + prb_test_item_2 + prb_test_item_3 三个测试科目 + 4 条 create_test session
+
+**三证据法验证**:
+1. 标识符: `prb_test_item` 自标识, item_id 999001-3 远超真实科目 1-47
+2. created_at: 2026-08-07 13:13-13:20 集中, 跟 sprint 26080701 真云验证窗口对齐
+3. practice_date (2026-07-28) vs created_at (2026-08-07): 真云验证脚本批量插入
+
+**清理结果** (mcp queryMysqlDatabase 验真):
+- `practice_sessions`: 812 → 808 (-4 sessions: id 1548/1550/1552/1554)
+- `practice_items`: 50 → 47 (-3 items: item_id 999001/999002/999003)
+- `daily_practices` 7-28: items 7 → 6 字段 (prb_test 全去), total 55 → 52 (-3min)
+- prb 残留: 0
+
+**新增**: `src/migrate_fix_prb_test_260808.py` (345 行)
+- 双模式 `--target=local|cloud`, DATABASE_URL 优先 + MYSQL_* 5 件套 fallback
+- 动态 IN 占位符, name LIKE prb% 双重匹配
+- 8-05 沉淀红线: 重写 items JSON + 重算 total_minutes (不 JSON_REMOVE 单字段)
+- 备份 data/backups/ 让 dad 可回滚
+- idempotent: 多次跑一致
+
+**沉淀**: 决策入 decision-log (cleanup 红线 + 三证据法)
+
+**部署**: 不需 deploy (migrate 脚本不进容器, 仅本地+云端 DB 操作已执行)
 
 ---
 

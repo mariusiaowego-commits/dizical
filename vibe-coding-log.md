@@ -1,3 +1,26 @@
+## 2026-08-08 sprint 26080803 清 prb_test 脏数据 (PR #238 MERGED, main 8410005)
+
+- **触发**: dad 反馈云端 MySQL 仍存 prb_test_item + prb_test_item_2 + prb_test_item_3 (item_id 999001/999002/999003) + 4 条 create_test session (id 1548/1550/1552/1554)
+- **三证据法**: 标识符 (prb 自标识 + item_id 999xxx 远超 1-47) / created_at (8-07 13:13-13:20 集中, 跟 sprint 26080701 真云验证窗口对齐) / practice_date (2026-07-28) vs created_at (2026-08-07) 间隔 8 天, 真云验证脚本批量插入
+- **清理结果** (mcp queryMysqlDatabase 验真):
+  - practice_sessions: 812 → 808 (-4)
+  - practice_items: 50 → 47 (-3)
+  - daily_practices 7-28: items 7 → 6 字段 (prb_test 全去), total 55 → 52 (-3min)
+  - prb 残留: 0
+- **脚本**: `src/migrate_fix_prb_test_260808.py` (345 行)
+  - 双模式 --target=local|cloud, 沿用 sprint 26080701 模板
+  - DATABASE_URL 优先, MYSQL_* 5 件套 fallback (跟 .env 实际配置对齐)
+  - 动态 IN 占位符 (sqlite3 tuple 长度匹配)
+  - 8-05 沉淀红线: 重写 items JSON + 重算 total_minutes (不 JSON_REMOVE 单字段)
+  - name LIKE prb% 双重匹配, 兼容未来 prb_test_item_N 变种
+  - 备份 data/backups/ 让 dad 可回滚
+  - idempotent: 多次跑一致
+- **教训**:
+  1. **cleanup 红线**: 数据清理走显式 commit + 三证据法 (created_at / 标识符 / 历史 PR context), 不是 write_file sweep
+  2. **migrate 脚本不进容器**: 不需 deploy, 仅本地+云端 DB 操作已执行, 脚本留在主仓做参考+回滚用
+  3. **idempotent 设计**: 多次跑一致 (关键 — 实战第一次跑只清 sessions 没清 items, 第二次跑"无 prb 跳过"导致孤儿 items 没清, 必须脚本同时 DELETE items 才能 100% 干净)
+  4. **三证据法 vs 拍板**: 标识符 (prb_test_item 自标识) + created_at (8-07 集中) + 历史 PR context (sprint 26080701 真云验证遗留), 三证据都指向"测试脏数据", 可放心清
+
 ## 2026-08-08 stage-print iPad Safari PDF 完整输出 (sprint 26080801)
 
 - **背景**: dad 反馈 iPad mini 横屏 `/report/stage-print?stage_order=16&view=table` 全选 6 天屏上不可读, iPad Safari 导出 PDF 4/6 天被截, 而 Mac Chrome 1 页完整 (6/6 天).
