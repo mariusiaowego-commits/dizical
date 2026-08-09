@@ -32,11 +32,11 @@ status: active
 | Sprint | 内容 | 状态 | 完成日期 |
 |--------|------|------|----------|
 | S0 | 现状验证: active 科目过滤 / 配图预览截图 / weekly_assignments 数据分布 / 预填解析链路 | 已完成 (部分) | 2026-08-09 |
-| S1 | 需求5 (picker 只列 active) + 需求6 (配图预览) 收尾 | 已完成 (PR #244) | 2026-08-09 |
-| S2 | 需求2 增强预填: API 改"日期前最近一次"语义 + 前端填 metronome + 标来源日期 | 待开始 | - |
-| S3 | 需求3 历史3次: 新 API `/api/assignments/by-item?item_id=X&limit=3` + 选中科目后展示(带复制) | 待开始 | - |
-| S4 | 需求1 草稿缓存 + 刷新拦截: localStorage + beforeunload, 仅老师要求 Tab | 待开始 | - |
-| S5 | 需求4 速度多档: metronome_segments 全链路 (录入表单分段控件 + 展示 + 预填防御) | 待开始 | - |
+| S1 | 需求5 (picker 只列 active) + 需求6 (配图预览) 收尾 | 已完成 + 已上线 (PR #244, CloudRun 076) | 2026-08-09 |
+| S2 | 需求2 增强预填: API 改"日期前最近一次"语义 + 前端填 metronome + 标来源日期 | 已完成 + 已上线 (PR #244, CloudRun 076) | 2026-08-09 |
+| S3 | 需求3 历史3次: 新 API `/api/assignments/by-item?item_id=X&limit=3` + 选中科目后展示(带复制) | 已完成, 已 merge (PR #247), 待部署 | 2026-08-09 |
+| S4 | 需求1 草稿缓存 + 刷新拦截: localStorage + beforeunload, 仅老师要求 Tab | 已完成, 已 merge (PR #248), 待部署 | 2026-08-09 |
+| S5 | 需求4 速度多档: metronome_segments 全链路 (录入表单分段控件 + 展示 + 预填防御) | 已完成 (PR #249 待 merge) | 2026-08-09 |
 
 ## 需求清单 (PRD 原文映射)
 
