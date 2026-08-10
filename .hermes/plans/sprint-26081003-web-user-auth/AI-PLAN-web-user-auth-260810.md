@@ -68,16 +68,25 @@ tags: [sprint, dizical, auth, user-system, web, password]
 
 ## 3. 目标 (Goal)
 
-给 web 端建一套**dad 后台手动开账号 + 用户名密码登录 + config 管理权限**的传统多用户体系, 替代当前"裸奔+1 个全局 PIN" 模式。
+给 web 端建一套**dad 后台手动开账号 + 用户名密码登录 + config 管理权限**的传统多用户体系, 替代当前"裸奔+1 个全局 PIN" 模式。**mp 微信端完全不动** (沿用现有 openid 白名单机制)。
 
 ### 3.1 验收标准 (Acceptance Criteria)
+
+#### Web 端 (本次实施范围)
 1. **dad 唯一路径**: dad 在 `/config/users` 后台**手动**建账号 (输用户名 + 自动生成初始密码 + 选角色), 把初始密码微信手发给家人
 2. **家人登录**: 浏览器打开 url → 重定向 `/login` → 输用户名 + 初始密码 → 强制改密 → 进权限范围内的页面
 3. **权限矩阵**: 5 角色 × 资源矩阵严格执行, 越权返 403
 4. **首次改密**: 初始密码登录后强制跳 `/change-password`, 改完才能进主站
-5. **dad (root)**: 走原 `/api/verify-pin` (PIN=0905), **不**走新密码体系, 配置修改/审批用户都走 PIN 守门
-7. **mp 兼容**: minip 现有 dad_whitelist + openid 路径 **零改动**
-8. **回滚**: 单 PR revert, 回滚后 = 当前裸奔状态
+5. **30 天 cookie 记住登录** (dad 8-10 拍板): 默认勾选, 关浏览器 30 天内自动登录, dad 在 `/config/users` 可强制踢出某用户所有设备
+6. **dad (root)**: 走原 `/api/verify-pin` (PIN=0905), **不**走新密码体系, 配置修改/审批用户都走 PIN 守门
+
+#### mp 微信端 (本次完全不动, 显式声明)
+7. **mp 端 0 改动**: 沿用现有 7-28 PR #189 机制 — `wx.login` 静默拿 openid → 后端比 `dad_whitelist` → 首次自动加白名单 → 进入
+8. **mp 端流程不变**: PIN + openid 白名单, 无需密码 (微信生态天然身份绑定)
+
+#### 兼容性 + 回滚
+9. **mp 兼容**: minip 现有 `dad_whitelist` + openid 路径 **零改动**
+10. **回滚**: 单 PR revert, 回滚后 = 当前裸奔状态
 
 ---
 
@@ -123,13 +132,35 @@ CREATE TABLE web_users (
 - 格式: `argon2$argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>`
 - 算法参数: 默认 OWASP 推荐 (memory 64MB, iterations 3, parallelism 4)
 
-### 5.3 兼容性 (重要)
+### 5.3 Cookie 设计 (30 天记住登录, dad 8-10 拍板)
+
+**核心思路**: 不存密码明文到 cookie, 而是用 **itsdangerous 签名 Cookie** (现有依赖) 存 {user_id, expires_at, sig}。
+
+| 选项 | 行为 | 业界对照 |
+|------|------|----------|
+| **A 30 天 Cookie** (默认) | 关浏览器 30 天内自动登录 | GitHub / Notion / Slack web |
+| B 7 天 Cookie | 短一些, 安全性高 | 部分银行 web |
+| C session Cookie (关浏览器即失效) | 每次重输 | 早年 jira / 老旧 OA |
+| D 30 天默认 + checkbox | 用户可关 | Google / Facebook |
+
+**实现细节 (Q3=A 路径)**:
+- Cookie 名: `dizical_session`
+- Cookie 内容: `itsdangerous.URLSafeTimedSerializer(app_secret).dumps({user_id, role})`
+- Cookie 参数: `HttpOnly=True, Secure=True, SameSite=Lax, max_age=30*24*3600`
+- 登录响应: `Set-Cookie: dizical_session=...; Max-Age=2592000; HttpOnly; Secure`
+- 默认 remember=true (登录页 checkbox 已勾选, 用户可手动取消)
+
+**登出策略**:
+- 用户主动 logout → 清当前 cookie (前端 `Set-Cookie: Max-Age=0`)
+- dad "踢出所有设备" → 重置 `SECRET_KEY` 或加 `web_users.session_version` 列 (递增), 老 cookie 签名对不上自动失效
+
+### 5.4 兼容性 (重要)
 - 现有 `settings.dad_pin=0905` **不动** (dad root 二次验证沿用)
 - 现有 `settings.dad_whitelist` (mp openid) **不动** (mp 路径 100% 不变)
 - 现有 `settings.pending_whitelist` 不动
 - `web_users` 是**全新表**, 不破坏任何东西
 
-### 5.4 初始化迁移
+### 5.5 初始化迁移
 - `src/migrate_add_web_users.py` (新):
   - `CREATE TABLE IF NOT EXISTS web_users (...)` 幂等
   - **不自动建 dad 账号** (dad 走 PIN 模式不走 web_users)
@@ -141,15 +172,16 @@ CREATE TABLE web_users (
 
 | Method | Path | 角色 | 用途 |
 |--------|------|------|------|
-| POST | `/api/auth/login` | 任何人 | 提交 {username, password} → 设 cookie + 返 user 对象 |
-| POST | `/api/auth/logout` | 已登录 | 清 cookie |
+| POST | `/api/auth/login` | 任何人 | 提交 {username, password, remember=true} → 设 cookie + 返 user 对象 |
+| POST | `/api/auth/logout` | 已登录 | 清 cookie (当前设备) |
 | POST | `/api/auth/change-password` | 已登录 (must_change=1) | 改密 + 清 must_change 标志 |
 | GET | `/api/auth/me` | 已登录 | 返 {user_id, username, display_name, role, avatar_letter, must_change} |
-| GET | `/config/users` | dad (PIN) | 用户管理页 (列出 + 增/删/改/撤销) |
+| GET | `/config/users` | dad (PIN) | 用户管理页 (列出 + 增/删/改/撤销 + 踢出所有设备) |
 | POST | `/config/api/users/create` | dad (PIN) | 建账号 (username, display_name, role, avatar_letter) → 生成初始密码 + 返明文一次 (dad 复制发给家人) |
 | POST | `/config/api/users/{user_id}/reset-password` | dad (PIN) | 重置密码 → 返新明文一次 + must_change=1 |
 | POST | `/config/api/users/{user_id}/role` | dad (PIN) | 改 role |
 | POST | `/config/api/users/{user_id}/revoke` | dad (PIN) | 软删 (revoked=1) |
+| POST | `/config/api/users/{user_id}/logout-all` | dad (PIN) | 踢出该用户所有设备 (重置 cookie 签名密钥) |
 
 **改动现有**:
 - `POST /api/verify-pin` (app.py:2810): **不动**, dad 走 PIN, 不走新密码体系
@@ -266,7 +298,7 @@ CREATE TABLE web_users (
 
 ---
 
-## 13. 拍板题 (Q1, dad 必答字母回)
+## 13. 拍板题 (Q1-Q3, dad 必答字母回)
 
 ### Q1: 拍板 B 方案本地化
 - **A — 推荐**: dad 后台手动建账号 + 用户名密码 + 首次改密 + config 管理权限 (本期 plan)
@@ -281,6 +313,17 @@ CREATE TABLE web_users (
 - C — 本期一起做 (跟 A 一起, 但工作量 +500 行)
 
 **推荐 A**: 访客人数未明 + 没强需求, 等 dad 真正需要时再单独 sprint。
+
+### Q3 (新增 8-10): web 端 cookie 记住登录时长
+- **A — 30 天 Cookie (推荐, 默认勾选)**: 关浏览器 30 天内自动登录, 跟 GitHub/Notion 同款
+- B — 7 天 Cookie (短一些, 安全更高)
+- C — Session Cookie (关浏览器立即失效, 每次都要重输)
+- D — 默认 30 天 + checkbox 让用户选
+
+**推荐 A 理由**:
+- dad 8-10 反馈 "每次都要输密码会很烦", 30 天最贴近主流 SaaS 体验
+- 默认开启, dad 也可手动 "踢出所有设备"
+- 安全性可接受 (HttpOnly + Secure + 签名 cookie, 密码明文不入 cookie)
 
 ---
 

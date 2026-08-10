@@ -21,6 +21,11 @@ web 端 (iPad Safari + Mac Safari/Chrome + Mac app WKWebView) 当前所有 GET �
 - ✅ dad 在 config 后台**手动建账号** (输用户名 + 自动生成初始密码 + 选角色)
 - ✅ 微信手发初始密码给家人, 首次登录强制改密
 - ✅ dad 在 config 后台**管理用户 + 权限分配**
+- ✅ **30 天 cookie 记住登录** (dad 反馈"每次都输很烦") — 默认勾选, dad 可手动踢出某用户所有设备
+
+**mp 微信端**:
+- ✅ **完全不动** — 沿用现有 7-28 PR #189 机制 (wx.login 静默拿 openid → 比对 dad_whitelist → 自动加白)
+- 微信生态天然身份绑定, **无需密码**
 
 ## 砍掉 vs 保留
 
@@ -42,12 +47,17 @@ web 端 (iPad Safari + Mac Safari/Chrome + Mac app WKWebView) 当前所有 GET �
 | `/config` `/praise` `/config/users` | ✓ PIN | ✗ | ✗ | ✗ |
 | `POST /api/log` | ✓ | ✓ | ✗ | ✗ |
 
-## 拍板题 (Q1-Q2)
+## 拍板题 (Q1-Q3, dad 必答字母回)
 
-- **Q1: 拍 B 方案本地化** → **推荐 A** (本期 plan)
-- Q2: 访客场景处理 → **推荐 A 本期砍掉**
+| # | 问题 | A | B | C/D | 推荐 |
+|---|------|---|---|-----|------|
+| Q1 | 拍 B 方案本地化 (本期 plan) | 推荐 | 等域名再做扫码 | invite 自建代理 | **A** |
+| Q2 | 访客场景 | 本期砍 | 单独 sprint | 一起做 | **A** |
+| **Q3 (新)** | **web cookie 记住登录** | **30 天 (默认勾选)** | 7 天 / session (每次重输) / checkbox 自选 | | **A** |
 
 **推荐默认全 A**, dad "开始吧 / 按你的计划走" = 全选 A.
+
+**Q3=A 关键点**: 不存密码明文到 cookie, 用 itsdangerous 签名 cookie 存 {user_id, role}, HttpOnly+Secure+SameSite=Lax. dad 在 `/config/users` 给某用户点 "踢出所有设备" 可强制重登.
 
 ## 风险 (8 条)
 
