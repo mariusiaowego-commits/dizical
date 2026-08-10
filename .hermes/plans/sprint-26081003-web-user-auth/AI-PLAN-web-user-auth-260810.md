@@ -335,7 +335,7 @@ CREATE TABLE web_invites (
 
 ---
 
-## 13. 拍板题 (Q1-Q4, dad 必答)
+## 13. 拍板题 (Q1-Q5, dad 必答)
 
 ### Q1: 鉴权方案 (核心)
 - A — **方案 A** Invite Token + 公开 Read-only Token (推荐)
@@ -352,7 +352,7 @@ CREATE TABLE web_invites (
 **推荐 A**: 一期一清, 拍板后再启动下一期
 
 ### Q3: 老师权限
-- A — 老师 = "全看, 不录练习, 不改 config" (跟家人一样的只读 + 老师专属科目视图)
+- A — 老师 = "全看, 不录练习, 不改 config" (跟家人一样的只读 + 老师专属视图)
 - B — 老师 = "全看 + 录练习" (能代女儿录)
 - D — **本期不做老师角色**, 后续 sprint 加
 
@@ -365,6 +365,37 @@ CREATE TABLE web_invites (
 - D — 不开放公开访客, 全部走 invite
 
 **推荐 A**: 跟 GitHub public repo + Figma view link 同款, 默认 30 天过期, dad 微信分享
+
+### Q5 (新增 8-10): 微信扫码登录 (cloudbase wx_open) — 要不要做?
+- **A — A+A' 混合 (推荐)**: 本期 Sprint A 跑 Invite Token, 后续 Sprint 26081004 申请开放平台资质 + cloudbase wx_open 追加扫码登录
+- B — **只做 A**, 永久不走微信扫码 (家庭场景足够, 最小改动)
+- C — **跳过 A 直接做 A'**, dad 先去申请开放平台资质 (本期空白, 资质审核完后启动扫码登录 sprint)
+
+**推荐 A 理由**:
+- 本期不卡 dad 工作, agent 全权做 A
+- 后续 A' 让 mp/web unionid 互通, 女儿 mp 跟 web 是同一个账号
+- 5-15 工作日审核期里, A 已上线可用
+- 不破坏现有 mp 流程
+
+**A' 替代方案 (微信扫码登录) 详情**:
+- cloudbase 已封装 `auth.signInWithProvider({provider_id: "wx_open"})` API, 1 行实现扫码登录
+- 前置: dad 在微信开放平台注册 + 创建「网站应用」+ 提交审核 (5-15 工作日)
+- 主体要求: 网站应用只能个体户/企业主体 (个人主体不通过)
+- 域名要求: 回调域名已 ICP 备案 + HTTPS (dizical-prod-* 已备案, 满足)
+- unionid 互通硬条件: mp + 网站应用绑到**同一开放平台账号**, 否则 unionid 拿不到
+- 缺点: 微信用户必须有微信账号 = **访客/审核员场景天然不支持**, 仍需 A 的 invite flow
+- 工作量: ~800 行, 1-2 周
+
+**A vs A' 对比**:
+
+| 维度 | A (Invite Token) | A' (微信扫码) |
+|------|-------------------|----------------|
+| 实施工作量 | ~1960 行 | ~800 行 (cloudbase 封装大头) |
+| dad 工作量 | 0 | 资质审核 5-15 工作日 + 控制台5 分钟 |
+| 家人注册体验 | 点 invite link | 微信扫码 (丝滑) |
+| 访客 (guest) | ✓ share link | ✗ 不支持 |
+| 审核员 | ✓ PIN 1104 | ✗ 审核员无微信账号 |
+| mp/web 账号互通 | ❌ 两套 | ✅ unionid 互通 |
 
 ---
 
@@ -392,12 +423,28 @@ Phase 2B (公开访客 + admin Sprint)
 
 ## 15. 关联文档
 
-- 历史: `PRDs/AI-PRD-前后端统一云-phase2实施-260727.md` (云端 MySQL 切流, 已有 schema)
-- 历史: PR #189 Phase B admin whitelist (mp 端雏形, 本次 web 端复用思路)
-- 历史: `src/migrate_add_dad_whitelist.py` (settings 表白名单 JSON 模式)
-- 历史: `templates/admin-whitelist.html` (孤儿 UI, 风格可参考)
-- 历史: `.hermes/plans/sprint-26080802-stage-print-polish/plan-*.md` (PRD 范式参考)
-- AGENTS.md § 数据策略红线 / § 跨项目协作规范 / § Sprint 收尾 Checklist
+### 历史 sprint 范式参考
+- `PRDs/AI-PRD-前后端统一云-phase2实施-260727.md` (云端 MySQL 切流, 已有 schema)
+- PR #189 Phase B admin whitelist (mp 端雏形, 本次 web 端复用思路)
+- `src/migrate_add_dad_whitelist.py` (settings 表白名单 JSON 模式)
+- `templates/admin-whitelist.html` (孤儿 UI, 风格可参考)
+- `.hermes/plans/sprint-26080802-stage-print-polish/plan-*.md` (PRD 范式参考)
+
+### Cloudbase 实查 (8-10, mcp__cloudbase__queryAppAuth getLoginConfig)
+- envId: `cloud1-d4gfwyvsk1435e2e4`
+- 当前登录方式: `usernamePassword: true, email: false, anonymous: false, phone: false`
+- **wx_open 未开启** (Q5 选 A' 才需开, 控制台 5 分钟操作)
+- mp 端 AppID `wx22484aedc92fba20` 实际绑定的云开发环境就是这个 cloud1
+- 微信开放平台扫码登录 API: `auth.signInWithProvider({provider_id: "wx_open", provider_token})` 已封装
+
+### 微信官方文档
+- 开放平台扫码登录: https://developers.weixin.qq.com/doc/oplatform/developers/dev/auth/web.html
+- CloudBase wx_open 接入: https://docs.cloudbase.net/authentication-v2/method/wechat-login
+- unionid 互通机制: https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/union-id.html
+
+### AGENTS.md 红线
+- § 数据策略红线 / § 跨项目协作规范 / § Sprint 收尾 Checklist
+- 本次双仓镜像: 主仓 plan (详细版) + 主仓 PRDs/AI-PRD (摘要) + Obsidian sprint doc (镜像)
 
 ---
 
