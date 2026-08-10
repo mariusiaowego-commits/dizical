@@ -1,10 +1,54 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-10 (仓库清理 — handoff 归档 + docs/* stale 分支, PR #253 OPEN)
+**最后更新**: 2026-08-10 (sprint 26081001 + 26081002 收尾, stage 列表过滤 + stage 边界修复, PR #256/#257/#258 MERGED, main 952d6c5)
 
 ---
 
-### 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 OPEN)
+### 2026-08-10 sprint 26081001 + 26081002 收尾 (PR #256/#257/#258 MERGED)
+
+**触发**: dad 8-10 浏览器反馈 /report/stage-print 下拉有 Stage 0/Stage null 噪音 + Stage 17/18 只显示 1 天.
+
+**修复 (跨 2 sprint, 3 PR)**:
+- PR #256 (sprint 26081001): list_stages SQL 过滤 stage_order IS NULL/0 + MySQL save_weekly_assignment 算法对齐 SQLite
+- PR #257 (sprint 26081001 P1): migrate 算法改负数 (-1 到 -12), 替代 0.01-0.12 浮点 (MySQL BIGINT 拒绝浮点)
+- PR #258 (sprint 26081002): 2 行 stage_start/end 边界修复 (id=78/79 老 fallback 写 lesson_date)
+
+**数据修复**:
+- 本地 SQLite: 12 行 stage_order NULL → -1 到 -12 (按 lesson_date 升序倒号)
+- 云端 MySQL: 12 NULL → -1 到 -12 + 2 个 stage_order=0 (id=78/79) → 17/18
+- 云端 2 行 stage_start/end: id=78 ss 8-01→8-02, se 8-01→8-08; id=79 ss 8-08→8-09, se 8-08→8-15
+- 备份: data/backups/stage-{order,start-end}-260810-{local,cloud}-pre-*.txt (snapshot text dump, 跟 sprint 26080803 同款)
+- 全部 migrate 脚本 idempotent (多次跑 diff=0)
+
+**验证 (prod API)**:
+- /api/practices/stages: count=30 (1-18 + -1~-12), DESC 排序, 0 invalid
+- /api/practices/stage-detail?stage_order=17: 7 days (8-02~8-08, 367 min) ✓
+- /api/practices/stage-detail?stage_order=18: 1 day (8-09, 56 min) ✓
+- dad 浏览器实测 ✓
+
+**测试**:
+- 5/5 新单测 PASSED (test_list_stages_filter.py: NULL/0/正常/负数/混合)
+- 全套 pytest: 505 passed, 9 failed (pre-existing typer/click baseline, 0 新增 regression)
+
+**部署**:
+- CloudRun deploy #078 成功 (MCP 180s timeout 但 queryCloudRun detail.Status=normal, sprint 250 沉淀生效)
+- MCP auth device mode 激活 (dad 浏览器点授权)
+
+**沉淀**:
+- 6 条 PDR 决策 append 到 decision-log.md
+- sprint 26081001 verify + sprint 26081002 verify (3-1-1 格式)
+- 主仓 STATUS.md + vibe-coding-log.md 同步 (本文件)
+
+**教训**:
+- MySQL BIGINT 拒绝浮点 (静默 rowsAffected=0), 写代码前必查 schema 列类型
+- 一个 sprint 不保证查全同源 bug, 排查时 dry-run 全表所有相关列
+- dad 报"X 个 bug" 时 dry-run 实际数, 可能有 issue 漏 (本 sprint 14 vs issue 描述 13)
+- PR 修算法不会自动修已有 row (sprint 08 ON DUPLICATE KEY UPDATE 语义保留)
+- 详见 Obsidian sprint 26081001 + 26081002 verify 文件
+
+---
+
+### 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 MERGED)
 
 **触发**: dad "STATUS.md 看一遍, git 仓库里的历史 handoff 都检查一下, 没用的 handoff 可以 archived 掉或者删掉, 仔细 review 并清理一下 git"
 
