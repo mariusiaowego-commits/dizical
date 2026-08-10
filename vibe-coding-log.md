@@ -1,3 +1,24 @@
+## 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 OPEN)
+
+- **触发**: dad "STATUS.md 看一遍, git 仓库里的历史 handoff 都检查一下, 没用的 handoff 可以 archived 掉或者删掉, 仔细 review 并清理一下 git"
+- **拍板 (BB + FF + HH)**:
+  - BB: 根目录只留 1 份当前未解决 handoff, 历史 33 份 mv 到 docs/handoff-archive/ (跟 .gitignore 注释一致)
+  - FF: 19 条 untracked 工作笔记 (.cloudrun-deploy-new/ + 8 .hermes/plans/ cloud-cutover 旧版 + 2 excalidraw + 8 raw 上传 + 1 测试 png) 全不动 (dad 自己加的)
+  - HH: 只清过 7 天的 docs/* 分支 (3 个 8-02 closeout), 8-03 留待复核
+- **改动**:
+  - 根目录 handoff: 33 → 1 (仅留 8-09 config 接续入口)
+  - docs/handoff-archive/: 7 → 40 (+33)
+  - 远端 docs/*: 12 → 5 (净减 7 = 我手动删 3 个 8-02 + GH 自动清 4 个 merge 后)
+  - 远端 stale refs: `git remote prune origin` 清掉 1 个 chore/dynamic-sync-env-password (PR #226 MERGED 8-05 自动删未生效)
+- **额外 chore (PR #253)**: 5 个 fa198ba 前 tracked 的老 handoff (7-11/7-13 那批) 还在 git index, `git rm --cached` 5 files 后 commit chore/handoff-archive-cleanup-260810 → PR #253 OPEN 等 merge
+- **验证**: git status clean (除 untracked); docs/handoff-archive/ 全部 40 文件被 .gitignore (handoff-*.md + docs/handoff-archive/) 屏蔽; 5 tracked handoff 解 track 后 docs/handoff-archive/ 同名文件保留
+- **教训**:
+  1. **fa198ba 之前 commit 的 handoff 仍在 git index, .gitignore 对已 tracked 文件不生效**: 解 track 必须 `git rm --cached` + commit, 否则 status 永久 D 状态
+  2. **GH merge 后自动删 head ref 是异步**: 7-31 拍的规则"过 7 天删 docs/*"实际上一半分支早被 GH 自动清, 我手动删 3 个全是 no-op (但安全门报的"remote ref does not exist"误导)
+  3. **下次清 docs/* 先 `git ls-remote origin 'refs/heads/docs/*'` 看真实清单**: 别只信 `git for-each-ref`, 本地 refs 可能未 fetch 完整
+  4. **untracked 噪音 vs git 历史是两套清理**: dad 拍 FF "不动 untracked" 是因为这些是 dad 自己加的工作笔记 (8 月初 cloud-cutover 决策证据), agent 不该自动判断"过时"清掉
+- **下一步**: dad merge PR #253 → chore commit 进 main, 我切回 main
+
 ## 2026-08-09 config 老师要求录入优化 sprint 启动 (S0 现状验证, 未提交代码)
 
 - **触发**: dad 需求 PRD `config配置-老师要求录入优化.md` (Obsidian tqob), 6 项需求: 草稿缓存/上周预填/历史3次/速度多档/picker只列active/配图预览
