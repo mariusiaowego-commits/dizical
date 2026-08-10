@@ -1,0 +1,184 @@
+"""
+Dad 后台用户管理路由 (Sprint 26081003).
+
+GET  /config/users                              用户管理页 (HTML, dad PIN 守门)
+POST /config/api/users/create                   建账号 (返明文初始密码 1 次)
+POST /config/api/users/{id}/reset-password      重置密码 (返新明文 1 次)
+POST /config/api/users/{id}/role                改 role
+POST /config/api/users/{id}/revoke              软删
+POST /config/api/users/{id}/logout-all          踢出所有设备
+
+dad PIN 守门: 每个写操作都校验 X-Dad-Pin header = settings.dad_pin.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+
+from src.kid_app.auth import (
+    ROLE_LABELS,
+    bump_session_version,
+    check_dad_pin,
+    create_user,
+    generate_random_password,
+    hash_password,
+    list_users,
+    revoke_user,
+    update_role,
+)
+
+# Jinja 模板 (跟 minip_api.py 同款 env)
+_TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
+_env = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+
+router = APIRouter()
+
+
+def _check_pin_or_401(pin: str):
+    """dad PIN 校验. 不通过返 JSONResponse 401."""
+    if not check_dad_pin(pin):
+        return JSONResponse({"ok": False, "error": "PIN 错"}, status_code=401)
+    return None
+
+
+@router.get("/config/users", response_class=HTMLResponse)
+async def config_users_page(request: Request, pin: str = ""):
+    """dad 用户管理 UI. PIN 守门 (跟 /config 一致风格)."""
+    pin_valid = bool(pin) and check_dad_pin(pin)
+    users = list_users() if pin_valid else []
+
+    # 转 datetime 为字符串 (Jinja 不能直接渲染)
+    for u in users:
+        for k in ("created_at", "last_login_at"):
+            if u.get(k) and not isinstance(u[k], str):
+                u[k] = str(u[k])
+
+    return _env.TemplateResponse(
+        request,
+        "config-users.html",
+        {
+            "active_nav": "config_users",
+            "pin": pin,
+            "pin_valid": pin_valid,
+            "users": users,
+            "role_labels": ROLE_LABELS,
+            "today": __import__("datetime").date.today().isoformat(),
+        },
+    )
+
+
+@router.post("/config/api/users/create")
+async def api_users_create(request: Request):
+    """{username, display_name, role, avatar_letter, pin} → 返 initial_password 一次."""
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    username = (body.get("username") or "").strip()
+    display_name = (body.get("display_name") or "").strip()
+    role = (body.get("role") or "").strip()
+    avatar_letter = (body.get("avatar_letter") or display_name[:1] or "U").strip()[:1].upper()
+
+    if not username or not display_name or role not in ("student", "family", "teacher", "dad"):
+        return JSONResponse({"ok": False, "error": "参数缺失或 role 不合法"},
+                            status_code=400)
+    if len(username) < 2 or len(username) > 64:
+        return JSONResponse({"ok": False, "error": "用户名长度 2-64"},
+                            status_code=400)
+
+    initial_password = generate_random_password(12)
+    try:
+        user_id = create_user(
+            username=username,
+            display_name=display_name,
+            password_hash=hash_password(initial_password),
+            role=role,
+            avatar_letter=avatar_letter,
+            created_by=None,  # 简化: 不传 dad user_id (dad 走 PIN 不走 web_users)
+        )
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+    return JSONResponse({
+        "ok": True,
+        "user_id": user_id,
+        "username": username,
+        "initial_password": initial_password,
+        "warning": "请把初始密码通过安全渠道 (微信/电话) 告知该用户, 首次登录后必须改密.",
+    })
+
+
+@router.post("/config/api/users/{user_id}/reset-password")
+async def api_users_reset_password(request: Request, user_id: int):
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    new_password = generate_random_password(12)
+    from src.kid_app.auth import fetch_user_by_id, update_password
+    user = fetch_user_by_id(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "用户不存在"}, status_code=404)
+
+    update_password(user_id, hash_password(new_password))
+    # 重置后必须改密
+    from src.db_adapter import execute as _db_execute, get_conn
+    conn, is_mysql = get_conn()
+    try:
+        _db_execute(conn, "UPDATE web_users SET must_change_password = 1 WHERE user_id = ?",
+                    (user_id,))
+        conn.commit()
+    finally:
+        if not is_mysql: conn.close()
+
+    return JSONResponse({
+        "ok": True,
+        "user_id": user_id,
+        "username": user["username"],
+        "new_password": new_password,
+        "must_change": True,
+    })
+
+
+@router.post("/config/api/users/{user_id}/role")
+async def api_users_change_role(request: Request, user_id: int):
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    new_role = (body.get("role") or "").strip()
+    if new_role not in ("student", "family", "teacher", "dad"):
+        return JSONResponse({"ok": False, "error": "role 不合法"}, status_code=400)
+
+    update_role(user_id, new_role)
+    return JSONResponse({"ok": True, "user_id": user_id, "role": new_role})
+
+
+@router.post("/config/api/users/{user_id}/revoke")
+async def api_users_revoke(request: Request, user_id: int):
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    revoke_user(user_id)
+    return JSONResponse({"ok": True, "user_id": user_id, "revoked": True})
+
+
+@router.post("/config/api/users/{user_id}/logout-all")
+async def api_users_logout_all(request: Request, user_id: int):
+    """踢出该用户所有设备. 递增 session_version."""
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    bump_session_version(user_id)
+    return JSONResponse({"ok": True, "user_id": user_id, "kicked": True})

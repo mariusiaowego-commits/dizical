@@ -200,6 +200,31 @@
   .has-sidebar > .pin-overlay,
   .has-sidebar > .modal-overlay { margin-left: 0; margin-right: 0; max-width: 100%; }
 }
+
+/* ── Sidebar footer (Sprint 26081003: 登出按钮) ─── */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 8px 0 16px 0;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+.sidebar-logout-btn {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted, #666666);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  border-radius: 0;
+}
+.sidebar-logout-btn:hover { background: rgba(255,107,107,0.08); color: var(--primary, #FF6B6B); }
+.sidebar-logout-btn .icon { width: 24px; height: 24px; flex-shrink: 0; display: inline-flex; }
+.sidebar-logout-btn .icon svg { width: 24px; height: 24px; }
+.sidebar-logout-btn .label { opacity: 0; transition: opacity 200ms ease 80ms; white-space: nowrap; }
+.sidebar.expanded .sidebar-logout-btn .label { opacity: 1; }
 </style>
 
 <!-- Sidebar 容器 -->
@@ -339,6 +364,28 @@
 
   toggle.addEventListener('click', toggleSidebar);
   backdrop.addEventListener('click', toggleSidebar);
+
+  // Sprint 26081003: 登出按钮
+  const logoutBtn = document.getElementById('sidebarLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      if (!confirm('确定登出? 关浏览器后下次开要重输密码.')) return;
+      try { await fetch('/api/auth/logout', {method:'POST'}); } catch (e) { /* ignore */ }
+      window.location.href = '/login';
+    });
+  }
+
+  // Sprint 26081003: 拉取当前用户信息填 sidebar header
+  fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+    if (!data || !data.user) return;
+    const u = data.user;
+    const av = document.getElementById('sidebarAvatar');
+    const un = document.getElementById('sidebarUsername');
+    const ur = document.getElementById('sidebarUserrole');
+    if (av) av.textContent = u.avatar_letter || '?';
+    if (un) un.textContent = u.display_name || '匿名';
+    if (ur) ur.textContent = u.role_label || u.role || '';
+  }).catch(() => {});
 
   // 用户要求: 取消 click-outside-to-collapse 逻辑 (2026-06-05)
   // 之前: 点 sidebar 外任意位置都收起 — 跟 report 页 cal-day click 冲突

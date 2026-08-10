@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户管理 — dizical</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #FAFAFA; margin: 0;
+      min-height: 100vh;
+    }
+    .header {
+      background: white;
+      border-bottom: 1px solid #EEE;
+      padding: 18px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; margin: 0; color: #2C3E50; font-weight: 600; }
+    .header .right { display: flex; gap: 12px; align-items: center; }
+    .header a { color: #666; text-decoration: none; font-size: 14px; }
+    .header a:hover { color: #FF6B6B; }
+
+    .pin-gate {
+      max-width: 420px; margin: 80px auto 0;
+      background: white; padding: 36px;
+      border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      text-align: center;
+    }
+    .pin-gate h2 { font-size: 20px; color: #2C3E50; margin: 0 0 16px 0; }
+    .pin-gate input {
+      width: 200px; padding: 11px;
+      font-size: 18px; text-align: center;
+      border: 1.5px solid #E5E5E5; border-radius: 8px;
+      letter-spacing: 4px;
+    }
+    .pin-gate input:focus { outline: none; border-color: #FF6B6B; }
+    .pin-gate button {
+      margin-top: 14px;
+      padding: 10px 28px;
+      background: #FF6B6B; color: white;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .pin-gate .err { color: #D32F2F; margin-top: 10px; font-size: 13px; }
+
+    .container {
+      max-width: 1100px; margin: 24px auto; padding: 0 24px;
+    }
+    .toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .toolbar .actions { display: flex; gap: 10px; }
+    .btn {
+      padding: 8px 18px; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-primary { background: #FF6B6B; color: white; }
+    .btn-primary:hover { background: #FF5252; }
+    .btn-secondary { background: #F0F0F0; color: #555; }
+    .btn-secondary:hover { background: #E0E0E0; }
+    .btn-danger { background: #FFE5E5; color: #D32F2F; }
+    .btn-danger:hover { background: #FFD0D0; }
+
+    table {
+      width: 100%; border-collapse: collapse;
+      background: white; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    th, td { padding: 14px 18px; text-align: left; font-size: 14px; }
+    th { background: #F8F8F8; color: #666; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    tbody tr { border-bottom: 1px solid #F0F0F0; }
+    tbody tr:last-child { border-bottom: none; }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 9999px;
+      font-size: 12px; font-weight: 500;
+    }
+    .badge-dad { background: #FFF5E5; color: #C2691A; }
+    .badge-student { background: #FFE5F0; color: #C2185B; }
+    .badge-family { background: #E5F5FF; color: #1565C0; }
+    .badge-teacher { background: #E5F5E5; color: #2E7D32; }
+    .badge-revoked { background: #F0F0F0; color: #999; }
+
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: white; border-radius: 12px;
+      width: 460px; max-width: 90vw;
+      padding: 28px;
+    }
+    .modal h3 { margin: 0 0 16px 0; font-size: 18px; color: #2C3E50; }
+    .modal label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+    .modal input, .modal select {
+      width: 100%; padding: 9px 12px;
+      font-size: 14px; font-family: inherit;
+      border: 1.5px solid #E5E5E5; border-radius: 8px;
+      box-sizing: border-box;
+      margin-bottom: 14px;
+    }
+    .modal input:focus, .modal select:focus { outline: none; border-color: #FF6B6B; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+    .pw-display {
+      background: #F8F8F8; border: 2px dashed #FF6B6B;
+      padding: 16px; border-radius: 8px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 18px; text-align: center;
+      letter-spacing: 2px;
+      margin: 16px 0;
+      word-break: break-all;
+    }
+    .pw-display-actions { display: flex; gap: 10px; justify-content: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>dizical 用户管理 (Sprint 26081003)</h1>
+    <div class="right">
+      <a href="/config">← 返回配置</a>
+      <a href="/">首页</a>
+    </div>
+  </div>
+
+  {% if not pin_valid %}
+  <div class="pin-gate">
+    <h2>请输入管理员 PIN</h2>
+    <input type="password" id="pinInput" placeholder="****" maxlength="8" autofocus
+           onkeydown="if(event.key==='Enter') submitPin()">
+    <br>
+    <button onclick="submitPin()">验证</button>
+    <div class="err" id="pinErr"></div>
+  </div>
+  <script>
+    function submitPin() {
+      const pin = document.getElementById('pinInput').value;
+      if (!pin) return;
+      location.href = '/config/users?pin=' + encodeURIComponent(pin);
+    }
+  </script>
+  {% else %}
+  <div class="container">
+    <div class="toolbar">
+      <div>
+        <strong style="color:#666;font-size:13px;">{{ users|length }} 个账号</strong>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="openCreateModal()">+ 新建账号</button>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>用户名</th>
+          <th>显示名</th>
+          <th>角色</th>
+          <th>状态</th>
+          <th>最后登录</th>
+          <th>创建时间</th>
+          <th style="text-align:right;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        {% for u in users %}
+        <tr data-uid="{{ u.user_id }}">
+          <td><code style="background:#F8F8F8;padding:2px 8px;border-radius:4px;">{{ u.username }}</code></td>
+          <td>{{ u.display_name }}</td>
+          <td><span class="badge badge-{{ u.role }}">{{ role_labels.get(u.role, u.role) }}</span></td>
+          <td>
+            {% if u.revoked %}<span class="badge badge-revoked">已撤销</span>
+            {% elif u.must_change_password %}<span class="badge badge-family">待改密</span>
+            {% else %}<span style="color:#999;font-size:13px;">正常</span>{% endif %}
+          </td>
+          <td style="color:#666;font-size:13px;">{{ u.last_login_at or '—' }}</td>
+          <td style="color:#666;font-size:13px;">{{ u.created_at }}</td>
+          <td style="text-align:right;white-space:nowrap;">
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
+                    onclick="resetPw({{ u.user_id }}, '{{ u.username }}')">重置密码</button>
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
+                    onclick="logoutAll({{ u.user_id }}, '{{ u.username }}')">踢出所有设备</button>
+            {% if not u.revoked %}
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;"
+                    onclick="revokeUser({{ u.user_id }}, '{{ u.username }}')">撤销</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not users %}
+        <tr><td colspan="7" style="text-align:center;color:#999;padding:40px;">暂无账号. 点击右上"新建账号"开始.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 新建账号 modal -->
+  <div class="modal-backdrop" id="createModal">
+    <div class="modal">
+      <h3>新建账号</h3>
+      <label>用户名 (登录用, 2-64 字符)</label>
+      <input id="newUsername" placeholder="例如 yoyo">
+      <label>显示名</label>
+      <input id="newDisplayName" placeholder="例如 女儿">
+      <label>角色</label>
+      <select id="newRole">
+        <option value="student">学习者 (student)</option>
+        <option value="family">家人 (family)</option>
+        <option value="teacher">老师 (teacher)</option>
+      </select>
+      <label>头像字母 (单字母, 默认取显示名首字)</label>
+      <input id="newAvatar" placeholder="Y" maxlength="1">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+        <button class="btn btn-primary" onclick="createUser()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 初始密码展示 modal -->
+  <div class="modal-backdrop" id="pwModal">
+    <div class="modal">
+      <h3 id="pwTitle">初始密码 (请通过安全渠道告知该用户)</h3>
+      <div class="pw-display" id="pwDisplay"></div>
+      <p style="color:#888;font-size:13px;margin:8px 0;">首次登录后会强制改密.</p>
+      <div class="pw-display-actions">
+        <button class="btn btn-secondary" onclick="copyPw()">复制</button>
+        <button class="btn btn-primary" onclick="closePwModal()">我已知晓</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+    const CURRENT_PIN = {{ pin | tojson }};
+    let lastShownPw = '';
+
+    function openCreateModal() { document.getElementById('createModal').classList.add('show'); }
+    function closeCreateModal() { document.getElementById('createModal').classList.remove('show'); }
+    function closePwModal() { document.getElementById('pwModal').classList.remove('show'); location.reload(); }
+
+    function showPw(title, pw) {
+      lastShownPw = pw;
+      document.getElementById('pwTitle').textContent = title;
+      document.getElementById('pwDisplay').textContent = pw;
+      document.getElementById('pwModal').classList.add('show');
+    }
+    function copyPw() {
+      navigator.clipboard.writeText(lastShownPw).then(() => {
+        const btn = event.target; const t = btn.textContent;
+        btn.textContent = '已复制 ✓'; setTimeout(() => { btn.textContent = t; }, 1200);
+      });
+    }
+
+    async function createUser() {
+      const username = document.getElementById('newUsername').value.trim();
+      const display_name = document.getElementById('newDisplayName').value.trim();
+      const role = document.getElementById('newRole').value;
+      const avatar_letter = document.getElementById('newAvatar').value.trim().toUpperCase();
+      if (!username || !display_name) { alert('用户名和显示名必填'); return; }
+      const r = await fetch('/config/api/users/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN, username, display_name, role, avatar_letter}),
+      });
+      const data = await r.json();
+      if (!data.ok) { alert('失败: ' + data.error); return; }
+      closeCreateModal();
+      showPw('账号 ' + data.username + ' 的初始密码', data.initial_password);
+    }
+
+    async function resetPw(uid, username) {
+      if (!confirm('重置 ' + username + ' 的密码? 当前密码会失效.')) return;
+      const r = await fetch(`/config/api/users/${uid}/reset-password`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN}),
+      });
+      const data = await r.json();
+      if (!data.ok) { alert('失败: ' + data.error); return; }
+      showPw(username + ' 的新密码', data.new_password);
+    }
+
+    async function logoutAll(uid, username) {
+      if (!confirm('踢出 ' + username + ' 的所有设备? 该用户需重新登录.')) return;
+      const r = await fetch(`/config/api/users/${uid}/logout-all`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN}),
+      });
+      const data = await r.json();
+      if (!data.ok) { alert('失败: ' + data.error); return; }
+      alert('已踢出 ' + username + ' 的所有设备.');
+    }
+
+    async function revokeUser(uid, username) {
+      if (!confirm('撤销账号 ' + username + '? 该用户无法再登录 (可手动恢复).')) return;
+      const r = await fetch(`/config/api/users/${uid}/revoke`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN}),
+      });
+      const data = await r.json();
+      if (!data.ok) { alert('失败: ' + data.error); return; }
+      location.reload();
+    }
+  </script>
+</body>
+</html>
