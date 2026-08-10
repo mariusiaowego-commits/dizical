@@ -52,7 +52,12 @@ def _backup_snapshot(snapshot: List[str], label: str) -> Path:
 
 
 def _compute_diffs_local(conn) -> List[Tuple[int, str, Any, Any]]:
-    """本地 SQLite: 算 13 行 (或子集) stage_order 改动."""
+    """本地 SQLite: 算 13 行 (或子集) stage_order 改动.
+
+    Sprint 26081001 P1 fix: 老 lesson (id 27-38) 用负数 -1 到 -12 表示"早于小课",
+    lesson_date 升序倒号 (最早 = -1). MySQL stage_order 是 BIGINT 拒绝浮点,
+    负数 INT 安全.
+    """
     cur = conn.execute(
         "SELECT id, lesson_date, stage_order FROM weekly_assignments "
         "WHERE stage_order IS NULL OR stage_order = 0 ORDER BY lesson_date"
@@ -62,7 +67,7 @@ def _compute_diffs_local(conn) -> List[Tuple[int, str, Any, Any]]:
     for rid, ld, old_so in candidates:
         ld_str = ld if isinstance(ld, str) else ld.isoformat()
         # 本地 lessons 表从 2026-03-14 起, 老 lesson (NULL 12 个) 不在 attended 列表
-        # → 用 0.01-0.12 浮点 (按 lesson_date 升序排号)
+        # → 用负数 -1 到 -12 (按 lesson_date 升序倒号)
         # 新 lesson (8-08 等) 在 attended 列表 → 用 index+1 (跟 SQLite 算法一致)
         cur2 = conn.execute(
             "SELECT date FROM lessons WHERE status = 'attended' ORDER BY date"
@@ -74,8 +79,7 @@ def _compute_diffs_local(conn) -> List[Tuple[int, str, Any, Any]]:
             # 小课: attended index + 1
             new_so = attended_strs.index(ld_str) + 1
         else:
-            # 早期大课: 按 lesson_date 升序排号 0.01-0.12
-            # 先找出所有 stage_order IS NULL 或 = 0 的 lesson_date 升序
+            # 早期大课: 按 lesson_date 升序倒号 -1 到 -12
             cur3 = conn.execute(
                 "SELECT id, lesson_date FROM weekly_assignments "
                 "WHERE stage_order IS NULL OR stage_order = 0 ORDER BY lesson_date"
@@ -83,7 +87,7 @@ def _compute_diffs_local(conn) -> List[Tuple[int, str, Any, Any]]:
             null_ids_ordered = [r[0] for r in cur3.fetchall()]
             try:
                 offset = null_ids_ordered.index(rid)
-                new_so = round(0.01 * (offset + 1), 2)
+                new_so = -(offset + 1)  # P1: 负数 -1 到 -12
             except ValueError:
                 new_so = None
 
@@ -206,10 +210,10 @@ def _compute_diffs_cloud(conn) -> List[Tuple[int, str, Any, Any]]:
                 # 小课: attended index + 1
                 new_so = attended_strs.index(ld_str) + 1
             else:
-                # 早期大课: 浮点 0.01-0.12 按 lesson_date 升序排号
+                # 早期大课: 负数 -1 到 -12 按 lesson_date 升序倒号 (P1: 替代浮点方案, MySQL BIGINT 拒绝浮点)
                 if rid in null_ids_ordered:
                     offset = null_ids_ordered.index(rid)
-                    new_so = round(0.01 * (offset + 1), 2)
+                    new_so = -(offset + 1)
                 else:
                     new_so = None
 
