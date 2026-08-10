@@ -1294,7 +1294,8 @@ def api_practices_stage_detail(
     """
     stage = None
     if stage_order is not None:
-        stage = db.get_stage_by_order(int(stage_order))
+        # Sprint 26081001: stage_order 可能是浮点 (0.01-0.12 早期大课), 不再 int() 强制转
+        stage = db.get_stage_by_order(stage_order)
         if not stage:
             return JSONResponse({"ok": False, "error": f"找不到 Stage {stage_order}"}, status_code=404)
     else:
@@ -1323,7 +1324,8 @@ def api_practices_stage_detail(
 def _resolve_stage(stage_order: Optional[int], date: Optional[str]) -> Optional[dict]:
     """复用 api_practices_stage_detail 内部 stage 查询逻辑 (提取为共用 helper)."""
     if stage_order is not None:
-        return db.get_stage_by_order(int(stage_order))
+        # Sprint 26081001: stage_order 可能是浮点 (0.01-0.12 早期大课), 不再 int() 强制转
+        return db.get_stage_by_order(stage_order)
     day_s = date
     if not day_s:
         day_s = dt.date.today().isoformat()

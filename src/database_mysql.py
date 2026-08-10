@@ -420,9 +420,39 @@ class MySQLBackend(BaseBackend):
                     (lesson_date.isoformat(),),
                 )
                 row = cur.fetchone()
-                stage_start = row.get("stage_start") if row else lesson_date.isoformat()
-                stage_end = row.get("stage_end") if row else lesson_date.isoformat()
-                stage_order = row.get("stage_order") if row else 0
+                if row:
+                    # 已有 row: 保留 stage_* (跟 sprint 08 语义一致, 不动)
+                    stage_start = row.get("stage_start")
+                    stage_end = row.get("stage_end")
+                    stage_order = row.get("stage_order")
+                else:
+                    # 新 row: 跟 SQLite `database.py:710-740` 一致算法 (attended_dates.index + 1)
+                    cur.execute(
+                        "SELECT date FROM lessons WHERE status = 'attended' ORDER BY date"
+                    )
+                    attended_rows = cur.fetchall()
+                    attended_dates = [
+                        r['date'].isoformat() if hasattr(r['date'], 'isoformat') else str(r['date'])
+                        for r in attended_rows
+                    ]
+                    # 计算 stage_start = lesson_date + 1, stage_end = 下一节 (attended + scheduled) 课日期
+                    cur.execute("SELECT date FROM lessons ORDER BY date")
+                    all_lessons_rows = cur.fetchall()
+                    all_lessons = [
+                        r['date'] if isinstance(r['date'], dt.date) else dt.date.fromisoformat(r['date'])
+                        for r in all_lessons_rows
+                    ]
+                    future = [d for d in all_lessons if d > lesson_date]
+                    stage_start = (lesson_date + dt.timedelta(days=1)).isoformat()
+                    stage_end = future[0].isoformat() if future else (lesson_date + dt.timedelta(days=7)).isoformat()
+
+                    lesson_date_str = lesson_date.isoformat()
+                    if lesson_date_str in attended_dates:
+                        stage_order = attended_dates.index(lesson_date_str) + 1
+                    else:
+                        # Sprint 26081001: 不再写 0, 跟 SQLite 一致写 None (数据库存 NULL)
+                        stage_order = None
+
                 cur.execute('''
                     INSERT INTO weekly_assignments
                     (lesson_date, items, notes, images, stage_start, stage_end, stage_order)
@@ -431,6 +461,7 @@ class MySQLBackend(BaseBackend):
                         items = VALUES(items),
                         notes = VALUES(notes),
                         images = VALUES(images)
+                        -- stage_start/stage_end/stage_order 仅 INSERT 时写, UPDATE 保留旧值 (sprint 08 语义)
                 ''', (lesson_date.isoformat(), items_json, notes, images_json,
                       stage_start, stage_end, stage_order))
             conn.commit()
@@ -992,17 +1023,24 @@ class MySQLBackend(BaseBackend):
 
     # ── Stage / Sessions queries (Sprint 08: 对齐 SQLite) ──
     def list_stages(self) -> List[Dict]:
-        """列出历史 stage (按 stage_order 降序). 同 order 多行取 id 最大一条."""
+        """列出历史 stage (按 stage_order 降序). 同 order 多行取 id 最大一条.
+
+        Sprint 26081001: 过滤 stage_order IS NULL / = 0 (老 NULL + 新录入 bug).
+        保留浮点 stage_order (0.01-0.12 表示早期大课, 早于小课 stage 1).
+        """
         import json as _json
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
                 # Sprint 08 fix: MySQL 8 不接受 '' 比较 DATETIME, 只用 IS NOT NULL
+                # Sprint 26081001: 加 stage_order IS NOT NULL AND stage_order != 0 过滤
                 cur.execute(
                     """
                     SELECT id, stage_order, lesson_date, stage_start, stage_end, items, notes
                     FROM weekly_assignments
                     WHERE stage_start IS NOT NULL
-                    ORDER BY COALESCE(stage_order, 0) DESC, id DESC
+                      AND stage_order IS NOT NULL
+                      AND stage_order != 0
+                    ORDER BY stage_order DESC, id DESC
                     """
                 )
                 rows = list(cur.fetchall())
@@ -1029,8 +1067,11 @@ class MySQLBackend(BaseBackend):
             })
         return out
 
-    def get_stage_by_order(self, stage_order: int) -> Optional[Dict]:
-        """按 stage_order 取最新一条 assignment (含 items)."""
+    def get_stage_by_order(self, stage_order) -> Optional[Dict]:
+        """按 stage_order 取最新一条 assignment (含 items).
+
+        Sprint 26081001: stage_order 可能是浮点 (0.01-0.12 早期大课), 不再 int() 强制转.
+        """
         import json as _json
         with self._get_connection() as conn:
             with conn.cursor(DictCursor) as cur:
@@ -1040,7 +1081,7 @@ class MySQLBackend(BaseBackend):
                     WHERE stage_order = %s
                     ORDER BY id DESC LIMIT 1
                     """,
-                    (int(stage_order),),
+                    (stage_order,),
                 )
                 row = cur.fetchone()
         if not row:
