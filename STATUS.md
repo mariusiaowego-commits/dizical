@@ -1,6 +1,33 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-09 (stage-print iPad 系列 4 sprint 全收尾, main 8c8c152, 生产 074)
+**最后更新**: 2026-08-10 (仓库清理 — handoff 归档 + docs/* stale 分支, PR #253 OPEN)
+
+---
+
+### 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 OPEN)
+
+**触发**: dad "STATUS.md 看一遍, git 仓库里的历史 handoff 都检查一下, 没用的 handoff 可以 archived 掉或者删掉, 仔细 review 并清理一下 git"
+
+**拍板** (BB + FF + HH):
+- BB: 根目录只留 1 份当前未解决 handoff, 历史 33 份 mv 到 docs/handoff-archive/ (跟 .gitignore 注释一致)
+- FF: 19 条 untracked 工作笔记全不动 (.cloudrun-deploy-new/ + .hermes/plans/ cloud-cutover 旧版 + 2 excalidraw + 8 raw 上传 + 1 测试 png, dad 自己加的)
+- HH: 只清过 7 天的 docs/* 分支, 8-03 留待复核
+
+**改动**:
+- 根目录 handoff: 33 → 1 (仅留 8-09 config 接续入口)
+- docs/handoff-archive/: 7 → 40 (+33)
+- 远端 docs/*: 12 → 5 (净减 7 = 手动删 3 个 8-02 closeout + GH 自动清 4 个 merge 后)
+- 远端 stale refs: `git remote prune origin` 清掉 1 个 chore/dynamic-sync-env-password
+- chore/handoff-archive-cleanup-260810 (5 个 fa198ba 前 tracked handoff `git rm --cached`) → PR #253 OPEN 等 merge
+
+**验证**: git status clean (除 untracked); docs/handoff-archive/ 全部 40 文件被 .gitignore (handoff-*.md + docs/handoff-archive/) 屏蔽
+
+**教训**:
+1. **fa198ba 之前 commit 的 handoff 仍在 git index, .gitignore 对已 tracked 文件不生效**: 解 track 必须 `git rm --cached` + commit
+2. **GH merge 后自动删 head ref**: 7-31 拍的"过 7 天删 docs/*"规则, 一半分支早被 GH 自动清
+3. **下次清 docs/* 先 `git ls-remote origin 'refs/heads/docs/*'` 看真实清单**: 别只信 `git for-each-ref`
+
+**待办**: dad merge PR #253 → 切回 main
 
 ---
 
