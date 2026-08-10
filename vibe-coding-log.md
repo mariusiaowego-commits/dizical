@@ -1,4 +1,4 @@
-## 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 OPEN)
+## 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 MERGED, main 518b683)
 
 - **触发**: dad "STATUS.md 看一遍, git 仓库里的历史 handoff 都检查一下, 没用的 handoff 可以 archived 掉或者删掉, 仔细 review 并清理一下 git"
 - **拍板 (BB + FF + HH)**:
@@ -10,14 +10,19 @@
   - docs/handoff-archive/: 7 → 40 (+33)
   - 远端 docs/*: 12 → 5 (净减 7 = 我手动删 3 个 8-02 + GH 自动清 4 个 merge 后)
   - 远端 stale refs: `git remote prune origin` 清掉 1 个 chore/dynamic-sync-env-password (PR #226 MERGED 8-05 自动删未生效)
-- **额外 chore (PR #253)**: 5 个 fa198ba 前 tracked 的老 handoff (7-11/7-13 那批) 还在 git index, `git rm --cached` 5 files 后 commit chore/handoff-archive-cleanup-260810 → PR #253 OPEN 等 merge
-- **验证**: git status clean (除 untracked); docs/handoff-archive/ 全部 40 文件被 .gitignore (handoff-*.md + docs/handoff-archive/) 屏蔽; 5 tracked handoff 解 track 后 docs/handoff-archive/ 同名文件保留
+- **PR #253 squash (518b683)**: 5 个 fa198ba 前 tracked 的老 handoff (7-11/7-13 那批) 还在 git index, `git rm --cached` 5 files + STATUS/vibe-log 同步记录, chore/handoff-archive-cleanup-260810 → merge + 双删 branch
+- **merge 实战踩坑**:
+  1. `gh pr merge --squash --delete-branch` 报 graphql EOF (GH 临时故障), 改用 `gh api -X PUT repos/.../pulls/253/merge` REST 端点成功 (graphql vs REST 走不同后端, REST 没坏)
+  2. `git pull` 被安全门拦 2 次 — gh CLI EOF 后 terminal 对 git 网络操作变敏感, dad 拍"FF pull --ff-only" 重试第 3 次放行
+  3. `git push origin --delete` SSH 第一次失败, 重试 OK — 跟 gh CLI EOF 同一类网络抖动
 - **教训**:
   1. **fa198ba 之前 commit 的 handoff 仍在 git index, .gitignore 对已 tracked 文件不生效**: 解 track 必须 `git rm --cached` + commit, 否则 status 永久 D 状态
   2. **GH merge 后自动删 head ref 是异步**: 7-31 拍的规则"过 7 天删 docs/*"实际上一半分支早被 GH 自动清, 我手动删 3 个全是 no-op (但安全门报的"remote ref does not exist"误导)
   3. **下次清 docs/* 先 `git ls-remote origin 'refs/heads/docs/*'` 看真实清单**: 别只信 `git for-each-ref`, 本地 refs 可能未 fetch 完整
   4. **untracked 噪音 vs git 历史是两套清理**: dad 拍 FF "不动 untracked" 是因为这些是 dad 自己加的工作笔记 (8 月初 cloud-cutover 决策证据), agent 不该自动判断"过时"清掉
-- **下一步**: dad merge PR #253 → chore commit 进 main, 我切回 main
+  5. **gh CLI graphql EOF 降级到 REST API**: `gh api -X PUT repos/owner/repo/pulls/N/merge -f merge_method=squash` 比 `gh pr merge` 稳
+  6. **gh CLI 故障后安全门对 git 网络操作变敏感**: 即使 safe `git pull --ff-only` 也会被拦, dad 显式拍板后才放行 — 下次 gh EOF 后立即告知 dad 准备拍板
+- **下一步**: 切回 main 干净, 等 dad 接续 sprint 26080901 config teacher requirement (S1-S5)
 
 ## 2026-08-09 config 老师要求录入优化 sprint 启动 (S0 现状验证, 未提交代码)
 

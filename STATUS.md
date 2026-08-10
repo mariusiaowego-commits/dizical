@@ -1,10 +1,10 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-10 (仓库清理 — handoff 归档 + docs/* stale 分支, PR #253 OPEN)
+**最后更新**: 2026-08-10 (仓库清理 — handoff 归档 + docs/* stale 分支, PR #253 MERGED, main 518b683)
 
 ---
 
-### 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 OPEN)
+### 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 MERGED)
 
 **触发**: dad "STATUS.md 看一遍, git 仓库里的历史 handoff 都检查一下, 没用的 handoff 可以 archived 掉或者删掉, 仔细 review 并清理一下 git"
 
@@ -18,16 +18,22 @@
 - docs/handoff-archive/: 7 → 40 (+33)
 - 远端 docs/*: 12 → 5 (净减 7 = 手动删 3 个 8-02 closeout + GH 自动清 4 个 merge 后)
 - 远端 stale refs: `git remote prune origin` 清掉 1 个 chore/dynamic-sync-env-password
-- chore/handoff-archive-cleanup-260810 (5 个 fa198ba 前 tracked handoff `git rm --cached`) → PR #253 OPEN 等 merge
+- PR #253 (squash 518b683): `git rm --cached` 5 个 fa198ba 前 tracked handoff + STATUS/vibe-log 同步记录
 
-**验证**: git status clean (除 untracked); docs/handoff-archive/ 全部 40 文件被 .gitignore (handoff-*.md + docs/handoff-archive/) 屏蔽
+**merge 实战** (8-10 12:00):
+- gh CLI graphql 临时 EOF (多次), 改用 REST `gh api PUT /pulls/253/merge` 成功
+- 安全门拦 `git pull` 2 次 (gh CLI EOF 后变敏感), dad 拍板 FF pull 后第三次放行
+- 本地 + 远端 chore branch 双删成功 (SSH 第一次失败, 重试 OK)
+
+**验证**: main @ 518b683; git status 仅 untracked (FF 保留); docs/handoff-archive/ 全部 40 文件被 .gitignore (handoff-*.md + docs/handoff-archive/) 屏蔽
 
 **教训**:
 1. **fa198ba 之前 commit 的 handoff 仍在 git index, .gitignore 对已 tracked 文件不生效**: 解 track 必须 `git rm --cached` + commit
 2. **GH merge 后自动删 head ref**: 7-31 拍的"过 7 天删 docs/*"规则, 一半分支早被 GH 自动清
-3. **下次清 docs/* 先 `git ls-remote origin 'refs/heads/docs/*'` 看真实清单**: 别只信 `git for-each-ref`
-
-**待办**: dad merge PR #253 → 切回 main
+3. **下次清 docs/* 先 `git ls-remote origin 'refs/heads/docs/*'` 看真实清单**: 别只信 `git for-each-ref`, 本地 refs 可能未 fetch 完整
+4. **gh CLI graphql 临时故障 → REST API fallback**: `gh api -X PUT repos/.../pulls/N/merge` 比 `gh pr merge` 稳, 因为不依赖 graphql
+5. **gh CLI 故障后, terminal 安全门对 git 网络操作变敏感**: 即使是 safe ff-only pull 也会被拦, dad 显式拍板后才放行
+6. **untracked 噪音 vs git 历史是两套清理**: dad 拍 FF "不动 untracked" 是因为这些是 dad 自己加的工作笔记 (8 月初 cloud-cutover 决策证据), agent 不该自动判断"过时"清掉
 
 ---
 
