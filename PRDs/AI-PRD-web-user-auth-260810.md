@@ -1,8 +1,8 @@
-# AI-PRD-web-user-auth-260810
+# AI-PRD-web-user-auth-260810 (v2 — B方案本地化)
 
-> dizical web 端用户体系 PRD — 替代当前"裸奔+1 个全局 PIN" 模式
+> dizical web 端用户体系 PRD v2 — dad 8-10 拍板: 多密码账号体系全本地
 > 分支: `feat/web-user-auth-260810` (已 checkout 空状态)
-> Sprint: 26081003 (待启动, 待 dad Q1-Q5 拍板)
+> Sprint: 26081003 (待启动, 待 dad Q1=A 拍板)
 > 主文档: `.hermes/plans/sprint-26081003-web-user-auth/AI-PLAN-web-user-auth-260810.md`
 > 本文档 = PRD 镜像, 用于 Obsidian 索引
 
@@ -10,94 +10,65 @@
 
 web 端 (iPad Safari + Mac Safari/Chrome + Mac app WKWebView) 当前所有 GET 页面路由 + 大部分写操作 API 裸奔, 公网 URL 拿到就能开界面+录数据. dad 8-10 反馈要做用户体系.
 
-## 调研四套方案
+## dad 8-10 拍板变更
 
-| 方案 | 来源 | 评 |
-|------|------|-----|
-| **A Invite Token + 公开 Read-only Token** | GitHub org invite, VS Live Share, Ardine | 推荐 (本期 sprint) |
-| **A' 微信扫码登录 (cloudbase wx_open)** | 微信开放平台网站应用 OAuth2.0 | 推荐追加 (后续 sprint) |
-| B 多用户密码体系 | FastAPI 官方 | 家庭场景 over-engineered |
-| C PIN 矩阵扩展 | dizical 现状扩展 | 改动最小但扩展性差 |
+**否决**:
+- ❌ 方案 A Invite Token (GitHub 模式) — 家里人**网络不通** (GitHub 翻墙问题)
+- ❌ 方案 A' 微信扫码 — 要**自备已备案域名** + 个体户/企业主体, dad 用的是**腾讯送的 run.tcloudbase.com 子域名**, **无法备案**
 
-## 推荐: A+A' 混合
+**拍板**:
+- ✅ **多密码账号体系, 全本地**
+- ✅ dad 在 config 后台**手动建账号** (输用户名 + 自动生成初始密码 + 选角色)
+- ✅ 微信手发初始密码给家人, 首次登录强制改密
+- ✅ dad 在 config 后台**管理用户 + 权限分配**
 
-**本期 sprint 26081003-A**: 全权 agent 跑 A (Invite Token, ~1960 行)
-**后续 sprint 26081004**: dad 申请开放平台资质, cloudbase 开 wx_open, agent 集成 A' (~800 行)
-**渐进增强**: A' 上线后 invite link 走"微信扫码 + 邀请绑定"双通道, 不破坏 A
+## 砍掉 vs 保留
 
-## A vs A' (核心决策)
+| 砍 | 留 |
+|----|----|
+| Invite Token / 公开 Share Link / 微信扫码 | 多密码账号体系 |
+| 自助注册 (dad 不开放) | dad 后台手动建账号 |
+| 访客 (guest) 场景 | 用户名 + 密码登录 |
+| | 首次登录强制改密 |
+| | dad (root) 走原 PIN=0905 |
+| | 抽屉 UI 动态化 |
 
-| 维度 | A (Invite Token) | A' (微信扫码) |
-|------|-------------------|----------------|
-| 实施工作量 | ~1960 行 | ~800 行 (cloudbase 封装大头) |
-| dad 工作量 | 0 | 资质审核 5-15 工作日 + 控制台 5 分钟 |
-| 家人注册体验 | 点 invite link | 微信扫码 (丝滑) |
-| 访客 (guest) | ✓ share link | ✗ 不支持 |
-| 审核员 | ✓ PIN 1104 | ✗ 审核员无微信账号 |
-| mp/web 账号互通 | ❌ 两套 | ✅ unionid 互通 |
+## 权限矩阵 (5 角色, 访客本期砍)
 
-**A' 前置硬门槛**:
-- 微信开放平台账号 + 网站应用审核 (5-15 工作日)
-- 主体要求: 个体户/企业 (个人不通过)
-- 域名要求: HTTPS + ICP 备案 (dizical-prod-* 已备案 ✓)
-- unionid 互通: mp + 网站应用绑同一开放平台账号 (否则拿不到 unionid)
-- cloudbase 控制台开 wx_open 登录方式 (5 分钟)
+| 资源 | dad | 女儿 | 家人 | 老师 |
+|------|-----|------|------|------|
+| `/prepare` `/practice` `/achievements` `/badges` | ✓ | ✓ | ✗ | ✓ |
+| `/report` (PDF 下载) | ✓ | ✓ | ✓ | ✓ |
+| `/config` `/praise` `/config/users` | ✓ PIN | ✗ | ✗ | ✗ |
+| `POST /api/log` | ✓ | ✓ | ✗ | ✗ |
 
-**cloudbase 实查 (8-10, mcp queryAppAuth getLoginConfig)**:
-- envId `cloud1-d4gfwyvsk1435e2e4`
-- 当前登录方式: `usernamePassword: true, email/anonymous/phone: false`, **wx_open 未开**
+## 拍板题 (Q1-Q2)
 
-## 权限矩阵 (5 角色)
-
-| 资源 | dad | 女儿 | 家人 | 老师 | 访客 |
-|------|-----|------|------|------|------|
-| `/prepare` `/practice` `/achievements` `/badges` | ✓ | ✓ | ✗ | ✓ | ✗ |
-| `/report` | ✓ | ✓ | ✓ | ✓ | ✓ (PDF 禁) |
-| `/config` `/praise` `/admin/users` | ✓ PIN | ✗ | ✗ | ✗ | ✗ |
-| `POST /api/log` | ✓ | ✓ | ✗ | 待定 | ✗ |
-
-## Sprint 拆分 (4 块)
-
-- **26081003-A (3-5 天)**: 数据模型 + auth.py (签名 Cookie) + login-invite + 4 页守卫 + 抽屉动态化
-- **26081003-B (3 天)**: 公开 share link + /admin/users + PDF 禁下 + config 守卫
-- **26081004 (1-2 周, 等开放平台资质)**: A' 微信扫码 + unionid 互通
-- **26081003-C (待定)**: 老师角色完善
-
-## 拍板题 (Q1-Q5, dad 必答字母回)
-
-| # | 问题 | A | B | C/D | 推荐 |
-|---|------|---|---|-----|------|
-| Q1 | 鉴权方案 | Invite Token + 公开只读 | 多用户密码 | PIN 矩阵 | **A** |
-| Q2 | 落地路径 | 只做 Sprint A | A+B 一起 | A+B+C 全做 | **A** |
-| Q3 | 老师权限 | 全看不录 | 全看+录 | 本期不做 | **A** |
-| Q4 | 公开 link 形态 | 30 天过期+微信分享 | 永久 / 扫码 / 不开放 | | **A** |
-| **Q5 (新)** | **微信扫码登录** | **A+A' 混合** | 只做 A | 跳过 A 做 A' | **A** |
+- **Q1: 拍 B 方案本地化** → **推荐 A** (本期 plan)
+- Q2: 访客场景处理 → **推荐 A 本期砍掉**
 
 **推荐默认全 A**, dad "开始吧 / 按你的计划走" = 全选 A.
 
-**Q5=A 后续 dad 动作**: 立即去 https://open.weixin.qq.com 注册开发者账号 + 创建「网站应用」+ 提交审核 (5-15 工作日跑着, 不卡本期 sprint).
+## 风险 (8 条)
 
-## 风险 (5 + 3 类)
+1. dad 把初始密码微信发错人 → 重置密码按钮 + must_change 强制
+2. dad PIN 失效全家无法访问 → 保留 verify-pin + 紧急逃生
+3. argon2 hash 在弱机器慢 → 现代设备 <100ms, 老设备 200-500ms 可接受
+4. Cookie XSS → HttpOnly + Secure + PIN 二次验证
+5. mac app WKWebView cookie → 验证同源, 不行时单独跳 PIN
+6. minip whitelist 破坏 → web_users 是新表, mp 100% 不变
+7. 老师权限待定 → dad 拍过 A "全看不录", 后续加专属视图
+8. CloudRun SECRET_KEY 跨容器 → 环境变量统一
 
-### 本期 sprint (A 路径)
-1. dad PIN 失效全家无法访问 → 保留 verify-pin + 紧急逃生 (settings 表手动改)
-2. 公开 link 泄露 → 默认 30 天过期 + revoke 按钮
-3. Cookie XSS → HttpOnly + Secure + PIN 二次验证
-4. mac app WKWebView cookie → 验证同源
-5. minip whitelist 破坏 → 双轨运行, mp 路径 100% 不变
+## Sprint 拆分
 
-### A' 路径独有 (后续 sprint)
-6. dad 没开放平台账号 → A' sprint 卡住 (但 A 不受影响)
-7. 个人主体拒绝审核 → 需升级个体户/企业资质
-8. unionid 不互通 → 重做 mp 端 wx.login 拿 unionid 字段
+- **26081003-A (本期, 3-5 天)**: 数据模型 + auth.py + login/change-password + 4 页守卫 + 抽屉动态化 + /config/users (dad 后台)
+- **26081003-B (后续, 待定)**: mac app cookie 兼容深修 / 老师专属视图
 
 ## 关联
 
-- 历史: PR #189 (7-28) Phase B admin-whitelist (mp 端)
-- 历史: `src/migrate_add_dad_whitelist.py`
+- 历史: PR #189 (7-28) Phase B admin-whitelist (mp 端, 仅参考 UI 风格)
 - 历史: `templates/admin-whitelist.html` (孤儿 UI, 风格参考)
-- 历史: `.hermes/plans/sprint-26080802-stage-print-polish/plan-*.md` (PRD 范式)
-- cloudbase: `cloud1-d4gfwyvsk1435e2e4` envId, wx_open 未开 (8-10 实查)
-- 微信开放平台: https://open.weixin.qq.com (Q5=A' 必访问)
-- cloudbase wx_open 文档: https://docs.cloudbase.net/authentication-v2/method/wechat-login
-- 微信开放平台 OAuth2.0: https://developers.weixin.qq.com/doc/oplatform/developers/dev/auth/web.html
+- pyproject 依赖已含: `argon2-cffi` + `itsdangerous` + `Werkzeug` → **不引新依赖**
+- settings 表 5 个 key (dad_pin/dad_whitelist/active_blindbox_theme/yoyo_portrait_prompt/pin_fail_count:*) → **全不动**
+- 50+ config 路由按功能拆 (/config/blindbox 等) → /config/users 同款新模板
