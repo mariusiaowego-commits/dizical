@@ -1,3 +1,26 @@
+## 2026-08-10 sprint 26081001 + 26081002 收尾 (PR #256/#257/#258 MERGED, main 952d6c5)
+
+- **触发**: dad 浏览器打开 /report/stage-print 反馈 (1) 下拉有 Stage 0/Stage null 噪音 (2) Stage 17/18 只显示 1 天. 8-02~8-09 都有练习数据但不在 stage 里
+- **拍板 (8-10)**: 范围全部修复 + 算法方案 1 (跟 SQLite 7-13 一致) + 老 lesson B 方案 + 浮点 0.01-0.12 (后改 P1 负数, 见下)
+- **修复**:
+  1. PR #256: list_stages SQL 过滤 stage_order IS NULL/0 + MySQL save_weekly_assignment 算法对齐 SQLite (attended_dates.index+1)
+  2. PR #257 P1: migrate 算法改负数 -1 到 -12 (替代浮点 0.01-0.12, MySQL BIGINT 拒绝浮点 静默 rowsAffected=0)
+  3. PR #258: 2 行 stage_start/end 边界修复 (id=78/79 老 fallback 写 lesson_date, sprint 26080601 切云遗留)
+- **数据修复**:
+  - 本地 SQLite: 12 行 stage_order NULL → -1 到 -12
+  - 云端 MySQL: 12 NULL → -1~-12 + 2 个 stage_order=0 (id=78/79) → 17/18
+  - 云端 2 行 stage_start/end: id=78 ss 8-01→8-02, se 8-01→8-08; id=79 ss 8-08→8-09, se 8-08→8-15
+- **验证**: pytest 505 passed (9 pre-existing failed, 0 新增 regression); prod /api/practices/stages count=30, stage 17 = 7 days (367 min), stage 18 = 1 day (56 min); dad 浏览器实测 ok
+- **部署**: CloudRun deploy #078 成功 (MCP 180s timeout 但 queryCloudRun detail.Status=normal, sprint 250 沉淀生效); MCP auth device mode 激活 (dad 浏览器点授权 ALKD-CZRB)
+- **教训 (next agent)**:
+  1. MySQL BIGINT 拒绝浮点 (静默 rowsAffected=0), 写代码前必查 schema 列类型
+  2. 一个 sprint 不保证查全同源 bug — sprint 26080601 切云时 MySQL 路径同时有 2 处 fallback bug (stage_order=0 + stage_start/end=lesson_date), sprint 26081001 只查到 1 处, sprint 26081002 又发现 1 处
+  3. dad 报"X 个 bug" 时 dry-run 实际数, 可能有 issue 漏 (sprint 26081001 issue #255 描述 13 行, dry-run 14 行, 含 8-01 也是 stage_order=0)
+  4. PR 修算法不会自动修已有 row (sprint 08 ON DUPLICATE KEY UPDATE 语义保留), 老 fallback 写入的异常行需要独立 migrate
+  5. 切云早期 (sprint 26080601) MySQL 老 fallback bug 起源, 任何类似迁移要 dry-run 全表所有列找异常
+- **沉淀**: Obsidian sprint 26081001-stage-list-cleanup + sprint 26081002-stage-start-end-boundary (各 5 文件, plan/prd/tech-spec/test-plan/sprint/verify); decision-log.md append 6 条 PDR; STATUS.md + vibe-coding-log.md (本文件) 同步
+- **下一步**: dad 验收通过, sprint 完结. 下一个 sprint 候选 (等 dad 拍): 老师要求录入优化 sprint 26080901 (S1-S5), 或其他
+
 ## 2026-08-10 仓库清理 — handoff 归档 + docs/* stale 分支 (PR #253 OPEN)
 
 - **触发**: dad "STATUS.md 看一遍, git 仓库里的历史 handoff 都检查一下, 没用的 handoff 可以 archived 掉或者删掉, 仔细 review 并清理一下 git"
