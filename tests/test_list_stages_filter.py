@@ -75,28 +75,32 @@ def test_normal_stage_order_kept(fresh_db):
 
 
 def test_float_stage_order_kept(fresh_db):
-    """浮点 stage_order (0.01-0.12 早期大课) 保留 + 排在整数后."""
+    """负数 stage_order (-1 到 -12 早期大课) 保留 + DESC 排序 (绝对值越大越前).
+
+    Sprint 26081001 P1: MySQL BIGINT 拒绝浮点 0.01,改用负数表示早期大课.
+    SQLite 端浮点也能存 (P1 改了算法也兼容浮点),这里用负数测 P1 真实场景.
+    """
     db, _ = fresh_db
     _insert_wa(db, """
         INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order) VALUES
-            ('2025-11-08', '2025-11-09', '2025-11-15', 0.01),
-            ('2025-12-06', '2025-12-07', '2025-12-13', 0.05),
+            ('2025-11-08', '2025-11-09', '2025-11-15', -1),
+            ('2025-12-06', '2025-12-07', '2025-12-13', -5),
             ('2026-03-14', '2026-03-15', '2026-03-21', 1),
             ('2026-08-08', '2026-08-09', '2026-08-15', 18)
     """)
     stages = db.list_stages()
     assert len(stages) == 4
     orders = [s['stage_order'] for s in stages]
-    # 浮点按数值排序: 18 > 1 > 0.05 > 0.01 (DESC)
-    assert orders == [18, 1, 0.05, 0.01], f"浮点 DESC 排序失败: {orders}"
+    # 数值 DESC 排序: 18 > 1 > -1 > -5 (18 > 1, 1 > -1 因为负数 < 正数)
+    assert orders == [18, 1, -1, -5], f"负数 DESC 排序失败: {orders}"
 
 
 def test_mixed_invalid_and_valid(fresh_db):
-    """混合 NULL/0/正常 行: 只返正常 + 浮点."""
+    """混合 NULL/0/正常/负数 行: 只返正常 + 负数."""
     db, _ = fresh_db
     _insert_wa(db, """
         INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order) VALUES
-            ('2025-11-08', '2025-11-09', '2025-11-15', 0.01),
+            ('2025-11-08', '2025-11-09', '2025-11-15', -1),
             ('2025-12-01', '2025-12-02', '2025-12-08', NULL),
             ('2026-03-01', '2026-03-02', '2026-03-08', 0),
             ('2026-04-01', '2026-04-02', '2026-04-08', 2),
@@ -104,5 +108,5 @@ def test_mixed_invalid_and_valid(fresh_db):
     """)
     stages = db.list_stages()
     orders = [s['stage_order'] for s in stages]
-    # SQL 过滤后 NULL/0 不在, 期望返 [18, 2, 0.01] (API DESC 顺序)
-    assert orders == [18, 2, 0.01], f"混合过滤失败: {orders}"
+    # SQL 过滤后 NULL/0 不在, 期望返 [18, 2, -1] (API DESC 顺序)
+    assert orders == [18, 2, -1], f"混合过滤失败: {orders}"
