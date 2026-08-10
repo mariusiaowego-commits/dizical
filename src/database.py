@@ -1193,7 +1193,11 @@ class Database(BaseBackend):
             return [dict(r) for r in cursor.fetchall()]
 
     def list_stages(self) -> List[Dict]:
-        """列出历史 stage (按 stage_order 降序). 同 order 多行取 id 最大一条."""
+        """列出历史 stage (按 stage_order 降序). 同 order 多行取 id 最大一条.
+
+        Sprint 26081001: 过滤 stage_order IS NULL / = 0 (老 NULL + 新录入 bug).
+        保留浮点 stage_order (0.01-0.12 表示早期大课, 早于小课 stage 1).
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -1201,7 +1205,9 @@ class Database(BaseBackend):
                 SELECT id, stage_order, lesson_date, stage_start, stage_end, items, notes
                 FROM weekly_assignments
                 WHERE stage_start IS NOT NULL
-                ORDER BY COALESCE(stage_order, 0) DESC, id DESC
+                  AND stage_order IS NOT NULL
+                  AND stage_order != 0
+                ORDER BY stage_order DESC, id DESC
                 """
             )
             seen = set()
@@ -1230,8 +1236,11 @@ class Database(BaseBackend):
                 })
             return out
 
-    def get_stage_by_order(self, stage_order: int) -> Optional[Dict]:
-        """按 stage_order 取最新一条 assignment (含 items)."""
+    def get_stage_by_order(self, stage_order) -> Optional[Dict]:
+        """按 stage_order 取最新一条 assignment (含 items).
+
+        Sprint 26081001: stage_order 可能是浮点 (0.01-0.12 早期大课), 不再 int() 强制转.
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -1240,7 +1249,7 @@ class Database(BaseBackend):
                 WHERE stage_order = ?
                 ORDER BY id DESC LIMIT 1
                 """,
-                (int(stage_order),),
+                (stage_order,),
             )
             row = cursor.fetchone()
             if not row:
