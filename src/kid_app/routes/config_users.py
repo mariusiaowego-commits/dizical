@@ -261,9 +261,41 @@ async def api_invites_create(request: Request):
     token = create_invite(role=role, expires_at=expires_at,
                           max_uses=max_uses, note=note, created_by=None)
 
-    # 返完整 URL (base 走 request.host_url)
-    base = str(request.base_url).rstrip("/")
-    url = f"{base}/accept-invite?token={token}"
+    # 返完整 URL. Sprint v3.3.2 修: 不要用 request.base_url (在 0.0.0.0:8765 监听的
+    # 服务下返 "http://0.0.0.0:8765" 给 dad, dad 复制走 iPad 打不开).
+    # 优先 DIZICAL_PUBLIC_BASE env (dad 在 start-prod.sh 设), 否则 fallback Tailscale IP,
+    # 否则 fallback 局域网 IP, 否则兜底 request.base_url.
+    import os as _os
+    public_base = _os.environ.get("DIZICAL_PUBLIC_BASE", "").rstrip("/")
+    if not public_base:
+        # 尝试用 ifconfig / Tailscale 自动检测
+        tailscale_ip = ""
+        lan_ip = ""
+        try:
+            import subprocess as _sp
+            r = _sp.run(["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=2)
+            tailscale_ip = (r.stdout.strip().split("\n")[0] if r.returncode == 0 else "")
+        except Exception:
+            pass
+        if not tailscale_ip:
+            try:
+                import subprocess as _sp, re as _re
+                r = _sp.run(["ifconfig"], capture_output=True, text=True, timeout=2)
+                # 私人 IP 段: 10.x.x.x / 172.16-31.x.x / 192.168.x.x
+                # 跳过 127.x / 198.18.x / 169.254.x / fe80
+                m = _re.search(
+                    r"inet ((?:10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.)\d+\.\d+\.\d+)",
+                    r.stdout)
+                lan_ip = m.group(1) if m else ""
+            except Exception:
+                pass
+        if tailscale_ip:
+            public_base = f"http://{tailscale_ip}:8765"
+        elif lan_ip:
+            public_base = f"http://{lan_ip}:8765"
+        else:
+            public_base = str(request.base_url).rstrip("/")
+    url = f"{public_base}/accept-invite?token={token}"
 
     return JSONResponse({
         "ok": True,

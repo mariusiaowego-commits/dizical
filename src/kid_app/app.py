@@ -2179,17 +2179,22 @@ async def accept_invite_page(request: Request, token: str = ""):
     invite_info = None
     if invite:
         ea = invite.get("expires_at")
-        if isinstance(ea, str):
+        # MySQL: PyMySQL 自动转 datetime 对象; SQLite: 返 str
+        # 统一处理 (Sprint v3.3.2 修 dad 报 "token 失效" 实际是 datetime 类型判定 miss)
+        ea_dt = None
+        if isinstance(ea, datetime):
+            ea_dt = ea
+        elif isinstance(ea, str):
             try:
                 ea_dt = datetime.fromisoformat(ea.replace(" ", "T") if "T" not in ea else ea)
-                invite_info = {
-                    "role": invite["role"],
-                    "expires_at": ea_dt.strftime("%Y-%m-%d %H:%M UTC"),
-                    "remaining_uses": invite["max_uses"] - invite["used_count"],
-                }
             except (ValueError, TypeError):
-                invite_info = {"role": invite["role"], "expires_at": str(ea),
-                                "remaining_uses": invite["max_uses"] - invite["used_count"]}
+                pass
+        if ea_dt is not None:
+            invite_info = {
+                "role": invite["role"],
+                "expires_at": ea_dt.strftime("%Y-%m-%d %H:%M"),
+                "remaining_uses": invite["max_uses"] - invite["used_count"],
+            }
     return _tpl_login.TemplateResponse(
         request, "accept-invite.html",
         {"token": token, "invite": invite_info,
