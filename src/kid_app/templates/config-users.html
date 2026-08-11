@@ -117,6 +117,16 @@
       word-break: break-all;
     }
     .pw-display-actions { display: flex; gap: 10px; justify-content: center; }
+
+    /* Sprint v3.3.1 HIGH-2: 行操作按钮 iPad icon-only */
+    .row-actions { display: inline-flex; gap: 6px; flex-wrap: nowrap; }
+    .row-actions .btn .btn-label { display: inline; }
+    .row-actions .btn .btn-icon { display: none; font-size: 14px; line-height: 1; }
+    @media (max-width: 1099px) {
+      .row-actions .btn .btn-label { display: none; }
+      .row-actions .btn .btn-icon { display: inline; }
+      .row-actions .btn { padding: 6px 8px; min-width: 32px; }
+    }
   </style>
 </head>
 <body>
@@ -159,7 +169,7 @@
     <div style="background:white; border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
         <strong style="color:#2C3E50;">邀请新成员 (一次性链接)</strong>
-        <button class="btn btn-primary" onclick="openInviteModal()">+ 生成邀请链接</button>
+        <button class="btn btn-secondary" onclick="openInviteModal()">+ 生成邀请链接</button>
       </div>
       <div id="inviteUrlDisplay" style="display:none;">
         <div style="background:#F0FFF0; padding:14px; border-radius:8px; border:1px dashed #4CAF50; margin-bottom:10px;">
@@ -203,14 +213,25 @@
           <td style="color:#666;font-size:13px;">{{ u.last_login_at or '—' }}</td>
           <td style="color:#666;font-size:13px;">{{ u.created_at }}</td>
           <td style="text-align:right;white-space:nowrap;">
-            <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
-                    onclick="resetPw({{ u.user_id }}, '{{ u.username }}')">重置密码</button>
-            <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
-                    onclick="logoutAll({{ u.user_id }}, '{{ u.username }}')">踢出所有设备</button>
-            {% if not u.revoked %}
-            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;"
-                    onclick="revokeUser({{ u.user_id }}, '{{ u.username }}')">撤销</button>
-            {% endif %}
+            <div class="row-actions">
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
+                      title="重置密码" aria-label="重置密码"
+                      onclick="resetPw({{ u.user_id }}, '{{ u.username }}')">
+                <span class="btn-icon" aria-hidden="true">🔑</span><span class="btn-label">重置密码</span>
+              </button>
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
+                      title="踢出所有设备" aria-label="踢出所有设备"
+                      onclick="logoutAll({{ u.user_id }}, '{{ u.username }}')">
+                <span class="btn-icon" aria-hidden="true">🚪</span><span class="btn-label">踢出所有设备</span>
+              </button>
+              {% if not u.revoked %}
+              <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;"
+                      title="撤销" aria-label="撤销"
+                      onclick="revokeUser({{ u.user_id }}, '{{ u.username }}')">
+                <span class="btn-icon" aria-hidden="true">✕</span><span class="btn-label">撤销</span>
+              </button>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}

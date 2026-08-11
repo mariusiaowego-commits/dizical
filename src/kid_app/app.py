@@ -2156,7 +2156,8 @@ _tpl_login = _JT_login(directory=str(_TPL_DIR_login))
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, redirect: str = "/"):
-    """登录页 (公开). 已登录直接跳 redirect."""
+    """登录页 (公开). 已登录直接跳 redirect. (Sprint v3.3.1 hotfix: import RedirectResponse)"""
+    from fastapi.responses import RedirectResponse
     from src.kid_app.auth import get_current_user
     cur = await get_current_user(request)
     if cur:
