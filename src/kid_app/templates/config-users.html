@@ -155,6 +155,28 @@
       </div>
     </div>
 
+    <!-- Q7 邀请链接 -->
+    <div style="background:white; border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <strong style="color:#2C3E50;">邀请新成员 (一次性链接)</strong>
+        <button class="btn btn-primary" onclick="openInviteModal()">+ 生成邀请链接</button>
+      </div>
+      <div id="inviteUrlDisplay" style="display:none;">
+        <div style="background:#F0FFF0; padding:14px; border-radius:8px; border:1px dashed #4CAF50; margin-bottom:10px;">
+          <div style="font-size:13px; color:#666; margin-bottom:6px;">把下面链接通过微信发给被邀请人 (过期前有效, 用完即失效):</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="inviteUrlText" style="flex:1; padding:8px; border:1px solid #DDD; border-radius:6px; font-family:monospace; font-size:12px;" readonly>
+            <button class="btn btn-secondary" onclick="copyInviteUrl()">复制</button>
+          </div>
+          <div id="inviteMeta" style="font-size:12px; color:#888; margin-top:8px;"></div>
+        </div>
+      </div>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer; color:#666; font-size:13px;">查看历史邀请链接</summary>
+        <div id="inviteList" style="margin-top:10px; font-size:13px;">加载中...</div>
+      </details>
+    </div>
+
     <table>
       <thead>
         <tr>
@@ -218,6 +240,29 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
         <button class="btn btn-primary" onclick="createUser()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q7 邀请生成 modal -->
+  <div class="modal-backdrop" id="inviteModal">
+    <div class="modal">
+      <h3>生成邀请链接</h3>
+      <label>角色</label>
+      <select id="inviteRole">
+        <option value="student">学习者 (student)</option>
+        <option value="family">家人 (family)</option>
+        <option value="teacher">老师 (teacher)</option>
+      </select>
+      <label>过期时间 (小时, 默认 24)</label>
+      <input id="inviteHours" type="number" value="24" min="1" max="720">
+      <label>可用次数 (默认 1, 一次性)</label>
+      <input id="inviteMaxUses" type="number" value="1" min="1" max="100">
+      <label>备注 (可选, 给 dad 自己看)</label>
+      <input id="inviteNote" type="text" placeholder="例如: 给妈妈" maxlength="128">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeInviteModal()">取消</button>
+        <button class="btn btn-primary" onclick="createInvite()">生成</button>
       </div>
     </div>
   </div>
@@ -297,6 +342,72 @@
       if (!data.ok) { alert('失败: ' + data.error); return; }
       alert('已踢出 ' + username + ' 的所有设备.');
     }
+
+    function openInviteModal() { document.getElementById('inviteModal').classList.add('show'); }
+    function closeInviteModal() { document.getElementById('inviteModal').classList.remove('show'); }
+
+    function copyInviteUrl() {
+      const url = document.getElementById('inviteUrlText').value;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target;
+        const t = btn.textContent;
+        btn.textContent = '已复制 ✓';
+        setTimeout(() => { btn.textContent = t; }, 1200);
+      });
+    }
+
+    async function createInvite() {
+      const role = document.getElementById('inviteRole').value;
+      const hours = parseInt(document.getElementById('inviteHours').value);
+      const maxUses = parseInt(document.getElementById('inviteMaxUses').value);
+      const note = document.getElementById('inviteNote').value.trim();
+      const r = await fetch('/config/api/invites/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN, role, expires_hours: hours, max_uses: maxUses, note}),
+      });
+      const data = await r.json();
+      if (!data.ok) { alert('失败: ' + data.error); return; }
+      closeInviteModal();
+      document.getElementById('inviteUrlText').value = data.url;
+      const meta = `${data.role} | ${data.expires_at} | ${data.max_uses} 次${data.note ? ' | ' + data.note : ''}`;
+      document.getElementById('inviteMeta').textContent = meta;
+      document.getElementById('inviteUrlDisplay').style.display = 'block';
+      // 刷新历史列表
+      loadInviteList();
+    }
+
+    async function loadInviteList() {
+      const r = await fetch(`/config/api/invites/list?pin=${encodeURIComponent(CURRENT_PIN)}`);
+      const data = await r.json();
+      const el = document.getElementById('inviteList');
+      if (!data.ok || !data.invites.length) {
+        el.innerHTML = '<span style="color:#999;">无历史记录</span>';
+        return;
+      }
+      el.innerHTML = data.invites.map(inv => {
+        const status = inv.revoked ? '已撤销' :
+                       inv.used_count >= inv.max_uses ? '已用完' :
+                       (inv.used_count > 0 ? `已用 ${inv.used_count}/${inv.max_uses}` : '未用');
+        return `<div style="padding:6px 0; border-bottom:1px solid #F0F0F0;">
+          <code style="font-size:11px;">${inv.invite_token.substring(0,12)}...</code>
+          | ${inv.role} | ${inv.expires_at} | ${status}${inv.note ? ' | ' + inv.note : ''}
+          ${!inv.revoked && inv.used_count < inv.max_uses ? `<button onclick="revokeInvite(${inv.invite_id})" style="margin-left:8px; padding:2px 8px; background:#FFE5E5; color:#D32F2F; border:none; border-radius:4px; font-size:11px; cursor:pointer;">撤销</button>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function revokeInvite(id) {
+      if (!confirm('撤销该邀请链接?')) return;
+      await fetch(`/config/api/invites/${id}/revoke`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN}),
+      });
+      loadInviteList();
+    }
+
+    // 页面加载时拉邀请列表
+    if (document.getElementById('inviteList')) loadInviteList();
 
     async function revokeUser(uid, username) {
       if (!confirm('撤销账号 ' + username + '? 该用户无法再登录 (可手动恢复).')) return;

@@ -123,7 +123,7 @@ def _fetchone_dict(sql: str, params: tuple = ()) -> Optional[dict]:
 def fetch_user_by_username(username: str) -> Optional[dict]:
     return _fetchone_dict(
         "SELECT user_id, username, display_name, password_hash, role, avatar_letter, "
-        "must_change_password, session_version, revoked "
+        "must_change_password, session_version, revoked, login_failed_count, locked_until "
         "FROM web_users WHERE username = ?",
         (username,),
     )
@@ -132,7 +132,7 @@ def fetch_user_by_username(username: str) -> Optional[dict]:
 def fetch_user_by_id(user_id: int) -> Optional[dict]:
     return _fetchone_dict(
         "SELECT user_id, username, display_name, password_hash, role, avatar_letter, "
-        "must_change_password, session_version, revoked "
+        "must_change_password, session_version, revoked, login_failed_count, locked_until "
         "FROM web_users WHERE user_id = ?",
         (user_id,),
     )
@@ -180,16 +180,31 @@ def create_user(username: str, display_name: str, password_hash: str,
             conn.close()
 
 
-def update_password(user_id: int, new_hash: str) -> None:
+def update_password(user_id: int, new_hash: str, bump_session: bool = True) -> None:
+    """改密. bump_session=True (默认) 时 session_version+=1, 自动踢出其他设备 (Q6).
+
+    dad 重置密码 (config_users.reset-password) 显式传 False — 老 cookie 保留以便
+    dad 不用每次都重登, 但 must_change=1 自动让用户改密一次.
+    """
     from src.db_adapter import get_conn
     conn, is_mysql = get_conn()
     try:
-        _db_execute(
-            conn,
-            "UPDATE web_users SET password_hash = ?, must_change_password = 0 "
-            "WHERE user_id = ?",
-            (new_hash, user_id),
-        )
+        if bump_session:
+            _db_execute(
+                conn,
+                "UPDATE web_users SET password_hash = ?, must_change_password = 0, "
+                "session_version = session_version + 1, login_failed_count = 0 "
+                "WHERE user_id = ?",
+                (new_hash, user_id),
+            )
+        else:
+            _db_execute(
+                conn,
+                "UPDATE web_users SET password_hash = ?, must_change_password = 0, "
+                "login_failed_count = 0 "
+                "WHERE user_id = ?",
+                (new_hash, user_id),
+            )
         conn.commit()
     finally:
         if not is_mysql:
@@ -204,6 +219,76 @@ def update_role(user_id: int, role: str) -> None:
             conn,
             "UPDATE web_users SET role = ? WHERE user_id = ?",
             (role, user_id),
+        )
+        conn.commit()
+    finally:
+        if not is_mysql:
+            conn.close()
+
+
+# ─── Login lockout (Q4: 输错 5 次锁 5 分钟) ─────────────────
+LOGIN_MAX_FAILED = 5
+LOGIN_LOCKOUT_SECONDS = 300  # 5 分钟
+
+
+def is_user_locked(user: dict) -> bool:
+    """检查用户是否处于 lockout 状态. user dict 需含 locked_until."""
+    from datetime import datetime
+    lu = user.get("locked_until")
+    if not lu:
+        return False
+    # SQLite 返回字符串, MySQL 可能返 datetime
+    if isinstance(lu, str):
+        try:
+            lu = datetime.fromisoformat(lu)
+        except (ValueError, TypeError):
+            return False
+    if isinstance(lu, datetime):
+        from datetime import datetime as _dt
+        return lu > _dt.utcnow()
+    return False
+
+
+def increment_login_failed(user_id: int) -> int:
+    """登录失败计数 +1. 若到阈值, 锁账号 5 分钟. 返当前失败次数."""
+    from datetime import datetime, timedelta
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        _db_execute(
+            conn,
+            "UPDATE web_users SET login_failed_count = login_failed_count + 1 "
+            "WHERE user_id = ?",
+            (user_id,),
+        )
+        # 取当前 count
+        cur = _db_execute(conn, "SELECT login_failed_count FROM web_users WHERE user_id = ?", (user_id,))
+        row = cur.fetchone()
+        cnt = (row[0] if row and not isinstance(row, dict) else (row.get("login_failed_count", 0) if row else 0))
+        if cnt >= LOGIN_MAX_FAILED:
+            locked_until = datetime.utcnow() + timedelta(seconds=LOGIN_LOCKOUT_SECONDS)
+            _db_execute(
+                conn,
+                "UPDATE web_users SET locked_until = ? WHERE user_id = ?",
+                (locked_until.isoformat() if is_mysql else locked_until.strftime("%Y-%m-%d %H:%M:%S"),
+                 user_id),
+            )
+        conn.commit()
+        return int(cnt) if cnt is not None else 0
+    finally:
+        if not is_mysql:
+            conn.close()
+
+
+def reset_login_failed(user_id: int) -> None:
+    """登录成功时清零 + 清 lockout."""
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        _db_execute(
+            conn,
+            "UPDATE web_users SET login_failed_count = 0, locked_until = NULL WHERE user_id = ?",
+            (user_id,),
         )
         conn.commit()
     finally:
@@ -236,6 +321,107 @@ def bump_session_version(user_id: int) -> None:
             "UPDATE web_users SET session_version = session_version + 1 WHERE user_id = ?",
             (user_id,),
         )
+        conn.commit()
+    finally:
+        if not is_mysql:
+            conn.close()
+
+
+# ─── web_invites (Q7: 一次性邀请链接) ─────────────────
+import secrets
+
+
+def create_invite(role: str, expires_at, max_uses: int = 1,
+                   note: str = "", created_by: Optional[int] = None) -> str:
+    """建邀请链接. 返 invite_token (URL 用)."""
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        token = secrets.token_urlsafe(32)  # 32 字节随机 → 43 字符 url-safe
+        _db_execute(
+            conn,
+            "INSERT INTO web_invites (invite_token, role, max_uses, expires_at, note, created_by) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (token, role, max_uses,
+             expires_at.isoformat() if hasattr(expires_at, "isoformat") else expires_at,
+             note, created_by),
+        )
+        conn.commit()
+        return token
+    finally:
+        if not is_mysql:
+            conn.close()
+
+
+def fetch_invite(token: str) -> Optional[dict]:
+    """查 invite. 返 None 表示不存在/已撤销/已过期/已用完."""
+    from datetime import datetime
+    invite = _fetchone_dict(
+        "SELECT invite_id, invite_token, role, max_uses, used_count, expires_at, revoked "
+        "FROM web_invites WHERE invite_token = ?",
+        (token,),
+    )
+    if not invite or invite["revoked"]:
+        return None
+    if invite["used_count"] >= invite["max_uses"]:
+        return None
+    ea = invite.get("expires_at")
+    if ea and isinstance(ea, str):
+        try:
+            ea_dt = datetime.fromisoformat(ea.replace(" ", "T") if "T" not in ea else ea)
+            if ea_dt < datetime.utcnow():
+                return None
+        except (ValueError, TypeError):
+            pass
+    return invite
+
+
+def consume_invite(token: str) -> bool:
+    """兑换 invite (used_count+=1). 返 True 表示成功."""
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        cur = _db_execute(
+            conn,
+            "UPDATE web_invites SET used_count = used_count + 1 "
+            "WHERE invite_token = ? AND revoked = 0 AND used_count < max_uses",
+            (token,),
+        )
+        conn.commit()
+        # SQLite/MySQL rowcount 兼容
+        return (cur.rowcount or 0) > 0
+    finally:
+        if not is_mysql:
+            conn.close()
+
+
+def list_invites() -> list[dict]:
+    """dad 后台列所有 invite."""
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        cur = _db_execute(
+            conn,
+            "SELECT invite_id, invite_token, role, max_uses, used_count, "
+            "expires_at, created_at, revoked, note "
+            "FROM web_invites ORDER BY invite_id DESC",
+            (),
+        )
+        rows = cur.fetchall()
+        if is_mysql:
+            return list(rows)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in rows]
+    finally:
+        if not is_mysql:
+            conn.close()
+
+
+def revoke_invite(invite_id: int) -> None:
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        _db_execute(conn, "UPDATE web_invites SET revoked = 1 WHERE invite_id = ?", (invite_id,))
         conn.commit()
     finally:
         if not is_mysql:
@@ -343,6 +529,9 @@ __all__ = [
     "fetch_user_by_username", "fetch_user_by_id", "update_last_login",
     "create_user", "update_password", "update_role", "revoke_user",
     "bump_session_version", "list_users",
+    "is_user_locked", "increment_login_failed", "reset_login_failed",
+    "LOGIN_MAX_FAILED", "LOGIN_LOCKOUT_SECONDS",
+    "create_invite", "fetch_invite", "consume_invite", "list_invites", "revoke_invite",
     "get_current_user", "require_login", "require_role",
     "ROLE_PERMISSIONS", "ROLE_LABELS",
     "check_dad_pin", "generate_random_password",

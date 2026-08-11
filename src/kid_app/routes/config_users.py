@@ -182,3 +182,82 @@ async def api_users_logout_all(request: Request, user_id: int):
 
     bump_session_version(user_id)
     return JSONResponse({"ok": True, "user_id": user_id, "kicked": True})
+
+
+# ─── Q7: 邀请链接管理 (dad 后台) ─────────────────────────────────
+from datetime import datetime, timedelta
+from src.kid_app.auth import (
+    create_invite, fetch_invite, list_invites, revoke_invite,
+)
+
+
+@router.post("/config/api/invites/create")
+async def api_invites_create(request: Request):
+    """{role, expires_hours=24, max_uses=1, note=""} → 返 invite_token + URL.
+
+    dad 把 URL 通过微信/电话发给被邀请人. URL 形如:
+      http://localhost:8765/accept-invite?token=xxxx
+    """
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    role = (body.get("role") or "").strip()
+    expires_hours = int(body.get("expires_hours") or 24)
+    max_uses = int(body.get("max_uses") or 1)
+    note = (body.get("note") or "").strip()[:128]
+
+    if role not in ("student", "family", "teacher"):
+        return JSONResponse({"ok": False, "error": "role 不合法 (student/family/teacher)"},
+                            status_code=400)
+    if expires_hours < 1 or expires_hours > 24 * 30:
+        return JSONResponse({"ok": False, "error": "过期时间 1-720 小时"},
+                            status_code=400)
+    if max_uses < 1 or max_uses > 100:
+        return JSONResponse({"ok": False, "error": "max_uses 1-100"},
+                            status_code=400)
+
+    expires_at = datetime.utcnow() + timedelta(hours=expires_hours)
+    token = create_invite(role=role, expires_at=expires_at,
+                          max_uses=max_uses, note=note, created_by=None)
+
+    # 返完整 URL (base 走 request.host_url)
+    base = str(request.base_url).rstrip("/")
+    url = f"{base}/accept-invite?token={token}"
+
+    return JSONResponse({
+        "ok": True,
+        "token": token,
+        "url": url,
+        "role": role,
+        "expires_at": expires_at.isoformat(),
+        "max_uses": max_uses,
+        "note": note,
+    })
+
+
+@router.get("/config/api/invites/list")
+async def api_invites_list(request: Request, pin: str = ""):
+    """列所有 invite (含已用/过期)."""
+    if not check_dad_pin(pin):
+        return JSONResponse({"ok": False, "error": "PIN 错"}, status_code=401)
+
+    invites = list_invites()
+    # 转 datetime 为字符串
+    for inv in invites:
+        for k in ("expires_at", "created_at"):
+            if inv.get(k) and not isinstance(inv[k], str):
+                inv[k] = str(inv[k])
+    return JSONResponse({"ok": True, "invites": invites})
+
+
+@router.post("/config/api/invites/{invite_id}/revoke")
+async def api_invites_revoke(request: Request, invite_id: int):
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = _check_pin_or_401(pin)
+    if err: return err
+
+    revoke_invite(invite_id)
+    return JSONResponse({"ok": True, "invite_id": invite_id, "revoked": True})

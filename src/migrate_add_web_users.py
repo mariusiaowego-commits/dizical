@@ -41,10 +41,36 @@ CREATE TABLE IF NOT EXISTS web_users (
   created_by             INTEGER,
   created_at             DATETIME DEFAULT CURRENT_TIMESTAMP,
   last_login_at          DATETIME NULL,
-  revoked                BOOLEAN DEFAULT 0
+  revoked                BOOLEAN DEFAULT 0,
+  login_failed_count     INTEGER DEFAULT 0,
+  locked_until           DATETIME NULL
 );
 CREATE INDEX IF NOT EXISTS idx_web_users_username ON web_users(username);
 CREATE INDEX IF NOT EXISTS idx_web_users_role ON web_users(role);
+"""
+
+# Sprint 26081003 v3.1 (dad 8-10): 增量迁移 lockout 字段 (幂等, 加列)
+# 老 web_users 表没这两个字段, 用 ALTER TABLE 兼容 (SQLite 不支持 IF NOT EXISTS on ADD COLUMN)
+# 用 PRAGMA table_info 判断, 在缺字段时 ALTER
+LOCKOUT_MIGRATION_SQLITE = [
+    ("login_failed_count", "INTEGER DEFAULT 0"),
+    ("locked_until", "DATETIME NULL"),
+]
+
+WEB_INVITES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS web_invites (
+  invite_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  invite_token   VARCHAR(64) UNIQUE NOT NULL,
+  role           VARCHAR(16) NOT NULL,
+  max_uses       INTEGER DEFAULT 1,
+  used_count     INTEGER DEFAULT 0,
+  expires_at     DATETIME NOT NULL,
+  created_by     INTEGER,
+  created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+  revoked        BOOLEAN DEFAULT 0,
+  note           VARCHAR(128)
+);
+CREATE INDEX IF NOT EXISTS idx_web_invites_token ON web_invites(invite_token);
 """
 
 # MySQL schema (云端生产) — 跟 sprint 26081002 stage-list 迁移同款
@@ -71,12 +97,31 @@ def main() -> None:
             "SELECT name FROM sqlite_master WHERE type='table' AND name='web_users'"
         )
         if cur.fetchone():
-            print("✓ web_users 表已存在, 跳过 (幂等)")
-            return
+            print("✓ web_users 表已存在")
+        else:
+            conn.executescript(SQLITE_SCHEMA)
+            conn.commit()
+            print("✓ 新建 web_users 表 + 索引 (idx_username, idx_role)")
 
-        conn.executescript(SQLITE_SCHEMA)
+        # 增量迁移: 给老 web_users 表加 lockout 字段 (幂等)
+        cur = conn.execute("PRAGMA table_info(web_users)")
+        existing_cols = {row[1] for row in cur.fetchall()}
+        added_cols = []
+        for col_name, col_def in LOCKOUT_MIGRATION_SQLITE:
+            if col_name not in existing_cols:
+                conn.execute(f"ALTER TABLE web_users ADD COLUMN {col_name} {col_def}")
+                added_cols.append(col_name)
+        if added_cols:
+            conn.commit()
+            print(f"✓ 增量迁移: 加列 {added_cols}")
+        else:
+            print("✓ lockout 字段已存在 (login_failed_count / locked_until)")
+
+        # web_invites 表 (Q7 邀请链接)
+        conn.executescript(WEB_INVITES_SCHEMA)
         conn.commit()
-        print("✓ 新建 web_users 表 + 索引 (idx_username, idx_role)")
+        print("✓ web_invites 表已就绪 (Q7 邀请链接)")
+
         print()
         print("下一步: 浏览器打开 /config/users (dad 输 PIN 0905), 点'新建账号'开始.")
     finally:

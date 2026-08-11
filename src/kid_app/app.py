@@ -41,7 +41,8 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/auth/")
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
         or path.startswith("/api/admin/whitelist") or path.startswith("/admin/whitelist")
-        or path.startswith("/config/api/") or path == "/config/users"  # Sprint 26081003: dad 后台走 PIN 守门
+        or path.startswith("/config/api/") or path == "/config/users"
+        or path == "/accept-invite" or path.startswith("/accept-invite?")  # Q7 邀请公开页
     )
     if PUBLIC:
         return await call_next(request)
@@ -2163,6 +2164,33 @@ async def login_page(request: Request, redirect: str = "/"):
     return _tpl_login.TemplateResponse(
         request, "login.html",
         {"redirect": redirect, "active_nav": ""},
+    )
+
+
+@app.get("/accept-invite", response_class=HTMLResponse)
+async def accept_invite_page(request: Request, token: str = ""):
+    """Q7 邀请链接落地页 (公开, 不需登录). 验证 token 有效性."""
+    from src.kid_app.auth import fetch_invite
+    from datetime import datetime
+    invite = fetch_invite(token) if token else None
+    invite_info = None
+    if invite:
+        ea = invite.get("expires_at")
+        if isinstance(ea, str):
+            try:
+                ea_dt = datetime.fromisoformat(ea.replace(" ", "T") if "T" not in ea else ea)
+                invite_info = {
+                    "role": invite["role"],
+                    "expires_at": ea_dt.strftime("%Y-%m-%d %H:%M UTC"),
+                    "remaining_uses": invite["max_uses"] - invite["used_count"],
+                }
+            except (ValueError, TypeError):
+                invite_info = {"role": invite["role"], "expires_at": str(ea),
+                                "remaining_uses": invite["max_uses"] - invite["used_count"]}
+    return _tpl_login.TemplateResponse(
+        request, "accept-invite.html",
+        {"token": token, "invite": invite_info,
+         "active_nav": "", "ROLE_LABELS": {"student": "学习者", "family": "家人", "teacher": "老师"}},
     )
 
 

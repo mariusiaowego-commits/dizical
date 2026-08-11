@@ -22,6 +22,9 @@ from src.kid_app.auth import (
     clear_session_cookie,
     fetch_user_by_username,
     hash_password,
+    increment_login_failed,
+    is_user_locked,
+    reset_login_failed,
     set_session_cookie,
     update_last_login,
     update_password,
@@ -62,8 +65,19 @@ async def api_auth_login(request: Request):
     user = fetch_user_by_username(username)
     # 通用错 (不区分用户名错/密码错, 防撞库)
     if not user or user["revoked"] or not verify_password(user["password_hash"], password):
+        if user and not user["revoked"]:
+            # 失败计数 (Q4: 5 次锁 5 分钟)
+            increment_login_failed(user["user_id"])
         return JSONResponse({"ok": False, "error": "用户名或密码错"},
                             status_code=401)
+
+    # 锁住? (Q4)
+    if is_user_locked(user):
+        return JSONResponse({"ok": False, "error": "账号暂时锁定, 请 5 分钟后再试"},
+                            status_code=423)  # 423 Locked
+
+    # 登录成功: 清失败计数 + lockout
+    reset_login_failed(user["user_id"])
 
     # 更新 last_login
     update_last_login(user["user_id"])
@@ -120,8 +134,9 @@ async def api_auth_change_password(request: Request):
                             status_code=401)
 
     new_hash = hash_password(new_password)
+    # update_password 默认 bump_session=True (Q6: 踢出其他设备)
     update_password(user["user_id"], new_hash)
-    return JSONResponse({"ok": True})
+    return JSONResponse({"ok": True, "note": "其他设备已自动登出"})
 
 
 @router.get("/api/auth/me")
@@ -132,3 +147,66 @@ async def api_auth_me(request: Request):
     if not user:
         return JSONResponse({"ok": False, "error": "未登录"}, status_code=401)
     return JSONResponse({"ok": True, "user": _user_to_public(user)})
+
+
+# ─── Q7: 邀请链接公开兑换 ─────────────────────────────────────
+@router.post("/api/auth/redeem-invite")
+async def api_auth_redeem_invite(request: Request):
+    """{token, username, display_name, password} → 建账号 + 自动登录."""
+    from src.kid_app.auth import (
+        consume_invite, create_user, fetch_invite, fetch_user_by_username,
+        hash_password, set_session_cookie, MIN_PASSWORD_LEN,
+    )
+
+    body = json.loads(await request.body() or b"{}")
+    token = (body.get("token") or "").strip()
+    username = (body.get("username") or "").strip()
+    display_name = (body.get("display_name") or "").strip()
+    password = body.get("password") or ""
+
+    if not token or not username or not display_name or not password:
+        return JSONResponse({"ok": False, "error": "参数缺失"},
+                            status_code=400)
+    if len(password) < MIN_PASSWORD_LEN:
+        return JSONResponse({"ok": False, "error": f"密码至少 {MIN_PASSWORD_LEN} 位"},
+                            status_code=400)
+    if len(username) < 2 or len(username) > 64:
+        return JSONResponse({"ok": False, "error": "用户名长度 2-64"},
+                            status_code=400)
+
+    invite = fetch_invite(token)
+    if not invite:
+        return JSONResponse({"ok": False, "error": "邀请链接无效 / 已过期 / 已用完"},
+                            status_code=410)
+
+    # username 重复?
+    if fetch_user_by_username(username):
+        return JSONResponse({"ok": False, "error": "用户名已存在, 请换别的"},
+                            status_code=400)
+
+    # 建账号 (must_change=0 — 用户自己设的密码)
+    try:
+        user_id = create_user(
+            username=username, display_name=display_name,
+            password_hash=hash_password(password),
+            role=invite["role"], avatar_letter=display_name[:1].upper(),
+            created_by=None,
+        )
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+    # 兑换 invite
+    consume_invite(token)
+
+    # 自动登录
+    user = fetch_user_by_username(username)
+    from src.kid_app.auth import update_last_login
+    update_last_login(user_id)
+    response = JSONResponse({
+        "ok": True,
+        "user": _user_to_public(user),
+        "auto_login": True,
+    })
+    set_session_cookie(response, user_id=user_id, role=user["role"],
+                        session_version=user["session_version"], remember=True)
+    return response
