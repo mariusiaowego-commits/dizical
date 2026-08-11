@@ -1,10 +1,66 @@
 # STATUS.md - dizical 项目状态
 
-**最后更新**: 2026-08-10 (sprint 26081001 + 26081002 收尾, stage 列表过滤 + stage 边界修复, PR #256/#257/#258 MERGED, main 952d6c5)
+**最后更新**: 2026-08-11 (sprint 26081003 收尾, web 用户体系 v3.3.4 完整闭环, 14 commits, 61/61 pytest, 未部署, 待 dad merge main)
+
+---
+
+### 2026-08-11 Sprint 26081003 收尾 — Web 用户体系 v3.3.4 (PR #260 OPEN, 未部署)
+
+**触发**: dad 8-10 拍板 web 用户体系走 B 方案 (本地化) + 4 优先级 P1 (lockout/invite/dad root/30天 cookie).
+
+**14 commits (feat/web-user-auth-260810 branch)**:
+- `v3.2` `575141c`: lockout 5次/5分 + invite + 30天 cookie
+- `v3.2.1` `fc038e3`: 0 依赖 + 双后端 (MySQL + SQLite) 兼容
+- `v3.3` `b7fd117`: dad root 账号 + admin-login 入口
+- `v3.3.1` `77e79b3`: login_page 500 + P0 layout
+- `v3.3.2` `f4bdb86` + `af5a72d` + `d0e8e0e`: login.html 改 + 应急 reset + append log
+- `v3.3.3` `c44a59a`: invite URL 局域网 IP (DIZICAL_PUBLIC_BASE > tailscale > 私人 IP > base_url) + datetime 类型 miss (PyMySQL 返 datetime 对象, isinstance(str) 永远 False)
+- `v3.3.4` `9a7442d`: 复制按钮 fallback (navigator.clipboard Secure Context 拒 → execCommand + alert) + 密码最少 6 位 (5 文件 8 处)
+
+**dad 实测发现 6 bug 全部修**:
+1. dad 找不到 log 里 dad 初始密码 — 加自动跑 migrate + 应急 reset + append log
+2. invite 链接是 localhost + 显示已失效 — 4 优先级 fallback + 双路 datetime/str
+3. 复制按钮没复制到剪贴板 — execCommand + alert fallback
+4. 密码必须 8 位不行 — 全部改 6 位
+5. song 账号没法登 — 实际是 lockout 触发, 清 lockout
+6. 局域网 IP 不一致 (10.0.0.14 → 10.211.55.2) — 下 sprint 修
+
+**61/61 pytest PASSED** in 4.44s (lockout × 3 + invite × 4 + dad × 3 + 应急 reset × 3 + 密码 6 位 × 5 + 30天 cookie × 6 + 双后端 × 8 + 加密 × 8 + 基础 × 13)
+
+**未部署**: dad 拍 "弄好以后再部署", 担心 cloudrun 翻车风险. 留到下 sprint 走 9 项部署清单:
+1. dad 浏览器本地 8765 完整跑一遍
+2. e2e test 覆盖 PyMySQL datetime
+3. 登录页失败计数 + lockout 剩余时间 UI
+4. cloudrun.yaml env 校验 (DATABASE_URL SQLite → MySQL)
+5. 在线云端 DB 跑 migrate_add_web_users.py
+6. AGENTS.md IP 更新 (10.0.0.14 → 10.211.55.2)
+7. 精简 .cloudrun-deploy 包 (上次教训: 1.2GB 卡死)
+8. MCP auth device mode (sprint 250 沉淀, 沿用)
+9. 部署后 smoke test 6 路径 200 + dad 浏览器实测
+
+**handoff**: `handoff-2026-08-11-sprint-26081003-v3.3.4-closeout.md` (16K, 12 章)
+
+**prod 状态**:
+- dad `must_change_password=1` 密码 `7soKaxgF7V8A` (对话暴露, dad 走改密后失效)
+- song `must_change=0` 密码 `song123` (SQL 覆盖临时值)
+- invite_id=3 dad 原 invite (token `8C6b8w_GXWaKvbYzY6UPF0WZ4CGzJdsKMb3Fg5YjVm4`)
+
+**教训沉淀**:
+- PyMySQL vs SQLite 类型差异 (datetime 对象 vs str) 是 500 最大来源
+- navigator.clipboard / geolocation / payment 等 Secure Context API 必须 fallback (内网 HTTP 静默 fail)
+- dad 当前密码进对话 = 暴露 → 必须立即让 dad 走 /admin/reset-password PIN=0905 改密
+- vite/uvicorn 监 0.0.0.0 + URL 用 request.base_url = 自杀 — URL 必须从 env 或实际可路由 host 取
+- lockout 触发是设计行为, dad 报告"没法登" 时第一件事查 login_failed_count / locked_until, 不要急着改代码
+- AGENTS.md IP 不更新 → iPad 打不开服务, 每次网变 (Tailscale 登/登 / WiFi 切换) 都要 ifconfig 更新
+
+**下一步**:
+- dad merge main (fast-forward 无冲突), sprint 真正收尾
+- 下 sprint 候选 (按优先级): 部署 v3.3.4 (P0) / 登录页失败计数 UI (P1) / e2e test PyMySQL datetime (P1) / Q5 微信扫码登录 (P2) / AGENTS IP 更新 (P2)
 
 ---
 
 ### 2026-08-10 sprint 26081001 + 26081002 收尾 (PR #256/#257/#258 MERGED)
+ (PR #256/#257/#258 MERGED)
 
 **触发**: dad 8-10 浏览器反馈 /report/stage-print 下拉有 Stage 0/Stage null 噪音 + Stage 17/18 只显示 1 天.
 

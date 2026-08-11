@@ -1,3 +1,49 @@
+## 2026-08-11 Sprint 26081003 收尾 — Web 用户体系 v3.3.4 (14 commits, 61/61 pytest, 未部署, 待 dad merge main)
+
+- **触发**: dad 8-10 拍板 web 用户体系走 B 方案本地化 + 4 优先级 P1 (lockout/invite/dad root/30天 cookie)
+- **范围**: 完整 web 用户体系闭环 — SQLite/MySQL 双兼容 + lockout + invite + dad root + admin-login + 应急 reset + 6 个 UI bug 全部修
+- **14 commits (feat/web-user-auth-260810 branch)**:
+ - `v3.2` `575141c`: lockout 5次/5分 + invite + 30天 cookie (Q4/Q6/Q7 拍板)
+ - `v3.2.1` `fc038e3`: 0 依赖 + 双后端 (MySQL + SQLite) 兼容 — PyMySQL 返 datetime 对象 / dict cursor vs SQLite 返 str / Row
+ - `v3.3` `b7fd117`: dad root 账号 + admin-login 入口 (Q2 拍板)
+ - `v3.3.1` `77e79b3`: login_page 500 (RedirectResponse 未 import) + P0 layout
+ - `v3.3.2` `f4bdb86` + `af5a72d` + `d0e8e0e`: login.html 改 + 应急 reset (PIN=0905, 12位强密码, must_change=1) + append log (uvicorn >> 不再 truncate)
+ - `v3.3.3` `c44a59a`: invite URL 局域网 IP (DIZICAL_PUBLIC_BASE > tailscale > 私人 IP > base_url) + accept_invite_page datetime 类型 miss (isinstance(ea, str) 永远 False, PyMySQL 返 datetime 对象)
+ - `v3.3.4` `9a7442d`: 复制按钮 fallback (navigator.clipboard Secure Context 拒 → textarea + execCommand + alert) + 密码最少 6 位 (5 文件 8 处)
+- **dad 实测发现 6 bug**:
+ 1. dad 找不到 log 里 dad 初始密码 (start-prod 不跑 migrate + migrate 不重复打印 + uvicorn truncate log) → 加自动跑 migrate + 应急 reset + append log
+ 2. invite 链接是 localhost + 显示已失效 → 4 优先级 fallback + 双路 datetime/str
+ 3. 复制按钮没复制到剪贴板 → execCommand + alert fallback
+ 4. 密码必须 8 位不行 → 全部改 6 位
+ 5. song 账号没法登 (实际是 lockout 触发, dad 反复试错) → 清 lockout, 改进 UI 留给下 sprint
+ 6. 局域网 IP 不一致 (AGENTS.md 10.0.0.14 → 实际 10.211.55.2) → 下 sprint 修
+- **61/61 pytest PASSED** in 4.44s (lockout × 3 + invite × 4 + dad × 3 + 应急 reset × 3 + 密码 6 位 × 5 + 30天 cookie × 6 + 双后端 × 8 + 加密 × 8 + 基础 × 13)
+- **未部署**: dad 拍 "弄好以后再部署", 担心 cloudrun 翻车风险 (上次教训: 055-056 失败 1.2GB 包 create_build_image 卡死). 留到下 sprint 走 9 项部署清单
+- **prod 状态**: dad `must_change_password=1` 密码 `7soKaxgF7V8A` (对话暴露, dad 走改密后失效); song `must_change=0` 密码 `song123` (SQL 覆盖临时值); invite_id=3 dad 原 invite (token `8C6b8w_...`)
+- **handoff**: `handoff-2026-08-11-sprint-26081003-v3.3.4-closeout.md` (16K, 12 章: TL;DR / 拍板 / bug 修复 / 改动文件 / pytest / prod 状态 / 部署清单 / wiki / checklist / dad 操作 / dizical agent 须知 / 教训)
+- **部署清单 (下 sprint)**:
+ 1. dad 浏览器本地 8765 完整跑一遍 (login / accept-invite / 改密 / 复制按钮 / 密码 6 位 / admin-login / 应急 reset)
+ 2. e2e test 覆盖 PyMySQL datetime 类型 (避免 v3.3.3 dad 报 "token 失效" 的坑复发)
+ 3. 登录页失败计数 + lockout 剩余时间显示 (降低 dad 反复试错 lockout 的体验风险)
+ 4. cloudrun.yaml env 校验: DATABASE_URL=sqlite:////tmp/dizical.db 跟 dad 实际 MySQL 用法不同 — 改成 MySQL
+ 5. 在线云端 DB 跑 migrate_add_web_users.py (web_users + web_invites 表) — 不跑部署后访问会 500
+ 6. AGENTS.md 更新局域网 IP 10.0.0.14 → 10.211.55.2
+ 7. 精简 .cloudrun-deploy/ 包 (上次教训)
+ 8. MCP auth device mode 沿用 (sprint 250 沉淀)
+ 9. 部署后 smoke test 6 路径 200 + dad 浏览器实测
+- **教训 (next agent)**:
+ - PyMySQL vs SQLite 类型差异 (datetime 对象 vs str) 是 500 最大来源 — `_fetchone_dict` 是统一抽象层但要先 verify 返回类型
+ - navigator.clipboard / geolocation / payment 等 Secure Context API 必须 fallback (内网 HTTP 静默 fail)
+ - dad 当前密码进对话 = 暴露 → 必须立即让 dad 走 /admin/reset-password PIN=0905 改密 (scrypt 单向哈希覆盖后失效)
+ - vite/uvicorn 监 0.0.0.0 + URL 用 request.base_url = 自杀 (返 0.0.0.0 用户打不开) — URL 必须从 env 或实际可路由 host 取
+ - lockout 触发是设计行为, dad 报告"没法登" 时第一件事查 login_failed_count / locked_until, 不要急着改代码
+ - vite production URL 必须从 env (DIZICAL_PUBLIC_BASE / Cloudflare Tunnel) 取, 不依赖 request.base_url
+ - AGENTS.md IP 不更新 → iPad 打不开服务, 每次网变都要 ifconfig 更新
+ - 测试用 tmp SQLite db ≠ 生产 MySQL, 必须加 e2e test 走真 MySQL (staging_deploy.sh 有这个能力)
+ - CloudRun 部署是 irreversible 风险: dad 验收本地 + pytest 全绿 + 9 项清单 + smoke test 6 路径 + dad 浏览器实测
+- **沉淀**: Obsidian 双写 (PRDs/AI-PRD-web-user-auth-260810.md 主仓 + tqob/05-Coding/project-dizical/AI-PRD-web-user-auth-260810.md Obsidian), md5 一致; wiki coding-pitfalls 新增 4 条; skill-library-hygiene (calc-apply + badge-image 跨 profile 对齐)
+- **下一步**: dad merge main (fast-forward 无冲突), sprint 真正收尾. 下 sprint 候选: 部署 v3.3.4 (P0) / 登录页失败计数 UI (P1) / e2e test PyMySQL datetime (P1) / Q5 微信扫码登录 (P2) / AGENTS IP 更新 (P2)
+
 ## 2026-08-10 sprint 26081001 + 26081002 收尾 (PR #256/#257/#258 MERGED, main 952d6c5)
 
 - **触发**: dad 浏览器打开 /report/stage-print 反馈 (1) 下拉有 Stage 0/Stage null 噪音 (2) Stage 17/18 只显示 1 天. 8-02~8-09 都有练习数据但不在 stage 里
