@@ -1,14 +1,20 @@
 """
-Dad 后台用户管理路由 (Sprint 26081003).
+Dad 后台用户管理路由 (Sprint 26081003 v3.3).
 
-GET  /config/users                              用户管理页 (HTML, dad PIN 守门)
+GET  /config/users                              用户管理页 (HTML, dad PIN 或 dad session)
 POST /config/api/users/create                   建账号 (返明文初始密码 1 次)
 POST /config/api/users/{id}/reset-password      重置密码 (返新明文 1 次)
 POST /config/api/users/{id}/role                改 role
 POST /config/api/users/{id}/revoke              软删
 POST /config/api/users/{id}/logout-all          踢出所有设备
+POST /config/api/invites/create                  生成邀请链接
+GET  /config/api/invites/list                   邀请列表
+POST /config/api/invites/{id}/revoke            撤销邀请
 
-dad PIN 守门: 每个写操作都校验 X-Dad-Pin header = settings.dad_pin.
+Sprint 26081003 v3.3 双轨守门:
+- PIN 应急 (curl / dad 忘了密码): X-Dad-Pin header = settings.dad_pin
+- dad role session (浏览器): get_current_user(role=dad)
+普通 web_users (student/family/teacher) 拒绝.
 """
 from __future__ import annotations
 
@@ -38,8 +44,32 @@ _env = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 router = APIRouter()
 
 
+async def _check_dad_or_401(request: Request):
+    """dad 守门 (Sprint 26081003 v3.3): 双轨 — PIN OR dad role session.
+
+    - PIN 应急 (curl 测试 / dad 忘了密码): settings.dad_pin
+    - dad role session (浏览器): get_current_user(role=dad)
+    普通 web_users (student/family/teacher) 拒绝.
+    """
+    # 1) PIN 守门 (从 body / header 取)
+    pin = ""
+    try:
+        body = json.loads(await request.body() or b"{}")
+        pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    except Exception:  # noqa: BLE001
+        pin = request.headers.get("X-Dad-Pin", "")
+    if pin and check_dad_pin(pin):
+        return None
+    # 2) dad session 守门
+    from src.kid_app.auth import get_current_user
+    user = await get_current_user(request)
+    if user and user.get("role") == "dad":
+        return None
+    return JSONResponse({"ok": False, "error": "需要 dad 登录或 PIN"}, status_code=401)
+
+
 def _check_pin_or_401(pin: str):
-    """dad PIN 校验. 不通过返 JSONResponse 401."""
+    """PIN-only 守门 (兼容老逻辑, 仅 invite/list GET 仍可用 — 查询参数)."""
     if not check_dad_pin(pin):
         return JSONResponse({"ok": False, "error": "PIN 错"}, status_code=401)
     return None
@@ -47,9 +77,16 @@ def _check_pin_or_401(pin: str):
 
 @router.get("/config/users", response_class=HTMLResponse)
 async def config_users_page(request: Request, pin: str = ""):
-    """dad 用户管理 UI. PIN 守门 (跟 /config 一致风格)."""
+    """dad 用户管理 UI. 双轨守门: dad session OR PIN (Sprint v3.3)."""
+    from src.kid_app.auth import get_current_user
+    user = await get_current_user(request)
+    dad_via_session = bool(user and user.get("role") == "dad")
     pin_valid = bool(pin) and check_dad_pin(pin)
-    users = list_users() if pin_valid else []
+    has_access = dad_via_session or pin_valid
+    users = list_users() if has_access else []
+    # dad session 时: 设 CURRENT_PIN 给前端 JS 用 (防止 cookie 过时 form 还在 PIN 模式)
+    # 没 session 时, 仍可用 ?pin=0905 进 (兼容老流程 + curl 应急)
+    effective_pin = pin if pin_valid else "session"
 
     # 转 datetime 为字符串 (Jinja 不能直接渲染)
     for u in users:
@@ -62,11 +99,13 @@ async def config_users_page(request: Request, pin: str = ""):
         "config-users.html",
         {
             "active_nav": "config_users",
-            "pin": pin,
-            "pin_valid": pin_valid,
+            "pin": effective_pin,
+            "pin_valid": has_access,
             "users": users,
             "role_labels": ROLE_LABELS,
             "today": __import__("datetime").date.today().isoformat(),
+            "current_user": user,  # 给前端 navbar 用 (dad 头像/登出)
+            "dad_via_session": dad_via_session,
         },
     )
 
@@ -76,7 +115,7 @@ async def api_users_create(request: Request):
     """{username, display_name, role, avatar_letter, pin} → 返 initial_password 一次."""
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     username = (body.get("username") or "").strip()
@@ -117,7 +156,7 @@ async def api_users_create(request: Request):
 async def api_users_reset_password(request: Request, user_id: int):
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     new_password = generate_random_password(12)
@@ -150,7 +189,7 @@ async def api_users_reset_password(request: Request, user_id: int):
 async def api_users_change_role(request: Request, user_id: int):
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     new_role = (body.get("role") or "").strip()
@@ -165,7 +204,7 @@ async def api_users_change_role(request: Request, user_id: int):
 async def api_users_revoke(request: Request, user_id: int):
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     revoke_user(user_id)
@@ -177,7 +216,7 @@ async def api_users_logout_all(request: Request, user_id: int):
     """踢出该用户所有设备. 递增 session_version."""
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     bump_session_version(user_id)
@@ -200,7 +239,7 @@ async def api_invites_create(request: Request):
     """
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     role = (body.get("role") or "").strip()
@@ -256,7 +295,7 @@ async def api_invites_list(request: Request, pin: str = ""):
 async def api_invites_revoke(request: Request, invite_id: int):
     body = json.loads(await request.body() or b"{}")
     pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
-    err = _check_pin_or_401(pin)
+    err = await _check_dad_or_401(request)
     if err: return err
 
     revoke_invite(invite_id)

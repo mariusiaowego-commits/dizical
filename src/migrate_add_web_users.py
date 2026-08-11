@@ -224,16 +224,105 @@ def _migrate_mysql(database_url: str) -> None:
         conn.close()
 
 
+def _ensure_dad_account(conn, is_mysql: bool) -> str | None:
+    """若 web_users 里没 username='dad', 建 1 个 (role=dad, 随机强密码).
+
+    Sprint 26081003 v3.3: dad root 账号 (替代全局 PIN 0905 模式).
+    返新密码 (None = 已存在, 跳过).
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM web_users WHERE username = 'dad'")
+    if cur.fetchone():
+        return None
+    # 生成 12 位密码: 字母 + 数字 (无易混字符)
+    import secrets, string
+    alphabet = string.ascii_letters.replace("l", "").replace("I", "").replace("O", "") + string.digits.replace("0", "").replace("1", "")
+    new_pw = "".join(secrets.choice(alphabet) for _ in range(12))
+    pw_hash = _hash_password_scrypt(new_pw)
+    # 写库
+    if is_mysql:
+        cur.execute("""
+            INSERT INTO web_users
+            (username, display_name, password_hash, role, avatar_letter,
+             must_change_password, session_version, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NULL)
+        """, ("dad", "爸爸", pw_hash, "dad", "爸", 1, 0))
+    else:
+        cur.execute("""
+            INSERT INTO web_users
+            (username, display_name, password_hash, role, avatar_letter,
+             must_change_password, session_version, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+        """, ("dad", "爸爸", pw_hash, "dad", "爸", 1, 0))
+    conn.commit()
+    return new_pw
+
+
+def _hash_password_scrypt(plain: str) -> str:
+    """跟 auth.py 同样的 scrypt 实现 (避免循环 import)."""
+    import os as _os, hashlib, hmac, base64
+    N = 2**14; R = 8; P = 1; DK = 32
+    salt = _os.urandom(16)
+    hk = hashlib.scrypt(plain.encode("utf-8"), salt=salt,
+                        n=N, r=R, p=P, dklen=DK, maxmem=64 * 1024 * 1024)
+    return f"scrypt${base64.b64encode(salt).decode('ascii')}${base64.b64encode(hk).decode('ascii')}"
+
+
+def ensure_dad_account_sqlite() -> None:
+    """本地 SQLite: migrate 跑完调用, 建 dad 账号 (如果缺)."""
+    import sqlite3 as _sq3
+    if not _DB_PATH.exists():
+        return
+    conn = _sq3.connect(str(_DB_PATH))
+    try:
+        pw = _ensure_dad_account(conn, is_mysql=False)
+        if pw:
+            print(f"✓ 自动建 dad 账号 (root): username=dad, 初始密码={pw}")
+            print(f"  请在首次登录后改密!")
+        else:
+            print(f"✓ dad 账号已存在")
+    finally:
+        conn.close()
+
+
+def ensure_dad_account_mysql_if_needed(db_url: str) -> None:
+    """云 MySQL: 同上 (migrate 跑过且 DATABASE_URL 是 mysql)."""
+    if not db_url.startswith("mysql"):
+        return
+    import pymysql
+    from urllib.parse import urlparse
+    u = urlparse(db_url.replace("mysql+pymysql://", "mysql://"))
+    conn = pymysql.connect(
+        host=u.hostname, port=u.port or 3306,
+        user=u.username, password=u.password, database=u.path.lstrip('/'),
+        autocommit=True,
+    )
+    try:
+        pw = _ensure_dad_account(conn, is_mysql=True)
+        if pw:
+            print(f"✓ 自动建 dad 账号 (云 MySQL): username=dad, 初始密码={pw}")
+            print(f"  请在首次登录后改密!")
+        else:
+            print(f"✓ dad 账号已存在 (云 MySQL)")
+    finally:
+        conn.close()
+
+
 def main() -> None:
-    print(f"Migration: add web_users + web_invites (Sprint 26081003)")
+    print(f"Migration: add web_users + web_invites (Sprint 26081003 v3.3)")
     # 检测 DATABASE_URL: 有 → 走云 MySQL, 无 → 本地 SQLite
     db_url = os.environ.get("DATABASE_URL", "").strip()
     if db_url.startswith("mysql"):
         _migrate_mysql(db_url)
     else:
         _migrate_sqlite()
+    # Sprint 26081003 v3.3: 自动建 dad root 账号 (一次性, 启动日志打印初始密码)
+    ensure_dad_account_sqlite()
+    ensure_dad_account_mysql_if_needed(db_url)
+
     print()
-    print("下一步: 浏览器打开 /config/users (dad 输 PIN 0905), 点'新建账号'开始.")
+    print("下一步: 浏览器打开 /login, 点'管理员登录'按钮 (右上), 用 username=dad 登录.")
+    print("dad 初始密码: 见服务启动日志 (/tmp/dizical-8765.log) 或本脚本输出.")
 
 
 if __name__ == "__main__":

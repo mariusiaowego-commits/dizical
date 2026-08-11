@@ -36,7 +36,7 @@ async def _auth_guard_middleware(request, call_next):
     from src.kid_app.auth import get_current_user
     path = request.url.path
     PUBLIC = (
-        path == "/login" or path == "/change-password" or path == "/gsap-demo"
+        path == "/login" or path == "/change-password" or path == "/admin-login" or path == "/gsap-demo"
         or path.startswith("/static/") or path.startswith("/favicon")
         or path.startswith("/api/auth/")
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
@@ -2191,6 +2191,16 @@ async def accept_invite_page(request: Request, token: str = ""):
         request, "accept-invite.html",
         {"token": token, "invite": invite_info,
          "active_nav": "", "ROLE_LABELS": {"student": "学习者", "family": "家人", "teacher": "老师"}},
+    )
+
+
+@app.get("/admin-login", response_class=HTMLResponse)
+async def admin_login_page(request: Request):
+    """管理员登录页 (Sprint 26081003 v3.3): 红色徽章, 仅 role=dad 可登录."""
+    return _tpl_login.TemplateResponse(
+        request, "admin-login.html",
+        {"active_nav": "", "ROLE_LABELS": {"dad": "管理员", "student": "学习者",
+                                          "family": "家人", "teacher": "老师"}},
     )
 
 

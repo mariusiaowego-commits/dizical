@@ -491,6 +491,7 @@ def revoke_invite(invite_id: int) -> None:
 
 
 def list_users() -> list[dict]:
+    """列 web_users. 双后端统一用 description + zip 转 dict (Sprint v3.3 修)."""
     from src.db_adapter import get_conn
     conn, is_mysql = get_conn()
     try:
@@ -502,8 +503,10 @@ def list_users() -> list[dict]:
             (),
         )
         rows = cur.fetchall()
-        if is_mysql:
-            return list(rows)
+        if not rows:
+            return []
+        if isinstance(rows[0], dict):
+            return list(rows)  # DictCursor
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in rows]
     finally:

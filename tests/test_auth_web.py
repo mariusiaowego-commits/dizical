@@ -714,3 +714,127 @@ def test_accept_invite_page_invalid_token(client):
     r = client.get("/accept-invite?token=fake-token-xyz")
     assert r.status_code == 200
     assert "邀请链接无效" in r.text
+
+
+
+# ═══════════════════════════════════════════════════════════
+# 12. Sprint v3.3: dad root 账号 + 双轨守门 (8 case)
+# ═══════════════════════════════════════════════════════════
+
+def test_login_as_dad_role(client):
+    """用 username=dad 登录, role 应是 dad (root)."""
+    from src.migrate_add_web_users import _hash_password_scrypt
+    from src.database import db
+    import sqlite3
+    from src.models import settings
+    conn = sqlite3.connect(str(settings.db_path))
+    conn.execute("""
+        INSERT OR IGNORE INTO web_users (username, display_name, password_hash, role, avatar_letter, must_change_password)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, ("dad", "爸爸", _hash_password_scrypt("dad-test-pw-12345"), "dad", "爸", 1))
+    conn.commit()
+    conn.close()
+    db.set_setting("dad_pin", "")  # 取消 PIN 测试
+    r = client.post("/api/auth/login", json={"username": "dad", "password": "dad-test-pw-12345"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is True
+    assert data["user"]["username"] == "dad"
+    assert data["user"]["role"] == "dad"
+    assert data["user"]["role_label"] == "管理员"
+
+
+def test_dad_session_can_call_config_api(client):
+    """dad session 走 /config/api/users/list (双轨守门: session 通过)."""
+    from src.migrate_add_web_users import _hash_password_scrypt
+    from src.database import db
+    import sqlite3
+    from src.models import settings
+    conn = sqlite3.connect(str(settings.db_path))
+    conn.execute("DELETE FROM web_users WHERE username = 'dad'")
+    conn.execute("""
+        INSERT INTO web_users (username, display_name, password_hash, role, avatar_letter, must_change_password)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, ("dad", "爸爸", _hash_password_scrypt("dad-test-pw-12345"), "dad", "爸", 0))
+    conn.commit()
+    conn.close()
+    db.set_setting("dad_pin", "")
+    # 1) 登录拿 cookie
+    r = client.post("/api/auth/login", json={"username": "dad", "password": "dad-test-pw-12345"})
+    assert r.status_code == 200
+    # 2) 调 create user (双轨守门 — 走 session, 不要 PIN)
+    r = client.post("/config/api/users/create", json={
+        "username": "yoyo", "display_name": "女儿", "role": "student"
+    })
+    assert r.status_code == 200, f"dad session 应该通过, 实际 {r.status_code}: {r.text}"
+    data = r.json()
+    assert data["ok"] is True
+    assert "initial_password" in data
+
+
+def test_student_session_blocked_from_config_api(client):
+    """student 不能走 /config/api/* (双轨守门 — role 校验)."""
+    uid = _make_user("yoyo", role="student", password="yoyo-pw-12345")
+    # yoyo 登录
+    r = client.post("/api/auth/login", json={"username": "yoyo", "password": "yoyo-pw-12345"})
+    assert r.status_code == 200
+    # 尝试创建用户
+    r = client.post("/config/api/users/create", json={
+        "username": "intruder", "display_name": "入侵者", "role": "student"
+    })
+    assert r.status_code == 401
+    assert "dad" in r.json()["error"] or "权限" in r.json()["error"] or "PIN" in r.json()["error"]
+
+
+def test_family_session_blocked_from_config_api(client):
+    """family 同样被拒."""
+    _make_user("mom", role="family", password="mom-pw-12345")
+    r = client.post("/api/auth/login", json={"username": "mom", "password": "mom-pw-12345"})
+    assert r.status_code == 200
+    r = client.post("/config/api/users/create", json={"username": "x", "display_name": "X", "role": "student"})
+    assert r.status_code == 401
+
+
+def test_pin_still_works_after_v33(client):
+    """Sprint v3.3: PIN 应急守门仍可用 (兼容老 curl 测试)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    # PIN 在 body
+    r = client.post("/config/api/users/create",
+                    json={"pin": "0905", "username": "yoyo",
+                          "display_name": "女儿", "role": "student"},
+                    headers={"X-Dad-Pin": ""})
+    assert r.status_code == 200
+    # PIN 在 header
+    r = client.post("/config/api/users/create",
+                    json={"username": "mom2", "display_name": "妈妈2", "role": "family"},
+                    headers={"X-Dad-Pin": "0905"})
+    assert r.status_code == 200
+
+
+def test_pin_wrong_blocked(client):
+    """PIN 错 + 没 session → 401."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/api/users/create",
+                    json={"pin": "wrong", "username": "x", "display_name": "X", "role": "student"})
+    assert r.status_code == 401
+
+
+def test_no_pin_no_session_blocked(client):
+    """啥都没有 → 401."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/api/users/create",
+                    json={"username": "x", "display_name": "X", "role": "student"})
+    assert r.status_code == 401
+
+
+def test_admin_login_page_renders(client):
+    """/admin-login 公开页 200 + 红色徽章."""
+    r = client.get("/admin-login")
+    assert r.status_code == 200
+    # 校验关键元素
+    assert "管理员登录" in r.text
+    assert "role-badge" in r.text  # 红色徽章 class
+    assert "DC3545" in r.text or "dc3545" in r.text  # 红色 border-top
