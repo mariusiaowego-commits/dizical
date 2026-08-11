@@ -20,7 +20,7 @@
 - **61/61 pytest PASSED** in 4.44s (lockout × 3 + invite × 4 + dad × 3 + 应急 reset × 3 + 密码 6 位 × 5 + 30天 cookie × 6 + 双后端 × 8 + 加密 × 8 + 基础 × 13)
 - **未部署**: dad 拍 "弄好以后再部署", 担心 cloudrun 翻车风险 (上次教训: 055-056 失败 1.2GB 包 create_build_image 卡死). 留到下 sprint 走 9 项部署清单
 - **prod 状态**: dad `must_change_password=1` 密码 `7soKaxgF7V8A` (对话暴露, dad 走改密后失效); song `must_change=0` 密码 `song123` (SQL 覆盖临时值); invite_id=3 dad 原 invite (token `8C6b8w_...`)
-- **handoff**: `handoff-2026-08-11-sprint-26081003-v3.3.4-closeout.md` (16K, 12 章: TL;DR / 拍板 / bug 修复 / 改动文件 / pytest / prod 状态 / 部署清单 / wiki / checklist / dad 操作 / dizical agent 须知 / 教训)
+- **handoff**: `docs/handoff-archive/handoff-2026-08-11-sprint-26081003-v3.3.4-closeout.md` (16K, 12 章: TL;DR / 拍板 / bug 修复 / 改动文件 / pytest / prod 状态 / 部署清单 / wiki / checklist / dad 操作 / dizical agent 须知 / 教训)
 - **部署清单 (下 sprint)**:
  1. dad 浏览器本地 8765 完整跑一遍 (login / accept-invite / 改密 / 复制按钮 / 密码 6 位 / admin-login / 应急 reset)
  2. e2e test 覆盖 PyMySQL datetime 类型 (避免 v3.3.3 dad 报 "token 失效" 的坑复发)

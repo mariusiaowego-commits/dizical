@@ -38,7 +38,7 @@
 8. MCP auth device mode (sprint 250 沉淀, 沿用)
 9. 部署后 smoke test 6 路径 200 + dad 浏览器实测
 
-**handoff**: `handoff-2026-08-11-sprint-26081003-v3.3.4-closeout.md` (16K, 12 章)
+**handoff**: `docs/handoff-archive/handoff-2026-08-11-sprint-26081003-v3.3.4-closeout.md` (16K, 12 章)
 
 **prod 状态**:
 - dad `must_change_password=1` 密码 `7soKaxgF7V8A` (对话暴露, dad 走改密后失效)
