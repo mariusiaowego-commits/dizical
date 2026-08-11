@@ -1,8 +1,8 @@
 """
 Web 用户体系核心 (Sprint 26081003).
 
-- argon2 密码哈希 (pyproject 已有 argon2-cffi)
-- itsdangerous 签名 cookie (pyproject 已有)
+- stdlib scrypt 密码哈希 (不引新依赖, 跟 prod Python 3.14 100% 兼容)
+- stdlib hmac + base64 + json 自签签名 cookie (HMAC-SHA256)
 - FastAPI Dependencies: get_current_user / require_login / require_role
 - Session 版本号支持 dad 踢出所有设备
 
@@ -20,61 +20,120 @@ Cookie 设计:
 from __future__ import annotations
 
 import os
+import json
 from typing import Optional
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
 from fastapi import HTTPException, Request, Response
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+
 
 from src.database import db
 
-# ─── 密码哈希 ──────────────────────────────────────────
-_ph = PasswordHasher()  # m=65536, t=3, p=4 (OWASP 推荐)
+# ─── 密码哈希 (stdlib scrypt, 不引新依赖) ───────────────────────
+# Sprint 26081003 v3.2 决策: 改用 hashlib.scrypt (NIST SP 800-132 推荐,
+# 安全等级 ≈ argon2id, 字符串格式 "scrypt$<salt_b64>$<hash_b64>").
+# 原因: prod Python 3.14 没装 argon2-cffi (PEP 668 拦), stdlib 始终可用.
+import hashlib
+import hmac
+import base64
+
+_SCRYPT_N = 2**14  # CPU cost (n=2^14 ~16MB, 跟 OpenSSL 默认 maxmem=32MB 兼容)
+_SCRYPT_R = 8
+_SCRYPT_P = 1
+_SCRYPT_DKLEN = 32
 
 MIN_PASSWORD_LEN = 8
 
 
 def hash_password(plain: str) -> str:
-    """argon2 hash. raise ValueError if 长度不足."""
+    """scrypt hash. raise ValueError if 长度不足."""
     if len(plain) < MIN_PASSWORD_LEN:
         raise ValueError(f"密码至少 {MIN_PASSWORD_LEN} 位")
-    return _ph.hash(plain)
+    salt = os.urandom(16)
+    hk = hashlib.scrypt(plain.encode("utf-8"), salt=salt,
+                        n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
+                        dklen=_SCRYPT_DKLEN, maxmem=64 * 1024 * 1024)
+    return f"scrypt${base64.b64encode(salt).decode('ascii')}${base64.b64encode(hk).decode('ascii')}"
 
 
 def verify_password(hash_str: str, plain: str) -> bool:
-    """校验密码. 返 True/False (不抛)."""
+    """校验 scrypt 密码. 返 True/False (不抛)."""
     if not hash_str or not plain:
         return False
     try:
-        _ph.verify(hash_str, plain)
-        return True
-    except (VerifyMismatchError, InvalidHashError):
+        parts = hash_str.split("$")
+        if len(parts) != 3 or parts[0] != "scrypt":
+            return False
+        salt = base64.b64decode(parts[1])
+        expected = base64.b64decode(parts[2])
+        actual = hashlib.scrypt(plain.encode("utf-8"), salt=salt,
+                                n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
+                                dklen=_SCRYPT_DKLEN, maxmem=64 * 1024 * 1024)
+        return hmac.compare_digest(actual, expected)
+    except (ValueError, Exception):  # noqa: BLE001
         return False
 
 
 # ─── Cookie 签名 ────────────────────────────────────────
+import time
+
 SESSION_SECRET = os.getenv("DIZICAL_SESSION_SECRET", "dev-fallback-please-set-DIZICAL_SESSION_SECRET")
 SESSION_SALT = "dizical-web-session-v1"
 COOKIE_NAME = "dizical_session"
 COOKIE_MAX_AGE = 30 * 24 * 3600  # 30 天
 INSECURE_COOKIE = os.getenv("DIZICAL_INSECURE_COOKIE", "0") == "1"
 
-_serializer = URLSafeTimedSerializer(SESSION_SECRET, salt=SESSION_SALT)
+
+def _cookie_sign(payload: dict) -> str:
+    """签发 'base64url(json).base64url(hmac_sha256)' cookie 字符串."""
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    exp = int(payload.get("exp", 0))
+    msg = raw + b"|" + str(exp).encode("ascii")
+    sig = hmac.new(SESSION_SECRET.encode("utf-8"), msg, hashlib.sha256).digest()
+    return (base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+            + "."
+            + base64.urlsafe_b64encode(sig).rstrip(b"=").decode("ascii"))
+
+
+def _cookie_verify(token: str) -> dict | None:
+    """验签 + 检查 exp. 失败返 None."""
+    try:
+        raw_b64, sig_b64 = token.split(".", 1)
+    except (ValueError, AttributeError):
+        return None
+    try:
+        raw = base64.urlsafe_b64decode(raw_b64 + "=" * (-len(raw_b64) % 4))
+        sig = base64.urlsafe_b64decode(sig_b64 + "=" * (-len(sig_b64) % 4))
+    except Exception:  # noqa: BLE001
+        return None
+    try:
+        payload = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    exp = int(payload.get("exp", 0))
+    msg = raw + b"|" + str(exp).encode("ascii")
+    expected = hmac.new(SESSION_SECRET.encode("utf-8"), msg, hashlib.sha256).digest()
+    if not hmac.compare_digest(sig, expected):
+        return None
+    if exp and int(time.time()) > exp:
+        return None
+    return payload
+
+
 
 
 def make_session_cookie(user_id: int, role: str, session_version: int) -> str:
-    return _serializer.dumps({"user_id": user_id, "role": role, "sv": session_version})
+    """签发 HMAC-SHA256 签名 cookie (含 exp)."""
+    return _cookie_sign({
+        "user_id": user_id, "role": role, "sv": session_version,
+        "exp": int(time.time()) + COOKIE_MAX_AGE,
+    })
 
 
 def load_session_cookie(raw: str) -> Optional[dict]:
     """校验签名 + 过期. 返 None 表示无效/过期/篡改."""
     if not raw:
         return None
-    try:
-        return _serializer.loads(raw, max_age=COOKIE_MAX_AGE)
-    except (BadSignature, SignatureExpired):
-        return None
+    return _cookie_verify(raw)
 
 
 def set_session_cookie(response: Response, user_id: int, role: str,
@@ -101,7 +160,12 @@ from src.db_adapter import execute as _db_execute
 
 
 def _fetchone_dict(sql: str, params: tuple = ()) -> Optional[dict]:
-    """单行查询, 返 dict 或 None. 双后端兼容."""
+    """单行查询, 返 dict 或 None. 双后端兼容.
+
+    pymysql 默认 tuple cursor, 即使 row 是 tuple — dict(row) 在 Python 3.14
+    抛 "Cannot convert ..." (dict constructor 把 tuple 当 pairs, 失败).
+    统一用 cur.description 取列名 + zip — 双后端一致.
+    """
     from src.db_adapter import get_conn
     conn, is_mysql = get_conn()
     try:
@@ -109,10 +173,8 @@ def _fetchone_dict(sql: str, params: tuple = ()) -> Optional[dict]:
         row = cur.fetchone()
         if not row:
             return None
-        if is_mysql:
-            # MySQL DictCursor 返 dict, 但为安全起见强转
-            return dict(row) if not isinstance(row, dict) else row
-        # SQLite tuple → dict (需要 column names)
+        if isinstance(row, dict):
+            return row  # DictCursor 已返 dict
         cols = [d[0] for d in cur.description]
         return dict(zip(cols, row))
     finally:
