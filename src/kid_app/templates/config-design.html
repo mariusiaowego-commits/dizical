@@ -716,10 +716,43 @@ function actionOpenBrowser() {
   if (url) window.open(url, "_blank");
 }
 
+/**
+ * 统一 copy: navigator.clipboard (Secure Context) → fallback execCommand + alert.
+ * Sprint v3.3.4: 在 http://10.x:8765 内网 navigator.clipboard 静默拒绝,
+ * 不加 fallback 用户看不到反馈. 全站统一 (config-users + admin-reset-password + 此处).
+ */
+async function copyToClipboard(text, onSuccess) {
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0"; ta.style.left = "-9999px";
+    document.body.appendChild(ta); ta.select();
+    try {
+      const ok = document.execCommand("copy");
+      if (ok && onSuccess) onSuccess();
+      else alert("自动复制失败, 请手动复制:\n\n" + text);
+    } catch (e) {
+      alert("自动复制失败, 请手动复制:\n\n" + text);
+    } finally {
+      document.body.removeChild(ta);
+    }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (onSuccess) onSuccess();
+    } catch (e) {
+      fallback();
+    }
+  } else {
+    fallback();
+  }
+}
+
 function copyUrl() {
   const url = document.getElementById("info-url").dataset.url;
   if (!url) return;
-  navigator.clipboard.writeText(url).then(() => {
+  copyToClipboard(url, () => {
     const hint = document.getElementById("copy-hint");
     hint.classList.add("show");
     setTimeout(() => hint.classList.remove("show"), 2000);

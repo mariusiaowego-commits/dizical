@@ -892,3 +892,93 @@ def test_admin_reset_password_only_dad(client):
     r = client.post("/api/admin/reset-password", json={"username": "yoyo", "pin": "0905"})
     assert r.status_code == 400
     assert "dad" in r.json()["error"]
+
+
+
+# ═══════════════════════════════════════════════════════════
+# 14. Sprint v3.3.4: 密码最少 6 位 (替换 v3.3 写的 8 位)
+# ═══════════════════════════════════════════════════════════
+
+def test_password_min_len_is_6():
+    """MIN_PASSWORD_LEN 改为 6 (dad 拍板). 6 位 accept, 5 位拒绝."""
+    from src.kid_app.auth import MIN_PASSWORD_LEN, hash_password
+    assert MIN_PASSWORD_LEN == 6, f"MIN_PASSWORD_LEN 应=6, 当前={MIN_PASSWORD_LEN}"
+
+    # 6 位 password 应能正常建账号 (走 register API)
+    from src.kid_app.auth import create_user, fetch_user_by_username
+    # 注: 不直接用 6 位 invite (那是 dad 测试路径),
+    # 改测 hash_password 不抛异常 + 手动创建账号.
+    h6 = hash_password("abcdef")  # 6 chars
+    assert h6 and len(h6) > 20
+
+    # 5 位应被拒 (auth.py hash_password 抛 ValueError)
+    import pytest as _p
+    with _p.raises(ValueError, match=r"至少 6 位"):
+        hash_password("abcde")
+
+
+def test_change_password_accepts_6_chars(client):
+    """change-password API 接受 6 位新密码."""
+    from src.kid_app.auth import create_user, fetch_user_by_username
+    from src.migrate_add_web_users import _hash_password_scrypt
+    # 建测试用户 (6 位 old password)
+    create_user(username="yoyo6", display_name="悠悠 6",
+                password_hash=_hash_password_scrypt("old-old-old-6"),  # 13 chars (≥6)
+                role="student", avatar_letter="悠", created_by=None)
+    user = fetch_user_by_username("yoyo6")
+
+    r = client.post("/api/auth/change-password",
+                    json={"user_id": user["user_id"],
+                          "old_password": "old-old-old-6",
+                          "new_password": "abc123"})  # 6 chars
+    assert r.status_code == 200, f"6 位新密码应被接受, got {r.status_code} {r.text}"
+    assert r.json()["ok"] is True
+
+
+def test_change_password_rejects_5_chars(client):
+    """change-password API 拒绝 5 位新密码."""
+    from src.kid_app.auth import create_user, fetch_user_by_username
+    from src.migrate_add_web_users import _hash_password_scrypt
+    create_user(username="yoyo5", display_name="悠悠 5",
+                password_hash=_hash_password_scrypt("old-old-old-5"),
+                role="student", avatar_letter="悠", created_by=None)
+    user = fetch_user_by_username("yoyo5")
+
+    r = client.post("/api/auth/change-password",
+                    json={"user_id": user["user_id"],
+                          "old_password": "old-old-old-5",
+                          "new_password": "abc12"})  # 5 chars
+    assert r.status_code == 400
+    assert "6" in r.json()["error"]
+
+
+def test_redeem_invite_accepts_6_chars(client):
+    """redeem-invite API 接受 6 位 password (新账号路径)."""
+    # 建 invite
+    from src.kid_app.auth import create_invite
+    token = create_invite(role="student",
+                          expires_at=__import__("datetime").datetime.utcnow() + __import__("datetime").timedelta(hours=24),
+                          max_uses=1, note="test-6-pw")
+
+    r = client.post("/api/auth/redeem-invite", json={
+        "token": token, "username": "minip6", "display_name": "迷你 6",
+        "password": "abc123",  # 6 chars
+    })
+    assert r.status_code == 200, f"got {r.status_code}: {r.text}"
+    assert r.json()["ok"] is True
+
+
+def test_redeem_invite_rejects_5_chars(client):
+    """redeem-invite API 拒绝 5 位 password."""
+    from src.kid_app.auth import create_invite
+    import datetime
+    token = create_invite(role="student",
+                          expires_at=datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+                          max_uses=1, note="test-5-pw")
+
+    r = client.post("/api/auth/redeem-invite", json={
+        "token": token, "username": "minip5", "display_name": "迷你 5",
+        "password": "abc12",  # 5 chars
+    })
+    assert r.status_code == 400
+    assert "6" in r.json()["error"]

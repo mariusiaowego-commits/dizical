@@ -104,12 +104,12 @@
         <input class="form-input" id="display_name" type="text" required maxlength="64">
       </div>
       <div class="form-group">
-        <label class="form-label" for="password">密码 (至少 8 位)</label>
-        <input class="form-input" id="password" type="password" required minlength="8" autocomplete="new-password">
+        <label class="form-label" for="password">密码 (至少 6 位)</label>
+        <input class="form-input" id="password" type="password" required minlength="6" autocomplete="new-password">
       </div>
       <div class="form-group">
         <label class="form-label" for="confirm_password">确认密码</label>
-        <input class="form-input" id="confirm_password" type="password" required minlength="8" autocomplete="new-password">
+        <input class="form-input" id="confirm_password" type="password" required minlength="6" autocomplete="new-password">
       </div>
       <button type="submit" class="invite-btn" id="submitBtn">创建账号并进入</button>
     </form>
@@ -132,7 +132,7 @@
         const password = document.getElementById('password').value;
         const confirm = document.getElementById('confirm_password').value;
         if (password !== confirm) { showError('两次密码不一致'); return; }
-        if (password.length < 8) { showError('密码至少 8 位'); return; }
+        if (password.length < 6) { showError('密码至少 6 位'); return; }
         const btn = document.getElementById('submitBtn');
         btn.disabled = true; btn.textContent = '创建中...';
         try {

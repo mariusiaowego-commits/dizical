@@ -41,7 +41,7 @@ _SCRYPT_R = 8
 _SCRYPT_P = 1
 _SCRYPT_DKLEN = 32
 
-MIN_PASSWORD_LEN = 8
+MIN_PASSWORD_LEN = 6
 
 
 def hash_password(plain: str) -> str:

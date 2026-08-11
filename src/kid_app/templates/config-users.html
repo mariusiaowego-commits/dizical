@@ -316,11 +316,47 @@
       document.getElementById('pwDisplay').textContent = pw;
       document.getElementById('pwModal').classList.add('show');
     }
+    /**
+     * 统一 copy: navigator.clipboard (Secure Context) → 失败 fallback execCommand.
+     * Sprint v3.3.4 修: 复制按钮在 http://10.x:8765 (内网) navigator.clipboard 静默拒绝,
+     * 用户看到 "已复制 ✓" 但实际没复制. 改用 try/catch + execCommand fallback.
+     */
+    async function copyToClipboard(text, btn) {
+      const originalText = btn.textContent;
+      const showOk = () => {
+        btn.textContent = '已复制 ✓';
+        setTimeout(() => { btn.textContent = originalText; }, 1200);
+      };
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.opacity = '0'; ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          const success = document.execCommand('copy');
+          if (success) showOk();
+          else alert('自动复制失败, 请手动复制:\n\n' + text);
+        } catch (e) {
+          alert('自动复制失败, 请手动复制:\n\n' + text);
+        } finally {
+          document.body.removeChild(ta);
+        }
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          showOk();
+        } catch (e) {
+          fallback();
+        }
+      } else {
+        fallback();
+      }
+    }
+
     function copyPw() {
-      navigator.clipboard.writeText(lastShownPw).then(() => {
-        const btn = event.target; const t = btn.textContent;
-        btn.textContent = '已复制 ✓'; setTimeout(() => { btn.textContent = t; }, 1200);
-      });
+      copyToClipboard(lastShownPw, event.target);
     }
 
     async function createUser() {
@@ -369,12 +405,7 @@
 
     function copyInviteUrl() {
       const url = document.getElementById('inviteUrlText').value;
-      navigator.clipboard.writeText(url).then(() => {
-        const btn = event.target;
-        const t = btn.textContent;
-        btn.textContent = '已复制 ✓';
-        setTimeout(() => { btn.textContent = t; }, 1200);
-      });
+      copyToClipboard(url, event.target);
     }
 
     async function createInvite() {
