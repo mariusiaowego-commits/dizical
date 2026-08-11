@@ -37,8 +37,10 @@ async def _auth_guard_middleware(request, call_next):
     path = request.url.path
     PUBLIC = (
         path == "/login" or path == "/change-password" or path == "/admin-login" or path == "/gsap-demo"
+        or path == "/admin/reset-password" or path.startswith("/admin/reset-password?")  # Sprint v3.3.2 dad 应急重置
         or path.startswith("/static/") or path.startswith("/favicon")
         or path.startswith("/api/auth/")
+        or path.startswith("/api/admin/reset-password")  # Sprint v3.3.2 dad 应急重置 API (走 PIN)
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
         or path.startswith("/api/admin/whitelist") or path.startswith("/admin/whitelist")
         or path.startswith("/config/api/") or path == "/config/users"
@@ -2192,6 +2194,15 @@ async def accept_invite_page(request: Request, token: str = ""):
         request, "accept-invite.html",
         {"token": token, "invite": invite_info,
          "active_nav": "", "ROLE_LABELS": {"student": "学习者", "family": "家人", "teacher": "老师"}},
+    )
+
+
+@app.get("/admin/reset-password", response_class=HTMLResponse)
+async def admin_reset_password_page(request: Request):
+    """dad 应急重置密码 (走 PIN=0905). 给忘了 dad 密码的 dad 用."""
+    return _tpl_login.TemplateResponse(
+        request, "admin-reset-password.html",
+        {"active_nav": "", "ROLE_LABELS": {"dad": "管理员"}},
     )
 
 

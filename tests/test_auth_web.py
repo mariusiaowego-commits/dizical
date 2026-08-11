@@ -838,3 +838,57 @@ def test_admin_login_page_renders(client):
     assert "管理员登录" in r.text
     assert "role-badge" in r.text  # 红色徽章 class
     assert "DC3545" in r.text or "dc3545" in r.text  # 红色 border-top
+
+
+
+# ═══════════════════════════════════════════════════════════
+# 13. Sprint v3.3.2: dad 应急重置密码 (3 case)
+# ═══════════════════════════════════════════════════════════
+
+def test_admin_reset_password_correct_pin(client):
+    """PIN=0905 + username=dad → 200 + new_password 12位强密码."""
+    from src.database import db
+    from src.migrate_add_web_users import _hash_password_scrypt
+    from src.kid_app.auth import create_user
+    db.set_setting("dad_pin", "0905")
+    # test db 是 tmp db, 没 dad — 手动建
+    create_user(username="dad", display_name="爸爸",
+                password_hash=_hash_password_scrypt("initial-dad-pw-12345"),
+                role="dad", avatar_letter="爸", created_by=None)
+    r = client.post("/api/admin/reset-password", json={"username": "dad", "pin": "0905"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is True
+    assert "new_password" in data
+    pw = data["new_password"]
+    assert len(pw) == 12, f"新密码应为 12 位, 实际 {len(pw)}"
+    # 新密码能登录
+    r2 = client.post("/api/auth/login", json={"username": "dad", "password": pw})
+    assert r2.status_code == 200
+    user = r2.json()["user"]
+    assert user["must_change_password"] is True  # 必须改一次
+
+
+def test_admin_reset_password_wrong_pin(client):
+    """PIN 错 → 401, dad 密码不动."""
+    from src.database import db
+    from src.migrate_add_web_users import _hash_password_scrypt
+    from src.kid_app.auth import create_user, fetch_user_by_username
+    db.set_setting("dad_pin", "0905")
+    create_user(username="dad", display_name="爸爸",
+                password_hash=_hash_password_scrypt("initial-dad-pw-12345"),
+                role="dad", avatar_letter="爸", created_by=None)
+    before = fetch_user_by_username("dad")
+    r = client.post("/api/admin/reset-password", json={"username": "dad", "pin": "wrong"})
+    assert r.status_code == 401
+    after = fetch_user_by_username("dad")
+    assert before["password_hash"] == after["password_hash"], "PIN 错时 hash 不应变"
+
+
+def test_admin_reset_password_only_dad(client):
+    """username 必须 = dad (其他 user 拒)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/api/admin/reset-password", json={"username": "yoyo", "pin": "0905"})
+    assert r.status_code == 400
+    assert "dad" in r.json()["error"]

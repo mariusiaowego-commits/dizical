@@ -49,7 +49,12 @@ fi
 # 3. 必须在项目根目录运行（uvicorn src.kid_app.app:app 依赖相对路径）
 cd "$(dirname "$0")/.."
 
-# 4. 数据源: 若 ~/.dizical/.env 存在则 source (含 MYSQL_* 云凭据)
+# 4. Sprint 26081003 v3.3.2: 启动前自动跑 web_users migrate (保证 dad 账号存在 + 打印初始密码到 log)
+PYTHON_BIN=$(command -v python3.12 || command -v python3 || command -v python)
+echo "==> 启动前 migrate: web_users + web_invites + dad 账号"
+"${PYTHON_BIN}" src/migrate_add_web_users.py 2>&1 | tee -a "${LOGFILE}" || echo "WARNING: migrate 跑失败 (非致命, 继续启动)"
+
+# 5. 数据源: 若 ~/.dizical/.env 存在则 source (含 MYSQL_* 云凭据)
 #    - 若 DATABASE_URL 已由外部设置 → 用它 (优先级最高)
 #    - 否则若 MYSQL_* 齐全 → 拼 mysql+pymysql:// URL (方案 A: 本地 8765 也连云)
 #    - 否则 → 回落本地 SQLite (灾备)
@@ -66,7 +71,7 @@ else
   echo "数据源: 本地 SQLite (无 DATABASE_URL/MYSQL_*, 灾备模式)"
 fi
 
-# 5. 启动
+# 6. 启动
 CMD=("${UVICORN_BIN}" src.kid_app.app:app --host "${HOST}" --port "${PORT}" --log-level warning)
 
 case "${MODE}" in
@@ -77,7 +82,7 @@ case "${MODE}" in
     ;;
   background|"")
     echo "启动 dizical kid-app (后台模式, host=${HOST}, port=${PORT})"
-    nohup "${CMD[@]}" >"${LOGFILE}" 2>&1 &
+    nohup "${CMD[@]}" >>"${LOGFILE}" 2>&1 &
     PID=$!
     echo "${PID}" >"${PIDFILE}"
     # 等 2 秒确认进程没立刻挂

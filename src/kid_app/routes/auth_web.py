@@ -210,3 +210,60 @@ async def api_auth_redeem_invite(request: Request):
     set_session_cookie(response, user_id=user_id, role=user["role"],
                         session_version=user["session_version"], remember=True)
     return response
+
+
+# ── Sprint 26081003 v3.3.2: dad 应急重置密码 (走 PIN=0905) ─────────
+from src.kid_app.auth import check_dad_pin  # 复用双轨守门 (PIN=0905 校验)
+
+@router.post("/api/admin/reset-password")
+async def api_admin_reset_password(request: Request):
+    """dad 应急重置: {username, pin} → {ok, new_password}.
+
+    只在 dad PIN 验证通过 + username=dad 时重置.
+    新密码随机生成 12 位强密码, 返明文一次.
+    不 bump session_version (dad 当前 cookie 保留可用).
+    """
+    body = json.loads(await request.body() or b"{}")
+    username = (body.get("username") or "").strip()
+    pin = (body.get("pin") or "").strip()
+
+    if username != "dad":
+        return JSONResponse({"ok": False, "error": "只能重置 dad 账号"},
+                            status_code=400)
+    if not check_dad_pin(pin):
+        return JSONResponse({"ok": False, "error": "PIN 错"}, status_code=401)
+
+    user = fetch_user_by_username("dad")
+    if not user:
+        return JSONResponse({"ok": False, "error": "dad 账号不存在 (先跑 migrate)"},
+                            status_code=404)
+
+    # 生成新密码 (12 位强密码 — 字母 + 数字, 去除易混字符)
+    import secrets, string
+    alphabet = string.ascii_letters.replace("I", "").replace("O", "").replace("l", "") + string.digits.replace("0", "").replace("1", "")
+    new_password = "".join(secrets.choice(alphabet) for _ in range(12))
+
+    # 改密 (must_change=1 让 dad 强制改一次, 不 bump sv 避免 dad 当前 cookie 被踢)
+    new_hash = hash_password(new_password)
+    update_password(user["user_id"], new_hash, bump_session=False)
+    # update_password 内部会清 must_change=0, 重新 set 1 (Sprint v3.3.2)
+    from src.db_adapter import get_conn
+    conn, is_mysql = get_conn()
+    try:
+        cur = conn.cursor()
+        if is_mysql:
+            cur.execute("UPDATE web_users SET must_change_password = 1 WHERE user_id = %s",
+                        (user["user_id"],))
+        else:
+            cur.execute("UPDATE web_users SET must_change_password = 1 WHERE user_id = ?",
+                        (user["user_id"],))
+        conn.commit()
+    finally:
+        if not is_mysql:
+            conn.close()
+
+    return JSONResponse({
+        "ok": True,
+        "new_password": new_password,
+        "warning": "请把新密码通过安全渠道记下. 首次登录后必须改密."
+    })
