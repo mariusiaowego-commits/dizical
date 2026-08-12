@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 from enum import Enum
 from pathlib import Path
 from typing import Optional, List, Dict
@@ -92,7 +93,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     reminder_list_name: str = "dizi"
-    obsidian_path: str = "/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/"
+    obsidian_path: str = os.path.expanduser("~/Documents/ObsidianVault")  # 2026-08-12 安全加固: 默认占位符, 不写死 dad 真实 iCloud 路径
     default_fee: int = 600
     default_time: str = "17:15"
     default_weekday: int = 5  # 0=Monday, 5=Saturday
