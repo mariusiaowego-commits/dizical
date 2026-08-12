@@ -41,7 +41,12 @@ AGENTS.md
 # - 根目录 1 份最新未解决 handoff，历史归档到 docs/handoff-archive/
 # - STATUS / vibe log / 项目介绍 / OpenAI 申请 仅本机
 handoff-*.md
+docs/handoff-*.md
 docs/handoff-archive/
+docs/STATUS.md
+docs/vibe-coding-log.md
+/STATUS.md
+/vibe-coding-log.md
 STATUS.md
 vibe-coding-log.md
 docs/INTRODUCTION.md

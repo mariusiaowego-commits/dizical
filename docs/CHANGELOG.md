@@ -5,16 +5,37 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-> 口语版变化可看 [handoff-2026-07-01.md](../handoff-2026-07-01.md) /
-> [STATUS.md](../STATUS.md) / [vibe-coding-log.md](../vibe-coding-log.md)。
+> 口语版变化可看本地 `STATUS.md` / `vibe-coding-log.md` / `handoff-*.md`（**不上 GitHub**，见 [DOCS-POLICY.md](DOCS-POLICY.md)）。
 
 ---
 
 ## [Unreleased]
 
-> 当前进行中，还未发版的变更。
+### Security（隐私清理）
+- **GitHub 隐私清理** —— `STATUS.md` / `vibe-coding-log.md` 不再推送 GitHub（之前误入 main，commit 52692ed 之前多次出现；现 .gitignore 已加固含 `/` 前缀 + `docs/STATUS.md` 兜底）
+- **`docs/handoff-archive/`** —— 历史 handoff 全部本地归档，不再推送
+- 新增 [docs/DOCS-POLICY.md](DOCS-POLICY.md) 声明哪些文档属于"本地 agent 协作参考"，对访客不可见
 
-无。
+### Changed（变更）
+- `README.md` 同步至 v3.3.4（web user auth + 测试 505 passed），修正文档引用（STATUS/vibe/handoff 改为"本地参考不上 GitHub"）
+- `.gitignore` 加固隐私文件规则（含 `/STATUS.md` 严格前缀、`docs/STATUS.md` 兜底、`docs/handoff-*.md` 兜底）
+
+---
+
+## [2026-08-12] — v3.3.4 web user auth Phase 1 (login_page + register + 3 套环境密码同步)
+
+### Added（新增）
+- **`/login` 路由** + `/register` 自助注册（Phase 1 内网环境，3 套环境密码同步 — local/staging/cloud）
+- **`src/auth.py`** —— PBKDF2-SHA256 密码哈希（salted）+ session 管理
+- **`src/kid_app/auth_page.py`** —— login/register 路由（iPad 友好卡片布局）
+
+### Changed（变更）
+- **login_page RedirectResponse** —— 已登录访问 /login 返 500 bug 修复（缺失 import），pytest 加 edge-case 防御
+- **复制按钮 fallback** —— 旧浏览器无 clipboard API 时降级为选中态
+- **密码最少 6 位** 强制校验
+
+### Tests
+- 268+ pytest passed（v3.3.4 closeout），0 死分支
 
 ---
 
@@ -44,7 +65,6 @@
 
 ---
 
-## [2026-07-01] — V2.9 streak+badge 终章
 ## [2026-07-01] — V2.9 streak+badge 终章
 
 ### Fixed（修复）
@@ -112,8 +132,8 @@
 
 ## [更早版本]
 
-见 [docs/handoff-archive/handoff-2026-06-02.md](handoff-archive/handoff-2026-06-02.md)
-及之前 PR (按 commit 历史：`git log --oneline`)。
+见 [docs/handoff-archive/](../handoff-archive/)（本地归档，**不上 GitHub**，见 [DOCS-POLICY.md](DOCS-POLICY.md)）
+及之前 PR（按 commit 历史：`git log --oneline`）。
 
 ---
 

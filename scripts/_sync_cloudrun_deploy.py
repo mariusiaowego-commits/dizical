@@ -13,7 +13,7 @@ EXCLUDE_DIRS = {
 # 顶级 static/ 是 src/kid_app/static/ 的重复 (老的), runtime 走 src/ 那个
 EXCLUDE_ROOT_DIRS = {'static', '.cloudrun-deploy', '.cloudrun-deploy-new'}
 EXCLUDE_ROOT_FILES = {
-    'vibe-coding-log.md', 'AGENTS.md', 'DEVELOPMENT_PLAN.md', '.tcbignore',
+    'STATUS.md', 'vibe-coding-log.md', 'AGENTS.md', 'DEVELOPMENT_PLAN.md', '.tcbignore',
     'dizi.db', 'dizical.db', 'morning_check.json', 'crop_flutes.py',
     'download_and_rmbg.py', 'remove_bg.py', 'gsap-demo.html',
     'spike-deploy.sh', '.DS_Store', 'badges.html.bak',
