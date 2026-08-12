@@ -21,7 +21,7 @@ if not (_DATA_ROOT / "data" / "dizi.db").exists():
     _DATA_ROOT = Path("/Users/mt16/data")
 DATA_DIR = _DATA_ROOT / "data" if (_DATA_ROOT / "data").exists() and _DATA_ROOT.name != "data" else _DATA_ROOT
 BACKUP_DIR = DATA_DIR / "backups"
-# iCloud 冗余备份路径 (2026-08-12 安全加固: 不再写死 YoYo 个人 iCloud 路径)
+# iCloud 冗余备份路径 (2026-08-12 安全加固: 不再写死用户个人 iCloud 路径)
 # 默认走项目本地 backups 目录; 要走 iCloud 在 ~/.dizical/.env 设 DIZICAL_ICLOUD_BACKUP_DIR=/your/path
 ICLOUD_BACKUP_DIR = Path(os.environ.get(
     "DIZICAL_ICLOUD_BACKUP_DIR",
