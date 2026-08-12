@@ -22,10 +22,11 @@ class ObsidianExporter:
             base_path: Obsidian 库路径，默认从环境变量读取
         """
         if base_path is None:
-            base_path = os.getenv(
-                "OBSIDIAN_PATH",
-                "/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/",
-            )
+            base_path = os.getenv("OBSIDIAN_PATH")  # 2026-08-12 安全加固: 走 config.py 的 OBSIDIAN_PATH (有占位 fallback)
+            if not base_path:
+                # 没设 env 时用 config.py 的 OBSIDIAN_PATH 默认值 (~/Documents/ObsidianVault)
+                from .config import OBSIDIAN_PATH
+                base_path = str(OBSIDIAN_PATH)
         self.base_path = Path(base_path)
         self.dizi_path = self.base_path / "dizi-helper"
 

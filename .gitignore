@@ -1,10 +1,14 @@
 .env
+# .env.example 是模板, 保留
 # SQLite 数据库 (永不删, 不进 git)
 data/*.db
 data/*.db-journal
 data/*.db-shm
 data/*.db-wal
 data/*.sqlite
+# 用户上传文件 (PR-F 数据, 不进 git, 本地保留) (2026-08-12 加固)
+data/uploads/
+data/uploads/raw/
 # symlink (递归目录)
 data/data
 data/data/
@@ -76,3 +80,11 @@ channels/**/Package.resolved
 # 本地 ad-hoc 验证产物, 不进 git (防止 dad 数据变更后基线跟实际漂移污染 git)
 data/_baseline_*.json
 .cloudrun-deploy/
+
+# 2026-08-12 安全加固:
+# - agent 私货 (.hermes/ .agents/) 永远本地, 不进 git
+# - 一次性迁移脚本 (scripts/migrate_*.py) 跑完就丢
+.hermes/
+.agents/
+scripts/migrate_*.py
+scripts/migrate_*.sh
