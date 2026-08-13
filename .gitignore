@@ -94,3 +94,6 @@ src/add_badge_lucky61.py
 src/dedupe_bg_lucky61.py
 # 含明文凭据的旧部署脚本
 p4-phase2-assets/
+
+# 申请材料 (本地参考, 不进公开仓库)
+docs/codex-oss-application.md
