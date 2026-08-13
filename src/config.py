@@ -19,15 +19,12 @@ DEFAULT_PAYMENT_METHOD = "现金"
 REMINDERS_LIST_NAME = "dizi"
 TELEGRAM_BOT_USERNAME = "hermes_for_mtt_bot"
 
-# Obsidian 配置
-OBSIDIAN_PATH = Path(os.getenv(
-    "OBSIDIAN_PATH",
-    "/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/"
-))
+# Obsidian 配置 (路径从环境变量读, 不硬编码)
+OBSIDIAN_PATH = Path(os.getenv("OBSIDIAN_PATH", ""))
 
 # Telegram 配置
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "351549096")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 
 def ensure_data_dir() -> None:

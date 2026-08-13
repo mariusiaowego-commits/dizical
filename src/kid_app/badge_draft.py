@@ -12,8 +12,8 @@ schema_version=1 锁定, 未来改 schema 时 +1, 老 dizical 端只读 schema_v
 (forward-compatible).
 
 路径:
-- /Users/mt16/dev/dizical/data/lib/badge_data/{draft_id}.json
-- /Users/mt16/dev/dizical/data/lib/badge_data/.tmp/ (生图临时)
+- data/lib/badge_data/{draft_id}.json (项目内, 相对路径)
+- data/lib/badge_data/.tmp/ (生图临时)
 """
 from __future__ import annotations
 

@@ -1,8 +1,10 @@
 """Sync source to .cloudrun-deploy-new with smart exclude."""
 import os, shutil
+from pathlib import Path
 
-SRC = "/Users/mt16/dev/dizical"
-DST = "/Users/mt16/dev/dizical/.cloudrun-deploy-new"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SRC = str(PROJECT_ROOT)
+DST = str(PROJECT_ROOT / ".cloudrun-deploy-new")
 
 EXCLUDE_DIRS = {
     '.git', '.hermes', '.venv', 'venv', '__pycache__', 'data', 'docs', 'PRDs',

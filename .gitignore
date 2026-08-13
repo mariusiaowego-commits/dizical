@@ -71,3 +71,26 @@ channels/**/Package.resolved
 # 本地 ad-hoc 验证产物, 不进 git (防止 dad 数据变更后基线跟实际漂移污染 git)
 data/_baseline_*.json
 .cloudrun-deploy/
+
+# ===== 2026-08-13 隐私加固 (开源准备) =====
+# 真实家庭数据目录 (本地保留, 永不进 git)
+data/imports/
+data/lib/badge_data/
+data/reports/
+data/subject_summaries.json
+data/uploads/raw/
+# 部署副本 (含凭据脚本 + .env.example)
+.cloudrun-deploy-new/
+# Agent 内部文档 (计划/交接, 含真实路径/家庭信息)
+.hermes/
+# 一次性迁移脚本 (已跑完, 含真实 DB 路径)
+src/add_badge_early.py
+src/migrate_seasonal_cycle.py
+src/migrate_add_achieved_at_override.py
+src/restore_badge_descriptions_phase1.py
+src/restore_achievement_badges_v1.py
+src/migrate_add_unlock_strategy.py
+src/add_badge_lucky61.py
+src/dedupe_bg_lucky61.py
+# 含明文凭据的旧部署脚本
+p4-phase2-assets/

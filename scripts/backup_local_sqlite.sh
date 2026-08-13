@@ -6,7 +6,9 @@
 set -e
 
 BACKUP_ROOT="$HOME/.dizical/backups/manual"
-LOCAL_DB="/Users/mt16/dev/dizical/data/dizi.db"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOCAL_DB="$PROJECT_ROOT/data/dizi.db"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="$BACKUP_ROOT/dizi-$TIMESTAMP.db"
 

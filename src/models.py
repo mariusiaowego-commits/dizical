@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     reminder_list_name: str = "dizi"
-    obsidian_path: str = "/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/"
+    obsidian_path: str = ""  # 从环境变量 OBSIDIAN_PATH 读
     default_fee: int = 600
     default_time: str = "17:15"
     default_weekday: int = 5  # 0=Monday, 5=Saturday

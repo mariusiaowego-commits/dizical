@@ -6,9 +6,11 @@
 """
 import os
 import shutil
+from pathlib import Path
 
-OLD = "/Users/mt16/dev/dizical/.cloudrun-deploy"
-NEW = "/Users/mt16/dev/dizical/.cloudrun-deploy-new"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+OLD = str(PROJECT_ROOT / ".cloudrun-deploy")
+NEW = str(PROJECT_ROOT / ".cloudrun-deploy-new")
 
 
 def wipe_dir(path: str) -> None:

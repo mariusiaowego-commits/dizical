@@ -5,6 +5,7 @@
 """
 
 import datetime as dt
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -15,13 +16,10 @@ from typing import List, Optional, Tuple
 # 项目数据目录（指向项目根目录，data/ 是数据子目录）
 _DATA_ROOT = Path(__file__).resolve().parent.parent
 # 统一检查 data/ 子目录（main repo 和 worktree 共用此路径）
-if not (_DATA_ROOT / "data" / "dizi.db").exists():
-    # 兜底：指向 /Users/mt16/data（旧路径，保持兼容）
-    _DATA_ROOT = Path("/Users/mt16/data")
 DATA_DIR = _DATA_ROOT / "data" if (_DATA_ROOT / "data").exists() and _DATA_ROOT.name != "data" else _DATA_ROOT
 BACKUP_DIR = DATA_DIR / "backups"
-# iCloud 冗余备份路径
-ICLOUD_BACKUP_DIR = Path("/Users/mt16/Documents/TQ/01-Personal/0101-Family/010101-YoYo/dizical-backups")
+# iCloud 冗余备份路径（从环境变量读，默认项目本地 backups）
+ICLOUD_BACKUP_DIR = Path(os.environ.get("DIZICAL_ICLOUD_BACKUP_DIR", str(DATA_DIR / "backups")))
 # 保留最近 N 个每日备份
 KEEP_DAILY = 7
 

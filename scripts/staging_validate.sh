@@ -7,7 +7,9 @@
 set -e
 
 BASE_URL="${1:?用法: bash scripts/staging_validate.sh <base_url>}"
-LOCAL_DB="/Users/mt16/dev/dizical/data/dizi.db"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOCAL_DB="$PROJECT_ROOT/data/dizi.db"
 PASSED=0
 FAILED=0
 
