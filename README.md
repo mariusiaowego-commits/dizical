@@ -5,14 +5,15 @@
 > 竹笛课程管理 + 缴费提醒 + Apple Reminders 双向同步 + iPad 儿童练习助手
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/tests-49%20passed-brightgreen" alt="Tests">
-  <img src="https://img.shields.io/badge/lessons-211%20days%20imported-blue" alt="Lessons">
-  <img src="https://img.shields.io/badge/badges-V2.10-ff69b4" alt="Badge Engine v2.10">
+  <img src="https://img.shields.io/badge/tests-527%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/framework-FastAPI-teal" alt="FastAPI">
+  <img src="https://img.shields.io/badge/database-SQLite%20%2B%20MySQL-orange" alt="Dual DB">
+  <img src="https://img.shields.io/badge/badges-enamel%20pin-ff69b4" alt="Badge Engine">
 </p>
 
-> 📝 **最近变更 (2026-07-01, V2.10):** 装 rembg[cpu] (gpt-image-2 浅灰背景一次抠干净) · streak_1/3/7 还原 V1 era 原风格 (拟人竹笛 + 火焰女孩 + chibi 7) · 边缘硬 alpha mask 0 颗粒. 详见 [CHANGELOG.md](docs/CHANGELOG.md) / [STATUS.md](STATUS.md).
+> 📝 **最近 (2026-08):** Web 用户体系 (登录/邀请/白名单) · CloudRun + MySQL 生产部署 · 阶段打印页 · Badge 引擎 V2。详见 [CHANGELOG.md](docs/CHANGELOG.md)。
 
 ---
 
@@ -30,13 +31,13 @@ dizi + cal(endar) = dizical
 
 ## ✨ Features
 
-### Badge 引擎（V2.9，2026-07）
-- 🏆 **40 枚 Enamel Pin 风格徽章** —— 连击/累计/段位/排行/节日/特殊 6 类
+### Badge 引擎（V2，2026-07）
+- 🏆 **40+ 枚 Enamel Pin 风格徽章** —— 连击/累计/段位/排行/节日/特殊 6 类
 - 🔄 **实时 calc + 自动解锁** —— `calc_all()` 计算结果立刻持久化到 `achievement_stats` 表
 - 📜 **小朋友视角文案** —— "你在 2025-10-03 第一次连着打卡 7 天" 而不是工程术语
 - 🖼️ **图像替换 API** —— `POST /config/api/badge/replace-image-from-draft` 换老图不写 achievements;老图保留 (is_current=0)
 - 🧒 **视觉设计** —— chibi girl + 笛子 + 高音谱号 + 星星/爱心装饰;1024×1024 RGBA + 硬 alpha mask 干净透明
-- 📋 **来源**: dizical 后端 + `~/.hermes/profiles/dizical/skills/badge-image` (跨 profile symlinked)
+- 📋 **AI 生图流水线** —— image-gen + rembg U2-Net 去背, draft JSON 契约驱动 (见 [badge-image-workflow](docs/badge-image-workflow.md))
 
 ---
 
@@ -282,13 +283,11 @@ data/
 ## 📚 文档
 
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — 版本变更日志（Keep a Changelog 风格）
-- [STATUS.md](STATUS.md) — 主项目状态，**未推 gh**（本地 agent 协作用）
-- [vibe-coding-log.md](vibe-coding-log.md) — 每日开发记录，**未推 gh**
-- [handoff-2026-07-01.md](handoff-2026-07-01.md) — 最近一次会话的完整交接文档
 - [docs/使用指南.md](docs/使用指南.md) — dizical CLI 全命令指南
 - [docs/表结构.md](docs/表结构.md) — SQLite tables schema
 - [docs/badge-workflow.md](docs/badge-workflow.md) — Badge workflow 设计 + state machine
 - [docs/badge-image-workflow.md](docs/badge-image-workflow.md) — Badge 图生图流水线
+- [API-CHANGELOG.md](API-CHANGELOG.md) — API 变更登记
 
 ---
 

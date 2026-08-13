@@ -2,95 +2,133 @@
 
 [English](./README_EN.md) · [中文](./README.md)
 
-> A home-grown practice management system for Chinese bamboo flute education — tracking lessons, payments, daily practice, stage progression, and achievements.
+> A production-grade practice-management system for Chinese bamboo flute (dizi) education — lessons, payments, daily practice tracking, teacher assignments, and a gamified enamel-pin badge collection, built for one kid and used every day.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.14-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/tests-49%20passed-brightgreen" alt="Tests">
-  <img src="https://img.shields.io/badge/lessons-211%20days%20imported-blue" alt="Lessons">
-  <img src="https://img.shields.io/badge/badges-V2.10-ff69b4" alt="Badge Engine v2.10">
+  <img src="https://img.shields.io/badge/tests-527%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/framework-FastAPI-teal" alt="FastAPI">
+  <img src="https://img.shields.io/badge/database-SQLite%20%2B%20MySQL-orange" alt="Dual DB">
+  <img src="https://img.shields.io/badge/badges-enamel%20pin-ff69b4" alt="Badge Engine">
 </p>
 
-> 📝 **Recent (2026-07-01, V2.10):** added rembg[cpu] (gpt-image-2 light-gray background now cleanly extracted) · streak_1/3/7 restored to V1 era styles (anthropomorphic flute + flame girl + chibi 7) · hard alpha mask for zero grain. See [CHANGELOG.md](docs/CHANGELOG.md).
+---
+
+## Why dizical?
+
+The name is a pun: *dizi* (竹笛, the Chinese bamboo flute) + *cal* (calendar) ≈ **Descartes**. It started as a CLI for a dad to track his daughter's flute lessons and has grown into a full practice OS:
+
+![dizical architecture](docs/architecture.png)
+
+**Real usage**: run in production since 2025, ~211 days of lesson data imported, 527 tests passing, deployed to Tencent CloudRun with a cloud MySQL database.
 
 ---
 
-## What It Does
+## What it does
 
-**Parent side:**
-- Lesson scheduling with automatic Saturday generation
-- Fee tracking with payment reminders on lesson day
-- `dizical reminders sync` — two-way sync with Apple Reminders (type "单吐10分钟" in Reminders, it logs a practice session)
-- Web-based lesson calendar and practice history editor at `/config/lessons` and `/config/records`
+### 👧 Kid side (iPad, landscape 1024×768 / 2266×1488)
+- **`/prepare`** — GSAP scroll-driven daily prep checklist, teacher's weekly assignments with images
+- **`/practice`** — 3-floor subject picker, dual semi-circle duration dials, session timer with finish-protection (a 7-year-old can't swipe away), fuzzy item matching ("单吐" matches "单吐练习"), Apple Reminders two-way sync (type "单吐10分钟" in Reminders → logged practice)
+- **`/achievements`** — 7-cell board: streak, weekly delta, monthly delta, cumulative minutes, plus a 7-day blind-box theme row (Rapunzel, etc.)
+- **`/badges`** — the enamel-pin collection wall (see below)
+- **`/report`** — practice heatmap calendar, stage stacked bars, printable stage sheet (print-first CSS, Noto Serif)
+- **`/praise`** — parent-curated encouragement pool
 
-**Kid side (iPad, 1024×768):**
-- `/prepare` — what to practice today, visual item cards
-- `/practice` — log sessions with duration and notes
-- `/achievements` — badge collection earned through consistent practice
-- `/report` — bamboo flute heatmap, click bars for daily breakdown
-- `/praise` — random encouragement quotes from a parent-curated pool
+### 🏆 Badge engine (V2, 2026-07)
+- **40+ enamel-pin style badges** across 6 categories — streak (1/3/7/14/30/100 days), cumulative minutes, grade milestones, monthly top-3, festivals (Children's Day per-year), special events
+- **Real-time calc + auto-unlock** — `calc_all()` persists to `achievement_stats`; locked state is pure CSS grayscale (no fake locked images)
+- **Kid-voice unlock copy** — "你在 2025-10-03 第一次连着打卡 7 天" instead of engineering jargon
+- **AI-generated artwork** — each pin is generated via image-gen + rembg U2-Net background removal, 1024×1024 RGBA with hard alpha mask; the whole pipeline is a documented draft-JSON contract (`data/lib/badge_data/{draft_id}.json`) between the backend and the image pipeline
+- **7-day blind-box themes** — 7 matching pins per theme (Rapunzel, ocean), all sharing one art direction
 
-**Teacher side:**
-- Weekly assignment system with stage-based progression (7-day cycles)
-- Item-level practice requirements with fuzzy name matching
-- Practice heatmap showing attendance patterns over time
+### 👨👩 Parent side
+- **Lesson scheduling** — auto-generate weekly lessons on Saturday, holiday conflict detection, fee tracking with payment reminders on lesson day
+- **`/config/lessons`** — month calendar with status dots, one-click plan generation, fee statistics
+- **`/config/records`** — practice heatmap editor, history editing, AI-generated monthly report infographic (multi-template: academic/fresh/sport/fun)
+- **`/config/*` admin** — subjects, badge management, users (web auth with invite links + whitelist), PIN-protected
+
+### 👩🏫 Teacher side
+- **Weekly assignments** with stage-based progression (7-day cycles), stage_start/stage_end/stage_order
+- **Item-level requirements** with fuzzy name matching, image attachments, latest-requirement auto-preset
 
 ---
 
-## Quick Start
+## Quick start
 
 ```bash
-pip install -e .
-
-# Start the iPad interface
-dizical kid start
-# → http://<your-ip>:8765
+git clone https://github.com/mariusiaowego-commits/dizical.git && cd dizical
+pip install -e ".[dev]"          # or: uv sync --group dev
+dizical kid start                # → http://localhost:8765 (iPad: <your-ip>:8765)
 
 # CLI
 dizical lessons list
 dizical practice category list
-dizical reminders sync
+dizical reminders sync           # two-way Apple Reminders sync
+```
+
+No `.env` required for local dev — SQLite + zero-config defaults. For the cloud path, set `DATABASE_URL` (MySQL) and the app switches backends automatically via `src/db_adapter.py`.
+
+---
+
+## Tech stack
+
+| Layer | Choice | Why |
+|-------|--------|-----|
+| Backend | Python 3.10+ · FastAPI · uvicorn | async, typed, batteries-included |
+| Data | **SQLite ↔ MySQL dual backend** | `src/db_adapter.py` + `src/database_mysql.py` (53-method MySQL mirror of the SQLite `Database` class); same SQL via `?` → `%s`, switched by `DATABASE_URL` env |
+| Frontend | Vanilla JS + GSAP (no React, no npm build step) | zero toolchain, readable by anyone |
+| Clients | iPad Safari · Mac menu-bar app (SwiftUI WKWebView) · WeChat mini-program (sibling repo) | one API, three surfaces |
+| Deploy | Tencent CloudRun (container) + CloudBase COS | home-server app that actually cut over to cloud MySQL |
+| Design | **dizicute design system** — see [DESIGN.md](./DESIGN.md) | 6-color coral `#FF6B6B` palette, 4 type scales, 7 components, WCAG-aware |
+| AI | Gemini 2.5 Flash (streaming) · image-gen + rembg for badges · GPT-4o report infographics | |
+
+**Why this is interesting**: a single family app that grew a real dual-database abstraction, a documented AI image pipeline, a design system, and three client surfaces — all in vanilla Python + JS with no framework lock-in.
+
+---
+
+## Screenshots
+
+| Practice | Achievements | Badges |
+|----------|-------------|--------|
+| ![practice](docs/screenshots/practice.png) | ![achievements](docs/screenshots/achievements.png) | ![badges](docs/screenshots/badges.png) |
+
+| Report | Prepare |
+|--------|---------|
+| ![report](docs/screenshots/report.png) | ![prepare](docs/screenshots/prepare.png) |
+
+---
+
+## Repository layout
+
+```
+src/
+  kid_app/            # FastAPI web app (147 routes)
+    routes/           # config / practice / achievements / badges / auth ...
+    templates/        # vanilla HTML (practice.html 2788 lines, print-first CSS)
+    static/           # style.css tokens + badge assets
+  backup.py           # SQLite backup + iCloud mirror (env-configured)
+  db_adapter.py       # SQLite/MySQL dual-backend switch
+  database_mysql.py   # 53-method MySQL mirror
+  models.py           # pydantic settings
+scripts/              # deploy / validate / backup tooling (path-relative)
+tests/                # 11K lines, 527 passing
+docs/                 # workflow docs, CHANGELOG, badge-image workflow
+channels/             # Mac menu-bar app (SwiftUI)
 ```
 
 ---
 
-## Tech Stack
+## Docs
 
-Python 3.12 + SQLite + FastAPI + Vanilla JS + GSAP. No React. No npm. No cloud.
-
----
-
-## API Use
-
-GPT-4o is used for AI-generated monthly practice report images. See `docs/OPENAI_PRO_PLAN.md` for expansion plans.
-
----
-
-## Badge Collection (V2.10, 2026-07)
-
-40 enamel-pin style badges across 6 categories, with kid-friendly unlock copy:
-
-- **Streak** — `streak_1/3/7/14/30/100` (1 day to 100 days). "你在 YYYY-MM-DD 第一次连着打卡 7 天" / "连着打卡 100 天就能拿到".
-- **Cumulative** — `total_60/300/600/1000` (60 minutes and up).
-- **Grade** — `grade_1` through `grade_10` (1st to 10th exam achievements).
-- **Top** — `top1/top2/top3` (monthly practice top 3).
-- **Festival** — `lucky_61_2026/2027/2028/2029/2030` (Children's Day: each year on June 1, practice to permanently unlock that year's badge).
-- **Special** — `first_log`, `double`, `week_champ`, `full_month`, `all_items`, and others.
-
-**V2.10 changes:**
-- streak_1 now an anthropomorphic green bamboo flute (V1 era style, no number)
-- streak_3 now chibi girl + flame halo (V1 era style, no number)
-
-**V2.9 changes:**
-- Milestone cards now auto-unlock on first achievement (instead of "today streak")
-- Image replacement endpoint `POST /config/api/badge/replace-image-from-draft` keeps old assets as `is_current=0` history rows
-- All cond text is kid-friendly (no engineering jargon)
-
-See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full V2.9 entry and prior versions.
+- [中文 README](./README.md)
+- [Design system (dizicute)](./DESIGN.md)
+- [Badge image workflow](docs/badge-image-workflow.md)
+- [CHANGELOG](docs/CHANGELOG.md)
+- [API changelog](API-CHANGELOG.md)
 
 ---
 
 ## License
 
-MIT
+[MIT](./LICENSE) — code, not data. The repo ships no personal data; the live instance is a private family deployment.
