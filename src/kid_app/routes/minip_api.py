@@ -520,7 +520,7 @@ def _minip_lessons(year: int, month: int):
 #   - 0905 + whitelist openid: 真数据 (strict 模式)
 #   - 0905 + non-whitelist openid: 临时宽模式 (broad_seed, 自动加白)
 #   - mp /api/minip/apply-access: 申请进入系统 (提交 openid + 邮箱或微信昵称)
-#   - web /admin/whitelist: dad 看 pending 列表, 一键 approve/deny
+#   - dad CLI/API 审批: GET /api/admin/whitelist/{pending,active} + POST {approve,deny} (Sprint 26081004 删 web UI, 改 CLI 查)
 
 def _load_pending_whitelist():
     """返回待审批 openid 列表"""
@@ -680,89 +680,3 @@ async def api_minip_apply_access(request: Request):
     })
 
 
-# ─── 7-28 admin/whitelist web UI (Phase B 用户体系) ─────────────────────────
-# dad 登录 http://localhost:8765/admin/whitelist 看 pending 用户并审批
-# 见 templates/admin-whitelist.html
-
-from fastapi.responses import RedirectResponse, HTMLResponse
-
-@router.get("/admin/whitelist", response_class=HTMLResponse)
-def admin_whitelist_page(pin: str = ""):
-    """渲染用户审批 UI (templates/admin-whitelist.html).
-
-    pin 参数通过 query string 传入, 来自 sidebar / QR / 直接 URL.
-    不存 cookie (简单路由, 每次提交都重传).
-    """
-    pin_valid = bool(pin) and (pin == (db.get_setting("dad_pin") or ""))
-
-    pending = _load_pending_whitelist() if pin_valid else []
-    active = _load_whitelist() if pin_valid else []
-
-    # Jinja2 渲染 (沿用 app._env)
-    from src.kid_app.app import _env
-    template = _env.get_template("admin-whitelist.html")
-    html = template.render(
-        pin=pin,
-        pin_valid=pin_valid,
-        pending=pending,
-        active=active,
-        active_nav="admin_whitelist",
-    )
-    return HTMLResponse(html)
-
-
-@router.post("/admin/whitelist/approve")
-async def admin_whitelist_approve(request: Request):
-    """admin/whitelist UI 表单 approve 提交."""
-    form = await request.form()
-    pin = form.get("pin", "")
-    openid = form.get("openid", "")
-
-    if not _check_admin_pin(pin):
-        return JSONResponse({"ok": False, "error": "wrong_admin_pin"}, status_code=401)
-
-    pending = _load_pending_whitelist()
-    pending = [p for p in pending if p.get("openid") != openid]
-    _save_pending_whitelist(pending)
-
-    active = _load_whitelist()
-    if openid not in active:
-        active.append(openid)
-        _save_whitelist(active)
-
-    return RedirectResponse(url=f"/admin/whitelist?pin={pin}", status_code=303)
-
-
-@router.post("/admin/whitelist/deny")
-async def admin_whitelist_deny(request: Request):
-    """admin/whitelist UI 表单 deny 提交."""
-    form = await request.form()
-    pin = form.get("pin", "")
-    openid = form.get("openid", "")
-
-    if not _check_admin_pin(pin):
-        return JSONResponse({"ok": False, "error": "wrong_admin_pin"}, status_code=401)
-
-    pending = _load_pending_whitelist()
-    pending = [p for p in pending if p.get("openid") != openid]
-    _save_pending_whitelist(pending)
-
-    return RedirectResponse(url=f"/admin/whitelist?pin={pin}", status_code=303)
-
-
-@router.post("/admin/whitelist/remove")
-async def admin_whitelist_remove(request: Request):
-    """admin/whitelist UI 表单 remove (从 active 白名单移除某用户)."""
-    form = await request.form()
-    pin = form.get("pin", "")
-    openid = form.get("openid", "")
-
-    if not _check_admin_pin(pin):
-        return JSONResponse({"ok": False, "error": "wrong_admin_pin"}, status_code=401)
-
-    active = _load_whitelist()
-    if openid in active:
-        active = [o for o in active if o != openid]
-        _save_whitelist(active)
-
-    return RedirectResponse(url=f"/admin/whitelist?pin={pin}", status_code=303)

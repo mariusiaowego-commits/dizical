@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+{% include "_favicon.html" %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 — dizical</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #FFF5F5 0%, #FFE5E5 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 380px;
+      max-width: 90vw;
+      box-shadow: 0 8px 32px rgba(255,107,107,0.12), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .login-title {
+      font-size: 24px; font-weight: 600;
+      color: #2C3E50; text-align: center; margin: 0 0 8px 0;
+    }
+    .login-sub {
+      font-size: 14px; color: #666;
+      text-align: center; margin: 0 0 28px 0;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block; font-size: 13px; color: #555;
+      margin-bottom: 6px; font-weight: 500;
+    }
+    .form-input {
+      width: 100%; padding: 11px 14px;
+      font-size: 15px; font-family: inherit;
+      border: 1.5px solid #E5E5E5;
+      border-radius: 8px;
+      box-sizing: border-box;
+      transition: border-color 180ms ease;
+    }
+    .form-input:focus { outline: none; border-color: #FF6B6B; }
+    .form-checkbox-row {
+      display: flex; align-items: center; gap: 8px;
+      margin: 8px 0 20px 0; font-size: 14px; color: #555;
+    }
+    .form-checkbox { width: 16px; height: 16px; accent-color: #FF6B6B; }
+    .login-btn {
+      width: 100%; padding: 12px;
+      background: #FF6B6B; color: white;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+      cursor: pointer;
+      transition: background 180ms ease, transform 100ms ease;
+    }
+    .login-btn:hover:not(:disabled) { background: #FF5252; }
+    .login-btn:active:not(:disabled) { transform: scale(0.98); }
+    .login-btn:disabled { background: #FFB3B3; cursor: not-allowed; }
+    .login-error {
+      background: #FFF0F0; color: #D32F2F;
+      padding: 10px 14px; border-radius: 6px;
+      font-size: 13px; margin-bottom: 14px;
+      display: none;
+    }
+    .login-error.show { display: block; }
+    .login-hint {
+      text-align: center; margin-top: 18px;
+      font-size: 12px; color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h1 class="login-title">dizical</h1>
+    <p class="login-sub">竹笛练习助手</p>
+    <div id="loginError" class="login-error"></div>
+    <form id="loginForm" autocomplete="on">
+      <div class="form-group">
+        <label class="form-label" for="username">用户名</label>
+        <input class="form-input" id="username" name="username" type="text"
+               autocomplete="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">密码</label>
+        <input class="form-input" id="password" name="password" type="password"
+               autocomplete="current-password" required>
+      </div>
+      <label class="form-checkbox-row">
+        <input class="form-checkbox" id="remember" type="checkbox" checked>
+        <span>记住此设备 30 天</span>
+      </label>
+      <button type="submit" class="login-btn" id="loginBtn">登录</button>
+
+    <div style="text-align: center; margin-top: 16px;">
+      <a href="/admin-login" style="display: inline-flex; align-items: center; gap: 4px;
+                                   background: transparent; color: #DC3545;
+                                   border: none; border-radius: 6px;
+                                   padding: 8px 12px;
+                                   font-size: 13px; font-weight: 500;
+                                   text-decoration: none;
+                                   font-family: inherit;
+                                   transition: background 180ms ease;">
+        管理员登录 <span aria-hidden="true" style="font-size:11px;">↗</span>
+      </a>
+    </div>
+
+    <div class="login-info" style="margin-top:24px; text-align:left;">
+      <div style="font-size:11px; font-weight:600; color:#DC3545; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">首次使用</div>
+      <div style="font-size:12px; line-height:1.5; color:#666;">
+        用 <a href="/admin-login" style="color:#DC3545; text-decoration:underline;">管理员登录</a>
+        (username <code style="background:#F5F5F5;padding:1px 5px;border-radius:3px;font-size:11px;">dad</code>),
+        初始密码见 <code style="background:#F5F5F5;padding:1px 5px;border-radius:3px;font-size:11px;">/tmp/dizical-8765.log</code>
+      </div>
+    </div>
+    </form>
+    <p class="login-hint">账号由管理员创建, 输错密码会被锁定请联系管理员.</p>
+  </div>
+
+  <script>
+    const REDIRECT = (new URLSearchParams(location.search).get('redirect') || '/').replace(/[<>"']/g, '');
+
+    function showError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function hideError() {
+      document.getElementById('loginError').classList.remove('show');
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true; btn.textContent = '登录中...';
+      try {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const remember = document.getElementById('remember').checked;
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username, password, remember}),
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          showError(data.error || '登录失败');
+          return;
+        }
+        // must_change_password → 跳改密页 (即使 remember 也跳)
+        if (data.user && data.user.must_change_password) {
+          location.href = '/change-password?user_id=' + data.user.user_id + '&redirect=' + encodeURIComponent(REDIRECT);
+          return;
+        }
+        location.href = REDIRECT;
+      } catch (err) {
+        showError('网络错: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = '登录';
+      }
+    });
+  </script>
+</body>
+</html>

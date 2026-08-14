@@ -5,6 +5,7 @@ JSON 文件只读，kid_app 不要写它。
 LLM 生成使用 Gemini 2.5 Flash-Lite（最快、无 thinking）。
 """
 import json
+import os
 from pathlib import Path
 
 _subjects_cache = None
@@ -30,7 +31,7 @@ def get_subject_info(item_name: str) -> dict | None:
 
 def _get_google_key() -> str:
     """从 hermes .env 读取 Google API key。"""
-    env_path = Path('/Users/mt16/.hermes/.env')
+    env_path = Path(os.environ.get("HERMES_ENV_PATH", str(Path.home() / ".hermes" / ".env")))
     if not env_path.exists():
         return ''
     for line in env_path.read_text().splitlines():

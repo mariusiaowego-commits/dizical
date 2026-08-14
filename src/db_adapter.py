@@ -38,18 +38,17 @@ def get_conn():
     """返 (conn, is_mysql).
 
     - MySQL: 走 src.database 工厂 (跟 LessonManager 等保持一致)
-    - SQLite: 用 ../data/dizi.db (跟 _DB_PATH 老逻辑兼容)
+    - SQLite: 用 src.models.settings.db_path (默认 prod, 单测被 conftest 改)
 
-    不引入新路径不引入新连接池, 复用现有 src.database.db.
+    Sprint 26081003: 改用 settings.db_path 让单测能改 tmp db (不用绝对路径).
     """
     if is_mysql_env():
         # 走全局 db 工厂 (跟 LessonManager 一致, 跟 Phase 1b 兼容)
         from src.database import db
         return db._get_connection(), True
-    # SQLite fallback (本地/单测)
-    from pathlib import Path
-    db_path = Path(__file__).parent.parent / "data" / "dizi.db"
-    return sqlite3.connect(str(db_path)), False
+    # SQLite fallback (本地/单测) — 用 settings.db_path 允许 conftest 改 tmp db
+    from src.models import settings as _settings
+    return sqlite3.connect(str(_settings.db_path)), False
 
 
 def _to_mysql_placeholders(sql: str) -> str:

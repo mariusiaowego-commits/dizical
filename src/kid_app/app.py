@@ -14,7 +14,7 @@ sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.database import db
@@ -27,6 +27,60 @@ from pydantic import ValidationError
 
 # ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bamboo Flute Practice")
+
+
+# Sprint 26081003: 路由守卫 middleware
+# 公开路径不拦, 其他都要 get_current_user 有效才放行
+@app.middleware("http")
+async def _auth_guard_middleware(request, call_next):
+    from src.kid_app.auth import get_current_user
+    path = request.url.path
+    PUBLIC = (
+        path == "/login" or path == "/change-password" or path == "/admin-login" or path == "/gsap-demo"
+        or path == "/admin/reset-password" or path.startswith("/admin/reset-password?")  # Sprint v3.3.2 dad 应急重置
+        or path.startswith("/static/") or path.startswith("/favicon")
+        or path.startswith("/api/auth/")
+        or path.startswith("/api/admin/reset-password")  # Sprint v3.3.2 dad 应急重置 API (走 PIN)
+        or path.startswith("/api/__maintenance__") or path.startswith("/health")
+        # Sprint 26081004: /admin/whitelist UI 已删 (见 template/admin-whitelist.html), JSON API 仍走 PIN 校验 (minip_api.py:_check_admin_pin), 不需要白名单放行
+        or path.startswith("/api/admin/whitelist")
+        or path.startswith("/config/api/") or path == "/config/users"
+        or path == "/accept-invite" or path.startswith("/accept-invite?")  # Q7 邀请公开页
+    )
+    if PUBLIC:
+        return await call_next(request)
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    user = await get_current_user(request)
+    if not user:
+        if path.startswith("/api/"):
+            from fastapi.responses import JSONResponse as _JR
+            return _JR({"ok": False, "error": "未登录"}, status_code=401)
+        from fastapi.responses import RedirectResponse as _RR
+        sep = "&" if "?" in path else "?"
+        return _RR(url=f"/login{sep}redirect={path}", status_code=302)
+    if request.method in ("POST", "PUT", "DELETE") and path.startswith("/api/"):
+        if path.startswith("/api/auth/") or path.startswith("/api/admin/")                 or path.startswith("/api/minip/"):
+            return await call_next(request)
+        if path.startswith("/api/log"):
+            if user["role"] in ("student", "dad"):
+                return await call_next(request)
+            from fastapi.responses import JSONResponse as _JR
+            return _JR({"ok": False, "error": "权限不足"}, status_code=403)
+        # Sprint 26081005: 女儿可改自己今天的练习 session (PUT/DELETE).
+        # 之前 sprint 26081004 拍板收紧到仅 dad, 但 edit/delete 自己今天的
+        # session 是高频合法操作. 单家庭场景, 女儿理论能改别人 session
+        # 风险低. TODO: 加 created_by_user_id 字段 + owner check.
+        if path.startswith("/api/practice-sessions/") and request.method in ("PUT", "DELETE"):
+            if user["role"] in ("student", "dad"):
+                return await call_next(request)
+            from fastapi.responses import JSONResponse as _JR
+            return _JR({"ok": False, "error": "权限不足"}, status_code=403)
+        if user["role"] != "dad":
+            from fastapi.responses import JSONResponse as _JR
+            return _JR({"ok": False, "error": "权限不足"}, status_code=403)
+    return await call_next(request)
+
 
 # PR-D: 同 item + 同 minutes 5s 内防重窗口 (防双击 / 网络重传导致 2 条 session).
 # 进程级 dict, 路由层 _dedup_practice_log() 入口检查; 不下到 middleware 改 body.
@@ -2105,9 +2159,101 @@ async def api_praise(request: Request):
     }, status_code=410)
 
 # ─── 页面路由 ───────────────────────────────────────────────────────────────
+
+# Sprint 26081003: 登录 + 改密页 (公开, 不需 cookie)
+from fastapi.templating import Jinja2Templates as _JT_login
+_TPL_DIR_login = Path(__file__).parent / "templates"
+_tpl_login = _JT_login(directory=str(_TPL_DIR_login))
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, redirect: str = "/"):
+    """登录页 (公开). 已登录直接跳 redirect. (Sprint v3.3.1 hotfix: import RedirectResponse)"""
+    from fastapi.responses import RedirectResponse
+    from src.kid_app.auth import get_current_user
+    cur = await get_current_user(request)
+    if cur:
+        return RedirectResponse(url=redirect or "/", status_code=302)
+    return _tpl_login.TemplateResponse(
+        request, "login.html",
+        {"redirect": redirect, "active_nav": ""},
+    )
+
+
+@app.get("/accept-invite", response_class=HTMLResponse)
+async def accept_invite_page(request: Request, token: str = ""):
+    """Q7 邀请链接落地页 (公开, 不需登录). 验证 token 有效性."""
+    from src.kid_app.auth import fetch_invite
+    from datetime import datetime
+    invite = fetch_invite(token) if token else None
+    invite_info = None
+    if invite:
+        ea = invite.get("expires_at")
+        # MySQL: PyMySQL 自动转 datetime 对象; SQLite: 返 str
+        # 统一处理 (Sprint v3.3.2 修 dad 报 "token 失效" 实际是 datetime 类型判定 miss)
+        ea_dt = None
+        if isinstance(ea, datetime):
+            ea_dt = ea
+        elif isinstance(ea, str):
+            try:
+                ea_dt = datetime.fromisoformat(ea.replace(" ", "T") if "T" not in ea else ea)
+            except (ValueError, TypeError):
+                pass
+        if ea_dt is not None:
+            invite_info = {
+                "role": invite["role"],
+                "expires_at": ea_dt.strftime("%Y-%m-%d %H:%M"),
+                "remaining_uses": invite["max_uses"] - invite["used_count"],
+            }
+    return _tpl_login.TemplateResponse(
+        request, "accept-invite.html",
+        {"token": token, "invite": invite_info,
+         "active_nav": "", "ROLE_LABELS": {"student": "学习者", "family": "家人", "teacher": "老师"}},
+    )
+
+
+@app.get("/admin/reset-password", response_class=HTMLResponse)
+async def admin_reset_password_page(request: Request):
+    """dad 应急重置密码 (走 PIN=0905). 给忘了 dad 密码的 dad 用."""
+    return _tpl_login.TemplateResponse(
+        request, "admin-reset-password.html",
+        {"active_nav": "", "ROLE_LABELS": {"dad": "管理员"}},
+    )
+
+
+@app.get("/admin-login", response_class=HTMLResponse)
+async def admin_login_page(request: Request):
+    """管理员登录页 (Sprint 26081003 v3.3): 红色徽章, 仅 role=dad 可登录."""
+    return _tpl_login.TemplateResponse(
+        request, "admin-login.html",
+        {"active_nav": "", "ROLE_LABELS": {"dad": "管理员", "student": "学习者",
+                                          "family": "家人", "teacher": "老师"}},
+    )
+
+
+@app.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request, user_id: str = ""):
+    """改密页 (公开 — 首次登录强制改密, URL 带 user_id)."""
+    from src.kid_app.auth import get_current_user
+    cur = await get_current_user(request)
+    if cur and not user_id:
+        user_id = str(cur["user_id"])
+    return _tpl_login.TemplateResponse(
+        request, "change-password.html",
+        {"user_id": user_id, "active_nav": ""},
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
-def home():
-    return prepare_page()
+async def home(request: Request):
+    """首页 — 按角色重定向落地页; 未登录 → /login."""
+    from src.kid_app.auth import get_current_user
+    cur = await get_current_user(request)
+    if not cur:
+        return RedirectResponse(url="/login", status_code=302)
+    target = "/report" if cur["role"] == "family" else "/practice"
+    return RedirectResponse(url=target, status_code=302)
+
 
 @app.get("/gsap-demo", response_class=HTMLResponse)
 def gsap_demo():
@@ -2837,3 +2983,9 @@ app.include_router(badge_workflow_router)
 # dizical-minip 项目: 只新增端点，不影响现有功能
 from src.kid_app.routes.minip_api import router as minip_router
 app.include_router(minip_router)
+
+# Sprint 26081003: 注册 web 用户体系路由
+from src.kid_app.routes.auth_web import router as auth_web_router
+from src.kid_app.routes.config_users import router as config_users_router
+app.include_router(auth_web_router)
+app.include_router(config_users_router)

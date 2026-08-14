@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="640" y="40" font-size="26" font-weight="bold" text-anchor="middle" fill="#1e1e1e">dizical — Practice OS Architecture</text>
+  <text x="640" y="66" font-size="14" text-anchor="middle" fill="#666">bamboo-flute lessons · practice · badges — one API, three clients</text>
+
+  <!-- Clients -->
+  <rect x="60" y="110" width="330" height="150" fill="#e8f4fd" stroke="#1e1e1e" stroke-width="1.5" rx="8"/>
+  <text x="225" y="135" font-size="15" font-weight="bold" text-anchor="middle">iPad Kid App (Safari)</text>
+  <text x="225" y="158" font-size="12" text-anchor="middle" fill="#444">/prepare · /practice · /achievements</text>
+  <text x="225" y="175" font-size="12" text-anchor="middle" fill="#444">/badges · /report · /praise</text>
+  <text x="225" y="200" font-size="11" text-anchor="middle" fill="#888">landscape 1024×768 / 2266×1488 · kid-first UX</text>
+
+  <rect x="60" y="290" width="330" height="110" fill="#e8f4fd" stroke="#1e1e1e" stroke-width="1.5" rx="8"/>
+  <text x="225" y="318" font-size="15" font-weight="bold" text-anchor="middle">Mac Menu-bar App</text>
+  <text x="225" y="342" font-size="12" text-anchor="middle" fill="#444">SwiftUI WKWebView · start/stop service</text>
+  <text x="225" y="362" font-size="12" text-anchor="middle" fill="#444">enamel-pin icon · template-mode menubar</text>
+
+  <rect x="60" y="430" width="330" height="110" fill="#e8f4fd" stroke="#1e1e1e" stroke-width="1.5" rx="8"/>
+  <text x="225" y="458" font-size="15" font-weight="bold" text-anchor="middle">WeChat Mini-program</text>
+  <text x="225" y="482" font-size="12" text-anchor="middle" fill="#444">sibling repo · same API</text>
+  <text x="225" y="502" font-size="12" text-anchor="middle" fill="#444">native WeChat auth · submitted for review</text>
+
+  <!-- Server -->
+  <rect x="560" y="110" width="420" height="520" fill="#fff8e1" stroke="#1e1e1e" stroke-width="1.5" rx="8"/>
+  <text x="770" y="138" font-size="16" font-weight="bold" text-anchor="middle">FastAPI Server (port 8765)</text>
+  <text x="770" y="158" font-size="12" text-anchor="middle" fill="#444">147 routes · vanilla JS + GSAP · no build step</text>
+
+  <rect x="600" y="180" width="340" height="90" fill="#ffffff" stroke="#999" stroke-width="1" rx="6"/>
+  <text x="770" y="205" font-size="13" font-weight="bold" text-anchor="middle">Auth</text>
+  <text x="770" y="225" font-size="11" text-anchor="middle" fill="#444">web login · invite links · whitelist</text>
+  <text x="770" y="242" font-size="11" text-anchor="middle" fill="#444">scrypt hashes · HMAC sessions · PIN</text>
+
+  <rect x="600" y="290" width="340" height="90" fill="#ffffff" stroke="#999" stroke-width="1" rx="6"/>
+  <text x="770" y="315" font-size="13" font-weight="bold" text-anchor="middle">Business Modules</text>
+  <text x="770" y="335" font-size="11" text-anchor="middle" fill="#444">practice log · lessons · payments · assignments</text>
+  <text x="770" y="352" font-size="11" text-anchor="middle" fill="#444">achievement calc · badge blind-box · reports</text>
+
+  <rect x="600" y="400" width="340" height="90" fill="#ffffff" stroke="#999" stroke-width="1" rx="6"/>
+  <text x="770" y="425" font-size="13" font-weight="bold" text-anchor="middle">AI Pipeline</text>
+  <text x="770" y="445" font-size="11" text-anchor="middle" fill="#444">badge image-gen + rembg (draft-JSON contract)</text>
+  <text x="770" y="462" font-size="11" text-anchor="middle" fill="#444">Gemini 2.5 Flash streaming · monthly infographics</text>
+
+  <rect x="600" y="510" width="340" height="80" fill="#ffffff" stroke="#999" stroke-width="1" rx="6"/>
+  <text x="770" y="535" font-size="13" font-weight="bold" text-anchor="middle">Integrations</text>
+  <text x="770" y="555" font-size="11" text-anchor="middle" fill="#444">Apple Reminders two-way sync · Telegram bot</text>
+  <text x="770" y="572" font-size="11" text-anchor="middle" fill="#444">Obsidian mirror (env-configured paths)</text>
+
+  <!-- Data layer -->
+  <rect x="1080" y="110" width="170" height="240" fill="#fdecea" stroke="#1e1e1e" stroke-width="1.5" rx="8"/>
+  <text x="1165" y="140" font-size="14" font-weight="bold" text-anchor="middle">Data</text>
+  <rect x="1095" y="160" width="140" height="60" fill="#ffffff" stroke="#999" stroke-width="1" rx="5"/>
+  <text x="1165" y="182" font-size="11" font-weight="bold" text-anchor="middle">SQLite</text>
+  <text x="1165" y="198" font-size="10" text-anchor="middle" fill="#444">dev · zero-config</text>
+  <rect x="1095" y="240" width="140" height="60" fill="#ffffff" stroke="#999" stroke-width="1" rx="5"/>
+  <text x="1165" y="262" font-size="11" font-weight="bold" text-anchor="middle">MySQL</text>
+  <text x="1165" y="278" font-size="10" text-anchor="middle" fill="#444">prod · CloudRun</text>
+  <text x="1165" y="330" font-size="10" text-anchor="middle" fill="#666">db_adapter.py switch</text>
+  <text x="1165" y="344" font-size="10" text-anchor="middle" fill="#666">via DATABASE_URL env</text>
+
+  <!-- Arrows -->
+  <polyline points="390,185 560,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#a)"/>
+  <polyline points="390,345 560,340" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#a)"/>
+  <polyline points="390,485 560,380" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#a)"/>
+  <polyline points="980,360 1080,260" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#a)"/>
+  <polyline points="980,340 1080,200" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#a)"/>
+
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 Z" fill="#1e1e1e"/></marker>
+  </defs>
+</svg>

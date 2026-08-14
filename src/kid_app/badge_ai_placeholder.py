@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 # ─── 配置 ──────────────────────────────────────────────────────────
 
-# hermes CLI 绝对路径 (避免 macOS GUI app 启 uvicorn 时 PATH 不含 /Users/mt16/.local/bin)
+# hermes CLI 绝对路径 (避免 macOS GUI app 启 uvicorn 时 PATH 不含 Homebrew)
 # 跟 AGENTS.md 启动坑点"macOS GUI app 启动 uvicorn 时 PATH 不含 Homebrew" 同一类问题
-# 兼容 moni 模式 + dizical: hermes 是装在 ~/.local/bin
-_HERMES_PATH = Path("/Users/mt16/.local/bin/hermes")
+# 默认 ~/.local/bin/hermes, 可通过 HERMES_PATH env 覆盖
+_HERMES_PATH = Path(os.environ.get("HERMES_PATH", str(Path.home() / ".local" / "bin" / "hermes")))
 # Profile 名从环境变量读, 默认 "dizical"
 _DEFAULT_PROFILE = "dizical"
 
@@ -65,7 +65,7 @@ def _find_hermes() -> str:
     """找 hermes CLI 绝对路径. fail-loud.
 
     顺序:
-    1. 硬编码 /Users/mt16/.local/bin/hermes (我们已确认存在)
+    1. 硬编码 ~/.local/bin/hermes (我们已确认存在)
     2. shutil.which("hermes") 兜底
     3. 都没找到 → 报错带明确指引
     """

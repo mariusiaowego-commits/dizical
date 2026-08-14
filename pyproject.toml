@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "dizical"
 version = "0.1.0"
 authors = [
-  { name="mtt", email="mtt@example.com" }
+  { name="mariusiaowego" }
 ]
 description = "dizi + cal = dizical (笛卡尔) 竹笛课程管理助手"
 readme = "README.md"

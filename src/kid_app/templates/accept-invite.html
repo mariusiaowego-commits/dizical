@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+{% include "_favicon.html" %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>接受邀请 — dizical</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #FFF5F5 0%, #FFE5E5 100%);
+      min-height: 100vh; margin: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .invite-card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 460px; max-width: 90vw;
+      box-shadow: 0 8px 32px rgba(255,107,107,0.12), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .invite-title { font-size: 22px; font-weight: 600; color: #2C3E50; text-align: center; margin: 0 0 8px 0; }
+    .invite-sub { font-size: 13px; color: #888; text-align: center; margin: 0 0 24px 0; }
+    .invite-info {
+      background: #FFF5F0; border-left: 3px solid #FF6B6B;
+      padding: 12px 16px; border-radius: 6px;
+      font-size: 13px; color: #555;
+      margin-bottom: 20px;
+    }
+    .invite-info strong { color: #2C3E50; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+    .form-input {
+      width: 100%; padding: 11px 14px;
+      font-size: 15px; font-family: inherit;
+      border: 1.5px solid #E5E5E5; border-radius: 8px;
+      box-sizing: border-box;
+      transition: border-color 180ms ease;
+    }
+    .form-input:focus { outline: none; border-color: #FF6B6B; }
+    .invite-btn {
+      width: 100%; padding: 12px;
+      background: #FF6B6B; color: white;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+      cursor: pointer;
+      transition: background 180ms ease, transform 100ms ease;
+      margin-top: 8px;
+    }
+    .invite-btn:hover:not(:disabled) { background: #FF5252; }
+    .invite-btn:active:not(:disabled) { transform: scale(0.98); }
+    .invite-btn:disabled { background: #FFB3B3; cursor: not-allowed; }
+    .invite-error {
+      background: #FFF0F0; color: #D32F2F;
+      padding: 10px 14px; border-radius: 6px;
+      font-size: 13px; margin-bottom: 14px; display: none;
+    }
+    .invite-error.show { display: block; }
+    .invite-success {
+      background: #F0FFF0; color: #2E7D32;
+      padding: 16px; border-radius: 8px;
+      font-size: 14px; margin: 16px 0; text-align: center;
+    }
+    .invite-invalid {
+      text-align: center; color: #888; padding: 40px 0;
+    }
+    .invite-invalid h2 { color: #D32F2F; margin: 0 0 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="invite-card">
+    {% if not token %}
+    <div class="invite-invalid">
+      <h2>无效邀请</h2>
+      <p>缺少邀请 token. 请跟管理员确认链接是否完整.</p>
+    </div>
+    {% elif not invite %}
+    <div class="invite-invalid">
+      <h2>邀请链接无效</h2>
+      <p>可能原因: 链接已过期 / 已用完 / 已被撤销. 请联系管理员重新发送.</p>
+    </div>
+    {% else %}
+    <h1 class="invite-title">欢迎加入 dizical</h1>
+    <p class="invite-sub">填下面信息, 完成账号创建</p>
+
+    <div class="invite-info">
+      <div><strong>角色:</strong> {{ ROLE_LABELS.get(invite.role, invite.role) }}</div>
+      <div><strong>有效期至:</strong> {{ invite.expires_at }}</div>
+      <div><strong>剩余可用:</strong> {{ invite.remaining_uses }} 次</div>
+    </div>
+
+    <div id="err" class="invite-error"></div>
+    <div id="ok" class="invite-success" style="display:none;">
+      账号创建成功! 正在进入 dizical...
+    </div>
+
+    <form id="inviteForm">
+      <input type="hidden" id="token" value="{{ token }}">
+      <div class="form-group">
+        <label class="form-label" for="username">用户名 (登录用, 2-64 字符)</label>
+        <input class="form-input" id="username" type="text" required minlength="2" maxlength="64" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="display_name">显示名</label>
+        <input class="form-input" id="display_name" type="text" required maxlength="64">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">密码 (至少 6 位)</label>
+        <input class="form-input" id="password" type="password" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="confirm_password">确认密码</label>
+        <input class="form-input" id="confirm_password" type="password" required minlength="6" autocomplete="new-password">
+      </div>
+      <button type="submit" class="invite-btn" id="submitBtn">创建账号并进入</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <script>
+    function showError(msg) {
+      const el = document.getElementById('err');
+      el.textContent = msg; el.classList.add('show');
+    }
+
+    const form = document.getElementById('inviteForm');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = document.getElementById('token').value;
+        const username = document.getElementById('username').value.trim();
+        const display_name = document.getElementById('display_name').value.trim();
+        const password = document.getElementById('password').value;
+        const confirm = document.getElementById('confirm_password').value;
+        if (password !== confirm) { showError('两次密码不一致'); return; }
+        if (password.length < 6) { showError('密码至少 6 位'); return; }
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true; btn.textContent = '创建中...';
+        try {
+          const r = await fetch('/api/auth/redeem-invite', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({token, username, display_name, password}),
+          });
+          const data = await r.json();
+          if (!data.ok) { showError(data.error || '创建失败'); btn.disabled = false; btn.textContent = '创建账号并进入'; return; }
+          // 成功: 显示成功 + 跳落地页
+          document.getElementById('ok').style.display = 'block';
+          form.style.display = 'none';
+          setTimeout(() => { location.href = '/'; }, 1200);
+        } catch (err) {
+          showError('网络错: ' + err.message);
+          btn.disabled = false; btn.textContent = '创建账号并进入';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

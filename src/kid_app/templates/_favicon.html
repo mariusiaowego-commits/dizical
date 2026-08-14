@@ -1,0 +1,9 @@
+<!--
+  _favicon.html — dizical 共享 inline SVG favicon
+  Sprint 26081005: 修浏览器 GET /favicon.ico 404, 用 inline data URI 替代静态文件
+  颜色: 珊瑚红 (#FF6B6B) 主色 + 笛子意象 (吹孔 + 6 个指孔)
+  优点: 0 静态资源加载, 0 404, 1 行 include 进所有 <head>
+  跨浏览器: 现代浏览器全支持 (Safari/Firefox/Chrome/Edge, 2003+)
+-->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23FF6B6B'/%3E%3Cpath d='M16 18 L16 46 Q16 50 20 50 L38 50 Q42 50 42 46 L42 18 Z' fill='%23F5E6D3'/%3E%3Ccircle cx='22' cy='26' r='2' fill='%23FF6B6B'/%3E%3Ccircle cx='30' cy='26' r='2' fill='%23FF6B6B'/%3E%3Ccircle cx='38' cy='26' r='2' fill='%23FF6B6B'/%3E%3Ccircle cx='22' cy='36' r='2' fill='%23FF6B6B'/%3E%3Ccircle cx='30' cy='36' r='2' fill='%23FF6B6B'/%3E%3Ccircle cx='38' cy='36' r='2' fill='%23FF6B6B'/%3E%3C/svg%3E">
+<link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23FF6B6B'/%3E%3C/svg%3E">

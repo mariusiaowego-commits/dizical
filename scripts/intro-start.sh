@@ -47,7 +47,7 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
 fi
 
 # 3. 必须在 uiux-asset-library 仓根运行（intro.html 用相对路径 ../../visual-assets/）
-UIUX_ROOT="/Users/mt16/dev/uiux-asset-library"
+UIUX_ROOT="${UIUX_ASSET_LIBRARY_ROOT:-$HOME/dev/uiux-asset-library}"
 if [[ ! -d "${UIUX_ROOT}" ]]; then
   echo "ERROR: 找不到 uiux-asset-library 仓: ${UIUX_ROOT}"
   exit 1

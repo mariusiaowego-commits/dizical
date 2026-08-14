@@ -12,7 +12,9 @@
 set -e
 
 CLOUD_URL="${1:?用法: bash scripts/staging_deploy.sh <cloudrun_default_domain>}"
-LOCAL_DB="/Users/mt16/dev/dizical/data/dizi.db"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOCAL_DB="$PROJECT_ROOT/data/dizi.db"
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 echo "🔥 开始: 部署到 CloudRun staging"
