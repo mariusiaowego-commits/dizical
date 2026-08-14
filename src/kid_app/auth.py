@@ -458,7 +458,7 @@ def consume_invite(token: str) -> bool:
 
 
 def list_invites() -> list[dict]:
-    """dad 后台列所有 invite."""
+    """dad 后台列所有 invite. 双后端统一 (Sprint 26081004 修 list_invites tuple path bug)."""
     from src.db_adapter import get_conn
     conn, is_mysql = get_conn()
     try:
@@ -470,8 +470,10 @@ def list_invites() -> list[dict]:
             (),
         )
         rows = cur.fetchall()
-        if is_mysql:
-            return list(rows)
+        if not rows:
+            return []
+        if isinstance(rows[0], dict):
+            return list(rows)  # DictCursor
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in rows]
     finally:

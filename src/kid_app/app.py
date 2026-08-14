@@ -14,7 +14,7 @@ sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.database import db
@@ -42,7 +42,8 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/auth/")
         or path.startswith("/api/admin/reset-password")  # Sprint v3.3.2 dad 应急重置 API (走 PIN)
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
-        or path.startswith("/api/admin/whitelist") or path.startswith("/admin/whitelist")
+        # Sprint 26081004: /admin/whitelist UI 已删 (见 template/admin-whitelist.html), JSON API 仍走 PIN 校验 (minip_api.py:_check_admin_pin), 不需要白名单放行
+        or path.startswith("/api/admin/whitelist")
         or path.startswith("/config/api/") or path == "/config/users"
         or path == "/accept-invite" or path.startswith("/accept-invite?")  # Q7 邀请公开页
     )
