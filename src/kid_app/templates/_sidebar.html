@@ -44,13 +44,105 @@
 .sidebar-toggle:active { transform: scale(0.95); }
 .sidebar-toggle img { width: 24px; height: 24px; display: block; }
 
-/* ── Sidebar header (展开时显示用户信息) ────────────────── */
-.sidebar-header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 14px 16px 14px;  /* 14px 跟 toggle margin-left 一致, bottom 16 = nav top padding 一致 */
-  border-bottom: 1px solid rgba(0,0,0,0.08);  /* 加深 border 让分割线可见 */
-  margin: 8px 0 0 0;          /* 跟 toggle 间距 8px */
+/* ── Sidebar account (可点击 avatar + dropdown) ─────────── */
+.sidebar-account {
+  position: relative;
+  margin: 8px 0 0 0;
+  padding: 0 14px 16px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
   min-height: 56px;
+}
+/* avatar 按钮: 整块可点击, 默认无背景 */
+.sidebar-account-btn {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: none; outline: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  border-radius: 9999px;
+  transition: background 200ms ease;
+}
+.sidebar-account-btn:hover { background: rgba(255, 107, 107, 0.06); }
+.sidebar-account-btn:focus-visible {
+  outline: 2px solid var(--primary, #FF6B6B); outline-offset: 2px;
+}
+/* chevron 指示器: 展开态显示, 收起态隐藏 */
+.sidebar-account-chevron {
+  margin-left: auto;
+  width: 16px; height: 16px;
+  opacity: 0; transition: opacity 200ms ease 80ms;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted, #666666);
+}
+.sidebar.expanded .sidebar-account-chevron { opacity: 1; }
+/* 收起态: 隐藏 chevron + userinfo (跟旧行为一致) */
+.sidebar-account-info {
+  display: flex; align-items: center; gap: 12px;
+  min-width: 0;
+}
+.sidebar-account-info .sidebar-userinfo {
+  opacity: 0; transition: opacity 200ms ease 80ms;
+  white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.sidebar.expanded .sidebar-account-info .sidebar-userinfo { opacity: 1; }
+
+/* ── Dropdown 面板 ─────────────────────────────── */
+.sidebar-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 14px;
+  right: 14px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 6px 0;
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.sidebar-dropdown.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.sidebar-dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none; background: transparent;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--secondary, #2C3E50);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 0;
+}
+.sidebar-dropdown-item:hover { background: rgba(255, 107, 107, 0.06); }
+.sidebar-dropdown-item.danger { color: var(--primary, #FF6B6B); }
+.sidebar-dropdown-item.danger:hover { background: rgba(255, 107, 107, 0.12); }
+.sidebar-dropdown-item .icon {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
+}
+.sidebar-dropdown-item .icon svg { width: 18px; height: 18px; }
+/* 分隔线 */
+.sidebar-dropdown-divider {
+  height: 1px; margin: 4px 0;
+  background: rgba(0,0,0,0.08);
+}
+/* 收起态 dropdown 弹出位置: 右侧弹出而不是下方 (下被截) */
+.sidebar:not(.expanded) .sidebar-dropdown {
+  top: 0; left: calc(100% + 8px); right: auto; min-width: 200px;
 }
 .sidebar-avatar {
   width: 36px; height: 36px;          /* 跟 toggle/item 同样 36 */
@@ -236,12 +328,67 @@
          alt="toggle">
   </button>
 
-  <!-- 展开时显示用户信息 (隐式, 占位未来用户体系) -->
-  <div class="sidebar-header">
-    <div class="sidebar-avatar">Y</div>
-    <div class="sidebar-userinfo">
-      <div class="sidebar-username">女儿</div>
-      <div class="sidebar-userrole">学习者</div>
+  <!-- 展开时显示用户信息 (Sprint 26081005: 改成可点击 avatar + dropdown) -->
+  <div class="sidebar-account">
+    <button type="button" class="sidebar-account-btn" id="sidebarAccountBtn" aria-haspopup="true" aria-expanded="false" aria-label="账号菜单">
+      <span class="sidebar-account-info">
+        <span class="sidebar-avatar" id="sidebarAvatar">?</span>
+        <span class="sidebar-userinfo">
+          <span class="sidebar-username" id="sidebarUsername">—</span>
+          <span class="sidebar-userrole" id="sidebarUserrole">未登录</span>
+        </span>
+      </span>
+      <span class="sidebar-account-chevron" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </span>
+    </button>
+
+    <!-- Dropdown 面板: 切换账号 / 账号管理(dad 限定) / 改密 / 登出 -->
+    <div class="sidebar-dropdown" id="sidebarDropdown" role="menu">
+      <button type="button" class="sidebar-dropdown-item" id="sidebarSwitchAccountBtn" role="menuitem">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+        </span>
+        <span>切换账号</span>
+      </button>
+      <button type="button" class="sidebar-dropdown-item" id="sidebarAccountManageBtn" role="menuitem" hidden>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M22 11h-6"></path>
+            <path d="M19 8v6"></path>
+          </svg>
+        </span>
+        <span>账号管理</span>
+      </button>
+      <button type="button" class="sidebar-dropdown-item" id="sidebarChangePasswordBtn" role="menuitem">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+        <span>修改密码</span>
+      </button>
+      <div class="sidebar-dropdown-divider"></div>
+      <button type="button" class="sidebar-dropdown-item danger" id="sidebarLogoutBtn" role="menuitem">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </span>
+        <span>登出</span>
+      </button>
     </div>
   </div>
 
@@ -298,16 +445,7 @@
       </span>
       <span class="label">设置</span>
     </a>
-    <a href="/admin/whitelist" class="sidebar-item {% if active_nav == 'admin_whitelist' %}active{% endif %}">
-      <span class="icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="8.5" cy="7" r="4"></circle>
-          <polyline points="17 11 19 13 23 9"></polyline>
-        </svg>
-      </span>
-      <span class="label">用户审批</span>
-    </a>
+    {# Sprint 26081004 (8-14 dad 拍板): 删除 /admin/whitelist UI (mp 审核员审批). 改为 JSON API (命令行 / 脚本查 pending + approve/deny), 见 routes/minip_api.py api_admin_whitelist_* 4 端点. #}
   </nav>
 
   <!-- footer: 呦呦成就殿堂 (展开态) -->
@@ -365,27 +503,101 @@
   toggle.addEventListener('click', toggleSidebar);
   backdrop.addEventListener('click', toggleSidebar);
 
-  // Sprint 26081003: 登出按钮
+  // Sprint 26081005: 账号 dropdown 行为 (点击 avatar 展开 / ESC 关 / 点击外部关 / 各菜单项跳转)
+  const accountBtn = document.getElementById('sidebarAccountBtn');
+  const dropdown = document.getElementById('sidebarDropdown');
+  const av = document.getElementById('sidebarAvatar');
+  const un = document.getElementById('sidebarUsername');
+  const ur = document.getElementById('sidebarUserrole');
+  const manageBtn = document.getElementById('sidebarAccountManageBtn');
+  const switchBtn = document.getElementById('sidebarSwitchAccountBtn');
+  const changePwdBtn = document.getElementById('sidebarChangePasswordBtn');
   const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+  function closeDropdown() {
+    if (!dropdown) return;
+    dropdown.classList.remove('open');
+    if (accountBtn) accountBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openDropdown() {
+    if (!dropdown) return;
+    dropdown.classList.add('open');
+    if (accountBtn) accountBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  if (accountBtn && dropdown) {
+    accountBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dropdown.classList.contains('open')) {
+        closeDropdown();
+      } else {
+        openDropdown();
+      }
+    });
+    // ESC 关闭
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && dropdown.classList.contains('open')) {
+        closeDropdown();
+        accountBtn.focus();
+      }
+    });
+    // 点击 sidebar 外部关闭
+    document.addEventListener('click', (e) => {
+      if (!dropdown.classList.contains('open')) return;
+      if (dropdown.contains(e.target) || accountBtn.contains(e.target)) return;
+      closeDropdown();
+    });
+  }
+
+  // 切换账号: 清 cookie + 回 login
+  if (switchBtn) {
+    switchBtn.addEventListener('click', async () => {
+      if (!confirm('切换账号? 当前会话将退出, 需重新登录.')) return;
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
+      window.location.href = '/login';
+    });
+  }
+  // 账号管理: dad 限定 (server-side 也守门)
+  if (manageBtn) {
+    manageBtn.addEventListener('click', () => {
+      window.location.href = '/config/users';
+    });
+  }
+  // 改密
+  if (changePwdBtn) {
+    changePwdBtn.addEventListener('click', () => {
+      window.location.href = '/change-password';
+    });
+  }
+  // 登出: 清 cookie + 回 login
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       if (!confirm('确定登出? 关浏览器后下次开要重输密码.')) return;
-      try { await fetch('/api/auth/logout', {method:'POST'}); } catch (e) { /* ignore */ }
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
       window.location.href = '/login';
     });
   }
 
-  // Sprint 26081003: 拉取当前用户信息填 sidebar header
+  // Sprint 26081003: 拉取当前用户信息填 sidebar header + 控制 dad-only "账号管理" 入口
   fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
-    if (!data || !data.user) return;
+    if (!data || !data.user) {
+      // 未登录: 不显示账号区 (sidebar-header 有占位显示)
+      if (av) av.textContent = '?';
+      if (un) un.textContent = '未登录';
+      if (ur) ur.textContent = '';
+      if (manageBtn) manageBtn.hidden = true;
+      return;
+    }
     const u = data.user;
-    const av = document.getElementById('sidebarAvatar');
-    const un = document.getElementById('sidebarUsername');
-    const ur = document.getElementById('sidebarUserrole');
     if (av) av.textContent = u.avatar_letter || '?';
     if (un) un.textContent = u.display_name || '匿名';
     if (ur) ur.textContent = u.role_label || u.role || '';
-  }).catch(() => {});
+    // dad role 才显示账号管理入口
+    if (manageBtn) manageBtn.hidden = (u.role !== 'dad');
+  }).catch(() => {
+    // fetch 失败也保持占位
+    if (manageBtn) manageBtn.hidden = true;
+  });
 
   // 用户要求: 取消 click-outside-to-collapse 逻辑 (2026-06-05)
   // 之前: 点 sidebar 外任意位置都收起 — 跟 report 页 cal-day click 冲突
