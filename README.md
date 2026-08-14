@@ -1,19 +1,16 @@
 # 🎵 dizical
 
-[English](./README_EN.md) · [中文](./README.md)
-
 > 竹笛课程管理 + 缴费提醒 + Apple Reminders 双向同步 + iPad 儿童练习助手
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/tests-527%20passed-brightgreen" alt="Tests">
-  <img src="https://img.shields.io/badge/framework-FastAPI-teal" alt="FastAPI">
-  <img src="https://img.shields.io/badge/database-SQLite%20%2B%20MySQL-orange" alt="Dual DB">
-  <img src="https://img.shields.io/badge/badges-enamel%20pin-ff69b4" alt="Badge Engine">
+  <img src="https://img.shields.io/badge/tests-505%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/sprint-v3.3.4-blue" alt="Sprint">
+  <img src="https://img.shields.io/badge/badges-V2.10-ff69b4" alt="Badge Engine v2.10">
 </p>
 
-> 📝 **最近 (2026-08):** Web 用户体系 (登录/邀请/白名单) · CloudRun + MySQL 生产部署 · 阶段打印页 · Badge 引擎 V2。详见 [CHANGELOG.md](docs/CHANGELOG.md)。
+> 📝 **最近变更 (2026-08-12, v3.3.4):** Phase 1 web user auth 收尾 (login_page + register + 3 套环境密码同步) · CHANGELOG 修正文档引用 · GitHub 隐私清理 (STATUS/vibe/handoff 不再上 gh). 详见 [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ---
 
@@ -31,15 +28,20 @@ dizi + cal(endar) = dizical
 
 ## ✨ Features
 
-### Badge 引擎（V2，2026-07）
-- 🏆 **40+ 枚 Enamel Pin 风格徽章** —— 连击/累计/段位/排行/节日/特殊 6 类
+### Badge 引擎（V2.10，2026-07）
+- 🏆 **40 枚 Enamel Pin 风格徽章** —— 连击/累计/段位/排行/节日/特殊 6 类
 - 🔄 **实时 calc + 自动解锁** —— `calc_all()` 计算结果立刻持久化到 `achievement_stats` 表
 - 📜 **小朋友视角文案** —— "你在 2025-10-03 第一次连着打卡 7 天" 而不是工程术语
 - 🖼️ **图像替换 API** —— `POST /config/api/badge/replace-image-from-draft` 换老图不写 achievements;老图保留 (is_current=0)
 - 🧒 **视觉设计** —— chibi girl + 笛子 + 高音谱号 + 星星/爱心装饰;1024×1024 RGBA + 硬 alpha mask 干净透明
-- 📋 **AI 生图流水线** —— image-gen + rembg U2-Net 去背, draft JSON 契约驱动 (见 [badge-image-workflow](docs/badge-image-workflow.md))
+- 📋 **来源**: dizical 后端 + `~/.hermes/profiles/dizical/skills/badge-image` (跨 profile symlinked)
 
----
+### Web 用户认证（v3.3.4, 2026-08）
+- 🔐 **登录页** —— `/login` 路由 + iPad 友好的卡片布局
+- 🆕 **注册页** —— 自助注册 (Phase 1 内网环境, 3 套环境密码同步)
+- 🔑 **密码哈希** —— PBKDF2-SHA256 (salted), 最低 6 位
+- 🚪 **登出** —— 清除 session, 跳转回登录
+- 📱 **响应式** —— iPad 2266×1488 优先, Mac 浏览器次之, iPhone 不服务
 
 ### 课程管理
 - 📅 **自动排课** - 每周六自动生成课程，节假日冲突检测
@@ -98,21 +100,18 @@ dizical kid start
 ### 页面概览
 
 **`/prepare` 准备页**
-
 - GSAP ScrollTrigger 滚动动画，依次淡入各区块
 - 每日鼓励语（12条，从池中按日期选取）
 - 今日准备步骤勾选（点击即勾，localStorage 每日重置）
 - 本周老师要求展示，配图可点击放大
 
 **`/practice` 练习打卡页**
-
 - 选择小科目 → 设置时长 → 开始计时
 - 计时结束页面固定锁定，防止提前退出
 - 支持加时练习（`+5min`）
 - 快速打卡：选科目→输时长→提交，无需计时
 
 **`/achievements` 成就殿堂（7 格看板）**
-
 | 格 | 内容 | 说明 |
 |----|------|------|
 | 1 | 已连续练习 | 从昨天倒查，病假/未练不中断 |
@@ -124,12 +123,11 @@ dizical kid start
 | 7 | 本月 TOP3 | 本月累计时长前三科目 |
 
 **`/badges` 勋章墙**
-
-- 35 枚 Enamel Pin 风格徽章，实时计算解锁状态
+- 40 枚 Enamel Pin 风格徽章，实时计算解锁状态
 - 分类展示：连击系 / 累计系 / 段位系 / 排行系 / 节日系 / 特殊徽章
 - 顶部进度条：年度总课时进度（1000分钟里程碑）
 - 点击徽章弹出详情（解锁条件 / 当前进度 / 达成日期 / 典故描述）
-- 未解锁徽章显示锁定态（灰色 + b-lock 标识）
+- 未解锁徽章显示锁定态（CSS grayscale 滤镜，HTML 不生成 locked 图)
 
 徽章一览：
 - 连击系：`streak_1/3/7/14/30/100`（1天～100天）
@@ -140,18 +138,15 @@ dizical kid start
 - 特殊：`first_log` 首次打卡、`double` 双倍练习、`week_champ` 本周冠军、`full_month` 全勤月、`all_items` 全部科目、`绕梁七日` 连续7天、`刮目相看` 首次突破10分钟、`情有独钟` 单科目100分钟
 
 **`/report` 月报页**
-
 - 月度练习日历热力图，颜色深浅代表练习量
 - 本月累计课时、环比上月
 - TOP3 科目排名
 
 **`/praise` 表扬页**
-
 - 已解锁徽章展示 + 每日表扬语
 - 截图即可分享，孩子 iPad 可独立操作
 
 ### 界面特色
-
 - 🍎 **GSAP 动画** - back.out 刹车感入场，2s 延迟弹入 CTA
 - 📱 **iPad 适配** - 3:2 响应式断点，单手操作友好
 - 🔒 **计时保护** - 计时中禁止切换页面，防止误触
@@ -166,6 +161,10 @@ dizical kid start
 | achievements 页 | badges 页 | report 页 |
 |:---------------:|:---------:|:---------:|
 | ![achievements](docs/screenshots/achievements.png) | ![badges](docs/screenshots/badges.png) | ![report](docs/screenshots/report.png) |
+
+| praise 页 |
+|:---------:|
+| ![praise](docs/screenshots/praise.png) |
 
 > 📸 截图来源：Chrome DevTools CDP（viewport 默认尺寸）
 
@@ -269,28 +268,36 @@ src/
 ├── obsidian.py        # Obsidian Markdown 导出
 ├── database.py        # SQLite 持久化
 ├── models.py          # Pydantic 数据模型
+├── auth.py            # 认证（v3.3.4: PBKDF2 密码哈希 + session 管理）
 └── kid_app/          # iPad 儿童界面（FastAPI，端口 8765）
-    ├── app.py        # 路由 /prepare /practice /achievements /report /praise
+    ├── app.py        # 路由 /prepare /practice /achievements /report /praise /login /register
+    ├── auth_page.py  # 登录注册路由（v3.3.4）
     ├── badges_page.py # 勋章墙路由
     └── templates/    # HTML 模板（GSAP 动画）
 
 data/
-└── dizi.db            # 所有数据：课程 + 缴费 + 练习 + 成就
+└── dizi.db            # 所有数据：课程 + 缴费 + 练习 + 成就 + 用户
 ```
 
 ---
 
 ## 📚 文档
 
+> 📌 **文档分类与隐私声明**：[docs/DOCS-POLICY.md](docs/DOCS-POLICY.md) — 哪些文件**不上** GitHub 及原因
+>
+> **mp 端隐私政策**：[docs/PRIVACY.md](docs/PRIVACY.md) — 微信小程序"呦助"隐私政策（仅适用 mp 端，不是 dizical 主项目）
+
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — 版本变更日志（Keep a Changelog 风格）
 - [docs/使用指南.md](docs/使用指南.md) — dizical CLI 全命令指南
 - [docs/表结构.md](docs/表结构.md) — SQLite tables schema
 - [docs/badge-workflow.md](docs/badge-workflow.md) — Badge workflow 设计 + state machine
 - [docs/badge-image-workflow.md](docs/badge-image-workflow.md) — Badge 图生图流水线
-- [API-CHANGELOG.md](API-CHANGELOG.md) — API 变更登记
+- [docs/badge-prompts.md](docs/badge-prompts.md) — Badge prompt 模板库
+
+> **本地参考文档（不上 GitHub）**：`STATUS.md` / `vibe-coding-log.md` / `handoff-*.md` — 见 [docs/DOCS-POLICY.md](docs/DOCS-POLICY.md)
 
 ---
 
 ## 📄 License
 
-MIT
+本项目采用 [MIT License](LICENSE) 开源 —— 详见根目录 [LICENSE](LICENSE) 文件。

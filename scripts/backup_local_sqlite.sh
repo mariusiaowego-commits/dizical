@@ -6,6 +6,7 @@
 set -e
 
 BACKUP_ROOT="$HOME/.dizical/backups/manual"
+# 2026-08-12 安全加固: 用相对脚本的相对路径, 不写死 /Users/mt16/...
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOCAL_DB="$PROJECT_ROOT/data/dizi.db"

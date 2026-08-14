@@ -1,10 +1,14 @@
 .env
+# .env.example 是模板, 保留
 # SQLite 数据库 (永不删, 不进 git)
 data/*.db
 data/*.db-journal
 data/*.db-shm
 data/*.db-wal
 data/*.sqlite
+# 用户上传文件 (PR-F 数据, 不进 git, 本地保留) (2026-08-12 加固)
+data/uploads/
+data/uploads/raw/
 # symlink (递归目录)
 data/data
 data/data/
@@ -41,7 +45,12 @@ AGENTS.md
 # - 根目录 1 份最新未解决 handoff，历史归档到 docs/handoff-archive/
 # - STATUS / vibe log / 项目介绍 / OpenAI 申请 仅本机
 handoff-*.md
+docs/handoff-*.md
 docs/handoff-archive/
+docs/STATUS.md
+docs/vibe-coding-log.md
+/STATUS.md
+/vibe-coding-log.md
 STATUS.md
 vibe-coding-log.md
 docs/INTRODUCTION.md
@@ -72,28 +81,10 @@ channels/**/Package.resolved
 data/_baseline_*.json
 .cloudrun-deploy/
 
-# ===== 2026-08-13 隐私加固 (开源准备) =====
-# 真实家庭数据目录 (本地保留, 永不进 git)
-data/imports/
-data/lib/badge_data/
-data/reports/
-data/subject_summaries.json
-data/uploads/raw/
-# 部署副本 (含凭据脚本 + .env.example)
-.cloudrun-deploy-new/
-# Agent 内部文档 (计划/交接, 含真实路径/家庭信息)
+# 2026-08-12 安全加固:
+# - agent 私货 (.hermes/ .agents/) 永远本地, 不进 git
+# - 一次性迁移脚本 (scripts/migrate_*.py) 跑完就丢
 .hermes/
-# 一次性迁移脚本 (已跑完, 含真实 DB 路径)
-src/add_badge_early.py
-src/migrate_seasonal_cycle.py
-src/migrate_add_achieved_at_override.py
-src/restore_badge_descriptions_phase1.py
-src/restore_achievement_badges_v1.py
-src/migrate_add_unlock_strategy.py
-src/add_badge_lucky61.py
-src/dedupe_bg_lucky61.py
-# 含明文凭据的旧部署脚本
-p4-phase2-assets/
-
-# 申请材料 (本地参考, 不进公开仓库)
-docs/codex-oss-application.md
+.agents/
+scripts/migrate_*.py
+scripts/migrate_*.sh
