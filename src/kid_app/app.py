@@ -67,6 +67,15 @@ async def _auth_guard_middleware(request, call_next):
                 return await call_next(request)
             from fastapi.responses import JSONResponse as _JR
             return _JR({"ok": False, "error": "权限不足"}, status_code=403)
+        # Sprint 26081005: 女儿可改自己今天的练习 session (PUT/DELETE).
+        # 之前 sprint 26081004 拍板收紧到仅 dad, 但 edit/delete 自己今天的
+        # session 是高频合法操作. 单家庭场景, 女儿理论能改别人 session
+        # 风险低. TODO: 加 created_by_user_id 字段 + owner check.
+        if path.startswith("/api/practice-sessions/") and request.method in ("PUT", "DELETE"):
+            if user["role"] in ("student", "dad"):
+                return await call_next(request)
+            from fastapi.responses import JSONResponse as _JR
+            return _JR({"ok": False, "error": "权限不足"}, status_code=403)
         if user["role"] != "dad":
             from fastapi.responses import JSONResponse as _JR
             return _JR({"ok": False, "error": "权限不足"}, status_code=403)
