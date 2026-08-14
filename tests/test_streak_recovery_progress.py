@@ -8,16 +8,22 @@
 """
 import sqlite3
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.achievement_definitions import (
     _calc_milestone,
+    _date_str,
     _get_consecutive_streak,
     _recovery_current_streak,
 )
+
+
+def test_mysql_datetime_is_normalized_to_practice_date():
+    """Cloud MySQL returns DATETIME for daily_practices.date, not a string."""
+    assert _date_str(datetime(2026, 8, 13, 0, 0)) == "2026-08-13"
 
 
 def _make_conn(practices: list[tuple[str, int]]):
@@ -97,17 +103,17 @@ def test_streak_locked_zero_progress():
 
 
 def test_recovery_unlocked():
-    # 烫伤日 2026-07-08, 7-08..7-14 连续 7 天
+    # 烫伤日 2026-07-08, 7-08..7-14 连续 7 天 (虽然现在语义是累计, 7 天连续自然也算)
     conn = _make_conn([(f"2026-07-{i:02d}", 10) for i in range(8, 15)])
     r = _calc(conn, "recovery_first_practice_7", date(2026, 7, 14))
     assert r.achieved is True
     assert r.achieved_at == "2026-07-14"
-    assert "你在 2026-07-14 烫伤后连着打卡 7 天" == r.condition
+    assert "你在 2026-07-14 烫伤后累计打卡 7 天" == r.condition
     print("PASS: recovery_7 已解锁")
 
 
 def test_recovery_locked_with_progress():
-    # 烫伤日 2026-07-08, 当前 9 天 (7-25..8-02), 但 recovery_21 没达成
+    # 烫伤日 2026-07-08, 当前累计 9 天 (7-25..8-02), recovery_21 没达成
     conn = _make_conn([(f"2026-07-{i:02d}", 10) for i in range(25, 32)] +
                       [(f"2026-08-{i:02d}", 10) for i in range(1, 3)])
     r = _calc(conn, "recovery_first_practice_21", date(2026, 8, 2))
@@ -116,20 +122,35 @@ def test_recovery_locked_with_progress():
     assert "当前 9/21" in r.condition, f"got: {r.condition}"
     assert "还差 12 天" in r.condition, f"got: {r.condition}"
     assert r.computed_value == 9
-    print("PASS: recovery_21 未解锁展示进度 (当前 9/21, 还差 12)")
+    print("PASS: recovery_21 未解锁展示累计进度 (当前 9/21, 还差 12)")
+
+
+def test_recovery_unlocked_with_gaps():
+    # 2026-08-13 拍板 (按 A): 累计不要求连续, 7 天有断档也达成.
+    # 烫伤后 4 天 + 断 1 天 + 3 天 = 7 天累计.
+    conn = _make_conn([
+        ("2026-07-08", 10), ("2026-07-09", 10), ("2026-07-10", 10), ("2026-07-11", 10),
+        ("2026-07-13", 10), ("2026-07-14", 10), ("2026-07-15", 10),
+    ])
+    r = _calc(conn, "recovery_first_practice_7", date(2026, 7, 15))
+    assert r.achieved is True, f"got achieved={r.achieved}, condition={r.condition}"
+    assert r.achieved_at == "2026-07-15"
+    assert "烫伤后累计打卡 7 天" in r.condition, f"got: {r.condition}"
+    print(f"PASS: recovery_7 累计 (含断档) 已解锁: {r.condition}")
 
 
 def test_recovery_excludes_practice_before_injury():
-    # 烫伤前有练习 (6-27..7-04 共 8 天) 不算 recovery streak
+    # 烫伤前有练习 (6-27..7-04 共 8 天) 不算 recovery 累计
+    from src.achievement_definitions import _recovery_practice_count
     conn = _make_conn(
         [(f"2026-06-{i:02d}", 10) for i in range(27, 31)] +
         [(f"2026-07-0{i}", 10) for i in range(1, 5)] +  # 6-27..7-04 烫伤前
         [(f"2026-07-{i:02d}", 10) for i in range(25, 32)] +
         [(f"2026-08-{i:02d}", 10) for i in range(1, 3)]   # 7-25..8-02 烫伤后 9 天
     )
-    cur = _recovery_current_streak(conn, "2026-07-08", date(2026, 8, 2))
-    assert cur == 9, f"recovery_current_streak 应排除烫伤前, got {cur}"
-    print(f"PASS: recovery_current_streak = {cur} (排除烫伤前)")
+    count = _recovery_practice_count(conn, "2026-07-08")
+    assert count == 9, f"recovery_practice_count 应排除烫伤前, got {count}"
+    print(f"PASS: recovery_practice_count = {count} (排除烫伤前)")
 
 
 def test_recovery_streak_zero_when_today_not_practiced():

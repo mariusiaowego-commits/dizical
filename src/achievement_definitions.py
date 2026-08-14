@@ -7,7 +7,7 @@ dizical 成就定义统一数据源
 """
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 import sqlite3  # 保留类型 hint 用, 实际连接走 src.db_adapter
 import re
@@ -39,11 +39,19 @@ def _to_date(v):
     """跨后端 date 字段归一化. SQLite 返 str 'YYYY-MM-DD', MySQL 返 datetime.date."""
     if v is None:
         return None
+    if isinstance(v, datetime):
+        return v.date()
     if isinstance(v, date):
         return v
     if isinstance(v, str):
         return date.fromisoformat(v)
     raise TypeError(f"_to_date: unsupported type {type(v)}")
+
+
+def _date_str(v) -> str | None:
+    """Normalize SQLite date strings and MySQL DATETIME values to YYYY-MM-DD."""
+    parsed = _to_date(v)
+    return parsed.isoformat() if parsed is not None else None
 
 
 @dataclass
@@ -84,7 +92,7 @@ def _get_achievement_stats(conn: sqlite3.Connection) -> dict[str, dict]:
 def _get_practice_dates(conn: sqlite3.Connection) -> list[str]:
     """所有练习日期，倒序"""
     cur = _exec(conn, "SELECT date FROM daily_practices ORDER BY date DESC")
-    return [r[0] for r in cur.fetchall()]
+    return [_to_date(r[0]).isoformat() for r in cur.fetchall() if r[0] is not None]
 
 
 def _get_total_mins(conn: sqlite3.Connection) -> int:
@@ -306,7 +314,7 @@ def _streak_first_achieved_at(conn: sqlite3.Connection, n: int) -> str | None:
         "SELECT DISTINCT date FROM daily_practices "
         "WHERE total_minutes > 0 ORDER BY date"
     )
-    dates = [r[0] for r in cur.fetchall()]
+    dates = [_date_str(r[0]) for r in cur.fetchall() if _date_str(r[0]) is not None]
     if len(dates) < n:
         return None
     if n == 1:
@@ -335,7 +343,7 @@ def _recovery_current_streak(conn: sqlite3.Connection, injury_date: str, today: 
         "WHERE total_minutes > 0 AND date >= ? AND date <= ? ORDER BY date DESC",
         (injury_date, today.isoformat()),
     )
-    dates = [r[0] for r in cur.fetchall()]
+    dates = [_date_str(r[0]) for r in cur.fetchall() if _date_str(r[0]) is not None]
     if not dates:
         return 0
     dset = set(dates)
@@ -348,33 +356,32 @@ def _recovery_current_streak(conn: sqlite3.Connection, injury_date: str, today: 
     return streak
 
 
-def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: int) -> str | None:
-    """烫伤/事故后首次达成"连续 ≥ n 天"打卡的日期.
+def _recovery_practice_count(conn: sqlite3.Connection, injury_date: str) -> int:
+    """烫伤后累计打卡天数 (DISTINCT date, total_minutes > 0, date >= injury_date)."""
+    cur = _exec(conn,
+        "SELECT DISTINCT date FROM daily_practices "
+        "WHERE total_minutes > 0 AND date >= ?",
+        (injury_date,),
+    )
+    dates = {_date_str(r[0]) for r in cur.fetchall() if _date_str(r[0]) is not None}
+    return len(dates)
 
-    2026-07-14 加: 跟 _streak_first_achieved_at 区别是只算 injury_date 之后的日期.
-    模板抄自 _streak_first_achieved_at, 加 WHERE date >= injury_date 过滤.
+
+def _recovery_first_achieved_at(conn: sqlite3.Connection, injury_date: str, n: int) -> str | None:
+    """烫伤/事故后累计打卡天数首次 >= n 的最早日期.
+
+    2026-08-13 拍板 (按 A): 语义改为"累计打卡", 不是"连续".
+    模板抄自 _total_first_achieved_at, 加 WHERE date >= injury_date 过滤.
     """
-    cur = _exec(conn, 
+    cur = _exec(conn,
         "SELECT DISTINCT date FROM daily_practices "
         "WHERE total_minutes > 0 AND date >= ? ORDER BY date",
         (injury_date,),
     )
-    dates = [r[0] for r in cur.fetchall()]
+    dates = [_date_str(r[0]) for r in cur.fetchall() if _date_str(r[0]) is not None]
     if len(dates) < n:
         return None
-    if n == 1:
-        return dates[0]
-    streak = 1
-    for i in range(1, len(dates)):
-        prev = _to_date(dates[i - 1])
-        curr = _to_date(dates[i])
-        if (curr - prev).days == 1:
-            streak += 1
-            if streak >= n:
-                return dates[i]
-        else:
-            streak = 1
-    return None
+    return dates[n - 1]
 
 
 def _total_first_achieved_at(conn: sqlite3.Connection, threshold_mins: int) -> str | None:
@@ -490,25 +497,24 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
             cond = f"连着打卡 {n} 天就能拿到（当前连续 {cur_streak_val} 天，还差 {gap} 天）"
         return CalcResult(achieved, n if achieved else streak, None, first_at, cond)
 
-    # ── recovery_first_practice_7 / 14 / 21 系列: 烫伤后连练 7/14/21 天 ─────
+    # ── recovery_first_practice_7 / 14 / 21 系列: 烫伤后累计打卡 7/14/21 天 ─────
     # 2026-07-14 拍板: 烫伤日 2026-07-08 (左手小臂烫伤, 脸大小一块)
-    # 解锁条件: 7/8 以后连续练习 ≥ n 天
-    # 跟 streak_* 区别: streak 是全历史, recovery 只算事故后的连续天数
-    # 2026-08-03 拍板: 未解锁时, 模板展示"自烫伤日 X 起算, 当前 Y/N 天".
-    # computed_value 传 recovery streak (从今天往前数, 含 injury_date 之后).
+    # 2026-08-13 拍板 (按 A): 语义改为"累计打卡", 不是"连续".
+    # 不要求连续 — 累计 21 天任意分布都达成.
+    # 跟 streak_* 区别: streak 是全历史连续, recovery 是烫伤后累计.
+    # 未解锁时, 模板展示"自烫伤日 X 起算累计, 当前 Y/N 天".
     if aid in ("recovery_first_practice_7", "recovery_first_practice_14", "recovery_first_practice_21"):
         n = int(aid.rsplit("_", 1)[-1])
         injury_date = "2026-07-08"  # 烫伤日 (2026-07-14 拍板, 写死, 后续事故再加新 aid)
         first_at = _recovery_first_achieved_at(conn, injury_date, n)
         achieved = first_at is not None
-        # 算 recovery 当前连续天数 (从今天往前数, 必须 ≥ injury_date)
-        cur_streak_val = _recovery_current_streak(conn, injury_date, today)
+        cur_count = _recovery_practice_count(conn, injury_date)
         if achieved:
-            cond = f"你在 {first_at} 烫伤后连着打卡 {n} 天"
+            cond = f"你在 {first_at} 烫伤后累计打卡 {n} 天"
         else:
-            gap = max(0, n - cur_streak_val)
-            cond = f"自{injury_date}起累计打卡 {n} 天（当前 {cur_streak_val}/{n}，还差 {gap} 天）"
-        return CalcResult(achieved, n if achieved else cur_streak_val, None, first_at, cond)
+            gap = max(0, n - cur_count)
+            cond = f"自{injury_date}起累计打卡 {n} 天（当前 {cur_count}/{n}，还差 {gap} 天）"
+        return CalcResult(achieved, n if achieved else cur_count, None, first_at, cond)
 
     # ── lucky_61_YYYY 系列: 六一节永久里程碑 ─────────────────────
     # 2026-07-01 拍板: 用户认为这是 milestone (永久徽章, 像考级一样).
