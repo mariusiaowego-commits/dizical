@@ -3,7 +3,7 @@
 <head>
 {% include "_favicon.html" %}
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>我的成就 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -286,8 +286,17 @@
       border-radius: 50%;
     }
 
+    @media (max-width: 639px) {
+      .board-grid,
+      .board-grid-top { grid-template-columns: repeat(2, 1fr); }
+      .board-cell { min-height: 84px; padding: 10px 6px; }
+    }
+    @media (min-width: 640px) and (max-width: 1099px) {
+      .board-grid,
+      .board-grid-top { grid-template-columns: repeat(3, 1fr); }
+    }
     /* iPad 适配：卡片放大，允许换行 */
-    @media (max-width: 1023px) {
+    @media (max-width: 1099px) {
       #card-daily-blindbox .b-card {
         width: 160px;
       }

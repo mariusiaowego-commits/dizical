@@ -41,7 +41,7 @@ dizi + cal(endar) = dizical
 - 🆕 **注册页** —— 自助注册 (Phase 1 内网环境, 3 套环境密码同步)
 - 🔑 **密码哈希** —— PBKDF2-SHA256 (salted), 最低 6 位
 - 🚪 **登出** —— 清除 session, 跳转回登录
-- 📱 **响应式** —— iPad 2266×1488 优先, Mac 浏览器次之, iPhone 不服务
+- 📱 **响应式** —— iPhone Safari（440 CSS）/ iPad mini（744 竖 / 1133 横）/ MacBook Pro 16"（1728）同一套 kid-app HTML；窄屏汉堡抽屉
 
 ### 课程管理
 - 📅 **自动排课** - 每周六自动生成课程，节假日冲突检测

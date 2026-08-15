@@ -27,7 +27,7 @@ The name is a pun: *dizi* (竹笛, the Chinese bamboo flute) + *cal* (calendar) 
 
 ## What it does
 
-### 👧 Kid side (iPad, landscape 1024×768 / 2266×1488)
+### 👧 Kid side (iPhone Safari 440 CSS / iPad mini 744×1133 / Mac 1728)
 - **`/prepare`** — GSAP scroll-driven daily prep checklist, teacher's weekly assignments with images
 - **`/practice`** — 3-floor subject picker, dual semi-circle duration dials, session timer with finish-protection (a 7-year-old can't swipe away), fuzzy item matching ("单吐" matches "单吐练习"), Apple Reminders two-way sync (type "单吐10分钟" in Reminders → logged practice)
 - **`/achievements`** — 7-cell board: streak, weekly delta, monthly delta, cumulative minutes, plus a 7-day blind-box theme row (Rapunzel, etc.)
