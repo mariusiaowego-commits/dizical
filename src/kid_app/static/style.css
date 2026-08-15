@@ -31,6 +31,22 @@ body {
     padding: 8px;
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
+  /* PR-A (260815): 顶部 4px 视觉缓冲 (跟 mobile-topbar 视觉断开) */
+  body.has-sidebar { padding-top: 4px; }
+}
+
+/* PR-D (260815): emoji ban — inline koboyo SVG icon alignment + currentColor inheritance */
+.icon-inline {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin: 0 2px;
+  width: 16px;
+  height: 16px;
+  color: inherit;
+}
+.icon-inline svg {
+  display: block;
+  color: inherit;
 }
 
 /* 顶部导航 */
