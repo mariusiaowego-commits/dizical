@@ -1003,6 +1003,12 @@
       </div><!-- /tabTimer -->
 
       <div class="tab-panel" id="tabExtra">
+      <!-- PR-C (260815): 补录 Dashboard (主补录 UI 一致性, 跟主计时对齐 4 列) -->
+      <div class="dash-card-inline" id="dashCardInlineExtra">
+        <div class="dci-item"><span class="dci-name" id="dciNameExtra">—</span><span class="dci-id" id="dciIdExtra"></span></div>
+        <div class="dci-detail"><span class="dci-tempo" id="dciTempoExtra">—</span><span class="dci-content" id="dciContentExtra"></span></div>
+        <div class="dci-assign"><span class="dci-assign-label">已补录</span><span class="dci-assign-text" id="dciExtraCount">0 次</span></div>
+      </div>
       <!-- 补录 -->
       <div class="timer-block" id="extraSection">
         <div class="picker-card">
@@ -1633,6 +1639,8 @@
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(btn);
       updateSelectedSummary(name, id, reqText, btn);
+      // PR-C (260815): 选科目后同步补录 dashboard
+      _pulseUpdateExtra();
       collapseSelection();
       // V4: item-section 收拢
       document.querySelector('.item-section').classList.add('compact');
@@ -2116,7 +2124,10 @@
       const content = extraContent;
       
       await addExtraMins(pendingExtraMins, item, { tempo_note, tempo_bpm, content });
-      
+      // PR-C (260815): 补录计数 +1 并刷新 dashboard
+      _extraLogCount++;
+      updateDashboardExtra();
+
       // 重置输入
       document.getElementById('extraContentInput').value = '';
     }
@@ -2313,6 +2324,26 @@
       const assignEl = document.getElementById('dciAssignText');
       if (assignEl) assignEl.textContent = (_lastReqText && _lastReqText.trim()) ? _lastReqText.trim() : '—';
       card.classList.add('visible');
+    }
+
+    // PR-C (260815): 补录 Dashboard 跟主计时 dashboard 数据共享
+    let _extraLogCount = 0;
+    function updateDashboardExtra() {
+      const card = document.getElementById('dashCardInlineExtra');
+      if (!card) return;
+      const name = selectedItem || '—';
+      const bpm = document.getElementById('extraBpmInput')?.value || '';
+      const note = document.querySelector('#extraSessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
+      const content = (document.getElementById('extraContentInput')?.value || '').trim();
+      document.getElementById('dciNameExtra').textContent = name;
+      document.getElementById('dciIdExtra').textContent = selectedItemId ? '#' + selectedItemId : '';
+      document.getElementById('dciTempoExtra').textContent = note + '=' + bpm;
+      document.getElementById('dciContentExtra').textContent = content || '未填写补录内容';
+      document.getElementById('dciExtraCount').textContent = _extraLogCount + ' 次';
+      card.classList.add('visible');
+    }
+    function _pulseUpdateExtra() {
+      if (typeof updateDashboardExtra === 'function') updateDashboardExtra();
     }
 
     async function loadTodayRecords() {
@@ -2691,6 +2722,8 @@
     // Init
     initPickers();
     loadTodayRecords();
+    // PR-C (260815): 初始化补录 dashboard (空态显示 "—")
+    updateDashboardExtra();
     // 页脚励志文案轮换
     (function(){
       const quotes = [
