@@ -137,19 +137,17 @@
       display: flex;
       align-items: center;
       gap: 0;
-      background: linear-gradient(180deg, #FFFDF8 0%, #FFF8F0 100%);
-      border-radius: 20px;
-      box-shadow:
-        0 1px 0 rgba(255,255,255,0.95) inset,
-        0 -1px 0 rgba(0,0,0,0.04) inset,
-        0 4px 16px rgba(0,0,0,0.08);
-      padding: 12px;
+      background: transparent;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 4px 0;
     }
     .picker-col {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
+      margin: 0 auto;
     }
     .picker-label {
       font-size: 13px; font-weight: 600;
@@ -765,11 +763,17 @@
 
     /* phone: iPhone 17 Pro Max 440. stack knob above tempo, shrink dial */
     @media (max-width: 639px) {
-      .vertical-stack { margin: 0 8px 14px; }
+      .vertical-stack { margin: 0 12px 14px; } /* PR-A (260815): 卡片左右 12px 等距 */
       .timer-block { flex-direction: column; align-items: center; }
       .timer-block .session-panel { width: 100%; }
       .dial-knob { --knob-size: 148px; }
-      .sp-tempo-row-1 { flex-wrap: wrap; }
+      .sp-tempo-row-1 { flex-wrap: wrap; justify-content: center; gap: 8px; }
+      .sp-tempo-row-2 { justify-content: center; }
+      .sp-content-tags { justify-content: center; }
+      .sp-item-select { text-align: center; padding: 6px 12px; }
+      .picker-card { flex-wrap: wrap; justify-content: center; gap: 12px; }
+      .activity-wheel { margin: 0 auto; }
+      .picker-col { margin: 0 auto; }
       .sp-tempo-note-btn { min-width: 44px; min-height: 44px; padding: 6px 10px; }
       .bpm-step { width: 44px; height: 44px; }
       .dash-card-inline.visible { grid-template-columns: 1fr; gap: 8px; }
@@ -777,7 +781,6 @@
       .floor { overflow-x: clip; }
       .top-bar { display: none; }
       .item-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-      .picker-card { flex-wrap: wrap; justify-content: center; }
     }
     /* tablet: iPad mini portrait 744 / iPhone landscape 956 */
     @media (min-width: 640px) and (max-width: 1099px) {
