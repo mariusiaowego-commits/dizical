@@ -3,7 +3,7 @@
 <head>
 {% include "_favicon.html" %}
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>配置管理台 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -156,8 +156,14 @@
     /* ── 配置卡片网格 ── */
     .config-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
       gap: 20px;
+    }
+    @media (max-width: 639px) {
+      .config-container { padding: 16px 12px; }
+      .config-grid { grid-template-columns: 1fr; }
+      .config-card { padding: 20px; }
+      .page-title { font-size: 22px; }
     }
 
     .config-card {

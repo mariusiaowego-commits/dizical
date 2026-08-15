@@ -20,8 +20,17 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: 18px;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 16px;
+}
+
+/* phone 440 / tablet 744: less chrome so cards keep width */
+@media (max-width: 1099px) {
+  html, body { overflow-x: clip; }
+  body {
+    padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* 顶部导航 */

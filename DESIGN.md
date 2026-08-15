@@ -70,12 +70,13 @@ PingFang SC (苹方, iOS/macOS 系统自带). Web fallback: `system-ui, -apple-s
 ## 渠道 (Channels)
 
 dizicute **服务**:
-- iPad Safari (landscape 2266×1488 priority)
-- Mac Safari / Chrome
+- iPhone Safari（同一份 kid-app web，phone 断点 ≤639 CSS px；iPhone 17 Pro Max = 440×956）
+- iPad mini Safari（竖屏 744×1133 / 横屏 1133×744。2266×1488 是物理像素，不是 CSS）
+- Mac Safari / Chrome（MacBook Pro 16" 默认 1728×1117）
 - dizical mac app (SwiftUI WKWebView 嵌 dizical)
 
 dizicute **不服务**:
-- iPhone (未来新渠道, 独立设计)
+- 微信小程序（独立渠道 dizical-minip，不是这套 HTML）
 - 桌面端 PWA (桌面用 mac app)
 - 第三方嵌入
 

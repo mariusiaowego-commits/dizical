@@ -3,29 +3,13 @@
 <head>
 {% include "_favicon.html" %}
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>练习打卡 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
-    body { padding-bottom: calc(87px + 20px); }
-
-    /* 固定底部导航 - 与 prepare 风格一致 */
-    .nav {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      display: flex; gap: 4px;
-      padding: 8px 8px calc(env(safe-area-inset-bottom));
-      background: var(--card, #fff); box-shadow: 0 -2px 12px rgba(0,0,0,0.1); z-index: 100;
-    }
-    .nav a {
-      flex: 1; min-width: 0; padding: 14px 8px !important; background: transparent; border-radius: 16px;
-      text-align: center; text-decoration: none; color: #7F8C8D; font-size: 16px !important;
-      box-shadow: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
-    }
-    .nav a:active { transform: scale(0.95); }
-    .nav a.active { background: #FF6B6B; color: white; }
-    .nav-icon { font-size: 20px; }
+    body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     /* 计时器保护弹窗 */
     #timerProtectModal {
@@ -779,10 +763,32 @@
       margin-bottom: 0;
     }
 
-    /* 响应式：iPad竖屏单栏 */
-    @media (max-width: 640px) {
-      .timer-layout { grid-template-columns: 1fr; }
-      .panel-req .req-empty { padding: 20px 0; }
+    /* phone: iPhone 17 Pro Max 440. stack knob above tempo, shrink dial */
+    @media (max-width: 639px) {
+      .vertical-stack { margin: 0 8px 14px; }
+      .timer-block { flex-direction: column; align-items: center; }
+      .timer-block .session-panel { width: 100%; }
+      .dial-knob { --knob-size: 148px; }
+      .sp-tempo-row-1 { flex-wrap: wrap; }
+      .sp-tempo-note-btn { min-width: 44px; min-height: 44px; padding: 6px 10px; }
+      .bpm-step { width: 44px; height: 44px; }
+      .dash-card-inline.visible { grid-template-columns: 1fr; gap: 8px; }
+      .dci-assign { border-left: none; padding-left: 0; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 8px; }
+      .floor { overflow-x: clip; }
+      .top-bar { display: none; }
+      .item-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+      .picker-card { flex-wrap: wrap; justify-content: center; }
+    }
+    /* tablet: iPad mini portrait 744 / iPhone landscape 956 */
+    @media (min-width: 640px) and (max-width: 1099px) {
+      .timer-block { flex-direction: column; align-items: center; }
+      .timer-block .session-panel { width: 100%; }
+      .dial-knob { --knob-size: 168px; }
+      .sp-tempo-row-1 { flex-wrap: wrap; }
+      .dash-card-inline.visible { grid-template-columns: 1fr 1fr; }
+      .dci-assign { grid-column: 1 / -1; border-left: none; padding-left: 0; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 8px; }
+      .floor { overflow-x: clip; }
+      .top-bar { display: none; }
     }
 
     /* ── V4 Tab header (卡片内部标签) ── */
@@ -835,6 +841,12 @@
 </head>
 <body class="has-sidebar">
   {% include "_sidebar.html" %}
+  <script>
+    (function () {
+      var el = document.getElementById('mobileTopbarAside');
+      if (el) el.textContent = '{{ today_mins }} 分';
+    })();
+  </script>
 
   <!-- 计时器保护弹窗 -->
   <div id="timerProtectModal">

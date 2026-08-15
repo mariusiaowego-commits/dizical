@@ -272,11 +272,90 @@
   margin-right: 24px;
 }
 
-/* ── iPad 触屏优化 ─────────────────────────────────────── */
-@media (max-width: 1023px) {
-  .sidebar { transform: translateX(-100%); transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), width 0ms; }
-  .sidebar.mobile-open { transform: translateX(0); }
-  .has-sidebar { padding-left: 0; }
+/* Breakpoints (CSS px, not hardware):
+   phone   max-width: 639px    iPhone 17 Pro Max portrait 440
+   tablet  640–1099px          iPad mini portrait 744; iPhone landscape 956
+   desktop min-width: 1100px   iPad mini landscape 1133; MBP 16 1728
+   Narrow shell (phone+tablet): overlay drawer. Desktop: 64/240 rail. */
+
+.mobile-topbar { display: none; }
+
+@media (max-width: 1099px) {
+  .mobile-topbar {
+    display: flex;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 101;
+    box-sizing: border-box;
+    height: calc(48px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 12px 0;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface, #FFFFFF);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .mobile-topbar-menu {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent;
+    border-radius: 9999px;
+    color: var(--secondary, #2C3E50);
+    cursor: pointer;
+    padding: 0;
+  }
+  .mobile-topbar-menu:focus-visible { outline: 2px solid var(--primary, #FF6B6B); outline-offset: 2px; }
+  .mobile-topbar-menu:active { background: rgba(255, 107, 107, 0.08); }
+  .mobile-topbar-menu svg { width: 22px; height: 22px; display: block; }
+  .mobile-topbar-title {
+    flex: 1; min-width: 0;
+    margin: 0;
+    font-size: 16px; font-weight: 600;
+    color: var(--secondary, #2C3E50);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mobile-topbar-aside {
+    flex-shrink: 0;
+    font-size: 13px; font-weight: 600;
+    color: var(--primary, #FF6B6B);
+    max-width: 40%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sidebar {
+    transform: translateX(-100%);
+    width: 240px;
+    height: 100dvh;
+    z-index: 110;
+    padding-top: env(safe-area-inset-top, 0px);
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), width 0ms;
+  }
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 109;
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    width: 240px;
+  }
+  .sidebar.mobile-open .sidebar-item .label,
+  .sidebar.mobile-open .sidebar-userinfo,
+  .sidebar.mobile-open .sidebar-account-chevron,
+  .sidebar.mobile-open .sidebar-footer,
+  .sidebar.mobile-open .sidebar-logout-btn .label { opacity: 1; }
+  .sidebar.mobile-open .sidebar-item .label { display: block; }
+  .sidebar.mobile-open:not(.expanded) .sidebar-item {
+    width: auto; height: 36px; padding: 0 12px; position: static;
+  }
+  .sidebar.mobile-open:not(.expanded) .sidebar-item .icon {
+    position: static; left: auto; top: auto; width: 24px; height: 24px;
+  }
+  .sidebar-toggle { display: none; }
+  .has-sidebar {
+    padding-left: 0;
+    padding-top: calc(48px + env(safe-area-inset-top, 0px));
+  }
   .has-sidebar.expanded { padding-left: 0; }
   .has-sidebar > .page-content,
   .has-sidebar > .content,
@@ -287,10 +366,12 @@
   .has-sidebar > .lessons-layout,
   .has-sidebar > .hero,
   .has-sidebar > .card,
+  .has-sidebar > .vertical-stack,
   .has-sidebar > .dash-card,
   .has-sidebar > .tab-bar,
   .has-sidebar > .pin-overlay,
   .has-sidebar > .modal-overlay { margin-left: 0; margin-right: 0; max-width: 100%; }
+  body.mobile-nav-open { overflow: hidden; }
 }
 
 /* ── Sidebar footer (Sprint 26081003: 登出按钮) ─── */
@@ -318,6 +399,28 @@
 .sidebar-logout-btn .label { opacity: 0; transition: opacity 200ms ease 80ms; white-space: nowrap; }
 .sidebar.expanded .sidebar-logout-btn .label { opacity: 1; }
 </style>
+
+{% set _nav_titles = {
+  'prepare': '准备',
+  'practice': '练习',
+  'dashboard': '报告',
+  'achievements': '成就',
+  'portal': '设置',
+  'config_users': '设置'
+} %}
+<header class="mobile-topbar" id="mobileTopbar">
+  <button type="button" class="mobile-topbar-menu" id="mobileMenuBtn"
+          aria-label="打开导航" aria-controls="dizicalSidebar" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" aria-hidden="true">
+      <line x1="4" y1="7" x2="20" y2="7"></line>
+      <line x1="4" y1="12" x2="20" y2="12"></line>
+      <line x1="4" y1="17" x2="20" y2="17"></line>
+    </svg>
+  </button>
+  <h1 class="mobile-topbar-title">{{ _nav_titles.get(active_nav|default(''), 'dizical') }}</h1>
+  <span class="mobile-topbar-aside" id="mobileTopbarAside"></span>
+</header>
 
 <!-- Sidebar 容器 -->
 <aside class="sidebar" id="dizicalSidebar" aria-label="主导航">
@@ -461,8 +564,8 @@
   </div>
 </aside>
 
-<!-- Backdrop for iPad -->
-<div class="sidebar-backdrop" id="sidebarBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:99;"></div>
+<!-- Backdrop for phone / iPad portrait -->
+<div class="sidebar-backdrop" id="sidebarBackdrop" style="display:none"></div>
 
 <!-- Toggle script (localStorage 记忆 + collapse icon swap + click-outside-to-collapse) -->
 <script>
@@ -471,26 +574,61 @@
   const backdrop = document.getElementById('sidebarBackdrop');
   const toggle = document.getElementById('sidebarToggle');
   const icon = document.getElementById('sidebarToggleIcon');
+  const menuBtn = document.getElementById('mobileMenuBtn');
   if (!sidebar || !toggle) return;
 
   const ICON_COLLAPSED = '/static/icons/sidebar-toggle-collapsed-256.png';
   const ICON_EXPANDED = '/static/icons/sidebar-toggle-expanded-256.png';
+  const mqNarrow = window.matchMedia('(max-width: 1099px)');
 
-  const stored = localStorage.getItem('dizical-sidebar-state');
-  const isMobile = window.matchMedia('(max-width: 1023px)').matches;
-  const isMac = window.matchMedia('(min-width: 1024px)').matches && !('ontouchstart' in window);
-  const initiallyExpanded = stored ? stored === 'expanded' : isMac;
+  function isNarrow() { return mqNarrow.matches; }
 
-  if (initiallyExpanded) {
-    sidebar.classList.add('expanded');
-    document.querySelector('.has-sidebar')?.classList.add('expanded');
-    if (icon) icon.src = ICON_EXPANDED;
+  function setMenuExpanded(open) {
+    if (menuBtn) menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (menuBtn) menuBtn.setAttribute('aria-label', open ? '关闭导航' : '打开导航');
   }
 
+  function closeMobileNav() {
+    sidebar.classList.remove('mobile-open', 'expanded');
+    if (backdrop) backdrop.style.display = 'none';
+    document.body.classList.remove('mobile-nav-open');
+    setMenuExpanded(false);
+  }
+
+  function openMobileNav() {
+    sidebar.classList.add('mobile-open', 'expanded');
+    if (backdrop) backdrop.style.display = 'block';
+    document.body.classList.add('mobile-nav-open');
+    setMenuExpanded(true);
+  }
+
+  function applyDesktopState() {
+    const stored = localStorage.getItem('dizical-sidebar-state');
+    const isPointerDesktop = window.matchMedia('(min-width: 1100px)').matches && !('ontouchstart' in window);
+    const expanded = stored ? stored === 'expanded' : isPointerDesktop;
+    sidebar.classList.toggle('expanded', expanded);
+    document.querySelector('.has-sidebar')?.classList.toggle('expanded', expanded);
+    if (icon) icon.src = expanded ? ICON_EXPANDED : ICON_COLLAPSED;
+  }
+
+  function applyMode() {
+    if (isNarrow()) {
+      closeMobileNav();
+      document.querySelector('.has-sidebar')?.classList.remove('expanded');
+    } else {
+      closeMobileNav();
+      applyDesktopState();
+    }
+  }
+
+  applyMode();
+  if (mqNarrow.addEventListener) mqNarrow.addEventListener('change', applyMode);
+  else if (mqNarrow.addListener) mqNarrow.addListener(applyMode);
+
   function toggleSidebar() {
-    if (isMobile) {
-      sidebar.classList.toggle('mobile-open');
-      backdrop.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+    if (isNarrow()) {
+      if (sidebar.classList.contains('mobile-open')) closeMobileNav();
+      else openMobileNav();
     } else {
       sidebar.classList.toggle('expanded');
       const expanded = sidebar.classList.contains('expanded');
@@ -501,7 +639,11 @@
   }
 
   toggle.addEventListener('click', toggleSidebar);
-  backdrop.addEventListener('click', toggleSidebar);
+  if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
+  if (backdrop) backdrop.addEventListener('click', toggleSidebar);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) closeMobileNav();
+  });
 
   // Sprint 26081005: 账号 dropdown 行为 (点击 avatar 展开 / ESC 关 / 点击外部关 / 各菜单项跳转)
   const accountBtn = document.getElementById('sidebarAccountBtn');
