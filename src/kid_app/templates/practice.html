@@ -137,19 +137,17 @@
       display: flex;
       align-items: center;
       gap: 0;
-      background: linear-gradient(180deg, #FFFDF8 0%, #FFF8F0 100%);
-      border-radius: 20px;
-      box-shadow:
-        0 1px 0 rgba(255,255,255,0.95) inset,
-        0 -1px 0 rgba(0,0,0,0.04) inset,
-        0 4px 16px rgba(0,0,0,0.08);
-      padding: 12px;
+      background: transparent;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 4px 0;
     }
     .picker-col {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
+      margin: 0 auto;
     }
     .picker-label {
       font-size: 13px; font-weight: 600;
@@ -765,11 +763,17 @@
 
     /* phone: iPhone 17 Pro Max 440. stack knob above tempo, shrink dial */
     @media (max-width: 639px) {
-      .vertical-stack { margin: 0 8px 14px; }
+      .vertical-stack { margin: 0 12px 14px; } /* PR-A (260815): 卡片左右 12px 等距 */
       .timer-block { flex-direction: column; align-items: center; }
       .timer-block .session-panel { width: 100%; }
       .dial-knob { --knob-size: 148px; }
-      .sp-tempo-row-1 { flex-wrap: wrap; }
+      .sp-tempo-row-1 { flex-wrap: wrap; justify-content: center; gap: 8px; }
+      .sp-tempo-row-2 { justify-content: center; }
+      .sp-content-tags { justify-content: center; }
+      .sp-item-select { text-align: center; padding: 6px 12px; }
+      .picker-card { flex-wrap: wrap; justify-content: center; gap: 12px; }
+      .activity-wheel { margin: 0 auto; }
+      .picker-col { margin: 0 auto; }
       .sp-tempo-note-btn { min-width: 44px; min-height: 44px; padding: 6px 10px; }
       .bpm-step { width: 44px; height: 44px; }
       .dash-card-inline.visible { grid-template-columns: 1fr; gap: 8px; }
@@ -777,7 +781,6 @@
       .floor { overflow-x: clip; }
       .top-bar { display: none; }
       .item-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-      .picker-card { flex-wrap: wrap; justify-content: center; }
     }
     /* tablet: iPad mini portrait 744 / iPhone landscape 956 */
     @media (min-width: 640px) and (max-width: 1099px) {
@@ -851,7 +854,7 @@
   <!-- 计时器保护弹窗 -->
   <div id="timerProtectModal">
     <div class="modal-box">
-      <h3>⏱️ 计时器还在跑</h3>
+      <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span> 计时器还在跑</h3>
       <p>离开这个页面的话，计时会取消哦！</p>
       <div class="modal-actions">
         <button class="btn-stay" onclick="closeTimerProtect()">继续练习</button>
@@ -863,7 +866,7 @@
   <!-- 提前结束确认弹窗 -->
   <div id="finishEarlyModal">
     <div class="finish-modal-box">
-      <div class="finish-icon">⏱️</div>
+      <div class="finish-icon"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span></div>
       <h3>提前结束练习</h3>
       <div class="finish-mins" id="finishMinsDisplay">0</div>
       <div class="finish-mins-label">分钟</div>
@@ -878,13 +881,13 @@
   <!-- 正常结束确认弹窗（修复：纯计时到点不再自动提交，弹此窗让用户选 打卡/放弃） -->
   <div id="finishNormalModal">
     <div class="finish-modal-box">
-      <div class="finish-icon">🎉</div>
+      <div class="finish-icon"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 156 151" fill="currentColor" aria-hidden="true"><path d="M121.7 7.7c-.3.5-1.3 3.6-2.2 6.9a32 32 0 0 1-4.7 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.3 5 9.2 8-.1q4.2-12.7 14.6-15.7c2.4-.7 5.1-1.8 5.9-2.6 1.3-1.1 1.3-1.5 0-2.6-.8-.8-3.5-1.9-6-2.7- 6.6-1.8-12.4-8-14.5-15.5l-2-7.3c-.5-1.3-3.1-1.7-3.8-.5m11 24.8c1.8 1.1 3.2 2.2 3.2 2.5s-1.9 1.9-4.2 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 2.5a26 26 0 0 0 6.2-6.5l3-4.5 3 4.5c1.6 2.5 4.4 5.4 6.2 6.5m-98.1-9c-.3.9-.6 2.5-.6 3.5 0 4.3-4.3 13.1-8.5 17.4a20 20 0 0 1-10.6 6.3c-5.1 1.5-6.5 2.4-6.7 4.1q-.6 2.2 2.5 2.8c10.8 2.4 16 6.1 20.2 14.5 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 16.9c9.2-2.9 9.3-5.1.5-7.8-10.5-3.3-16.4-9.8-19.3-21.5-1.3-5.1-2.1-6.7-3.6-6.9q-2-.2-2.7 1.3m12.6 26.6a25 25 0 0 0 6.1 3.9c.6 0-.9 1.3-3.4 2.9-5.3 3.4-8 6.3-10.7 11.4l-2.1 3.9-1.6-3.4a37 37 0 0 0- 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 16.1c-.6.7-1.5 3.9-2.1 7a35.5 35.5 0 0 1-28.7 28.7c-3.4.5-4 1-4 3.1s.6 2.5 4.5 3.2a35 35 0 0 1 28.6 28.6c1.3 8.4 5.6 8.2 7.4-.5a35 35 0 0 1 25.8-27.8q13-4.2 1.2-7.5c-15.4-4.6-23.8-13.5-27.1-28.5q-2.3- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 4.9a46 46 0 0 0-17.2-16.8l-3.8-1.6 5.1-2.6c6-3 13-10.4 16.2-17l2.2-4.7 2.9 5.4a56 56 0 0 0 6.7 9.2"/ ></svg></span></div>
       <h3>练习完成!</h3>
       <div class="finish-mins" id="finishNormalMinsDisplay">0</div>
       <div class="finish-mins-label">分钟</div>
       <div class="finish-modal-actions">
-        <button class="btn-confirm" onclick="confirmFinishNormal()">✅ 打卡记录</button>
-        <button class="btn-cancel" onclick="cancelFinishNormal()">❌ 放弃</button>
+        <button class="btn-confirm" onclick="confirmFinishNormal()"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 119 91" fill="currentColor" aria-hidden="true"><path d="M104 11.7 81.1 36 51.7 67.3A199 199 0 0 1 38.1 81c-.4 0-7.2-7-15.1-15.5C9.4 50.9 5.5 47.9 5.5 52.2A293 293 0 0 0 38.4 87c.7 0 12.3-11.8 25.8-26.3l37.2- 0-7.2-7-15.1-15.5C9.4 50.9 5.5 47.9 5.5 52.2A293 293 0 0 0 38.4 87c.7 0 12.3-11.8 25.8-26.3l37.2- 39.6a94 94 0 0 0 12.3-14.5c-.9-2.7-3.8-1.2-9.7 5.1"/></svg></span> 打卡记录</button>
+        <button class="btn-cancel" onclick="cancelFinishNormal()"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 118 119" fill="currentColor" aria-hidden="true"><path d="M5.3 7.6c-.4 1.1 6.5 8.7 24.7 26.9l25.2 25.3-24.3 24.7C7.2 108.6 3.7 112.9 8 113.8c.9.1 12.1-10.4 26.5-24.8l25-25.1 24.8 25A623 623 0 0 0 110 114c1.8 0 3.1-2.9 2.1-4.7-.5-1-11.8-12.6-25-25.8L63 59.5l25.2-25.2C112.9 9.6 115.7 6 110.3 6c-1 0-12.8 11-26.5 24.7L59 55.5 34.2 30.7A274 274 0 0 0 7.7 6Q6 6.1 5.3 7.6"/></svg></span> 放弃</button>
       </div>
     </div>
   </div>
@@ -897,7 +900,7 @@
 
   <!-- 练习科目选择 -->
   <div class="item-section card">
-    <h2>🎵 选择练习项目</h2>
+    <h2><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 68 119" fill="currentColor" aria-hidden="true"><path d="M36.7 5.7c-.2.4-.8 19-1.2 41.3s-.8 40.6-1 40.8q-.5.3- 2.3-.7c-1.2-.6-4.5-1.1-7.4-1.1C14 86 4.6 93.4 3.3 102.9c-.5 3.6-.2 4.4 3 7.6s4 3.5 9.1 3.5c6.8 0 10.9-1.6 16.1-6.1 6.3-5.5 6.6-7.2 7.6-38.4l.9-33.8V30l4 2a30 30 0 0 1 13.6 13.6c2.4 4.8 2.6 6.3 2.2 12.8-.4 5.4-1.3 9-3.2 13-1.5 3.1-2.4 6.1-2.1 6.6 1.1 1.8 3-.5 6.6-8.2 3-6.5 3.3-8.2 3.3-16.3.1-11.5- 2.3-16.9-12.3-27.9-7.6-8.3-10-12.1-11.1-17.1-.5-2.8-3.2-4.6-4.3-2.8"/></svg></span> 选择练习项目</h2>
 
     <!-- 选中后收拢展示 -->
     <div class="selected-summary" id="selectedSummary">
@@ -922,7 +925,7 @@
     <!-- 选择区（可折叠） -->
     <div class="selection-area expanded" id="selectionArea">
       <div class="item-filter-wrap">
-        <input type="text" id="itemFilter" placeholder="🔍 搜索..." oninput="filterItems(this.value)">
+        <input type="text" id="itemFilter" placeholder="<span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 135 131" fill="currentColor" aria-hidden="true"><path d="M39.8 8.9A47.5 47.5 0 0 0 7 54c0 13.1 4.3 23.5 13.4 32.5A46 46 0 0 0 54.1 100c11.4 0 21.4-3.6 31.3-11.4.8-.5 7.4 5.5 18.6 16.9 9.6 9.7 18.3 18 19.3 18.6 2.4 1.4 5.9-.7 5.5-3.2-.2-1.1-8.6-10.2-18.8-20.4L91.6 82l1.7-3a58 58 0 0 0 6.4-21.6 46.5 46.5 0 0 0-34.1-49 55 55 0 0 0-25.8.5m29.7 8.9a39 39 0 0 1 22.1 44.1c-6.4 30.8-42.2 41.4-65.7 19.4-18.2-17-13.6-48.8 9-62.1a37 37 0 0 1 34.6-1.4"/></svg></span> 搜索..." oninput="filterItems(this.value)">
       </div>
       {{items_html}}
       <div id="archivedToggleWrap"></div>
@@ -954,7 +957,7 @@
         <div class="picker-card">
           <div class="activity-wheel" id="timerWheel"></div>
           <div class="picker-col">
-            <div class="picker-label">⏱️ 主计时</div>
+            <div class="picker-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span> 主计时</div>
             <div class="dial-knob" id="timerKnobEl">
               <div class="dial-disc"></div>
               <svg class="dial-ticks" id="timerTicks" viewBox="-110 -110 220 220"></svg>
@@ -1000,12 +1003,18 @@
       </div><!-- /tabTimer -->
 
       <div class="tab-panel" id="tabExtra">
+      <!-- PR-C (260815): 补录 Dashboard (主补录 UI 一致性, 跟主计时对齐 4 列) -->
+      <div class="dash-card-inline" id="dashCardInlineExtra">
+        <div class="dci-item"><span class="dci-name" id="dciNameExtra">—</span><span class="dci-id" id="dciIdExtra"></span></div>
+        <div class="dci-detail"><span class="dci-tempo" id="dciTempoExtra">—</span><span class="dci-content" id="dciContentExtra"></span></div>
+        <div class="dci-assign"><span class="dci-assign-label">已补录</span><span class="dci-assign-text" id="dciExtraCount">0 次</span></div>
+      </div>
       <!-- 补录 -->
       <div class="timer-block" id="extraSection">
         <div class="picker-card">
           <div class="activity-wheel" id="extraWheel"></div>
           <div class="picker-col">
-            <div class="picker-label">⚡ 补录</div>
+            <div class="picker-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 78 130" fill="currentColor" aria-hidden="true"><path d="M33.4 6.8c-1.6 1-4.8 7.6-17.9 36.8A211 211 0 0 1 4.4 70.7c.4 1 3.3 1.3 11.6 1.3 6 0 11 .2 11 .5S23.6 83.9 19.4 97a221 221 0 0 0-6.9 25q.6 1 2 1c1.8 0 59- 70.6 59-72.8 0-1.5-1.5-1.7-12.2-2-6.8-.1-12.3-.5-12.3-.7 0-.3 4.3-9.1 9.5-19.6 7.7-15.2 9.4-19.4 8.4- 20.5S62.4 6 50.1 6c-8.6 0-16.1.4-16.7.8M61 11.5c0 .3-4.3 9.1-9.6 19.6a127 127 0 0 0-9 20.5c.4 1 3.5 1.4 12.1 1.6l11.6.3-12.2 15-22.6 27.7a107 107 0 0 1-10.3 12c0-.4 2.7-9 6-19.2s6-19 6-19.6c0-1.9-2.6- 2.4-13-2.4h-9.8L18 49.7l12.8-28L35.9 11h12.5c6.9 0 12.6.2 12.6.5"/></svg></span> 补录</div>
             <div class="dial-knob" id="extraKnobEl">
               <div class="dial-disc"></div>
               <svg class="dial-ticks" id="extraTicks" viewBox="-110 -110 220 220"></svg>
@@ -1050,7 +1059,7 @@
 
   <!-- 今日练习记录 -->
   <div class="card today-records">
-    <h3>📋 今日练习记录</h3>
+    <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 129 182" fill="currentColor" aria-hidden="true"><path d="M55 11.2c-4.9 2.5-9 7.7-9 11.4 0 2.2-.4 2.4-4.8 2.4- 4.9 0-9.2 2.1-9.2 4.5 0 1-2.3 1.4-9.1 1.7-8.7.3-9.2.4-11.9 3.5-2.2 2.5-3 4.5-3.5 9.5-.3 3.5-.5 31.8-.3 63 .3 55.5.3 56.7 2.4 59.5 4.4 6.1 6 6.3 37.9 6.2 16 0 37.7-.4 48.3-.7l19.4-.7 3.3-3.6 3.3- 3.6.7-39.9c1-50.7.2-81.4-2.3-86.4s-7-7-16.4-7c-6.1 0-7.8-.3-7.8-1.4 0-2.5-4.2-4.6-9.2-4.6-4.4 0- 4.8-.2-4.8-2.4 0-2.8-3.5-8.2-7.3-11-4.3-3.1-14-3.4-19.7-.4m17.2 4.4c4 2.1 5 4.5 5.7 13.6.1.4 3.1.8 6.9 1l6.7.3.3 6c.5 10.4 1.5 10-27.6 10-19.9 0-25.2-.3-26.6-1.4-1.3-1.1-1.6-2.8-1.4-8l.3-6.6 6.8-.3 6.7-.3v-3C50 16 61.5 10.2 72.2 15.6M31.3 41c.5 4.3 1.2 6 3.2 7.7C37.1 51 37.6 51 64.1 51h27l2.4- 2.5c2-1.9 2.5-3.4 2.5-7.5v-5h7.8c9.1 0 11.6 1.3 13.2 6.8 1.4 5.3 1.4 114.8-.1 119.1a9 9 0 0 1-3.3 4.3c-2.5 1.4-62.4 2.8-83 2-11.5-.5-13.1-.8-15.5-2.8l-2.6-2.2-.6-45.9c-.3-25.2-.3-52.8.1-61.5.7-19.9 1.3-20.7 13.6-20.4l5.2.1z"/><path d="M32.2 77.3C27.8 81.9 30.8 89 37 89c6.3 0 9.3-7.5 4.7-11.8-3-2.8- 6.8-2.8-9.5.1m7.1 4.1c.7 1.9-1.8 4-3.8 3.2-1.5-.6-2-2.8-.8-3.9s4.1-.7 4.6.7m23.7-.5c-5.7.5-7.5 1-7.5 2.1 0 1.3 3 1.5 19.8 1.8 17.4.2 19.8.1 20.4-1.4q.4-1.6-.8-2.5c-1.5-.9-19.4-.9-31.9 0M32 103a8 8 0 0 0-2 5 7 7 0 0 0 11.8 5 7 7 0 0 0-4.8-12 8 8 0 0 0-5 2m6.9 3.3q1.2 1.4-.4 3.3c-1.3 1.8-1.5 1.8-3.1.2- 1.4-1.4-1.5-2-.4-3.2 1.5-1.9 2.4-2 3.9-.3m17.3 0c-2.7 3.3 0 3.8 19.9 3.5 18.6-.3 19.4-.4 19.4- 2.3s-.8-2-19.1-2.3c-14.8-.2-19.4.1-20.2 1.1m-24.6 22.9c-5.3 7.5 4.1 16.1 10.2 9.5 4.6-4.8 1.7-11.7- 4.8-11.7-2.9 0-4.3.6-5.4 2.2m7.4 3.3c1.5 1.8.5 3.5-2 3.5-1 0-2.2-.5-2.5-1-.7-1.1 1.2-4 2.5-4q.8.1 2 1.5m17 0c-2.5 3 0 3.5 19.4 3.5 19.6 0 23-.6 20.5-3.7-1.7-2-38.2-1.9-39.9.2"/></svg></span> 今日练习记录</h3>
     <!-- 2026-07-27 fix: 明显展示今日总时长 + 科目数 + session 数 (dad 看不到位置) -->
     <div class="today-summary-bar" id="todaySummaryBar">
       <div class="tsb-main">
@@ -1630,6 +1639,8 @@
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(btn);
       updateSelectedSummary(name, id, reqText, btn);
+      // PR-C (260815): 选科目后同步补录 dashboard
+      _pulseUpdateExtra();
       collapseSelection();
       // V4: item-section 收拢
       document.querySelector('.item-section').classList.add('compact');
@@ -1911,7 +1922,7 @@
             const confirmP = confirmArea4.querySelector('p');
             if (confirmP) {
               confirmP.dataset.originalHtml = confirmP.innerHTML;
-              confirmP.innerHTML = '🎉 打卡成功！太棒啦！';
+              confirmP.innerHTML = '<span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 156 151" fill="currentColor" aria-hidden="true"><path d="M121.7 7.7c-.3.5-1.3 3.6-2.2 6.9a32 32 0 0 1-4.7 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.3 5 9.2 8-.1q4.2-12.7 14.6-15.7c2.4-.7 5.1-1.8 5.9-2.6 1.3-1.1 1.3-1.5 0-2.6-.8-.8-3.5-1.9-6-2.7- 6.6-1.8-12.4-8-14.5-15.5l-2-7.3c-.5-1.3-3.1-1.7-3.8-.5m11 24.8c1.8 1.1 3.2 2.2 3.2 2.5s-1.9 1.9-4.2 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 2.5a26 26 0 0 0 6.2-6.5l3-4.5 3 4.5c1.6 2.5 4.4 5.4 6.2 6.5m-98.1-9c-.3.9-.6 2.5-.6 3.5 0 4.3-4.3 13.1-8.5 17.4a20 20 0 0 1-10.6 6.3c-5.1 1.5-6.5 2.4-6.7 4.1q-.6 2.2 2.5 2.8c10.8 2.4 16 6.1 20.2 14.5 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 16.9c9.2-2.9 9.3-5.1.5-7.8-10.5-3.3-16.4-9.8-19.3-21.5-1.3-5.1-2.1-6.7-3.6-6.9q-2-.2-2.7 1.3m12.6 26.6a25 25 0 0 0 6.1 3.9c.6 0-.9 1.3-3.4 2.9-5.3 3.4-8 6.3-10.7 11.4l-2.1 3.9-1.6-3.4a37 37 0 0 0- 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 16.1c-.6.7-1.5 3.9-2.1 7a35.5 35.5 0 0 1-28.7 28.7c-3.4.5-4 1-4 3.1s.6 2.5 4.5 3.2a35 35 0 0 1 28.6 28.6c1.3 8.4 5.6 8.2 7.4-.5a35 35 0 0 1 25.8-27.8q13-4.2 1.2-7.5c-15.4-4.6-23.8-13.5-27.1-28.5q-2.3- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 4.9a46 46 0 0 0-17.2-16.8l-3.8-1.6 5.1-2.6c6-3 13-10.4 16.2-17l2.2-4.7 2.9 5.4a56 56 0 0 0 6.7 9.2"/ ></svg></span> 打卡成功！太棒啦！';
             }
             confirmArea4.classList.add('show');
             gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
@@ -2113,7 +2124,10 @@
       const content = extraContent;
       
       await addExtraMins(pendingExtraMins, item, { tempo_note, tempo_bpm, content });
-      
+      // PR-C (260815): 补录计数 +1 并刷新 dashboard
+      _extraLogCount++;
+      updateDashboardExtra();
+
       // 重置输入
       document.getElementById('extraContentInput').value = '';
     }
@@ -2310,6 +2324,26 @@
       const assignEl = document.getElementById('dciAssignText');
       if (assignEl) assignEl.textContent = (_lastReqText && _lastReqText.trim()) ? _lastReqText.trim() : '—';
       card.classList.add('visible');
+    }
+
+    // PR-C (260815): 补录 Dashboard 跟主计时 dashboard 数据共享
+    let _extraLogCount = 0;
+    function updateDashboardExtra() {
+      const card = document.getElementById('dashCardInlineExtra');
+      if (!card) return;
+      const name = selectedItem || '—';
+      const bpm = document.getElementById('extraBpmInput')?.value || '';
+      const note = document.querySelector('#extraSessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
+      const content = (document.getElementById('extraContentInput')?.value || '').trim();
+      document.getElementById('dciNameExtra').textContent = name;
+      document.getElementById('dciIdExtra').textContent = selectedItemId ? '#' + selectedItemId : '';
+      document.getElementById('dciTempoExtra').textContent = note + '=' + bpm;
+      document.getElementById('dciContentExtra').textContent = content || '未填写补录内容';
+      document.getElementById('dciExtraCount').textContent = _extraLogCount + ' 次';
+      card.classList.add('visible');
+    }
+    function _pulseUpdateExtra() {
+      if (typeof updateDashboardExtra === 'function') updateDashboardExtra();
     }
 
     async function loadTodayRecords() {
@@ -2688,6 +2722,8 @@
     // Init
     initPickers();
     loadTodayRecords();
+    // PR-C (260815): 初始化补录 dashboard (空态显示 "—")
+    updateDashboardExtra();
     // 页脚励志文案轮换
     (function(){
       const quotes = [
