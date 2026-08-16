@@ -354,8 +354,8 @@
   .sidebar-toggle { display: none; }
   .has-sidebar {
     padding-left: 0;
-    /* PR-A (260815) + 8px buffer to prevent topbar overlap on selected-item card */
-    padding-top: calc(48px + env(safe-area-inset-top, 0px) + 8px);
+    /* PR-A (260815) + 16px buffer (8px wasn't enough) to prevent topbar overlap on selected-item card */
+    padding-top: calc(48px + env(safe-area-inset-top, 0px) + 16px);
   }
   /* PR-A (260815): 顶部 topbar 跟第一张卡片留 12-16px 视觉间距 */
   .has-sidebar > .vertical-stack:first-of-type { margin-top: 16px; }
