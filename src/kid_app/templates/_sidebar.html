@@ -356,6 +356,9 @@
     padding-left: 0;
     padding-top: calc(48px + env(safe-area-inset-top, 0px));
   }
+  /* PR-A (260815): 顶部 topbar 跟第一张卡片留 12-16px 视觉间距 */
+  .has-sidebar > .vertical-stack:first-of-type { margin-top: 16px; }
+  .has-sidebar > .card:first-of-type { margin-top: 16px; }
   .has-sidebar.expanded { padding-left: 0; }
   .has-sidebar > .page-content,
   .has-sidebar > .content,
