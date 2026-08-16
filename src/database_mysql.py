@@ -13,6 +13,30 @@ from src.database_base import BaseBackend
 import pymysql
 from pymysql.cursors import DictCursor
 
+# 2026-08-16: Fix 500 in /api/items caused by raw datetime in MySQL row dict
+# getting fed into JSONResponse. Same pattern as fix used in get_practice_categories
+# (L298-307, comment "P0-2026-08-06") but applied at the cursor layer so EVERY
+# DatetimeSafeDictCursor-using method is protected. Compatible with _parse_datetime() which
+# already handles both str and datetime inputs (database_mysql.py:77-83).
+class DatetimeSafeDictCursor(DictCursor):
+    """DatetimeSafeDictCursor that auto-converts datetime/date columns to ISO strings.
+
+    Why needed: MySQL DATETIME columns return raw datetime.datetime objects via
+    pymysql. FastAPI's default JSONResponse uses json.dumps() which chokes on
+    `datetime` with TypeError: Object of type datetime is not JSON serializable.
+    Application code has been patching only some call sites (e.g. categories at
+    L298-307) but `get_practice_items` (L339-352) + others were missed.
+    Subclassing once at the cursor layer covers all 32+ DatetimeSafeDictCursor usages.
+    """
+    def _conv_row(self, row):
+        d = super()._conv_row(row)
+        if d is None:
+            return None
+        for k, v in list(d.items()):
+            if isinstance(v, (dt.datetime, dt.date)):
+                d[k] = str(v)
+        return d
+
 try:
     from dbutils.pooled_db import PooledDB
 except ImportError:
@@ -157,21 +181,21 @@ class MySQLBackend(BaseBackend):
 
     def get_lesson(self, lesson_id: int) -> Optional[Lesson]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM lessons WHERE id = %s', (lesson_id,))
                 row = cur.fetchone()
                 return self._row_to_lesson(row) if row else None
 
     def get_lesson_by_date(self, lesson_date: dt.date) -> Optional[Lesson]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM lessons WHERE date = %s', (lesson_date.isoformat(),))
                 row = cur.fetchone()
                 return self._row_to_lesson(row) if row else None
 
     def get_lessons_by_month(self, year: int, month: int) -> List[Lesson]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 next_year = year + 1 if month == 12 else year
                 next_month = 1 if month == 12 else month + 1
                 cur.execute('''
@@ -183,7 +207,7 @@ class MySQLBackend(BaseBackend):
 
     def get_all_lessons(self) -> List[Lesson]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM lessons ORDER BY date, time')
                 return [self._row_to_lesson(row) for row in cur.fetchall()]
 
@@ -249,7 +273,7 @@ class MySQLBackend(BaseBackend):
 
     def get_payments_by_month(self, year: int, month: int) -> List[Payment]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 next_year = year + 1 if month == 12 else year
                 next_month = 1 if month == 12 else month + 1
                 cur.execute('''
@@ -261,7 +285,7 @@ class MySQLBackend(BaseBackend):
 
     def get_all_payments(self) -> List[Payment]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM payments ORDER BY payment_date DESC')
                 return [self._row_to_payment(row) for row in cur.fetchall()]
 
@@ -277,7 +301,7 @@ class MySQLBackend(BaseBackend):
 
     def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT value FROM settings WHERE `key` = %s', (key,))
                 row = cur.fetchone()
                 return row['value'] if row else default
@@ -293,7 +317,7 @@ class MySQLBackend(BaseBackend):
 
     def get_practice_categories(self) -> List[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM practice_categories ORDER BY sort_order, name')
                 rows = cur.fetchall()
                 out = []
@@ -331,14 +355,14 @@ class MySQLBackend(BaseBackend):
 
     def get_practice_item_by_id(self, item_id: int) -> Optional[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM practice_items WHERE item_id = %s', (item_id,))
                 row = cur.fetchone()
                 return row
 
     def get_practice_items(self, active_only: bool = True, include_archived: bool = False) -> List[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 where = []
                 if active_only:
                     where.append('is_active = 1')
@@ -414,7 +438,7 @@ class MySQLBackend(BaseBackend):
         # Sprint 08 fix: stage_start/stage_end/stage_order NOT NULL, 保留旧值 (跟 SQLite 语义一致)
         # 先读出现有行的 stage_* 字段, 若不存在则用 lesson_date 作为 fallback (兼容老用法)
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(
                     "SELECT stage_start, stage_end, stage_order FROM weekly_assignments WHERE lesson_date = %s",
                     (lesson_date.isoformat(),),
@@ -469,7 +493,7 @@ class MySQLBackend(BaseBackend):
     def get_weekly_assignment_for_week(self, anchor_date: dt.date) -> Optional[Dict]:
         import json as _json
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
                     SELECT * FROM weekly_assignments
                     WHERE lesson_date <= %s
@@ -494,7 +518,7 @@ class MySQLBackend(BaseBackend):
 
     def get_weekly_assignments_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
                     SELECT * FROM weekly_assignments
                     WHERE lesson_date >= %s AND lesson_date <= %s
@@ -718,7 +742,7 @@ class MySQLBackend(BaseBackend):
 
     def get_daily_practice(self, date: dt.date) -> Optional[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM daily_practices WHERE date = %s', (date.isoformat(),))
                 row = cur.fetchone()
                 if not row:
@@ -732,7 +756,7 @@ class MySQLBackend(BaseBackend):
 
     def get_daily_practices_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
                     SELECT * FROM daily_practices
                     WHERE date >= %s AND date <= %s
@@ -752,14 +776,14 @@ class MySQLBackend(BaseBackend):
 
     def get_progress_from_log(self, date: dt.date) -> Optional[str]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT log FROM daily_practices WHERE date = %s', (date.isoformat(),))
                 row = cur.fetchone()
                 return row['log'] if row else None
 
     def get_progress_from_log_in_range(self, start: dt.date, end: dt.date) -> Dict[str, str]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
                     SELECT date, log FROM daily_practices
                     WHERE date >= %s AND date <= %s
@@ -823,7 +847,7 @@ class MySQLBackend(BaseBackend):
         if where:
             sql += f' WHERE {where}'
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(sql, list(filters.values()))
                 return list(cur.fetchall())
 
@@ -875,13 +899,13 @@ class MySQLBackend(BaseBackend):
     # ── Reports ──
     def get_practice_reports(self) -> List[Dict]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM practice_reports ORDER BY year DESC, month DESC')
                 return list(cur.fetchall())
 
     def get_streak(self) -> Dict[str, Any]:
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
                     SELECT date, total_minutes FROM daily_practices
                     WHERE practiced = 'Y' AND total_minutes > 0
@@ -986,7 +1010,7 @@ class MySQLBackend(BaseBackend):
     def get_practice_session_by_id(self, session_id: int) -> Dict:
         self._ensure_practice_sessions_schema()
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT * FROM practice_sessions WHERE id = %s', (session_id,))
                 row = cur.fetchone()
                 if not row:
@@ -1010,7 +1034,7 @@ class MySQLBackend(BaseBackend):
             params.append(int(item_id))
         sql += ' ORDER BY created_at ASC, id ASC'
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(sql, params)
                 rows = list(cur.fetchall())
                 for r in rows:
@@ -1030,7 +1054,7 @@ class MySQLBackend(BaseBackend):
         """
         import json as _json
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 # Sprint 08 fix: MySQL 8 不接受 '' 比较 DATETIME, 只用 IS NOT NULL
                 # Sprint 26081001: 加 stage_order IS NOT NULL AND stage_order != 0 过滤
                 cur.execute(
@@ -1074,7 +1098,7 @@ class MySQLBackend(BaseBackend):
         """
         import json as _json
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(
                     """
                     SELECT * FROM weekly_assignments
@@ -1114,7 +1138,7 @@ class MySQLBackend(BaseBackend):
             day = dt.date.fromisoformat(day)
         day_s = day.isoformat()
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(
                     """
                     SELECT * FROM weekly_assignments
@@ -1167,7 +1191,7 @@ class MySQLBackend(BaseBackend):
             params.append(item_id)
         sql += " ORDER BY practice_date ASC, COALESCE(started_at, created_at) ASC, id ASC"
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(sql, params)
                 rows = list(cur.fetchall())
         for r in rows:
@@ -1182,7 +1206,7 @@ class MySQLBackend(BaseBackend):
         """读 practice_items 冗余列 (Q1=B). NULL → 回退查 sessions 表."""
         self._ensure_practice_sessions_schema()
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 # 1. 优先读 practice_items 冗余列
                 cur.execute(
                     'SELECT last_tempo_note, last_tempo_bpm, last_session_at FROM practice_items WHERE item_id = %s',
@@ -1231,7 +1255,7 @@ class MySQLBackend(BaseBackend):
         if isinstance(practice_date, str):
             practice_date = dt.date.fromisoformat(practice_date)
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
                     INSERT INTO practice_sessions
                     (practice_date, item_id, item_name, duration_minutes,
@@ -1271,7 +1295,7 @@ class MySQLBackend(BaseBackend):
         if content is not None and (not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN):
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 # 1. 读旧 session (含 version)
                 cur.execute('SELECT * FROM practice_sessions WHERE id = %s', (int(session_id),))
                 row = cur.fetchone()
@@ -1379,7 +1403,7 @@ class MySQLBackend(BaseBackend):
         """
         self._ensure_practice_sessions_schema()
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(
                     'SELECT version, practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = %s',
                     (int(session_id),),
@@ -1460,7 +1484,7 @@ class MySQLBackend(BaseBackend):
 
         # 校验 item_id (跟 SQLite 一致)
         with self._get_connection() as conn:
-            with conn.cursor(DictCursor) as cur:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('SELECT name FROM practice_items WHERE item_id = %s', (int(item_id),))
                 item_row = cur.fetchone()
                 if not item_row:
