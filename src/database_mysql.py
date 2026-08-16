@@ -142,13 +142,15 @@ class MySQLBackend(BaseBackend):
         """安全 date 转换 — 兼容 str/datetime/date, 截 [:10] 应对 DATETIME 字符串.
 
         用于 _parse_date 之外的 caller (e.g. weekly_assignments SELECT 结果).
+        注意: dt.datetime 是 dt.date 的子类, 必须先 check datetime.
         """
         if v is None:
             return None
+        if type(v) is dt.datetime:
+            # bare datetime (not date subclass) — convert to date
+            return v.date()
         if isinstance(v, dt.date):
             return v
-        if isinstance(v, dt.datetime):
-            return v.date()
         if isinstance(v, str):
             return dt.date.fromisoformat(v[:10])
         return v
@@ -1045,7 +1047,7 @@ class MySQLBackend(BaseBackend):
         """查某日所有 session (可选 item_id 过滤). 顺序: created_at ASC, id ASC."""
         self._ensure_practice_sessions_schema()
         if isinstance(practice_date, str):
-practice_date = self._safe_to_date(practice_date)
+                practice_date = self._safe_to_date(practice_date)
         sql = 'SELECT * FROM practice_sessions WHERE practice_date = %s'
         params: List = [practice_date.isoformat()]
         if item_id is not None:
@@ -1154,7 +1156,7 @@ practice_date = self._safe_to_date(practice_date)
         """找包含 day 的 stage (stage_start <= day <= stage_end)."""
         import json as _json
         if isinstance(day, str):
-day = self._safe_to_date(day)
+                day = self._safe_to_date(day)
         day_s = day.isoformat()
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
@@ -1197,9 +1199,9 @@ day = self._safe_to_date(day)
     ) -> List[Dict]:
         """查日期闭区间 [start, end] 内全部 session."""
         if isinstance(start, str):
-start = self._safe_to_date(start)
+                start = self._safe_to_date(start)
         if isinstance(end, str):
-end = self._safe_to_date(end)
+                end = self._safe_to_date(end)
         sql = (
             "SELECT * FROM practice_sessions "
             "WHERE practice_date >= %s AND practice_date <= %s"
@@ -1272,7 +1274,7 @@ end = self._safe_to_date(end)
         self._ensure_practice_sessions_schema()
         self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content)
         if isinstance(practice_date, str):
-practice_date = self._safe_to_date(practice_date)
+                practice_date = self._safe_to_date(practice_date)
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
@@ -1499,7 +1501,7 @@ practice_date = self._safe_to_date(practice_date)
         self._ensure_practice_sessions_schema()
         self._validate_session_fields(tempo_note, tempo_bpm, minutes, content)
         if isinstance(practice_date, str):
-practice_date = self._safe_to_date(practice_date)
+                practice_date = self._safe_to_date(practice_date)
 
         # 校验 item_id (跟 SQLite 一致)
         with self._get_connection() as conn:
