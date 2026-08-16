@@ -123,7 +123,11 @@ class MySQLBackend(BaseBackend):
         return v
 
     def _parse_date(self, v):
-        """MySQL DATE 返 date 对象"""
+        """MySQL DATE 返 date 对象.
+
+        P0-2026-08-16: 表 schema 写的是 DATE, 但 weekly_assignments 实际是 DATETIME
+        (返回 'YYYY-MM-DD HH:MM:SS' str). 用 [:10] 截前 10 字符兼容两种列类型.
+        """
         if v is None:
             return None
         if isinstance(v, dt.date):
@@ -131,7 +135,22 @@ class MySQLBackend(BaseBackend):
         if isinstance(v, dt.datetime):
             return v.date()
         if isinstance(v, str):
-            return dt.date.fromisoformat(v)
+            return dt.date.fromisoformat(v[:10])
+        return v
+
+    def _safe_to_date(self, v):
+        """安全 date 转换 — 兼容 str/datetime/date, 截 [:10] 应对 DATETIME 字符串.
+
+        用于 _parse_date 之外的 caller (e.g. weekly_assignments SELECT 结果).
+        """
+        if v is None:
+            return None
+        if isinstance(v, dt.date):
+            return v
+        if isinstance(v, dt.datetime):
+            return v.date()
+        if isinstance(v, str):
+            return dt.date.fromisoformat(v[:10])
         return v
 
     def _row_to_lesson(self, row: Dict) -> Lesson:
@@ -463,7 +482,7 @@ class MySQLBackend(BaseBackend):
                     cur.execute("SELECT date FROM lessons ORDER BY date")
                     all_lessons_rows = cur.fetchall()
                     all_lessons = [
-                        r['date'] if isinstance(r['date'], dt.date) else dt.date.fromisoformat(r['date'])
+                        r['date'] if isinstance(r['date'], dt.date) else self._safe_to_date(r['date'])
                         for r in all_lessons_rows
                     ]
                     future = [d for d in all_lessons if d > lesson_date]
@@ -504,9 +523,9 @@ class MySQLBackend(BaseBackend):
         if not row:
             return None
         return {
-            'lesson_date': dt.date.fromisoformat(row['lesson_date']) if isinstance(row['lesson_date'], str) else row['lesson_date'],
-            'stage_start': dt.date.fromisoformat(row['stage_start']) if row.get('stage_start') and isinstance(row['stage_start'], str) else row.get('stage_start'),
-            'stage_end': dt.date.fromisoformat(row['stage_end']) if row.get('stage_end') and isinstance(row['stage_end'], str) else row.get('stage_end'),
+            'lesson_date': self._safe_to_date(row['lesson_date']),
+            'stage_start': self._safe_to_date(row.get('stage_start')),
+            'stage_end':   self._safe_to_date(row.get('stage_end')),
             'stage_order': row.get('stage_order'),
             'items': _json.loads(row['items']) if row.get('items') else [],
             'notes': row.get('notes'),
@@ -1026,7 +1045,7 @@ class MySQLBackend(BaseBackend):
         """查某日所有 session (可选 item_id 过滤). 顺序: created_at ASC, id ASC."""
         self._ensure_practice_sessions_schema()
         if isinstance(practice_date, str):
-            practice_date = dt.date.fromisoformat(practice_date)
+practice_date = self._safe_to_date(practice_date)
         sql = 'SELECT * FROM practice_sessions WHERE practice_date = %s'
         params: List = [practice_date.isoformat()]
         if item_id is not None:
@@ -1135,7 +1154,7 @@ class MySQLBackend(BaseBackend):
         """找包含 day 的 stage (stage_start <= day <= stage_end)."""
         import json as _json
         if isinstance(day, str):
-            day = dt.date.fromisoformat(day)
+day = self._safe_to_date(day)
         day_s = day.isoformat()
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
@@ -1178,9 +1197,9 @@ class MySQLBackend(BaseBackend):
     ) -> List[Dict]:
         """查日期闭区间 [start, end] 内全部 session."""
         if isinstance(start, str):
-            start = dt.date.fromisoformat(start)
+start = self._safe_to_date(start)
         if isinstance(end, str):
-            end = dt.date.fromisoformat(end)
+end = self._safe_to_date(end)
         sql = (
             "SELECT * FROM practice_sessions "
             "WHERE practice_date >= %s AND practice_date <= %s"
@@ -1253,7 +1272,7 @@ class MySQLBackend(BaseBackend):
         self._ensure_practice_sessions_schema()
         self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content)
         if isinstance(practice_date, str):
-            practice_date = dt.date.fromisoformat(practice_date)
+practice_date = self._safe_to_date(practice_date)
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute('''
@@ -1480,7 +1499,7 @@ class MySQLBackend(BaseBackend):
         self._ensure_practice_sessions_schema()
         self._validate_session_fields(tempo_note, tempo_bpm, minutes, content)
         if isinstance(practice_date, str):
-            practice_date = dt.date.fromisoformat(practice_date)
+practice_date = self._safe_to_date(practice_date)
 
         # 校验 item_id (跟 SQLite 一致)
         with self._get_connection() as conn:
