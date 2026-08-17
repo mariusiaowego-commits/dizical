@@ -6,6 +6,13 @@
   动效: width 200ms cubic-bezier(0.16, 1, 0.3, 1) + label opacity 0↔1
 -->
 <style>
+/* 2026-08-17 (PR-XXX): CSS variables for topbar + safe-area, single source of truth.
+   env(safe-area-inset-top) returns 0 on <body> in many browsers (Chromium/Safari 17+);
+   use 47px (iPhone 17 Pro Max notch) as fallback so the topbar + content gutter never collapse. */
+:root {
+  --safe-top: env(safe-area-inset-top, 47px);
+  --topbar-h: calc(48px + var(--safe-top));
+}
 /* ── Sidebar base (法 1: padding 0, 元素用 margin 控) ────── */
 .sidebar {
   position: fixed;
@@ -287,8 +294,8 @@
     top: 0; left: 0; right: 0;
     z-index: 101;
     box-sizing: border-box;
-    height: calc(48px + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) 12px 0;
+    height: var(--topbar-h);
+    padding: var(--safe-top) 12px 0;
     align-items: center;
     gap: 8px;
     background: var(--surface, #FFFFFF);
@@ -326,7 +333,7 @@
     width: 240px;
     height: 100dvh;
     z-index: 110;
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: var(--safe-top);
     transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), width 0ms;
   }
   .sidebar-backdrop {
@@ -354,12 +361,9 @@
   .sidebar-toggle { display: none; }
   .has-sidebar {
     padding-left: 0;
-    /* PR-A (260815) + 16px buffer (8px wasn't enough) to prevent topbar overlap on selected-item card */
-    padding-top: calc(48px + env(safe-area-inset-top, 0px) + 16px);
+    /* 2026-08-17: use --topbar-h single source of truth + 16px buffer between topbar and first card */
+    padding-top: calc(var(--topbar-h) + 16px);
   }
-  /* PR-A (260815): 顶部 topbar 跟第一张卡片留 12-16px 视觉间距 */
-  .has-sidebar > .vertical-stack:first-of-type { margin-top: 16px; }
-  .has-sidebar > .card:first-of-type { margin-top: 16px; }
   .has-sidebar.expanded { padding-left: 0; }
   .has-sidebar > .page-content,
   .has-sidebar > .content,
