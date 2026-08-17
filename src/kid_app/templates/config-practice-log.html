@@ -679,6 +679,43 @@
       margin-top: 4px;
     }
 
+    /* ── 统计卡片 (从 config-records.html 迁移, 2026-08-17) ── */
+    .practice-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .practice-stat-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .practice-stat-card .stat-label {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .practice-stat-card .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+    .practice-stat-card .stat-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: #7F8C8D;
+      margin-left: 4px;
+    }
+    .practice-stat-card .stat-sub {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-top: 6px;
+    }
+
     .loading {
       text-align: center;
       padding: 40px;
@@ -727,6 +764,10 @@
         <button class="tab-item" data-tab="week">
           <span class="tab-icon">📅</span>
           <span class="tab-label">本周总览</span>
+        </button>
+        <button class="tab-item" data-tab="stats">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">练习统计</span>
         </button>
       </div>
     </div>
@@ -838,6 +879,32 @@
         </div>
       </section>
 
+      <!-- Tab 4: 练习统计 (从 config-records.html 迁移, 2026-08-17) -->
+      <section id="tab-stats" class="tab-panel">
+        <div class="practice-stats-grid" id="practice-stats-grid">
+          <div class="practice-stat-card">
+            <div class="stat-label">本周练习时长</div>
+            <div class="stat-value" id="stat-week-mins">--<span class="stat-unit">分钟</span></div>
+            <div class="stat-sub" id="stat-week-days">-- 天</div>
+          </div>
+          <div class="practice-stat-card">
+            <div class="stat-label">本月练习时长</div>
+            <div class="stat-value" id="stat-month-mins">--<span class="stat-unit">分钟</span></div>
+            <div class="stat-sub" id="stat-month-days">-- 天</div>
+          </div>
+          <div class="practice-stat-card">
+            <div class="stat-label">本周练习天数</div>
+            <div class="stat-value" id="stat-week-days-val">--</div>
+            <div class="stat-sub" id="stat-week-range"></div>
+          </div>
+          <div class="practice-stat-card">
+            <div class="stat-label">本月练习天数</div>
+            <div class="stat-value" id="stat-month-days-val">--</div>
+            <div class="stat-sub" id="stat-month-range"></div>
+          </div>
+        </div>
+      </section>
+
 
     </div>
   </main>
@@ -904,20 +971,158 @@ const titleMap = {
   'log': '✏️ 录入练习',
   'assign': '📋 老师要求',
   'week': '📅 本周总览',
+  'stats': '📊 练习统计',
 };
+
+// 显式激活某个 tab (无副作用版本, 用于 URL 参数初始化)
+function activateTab(target, opts) {
+  const updateUrl = !opts || opts.updateUrl !== false;
+  const tabEl = document.querySelector('.tab-item[data-tab="' + target + '"]');
+  const panelEl = document.getElementById('tab-' + target);
+  if (!tabEl || !panelEl) return false;
+  tabs.forEach(t => t.classList.remove('active'));
+  panels.forEach(p => p.classList.remove('active'));
+  tabEl.classList.add('active');
+  panelEl.classList.add('active');
+  document.getElementById('panelTitle').textContent = titleMap[target] || '';
+  if (target === 'week') loadWeek();
+  if (target === 'assign') loadAssignments();
+  if (target === 'log') loadTodayHistory();
+  if (target === 'stats') loadStats();
+  if (updateUrl) {
+    try {
+      const url = new URL(location.href);
+      url.searchParams.set('tab', target);
+      const next = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams : '') + url.hash;
+      const cur = location.pathname + location.search + location.hash;
+      if (next !== cur && history.replaceState) history.replaceState(null, '', next);
+    } catch (e) { /* ignore SSR / 非浏览器环境 */ }
+  }
+  return true;
+}
+
 tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset.tab;
-    tabs.forEach(t => t.classList.remove('active'));
-    panels.forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + target).classList.add('active');
-    document.getElementById('panelTitle').textContent = titleMap[target] || '';
-    if (target === 'week') loadWeek();
-    if (target === 'assign') loadAssignments();
-    if (target === 'log') loadTodayHistory();
-  });
+  tab.addEventListener('click', () => activateTab(tab.dataset.tab));
 });
+
+// ── URL query / hash → 默认 tab (支持 /config/records redirect → ?tab=stats 落地) ──
+function activateTabFromParam() {
+  let t = '';
+  try {
+    t = new URLSearchParams(location.search).get('tab') || '';
+  } catch (e) { /* ignore */ }
+  if (!t) t = (location.hash || '').replace('#', '');
+  if (!t) return false;
+  // querySelector 用 attribute selector 拼字符串, t 含特殊字符 (?tab=a%22b) 会抛 SyntaxError
+  // 8-17 review: 与 URLSearchParams 保持一致, 包 try/catch 兜底
+  let validEl = null;
+  try {
+    validEl = document.querySelector('.tab-item[data-tab="' + t + '"]');
+  } catch (e) { /* t 含非法选择器字符, 忽略 */ }
+  if (validEl && tabs.length) {
+    activateTab(t, { updateUrl: false });
+    return true;
+  }
+  return false;
+}
+window.addEventListener('hashchange', activateTabFromParam);
+window.addEventListener('popstate', activateTabFromParam);
+
+// ── 练习统计 (从 config-records.html 迁移, 2026-08-17) ──
+function showStatsError(msg) {
+  const grid = document.getElementById('practice-stats-grid');
+  if (!grid) return;
+  grid.replaceChildren();
+  const card = document.createElement('div');
+  card.className = 'practice-stat-card';
+  card.style.gridColumn = '1 / -1';
+  card.style.color = '#c0392b';
+  card.textContent = '统计加载失败: ' + msg;
+  grid.appendChild(card);
+}
+
+async function loadStats() {
+  const grid = document.getElementById('practice-stats-grid');
+  if (!grid) return;
+  let res;
+  try {
+    res = await fetch('/config/api/records/stats');
+  } catch (e) {
+    showStatsError('网络错误');
+    return;
+  }
+  if (!res || !res.ok) {
+    showStatsError('HTTP ' + (res ? res.status : '?'));
+    return;
+  }
+  let data;
+  try { data = await res.json(); } catch (e) {
+    showStatsError('响应格式错误');
+    return;
+  }
+  const w = (data && data.week) || { minutes: 0, days: 0, start: '--', end: '--' };
+  const m = (data && data.month) || { minutes: 0, days: 0 };
+
+  // textContent 防 XSS (分钟/天数是数字, 安全; start/end 是日期字符串, 也安全但保守起见用 textContent)
+  const wMins = document.getElementById('stat-week-mins');
+  wMins.replaceChildren();
+  const wSpan = document.createElement('span');
+  wSpan.id = 'w-mins-val';
+  wSpan.textContent = String(w.minutes);
+  const wUnit = document.createElement('span');
+  wUnit.className = 'stat-unit';
+  wUnit.textContent = '分钟';
+  wMins.appendChild(wSpan);
+  wMins.appendChild(wUnit);
+
+  const mMins = document.getElementById('stat-month-mins');
+  mMins.replaceChildren();
+  const mSpan = document.createElement('span');
+  mSpan.id = 'm-mins-val';
+  mSpan.textContent = String(m.minutes);
+  const mUnit = document.createElement('span');
+  mUnit.className = 'stat-unit';
+  mUnit.textContent = '分钟';
+  mMins.appendChild(mSpan);
+  mMins.appendChild(mUnit);
+
+  document.getElementById('stat-week-days').textContent = w.days + ' 天';
+  document.getElementById('stat-week-days-val').textContent = String(w.days);
+  document.getElementById('stat-week-range').textContent = w.start + ' ~ ' + w.end;
+  document.getElementById('stat-month-days').textContent = m.days + ' 天';
+  document.getElementById('stat-month-days-val').textContent = String(m.days);
+  document.getElementById('stat-month-range').textContent = '本月';
+
+  // GSAP 卡片入场 + 数字滚动 (gsap 不可用时静默跳过)
+  if (window.gsap) {
+    const cards = document.querySelectorAll('#tab-stats .practice-stat-card');
+    if (cards.length) {
+      gsap.killTweensOf(cards);
+      gsap.fromTo(cards,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, stagger: 0.1, duration: 0.5, ease: 'back.out(1.5)' }
+      );
+      gsap.killTweensOf([document.getElementById('w-mins-val'), document.getElementById('m-mins-val')]);
+      const wProxy = { v: 0 };
+      gsap.to(wProxy, { v: w.minutes, duration: 0.8, ease: 'power2.out',
+        onUpdate() {
+          const el = document.getElementById('w-mins-val');
+          if (el) el.textContent = String(Math.round(wProxy.v));
+        }
+      });
+      const mProxy = { v: 0 };
+      gsap.to(mProxy, { v: m.minutes, duration: 0.8, ease: 'power2.out', delay: 0.1,
+        onUpdate() {
+          const el = document.getElementById('m-mins-val');
+          if (el) el.textContent = String(Math.round(mProxy.v));
+        }
+      });
+    }
+  }
+}
+
+// 页面初始化: 如果 URL 带 ?tab= 或 #tab, 触发对应 tab 激活
+activateTabFromParam();
 
 // ── 加载练习科目列表 ──
 async function loadItems() {

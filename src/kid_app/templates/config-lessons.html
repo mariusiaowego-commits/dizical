@@ -214,7 +214,7 @@
     }
 
     .calendar-day:hover { background: rgba(168,213,186,0.15); }
-    .calendar-day.today { border: 2px solid var(--sage); }
+    .calendar-day.today { border: 2px solid var(--sage); box-shadow: 0 0 0 3px rgba(168,213,186,0.25); }
     .calendar-day.empty { color: #ccc; cursor: default; }
     .calendar-day.empty:hover { background: transparent; }
 
@@ -222,16 +222,52 @@
     .calendar-day.empty .day-num { color: #ccc; }
     .calendar-day .day-time { font-size: 10px; color: #7F8C8D; }
 
+    /* ── 课程高亮 (2026-08-17 重设计: 整块染色 + 顶部状态条 + 状态 emoji)
+       旧版: 底部 8px 小圆点 (容易被日历占满时忽略)
+       新版: 整块背景 + 顶部 3px 状态条 + 数字区状态符号 → 一目了然, 视觉冲击
+       三态色板:
+         - scheduled 已安排: 深紫 #8E7AB5 + 浅紫底 #f3eff7 + ⏰ (等候上课)
+         - attended  已上课: 鼠尾草绿 #a8d5ba + 浅绿底 #eaf5ef + ✓ (确认完成)
+         - cancelled 已取消: 灰色 #999 + 浅灰底 #f5f5f5 + 斜纹 + ✕ (灰掉不去)
+    */
+    .calendar-day.has-record { position: relative; }
+    .calendar-day.has-record::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 6px; right: 6px;
+      height: 3px;
+      border-radius: 2px;
+    }
+    .calendar-day.status-scheduled { background: #f3eff7; box-shadow: inset 3px 0 0 #8E7AB5; }
+    .calendar-day.status-scheduled::before { background: #8E7AB5; }
+    .calendar-day.status-attended { background: #eaf5ef; box-shadow: inset 3px 0 0 #4a9d6f; }
+    .calendar-day.status-attended::before { background: #4a9d6f; }
+    .calendar-day.status-cancelled {
+      background: repeating-linear-gradient(
+        45deg, #f5f5f5, #f5f5f5 6px, #e8e8e8 6px, #e8e8e8 12px
+      );
+      box-shadow: inset 3px 0 0 #999;
+      opacity: 0.7;
+    }
+    .calendar-day.status-cancelled::before { background: #999; }
+    .calendar-day.status-cancelled .day-num { text-decoration: line-through; color: #999; }
+
+    .calendar-day .lesson-status-glyph {
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 700;
+    }
+    .calendar-day.status-scheduled .lesson-status-glyph { color: #8E7AB5; }
+    .calendar-day.status-attended .lesson-status-glyph { color: #4a9d6f; }
+    .calendar-day.status-cancelled .lesson-status-glyph { color: #999; }
+
+    /* 旧 lesson-dot 样式保留兼容 (legend 仍用) */
     .lesson-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       display: inline-block;
     }
-    /* dot 颜色区分:
-       - scheduled: 加深紫 #8E7AB5 (原 --lavender #c5b8d9 跟 cancelled 灰色太像, 不易识别)
-       - attended: 鼠尾草绿 #a8d5ba
-       - cancelled: 灰色 #ccc */
     .lesson-dot.scheduled { background: #8E7AB5; }
     .lesson-dot.attended { background: var(--sage); }
     .lesson-dot.cancelled { background: #ccc; }
@@ -723,23 +759,29 @@ function buildCalDays(daysInMonth, startWeekday, todayStr) {
     let cls = 'calendar-day';
     if (isToday) cls += ' today';
     if (lesson) cls += ' has-record';
+    // 2026-08-17 重设计: 整块染色 + glyph 必须依赖 status-* class
+    let statusKey = 'scheduled';
+    let glyph = '';
+    let statusLabel = '';
+    let statusDesc = '';
+    if (lesson) {
+      statusKey = (lesson.status === 'attended' || lesson.status === 'cancelled') ? lesson.status : 'scheduled';
+      cls += ' status-' + statusKey;
+      // 状态符号 (非 emoji, 文本字符 + aria-label)
+      if (statusKey === 'attended')      { glyph = '✓'; statusLabel = '已上课'; statusDesc = '这节课已上'; }
+      else if (statusKey === 'cancelled'){ glyph = '✕'; statusLabel = '已取消'; statusDesc = '这节课取消了'; }
+      else                                { glyph = '◷'; statusLabel = '已安排'; statusDesc = '等候上课'; }
+    }
     btn.className = cls;
-    let dot = '';
     let tooltip = '';
     if (lesson) {
-      const dotCls = lesson.status === 'attended' ? 'attended' : lesson.status === 'cancelled' ? 'cancelled' : 'scheduled';
-      dot = `<span class="lesson-dot ${dotCls}"></span>`;
-      // 状态中文 + 含义, 解决"灰色到底什么意思"疑惑
-      const statusMap = {
-        scheduled: { label: '已安排', desc: '这节课计划中, 等候上课' },
-        attended:  { label: '已上课', desc: '这节课已上' },
-        cancelled: { label: '已取消', desc: '这节课取消了 (灰色 = 不去)' },
-      };
-      const info = statusMap[lesson.status] || { label: lesson.status, desc: '' };
       const noteText = lesson.notes ? ` · ${lesson.notes}` : '';
-      tooltip = `${dateStr} ${lesson.time} · ${info.label} — ${info.desc}${noteText}`;
+      tooltip = `${dateStr} ${lesson.time} · ${statusLabel} — ${statusDesc}${noteText}`;
+      btn.setAttribute('aria-label', tooltip);
     }
-    btn.innerHTML = `<span class="day-num">${day}</span>${dot ? `<span style="margin-top:2px;">${dot}</span>` : ''}`;
+    btn.innerHTML =
+      `<span class="day-num">${day}</span>` +
+      (glyph ? `<span class="lesson-status-glyph" aria-hidden="true">${glyph}</span>` : '');
     if (tooltip) btn.title = tooltip;
     btn.addEventListener('click', () => {
       $('#action-date').value = dateStr;

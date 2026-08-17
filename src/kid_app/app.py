@@ -45,6 +45,7 @@ async def _auth_guard_middleware(request, call_next):
         # Sprint 26081004: /admin/whitelist UI 已删 (见 template/admin-whitelist.html), JSON API 仍走 PIN 校验 (minip_api.py:_check_admin_pin), 不需要白名单放行
         or path.startswith("/api/admin/whitelist")
         or path.startswith("/config/api/") or path == "/config/users"
+        or path == "/config/records"  # 2026-08-17: deprecated 页面, 立刻 302 → /config/practice-log?tab=stats (无需登录, 任何未登录点击都跳走)
         or path == "/accept-invite" or path.startswith("/accept-invite?")  # Q7 邀请公开页
     )
     if PUBLIC:

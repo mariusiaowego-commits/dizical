@@ -105,9 +105,14 @@ def config_lessons():
 
 @router.get("/records", response_class=HTMLResponse)
 def config_records():
-    """练习记录管理页"""
-    from src.kid_app.app import render
-    return render("config-records", active_nav="portal")
+    """练习记录管理页 (DEPRECATED 2026-08-17)
+
+    页面已下线；历史入口统一 302 跳转到 /config/practice-log?tab=stats。
+    后端 /api/records/* 全部保留，供旧客户端和外部 (dizical-minip /
+    历史 handoff) 继续调用。统计 tab 内容已迁到 practice-log。
+    """
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/config/practice-log?tab=stats", status_code=302)
 
 
 @router.get("/praise", response_class=HTMLResponse)
