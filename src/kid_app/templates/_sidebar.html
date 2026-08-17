@@ -287,9 +287,13 @@
     top: 0; left: 0; right: 0;
     z-index: 101;
     box-sizing: border-box;
-    /* 2026-08-17: hardcode 95px (48 + 47 iPhone 17 PM notch) — var() unreliable in partial <style> */
-    height: 95px;
-    padding: 47px 12px 0;
+    /* 2026-08-17 (after dad feedback): height = content only (48px), no safe-area padding.
+       Previous 95px (47 + 48) was too tall visually.
+       iPhone status bar overlaps top topbar (white bg covers it),
+       but text remains visible at y=12 from viewport top. */
+    height: 48px;
+    padding: 0 12px 0;
+    /* iPhone safe-area: topbar background extends behind status bar via body padding-top 64px. */
     align-items: center;
     gap: 8px;
     background: var(--surface, #FFFFFF);
@@ -327,7 +331,7 @@
     width: 240px;
     height: 100dvh;
     z-index: 110;
-    padding-top: 47px;
+    padding-top: 0;  /* 2026-08-17: removed 47px safe-area — topbar handles its own layout */
     transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), width 0ms;
   }
   .sidebar-backdrop {
@@ -355,10 +359,10 @@
   .sidebar-toggle { display: none; }
   .has-sidebar {
     padding-left: 0;
-    /* 2026-08-17: hardcode 95px (48 topbar + 47 iPhone 17 PM safe-area notch) + 16px buffer.
-       Was: calc(var(--topbar-h) + 16px) — but var() cascade fails in partial <style> block.
-       Original PR-A 4px was winning cascade via static style.css:35 (also deleted). */
-    padding-top: 111px;
+    /* 2026-08-17: 48px (topbar content height) + 16px buffer = 64px.
+       Topbar uses height:48px + padding:0 (no safe-area padding),
+       iPhone status bar overlaps topbar top (white bg covers). */
+    padding-top: 64px;
   }
   .has-sidebar.expanded { padding-left: 0; }
   .has-sidebar > .page-content,
