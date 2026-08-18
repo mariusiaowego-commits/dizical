@@ -774,7 +774,45 @@
       font-size: 15px;
       margin: 0;
     }
-  </style>
+  
+    /* ── 响应式 (sprint 260818 mobile polish) ── */
+    @media (max-width: 768px) {
+      .config-layout { flex-direction: column; height: auto; min-height: 100vh; }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+      }
+      .sidebar-header { padding: 12px 16px; }
+      .sidebar-content { padding: 4px 8px 12px; }
+      .category-list {
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 6px;
+        padding: 4px 0;
+      }
+      .category-item { white-space: nowrap; flex-shrink: 0; padding: 10px 14px; }
+      .category-item .cat-name { font-size: 14px; }
+      .main-content { padding: 12px 16px; }
+      .content-header {
+        flex-wrap: wrap;
+        padding: 12px 0;
+        gap: 8px;
+      }
+      .content-header h1 { font-size: 22px; }
+      .cat-actions { flex-wrap: wrap; gap: 6px; }
+      .item-row { flex-wrap: wrap; padding: 12px 14px; gap: 8px; }
+      .item-row > .item-info { flex: 1 1 auto; min-width: 0; }
+      .item-row > .item-meta { font-size: 12px; }
+      .item-actions {
+        opacity: 1;  /* 触屏必须常显, iPhone 无 hover */
+        flex-basis: 100%;
+        justify-content: flex-end;
+      }
+      .item-action-btn { font-size: 12px; padding: 6px 10px; }
+    }
+</style>
 </head>
 <body>
 
