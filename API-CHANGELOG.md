@@ -1,5 +1,29 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-08-18 (CloudRun DeployId 100 已上线)
+**分支**: feat/config-refactor-260817 (PR #283) + feat/mobile-polish-260818 (PR #284)
+**类型**: ✅ 完全兼容（HTML 入口弃用, API 端点全保留, dizical-minip 无需改动）
+
+## 变更
+
+### 1. GET `/config/records` — HTML 入口弃用 (302 redirect)
+
+- 之前: 渲染 config-records.html (练习记录管理台, 4 tab: calendar/add/edit/stats)
+- 现在: `302 → /config/practice-log?tab=stats` (UI 并入 practice-log 的「练习统计」tab)
+- 后端 `/config/api/records/*` 端点**全保留**, 签名未变 (供 dizical-minip / 旧客户端 / 旧 handoff 继续调用)
+- app.py middleware PUBLIC 白名单加 `/config/records` (1 行) — deprecated redirect 跳过 auth
+- **影响**: minip 走 `/config/api/records` 路由, 不受 HTML 入口弃用影响, **无需改动**
+- 验证: curl /config/records → 302 → /config/practice-log?tab=stats ✓ (3 个 pytest 保护: test_config_records_redirect)
+
+### 2. dizical-test-env 测试环境 (非 API, 附注)
+
+- 新 skill `dizical-test-env` + setup-test-env.sh 一键脚本: worktree 验前端直接复制主 checkout db + 建 dad/test_root 密码 000000 + 起 8766
+- dad 不用记命令, 见 dizical-development skill §6
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-08-09
 **分支**: feat/s3-assignment-history3 (PR 待建)
 **类型**: 🟡 部分兼容（新增只读端点, minip 不调用无需改）
