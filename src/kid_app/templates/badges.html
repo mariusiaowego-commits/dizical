@@ -211,7 +211,7 @@
     #modal-close:hover { transform: scale(1.1); }
     #modal-close:active { transform: scale(0.9); }
     #modal-img-wrap {
-      width: 400px; height: 400px;
+      width: min(400px, 70vw); aspect-ratio: 1;
       display: flex; align-items: center; justify-content: center;
       margin-bottom: 16px;
       cursor: pointer;
@@ -219,7 +219,18 @@
     }
     #modal-img-wrap:hover { transform: scale(1.05) rotate(-1deg); }
     #modal-img-wrap:active { transform: scale(0.97); }
-    #modal-img { width: 400px; height: 400px; object-fit: contain; }
+    #modal-img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+    /* 窄屏 modal 自适应 — iPhone 屏 modal 图缩, header 允许收缩 */
+    @media (max-width: 639px) {
+      #modal-img-wrap { width: min(220px, 56vw); }
+      .modal-header { padding: 36px 16px 8px; flex-shrink: 1; }
+      #modal-box { max-height: 88dvh; }
+      #modal-name { font-size: 20px; }
+    }
+    /* 矮视口 (iPad 横屏 1133x744) — 图按视口高度算 */
+    @media (max-height: 800px) {
+      #modal-img-wrap { width: min(220px, 40vh); }
+    }
     #modal-name {
       font-size: 28px; font-weight: 900; color: #c8860a;
       text-align: center; margin-bottom: 6px; letter-spacing: 0.5px;
