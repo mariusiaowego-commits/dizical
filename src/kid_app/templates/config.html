@@ -210,9 +210,26 @@
     .config-card[data-color="rose"]::before { background: var(--rose); }
     .config-card[data-color="lavender"]::before { background: var(--lavender); }
 
+    /* card-icon:
+       - emoji 时代 font-size:48px 控字大小
+       - 2026-08-17 config-refactor: 改 SVG 后 svg / img 各占 40×40, 视觉跟 emoji 等价
+       - 卡片 hover 时同步抬升 4px, 跟 emoji 一致
+    */
     .card-icon {
       font-size: 48px;
       line-height: 1;
+      display: flex;
+      align-items: center;
+      transition: transform 0.3s ease;
+    }
+    .card-icon img,
+    .card-icon svg {
+      width: 40px;
+      height: 40px;
+      display: block;
+    }
+    .config-card:hover .card-icon {
+      transform: translateY(-4px);
     }
 
     .card-content {
@@ -305,7 +322,9 @@
       
       <!-- 练习科目配置 -->
       <a href="/config/practice" class="config-card" data-color="sage">
-        <div class="card-icon">🎵</div>
+        <div class="card-icon">
+          <img src="/static/icons/koboyo/koboyo_quaver.svg" width="40" height="40" alt="" aria-hidden="true">
+        </div>
         <div class="card-content">
           <h3>练习科目配置</h3>
           <p>管理大科目、小科目、归属关系、归档。支持增删改查和排序。</p>
@@ -316,25 +335,14 @@
         </div>
       </a>
 
-      <!-- 练习记录管理 -->
-      <a href="/config/records" class="config-card" data-color="sage">
-        <div class="card-icon">📅</div>
-        <div class="card-content">
-          <h3>练习记录管理</h3>
-          <p>日历视图、录入编辑练习数据、查看统计。</p>
-        </div>
-        <div class="card-link">
-          <span>前往</span>
-          <span class="arrow">→</span>
-        </div>
-      </a>
-
-      <!-- 练习记录（老师要求 + 练习录入 + 周总览 + 月报） -->
+      <!-- 练习记录（老师要求 + 练习录入 + 周总览 + 统计） -->
       <a href="/config/practice-log" class="config-card" data-color="sage">
-        <div class="card-icon">📝</div>
+        <div class="card-icon">
+          <img src="/static/icons/koboyo/koboyo_clipboard_list.svg" width="40" height="40" alt="" aria-hidden="true">
+        </div>
         <div class="card-content">
           <h3>练习记录</h3>
-          <p>录入练习、老师要求、本周总览、月报生成。</p>
+          <p>录入练习、老师要求、本周总览、查看统计。</p>
         </div>
         <div class="card-link">
           <span>前往</span>
@@ -343,7 +351,15 @@
       </a>
 
       <a href="/config/lessons" class="config-card" data-color="lavender">
-        <div class="card-icon">🎓</div>
+        <div class="card-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 9.5L12 4l10 5.5"/>
+            <path d="M6 11.5V16a6 6 0 0 0 12 0v-4.5"/>
+            <path d="M22 9.5v8a2 2 0 0 1-2 2h-2"/>
+            <path d="M2 17.5V9.5"/>
+            <path d="M6 13.5h6"/>
+          </svg>
+        </div>
         <div class="card-content">
           <h3>课程管理</h3>
           <p>查看日历、添加/取消/调课、确认上课、缴费状态。</p>
@@ -356,7 +372,9 @@
 
       <!-- 盲盒主题配置 -->
       <a href="/config/blindbox" class="config-card" data-color="rose">
-        <div class="card-icon">🎁</div>
+        <div class="card-icon">
+          <img src="/static/icons/koboyo/koboyo_sparkles.svg" width="40" height="40" alt="" aria-hidden="true">
+        </div>
         <div class="card-content">
           <h3>盲盒主题</h3>
           <p>选择每周打卡盲盒的故事主题（ok哥赶海 / 长发公主 / 更多）。</p>
@@ -388,7 +406,12 @@
 
       <!-- 通知配置（Phase 2） -->
       <div class="config-card" data-color="rose" style="opacity: 0.6; cursor: not-allowed;">
-        <div class="card-icon">🔔</div>
+        <div class="card-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
+            <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
+          </svg>
+        </div>
         <div class="card-content">
           <h3>通知配置</h3>
           <p>提醒时间、通知渠道、消息模板。即将推出...</p>
@@ -401,7 +424,12 @@
 
       <!-- 表扬配置 -->
       <a href="/config/praise" class="config-card" data-color="lavender">
-        <div class="card-icon">💬</div>
+        <div class="card-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>
+            <path d="M15.8 9.7a2.5 2.5 0 0 0-3.5 0l-.3.4-.35-.3a2.5 2.5 0 0 0-3.6 3.5l.4.4c.7.7 1.6 1.5 2.3 2.1l1.4 1.2 1.4-1.2 2.3-2.1.4-.4a2.5 2.5 0 0 0 0-3.5z"/>
+          </svg>
+        </div>
         <div class="card-content">
           <h3>表扬配置</h3>
           <p>管理表扬祝福语池，配置每日随机展示的鼓励文案。</p>
@@ -432,7 +460,12 @@
 
       <!-- 缴费配置（Phase 2） -->
       <div class="config-card" data-color="rose" style="opacity: 0.6; cursor: not-allowed;">
-        <div class="card-icon">💰</div>
+        <div class="card-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
+            <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
+          </svg>
+        </div>
         <div class="card-content">
           <h3>缴费配置</h3>
           <p>学费标准、缴费周期、提醒规则。即将推出...</p>
@@ -445,7 +478,17 @@
 
       <!-- 后端连接切换 (Sprint 09 PR-A, web-only) -->
       <div class="config-card" data-color="sage" id="backendCard" style="cursor: default;">
-        <div class="card-icon">🔌</div>
+        <div class="card-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20v-4"/>
+            <path d="M5 11V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4"/>
+            <path d="M5 11h14v2a3 3 0 0 1-3 3h-1"/>
+            <path d="M9 16v3"/>
+            <path d="M15 16v3"/>
+            <path d="M9 11v5"/>
+            <path d="M15 11v5"/>
+          </svg>
+        </div>
         <div class="card-content">
           <h3>后端连接</h3>
           <p id="backendStatus">读取中...</p>

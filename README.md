@@ -76,6 +76,7 @@ dizi + cal(endar) = dizical
 - 📊 **课程统计** — 本月安排/上课/取消数量 + 学费合计/已缴/待缴
 
 ### /config/records（练习记录管理台）
+> **DEPRECATED 2026-08-17 (commit `c7c57a2`)**: UI 已并入 [`/config/practice-log?tab=stats`](#configpractice-logtabstats); 老路由 `302 → /config/practice-log?tab=stats`. 后端 `/config/api/records/*` 端点保留, 给 dizical-minip / 旧客户端继续调用. 新代码/UI 不要走 `/config/records`.
 - 📅 **练习日历** — 月历热力图，点击查看当日练习明细
 - ➕ **录入** — category + item 二级选择，填写分钟数
 - ✏️ **编辑** — 修改历史记录，支持历史科目

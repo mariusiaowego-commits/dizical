@@ -46,6 +46,7 @@ The name is a pun: *dizi* (竹笛, the Chinese bamboo flute) + *cal* (calendar) 
 - **Lesson scheduling** — auto-generate weekly lessons on Saturday, holiday conflict detection, fee tracking with payment reminders on lesson day
 - **`/config/lessons`** — month calendar with status dots, one-click plan generation, fee statistics
 - **`/config/records`** — practice heatmap editor, history editing, AI-generated monthly report infographic (multi-template: academic/fresh/sport/fun)
+> **DEPRECATED 2026-08-17 (commit `c7c57a2`)**: UI merged into `/config/practice-log?tab=stats`. Old route `302 → /config/practice-log?tab=stats`. Backend `/config/api/records/*` endpoints remain for dizical-minip / legacy clients.
 - **`/config/*` admin** — subjects, badge management, users (web auth with invite links + whitelist), PIN-protected
 
 ### 👩🏫 Teacher side
