@@ -273,7 +273,11 @@ def tmp_path_for(draft_id: str, version: int) -> Path:
 
 
 def move_tmp_to_static(draft_id: str, version: int) -> Path:
-    """skill 完成后, 把临时图复制到 static/badges/{id}_v{n}.png (dizical commit 时用)."""
+    """skill 完成后, 把临时图复制到 static/badges/{id}_v{n}.png (dizical commit 时用).
+
+    V3.0 (2026-08-24) sprint 26082401: 仅本地 fallback 路径使用. 生产环境 (CloudRun)
+    应走 commit_to_cos_or_static() 走 COS 上传, 写完整 https URL.
+    """
     import shutil
     src = tmp_path_for(draft_id, version)
     if not src.exists():
@@ -290,6 +294,44 @@ def move_tmp_to_static(draft_id: str, version: int) -> Path:
     dst = static_dir / f"{badge_id}_v{version}.png"
     shutil.copy2(src, dst)
     return dst
+
+
+def commit_to_cos_or_static(draft_id: str, version: int) -> tuple[Path, str]:
+    """V3.0 (sprint 26082401): 走 COS 上传 (生产) 或 static/ (本地 fallback), 返 (路径, 写入 url).
+
+    Returns:
+        (local_path, url_to_write_to_db)
+        - COS 路径: url = https://<bucket>.tcb.qcloud.la/badges/{id}_v{n}.png (完整 https URL)
+        - Static 路径: url = /static/badges/{id}_v{n}.png (相对路径, 本地 Docker 镜像加载)
+
+    Raises:
+        FileNotFoundError: 临时图不存在
+        RuntimeError: COS 上传失败 (Storage First, DB 零写入 → 抛回给 commit handler)
+    """
+    import shutil
+    src = tmp_path_for(draft_id, version)
+    if not src.exists():
+        raise FileNotFoundError(f"临时图 '{src}' 不存在")
+
+    draft = get_draft(draft_id)
+    if draft is None:
+        raise FileNotFoundError(f"draft '{draft_id}' 不存在")
+    badge_id = draft.meta["id"]
+
+    # 延迟 import 避免循环依赖 + 测试时 mock
+    from src.kid_app.cos_client import cos_uploader
+
+    if cos_uploader.is_available:
+        # 生产路径: COS 上传 + 写公开 URL
+        cos_key = f"badges/{badge_id}_v{version}.png"
+        png_bytes = src.read_bytes()
+        # fail loud: RuntimeError 透传到 commit handler 返 500
+        cos_url = cos_uploader.upload(cos_key, png_bytes, content_type="image/png")
+        return src, cos_url
+
+    # 本地 fallback: 老路径 (跟 V2 完全一致)
+    local_static = move_tmp_to_static(draft_id, version)
+    return local_static, f"/static/badges/{badge_id}_v{version}.png"
 
 
 def cleanup_tmp(draft_id: str, version: int) -> None:

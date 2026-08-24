@@ -197,8 +197,13 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=400)
         image_version = draft.image.get("version", draft.version)
 
-        # 1. 复制临时图到 static/badges/{id}_v{image_version}.png
-        static_path = badge_draft.move_tmp_to_static(req.draft_id, image_version)
+        # 1. V3.0 (sprint 26082401): 上传 PNG → COS (生产) 或 static/badges/ (本地 fallback)
+        #    返 (路径, 写入 url) — url 可能是 https://... (COS) 或 /static/badges/... (local)
+        _local_path, badge_image_url = badge_draft.commit_to_cos_or_static(req.draft_id, image_version)
+        logger.info(
+            "badge commit image written: draft=%s version=%d url=%s",
+            req.draft_id, image_version, badge_image_url,
+        )
 
         # 2. 调 badge_db 写三表 (achievements + stats + badges)
         # V2 注意: V1 insert_achievement_row 必填 stat_logic + description,
@@ -263,7 +268,7 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             badge_db.insert_badge_row(
                 conn,
                 badge_id=badge_id,
-                url=f"/static/badges/{badge_id}_v{image_version}.png",
+                url=badge_image_url,  # V3.0 (sprint 26082401): COS https URL 或 /static/ 路径
                 version=image_version,
             )
 
