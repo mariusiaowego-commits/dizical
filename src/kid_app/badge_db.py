@@ -10,6 +10,13 @@ Badge 三表写入 + 事务 + 查询 helper.
 依赖:
 - src.database.db (单例 Database, 持有 sqlite3 连接)
 - 路径: src/kid_app/badge_db.py
+
+V3.1 (sprint 26082401 PR #287, 2026-08-24):
+- commit-from-draft 在云端 MySQL backend 报 AttributeError, 根因是本文件
+  sqlite3 风格 `conn.execute(sqlite_sql, params)` 在 pymysql Connection 不工作
+- 修法: 全改用 `?` positional + src.db_adapter.execute() 统一双后端
+- src.db_adapter 把 `?` 转 `%s` 给 pymysql, sqlite3 直接吃 `?`
+- 验证: tests/test_badge_db_mysql_compat.py (4 case: sqlite + pymysql mock)
 """
 from __future__ import annotations
 
@@ -18,6 +25,7 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 from src.database import db
+from src.db_adapter import execute as _db_execute  # PR #287: 双后端统一入口
 
 
 # ─── 事务 ─────────────────────────────────────────────────────────
@@ -49,7 +57,8 @@ def check_id_unique(badge_id: str) -> bool:
     """检查 badge id 在 achievements 表唯一. True=可用, False=已存在."""
     conn = db._get_connection()
     try:
-        cur = conn.execute(
+        cur = _db_execute(
+            conn,
             "SELECT 1 FROM achievements WHERE id = ? LIMIT 1",
             (badge_id,),
         )
@@ -61,7 +70,7 @@ def check_id_unique(badge_id: str) -> bool:
 def fetch_max_sort_order() -> int:
     """返回当前 max(sort_order), 给新 badge 默认 sort_order = max+1."""
     conn = db._get_connection()
-    cur = conn.execute("SELECT COALESCE(MAX(sort_order), 0) FROM achievements")
+    cur = _db_execute(conn, "SELECT COALESCE(MAX(sort_order), 0) FROM achievements")
     return int(cur.fetchone()[0])
 
 
@@ -74,7 +83,8 @@ def next_version(badge_id: str) -> int:
     - V1.x 换新图 (re-generate): 返回 MAX+1
     """
     conn = db._get_connection()
-    cur = conn.execute(
+    cur = _db_execute(
+        conn,
         "SELECT COALESCE(MAX(version), 0) + 1 FROM achievement_badges "
         "WHERE achievement_id = ?",
         (badge_id,),
@@ -88,7 +98,8 @@ def fetch_badge_url(badge_id: str) -> str | None:
     用途: PR-B 改造 BADGE_URLS / BADGE_FILES 时调用, 也给前端直接查图.
     """
     conn = db._get_connection()
-    cur = conn.execute(
+    cur = _db_execute(
+        conn,
         "SELECT url FROM achievement_badges "
         "WHERE achievement_id = ? AND is_current = 1 LIMIT 1",
         (badge_id,),
@@ -103,8 +114,9 @@ def list_all_current_badge_urls() -> dict[str, str]:
     用途: PR-B BADGE_URLS / BADGE_FILES cache 刷新时调用, 一次 SQL 拿全表.
     """
     conn = db._get_connection()
-    cur = conn.execute(
-        "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1"
+    cur = _db_execute(
+        conn,
+        "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1",
     )
     return {row[0]: row[1] for row in cur.fetchall()}
 
@@ -146,7 +158,28 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
     for k, v in defaults.items():
         ach.setdefault(k, v)
 
-    conn.execute(
+    # PR #287: sqlite3 named param (`:id`/`:name`) 不被 pymysql 支持
+    # 改为 positional `?` + tuple, 由 src.db_adapter 转 `?` → `%s` 给 MySQL
+    # 字段顺序必须跟 INSERT 列对齐 (13 列)
+    insert_tuple = (
+        ach["id"],
+        ach["name"],
+        ach["type"],
+        ach["category"],
+        ach["stat_logic"],
+        ach["description"],
+        ach["display_format"],
+        ach["threshold"],
+        ach["unlocked_template"],
+        ach["placeholder"],
+        ach["sort_order"],
+        ach["seasonal_type"],
+        ach["cond_text"],
+        ach["unlock_strategy"],
+        ach["achieved_at_override"],
+    )
+    _db_execute(
+        conn,
         """
         INSERT INTO achievements
           (id, name, type, category, stat_logic, description,
@@ -154,12 +187,9 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
            sort_order, seasonal_type, cond_text, unlock_strategy,
            achieved_at_override)
         VALUES
-          (:id, :name, :type, :category, :stat_logic, :description,
-           :display_format, :threshold, :unlocked_template, :placeholder,
-           :sort_order, :seasonal_type, :cond_text, :unlock_strategy,
-           :achieved_at_override)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        ach,
+        insert_tuple,
     )
 
 
@@ -176,7 +206,8 @@ def insert_achievement_stats_row(
     - achieved='Y' + achieved_at=ISO 时 立即解锁 (设计时纪念章场景, 跳过 calc)
     - raw_stats='{}' (空 JSON), computed_value=NULL
     """
-    conn.execute(
+    _db_execute(
+        conn,
         """
         INSERT INTO achievement_stats
           (achievement_id, achieved, achieved_at, raw_stats, computed_value)
@@ -196,7 +227,8 @@ def insert_badge_row(
 
     is_locked=0 固定, is_current=1 固定 (新 badge 第 1 张图).
     """
-    conn.execute(
+    _db_execute(
+        conn,
         """
         INSERT INTO achievement_badges
           (achievement_id, url, is_locked, version, is_current)
@@ -212,7 +244,8 @@ def update_badge_current(badge_id: str, new_url: str, new_version: int) -> None:
     走事务. 失败自动回滚 (旧行 is_current 保持原状).
     """
     with badge_write_tx() as conn:
-        conn.execute(
+        _db_execute(
+            conn,
             "UPDATE achievement_badges SET is_current = 0 "
             "WHERE achievement_id = ? AND is_current = 1",
             (badge_id,),
