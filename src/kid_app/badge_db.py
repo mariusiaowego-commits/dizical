@@ -154,6 +154,7 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         "cond_text": None,  # feat/badge-cond-text 2026-06-15
         "unlock_strategy": "calc",  # feat/badge-unlock-strategy 2026-06-16
         "achieved_at_override": None,  # V2.6 (2026-06-16) feat/badge-achieved-at-override
+        "display_format": "icon",  # PR #287 follow-up: V2 表单不收 display_format, 给默认值防 KeyError
     }
     for k, v in defaults.items():
         ach.setdefault(k, v)
