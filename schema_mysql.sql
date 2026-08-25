@@ -175,7 +175,7 @@ CREATE TABLE `weekly_assignments` (
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     images TEXT
-, stage_order BIGINT);
+, stage_order BIGINT, UNIQUE KEY idx_assignments_lesson_unique (lesson_date));
 
 -- SKIP: CREATE INDEX idx_assignments_lesson ON weekly_assignments(lesson_date)  (col lesson_date is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);
 -- SKIP: CREATE INDEX idx_assignments_stage ON weekly_assignments(stage_start)  (col stage_start is TEXT, MySQL 5.7 索引需前缀长度, 业务允许跳过);

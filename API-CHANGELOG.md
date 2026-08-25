@@ -1,5 +1,25 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-08-25 (数据修复已上线, 代码待 PR)
+**分支**: feat/report-stage-computation-check (PR #289)
+**类型**: ✅ 完全兼容（内部 weekly_assignments 写逻辑修复, API 端点签名全不变, dizical-minip 无需改动）
+
+## 变更
+
+### 1. MySQL weekly_assignments 写入修复 (内部逻辑, 无 API 签名变化)
+
+- 修复云端 MySQL `save_weekly_assignment` 不再回填 `stage_order` / 产生重复行
+- 原因: MySQL 表缺 `UNIQUE(lesson_date)` 索引 + UPSERT 排除 stage_order → 08-16 课作业 stage_order=NULL → stage 列表停在第 18
+- 变更:
+  1. `save_weekly_assignment` 每次保存重算 stage_start/end/order (对齐 SQLite), `ON DUPLICATE KEY UPDATE` 加回 stage_order
+  2. `schema_mysql.sql` 加 `UNIQUE KEY idx_assignments_lesson_unique (lesson_date)`
+- **数据已修**: 合并重复行 + 回填 stage_order=19，云端 stage 下拉现显示 Stage 19
+- **影响**: 后端写逻辑优化, API 无变化。minip 盲盒打卡受 stage_order 影响 (此前 MAX(stage_order) 停 18 → 打卡范围错), 数据修复后恢复. 无需代码改动
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-08-18 (CloudRun DeployId 100 已上线)
 **分支**: feat/config-refactor-260817 (PR #283) + feat/mobile-polish-260818 (PR #284)
 **类型**: ✅ 完全兼容（HTML 入口弃用, API 端点全保留, dizical-minip 无需改动）

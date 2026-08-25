@@ -456,47 +456,37 @@ class MySQLBackend(BaseBackend):
         import json as _json
         items_json = _json.dumps(items, ensure_ascii=False)
         images_json = _json.dumps(images, ensure_ascii=False) if images else None
-        # Sprint 08 fix: stage_start/stage_end/stage_order NOT NULL, 保留旧值 (跟 SQLite 语义一致)
-        # 先读出现有行的 stage_* 字段, 若不存在则用 lesson_date 作为 fallback (兼容老用法)
+        # 对齐 SQLite `database.py:714-729`: 每次保存都重新计算 stage_start/end/order
+        # (修复 2026-08-25: 原实现"已有行取旧值不重算"导致 08-16 课 attended 后
+        #  stage_order 无法回填 → stage 停在第 18).
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
-                cur.execute(
-                    "SELECT stage_start, stage_end, stage_order FROM weekly_assignments WHERE lesson_date = %s",
-                    (lesson_date.isoformat(),),
-                )
-                row = cur.fetchone()
-                if row:
-                    # 已有 row: 保留 stage_* (跟 sprint 08 语义一致, 不动)
-                    stage_start = row.get("stage_start")
-                    stage_end = row.get("stage_end")
-                    stage_order = row.get("stage_order")
-                else:
-                    # 新 row: 跟 SQLite `database.py:710-740` 一致算法 (attended_dates.index + 1)
-                    cur.execute(
-                        "SELECT date FROM lessons WHERE status = 'attended' ORDER BY date"
-                    )
-                    attended_rows = cur.fetchall()
-                    attended_dates = [
-                        r['date'].isoformat() if hasattr(r['date'], 'isoformat') else str(r['date'])
-                        for r in attended_rows
-                    ]
-                    # 计算 stage_start = lesson_date + 1, stage_end = 下一节 (attended + scheduled) 课日期
-                    cur.execute("SELECT date FROM lessons ORDER BY date")
-                    all_lessons_rows = cur.fetchall()
-                    all_lessons = [
-                        r['date'] if isinstance(r['date'], dt.date) else self._safe_to_date(r['date'])
-                        for r in all_lessons_rows
-                    ]
-                    future = [d for d in all_lessons if d > lesson_date]
-                    stage_start = (lesson_date + dt.timedelta(days=1)).isoformat()
-                    stage_end = future[0].isoformat() if future else (lesson_date + dt.timedelta(days=7)).isoformat()
+                # attended_dates: stage_order = attended 序号 + 1 (跟 SQLite 一致)
+                cur.execute("SELECT date FROM lessons WHERE status = 'attended' ORDER BY date")
+                attended_rows = cur.fetchall()
+                attended_dates = [
+                    r['date'].isoformat() if hasattr(r['date'], 'isoformat') else str(r['date'])
+                    for r in attended_rows
+                ]
+                # all_lessons: stage_end = 下一节 (attended + scheduled) 课日期
+                cur.execute("SELECT date FROM lessons ORDER BY date")
+                all_lessons_rows = cur.fetchall()
+                # 过滤 None (东莞市 lessons.date NOT NULL, 实际不会为 None; 收窄类型供静态分析)
+                all_lessons = [
+                    (r['date'] if isinstance(r['date'], dt.date) else self._safe_to_date(r['date']))
+                    for r in all_lessons_rows
+                ]
+                all_lessons = [d for d in all_lessons if d is not None]
+                future = [d for d in all_lessons if d > lesson_date]
+                stage_start = (lesson_date + dt.timedelta(days=1)).isoformat()
+                stage_end = future[0].isoformat() if future else (lesson_date + dt.timedelta(days=7)).isoformat()
 
-                    lesson_date_str = lesson_date.isoformat()
-                    if lesson_date_str in attended_dates:
-                        stage_order = attended_dates.index(lesson_date_str) + 1
-                    else:
-                        # Sprint 26081001: 不再写 0, 跟 SQLite 一致写 None (数据库存 NULL)
-                        stage_order = None
+                lesson_date_str = lesson_date.isoformat()
+                if lesson_date_str in attended_dates:
+                    stage_order = attended_dates.index(lesson_date_str) + 1
+                else:
+                    # 非 attended 课 (scheduled/取消) 不再写 0, 跟 SQLite 一致写 None
+                    stage_order = None
 
                 cur.execute('''
                     INSERT INTO weekly_assignments
@@ -505,8 +495,10 @@ class MySQLBackend(BaseBackend):
                     ON DUPLICATE KEY UPDATE
                         items = VALUES(items),
                         notes = VALUES(notes),
-                        images = VALUES(images)
-                        -- stage_start/stage_end/stage_order 仅 INSERT 时写, UPDATE 保留旧值 (sprint 08 语义)
+                        images = VALUES(images),
+                        stage_start = VALUES(stage_start),
+                        stage_end = VALUES(stage_end),
+                        stage_order = VALUES(stage_order)
                 ''', (lesson_date.isoformat(), items_json, notes, images_json,
                       stage_start, stage_end, stage_order))
             conn.commit()
