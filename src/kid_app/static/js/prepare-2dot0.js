@@ -201,9 +201,10 @@
         gsap.to('.hero-v2-hint', { opacity: 0, duration: 0.3 });
         setTimeout(function () {
           goSteps();
-          gsap.set('#heroV2Copy', { y: 0, opacity: 1 });
+          gsap.set('#heroV2Copy', { y: 0, opacity: 1, overwrite: 'auto' });
+          gsap.set('.hero-v2-hint', { opacity: 1, overwrite: 'auto' });
           bursting = false;
-        }, 420);
+        }, 500);
       } else {
         goSteps();
         bursting = false;

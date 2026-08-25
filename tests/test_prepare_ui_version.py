@@ -144,3 +144,16 @@ def test_single_step_id_not_duplicated(html):
     """steps_html 只注入一次, 避免 v1/v2 双份 id 冲突."""
     assert html.count('id="step1"') == 1
     assert html.count('id="check1"') == 1
+
+
+def test_hero_copy_restore_after_fade_not_raced(js_src):
+    """fade-out 450ms 必须在 setTimeout 恢复之前结束, 且 set 要 overwrite 残留 tween.
+
+    回归: 420ms set 被 450ms tween 尾帧盖回 opacity 0, 滚回顶部文案消失.
+    """
+    assert "duration: 0.45" in js_src
+    assert ", 500)" in js_src
+    assert ", 420)" not in js_src
+    restore = js_src.split("goSteps();", 1)[1]
+    assert "overwrite: 'auto'" in restore or 'overwrite: "auto"' in restore
+
