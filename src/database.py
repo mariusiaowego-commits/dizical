@@ -716,8 +716,7 @@ class Database(BaseBackend):
             cursor = conn.cursor()
             cursor.execute("SELECT date FROM lessons ORDER BY date")
             all_lessons = [dt.date.fromisoformat(r[0]) for r in cursor.fetchall()]
-            cursor.execute("SELECT date FROM lessons WHERE status = 'attended' ORDER BY date")
-            attended_dates = [dt.date.fromisoformat(r[0]) for r in cursor.fetchall()]
+            # (attended_dates 查询已移除: stage_order 不再依赖 attended, 见下方注释)
             stage_start = (lesson_date + dt.timedelta(days=1)).isoformat()
             future = [d for d in all_lessons if d > lesson_date]
             if future:
@@ -726,7 +725,18 @@ class Database(BaseBackend):
                 # 没有未来课时，stage_start = lesson_date + 1，stage_end = stage_start + 6（完整7天周期，inclusive）
                 stage_start_val = lesson_date + dt.timedelta(days=1)
                 stage_end = (stage_start_val + dt.timedelta(days=6)).isoformat()
-            stage_order = attended_dates.index(lesson_date) + 1 if lesson_date in attended_dates else None
+            # stage_order = 该课之前已录作业的课日数 + 1（2026-03-14 起的正式 stage 序列重排）。
+            # 2025-11~2026-03-07 是旧体系数据 (stage_order 为负, stage_end 全指向 2026-03-14),
+            # 用 >= '2026-03-14' 排除它们, 保证历史 Stage 1-17 编号不漂移 (agy review 确认, 2026-08-25).
+            # 任意课 (attended/scheduled/cancelled 任一) 录了 assignment 即拿到下一个连续编号;
+            # 没录作业的课不占号, list_stages 不会出现空的未来 stage.
+            cursor.execute('''
+                SELECT COUNT(DISTINCT lesson_date) FROM weekly_assignments
+                WHERE lesson_date >= '2026-03-14' AND lesson_date < ?
+                  AND (stage_order > 0 OR stage_order IS NULL)
+            ''', (lesson_date.isoformat(),))
+            cnt = cursor.fetchone()[0]
+            stage_order = cnt + 1
 
             cursor.execute('''
                 INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order, items, notes, images)

@@ -461,13 +461,6 @@ class MySQLBackend(BaseBackend):
         #  stage_order 无法回填 → stage 停在第 18).
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
-                # attended_dates: stage_order = attended 序号 + 1 (跟 SQLite 一致)
-                cur.execute("SELECT date FROM lessons WHERE status = 'attended' ORDER BY date")
-                attended_rows = cur.fetchall()
-                attended_dates = [
-                    r['date'].isoformat() if hasattr(r['date'], 'isoformat') else str(r['date'])
-                    for r in attended_rows
-                ]
                 # all_lessons: stage_end = 下一节 (attended + scheduled) 课日期
                 cur.execute("SELECT date FROM lessons ORDER BY date")
                 all_lessons_rows = cur.fetchall()
@@ -481,12 +474,19 @@ class MySQLBackend(BaseBackend):
                 stage_start = (lesson_date + dt.timedelta(days=1)).isoformat()
                 stage_end = future[0].isoformat() if future else (lesson_date + dt.timedelta(days=7)).isoformat()
 
-                lesson_date_str = lesson_date.isoformat()
-                if lesson_date_str in attended_dates:
-                    stage_order = attended_dates.index(lesson_date_str) + 1
-                else:
-                    # 非 attended 课 (scheduled/取消) 不再写 0, 跟 SQLite 一致写 None
-                    stage_order = None
+                # stage_order 对齐 SQLite database.py:729 (agy review 确认, 2026-08-25):
+                # = 该课之前已录作业的课日数 + 1 (2026-03-14 起的正式序列).
+                # 2025-11~2026-03-07 旧体系数据 (stage_order 为负) 用 >= '2026-03-14' 排除,
+                # 保证历史 Stage 编号不漂移. 任意课 (attended/scheduled/cancelled) 录作业即编号.
+                cur.execute('''
+                    SELECT COUNT(DISTINCT lesson_date) FROM weekly_assignments
+                    WHERE lesson_date >= '2026-03-14' AND lesson_date < %s
+                      AND (stage_order > 0 OR stage_order IS NULL)
+                ''', (lesson_date.isoformat(),))
+                cnt = cur.fetchone()
+                # DatetimeSafeDictCursor 返 dict, 取首列值 (COUNT 只有一个结果列)
+                cnt_val = next(iter(cnt.values())) if cnt else 0
+                stage_order = (cnt_val if cnt_val is not None else 0) + 1
 
                 cur.execute('''
                     INSERT INTO weekly_assignments
