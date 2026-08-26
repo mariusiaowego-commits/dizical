@@ -1,0 +1,150 @@
+/* prepare UI 2.0 — 暖色粒子喷流 (dad 拍板 B)
+   v1 样式仍在 prepare.html <style>; 本文件只加 v2 + 切换。 */
+
+html[data-ui="1.0"] .ui-version[data-version="2.0"] { display: none !important; }
+html[data-ui="2.0"] .ui-version[data-version="1.0"] { display: none !important; }
+
+.ui-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(255, 253, 248, 0.94);
+  border: 1px solid rgba(61, 61, 61, 0.08);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-light);
+  box-shadow: 0 4px 14px rgba(61, 61, 61, 0.08);
+  font-family: inherit;
+  cursor: pointer;
+  transition-property: transform, box-shadow;
+  transition-duration: 180ms;
+}
+.ui-toggle:hover { box-shadow: 0 6px 18px rgba(61, 61, 61, 0.12); }
+.ui-toggle:active { transform: scale(0.96); }
+.ui-toggle .toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--peach);
+}
+
+/* 齿轮占了右上角, v1「开始练习」左移一格, 避免叠住 */
+.hero-quick-btn { right: 118px; }
+
+/* hero 不再是 body 直接子节点 (包了 .ui-version), 补回 sidebar 间隙 */
+.has-sidebar > .ui-version .hero,
+.has-sidebar > .ui-version .hero-v2 {
+  margin-left: 24px;
+  margin-right: 24px;
+  max-width: calc(100% - 48px);
+}
+
+.hero-v2 {
+  min-height: 100dvh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 88px 24px 120px;
+  overflow: hidden;
+  cursor: pointer;
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(255, 140, 90, 0.22), transparent 60%),
+    radial-gradient(900px 500px at 10% 110%, rgba(168, 213, 186, 0.28), transparent 55%),
+    radial-gradient(700px 400px at 90% 80%, rgba(184, 212, 232, 0.22), transparent 50%),
+    linear-gradient(180deg, #fff3e6 0%, var(--cream) 55%, #efe4d4 100%);
+}
+
+#pollen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.hero-v2-copy {
+  position: relative;
+  z-index: 2;
+  max-width: 560px;
+  pointer-events: none;
+  text-shadow: 0 2px 18px rgba(245, 230, 211, 0.9);
+}
+.hero-v2-copy .hero-v2-bless { pointer-events: auto; }
+
+.hero-v2-eyebrow {
+  font-size: 0.74rem;
+  letter-spacing: 0.32em;
+  font-weight: 600;
+  color: var(--peach);
+  margin-bottom: 22px;
+  text-transform: uppercase;
+}
+.hero-v2-bless {
+  font-size: clamp(2.4rem, 7vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+.hero-v2-bless .accent,
+.hero-v2-bless em {
+  font-style: normal;
+  color: var(--coral);
+}
+.hero-v2-row {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  color: var(--text);
+}
+.hero-v2-date { font-size: 1.15rem; font-weight: 700; }
+.hero-v2-streak { color: var(--coral); font-weight: 600; font-size: 0.95rem; }
+.hero-v2-sub {
+  font-size: 1.02rem;
+  color: var(--text-light);
+  line-height: 1.75;
+}
+.hero-v2-hint {
+  position: absolute;
+  bottom: 108px;
+  z-index: 2;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: var(--text-light);
+  pointer-events: none;
+}
+
+html[data-ui="2.0"] .step-card {
+  box-shadow: 0 8px 28px rgba(255, 140, 90, 0.08);
+}
+html[data-ui="2.0"] .cta-float-btn {
+  background: var(--coral);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tap-hint .dot,
+  #floatingTap .chevron {
+    animation: none !important;
+    opacity: 0.6;
+  }
+  .hero-v2,
+  .hero-v2-copy,
+  .hero-v2-hint {
+    transition: none !important;
+  }
+}

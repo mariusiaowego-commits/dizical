@@ -5,6 +5,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>练习准备 - 竹笛助手</title>
+<script>
+(function () {
+  var p = new URLSearchParams(location.search).get('ui');
+  var k = 'prepare_ui';
+  var v = (p === 'v1') ? '1.0' : (p === 'v2') ? '2.0' : (localStorage.getItem(k) || '2.0');
+  localStorage.setItem(k, v);
+  document.documentElement.setAttribute('data-ui', v);
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -23,6 +32,11 @@
     --white:       #ffffff;
     --radius:      20px;
     --radius-lg:   28px;
+    /* v2 暖色粒子 (dizicute primary/accent + 1 sky) */
+    --coral:       #FF6B6B;
+    --peach:       #FF8C5A;
+    --sky:         #B8D4E8;
+    --ink:         #2C3E50;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -593,12 +607,18 @@
     .assignment-card { padding: 26px 22px; }
   }
 </style>
+<link rel="stylesheet" href="/static/css/prepare-2dot0.css">
 </head>
 <body class="has-sidebar">
   {% include "_sidebar.html" %}
 
+<button class="ui-toggle" id="uiToggle" type="button" title="切换准备页版本">
+  <span class="toggle-dot"></span>
+  <span class="toggle-label">v2.0</span>
+</button>
 
-<!-- ── HERO ─────────────────────────────────── -->
+<!-- ── HERO v1 ─────────────────────────────────── -->
+<div class="ui-version" data-version="1.0">
 <section class="hero" id="hero">
   <a href="/practice" class="hero-quick-btn" title="直达练习">开始练习 →</a>
 
@@ -626,6 +646,28 @@
     </div>
   </div>
 </section>
+</div>
+
+<!-- ── HERO v2 暖色粒子喷流 ─────────────────────── -->
+<div class="ui-version" data-version="2.0">
+<section class="hero-v2" id="heroV2">
+  <canvas id="pollen" aria-hidden="true"></canvas>
+  <div class="hero-v2-copy" id="heroV2Copy">
+    <p class="hero-v2-eyebrow">{{eyebrow}}</p>
+    <h1 class="hero-v2-bless" id="heroBlessV2"
+       data-enc-list='{{enc_list_json}}'
+       onclick="cycleEncouragement()">
+      {{bless_main}}<br><span class="accent">{{bless_accent}}</span>
+    </h1>
+    <div class="hero-v2-row">
+      <span class="hero-v2-date">{{weekday}} · {{today_str}}</span>
+      <span class="hero-v2-streak">连续 {{streak}} 天</span>
+    </div>
+    <p class="hero-v2-sub">{{encouragement}}</p>
+  </div>
+  <p class="hero-v2-hint">移动手指 · 点一下继续</p>
+</section>
+</div>
 
 <!-- ── STEPS ────────────────────────────────── -->
 <section class="steps-section" id="stepsSection">
@@ -782,8 +824,11 @@ const floatingTap = document.getElementById('floatingTap');
 let tapShown = false;
 
 window.addEventListener('scroll', () => {
-  const stepsTop = document.getElementById('stepsSection').offsetTop;
-  const ctaTop = document.getElementById('ctaSection').offsetTop;
+  const stepsEl = document.getElementById('stepsSection');
+  const ctaEl = document.getElementById('ctaSection');
+  if (!stepsEl) return;
+  const stepsTop = stepsEl.offsetTop;
+  const ctaTop = ctaEl ? ctaEl.offsetTop : Number.POSITIVE_INFINITY;
   const scrollY = window.scrollY;
   const winH = window.innerHeight;
 
@@ -829,6 +874,8 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('.step-card')) return;
   if (e.target.closest('#floatingTap')) return;
   if (e.target.closest('.hero-bless')) return;
+  if (e.target.closest('.ui-toggle')) return;
+  if (e.target.closest('#heroV2')) return;
   scrollToNextSection();
 }, { passive: true });
 
@@ -845,27 +892,35 @@ document.addEventListener('keydown', (e) => {
 // 鼓励语点击切换
 let _encIdx = 0;
 function cycleEncouragement() {
-  const el = document.getElementById('heroBless');
-  if (!el) return;
-  const list = JSON.parse(el.dataset.encList || '[]');
+  const els = document.querySelectorAll('#heroBless, #heroBlessV2');
+  if (!els.length) return;
+  const list = JSON.parse(els[0].dataset.encList || '[]');
   if (list.length < 2) return;
   _encIdx = (_encIdx + 1) % list.length;
   const b = list[_encIdx];
+  const html = b.main + '<br><span class="accent">' + b.accent + '</span>';
 
-  gsap.to(el, {
-    scale: 1.12,
-    duration: 0.08,
-    ease: 'power2.in',
-    onComplete: () => {
-      el.innerHTML = b.main + '<br><span class="accent">' + b.accent + '</span>';
-      gsap.fromTo(el,
-        { scale: 0.88, opacity: 0.6 },
-        { scale: 1, opacity: 1, duration: 0.38, ease: 'back.out(2.2)' }
-      );
+  els.forEach((el) => {
+    if (typeof gsap === 'undefined') {
+      el.innerHTML = html;
+      return;
     }
+    gsap.to(el, {
+      scale: 1.12,
+      duration: 0.08,
+      ease: 'power2.in',
+      onComplete: () => {
+        el.innerHTML = html;
+        gsap.fromTo(el,
+          { scale: 0.88, opacity: 0.6 },
+          { scale: 1, opacity: 1, duration: 0.38, ease: 'back.out(2.2)' }
+        );
+      }
+    });
   });
 }
 </script>
+<script src="/static/js/prepare-2dot0.js"></script>
 
 </body>
 </html>
