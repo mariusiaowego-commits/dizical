@@ -1067,7 +1067,8 @@ class Database(BaseBackend):
             if log:
                 lines = [l.strip() for l in log.splitlines() if l.strip()]
                 if lines:
-                    result[p['date'].isoformat()] = lines[0]
+                    key = p['date'].isoformat()[:10] if hasattr(p['date'], 'isoformat') else str(p['date'])[:10]
+                    result[key] = lines[0]
         return result
 
     # ─── 一次性迁移：daily_progress → daily_practices.log ────────────────────
