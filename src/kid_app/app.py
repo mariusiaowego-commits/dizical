@@ -42,11 +42,22 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/auth/")
         or path.startswith("/api/admin/reset-password")  # Sprint v3.3.2 dad 应急重置 API (走 PIN)
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
-        # Sprint 26081004: /admin/whitelist UI 已删 (见 template/admin-whitelist.html), JSON API 仍走 PIN 校验 (minip_api.py:_check_admin_pin), 不需要白名单放行
         or path.startswith("/api/admin/whitelist")
         or path.startswith("/config/api/") or path == "/config/users"
         or path == "/config/records"  # 2026-08-17: deprecated 页面, 立刻 302 → /config/practice-log?tab=stats (无需登录, 任何未登录点击都跳走)
         or path == "/accept-invite" or path.startswith("/accept-invite?")  # Q7 邀请公开页
+        # Sprint 26082801: 小程序专用 API (verify-pin / apply-access) + 业务 API 豁免 (不依赖 web session cookie)
+        or path.startswith("/api/minip/")
+        or path.startswith("/api/streak")
+        or path.startswith("/api/today-stats")
+        or path.startswith("/api/lessons/upcoming")
+        or path.startswith("/api/lessons")
+        or path.startswith("/api/bless-pool")
+        or path.startswith("/api/achievements")
+        or path.startswith("/api/blindbox")
+        or path.startswith("/api/items")
+        or path.startswith("/api/practices/")
+        or path.startswith("/api/practice-sessions")
     )
     if PUBLIC:
         return await call_next(request)
