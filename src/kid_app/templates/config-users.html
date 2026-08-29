@@ -153,7 +153,8 @@
     async function submitPin() {
       const pin = document.getElementById('pinInput').value;
       if (!pin) return;
-      const btn = event.target;
+      // agy review P2-F: 回车触发时 event.target 是 input 不是按钮, 用显式 querySelector
+      const btn = document.querySelector('.pin-gate button');
       if (btn) btn.disabled = true;
       try {
         const res = await fetch('/config/users/verify', {

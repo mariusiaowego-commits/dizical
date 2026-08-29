@@ -620,6 +620,62 @@ def test_invites_list_via_pin_ok_cookie(client):
     assert r.json()["ok"] is True
 
 
+def test_verify_pin_rate_limited_after_5_fails(client):
+    """连续 5 次输错 PIN → 第 6 次 429 (agy review P1 补测)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    # 清掉已有失败计数 (测试隔离)
+    from src.kid_app.routes import config_users as cu
+    cu._PIN_FAIL.clear()
+    for _ in range(5):
+        r = client.post("/config/users/verify", json={"pin": "wrong"})
+        assert r.status_code == 401
+    # 第 6 次 (即使 PIN 对) → 429
+    r = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r.status_code == 429
+    assert "过于频繁" in r.json()["error"]
+
+
+def test_verify_pin_success_clears_fail_count(client):
+    """4 次输错后第 5 次输对 → 200 + 清零计数 (agy review P1-B)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    from src.kid_app.routes import config_users as cu
+    cu._PIN_FAIL.clear()
+    for _ in range(4):
+        client.post("/config/users/verify", json={"pin": "wrong"})
+    # 第 5 次正确 → 通过
+    r = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r.status_code == 200
+    # 计数已清零: 再错 4 次不会触发限流 (从 0 计)
+    for _ in range(4):
+        client.post("/config/users/verify", json={"pin": "wrong"})
+    r2 = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r2.status_code == 200  # 没进 429
+
+
+def test_verify_pin_rejects_cross_origin(client):
+    """跨源 Origin: http://evil.com → 403 (agy review P1-C 补测)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/users/verify", json={"pin": "0905"},
+                    headers={"Origin": "http://evil.com"})
+    assert r.status_code == 403
+    assert "跨源" in r.json()["error"]
+
+
+def test_set_password_rejects_tampered_cookie(client):
+    """伪造/篡改的 pin_ok cookie → 401 (agy review P1 补测)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    uid = _make_user("yoyo", password="old-pass-12345")
+    client.cookies.set("dizical_pin_ok", "forged.invalid")
+    r = client.post(f"/config/api/users/{uid}/set-password",
+                    json={"new_password": "should-not-apply"})
+    assert r.status_code == 401
+    assert "需要 dad 登录或 PIN" in r.json()["error"]
+
+
 # ═══════════════════════════════════════════════════════════
 # 9. Q4: Login lockout (5 次锁 5 分钟) (3 case)
 # ═══════════════════════════════════════════════════════════

@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from src.kid_app.auth import (
     COOKIE_MAX_AGE,
     ROLE_LABELS,
+    clear_pin_ok_cookie,  # agy review P2: 登出也清 PIN 解锁 cookie
     clear_session_cookie,
     fetch_user_by_username,
     hash_password,
@@ -101,6 +102,7 @@ async def api_auth_login(request: Request):
 async def api_auth_logout(request: Request):
     response = JSONResponse({"ok": True})
     clear_session_cookie(response)
+    clear_pin_ok_cookie(response)  # agy review P2: PIN 解锁 cookie 也清, 防残留
     return response
 
 

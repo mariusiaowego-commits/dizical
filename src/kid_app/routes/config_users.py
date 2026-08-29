@@ -425,7 +425,8 @@ def _reject_cross_origin(request: Request) -> Optional[JSONResponse]:
     except Exception:  # noqa: BLE001
         return None
     host = request.headers.get("host", "")
-    if o.netloc == host or (o.hostname and host.startswith(o.hostname)):
+    host_name = host.split(":")[0]  # 去端口, 精确比对 (agy review P1-C: 防子串伪装)
+    if o.netloc == host or (o.hostname and o.hostname == host_name):
         return None
     return JSONResponse({"ok": False, "error": "跨源请求被拒绝"}, status_code=403)
 
@@ -454,6 +455,8 @@ async def api_verify_pin(request: Request):
         _record_fail(ip)
         return JSONResponse({"ok": False, "error": "PIN 错误"}, status_code=401)
 
+    # PIN 正确 → 清零该 IP 失败计数 (agy review P1-B: 防累积误锁)
+    _PIN_FAIL.pop(ip, None)
     resp = JSONResponse({"ok": True})
     set_pin_ok_cookie(resp)
     return resp
