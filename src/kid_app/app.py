@@ -2263,7 +2263,7 @@ async def home(request: Request):
     cur = await get_current_user(request)
     if not cur:
         return RedirectResponse(url="/login", status_code=302)
-    target = "/report" if cur["role"] == "family" else "/practice"
+    target = "/report" if cur["role"] in ("family", "reviewer") else "/practice"
     return RedirectResponse(url=target, status_code=302)
 
 

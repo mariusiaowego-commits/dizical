@@ -191,6 +191,10 @@ def fetch_user_by_username(username: str) -> Optional[dict]:
     )
 
 
+# Alias for backward/forward compatibility
+get_user_by_username = fetch_user_by_username
+
+
 def fetch_user_by_id(user_id: int) -> Optional[dict]:
     return _fetchone_dict(
         "SELECT user_id, username, display_name, password_hash, role, avatar_letter, "
@@ -525,6 +529,7 @@ ROLE_PERMISSIONS = {
     "student": {"practice", "prepare", "report", "achievements", "badges"},
     "family": {"report", "achievements", "badges"},
     "teacher": {"practice", "prepare", "report", "achievements", "badges"},
+    "reviewer": {"report", "achievements", "badges"},
 }
 
 ROLE_LABELS = {
@@ -532,6 +537,7 @@ ROLE_LABELS = {
     "student": "学习者",
     "family": "家人",
     "teacher": "老师",
+    "reviewer": "审核员",
 }
 
 
@@ -561,15 +567,13 @@ async def require_login(request: Request) -> dict:
 
 
 def require_role(*roles: str):
-    """Dependency factory:  仅允许指定 role 通过."""
-
-    async def dep(request: Request) -> dict:
+    """Dependency factory: 仅允许指定 role 通过."""
+    async def _dependency(request: Request) -> dict:
         user = await require_login(request)
         if user["role"] not in roles:
             raise HTTPException(status_code=403, detail="权限不足")
         return user
-
-    return dep
+    return _dependency
 
 
 def check_dad_pin(pin: str) -> bool:
@@ -593,7 +597,7 @@ __all__ = [
     "hash_password", "verify_password", "MIN_PASSWORD_LEN",
     "make_session_cookie", "load_session_cookie", "set_session_cookie",
     "clear_session_cookie", "COOKIE_NAME", "COOKIE_MAX_AGE",
-    "fetch_user_by_username", "fetch_user_by_id", "update_last_login",
+    "fetch_user_by_username", "get_user_by_username", "fetch_user_by_id", "update_last_login",
     "create_user", "update_password", "update_role", "revoke_user",
     "bump_session_version", "list_users",
     "is_user_locked", "increment_login_failed", "reset_login_failed",
