@@ -216,6 +216,11 @@
           <td style="text-align:right;white-space:nowrap;">
             <div class="row-actions">
               <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
+                      title="设置指定密码" aria-label="设置指定密码"
+                      onclick="openSetPwModal({{ u.user_id }}, '{{ u.username }}')">
+                <span class="btn-icon" aria-hidden="true">🔒</span><span class="btn-label">设置密码</span>
+              </button>
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;"
                       title="重置密码" aria-label="重置密码"
                       onclick="resetPw({{ u.user_id }}, '{{ u.username }}')">
                 <span class="btn-icon" aria-hidden="true">🔑</span><span class="btn-label">重置密码</span>
@@ -285,6 +290,22 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeInviteModal()">取消</button>
         <button class="btn btn-primary" onclick="createInvite()">生成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置指定密码 modal (Sprint 26082901) -->
+  <div class="modal-backdrop" id="setPwModal">
+    <div class="modal">
+      <h3 id="setPwTitle">设置指定密码</h3>
+      <p style="color:#888;font-size:13px;margin:4px 0 12px;">为 <span id="setPwUser" style="font-weight:600;color:#333;"></span> 设置一个新密码。设置后立即生效（至少 6 位），不会存明文。</p>
+      <label>新密码 (至少 6 位)</label>
+      <input id="setNewPassword" type="password" autocomplete="new-password" minlength="6" placeholder="输入新密码">
+      <label>确认新密码</label>
+      <input id="setConfirmPassword" type="password" autocomplete="new-password" minlength="6" placeholder="再次输入">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeSetPwModal()">取消</button>
+        <button class="btn btn-primary" onclick="setPassword()">保存密码</button>
       </div>
     </div>
   </div>
@@ -399,6 +420,38 @@
       const data = await r.json();
       if (!data.ok) { alert('失败: ' + data.error); return; }
       alert('已踢出 ' + username + ' 的所有设备.');
+    }
+
+    // ── 设置指定密码 (Sprint 26082901) ──────────────────────────
+    let setPwTarget = null;  // {uid, username}
+    function openSetPwModal(uid, username) {
+      setPwTarget = {uid, username};
+      document.getElementById('setPwUser').textContent = `「${username}」`;
+      document.getElementById('setNewPassword').value = '';
+      document.getElementById('setConfirmPassword').value = '';
+      document.getElementById('setPwModal').classList.add('show');
+      document.getElementById('setNewPassword').focus();
+    }
+    function closeSetPwModal() {
+      document.getElementById('setPwModal').classList.remove('show');
+      setPwTarget = null;
+    }
+    async function setPassword() {
+      if (!setPwTarget) { closeSetPwModal(); return; }
+      const np = document.getElementById('setNewPassword').value;
+      const cp = document.getElementById('setConfirmPassword').value;
+      if (np.length < 6) { alert('密码至少 6 位'); return; }
+      if (np !== cp) { alert('两次输入的密码不一致'); return; }
+      if (!confirm(`为 ${setPwTarget.username} 设置新密码? 设置后立即生效, 原密码失效.`)) return;
+      const r = await fetch(`/config/api/users/${setPwTarget.uid}/set-password`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin: CURRENT_PIN, new_password: np}),
+      });
+      const data = await r.json();
+      closeSetPwModal();
+      if (!data.ok) { alert('失败: ' + data.error); return; }
+      showPw(setPwTarget.username + ' 的新密码', data.new_password);
     }
 
     function openInviteModal() { document.getElementById('inviteModal').classList.add('show'); }
