@@ -185,6 +185,50 @@ async def api_users_reset_password(request: Request, user_id: int):
     })
 
 
+@router.post("/config/api/users/{user_id}/set-password")
+async def api_users_set_password(request: Request, user_id: int):
+    """{pin, new_password} → 把该用户密码设为 dad 指定的明文.
+
+    Sprint 26082901 dad 拍板方案 ① "重置为指定密码": dad 想"看到当前密码"
+    以便微信/电话告知家人, 但密码是 scrypt 单向哈希, 原明文无法回看.
+    折中: dad 自己设一个新密码 (他知道的), 当场返回明文 1 次 → 设置的就是
+    记得住的密码. 不存明文 (安全), 设完即忘, 保持和现有 reset-password 一致的
+    dad 守门 (PIN 或 dad role session).
+
+    与 reset-password 差异:
+      - 接受 dad 提供的 new_password (非随机), 校验 >= MIN_PASSWORD_LEN (hash_password 抛 ValueError)
+      - 设置后不强制 must_change_password (dad 设的就是用户该用的密码); reset 会置 1
+      - 不 bump session (不把用户/设备登出), 和 reset 一致 (dad 重置设密码是帮用户)
+    """
+    body = json.loads(await request.body() or b"{}")
+    pin = body.get("pin") or request.headers.get("X-Dad-Pin", "")
+    err = await _check_dad_or_401(request)
+    if err: return err
+
+    new_password = (body.get("new_password") or "").strip()
+    if not new_password:
+        return JSONResponse({"ok": False, "error": "密码不能为空"}, status_code=400)
+
+    from src.kid_app.auth import fetch_user_by_id, update_password
+    user = fetch_user_by_id(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "用户不存在"}, status_code=404)
+
+    try:
+        new_hash = hash_password(new_password)
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+    update_password(user_id, new_hash, bump_session=False)
+    return JSONResponse({
+        "ok": True,
+        "user_id": user_id,
+        "username": user["username"],
+        "new_password": new_password,
+        "must_change": False,
+    })
+
+
 @router.post("/config/api/users/{user_id}/role")
 async def api_users_change_role(request: Request, user_id: int):
     body = json.loads(await request.body() or b"{}")

@@ -488,6 +488,64 @@ def test_logout_all_ok_with_pin(client):
     assert r.status_code == 401
 
 
+# ───────────────────────────────────────────────────────────────
+# 8b. Config users — 设置指定密码 set-password (4 case, Sprint 26082901)
+# ───────────────────────────────────────────────────────────────
+
+def test_set_password_ok_with_pin(client):
+    """正确 PIN + 合法新密码 → 设密成功, 新密码可登录, 返明文 1 次."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    uid = _make_user("yoyo", password="old-pass-12345")
+    r = client.post(f"/config/api/users/{uid}/set-password",
+                    json={"pin": "0905", "new_password": "brand-new-pass"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is True
+    assert data["new_password"] == "brand-new-pass"
+    assert data["must_change"] is False
+    # 新密码能登录
+    r2 = client.post("/api/auth/login",
+                     json={"username": "yoyo", "password": "brand-new-pass"})
+    assert r2.status_code == 200
+    # 旧密码失效
+    r3 = client.post("/api/auth/login",
+                     json={"username": "yoyo", "password": "old-pass-12345"})
+    assert r3.status_code == 401
+
+
+def test_set_password_wrong_pin(client):
+    """错 PIN → 401."""
+    uid = _make_user("yoyo", password="old-pass-12345")
+    r = client.post(f"/config/api/users/{uid}/set-password",
+                    json={"pin": "wrong", "new_password": "brand-new-pass"})
+    assert r.status_code == 401
+
+
+def test_set_password_too_short(client):
+    """新密码 < 6 位 → 400 (auth.hash_password 抛 ValueError)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    uid = _make_user("yoyo", password="old-pass-12345")
+    r = client.post(f"/config/api/users/{uid}/set-password",
+                    json={"pin": "0905", "new_password": "123"})
+    assert r.status_code == 400
+    assert "至少" in r.json()["error"]
+    # 密码未被改动, 旧密码仍可登录
+    r2 = client.post("/api/auth/login",
+                     json={"username": "yoyo", "password": "old-pass-12345"})
+    assert r2.status_code == 200
+
+
+def test_set_password_user_not_found(client):
+    """不存在的 user_id → 404."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/api/users/999999/set-password",
+                    json={"pin": "0905", "new_password": "brand-new-pass"})
+    assert r.status_code == 404
+
+
 # ═══════════════════════════════════════════════════════════
 # 9. Q4: Login lockout (5 次锁 5 分钟) (3 case)
 # ═══════════════════════════════════════════════════════════

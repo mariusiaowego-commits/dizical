@@ -1,5 +1,23 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-08-29 (待 PR)
+**分支**: feat/config-set-password
+**类型**: 🟡 部分兼容（新增端点, 现有 API 签名全不变, dizical-minip 无需改动）
+
+## 变更
+
+### 1. POST `/config/api/users/{user_id}/set-password` — 设置指定密码 (dad 后台)
+
+- 背景: dad 想"看到当前密码"以便微信/电话告知家人, 但密码是 scrypt 单向哈希, 原明文无法回看. Sprint 26082901 dad 拍板方案①: dad 自己设一个新密码 (他知道的), 当场返回明文 1 次
+- Body: `{pin, new_password}`; 守门 `_check_dad_or_401` (PIN 或 dad role session, 同 reset-password)
+- 行为: 设新 scrypt hash; 校验 >= MIN_PASSWORD_LEN (6); **不强制 must_change_password** (dad 设的就是用户该用的密码); 不 bump session
+- 返明文 `new_password` 1 次 (设完即忘, 不存明文)
+- **影响**: 新增端点, dizical-minip 无调用, 无需改动. 同 sprint 前端 config-users.html 加 [设置密码] 按钮 + modal
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-08-25 (数据修复已上线, 代码待 PR)
 **分支**: feat/report-stage-computation-check (PR #289)
 **类型**: ✅ 完全兼容（内部 weekly_assignments 写逻辑修复, API 端点签名全不变, dizical-minip 无需改动）
