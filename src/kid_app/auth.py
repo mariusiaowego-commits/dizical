@@ -136,6 +136,38 @@ def load_session_cookie(raw: str) -> Optional[dict]:
     return _cookie_verify(raw)
 
 
+def make_mp_session_token(user_id: int, role: str, session_version: int) -> str:
+    """复用 web cookie HMAC 机制, 给 mp 用 (X-Mp-Session header)."""
+    return make_session_cookie(user_id, role, session_version)
+
+
+def load_mp_session_token(raw: str) -> Optional[dict]:
+    """复用 web cookie HMAC 校验. 返 payload dict (含 user_id, role, sv, exp) 或 None."""
+    return load_session_cookie(raw)
+
+
+async def get_mp_current_user(request: Request) -> Optional[dict]:
+    """从 X-Mp-Session header 解析 mp user dict 并校验 session_version."""
+    sig = (
+        request.headers.get("X-Mp-Session")
+        or request.headers.get("x-mp-session")
+        or request.headers.get("Authorization")
+    )
+    if not sig:
+        return None
+    if sig.startswith("Bearer "):
+        sig = sig[7:].strip()
+    session = load_mp_session_token(sig)
+    if not session:
+        return None
+    user = fetch_user_by_id(session["user_id"])
+    if not user or user.get("revoked"):
+        return None
+    if session.get("sv", 0) != user.get("session_version", 0):
+        return None
+    return user
+
+
 def set_session_cookie(response: Response, user_id: int, role: str,
                         session_version: int, remember: bool = True) -> None:
     sig = make_session_cookie(user_id, role, session_version)
@@ -189,6 +221,10 @@ def fetch_user_by_username(username: str) -> Optional[dict]:
         "FROM web_users WHERE username = ?",
         (username,),
     )
+
+
+# Alias for backward/forward compatibility
+get_user_by_username = fetch_user_by_username
 
 
 def fetch_user_by_id(user_id: int) -> Optional[dict]:
@@ -525,6 +561,7 @@ ROLE_PERMISSIONS = {
     "student": {"practice", "prepare", "report", "achievements", "badges"},
     "family": {"report", "achievements", "badges"},
     "teacher": {"practice", "prepare", "report", "achievements", "badges"},
+    "reviewer": {"report", "achievements", "badges"},
 }
 
 ROLE_LABELS = {
@@ -532,6 +569,7 @@ ROLE_LABELS = {
     "student": "学习者",
     "family": "家人",
     "teacher": "老师",
+    "reviewer": "审核员",
 }
 
 
@@ -561,15 +599,13 @@ async def require_login(request: Request) -> dict:
 
 
 def require_role(*roles: str):
-    """Dependency factory:  仅允许指定 role 通过."""
-
-    async def dep(request: Request) -> dict:
+    """Dependency factory: 仅允许指定 role 通过."""
+    async def _dependency(request: Request) -> dict:
         user = await require_login(request)
         if user["role"] not in roles:
             raise HTTPException(status_code=403, detail="权限不足")
         return user
-
-    return dep
+    return _dependency
 
 
 def check_dad_pin(pin: str) -> bool:
@@ -593,7 +629,8 @@ __all__ = [
     "hash_password", "verify_password", "MIN_PASSWORD_LEN",
     "make_session_cookie", "load_session_cookie", "set_session_cookie",
     "clear_session_cookie", "COOKIE_NAME", "COOKIE_MAX_AGE",
-    "fetch_user_by_username", "fetch_user_by_id", "update_last_login",
+    "make_mp_session_token", "load_mp_session_token", "get_mp_current_user",
+    "fetch_user_by_username", "get_user_by_username", "fetch_user_by_id", "update_last_login",
     "create_user", "update_password", "update_role", "revoke_user",
     "bump_session_version", "list_users",
     "is_user_locked", "increment_login_failed", "reset_login_failed",

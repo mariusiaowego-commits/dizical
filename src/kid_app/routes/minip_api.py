@@ -110,83 +110,59 @@ def api_lessons_upcoming():
     })
 
 
-# ─── PIN 失败计数持久化（SQLite settings 表）──────────────────────────
-def _pin_fail_key(openid: str) -> str:
-    return f"pin_fail_count:{openid}"
-
-
-def _get_pin_fails(openid: str) -> tuple:
-    """返回 (count, first_attempt_ts)"""
-    raw = db.get_setting(_pin_fail_key(openid))
-    if not raw:
-        return (0, 0.0)
-    try:
-        data = json.loads(raw)
-        return (data.get("count", 0), data.get("first", 0.0))
-    except (json.JSONDecodeError, TypeError):
-        return (0, 0.0)
-
-
-def _set_pin_fails(openid: str, count: int, first_ts: float):
-    db.set_setting(_pin_fail_key(openid), json.dumps({"count": count, "first": first_ts}))
+from src.kid_app.auth import (
+    verify_password,
+    get_user_by_username,
+    is_user_locked,
+    increment_login_failed,
+    reset_login_failed,
+    update_last_login,
+    make_mp_session_token,
+)
 
 
 @router.post("/api/minip/verify-pin")
 async def api_minip_verify_pin(request: Request):
-    """小程序专用 PIN 验证（白名单 + 失败计数 + 冷却）。
-
-    不改现有 /api/verify-pin 逻辑，这是 minip 专用的新端点。
-    """
-    body = json.loads(await request.body())
-    pin = body.get("pin", "")
-    openid = body.get("openid", "").strip()
-
-    # 1. openid 必传 — 7-28 安全修复: 之前 if openid ... 旁路导致空 openid + 知道 PIN 就能进 dad 真数据
-    if not openid:
-        return JSONResponse({"ok": False, "error": "openid_required"}, status_code=400)
-
-    # 2. 白名单校验
-    whitelist_raw = db.get_setting("dad_whitelist") or "[]"
+    """小程序登录验证（对接 web_users 账号体系，支持 dad/family/student/reviewer）。"""
     try:
-        whitelist = json.loads(whitelist_raw)
-    except (json.JSONDecodeError, TypeError):
-        whitelist = []
+        body = json.loads(await request.body())
+    except Exception:
+        body = {}
+    username = (body.get("username") or "").strip()
+    password = (body.get("password") or "").strip()
 
-    # 7-28 上线临时: PIN=0905 + openid 非空 自动白名单 (宽模式, 让 dad 真机能进).
-    # 一旦 dad 真 openid 第一次验证通过, 自动加 whitelist, 后续所有走严格白名单.
-    # 此机制是为了绕过"dad 真 openid 不在 whitelist 进不去"问题, 不影响安全:
-    # PIN=0905 是 dad 知道的, 真用户输 0905 通过后被永久加白.
-    # 后续 dad 真 openid 走严格白名单校验 (此分支不命中).
-    def _broad_seed():
-        if openid not in whitelist:
-            whitelist.append(openid)
-            db.set_setting("dad_whitelist", json.dumps(whitelist))
+    if not username or not password:
+        return JSONResponse({"ok": False, "error": "username_password_required"}, status_code=400)
 
-    # 3. 冷却检查（持久化到 SQLite）
-    cnt, first = _get_pin_fails(openid)
-    now = time.time()
-    if cnt >= PIN_MAX_FAILS and (now - first) < PIN_COOLDOWN_SEC:
-        retry_after = int(PIN_COOLDOWN_SEC - (now - first))
-        return JSONResponse(
-            {"ok": False, "error": "cooldown", "retry_after": retry_after},
-            status_code=429,
-        )
-    if cnt >= PIN_MAX_FAILS and (now - first) >= PIN_COOLDOWN_SEC:
-        _set_pin_fails(openid, 0, now)
+    # 1. 查 web_users
+    user = get_user_by_username(username)
+    if not user or user.get("revoked"):
+        return JSONResponse({"ok": False, "error": "wrong_credentials"}, status_code=401)
 
-    # 4. 比对 PIN
-    stored_pin = db.get_setting("dad_pin") or ""
-    if stored_pin and pin == stored_pin:
-        _set_pin_fails(openid, 0, now)
-        # 7-28 上线临时宽模式: PIN=0905 通过 + openid 非空 自动白名单
-        if pin == stored_pin:
-            _broad_seed()
-        return JSONResponse({"ok": True, "role": "dad"})
-    else:
-        new_cnt = cnt + 1 if cnt > 0 else 1
-        new_first = first if cnt > 0 else now
-        _set_pin_fails(openid, new_cnt, new_first)
-        return JSONResponse({"ok": False, "error": "wrong_pin"}, status_code=401)
+    # 2. 账号锁定检查
+    if is_user_locked(user):
+        return JSONResponse({"ok": False, "error": "account_locked"}, status_code=429)
+
+    # 3. 校验密码 (scrypt)
+    if not verify_password(user["password_hash"], password):
+        increment_login_failed(user["user_id"])
+        return JSONResponse({"ok": False, "error": "wrong_credentials"}, status_code=401)
+
+    # 4. 登录成功，重置失败计数并更新登录时间
+    reset_login_failed(user["user_id"])
+    update_last_login(user["user_id"])
+
+    role = user["role"]  # dad / family / student / reviewer
+    display_name = user["display_name"]
+    return JSONResponse({
+        "ok": True,
+        "role": role,
+        "display_name": display_name,
+        "user_id": user["user_id"],
+        "mp_token": make_mp_session_token(
+            user["user_id"], role, user.get("session_version", 0)
+        ),
+    })
 
 
 # ─── 成就殿堂 API（小程序用）────────────────────────────────────────────
