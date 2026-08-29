@@ -614,6 +614,46 @@ def check_dad_pin(pin: str) -> bool:
     return bool(pin) and bool(stored) and (pin == stored)
 
 
+# ─── PIN 页面解锁 cookie (Sprint 26082901: PIN 残留 URL 修复) ───────
+# dad 报: 用 PIN 进 /config/users 时 PIN 留 URL (?pin=0905). 改用:
+#   前端 POST /config/users/verify → 服务端验 PIN → 种 "已验证" 签名 cookie
+#   → 302/303 清 URL. cookie 存的是签名标记 (非 PIN 明文), 窃 cookie 只拿
+#   到本网关短时访问, 不能解出 PIN 跨服务复用.
+PIN_OK_COOKIE_NAME = "dizical_pin_ok"
+PIN_OK_COOKIE_MAX_AGE = 120 * 60  # 120 分钟 (管理页解锁凭据, 比 30 天 session 短)
+
+
+def make_pin_ok_cookie() -> str:
+    """签发 HttpOnly '已验证' cookie 值. 不含 PIN, 只含 scope+exp 签名."""
+    import time as _t
+    return _cookie_sign({"scope": "dad_pin", "exp": int(_t.time()) + PIN_OK_COOKIE_MAX_AGE})
+
+
+def load_pin_ok_cookie(request: Request) -> bool:
+    """读并验签 pin_ok cookie, 有效返 True. 有效期+签名双校验."""
+    raw = request.cookies.get(PIN_OK_COOKIE_NAME) or ""
+    if not raw:
+        return False
+    payload = _cookie_verify(raw)
+    return bool(payload and payload.get("scope") == "dad_pin")
+
+
+def set_pin_ok_cookie(response: Response) -> None:
+    response.set_cookie(
+        key=PIN_OK_COOKIE_NAME,
+        value=make_pin_ok_cookie(),
+        max_age=PIN_OK_COOKIE_MAX_AGE,
+        httponly=True,
+        secure=not INSECURE_COOKIE,  # iPad LAN http 必须 not, 否则静默丢弃
+        samesite="lax",
+        path="/config",
+    )
+
+
+def clear_pin_ok_cookie(response: Response) -> None:
+    response.delete_cookie(PIN_OK_COOKIE_NAME, path="/config")
+
+
 def generate_random_password(length: int = 12) -> str:
     """生成初始密码. 排除 0/O/1/l 等易混字符."""
     import secrets
@@ -639,4 +679,6 @@ __all__ = [
     "get_current_user", "require_login", "require_role",
     "ROLE_PERMISSIONS", "ROLE_LABELS",
     "check_dad_pin", "generate_random_password",
+    "make_pin_ok_cookie", "load_pin_ok_cookie", "set_pin_ok_cookie",
+    "clear_pin_ok_cookie", "PIN_OK_COOKIE_NAME", "PIN_OK_COOKIE_MAX_AGE",
 ]

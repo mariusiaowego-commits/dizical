@@ -2,17 +2,28 @@
 
 **日期**: 2026-08-29 (待 PR)
 **分支**: feat/config-set-password
-**类型**: 🟡 部分兼容（新增端点, 现有 API 签名全不变, dizical-minip 无需改动）
+**类型**: 🟡 部分兼容（新增端点, 现有 API 签名基本不变, dizical-minip 无改动）
 
 ## 变更
 
-### 1. POST `/config/api/users/{user_id}/set-password` — 设置指定密码 (dad 后台)
+### 1.1 POST `/config/api/users/{user_id}/set-password` — 设置指定密码 (dad 后台)
 
 - 背景: dad 想"看到当前密码"以便微信/电话告知家人, 但密码是 scrypt 单向哈希, 原明文无法回看. Sprint 26082901 dad 拍板方案①: dad 自己设一个新密码 (他知道的), 当场返回明文 1 次
 - Body: `{pin, new_password}`; 守门 `_check_dad_or_401` (PIN 或 dad role session, 同 reset-password)
 - 行为: 设新 scrypt hash; 校验 >= MIN_PASSWORD_LEN (6); **不强制 must_change_password** (dad 设的就是用户该用的密码); 不 bump session
 - 返明文 `new_password` 1 次 (设完即忘, 不存明文)
 - **影响**: 新增端点, dizical-minip 无调用, 无需改动. 同 sprint 前端 config-users.html 加 [设置密码] 按钮 + modal
+
+### 1.2 PIN 残留 URL 修复 — POST `/config/users/verify` + pin_ok cookie (dad 报)
+
+- **问题**: 之前用 PIN 进 `/config/users` 时 PIN 留 URL (`?pin=0905`), 历史记录/共享链接泄露
+- **新增** `POST /config/users/verify`: body `{pin}` → 验 PIN, 通过种 `dizical_pin_ok` cookie (HttpOnly 签名, 2h), 返 `{ok:True}`
+  - 安全: Origin/Referer 校验 (CSRF) + IP 限流 5 次/5min (防 4 位 PIN 爆破)
+  - cookie 存**已验证签名** (非 PIN 明文), 窃 cookie 只能短时访问本网关, 不能解出 PIN
+- **GET** `/config/users?pin=` (老链接/curl) → 校验通过后 **303 + 种 cookie + 清 URL** 重定向
+- **升级** `_check_dad_or_401` 第三轨: dad session OR body/header PIN OR pin_ok cookie
+- **兼容**: `/config/api/invites/list` 从 query pin 改三轨守门 (老 `?pin=` 仍兼容); `/api/verify-pin` (mp) + `dizical_session` + minip `X-Dad-Pin` 均不动
+- **影响**: 前端 config-users.html submitPin 改 POST + invites/list 去 URL pin. dizical-minip 不调这些 HTML/API 端点, **无需改动**
 
 ---
 

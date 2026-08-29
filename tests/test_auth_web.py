@@ -546,6 +546,136 @@ def test_set_password_user_not_found(client):
     assert r.status_code == 404
 
 
+# ───────────────────────────────────────────────────────────────
+# 8c. PIN 页面解锁 verify + URL 清洗 (Sprint 26082901) (6 case)
+# ───────────────────────────────────────────────────────────────
+
+def test_verify_pin_ok_sets_cookie(client):
+    """正确 PIN POST /config/users/verify → 200 + 种 pin_ok cookie."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    # 种了 HttpOnly pin_ok cookie
+    assert "dizical_pin_ok" in r.cookies
+    assert r.cookies["dizical_pin_ok"]
+
+
+def test_verify_pin_wrong_no_cookie(client):
+    """错 PIN → 401, 不种 pin_ok cookie."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/users/verify", json={"pin": "wrong"})
+    assert r.status_code == 401
+    assert "dizical_pin_ok" not in r.cookies
+
+
+def test_verify_pin_empty(client):
+    """空 PIN → 401."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/users/verify", json={"pin": ""})
+    assert r.status_code == 401
+
+
+def test_config_users_page_washes_query_pin(client):
+    """GET /config/users?pin=0905 → 303 重定向, Location 无 pin, 种 cookie."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.get("/config/users?pin=0905", follow_redirects=False)
+    assert r.status_code == 303
+    loc = r.headers["location"]
+    assert "pin" not in loc.lower()  # URL 清洗: Location 无 pin
+    assert "dizical_pin_ok" in r.cookies
+
+
+def test_set_password_via_pin_ok_cookie(client):
+    """用 pin_ok cookie 调写接口 set-password 能过 (第 3 轨)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    uid = _make_user("yoyo", password="old-pass-12345")
+    # 先 verify 拿 cookie
+    v = client.post("/config/users/verify", json={"pin": "0905"})
+    assert "dizical_pin_ok" in v.cookies
+    client.cookies.set("dizical_pin_ok", v.cookies["dizical_pin_ok"])
+    r = client.post(f"/config/api/users/{uid}/set-password",
+                    json={"new_password": "cookie-auth-pass"})
+    assert r.status_code == 200
+    # 新密码能登录
+    r2 = client.post("/api/auth/login",
+                     json={"username": "yoyo", "password": "cookie-auth-pass"})
+    assert r2.status_code == 200
+
+
+def test_invites_list_via_pin_ok_cookie(client):
+    """invites/list 无 URL pin, 靠 pin_ok cookie 能过."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    v = client.post("/config/users/verify", json={"pin": "0905"})
+    assert "dizical_pin_ok" in v.cookies
+    client.cookies.set("dizical_pin_ok", v.cookies["dizical_pin_ok"])
+    r = client.get("/config/api/invites/list")  # 无 ?pin=
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+
+
+def test_verify_pin_rate_limited_after_5_fails(client):
+    """连续 5 次输错 PIN → 第 6 次 429 (agy review P1 补测)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    # 清掉已有失败计数 (测试隔离)
+    from src.kid_app.routes import config_users as cu
+    cu._PIN_FAIL.clear()
+    for _ in range(5):
+        r = client.post("/config/users/verify", json={"pin": "wrong"})
+        assert r.status_code == 401
+    # 第 6 次 (即使 PIN 对) → 429
+    r = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r.status_code == 429
+    assert "过于频繁" in r.json()["error"]
+
+
+def test_verify_pin_success_clears_fail_count(client):
+    """4 次输错后第 5 次输对 → 200 + 清零计数 (agy review P1-B)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    from src.kid_app.routes import config_users as cu
+    cu._PIN_FAIL.clear()
+    for _ in range(4):
+        client.post("/config/users/verify", json={"pin": "wrong"})
+    # 第 5 次正确 → 通过
+    r = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r.status_code == 200
+    # 计数已清零: 再错 4 次不会触发限流 (从 0 计)
+    for _ in range(4):
+        client.post("/config/users/verify", json={"pin": "wrong"})
+    r2 = client.post("/config/users/verify", json={"pin": "0905"})
+    assert r2.status_code == 200  # 没进 429
+
+
+def test_verify_pin_rejects_cross_origin(client):
+    """跨源 Origin: http://evil.com → 403 (agy review P1-C 补测)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    r = client.post("/config/users/verify", json={"pin": "0905"},
+                    headers={"Origin": "http://evil.com"})
+    assert r.status_code == 403
+    assert "跨源" in r.json()["error"]
+
+
+def test_set_password_rejects_tampered_cookie(client):
+    """伪造/篡改的 pin_ok cookie → 401 (agy review P1 补测)."""
+    from src.database import db
+    db.set_setting("dad_pin", "0905")
+    uid = _make_user("yoyo", password="old-pass-12345")
+    client.cookies.set("dizical_pin_ok", "forged.invalid")
+    r = client.post(f"/config/api/users/{uid}/set-password",
+                    json={"new_password": "should-not-apply"})
+    assert r.status_code == 401
+    assert "需要 dad 登录或 PIN" in r.json()["error"]
+
+
 # ═══════════════════════════════════════════════════════════
 # 9. Q4: Login lockout (5 次锁 5 分钟) (3 case)
 # ═══════════════════════════════════════════════════════════

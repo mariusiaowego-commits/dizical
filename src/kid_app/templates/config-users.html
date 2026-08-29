@@ -149,10 +149,32 @@
     <div class="err" id="pinErr"></div>
   </div>
   <script>
-    function submitPin() {
+    // Sprint 26082901: PIN 不再进 URL. submitPin 改 POST verify → 种 cookie → replace 刷新.
+    async function submitPin() {
       const pin = document.getElementById('pinInput').value;
       if (!pin) return;
-      location.href = '/config/users?pin=' + encodeURIComponent(pin);
+      // agy review P2-F: 回车触发时 event.target 是 input 不是按钮, 用显式 querySelector
+      const btn = document.querySelector('.pin-gate button');
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/config/users/verify', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({pin}),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          location.replace('/config/users');  // replace 不产生历史记录, URL 无 pin
+        } else {
+          const errEl = document.getElementById('pinErr');
+          if (errEl) errEl.textContent = data.error || 'PIN 错误';
+          if (btn) btn.disabled = false;
+        }
+      } catch (e) {
+        const errEl = document.getElementById('pinErr');
+        if (errEl) errEl.textContent = '网络错误, 请重试';
+        if (btn) btn.disabled = false;
+      }
     }
   </script>
   {% else %}
@@ -315,7 +337,7 @@
     <div class="modal">
       <h3 id="pwTitle">初始密码 (请通过安全渠道告知该用户)</h3>
       <div class="pw-display" id="pwDisplay"></div>
-      <p style="color:#888;font-size:13px;margin:8px 0;">首次登录后会强制改密.</p>
+      <p id="pwHint" style="color:#888;font-size:13px;margin:8px 0;">首次登录后会强制改密.</p>
       <div class="pw-display-actions">
         <button class="btn btn-secondary" onclick="copyPw()">复制</button>
         <button class="btn btn-primary" onclick="closePwModal()">我已知晓</button>
@@ -332,10 +354,18 @@
     function closeCreateModal() { document.getElementById('createModal').classList.remove('show'); }
     function closePwModal() { document.getElementById('pwModal').classList.remove('show'); location.reload(); }
 
-    function showPw(title, pw) {
+    function showPw(title, pw, hint) {
       lastShownPw = pw;
       document.getElementById('pwTitle').textContent = title;
       document.getElementById('pwDisplay').textContent = pw;
+      const hintEl = document.getElementById('pwHint');
+      if (hint === undefined) {
+        hintEl.textContent = '首次登录后会强制改密.';
+        hintEl.style.color = '#888';
+      } else {
+        hintEl.textContent = hint;
+        hintEl.style.color = '#2E7D32';  // 成功绿
+      }
       document.getElementById('pwModal').classList.add('show');
     }
     /**
@@ -451,7 +481,7 @@
       const data = await r.json();
       closeSetPwModal();
       if (!data.ok) { alert('失败: ' + data.error); return; }
-      showPw(setPwTarget.username + ' 的新密码', data.new_password);
+      showPw(setPwTarget.username + ' 的新密码已设置', data.new_password, '密码设置成功，已立即生效. 请通过安全渠道告知该用户.');
     }
 
     function openInviteModal() { document.getElementById('inviteModal').classList.add('show'); }
@@ -484,7 +514,7 @@
     }
 
     async function loadInviteList() {
-      const r = await fetch(`/config/api/invites/list?pin=${encodeURIComponent(CURRENT_PIN)}`);
+      const r = await fetch('/config/api/invites/list');  // Sprint 26082901: 靠 pin_ok cookie, URL 无 PIN
       const data = await r.json();
       const el = document.getElementById('inviteList');
       if (!data.ok || !data.invites.length) {

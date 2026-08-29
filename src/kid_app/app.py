@@ -74,6 +74,7 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
         or path.startswith("/api/admin/whitelist")
         or path.startswith("/config/api/") or path == "/config/users"
+        or path == "/config/users/verify"  # Sprint 26082901: PIN 页面解锁 POST, 自身 PIN+CSRF+限流校验
         or path == "/config/records"  # 2026-08-17: deprecated 页面, 立刻 302 → /config/practice-log?tab=stats (无需登录, 任何未登录点击都跳走)
         or path == "/accept-invite" or path.startswith("/accept-invite?")  # Q7 邀请公开页
         # Sprint 26082801: 小程序专用 API (verify-pin / apply-access) + 业务 API 豁免 (不依赖 web session cookie)
