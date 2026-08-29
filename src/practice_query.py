@@ -406,7 +406,10 @@ class PracticeQueryTUI:
         # 日历格
         week_rows = len(days) // 7
         practices = db.get_daily_practices_in_range(days[0], days[-1])
-        pmap = {p['date'].isoformat(): p for p in practices}
+        pmap = {
+            (p['date'].isoformat()[:10] if hasattr(p['date'], 'isoformat') else str(p['date'])[:10]): p
+            for p in practices
+        }
 
         for r in range(week_rows):
             self.stdscr.addstr(row, 2, "")

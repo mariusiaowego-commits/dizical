@@ -362,7 +362,8 @@ def get_week_days(week_start: dt.date) -> Dict[str, Dict]:
         }
 
     for p in practices:
-        key = p['date'].isoformat()
+        raw = p['date']
+        key = raw.isoformat()[:10] if hasattr(raw, 'isoformat') else str(raw)[:10]
         if key in days:
             days[key]['has_practice'] = True
             days[key]['total_minutes'] = p['total_minutes']
@@ -664,7 +665,8 @@ def get_practice_calendar(year: int, month: int) -> Dict[str, any]:
         current += dt.timedelta(days=1)
     
     for p in practices:
-        key = p['date'].isoformat()
+        raw = p['date']
+        key = raw.isoformat()[:10] if hasattr(raw, 'isoformat') else str(raw)[:10]
         if key in calendar:
             calendar[key]['has_practice'] = True
             calendar[key]['total_minutes'] = p['total_minutes']

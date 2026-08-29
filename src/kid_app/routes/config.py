@@ -541,14 +541,20 @@ def api_get_records(year: int, month: int):
     practices = db.get_daily_practices_in_range(start, end)
     result = {}
     for p in practices:
-        d = p['date']
+        raw = p['date']
+        # DatetimeSafeDictCursor returns ISO str (e.g. '2026-08-28 00:00:00'); legacy/datetime path returns date/datetime object
+        # Truncate to YYYY-MM-DD for stable dict key (热力图按天聚合)
+        if hasattr(raw, 'isoformat'):
+            d_key = raw.isoformat()[:10]
+        else:
+            d_key = str(raw)[:10]
         items_raw = p.get('items', '')
         if isinstance(items_raw, str):
             try:
                 items_raw = json.loads(items_raw)
             except Exception:
                 items_raw = []
-        result[d.isoformat()] = {
+        result[d_key] = {
             'total_minutes': p.get('total_minutes', 0),
             'item_count': len(items_raw) if items_raw else 0,
             'practiced': p.get('practiced', 'Y')
