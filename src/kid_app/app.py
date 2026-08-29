@@ -29,6 +29,36 @@ from pydantic import ValidationError
 app = FastAPI(title="Bamboo Flute Practice")
 
 
+# Sprint 26082804: Reviewer 写操作全局拦截 middleware
+# 无论是否在 PUBLIC 列表, 只要携带 reviewer 身份且尝试写操作, 一律 403
+@app.middleware("http")
+async def reviewer_write_guard(request, call_next):
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        path = request.url.path
+        # 排除公开登录/认证端点
+        if any(path.startswith(p) for p in (
+            "/api/minip/verify-pin",
+            "/api/auth/login",
+            "/login",
+            "/admin/login",
+        )):
+            return await call_next(request)
+        # 优先 mp session (X-Mp-Session header)
+        from src.kid_app.auth import get_mp_current_user, get_current_user
+        user = await get_mp_current_user(request)
+        if not user:
+            # fallback web cookie
+            user = await get_current_user(request)
+        if user and user.get("role") == "reviewer":
+            from fastapi.responses import JSONResponse as _JR
+            return _JR(
+                {"ok": False, "error": "reviewer_read_only",
+                 "message": "审核员账号只读预览模式,无法修改数据"},
+                status_code=403,
+            )
+    return await call_next(request)
+
+
 # Sprint 26081003: 路由守卫 middleware
 # 公开路径不拦, 其他都要 get_current_user 有效才放行
 @app.middleware("http")

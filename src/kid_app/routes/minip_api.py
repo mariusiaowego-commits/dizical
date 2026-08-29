@@ -117,6 +117,7 @@ from src.kid_app.auth import (
     increment_login_failed,
     reset_login_failed,
     update_last_login,
+    make_mp_session_token,
 )
 
 
@@ -158,6 +159,9 @@ async def api_minip_verify_pin(request: Request):
         "role": role,
         "display_name": display_name,
         "user_id": user["user_id"],
+        "mp_token": make_mp_session_token(
+            user["user_id"], role, user.get("session_version", 0)
+        ),
     })
 
 
