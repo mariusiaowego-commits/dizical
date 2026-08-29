@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.kid_app.auth import (
@@ -33,7 +34,9 @@ from src.kid_app.auth import (
     generate_random_password,
     hash_password,
     list_users,
+    load_pin_ok_cookie,
     revoke_user,
+    set_pin_ok_cookie,
     update_role,
 )
 
@@ -45,10 +48,12 @@ router = APIRouter()
 
 
 async def _check_dad_or_401(request: Request):
-    """dad 守门 (Sprint 26081003 v3.3): 双轨 — PIN OR dad role session.
+    """dad 守门 (Sprint 26081003 v3.3 + 26082901 增强): 三轨.
 
-    - PIN 应急 (curl 测试 / dad 忘了密码): settings.dad_pin
+    - PIN (应急 curl): body pin / X-Dad-Pin header
     - dad role session (浏览器): get_current_user(role=dad)
+    - pin_ok cookie (已验证, Sprint 26082901): 前端改 POST verify 后种下的
+      HttpOnly 签名 cookie, 页面后续写接口走它 (避免 URL 再带 PIN)
     普通 web_users (student/family/teacher) 拒绝.
     """
     # 1) PIN 守门 (从 body / header 取)
@@ -65,6 +70,9 @@ async def _check_dad_or_401(request: Request):
     user = await get_current_user(request)
     if user and user.get("role") == "dad":
         return None
+    # 3) pin_ok cookie 守门 (已验证签名, 无 URL 泄漏)
+    if load_pin_ok_cookie(request):
+        return None
     return JSONResponse({"ok": False, "error": "需要 dad 登录或 PIN"}, status_code=401)
 
 
@@ -77,15 +85,28 @@ def _check_pin_or_401(pin: str):
 
 @router.get("/config/users", response_class=HTMLResponse)
 async def config_users_page(request: Request, pin: str = ""):
-    """dad 用户管理 UI. 双轨守门: dad session OR PIN (Sprint v3.3)."""
+    """dad 用户管理 UI. 三轨守门: dad session OR PIN OR pin_ok cookie.
+
+    Sprint 26082901 PIN 残留 URL 修复:
+      - query ?pin=0905 (老链接/curl) → 校验通过后 303 种 pin_ok cookie 清 URL
+      - 前端已改 POST /config/users/verify, 不依赖 URL PIN
+    """
     from src.kid_app.auth import get_current_user
     user = await get_current_user(request)
     dad_via_session = bool(user and user.get("role") == "dad")
+
+    # query PIN 正确 → 洗白: 303 + 种 pin_ok cookie, 丢 URL PIN
+    if pin and check_dad_pin(pin):
+        resp = RedirectResponse(url="/config/users", status_code=303)
+        set_pin_ok_cookie(resp)
+        return resp
+
+    pin_ok_cookie = load_pin_ok_cookie(request)
     pin_valid = bool(pin) and check_dad_pin(pin)
-    has_access = dad_via_session or pin_valid
+    has_access = dad_via_session or pin_valid or pin_ok_cookie
     users = list_users() if has_access else []
-    # dad session 时: 设 CURRENT_PIN 给前端 JS 用 (防止 cookie 过时 form 还在 PIN 模式)
-    # 没 session 时, 仍可用 ?pin=0905 进 (兼容老流程 + curl 应急)
+    # dad session: 前端写接口走 session cookie. PIN 路径: 走 pin_ok cookie, 不放真 PIN.
+    # CURRENT_PIN 哨兵 "session" 表示"已有有效凭据, 前端写接口不带 URL PIN".
     effective_pin = pin if pin_valid else "session"
 
     # 转 datetime 为字符串 (Jinja 不能直接渲染)
@@ -354,9 +375,13 @@ async def api_invites_create(request: Request):
 
 @router.get("/config/api/invites/list")
 async def api_invites_list(request: Request, pin: str = ""):
-    """列所有 invite (含已用/过期)."""
-    if not check_dad_pin(pin):
-        return JSONResponse({"ok": False, "error": "PIN 错"}, status_code=401)
+    """列所有 invite (含已用/过期). 三轨守门 (Sprint 26082901: 支持 pin_ok cookie)."""
+    # 兼容老 client 的 ?pin= query (旧前端 / curl)
+    if pin and check_dad_pin(pin):
+        pass  # 有效, 继续
+    else:
+        err = await _check_dad_or_401(request)
+        if err: return err
 
     invites = list_invites()
     # 转 datetime 为字符串
@@ -365,6 +390,73 @@ async def api_invites_list(request: Request, pin: str = ""):
             if inv.get(k) and not isinstance(inv[k], str):
                 inv[k] = str(inv[k])
     return JSONResponse({"ok": True, "invites": invites})
+
+
+# ─── PIN 页面解锁 verify (Sprint 26082901) ─────────────────────
+import time as _time
+
+# IP 限流: 5 次 / 5 分钟 (防 4 位 PIN 爆破). 简单位 dict (单进程够用).
+_PIN_FAIL: dict[str, list[float]] = {}
+
+
+def _rate_limited(ip: str) -> int:
+    """记录一次失败. 若 5 分钟内失败 >=5 次返 429 秒数, 否则 0."""
+    now = _time.time()
+    tries = _PIN_FAIL.setdefault(ip, [])
+    tries = [t for t in tries if now - t < 300]
+    _PIN_FAIL[ip] = tries
+    if len(tries) >= 5:
+        return int(300 - (now - tries[0]))
+    return 0
+
+
+def _record_fail(ip: str) -> None:
+    _PIN_FAIL.setdefault(ip, []).append(_time.time())
+
+
+def _reject_cross_origin(request: Request) -> Optional[JSONResponse]:
+    """SameSite=Lax 已挡跨站 POST, 加 Origin/Referer 校验兜底 (grok reference)."""
+    origin = request.headers.get("origin") or request.headers.get("referer") or ""
+    if not origin:
+        return None  # curl / 无浏览器 → 允许 (已有 body PIN 校验是真实凭据)
+    from urllib.parse import urlparse
+    try:
+        o = urlparse(origin)
+    except Exception:  # noqa: BLE001
+        return None
+    host = request.headers.get("host", "")
+    if o.netloc == host or (o.hostname and host.startswith(o.hostname)):
+        return None
+    return JSONResponse({"ok": False, "error": "跨源请求被拒绝"}, status_code=403)
+
+
+@router.post("/config/users/verify")
+async def api_verify_pin(request: Request):
+    """{pin} → 验 PIN, 通过则种 pin_ok cookie (HttpOnly, 2h), 返 {ok:True}.
+
+    前端 submitPin() 改 POST 到此处, location.replace('/config/users')
+    地址栏不再出现 PIN.
+    """
+    cross = _reject_cross_origin(request)
+    if cross: return cross
+
+    body = json.loads(await request.body() or b"{}")
+    pin = (body.get("pin") or "").strip()
+
+    # 限流 (IP)
+    ip = request.client.host if request.client else "unknown"
+    locked = _rate_limited(ip)
+    if locked > 0:
+        return JSONResponse({"ok": False, "error": f"尝试过于频繁, 请 {locked} 秒后重试"},
+                            status_code=429)
+
+    if not check_dad_pin(pin):
+        _record_fail(ip)
+        return JSONResponse({"ok": False, "error": "PIN 错误"}, status_code=401)
+
+    resp = JSONResponse({"ok": True})
+    set_pin_ok_cookie(resp)
+    return resp
 
 
 @router.post("/config/api/invites/{invite_id}/revoke")
