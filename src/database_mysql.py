@@ -72,6 +72,9 @@ class MySQLBackend(BaseBackend):
                 maxconnections=10,
                 mincached=2,
                 blocking=True,
+                # Sprint 26083001 S5: ping=7 = 取连接/执行/事务前自动 ping + reconnect.
+                # CloudRun 容器被唤醒时池里连接可能已被 NAT/防火墙超时断开, 默认 ping=0 会直接 2013 Lost connection.
+                ping=7,
                 host=cfg['host'],
                 port=cfg['port'],
                 user=cfg['user'],
