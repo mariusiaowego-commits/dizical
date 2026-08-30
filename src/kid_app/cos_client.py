@@ -76,6 +76,37 @@ class CosUploader:
         # 公开读 URL — 用 CDN 域名 (tcb.qcloud.la), 已验证 200; COS 直连域名对公开读桶 403
         return f"https://{self.bucket}.tcb.qcloud.la/{filename}"
 
+    def upload_stream(self, filename: str, file_obj, content_type: str = "video/mp4") -> str:
+        """流式上传 (用于视频, 不读 bytes 防 OOM).
+
+        Args:
+            filename: 对象键 (uuid4 随机名, 前缀如 videos/)
+            file_obj: 文件对象/流 (如 file.file 或 io.BytesIO)
+            content_type: Content-Type
+
+        Returns:
+            公开可访问的 COS URL
+
+        Raises:
+            RuntimeError: 上传失败 (fail loud, 调用方转 500)
+        """
+        if not self.is_available:
+            raise RuntimeError("COS 未配置, 无法上传")
+        try:
+            resp = self._cos_client.put_object(  # type: ignore[union-attr]
+                Bucket=self.bucket,
+                Key=filename,
+                Body=file_obj,
+                ContentType=content_type,
+            )
+            etag = resp.get("ETag", "")
+            if not etag:
+                raise RuntimeError("COS 上传响应异常 (无 ETag)")
+        except Exception as e:
+            raise RuntimeError(f"COS 上传失败: {e}") from e
+
+        return f"https://{self.bucket}.tcb.qcloud.la/{filename}"
+
 
 # 模块级单例 (与 app.py 里其他单例风格一致)
 cos_uploader = CosUploader()

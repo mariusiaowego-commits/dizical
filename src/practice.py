@@ -233,12 +233,12 @@ def save_progress(date: dt.date, note: str) -> None:
     db.save_progress_to_log(date, note)
 
 
-def save_weekly_assignment(lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
+def save_weekly_assignment(lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None, videos: Optional[List[Dict]] = None) -> None:
     """
     保存每课老师要求
     items: [{"item": "单吐练习", "requirements": "♩=82,84,86 各两天", "metronome": "♩=82"}, ...]
     """
-    db.save_weekly_assignment(lesson_date, items, notes, images)
+    db.save_weekly_assignment(lesson_date, items, notes, images, videos)
 
 
 def query_assignments(

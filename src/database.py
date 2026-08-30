@@ -143,16 +143,19 @@ class Database(BaseBackend):
                     items TEXT NOT NULL DEFAULT '[]',
                     notes TEXT,
                     images TEXT NOT NULL DEFAULT '[]',
+                    videos TEXT NOT NULL DEFAULT '[]',
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(lesson_date)
                 )
             ''')
 
-            # Migration: add images column if missing
+            # Migration: add images / videos column if missing
             cursor.execute("PRAGMA table_info(weekly_assignments)")
             wa_columns = [col['name'] for col in cursor.fetchall()]
             if 'images' not in wa_columns:
                 cursor.execute('ALTER TABLE weekly_assignments ADD COLUMN images TEXT NOT NULL DEFAULT \'[]\'')
+            if 'videos' not in wa_columns:
+                cursor.execute('ALTER TABLE weekly_assignments ADD COLUMN videos TEXT NOT NULL DEFAULT \'[]\'')
 
             # Migration v1: add stage_start / stage_end columns if missing
             cursor.execute("PRAGMA table_info(weekly_assignments)")
@@ -678,7 +681,7 @@ class Database(BaseBackend):
             return None
 
     # Weekly assignment operations
-    def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
+    def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None, videos: Optional[List[Dict]] = None) -> None:
         if isinstance(lesson_date, str):
             lesson_date = dt.date.fromisoformat(lesson_date)
         # 增量追加：查询现有 items，合并新旧（按 item 名称去重），再保存
@@ -710,6 +713,8 @@ class Database(BaseBackend):
         final_notes = notes if notes is not None else (existing['notes'] if existing else None)
         # 保留 images：显式传入时覆盖（包括空数组清空），未传入时保留现有
         merged_images = existing['images'] if images is None and existing else (images if images is not None else [])
+        # 保留 videos：显式传入时覆盖（包括空数组清空），未传入时保留现有
+        merged_videos = existing['videos'] if videos is None and existing else (videos if videos is not None else [])
 
         # 计算 stage_start = lesson_date + 1，stage_end = 下一节（attended + scheduled）课日期
         with self._get_connection() as conn:
@@ -739,18 +744,20 @@ class Database(BaseBackend):
             stage_order = cnt + 1
 
             cursor.execute('''
-                INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order, items, notes, images)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO weekly_assignments (lesson_date, stage_start, stage_end, stage_order, items, notes, images, videos)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(lesson_date) DO UPDATE SET
                     stage_start = excluded.stage_start,
                     stage_end = excluded.stage_end,
                     stage_order = excluded.stage_order,
                     items = excluded.items,
                     notes = excluded.notes,
-                    images = excluded.images
+                    images = excluded.images,
+                    videos = excluded.videos
             ''', (lesson_date.isoformat(), stage_start, stage_end, stage_order,
                   json.dumps(merged_items, ensure_ascii=False), final_notes,
-                  json.dumps(merged_images, ensure_ascii=False)))
+                  json.dumps(merged_images, ensure_ascii=False),
+                  json.dumps(merged_videos, ensure_ascii=False)))
             conn.commit()
 
     def get_weekly_assignment_for_week(self, anchor_date: dt.date) -> Optional[Dict]:
@@ -774,7 +781,8 @@ class Database(BaseBackend):
                     'stage_order': row['stage_order'],
                     'items': json.loads(row['items']),
                     'notes': row['notes'],
-                    'images': json.loads(row['images']) if row['images'] else []
+                    'images': json.loads(row['images']) if row['images'] else [],
+                    'videos': json.loads(row['videos']) if row['videos'] else []
                 }
             return None
 
@@ -802,7 +810,8 @@ class Database(BaseBackend):
                     'stage_order': row['stage_order'],
                     'items': json.loads(row['items']),
                     'notes': row['notes'],
-                    'images': json.loads(row['images']) if row['images'] else []
+                    'images': json.loads(row['images']) if row['images'] else [],
+                    'videos': json.loads(row['videos']) if row['videos'] else []
                 }
             return None
 
@@ -822,7 +831,8 @@ class Database(BaseBackend):
                 'stage_order': row['stage_order'],
                 'items': json.loads(row['items']),
                 'notes': row['notes'],
-                'images': json.loads(row['images']) if row['images'] else []
+                'images': json.loads(row['images']) if row['images'] else [],
+                'videos': json.loads(row['videos']) if row['videos'] else []
             } for row in cursor.fetchall()]
 
     # Daily practice operations
