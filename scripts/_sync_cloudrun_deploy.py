@@ -10,6 +10,8 @@ EXCLUDE_DIRS = {
     '.git', '.hermes', '.venv', 'venv', '__pycache__', 'data', 'docs', 'PRDs',
     'tests', 'scripts', '.pytest_cache', 'channels', 'comic', 'backups',
     '.alma-snapshots', 'logs', 'build', '.worktrees',
+    # Sprint 26083001 S5: deepseek audit P0 修复 — 排除下划线开头 _worktrees (之前漏掉, 1.1GB 跟着 deploy 包进 CloudRun 必 create_failed)
+    '_worktrees',
     'dizi_helper.egg-info', 'dizical.egg-info',
 }
 # 顶级 static/ 是 src/kid_app/static/ 的重复 (老的), runtime 走 src/ 那个
