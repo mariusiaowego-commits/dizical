@@ -452,10 +452,14 @@ class MySQLBackend(BaseBackend):
     # Sprint 08: MySQL 端对齐 SQLite 语义 — 单行存储 + items JSON 数组 + ON DUPLICATE KEY UPDATE
     # SQLite (database.py:686-698) 用 ON CONFLICT(lesson_date) DO UPDATE, 同样的语义在 MySQL
     # 用 INSERT ... ON DUPLICATE KEY UPDATE 实现. 不再 DELETE+逐 item INSERT.
-    def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None) -> None:
+    def save_weekly_assignment(self, lesson_date: dt.date, items: List[Dict], notes: Optional[str] = None, images: Optional[List[str]] = None, videos: Optional[List[Dict]] = None) -> None:
         import json as _json
         items_json = _json.dumps(items, ensure_ascii=False)
-        images_json = _json.dumps(images, ensure_ascii=False) if images else None
+        existing = self.get_weekly_assignment(lesson_date)
+        merged_images = existing['images'] if images is None and existing else (images if images is not None else [])
+        merged_videos = existing['videos'] if videos is None and existing else (videos if videos is not None else [])
+        images_json = _json.dumps(merged_images, ensure_ascii=False)
+        videos_json = _json.dumps(merged_videos, ensure_ascii=False)
         # 对齐 SQLite `database.py:714-729`: 每次保存都重新计算 stage_start/end/order
         # (修复 2026-08-25: 原实现"已有行取旧值不重算"导致 08-16 课 attended 后
         #  stage_order 无法回填 → stage 停在第 18).
@@ -490,16 +494,17 @@ class MySQLBackend(BaseBackend):
 
                 cur.execute('''
                     INSERT INTO weekly_assignments
-                    (lesson_date, items, notes, images, stage_start, stage_end, stage_order)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (lesson_date, items, notes, images, videos, stage_start, stage_end, stage_order)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                         items = VALUES(items),
                         notes = VALUES(notes),
                         images = VALUES(images),
+                        videos = VALUES(videos),
                         stage_start = VALUES(stage_start),
                         stage_end = VALUES(stage_end),
                         stage_order = VALUES(stage_order)
-                ''', (lesson_date.isoformat(), items_json, notes, images_json,
+                ''', (lesson_date.isoformat(), items_json, notes, images_json, videos_json,
                       stage_start, stage_end, stage_order))
             conn.commit()
 
@@ -517,6 +522,7 @@ class MySQLBackend(BaseBackend):
         if not row:
             return None
         return {
+            'id': row.get('id'),
             'lesson_date': self._safe_to_date(row['lesson_date']),
             'stage_start': self._safe_to_date(row.get('stage_start')),
             'stage_end':   self._safe_to_date(row.get('stage_end')),
@@ -524,6 +530,7 @@ class MySQLBackend(BaseBackend):
             'items': _json.loads(row['items']) if row.get('items') else [],
             'notes': row.get('notes'),
             'images': _json.loads(row['images']) if row.get('images') else [],
+            'videos': _json.loads(row['videos']) if row.get('videos') else [],
         }
 
     def get_weekly_assignment(self, week_start: dt.date) -> Optional[Dict]:
@@ -557,6 +564,10 @@ class MySQLBackend(BaseBackend):
                         images = json.loads(d['images']) if d.get('images') else []
                     except (TypeError, ValueError):
                         images = []
+                    try:
+                        videos = json.loads(d['videos']) if d.get('videos') else []
+                    except (TypeError, ValueError):
+                        videos = []
                     out.append({
                         'id': d['id'],
                         'lesson_date': _to_date(d.get('lesson_date')),
@@ -566,6 +577,7 @@ class MySQLBackend(BaseBackend):
                         'items': items,
                         'notes': d.get('notes'),
                         'images': images,
+                        'videos': videos,
                         'created_at': d.get('created_at'),
                     })
                 return out
