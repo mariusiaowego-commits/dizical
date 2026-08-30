@@ -44,18 +44,19 @@ tags: [sprint, dizical]
 - [x] 测试 `tests/test_upload_video_cos.py` 7/7 PASS (agy 自审加了 0字节 + GET videos case)
 - [x] PR #298 创建并 merge (squash 7 commits)
 
-### S2 — 前端录入/编辑/prepare UI (grok)
-- [ ] `config-practice-log.html` 视频区 (配图区下方, XHR 上传 + progress)
-- [ ] accept="video/mp4,video/quicktime,.mp4,.mov" 不带 capture
-- [ ] 绑定下拉: 本表 item / 本期通用
-- [ ] localStorage 草稿 (跟 images 1193-1252 模式)
-- [ ] beforeunload 拦截 + 重试同一文件
-- [ ] `startEditAssignment` PUT body 加 videos
-- [ ] `loadAssignments` 渲染历史视频
-- [ ] `prepare.html` 视频 chip
-- [ ] `openVideoPreview` 复用 openImagePreview modal 模式
-- [ ] 测试 `tests/test_video_upload_ui.py` 7 case PASS
-- [ ] PR #299 创建
+### S2 — 前端录入/编辑/prepare UI (grok) ✅ MERGED #299 (commit f3376fb)
+- [x] `config-practice-log.html` 视频区 (配图区下方, XHR 上传 + progress)
+- [x] accept="video/mp4,video/quicktime,.mp4,.mov" 不带 capture
+- [x] 绑定下拉: 本表 item / 本期通用
+- [x] localStorage 草稿 (跟 images 1193-1252 模式)
+- [x] beforeunload 拦截 + 重试同一文件
+- [x] `startEditAssignment` PUT body 加 videos
+- [x] `loadAssignments` 渲染历史视频
+- [x] `prepare.html` 视频 chip
+- [x] `openVideoPreview` 复用 openImagePreview modal 模式
+- [x] 测试 `tests/test_video_upload_ui.py` 10/10 PASS
+- [x] PR #299 创建并 merge (squash)
+- [x] dad 8-30 浏览器验收通过 (截图确认视频区/绑定下拉/删除按钮/dizicute 设计)
 
 ### S3 — practice 页 chip + modal 播放器 (grok)
 - [ ] `practice.html` chip 渲染 (选中 item 后, requirement 下方)
