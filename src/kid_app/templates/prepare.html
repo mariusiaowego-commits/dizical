@@ -405,6 +405,27 @@
   .assign-images img:hover {
     transform: scale(1.05);
   }
+  .video-chip {
+    display: inline-flex; align-items: center; gap: 6px; align-self: center;
+    padding: 8px 12px; border: 1px solid #666; border-radius: 12px;
+    background: rgba(255,255,255,0.85); color: #666; font-size: 14px; cursor: pointer;
+  }
+  .video-chip:hover { border-color: #FF6B6B; color: #FF6B6B; }
+  .video-chip svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .img-preview-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.72);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .img-preview-box { position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
+  .img-preview-close {
+    position: absolute; top: -14px; right: -14px; z-index: 1;
+    width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: #fff; color: #333;
+    font-size: 18px; line-height: 1; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
   .assign-no-images {
     font-size: 0.82rem;
     opacity: 0.5;
@@ -689,7 +710,13 @@
     </div>
     <div class="assign-images">
       {% for img in assign_images %}
-        <img src="{{img}}" alt="配图" onclick="window.open('{{img}}','_blank')">
+        <img src="{{img}}" alt="配图" onclick="openImagePreview('{{img}}')">
+      {% endfor %}
+      {% for v in assign_videos %}
+        <button type="button" class="video-chip" data-url="{{ v.url|e }}" data-title="{{ (v.item_label or '老师示范')|e }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          老师示范{% if v.item_id and v.item_label %} · {{ v.item_label }}{% endif %}
+        </button>
       {% endfor %}
     </div>
   </div>
@@ -921,6 +948,73 @@ function cycleEncouragement() {
 }
 </script>
 <script src="/static/js/prepare-2dot0.js"></script>
+
+<div id="imagePreviewModal" class="img-preview-overlay" onclick="closeImagePreview(event)">
+  <div class="img-preview-box" onclick="event.stopPropagation()">
+    <button class="img-preview-close" onclick="closeImagePreview(event)" aria-label="关闭">×</button>
+    <img id="imagePreviewImg" src="" alt="配图预览" style="max-width:92vw;max-height:82vh;object-fit:contain;border-radius:10px">
+  </div>
+</div>
+<div id="videoPreviewModal" class="img-preview-overlay" onclick="closeVideoPreview(event)">
+  <div class="img-preview-box" onclick="event.stopPropagation()">
+    <button class="img-preview-close" onclick="closeVideoPreview(event)" aria-label="关闭">×</button>
+    <div id="videoPreviewTitle" style="color:#fff;font-size:14px"></div>
+    <video id="videoPreviewEl" controls playsinline webkit-playsinline preload="none" style="max-width:92vw;max-height:70vh;border-radius:10px;background:#000"></video>
+  </div>
+</div>
+<script>
+function openImagePreview(url) {
+  const img = document.getElementById('imagePreviewImg');
+  const m = document.getElementById('imagePreviewModal');
+  if (!img || !m) return;
+  img.src = url;
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeImagePreview(ev) {
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById('imagePreviewModal');
+  if (!m) return;
+  m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function openVideoPreview(url, title) {
+  const video = document.getElementById('videoPreviewEl');
+  const modal = document.getElementById('videoPreviewModal');
+  if (!video || !modal) return;
+  const titleEl = document.getElementById('videoPreviewTitle');
+  if (titleEl) titleEl.textContent = title || '老师示范';
+  video.pause();
+  video.src = url || '';
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.preload = 'none';
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  try { video.focus(); } catch (e) {}
+}
+function closeVideoPreview(ev) {
+  if (ev) ev.stopPropagation();
+  const modal = document.getElementById('videoPreviewModal');
+  const video = document.getElementById('videoPreviewEl');
+  if (video) {
+    try { video.pause(); } catch (e) {}
+    video.removeAttribute('src');
+    video.src = '';
+    try { video.load(); } catch (e) {}
+  }
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeVideoPreview(); closeImagePreview(); }
+});
+document.querySelectorAll('.video-chip').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openVideoPreview(btn.getAttribute('data-url'), btn.getAttribute('data-title'));
+  });
+});
+</script>
 
 </body>
 </html>

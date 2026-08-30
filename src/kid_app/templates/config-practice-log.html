@@ -460,6 +460,38 @@
       box-shadow: 0 4px 12px rgba(44,62,80,0.10);
     }
 
+    /* ── 老师示范视频 (Sprint 26083001 S2) ── */
+    .assign-video-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .assign-video-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+      padding: 10px 12px; border: 1px solid #e8e8e8; border-radius: 12px; background: #fff;
+    }
+    .assign-video-meta { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 160px; color: #666; font-size: 13px; }
+    .assign-video-meta .icon-inline { flex-shrink: 0; color: #666; }
+    .assign-video-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; color: #2C3E50; }
+    .assign-video-size { color: #666; font-size: 12px; }
+    .assign-video-bind-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #666; }
+    .assign-video-bind {
+      padding: 4px 8px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 12px; color: #2C3E50; background: #fff; max-width: 180px;
+    }
+    .assign-video-del {
+      width: 22px; height: 22px; border-radius: 50%; border: none;
+      background: #FF6B6B; color: #fff; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center;
+    }
+    .assign-video-progress-wrap { margin-top: 8px; display: none; }
+    .assign-video-progress-track { height: 4px; background: #eee; border-radius: 12px; overflow: hidden; }
+    .assign-video-progress-fill { height: 100%; width: 0; background: #FF6B6B; border-radius: 12px; }
+    .assign-video-progress-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .assign-videos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .video-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border: 1px solid #666; border-radius: 12px;
+      background: #fff; color: #666; font-size: 13px; cursor: pointer;
+    }
+    .video-chip:hover { border-color: #FF6B6B; color: #FF6B6B; }
+    .video-chip .icon-inline { width: 16px; height: 16px; }
+
     .assignment-notes {
       font-size: 12px;
       color: #aaa;
@@ -851,6 +883,19 @@
             <span style="font-size:11px;color:#aaa;margin-left:8px">支持 jpg / png 格式</span>
             <div id="assignImageStatus" style="font-size:12px;color:#888;margin-top:4px"></div>
           </div>
+          <div class="form-group">
+            <label>老师示范视频</label>
+            <div id="assignVideoList" class="assign-video-list"></div>
+            <input type="file" id="assignVideoInput" accept="video/mp4,video/quicktime,.mp4,.mov" style="display:none">
+            <button type="button" class="btn btn-secondary" id="addAssignVideoBtn">+ 添加视频</button>
+            <button type="button" class="btn btn-secondary" id="retryAssignVideoBtn" style="display:none;margin-left:8px">重试</button>
+            <span style="font-size:11px;color:#aaa;margin-left:8px">支持 mp4 / mov，上限 200MB</span>
+            <div id="assignVideoProgressWrap" class="assign-video-progress-wrap">
+              <div class="assign-video-progress-track"><div id="assignVideoProgressFill" class="assign-video-progress-fill"></div></div>
+              <div id="assignVideoProgressText" class="assign-video-progress-text"></div>
+            </div>
+            <div id="assignVideoStatus" style="font-size:12px;color:#666;margin-top:4px"></div>
+          </div>
           <button class="btn btn-primary" id="submitAssignBtn">✅ 提交要求</button>
         </div>
 
@@ -919,6 +964,15 @@
   </div>
 </div>
 
+<!-- 视频预览 Modal (Sprint 26083001 S2) -->
+<div id="videoPreviewModal" class="img-preview-overlay" style="display:none" onclick="closeVideoPreview(event)">
+  <div class="img-preview-box" onclick="event.stopPropagation()" style="flex-direction:column;gap:10px">
+    <button class="img-preview-close" onclick="closeVideoPreview(event)" aria-label="关闭">×</button>
+    <div id="videoPreviewTitle" style="color:#fff;font-size:14px"></div>
+    <video id="videoPreviewEl" controls playsinline webkit-playsinline preload="none" style="max-width:92vw;max-height:70vh;border-radius:10px;background:#000"></video>
+  </div>
+</div>
+
 <style>
   .img-preview-overlay {
     position: fixed; inset: 0; z-index: 9999;
@@ -953,8 +1007,45 @@ function closeImagePreview(ev) {
   m.style.display = 'none';
   document.body.style.overflow = '';
 }
+function openVideoPreview(url, title) {
+  const video = document.getElementById('videoPreviewEl');
+  const modal = document.getElementById('videoPreviewModal');
+  if (!video || !modal) return;
+  const titleEl = document.getElementById('videoPreviewTitle');
+  if (titleEl) titleEl.textContent = title || '老师示范';
+  video.pause();
+  video.src = url || '';
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.preload = 'none';
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  try { video.focus(); } catch (e) {}
+}
+function closeVideoPreview(ev) {
+  if (ev) ev.stopPropagation();
+  const modal = document.getElementById('videoPreviewModal');
+  const video = document.getElementById('videoPreviewEl');
+  if (video) {
+    try { video.pause(); } catch (e) {}
+    video.removeAttribute('src');
+    video.src = '';
+    try { video.load(); } catch (e) {}
+  }
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeImagePreview();
+  if (e.key === 'Escape') {
+    closeVideoPreview();
+    closeImagePreview();
+  }
+});
+document.addEventListener('click', e => {
+  const chip = e.target && e.target.closest && e.target.closest('.video-chip');
+  if (!chip) return;
+  const url = chip.getAttribute('data-url');
+  if (url) openVideoPreview(url, chip.getAttribute('data-title') || '老师示范');
 });
 
 // ── 状态 ──
@@ -963,7 +1054,13 @@ let practiceItems = [];
 let logEntries = []; // 每个 entry: { item_id, item, sessions: [{ minutes, tempo_note, tempo_bpm, content, is_subfetched }] }
 let assignEntries = []; // 老师要求录入条目 (声明必须放这: id=assignEntries 的 div 会污染全局变量名)
 let assignImages = []; // 已上传配图 [{ url, name }]
+let assignVideos = []; // 已上传视频 [{ url, filename, item_id, item_label, size_bytes, uploaded_at }]
 let latestRequirements = {}; // item_id → { requirements, metronome } 每科目最近一次要求 (预填用)
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+const PLAY_SVG = '<svg class="icon-inline" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+const VIDEO_UPLOAD_PENDING_KEY = 'dizical:video-upload-pending';
+let _pendingVideoFile = null;
+let _videoUploading = false;
 // ── 切换 tab ──
 const tabs = document.querySelectorAll('.tab-item');
 const panels = document.querySelectorAll('.tab-panel');
@@ -1200,6 +1297,13 @@ function collectAssignDraft() {
     stage_order: document.getElementById('assignStageOrder') ? document.getElementById('assignStageOrder').value : '',
     notes: document.getElementById('assignNotes') ? document.getElementById('assignNotes').value : '',
     images: assignImages.map(i => i.url),
+    videos: assignVideos.map(v => ({
+      url: v.url, filename: v.filename || '',
+      item_id: v.item_id == null ? null : v.item_id,
+      item_label: v.item_label || '',
+      size_bytes: v.size_bytes || 0,
+      uploaded_at: v.uploaded_at || '',
+    })),
     entries: assignEntries.map(e => ({
       item_id: e.item_id, item: e.item || '',
       metronome: e.metronome || '', requirement: e.requirement || '',
@@ -1212,6 +1316,7 @@ function hasAssignDraftContent(d) {
   if (d.entries && d.entries.some(e => e.requirement || e.metronome || e.item_id)) return true;
   if (d.notes) return true;
   if (d.images && d.images.length) return true;
+  if (d.videos && d.videos.length) return true;
   return false;
 }
 
@@ -1250,8 +1355,23 @@ function restoreAssignDraft() {
   });
   // 恢复配图 URL (本地文件不可恢复, 只有已上传的 URL)
   assignImages = (d.images || []).map(u => ({ url: u, name: '' }));
+  assignVideos = (d.videos || []).map(v => ({
+    url: v.url, filename: v.filename || '',
+    item_id: v.item_id == null || v.item_id === '' ? null : v.item_id,
+    item_label: v.item_label || '',
+    size_bytes: v.size_bytes || 0,
+    uploaded_at: v.uploaded_at || '',
+  }));
   renderAssignEntries();
   renderAssignImagePreview();
+  renderAssignVideoList();
+  try {
+    if (sessionStorage.getItem(VIDEO_UPLOAD_PENDING_KEY)) {
+      sessionStorage.removeItem(VIDEO_UPLOAD_PENDING_KEY);
+      const st = document.getElementById('assignVideoStatus');
+      if (st) st.textContent = '有未完成上传，请重新选择文件';
+    }
+  } catch (e) {}
   // 恢复表单字段
   const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
   setVal('assignDate', d.lesson_date);
@@ -1272,7 +1392,7 @@ function restoreAssignDraft() {
 window.addEventListener('beforeunload', function(e) {
   try {
     const d = collectAssignDraft();
-    if (hasAssignDraftContent(d)) {
+    if (_videoUploading || hasAssignDraftContent(d)) {
       e.preventDefault();
       e.returnValue = ''; // 标准方式触发浏览器确认弹窗
     }
@@ -1865,6 +1985,7 @@ function renderAssignEntries() {
       scheduleAssignDraftSave();
     });
   });
+  if (typeof renderAssignVideoList === 'function') renderAssignVideoList();
 }
 
 // 需求4: 从 segments 组装 metronome 单值 (斜杠连接各段 tempo) 并同步输入框
@@ -1941,6 +2062,193 @@ function renderAssignImagePreview() {
   `).join('');
 }
 
+// ── 老师示范视频上传 (Sprint 26083001 S2) ──
+function formatVideoBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + 'B';
+  if (n < 1024 * 1024) return Math.round(n / 1024) + 'KB';
+  const mb = n / (1024 * 1024);
+  return (mb >= 10 ? mb.toFixed(0) : mb.toFixed(1)) + 'MB';
+}
+function isAllowedVideoFile(f) {
+  const name = (f && f.name ? f.name : '').toLowerCase();
+  const type = (f && f.type ? f.type : '').toLowerCase();
+  const extOk = /\.mp4$/.test(name) || /\.mov$/.test(name);
+  const typeOk = !type || type === 'video/mp4' || type === 'video/quicktime';
+  return extOk && typeOk;
+}
+function videoBindOptionsHtml(selectedId, selectedLabel) {
+  const seen = {};
+  let html = '<option value="">本期通用</option>';
+  assignEntries.forEach(e => {
+    if (!e.item_id) return;
+    const id = String(e.item_id);
+    if (seen[id]) return;
+    seen[id] = true;
+    const sel = String(selectedId) === id ? ' selected' : '';
+    const label = String(e.item || '').replace(/</g, '&lt;');
+    html += `<option value="${id}"${sel}>${label}</option>`;
+  });
+  if (selectedId && !seen[String(selectedId)]) {
+    const label = String(selectedLabel || '已绑科目').replace(/</g, '&lt;');
+    html += `<option value="${selectedId}" selected>${label}</option>`;
+  }
+  return html;
+}
+function renderAssignVideoList() {
+  const container = document.getElementById('assignVideoList');
+  if (!container) return;
+  container.innerHTML = assignVideos.map((v, i) => `
+    <div class="assign-video-row">
+      <div class="assign-video-meta">
+        ${PLAY_SVG}
+        <span class="assign-video-name" title="${String(v.filename || '').replace(/"/g, '&quot;')}">${String(v.filename || 'video').replace(/</g, '&lt;')}</span>
+        <span class="assign-video-size">${formatVideoBytes(v.size_bytes)}</span>
+      </div>
+      <div class="assign-video-bind-wrap">
+        <span>绑定:</span>
+        <select class="assign-video-bind" data-idx="${i}">${videoBindOptionsHtml(v.item_id, v.item_label)}</select>
+      </div>
+      <button type="button" class="assign-video-del" data-idx="${i}" aria-label="删除">×</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('.assign-video-bind').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const val = e.target.value;
+      if (!assignVideos[idx]) return;
+      if (!val) {
+        assignVideos[idx].item_id = null;
+        assignVideos[idx].item_label = '本期通用';
+      } else {
+        assignVideos[idx].item_id = parseInt(val, 10);
+        const opt = e.target.options[e.target.selectedIndex];
+        assignVideos[idx].item_label = opt ? opt.textContent : '';
+      }
+      scheduleAssignDraftSave();
+    });
+  });
+  container.querySelectorAll('.assign-video-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.currentTarget.dataset.idx, 10);
+      assignVideos.splice(idx, 1);
+      renderAssignVideoList();
+      scheduleAssignDraftSave();
+    });
+  });
+}
+function setVideoProgress(visible, pct, text) {
+  const wrap = document.getElementById('assignVideoProgressWrap');
+  const fill = document.getElementById('assignVideoProgressFill');
+  const t = document.getElementById('assignVideoProgressText');
+  if (wrap) wrap.style.display = visible ? 'block' : 'none';
+  if (fill) fill.style.width = (pct || 0) + '%';
+  if (t) t.textContent = text || '';
+}
+function serializeAssignVideos() {
+  return assignVideos.map(v => ({
+    url: v.url,
+    filename: v.filename || '',
+    item_id: (v.item_id == null || v.item_id === '') ? null : parseInt(v.item_id, 10),
+    item_label: v.item_label || '本期通用',
+    size_bytes: v.size_bytes || 0,
+    uploaded_at: v.uploaded_at || new Date().toISOString(),
+  }));
+}
+function uploadAssignVideoFile(file) {
+  const statusEl = document.getElementById('assignVideoStatus');
+  const retryBtn = document.getElementById('retryAssignVideoBtn');
+  if (!file) return;
+  if (!isAllowedVideoFile(file)) {
+    const name = file.name || '';
+    if (/\.webm$/i.test(name) || (file.type || '').indexOf('webm') !== -1) {
+      if (statusEl) statusEl.textContent = '不支持 webm，请使用 mp4 或 mov';
+    } else {
+      if (statusEl) statusEl.textContent = '不支持的格式，请使用 mp4 或 mov';
+    }
+    if (retryBtn) retryBtn.style.display = 'none';
+    return;
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    if (statusEl) statusEl.textContent = '超过限制 (最大 200MB)';
+    if (retryBtn) retryBtn.style.display = 'none';
+    return;
+  }
+  _pendingVideoFile = file;
+  _videoUploading = true;
+  try { sessionStorage.setItem(VIDEO_UPLOAD_PENDING_KEY, '1'); } catch (e) {}
+  if (retryBtn) retryBtn.style.display = 'none';
+  if (statusEl) statusEl.textContent = '上传中 ' + (file.name || '');
+  setVideoProgress(true, 0, '0% · 0B/' + formatVideoBytes(file.size));
+  const addBtn = document.getElementById('addAssignVideoBtn');
+  if (addBtn) addBtn.disabled = true;
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/config/api/assignments/upload-video');
+  xhr.upload.onprogress = function(e) {
+    if (!e.lengthComputable) {
+      setVideoProgress(true, 0, '上传中…');
+      return;
+    }
+    const pct = Math.round(e.loaded / e.total * 100);
+    setVideoProgress(true, pct, pct + '% · ' + formatVideoBytes(e.loaded) + '/' + formatVideoBytes(e.total));
+  };
+  xhr.onload = function() {
+    _videoUploading = false;
+    if (addBtn) addBtn.disabled = false;
+    try { sessionStorage.removeItem(VIDEO_UPLOAD_PENDING_KEY); } catch (e) {}
+    let data = null;
+    try { data = JSON.parse(xhr.responseText || '{}'); } catch (err) { data = null; }
+    if (xhr.status >= 200 && xhr.status < 300 && data && data.ok) {
+      assignVideos.push({
+        url: data.url,
+        filename: data.filename || file.name || '',
+        item_id: null,
+        item_label: '本期通用',
+        size_bytes: data.size || file.size || 0,
+        uploaded_at: new Date().toISOString(),
+      });
+      renderAssignVideoList();
+      scheduleAssignDraftSave();
+      setVideoProgress(false, 0, '');
+      let msg = (file.name || '') + ' 已上传';
+      if (/\.mov$/i.test(file.name || '') || file.type === 'video/quicktime') {
+        msg += '。若无法播放请用 Safari';
+      }
+      if (statusEl) statusEl.textContent = msg;
+      _pendingVideoFile = null;
+      const input = document.getElementById('assignVideoInput');
+      if (input) input.value = '';
+      if (retryBtn) retryBtn.style.display = 'none';
+    } else {
+      const err = (data && data.error) ? data.error : ('上传失败 (' + xhr.status + ')');
+      if (statusEl) statusEl.textContent = err;
+      if (retryBtn) retryBtn.style.display = '';
+    }
+  };
+  xhr.onerror = function() {
+    _videoUploading = false;
+    if (addBtn) addBtn.disabled = false;
+    try { sessionStorage.removeItem(VIDEO_UPLOAD_PENDING_KEY); } catch (e) {}
+    if (statusEl) statusEl.textContent = '网络错误，可重试同一文件';
+    if (retryBtn) retryBtn.style.display = '';
+  };
+  const fd = new FormData();
+  fd.append('file', file);
+  xhr.send(fd);
+}
+document.getElementById('addAssignVideoBtn').addEventListener('click', () => {
+  document.getElementById('assignVideoInput').click();
+});
+document.getElementById('retryAssignVideoBtn').addEventListener('click', () => {
+  if (_pendingVideoFile) uploadAssignVideoFile(_pendingVideoFile);
+});
+document.getElementById('assignVideoInput').addEventListener('change', (e) => {
+  const files = e.target.files;
+  if (!files || !files.length) return;
+  uploadAssignVideoFile(files[0]);
+});
+
 // ── 提交老师要求 ──
 document.getElementById('submitAssignBtn').addEventListener('click', async () => {
   const lessonDate = document.getElementById('assignDate').value || null;
@@ -1967,6 +2275,7 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
     notes,
   };
   if (assignImages.length) body.images = assignImages.map(i => i.url);
+  if (assignVideos.length) body.videos = serializeAssignVideos();
   if (stageStart) body.stage_start = stageStart;
   if (stageEnd) body.stage_end = stageEnd;
   if (stageOrder) body.stage_order = parseInt(stageOrder);
@@ -1980,8 +2289,10 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
   if (data.ok) {
     assignEntries = [];
     assignImages = [];
+    assignVideos = [];
     renderAssignEntries();
     renderAssignImagePreview();
+    renderAssignVideoList();
     document.getElementById('assignNotes').value = '';
     document.getElementById('assignStageStart').value = '';
     document.getElementById('assignStageEnd').value = '';
@@ -2021,6 +2332,7 @@ async function loadAssignments() {
         </div>`;
       }).join('');
       const imagesHtml = (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" style="cursor:pointer" onclick="openImagePreview('${img}')">`).join('')}</div>` : '';
+      const videosHtml = assignHistoryVideosHtml(a.videos);
       const notesHtml = a.notes ? `<div class="assignment-notes">${a.notes}</div>` : '';
       return `<div class="assignment-card" data-lesson="${a.lesson_date}">
         <div class="assignment-card-header">
@@ -2036,6 +2348,7 @@ async function loadAssignments() {
         <div class="assignment-card-body">
           <div class="assign-subject-container">${itemsHtml}</div>
           ${imagesHtml}
+          ${videosHtml}
           ${notesHtml}
         </div>
       </div>`;
@@ -2051,6 +2364,16 @@ async function loadAssignments() {
   } catch(e) {
     container.innerHTML = '<div class="empty-state">加载失败</div>';
   }
+}
+
+function assignHistoryVideosHtml(videos) {
+  if (!videos || !videos.length) return '';
+  return `<div class="assign-videos">${videos.map(v => {
+    const url = String(v.url || '').replace(/"/g, '&quot;');
+    const label = v.item_id ? ('老师示范 · ' + String(v.item_label || '').replace(/</g, '&lt;')) : '老师示范';
+    const title = String(v.item_label || '老师示范').replace(/"/g, '&quot;');
+    return `<button type="button" class="video-chip" data-url="${url}" data-title="${title}">${PLAY_SVG}${label}</button>`;
+  }).join('')}</div>`;
 }
 
 async function deleteAssignment(lessonDate) {
@@ -2090,18 +2413,83 @@ function startEditAssignment(lessonDate) {
         <input class="edit-item-req" value="${it.requirements || it.requirement || ''}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
       </div>`;
     });
+    let editVideos = (a.videos || []).map(v => ({
+      url: v.url, filename: v.filename || '',
+      item_id: v.item_id == null || v.item_id === '' ? null : v.item_id,
+      item_label: v.item_label || '',
+      size_bytes: v.size_bytes || 0,
+      uploaded_at: v.uploaded_at || '',
+    }));
+    const editBindOpts = (selectedId, selectedLabel) => {
+      const seen = {};
+      let html = '<option value="">本期通用</option>';
+      (a.items || []).forEach(it => {
+        if (!it.item_id) return;
+        const id = String(it.item_id);
+        if (seen[id]) return;
+        seen[id] = true;
+        const sel = String(selectedId) === id ? ' selected' : '';
+        html += `<option value="${id}"${sel}>${String(it.item || '').replace(/</g, '&lt;')}</option>`;
+      });
+      if (selectedId && !seen[String(selectedId)]) {
+        html += `<option value="${selectedId}" selected>${String(selectedLabel || '已绑科目').replace(/</g, '&lt;')}</option>`;
+      }
+      return html;
+    };
     form.innerHTML = `
       <div style="font-size:13px;font-weight:600;margin-bottom:8px">✏️ 编辑 ${lessonDate}</div>
       <div style="margin-bottom:8px">
         <input id="editNotes" value="${a.notes || ''}" placeholder="老师补充说明" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
       </div>
       ${itemsRows}
+      <div class="edit-videos" style="margin-top:10px"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="save-edit-btn" style="background:#4CAF50;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer">💾 保存</button>
         <button class="cancel-edit-btn" style="background:#999;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer">取消</button>
       </div>
     `;
     card.appendChild(form);
+    const renderEditVideos = () => {
+      const wrap = form.querySelector('.edit-videos');
+      if (!wrap) return;
+      wrap.innerHTML = editVideos.map((v, i) => `
+        <div class="assign-video-row">
+          <div class="assign-video-meta">
+            ${PLAY_SVG}
+            <span class="assign-video-name">${String(v.filename || 'video').replace(/</g, '&lt;')}</span>
+            <span class="assign-video-size">${formatVideoBytes(v.size_bytes)}</span>
+          </div>
+          <div class="assign-video-bind-wrap">
+            <span>绑定:</span>
+            <select class="edit-video-bind" data-idx="${i}">${editBindOpts(v.item_id, v.item_label)}</select>
+          </div>
+          <button type="button" class="assign-video-del edit-video-del" data-idx="${i}" aria-label="删除">×</button>
+        </div>
+      `).join('');
+      wrap.querySelectorAll('.edit-video-bind').forEach(sel => {
+        sel.addEventListener('change', e => {
+          const idx = parseInt(e.target.dataset.idx, 10);
+          const val = e.target.value;
+          if (!editVideos[idx]) return;
+          if (!val) {
+            editVideos[idx].item_id = null;
+            editVideos[idx].item_label = '本期通用';
+          } else {
+            editVideos[idx].item_id = parseInt(val, 10);
+            const opt = e.target.options[e.target.selectedIndex];
+            editVideos[idx].item_label = opt ? opt.textContent : '';
+          }
+        });
+      });
+      wrap.querySelectorAll('.edit-video-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.idx, 10);
+          editVideos.splice(idx, 1);
+          renderEditVideos();
+        });
+      });
+    };
+    renderEditVideos();
 
     form.querySelector('.save-edit-btn').addEventListener('click', async () => {
       const items = Array.from(form.querySelectorAll('.edit-item-row')).map(row => ({
@@ -2110,10 +2498,18 @@ function startEditAssignment(lessonDate) {
         requirement: row.querySelector('.edit-item-req').value,
       }));
       const notes = form.querySelector('#editNotes').value;
+      const videos = editVideos.map(v => ({
+        url: v.url,
+        filename: v.filename || '',
+        item_id: (v.item_id == null || v.item_id === '') ? null : parseInt(v.item_id, 10),
+        item_label: v.item_label || '本期通用',
+        size_bytes: v.size_bytes || 0,
+        uploaded_at: v.uploaded_at || '',
+      }));
       const res = await fetch(`/config/api/assignments/${lessonDate}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, notes }),
+        body: JSON.stringify({ items, notes, videos }),
       });
       const d = await res.json();
       if (d.ok) {
@@ -2210,7 +2606,7 @@ async function loadWeek() {
         </div>`;
       }).join('') + (
         (a.images && a.images.length) ? `<div class="assign-images">${a.images.map(img => `<img src="${img}" alt="配图" style="cursor:pointer" onclick="openImagePreview('${img}')">`).join('')}</div>` : ''
-      ) + (
+      ) + assignHistoryVideosHtml(a.videos) + (
         a.notes ? `<div class="assignment-notes" style="margin-top:10px">💬 ${a.notes}</div>` : ''
       );
     } else {
@@ -2232,6 +2628,13 @@ async function loadWeek() {
   loadTodayHistory();
   // 草稿恢复 (需求1): 必须在 renderAssignEntries 之后 (填回 entries + 表单字段)
   restoreAssignDraft();
+  try {
+    if (sessionStorage.getItem(VIDEO_UPLOAD_PENDING_KEY)) {
+      sessionStorage.removeItem(VIDEO_UPLOAD_PENDING_KEY);
+      const st = document.getElementById('assignVideoStatus');
+      if (st && !st.textContent) st.textContent = '有未完成上传，请重新选择文件';
+    }
+  } catch (e) {}
 })();
 </script>
 
