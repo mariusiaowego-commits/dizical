@@ -516,6 +516,87 @@
     .em-btn-primary { background:#FF6B6B; color:#fff; }
     .em-btn-cancel { background:#e8e0d0; color:#5D4037; }
 
+    /* ── 老师要求视频 Chip & Modal (Sprint 26083001 S3) ── */
+    .req-video-wrap { margin-top: 8px; }
+    .video-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border: 1px solid #666; border-radius: 8px;
+      background: rgba(255,255,255,0.85); color: #666; font-size: 13px; cursor: pointer;
+      font-weight: 500; text-decoration: none;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+    .video-chip:hover { border-color: #FF6B6B; color: #FF6B6B; }
+    .video-chip svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .video-modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.78);
+      display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .video-modal-box {
+      position: relative;
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 820px;
+      width: 90vw;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+    }
+    .video-modal-close {
+      position: absolute; top: -14px; right: -14px; z-index: 2;
+      width: 34px; height: 34px; border-radius: 50%;
+      border: none; background: #fff; color: #333;
+      font-size: 18px; line-height: 1; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .video-modal-header {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; padding: 0 4px;
+    }
+    .video-modal-title { color: #fff; font-size: 15px; font-weight: 500; }
+    .video-modal-index { color: #aaa; font-size: 13px; }
+    .video-wrapper {
+      position: relative; width: 100%; display: flex; align-items: center; justify-content: center;
+    }
+    #videoPreviewEl {
+      width: 100%; max-width: 100%; max-height: 70vh;
+      border-radius: 8px; background: #000;
+    }
+    .video-nav-btn {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.25); color: #fff;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px); transition: background 0.2s ease;
+    }
+    .video-nav-btn:hover { background: rgba(255,255,255,0.45); }
+    .video-nav-prev { left: 8px; }
+    .video-nav-next { right: 8px; }
+    .video-error-notice {
+      margin-top: 8px; font-size: 12px; color: #ff8888; text-align: center;
+    }
+
+    /* 响应式 (440px / 744px / 1133px) */
+    @media (max-width: 744px) {
+      .video-modal-box {
+        width: 96vw; padding: 12px; border-radius: 8px;
+      }
+      #videoPreviewEl { max-height: 75vh; }
+    }
+    @media (max-width: 440px) {
+      .video-modal-overlay { padding: 0; }
+      .video-modal-box {
+        width: 100vw; height: 100vh; max-height: 100vh;
+        border-radius: 0; padding: 12px 8px; justify-content: center;
+      }
+      .video-modal-close { top: 12px; right: 12px; }
+      #videoPreviewEl { max-height: 65vh; }
+    }
+
     /* 练习科目 */
     .item-section { margin-bottom: 12px; }
     .item-section h2 { color: #FF6B6B; font-size: 20px; margin-bottom: 8px; }
@@ -1094,8 +1175,113 @@
       m.style.display = 'none';
       document.body.style.overflow = '';
     }
+
+    // ── 视频预览 Modal (Sprint 26083001 S3) ──
+    let _currentMatchedVideos = [];
+    let _currentVideoIdx = 0;
+
+    function openPracticeVideoModal(index) {
+      if (!_currentMatchedVideos || !_currentMatchedVideos.length) return;
+      _currentVideoIdx = (typeof index === 'number' && index >= 0 && index < _currentMatchedVideos.length) ? index : 0;
+      const v = _currentMatchedVideos[_currentVideoIdx];
+      const title = v.item_label || selectedItem || '老师示范';
+      openVideoPreview(v.url, title);
+      updateVideoNavUI();
+    }
+
+    function updateVideoNavUI() {
+      const indexEl = document.getElementById('videoPreviewIndex');
+      const prevBtn = document.getElementById('videoPrevBtn');
+      const nextBtn = document.getElementById('videoNextBtn');
+      if (!indexEl || !prevBtn || !nextBtn) return;
+      const total = _currentMatchedVideos ? _currentMatchedVideos.length : 0;
+      if (total > 1) {
+        indexEl.textContent = (_currentVideoIdx + 1) + ' / ' + total;
+        indexEl.style.display = 'block';
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+      } else {
+        indexEl.style.display = 'none';
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+      }
+    }
+
+    function switchVideo(delta) {
+      if (!_currentMatchedVideos || _currentMatchedVideos.length <= 1) return;
+      const total = _currentMatchedVideos.length;
+      _currentVideoIdx = (_currentVideoIdx + delta + total) % total;
+      const v = _currentMatchedVideos[_currentVideoIdx];
+      const title = v.item_label || selectedItem || '老师示范';
+      const video = document.getElementById('videoPreviewEl');
+      const titleEl = document.getElementById('videoPreviewTitle');
+      const errorNotice = document.getElementById('videoErrorNotice');
+      if (errorNotice) errorNotice.style.display = 'none';
+      if (titleEl) titleEl.textContent = title;
+      if (video) {
+        video.pause();
+        video.src = v.url || '';
+        video.load();
+      }
+      updateVideoNavUI();
+    }
+
+    function openVideoPreview(url, title) {
+      const video = document.getElementById('videoPreviewEl');
+      const modal = document.getElementById('videoPreviewModal');
+      if (!video || !modal) return;
+      const titleEl = document.getElementById('videoPreviewTitle');
+      if (titleEl) titleEl.textContent = title || '老师示范';
+      const errorNotice = document.getElementById('videoErrorNotice');
+      if (errorNotice) errorNotice.style.display = 'none';
+
+      video.pause();
+      video.src = url || '';
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.preload = 'metadata';
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      try { video.focus(); } catch (e) {}
+    }
+
+    function closeVideoPreview(ev) {
+      if (ev) ev.stopPropagation();
+      const modal = document.getElementById('videoPreviewModal');
+      const video = document.getElementById('videoPreviewEl');
+      if (video) {
+        try { video.pause(); } catch (e) {}
+        video.removeAttribute('src');
+        video.src = '';
+        try { video.load(); } catch (e) {}
+      }
+      if (modal) modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeImagePreview();
+      if (e.key === 'Escape') {
+        closeVideoPreview();
+        closeImagePreview();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const videoEl = document.getElementById('videoPreviewEl');
+      if (videoEl) {
+        videoEl.addEventListener('webkitendfullscreen', function() {
+          if (videoEl.ended || videoEl.paused) {
+            // iOS native fullscreen exit sync
+          }
+        });
+        videoEl.addEventListener('error', function() {
+          const errorNotice = document.getElementById('videoErrorNotice');
+          if (errorNotice) {
+            errorNotice.textContent = '若无法播放，请用 Safari 浏览器或检查网络';
+            errorNotice.style.display = 'block';
+          }
+        });
+      }
     });
 
     // Short completion chime
@@ -1224,6 +1410,7 @@
       if (!highlight) return;
       if (!btn) {
         highlight.innerHTML = '';
+        _currentMatchedVideos = [];
         return;
       }
       const reqText = btn.getAttribute('data-req') || '';
@@ -1238,6 +1425,26 @@
       } else {
         html += '<div style="opacity:0.6;font-size:13px">无具体老师要求，直接开始练习吧</div>';
       }
+
+      // 老师示范视频 Chip (Sprint 26083001 S3)
+      const currentItemId = btn ? (parseInt(btn.getAttribute('data-id'), 10) || null) : null;
+      const allVideos = (WEEKLY_ASSIGN && Array.isArray(WEEKLY_ASSIGN.videos)) ? WEEKLY_ASSIGN.videos : [];
+      _currentMatchedVideos = allVideos.filter(v => {
+        if (v.item_id === currentItemId) return true;
+        if (v.item_id === null || v.item_id === undefined) return true;
+        return false;
+      });
+
+      if (_currentMatchedVideos.length) {
+        const chipText = _currentMatchedVideos.length > 1 ? `老师示范 · ${_currentMatchedVideos.length}` : '老师示范';
+        html += `<div class="req-video-wrap">
+          <button type="button" class="video-chip" id="reqVideoChip" onclick="openPracticeVideoModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <span>${chipText}</span>
+          </button>
+        </div>`;
+      }
+
       if (WEEKLY_ASSIGN && WEEKLY_ASSIGN.images && WEEKLY_ASSIGN.images.length) {
         html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.08)">';
         WEEKLY_ASSIGN.images.forEach(img => {
@@ -2832,6 +3039,27 @@
 <style>
   #imagePreviewModal .edit-modal-box { position: relative; display: flex; align-items: center; justify-content: center; }
 </style>
+
+<!-- 视频预览 Modal (Sprint 26083001 S3) -->
+<div class="video-modal-overlay" id="videoPreviewModal" style="display:none" onclick="closeVideoPreview(event)">
+  <div class="video-modal-box" onclick="event.stopPropagation()">
+    <button type="button" class="video-modal-close" onclick="closeVideoPreview(event)" aria-label="关闭">×</button>
+    <div class="video-modal-header">
+      <div id="videoPreviewTitle" class="video-modal-title">老师示范</div>
+      <div id="videoPreviewIndex" class="video-modal-index" style="display:none"></div>
+    </div>
+    <div class="video-wrapper">
+      <button type="button" id="videoPrevBtn" class="video-nav-btn video-nav-prev" onclick="switchVideo(-1)" aria-label="上一个视频" style="display:none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </button>
+      <video id="videoPreviewEl" controls playsinline webkit-playsinline preload="metadata"></video>
+      <button type="button" id="videoNextBtn" class="video-nav-btn video-nav-next" onclick="switchVideo(1)" aria-label="下一个视频" style="display:none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+      </button>
+    </div>
+    <div id="videoErrorNotice" class="video-error-notice" style="display:none">若无法播放，请用 Safari 浏览器或检查网络</div>
+  </div>
+</div>
 
 </body>
 </html>
