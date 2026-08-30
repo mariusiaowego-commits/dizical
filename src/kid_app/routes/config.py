@@ -970,6 +970,7 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
             "items": a["items"],
             "notes": a.get("notes", ""),
             "images": a.get("images", []),
+            "videos": a.get("videos", []),
             "stage_order": a.get("stage_order"),
             "stage_start": a["stage_start"].isoformat() if hasattr(a.get("stage_start"), "isoformat") else a.get("stage_start"),
             "stage_end": a["stage_end"].isoformat() if hasattr(a.get("stage_end"), "isoformat") else a.get("stage_end"),
@@ -1301,6 +1302,12 @@ async def api_upload_assignment_video(file: UploadFile = File(...)):
             raise
 
     try:
+        if total_size == 0:
+            return JSONResponse(
+                {"ok": False, "error": "上传的文件为空 (0 字节)"},
+                status_code=400,
+            )
+
         from ..cos_client import cos_uploader
         if cos_uploader.is_available:
             try:

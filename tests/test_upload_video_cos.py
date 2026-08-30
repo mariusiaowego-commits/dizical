@@ -176,3 +176,51 @@ def test_migration_add_videos_column_idempotent(tmp_path):
         mock_cursor.fetchone.return_value = {"c": 1}
         res_my2 = migrate_mysql("mysql+pymysql://root:pass@localhost:3306/dizi")
         assert "already exists" in res_my2
+
+
+def test_upload_empty_video_returns_400(client):
+    """Case 6: Empty 0-byte video returns 400 Bad Request."""
+    files = {"file": ("empty.mp4", io.BytesIO(b""), "video/mp4")}
+    resp = client.post("/config/api/assignments/upload-video", files=files)
+    assert resp.status_code == 400
+    data = resp.json()
+    assert data["ok"] is False
+    assert "为空" in data["error"]
+
+
+def test_api_get_assignments_includes_videos(client, monkeypatch):
+    """Case 7: GET /config/api/assignments returns videos field."""
+    import src.kid_app.routes.config as config_mod
+    import datetime as dt
+
+    fake_assignments = [
+        {
+            "id": 1,
+            "lesson_date": dt.date(2026, 8, 30),
+            "stage_start": dt.date(2026, 8, 31),
+            "stage_end": dt.date(2026, 9, 6),
+            "stage_order": 20,
+            "items": [{"item": "长音练习", "requirements": "5分钟"}],
+            "notes": "备注",
+            "images": ["https://cdn.com/img.jpg"],
+            "videos": [
+                {
+                    "url": "https://cdn.com/videos/v1.mp4",
+                    "filename": "v1.mp4",
+                    "item_id": 1001,
+                    "item_label": "长音练习",
+                }
+            ],
+        }
+    ]
+
+    monkeypatch.setattr(config_mod.practice_module, "query_assignments", lambda weeks=8: fake_assignments)
+
+    resp = client.get("/config/api/assignments?weeks=8")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "assignments" in data
+    first = data["assignments"][0]
+    assert "videos" in first
+    assert len(first["videos"]) == 1
+    assert first["videos"][0]["filename"] == "v1.mp4"
