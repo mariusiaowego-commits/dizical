@@ -2466,6 +2466,7 @@ def prepare_page():
     # 本周老师要求
     assign = db.get_weekly_assignment_for_week(today)
     assign_images = []
+    assign_videos = []
     if assign and assign.get("items"):
         assign_eyebrow = f"本周练习要求 · 第 {assign.get('stage_order', '?')} 期"
         stage_start = assign.get('stage_start', today)
@@ -2496,7 +2497,8 @@ def prepare_page():
         </ul>
       </div>
 """
-        assign_images = assign.get("images", [])
+        assign_images = assign.get("images", []) or []
+        assign_videos = assign.get("videos", []) or []
     else:
         assign_eyebrow  = "本周老师要求"
         assign_title    = "暂无老师要求"
@@ -2520,6 +2522,7 @@ def prepare_page():
         assign_title=assign_title,
         assign_items_html=assign_items_html,
         assign_images=assign_images,
+        assign_videos=assign_videos,
         cta_title="准备好啦！",
         cta_sub="三个步骤都完成后，开始今天的练习。",
         cta_btn_text="开始行动",
