@@ -606,6 +606,7 @@
     .session-sub-row .sub-content-input {
       width: 100%; padding: 4px 8px; font-size: 16px;
       border-radius: 6px; border: 1px solid #ddd;
+      font-feature-settings: "calt" 1, "ccmp" 1, "mark" 1, "mkmk" 1;
     }
 
     .session-sub-row .sub-remove-btn {
@@ -658,6 +659,7 @@
     .session-sub-row .sp-content-tag-mini {
       padding: 2px 8px; background: #F0E8D0; border: 1px solid #D4B886;
       border-radius: 12px; font-size: 13px; color: #5D4037; cursor: pointer;
+      font-feature-settings: "calt" 1, "ccmp" 1, "mark" 1, "mkmk" 1;
     }
     .session-sub-row .sp-content-tag-mini:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
 
@@ -1931,8 +1933,8 @@ function renderAssignEntries() {
     if (!segs.length) segs.push({ label: '', tempo: '' }); // 默认一行
     segRowsEl.innerHTML = segs.map((s, si) => `
       <div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
-        <input class="seg-label" data-idx="${idx}" data-si="${si}" value="${s.label || ''}" placeholder="说明 (如 前3天/交替/情况1)" style="flex:1.2;min-width:90px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px">
-        <input class="seg-tempo" data-idx="${idx}" data-si="${si}" value="${s.tempo || ''}" placeholder="速度 (如 ♩=95)" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+        <input class="seg-label" data-idx="${idx}" data-si="${si}" value="${s.label || ''}" placeholder="说明 (如 前3天/交替/情况1)" style="flex:1.2;min-width:90px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
+        <input class="seg-tempo" data-idx="${idx}" data-si="${si}" value="${s.tempo || ''}" placeholder="速度 (如 ♩=95)" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
         <button type="button" class="seg-del-btn" data-idx="${idx}" data-si="${si}" style="padding:2px 8px;border:1px solid #e0b0a0;border-radius:6px;background:#fff;color:#c06;cursor:pointer;font-size:12px">×</button>
       </div>`).join('');
     segRowsEl.querySelectorAll('.seg-label').forEach(inp => {
@@ -2410,7 +2412,7 @@ function startEditAssignment(lessonDate) {
       itemsRows += `<div class="edit-item-row" style="display:flex;gap:6px;margin-bottom:6px">
         <input class="edit-item-name" value="${it.item}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
         <input class="edit-item-metro" value="${it.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-        <input class="edit-item-req" value="${it.requirements || it.requirement || ''}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <input class="edit-item-req" value="${it.requirements || it.requirement || ''}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
       </div>`;
     });
     let editVideos = (a.videos || []).map(v => ({
@@ -2439,7 +2441,7 @@ function startEditAssignment(lessonDate) {
     form.innerHTML = `
       <div style="font-size:13px;font-weight:600;margin-bottom:8px">✏️ 编辑 ${lessonDate}</div>
       <div style="margin-bottom:8px">
-        <input id="editNotes" value="${a.notes || ''}" placeholder="老师补充说明" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <input id="editNotes" value="${a.notes || ''}" placeholder="老师补充说明" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
       </div>
       ${itemsRows}
       <div class="edit-videos" style="margin-top:10px"></div>
