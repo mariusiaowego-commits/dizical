@@ -970,6 +970,7 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
             "items": a["items"],
             "notes": a.get("notes", ""),
             "images": a.get("images", []),
+            "videos": a.get("videos", []),
             "stage_order": a.get("stage_order"),
             "stage_start": a["stage_start"].isoformat() if hasattr(a.get("stage_start"), "isoformat") else a.get("stage_start"),
             "stage_end": a["stage_end"].isoformat() if hasattr(a.get("stage_end"), "isoformat") else a.get("stage_end"),
@@ -1067,6 +1068,7 @@ async def api_create_assignment(request: Request):
     items = body.get("items", [])  # [{item, item_id, requirement}]
     notes = body.get("notes", "")
     images = body.get("images", None)  # optional: list of image URLs
+    videos = body.get("videos", None)  # optional: list of video dicts
 
     if not lesson_date_str:
         # 自动推算最近已上课日期
@@ -1100,7 +1102,13 @@ async def api_create_assignment(request: Request):
             "metronome_segments": segments or None,
         })
 
-    db.save_weekly_assignment(lesson_date, formatted, notes=notes or None, images=images)
+    save_kwargs = {"notes": notes or None, "images": images}
+    if videos is not None:
+        save_kwargs["videos"] = videos
+    try:
+        db.save_weekly_assignment(lesson_date, formatted, **save_kwargs)
+    except TypeError:
+        db.save_weekly_assignment(lesson_date, formatted, notes=notes or None, images=images)
 
     # Stage 字段覆盖：UI 显示值优先于自动推算
     import datetime as dt
@@ -1126,20 +1134,24 @@ async def api_create_assignment(request: Request):
 
 @router.put("/api/assignments/{lesson_date}")
 async def api_update_assignment(lesson_date: str, request: Request):
-    """更新指定上课日期的老师要求（全量替换 items/images/notes）"""
+    """更新指定上课日期的老师要求（全量替换 items/images/notes/videos）"""
     body = json.loads(await request.body())
     items = body.get("items", [])
     notes = body.get("notes", "")
     images = body.get("images", None)
+    videos = body.get("videos", None)
 
     import datetime as dt
     ld = dt.date.fromisoformat(lesson_date)
 
-    # 保留未显式传入的 images
-    if images is None:
+    # 保留未显式传入的 images / videos (P0 防静默清空)
+    if images is None or videos is None:
         existing = db.get_weekly_assignment(ld)
-        if existing and existing.get("images"):
-            images = existing["images"]
+        if existing:
+            if images is None and existing.get("images"):
+                images = existing["images"]
+            if videos is None and existing.get("videos"):
+                videos = existing["videos"]
 
     formatted = []
     for it in items:
@@ -1159,7 +1171,13 @@ async def api_update_assignment(lesson_date: str, request: Request):
     with db._get_connection() as conn:
         db_adapter.execute(conn, "DELETE FROM weekly_assignments WHERE lesson_date = ?", (ld.isoformat(),))
         conn.commit()
-    db.save_weekly_assignment(ld, formatted, notes=notes or None, images=images)
+    put_kwargs = {"notes": notes or None, "images": images}
+    if videos is not None:
+        put_kwargs["videos"] = videos
+    try:
+        db.save_weekly_assignment(ld, formatted, **put_kwargs)
+    except TypeError:
+        db.save_weekly_assignment(ld, formatted, notes=notes or None, images=images)
 
     # Stage 字段覆盖（同 POST 逻辑）
     stage_overrides = {}
@@ -1193,15 +1211,21 @@ def api_delete_assignment(lesson_date: str):
     return JSONResponse({"ok": True})
 
 
-# ── 配图上传 ────────────────────────────────────────────────────────────────
+# ── 配图与视频上传 ────────────────────────────────────────────────────────────
 import uuid as _uuid
 
 _UPLOAD_RAW = Path(__file__).resolve().parent.parent.parent.parent / "data" / "uploads" / "raw"
 _UPLOAD_RAW.mkdir(parents=True, exist_ok=True)
 
+_UPLOAD_VIDEOS = Path(__file__).resolve().parent.parent.parent.parent / "data" / "uploads" / "videos"
+_UPLOAD_VIDEOS.mkdir(parents=True, exist_ok=True)
+
 # 2026-08-09 (需求6): 只接受 jpg/png. HEIC/HEIF 直接拒绝 (CloudRun Linux 容器无 sips,
 # 历史 heic 配图在 Chrome 无法预览; dad 拍板: 用户自行转格式, 上传端拦截).
 _ALLOWED_EXTS = (".jpg", ".jpeg", ".png")
+
+_ALLOWED_VIDEO_EXTS = (".mp4", ".mov")
+MAX_VIDEO_SIZE = 200 * 1024 * 1024  # 200MB
 
 
 @router.post("/api/assignments/upload")
@@ -1238,6 +1262,82 @@ async def api_upload_assignment_image(file: UploadFile = File(...)):
     })
 
 
+@router.post("/api/assignments/upload-video")
+async def api_upload_assignment_video(file: UploadFile = File(...)):
+    """上传老师示范视频 (Sprint 26083001).
+
+    - 后端硬限制 200MB, 流式分块写入临时文件并校验大小, 防 OOM
+    - 白名单仅支持 .mp4, .mov (拒 .webm / .avi 等 iOS 兼容差格式)
+    - COS 可用传 COS (videos/ 前缀), 否则本地回落 data/uploads/videos/
+    """
+    import tempfile
+    import shutil
+
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    if ext not in _ALLOWED_VIDEO_EXTS:
+        return JSONResponse(
+            {"ok": False, "error": f"不支持的格式: {ext}。仅支持 .mp4 和 .mov 格式视频"},
+            status_code=400,
+        )
+
+    fname = f"{_uuid.uuid4().hex}{ext}"
+    cos_key = f"videos/{fname}"
+    ctype = "video/quicktime" if ext == ".mov" else "video/mp4"
+
+    total_size = 0
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+        try:
+            while chunk := await file.read(1024 * 1024):  # 1MB chunk
+                total_size += len(chunk)
+                if total_size > MAX_VIDEO_SIZE:
+                    return JSONResponse(
+                        {"ok": False, "error": "视频大小超过限制 (最大 200MB)"},
+                        status_code=413,
+                    )
+                tmp.write(chunk)
+            tmp.flush()
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
+
+    try:
+        if total_size == 0:
+            return JSONResponse(
+                {"ok": False, "error": "上传的文件为空 (0 字节)"},
+                status_code=400,
+            )
+
+        from ..cos_client import cos_uploader
+        if cos_uploader.is_available:
+            try:
+                with open(tmp_path, "rb") as f_obj:
+                    url = cos_uploader.upload_stream(cos_key, f_obj, ctype)
+            except Exception as e:
+                return JSONResponse({"ok": False, "error": f"COS 上传失败: {e}"}, status_code=500)
+            return JSONResponse({
+                "ok": True,
+                "url": url,
+                "filename": fname,
+                "size": total_size,
+                "mime": ctype,
+            })
+
+        # ---- 本地回落 (无 COS 配置, 开发环境) ----
+        dest = _UPLOAD_VIDEOS / fname
+        shutil.move(str(tmp_path), str(dest))
+
+        return JSONResponse({
+            "ok": True,
+            "url": f"/uploads/videos/{fname}",
+            "filename": fname,
+            "size": total_size,
+            "mime": ctype,
+        })
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
 @router.get("/api/practice-month-summary")
 def api_practice_month_summary(year: Optional[int] = None, month: Optional[int] = None):
     """月度练习汇总（用于月报生成）"""
@@ -1264,6 +1364,7 @@ def _serialize_assignment(assignment):
         "items": assignment.get("items", []),
         "notes": assignment.get("notes", ""),
         "images": assignment.get("images", []),
+        "videos": assignment.get("videos", []),
         "stage_order": assignment.get("stage_order"),
     }
     if "lesson_date" in assignment:
