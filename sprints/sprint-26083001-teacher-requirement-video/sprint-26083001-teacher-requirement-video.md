@@ -34,15 +34,15 @@ tags: [sprint, dizical]
 
 ## Sprint 子任务
 
-### S1 — 后端数据迁移 + 上传管线 (agy)
-- [ ] `cos_client.upload_stream` 流式上传方法
-- [ ] `api_upload_assignment_video` 端点 + 后端硬校验 200MB + 白名单 mp4/mov
-- [ ] `save_weekly_assignment` 加 videos 参数 (双后端)
-- [ ] 启动时 PRAGMA 幂等 ALTER ADD videos 列
-- [ ] 独立迁移脚本 `src/migrate_add_videos_column.py` (支持 --mysql)
-- [ ] `_serialize_assignment` 加 videos 字段 (避免 PUT 静默清空)
-- [ ] 测试 `tests/test_upload_video_cos.py` 5 case PASS
-- [ ] PR #298 创建
+### S1 — 后端数据迁移 + 上传管线 (agy) ✅ MERGED #298 (commit 355e83c)
+- [x] `cos_client.upload_stream` 流式上传方法
+- [x] `api_upload_assignment_video` 端点 + 后端硬校验 200MB + 白名单 mp4/mov
+- [x] `save_weekly_assignment` 加 videos 参数 (双后端)
+- [x] 启动时 PRAGMA 幂等 ALTER ADD videos 列
+- [x] 独立迁移脚本 `src/migrate_add_videos_column.py` (支持 --mysql)
+- [x] `_serialize_assignment` 加 videos 字段 (避免 PUT 静默清空)
+- [x] 测试 `tests/test_upload_video_cos.py` 7/7 PASS (agy 自审加了 0字节 + GET videos case)
+- [x] PR #298 创建并 merge (squash 7 commits)
 
 ### S2 — 前端录入/编辑/prepare UI (grok)
 - [ ] `config-practice-log.html` 视频区 (配图区下方, XHR 上传 + progress)
