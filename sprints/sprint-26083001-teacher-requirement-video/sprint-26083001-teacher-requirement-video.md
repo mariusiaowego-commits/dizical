@@ -4,7 +4,7 @@ type: sprint
 version: 1.0.0
 start_date: 2026-08-30
 end_date:
-status: 待启动
+status: 进行中
 priority: 高
 summary: 老师要求视频上传 + practice 页 modal 播放 + 历史/编辑/prepare 三处入口
 tags: [sprint, dizical]
