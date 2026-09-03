@@ -426,6 +426,7 @@
         justify-content: safe center;
       }
       /* paper-scale 默认 shrink-to-fit; 表格视图必须自己占满视口, 否则 paper width:100% 相对不定宽父级算不成 */
+      .paper-scale.is-table,
       .paper-scale:has(> .paper.is-table) {
         width: 100%;
         max-width: var(--paper-table-w);
@@ -447,7 +448,7 @@
         position: sticky;
         left: 0;
         z-index: 2;
-        box-shadow: 1.5px 0 0 #c9a030;  /* 替代 border-collapse 丢失的右边框 */
+        box-shadow: 1px 0 0 #c9a030;  /* 替代 border-collapse 丢失的右边框 (P2: 整数像素避免 1x 屏抗锯齿毛刺) */
       }
       table.matrix thead th.th-item { z-index: 3; }
     }
@@ -476,6 +477,13 @@
       }
       .paper.is-table .assign-grid {
         grid-template-columns: repeat(2, 1fr);
+      }
+      /* P1: view=group 在手机端也要自适应，避免 210mm 撑爆 390px 视区 */
+      .paper {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 6mm 4mm !important;
+        box-shadow: none !important;
       }
     }
 
@@ -800,6 +808,8 @@
     var isTable = viewMode === 'table';
     paper.classList.toggle('is-table', isTable);
     paper.classList.toggle('is-landscape', isTable);
+    /* P2: :has() fallback — 给 paperScale 同步 is-table class，低版本内核也能命中 .paper-scale.is-table */
+    if (paperScale) paperScale.classList.toggle('is-table', isTable);
     var rule = document.getElementById('printPageRule');
     if (rule) {
       rule.textContent = isTable
@@ -922,7 +932,7 @@
   function renderBodyTable(data) {
     var sum = data.summary || {};
     var days = data.days || [];
-    var html = '<div class="view-table-wrap">';
+    var html = '<div class="view-table-wrap" tabindex="0" role="region" aria-label="练习明细矩阵表">';
     if (!days.length) {
       html += '<div class="err" style="padding:12px;">本阶段暂无练习明细 (session)</div>';
       html += '</div>';
