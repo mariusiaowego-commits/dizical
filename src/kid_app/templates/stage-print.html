@@ -308,11 +308,6 @@
     }
 
     .view-table-wrap { margin-top: 0; overflow-x: auto; }
-    .view-table-wrap:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-      border-radius: 2px;
-    }
     table.matrix {
       width: 100%; border-collapse: collapse;
       font-size: 11pt; /* sprint 26080103: iPad mini 横屏主表可读字号 (从 8pt) */
@@ -489,33 +484,6 @@
         max-width: 100% !important;
         padding: 6mm 4mm !important;
         box-shadow: none !important;
-      }
-      /* group view 手机端: 卡片网格 2 列 + 紧凑排版 */
-      .paper:not(.is-table) .assign-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 2mm 3mm;
-      }
-      .paper:not(.is-table) .assign-card {
-        padding: 1.5mm 2mm;
-        margin-bottom: 2mm;
-      }
-      .paper:not(.is-table) .assign-card h2 {
-        font-size: 7.5pt;
-      }
-      .paper:not(.is-table) .assign-item {
-        font-size: 7pt;
-        padding: 0.5mm 0.6mm;
-      }
-      .paper:not(.is-table) .day-block {
-        margin-bottom: 1.2mm;
-      }
-    }
-
-    /* iPad 768-1180: group view 3 列 */
-    @media screen and (min-width: 769px) and (max-width: 1180px) {
-      .paper:not(.is-table) .assign-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1mm 1.5mm;
       }
     }
 
@@ -1181,7 +1149,6 @@
       requestAnimationFrame(function () {
         fillMatrixToPaper();
         updatePreviewStatus();
-        bindKeyboardA11y();
       });
     } else {
       updatePreviewStatus();
@@ -1209,29 +1176,6 @@
     // 行高清空, 改由 CSS min-height 8mm 控制
     var rows = table.querySelectorAll('tbody tr');
     rows.forEach(function (r) { r.style.height = ''; r.style.minHeight = '8mm'; });
-  }
-
-  /** 键盘无障碍：← → 横滑 + Home/End 跳端点 + aria-live 提示 */
-  function bindKeyboardA11y() {
-    if (viewMode !== 'table') return;
-    var wrap = paper.querySelector('.view-table-wrap');
-    if (!wrap) return;
-    wrap.addEventListener('keydown', function(e) {
-      var step = 200;
-      if (e.key === 'ArrowRight') { wrap.scrollLeft += step; e.preventDefault(); }
-      else if (e.key === 'ArrowLeft') { wrap.scrollLeft -= step; e.preventDefault(); }
-      else if (e.key === 'Home') { wrap.scrollLeft = 0; e.preventDefault(); }
-      else if (e.key === 'End') { wrap.scrollLeft = wrap.scrollWidth; e.preventDefault(); }
-    });
-    var live = document.createElement('div');
-    live.setAttribute('aria-live', 'polite');
-    live.className = 'sr-only';
-    live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);';
-    wrap.appendChild(live);
-    wrap.addEventListener('scroll', function() {
-      var first = wrap.querySelector('td.m-item');
-      if (first) live.textContent = first.textContent.trim() + ' · 练习科目列';
-    });
   }
 
   /** 打印前: 不缩放, 让浏览器自然分页 (Q2=A 多页). */
