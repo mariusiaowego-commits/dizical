@@ -519,10 +519,14 @@
       }
     }
 
-    /* ── 打印：可多页（A4 横向/竖向均可），sprint 26080103 不再强制单页 ── */
+    /* ── 打印：所见即所得 (sprint 26090903 r2) ──
+       dad 9-3 拍板：PDF 不是真打印, 是多设备展示用, 必须跟屏幕一模一样
+       - 保留: 工具栏/视图切换隐藏 (no-print), @page 尺寸, 表格列宽锁, 分页
+       - 去掉: 阴影剥除, 暖白→纯白, padding/margin/transform 归零, min-height 强制
+    */
     @media print {
       html, body {
-        background: #fff !important;
+        background: #e8e4dc !important;  /* 屏上 body 灰色背景 (line 29), PDF 保持所见即所得 */
         margin: 0 !important;
         padding: 0 !important;
         width: 100%;
@@ -532,32 +536,27 @@
       .toolbar,
       .day-filter { display: none !important; }
       .stage-wrap {
-        padding: 0 !important;
-        margin: 0 !important;
+        /* 保留屏上 padding/居中, 不再强制 padding:0 */
         display: block !important;
       }
       .paper-scale {
-        transform: none !important;
+        /* 保留屏上 transform (无 transform 就是 none) */
         margin: 0 !important;
-        padding: 0 !important;
       }
       .paper {
-        box-shadow: none !important;
+        /* 保留屏上 box-shadow / 暖白底 / 原始 width, 只强制 width:100% 让 PDF 不被缩 */
         margin: 0 auto !important;
         width: 100% !important;
+        box-sizing: border-box;
         zoom: var(--print-zoom, 1) !important;
       }
       .paper:not(.is-landscape) {
-        max-width: 210mm !important;
-        min-height: 297mm;
-        padding: 5mm 6mm !important;
-        overflow: visible !important;
+        max-width: 210mm !important;  /* A4 portrait 物理宽 */
+        /* 不再强制 min-height: 297mm, 跟屏上 auto 走 */
       }
       .paper.is-landscape {
-        max-width: 420mm !important;  /* sprint 26080103 v2: A3 横向; sprint-26080801: 改 max-width 防 iPad Safari 越界 */
-        min-height: 297mm;
-        padding: 3.5mm 4.5mm !important;
-        overflow: visible !important;
+        max-width: 420mm !important;  /* A3 横向物理宽 (sprint 26080801 防 iPad Safari 越界) */
+        /* 不再强制 min-height: 297mm */
       }
       /* sprint-26080801: 矩阵打印上下文锁列宽, 防 flex 压; 屏上仍 table-layout: auto */
       table.matrix {
