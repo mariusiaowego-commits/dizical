@@ -14,6 +14,12 @@
       --accent: #c45c26;
       --gold: #8b6914;
       --card: #faf6ee;
+      --paper-table-w: 420mm;
+      --col-item-min: 22mm;
+      --col-short-min: 8mm;
+      --col-tempo-min: 12mm;
+      --col-detail-min: 18mm;
+      --col-detail-max: 32mm;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -125,37 +131,13 @@
       position: relative;
       zoom: 1 !important; /* 屏上禁止 zoom 压缩 */
     }
-    /* 表格视图: A3 横向 (sprint-26080103 v2: 420x297mm 装 7 天; sprint-26080801: iPad viewport 不再 420mm 硬限) */
+    /* 表格视图: A3 横向几何 (padding/min-height). 屏上宽度见 @media screen; 打印见 @media print. */
     .paper.is-table.is-landscape {
-      width: 420mm;
       min-height: 297mm;
       max-height: none;  /* sprint 26080103 v2: 不限制, 屏上可滚 */
       padding: 4mm 5mm 4mm;
       box-sizing: border-box;
       overflow: visible;
-    }
-
-    /* sprint-26080801: iPad 横屏 viewport ≤ 1180px 时 paper 不再 420mm 硬限, 按 viewport 自适应.
-       关键: 这个块必须在所有 .paper.is-table.is-landscape 块之后定义, 否则被后写覆盖. */
-    @media (max-width: 1180px) {
-      .paper.is-table.is-landscape {
-        width: 100% !important;
-        min-width: 0 !important;
-        padding: 8px 4px !important;
-      }
-      .paper.is-table .view-table-wrap {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-      }
-      /* iPad 屏上: paper 边框阴影去掉, 让表格真正顶到 viewport 边缘 */
-      .stage-wrap { padding: 0 !important; }
-      .paper { box-shadow: none !important; }
-    }
-
-    /* sprint-26080801 第 2 处: 第二个 .paper.is-table.is-landscape 块 (line ~230) 必须再加 @media 兜底,
-       否则后写覆盖前写, 420mm 永远胜出, paper 不自适应. */
-    @media (max-width: 1180px) {
-      .paper.is-table.is-landscape { display: block !important; }  /* 屏上禁用 flex column, 让表格自然撑 */
     }
 
     /* ── 内容紧凑排版 (A4 单页) ── */
@@ -339,7 +321,7 @@
       line-height: 1.2;
     }
     table.matrix thead th.th-item {
-      background: #2a2015; min-width: 22mm; font-size: 11pt;
+      background: #2a2015; min-width: var(--col-item-min); font-size: 11pt;
     }
     table.matrix thead th.th-day {
       font-size: 11pt; letter-spacing: 0.15px;
@@ -363,33 +345,33 @@
     table.matrix tbody tr:nth-child(even) td:not(.m-item) { background: #faf6ee; }
     table.matrix td.m-item {
       background: #f5f0e6; font-weight: 700; font-size: 11pt;
-      text-align: center; min-width: 22mm;
+      text-align: center; min-width: var(--col-item-min);
       border-right: 1pt solid #c9a030;
       word-break: break-all; padding: 0.7mm 0.5mm;
     }
     table.matrix td.m-total {
       font-weight: 700; color: var(--accent); white-space: nowrap;
       border-left: 1pt solid #c9a030; background: #fff8f0;
-      font-size: 8pt; min-width: 8mm; max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt 防 iPad Safari 速度列文字溢出 */
+      font-size: 8pt; min-width: var(--col-short-min); max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt 防 iPad Safari 速度列文字溢出 */
       text-align: center !important; vertical-align: middle !important;
       padding: 0.5mm 0;
     }
     table.matrix td.m-tempo {
       color: var(--gold); font-weight: 600; white-space: nowrap;
-      font-size: 8pt; min-width: 12mm;  /* sprint-26080802: 9pt → 8pt */
+      font-size: 8pt; min-width: var(--col-tempo-min);  /* sprint-26080802: 9pt → 8pt */
       overflow-wrap: anywhere;  /* sprint-26080802: 防 ♩=60-112 速度字符串溢出列 */
       text-align: center !important; vertical-align: middle !important;
       padding: 0.5mm 0.3mm;
     }
     table.matrix td.m-once {
       font-weight: 700; white-space: nowrap;
-      font-size: 8pt; min-width: 8mm; max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt */
+      font-size: 8pt; min-width: var(--col-short-min); max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt */
       text-align: center !important; vertical-align: middle !important;
       padding: 0.5mm 0;
     }
     table.matrix td.m-detail {
       text-align: left; padding: 0.8mm 1.2mm;
-      font-size: 9pt; overflow-wrap: anywhere; min-width: 18mm; max-width: 32mm;  /* v2: 设上限, 文字换行不跨列 */
+      font-size: 9pt; overflow-wrap: anywhere; min-width: var(--col-detail-min); max-width: var(--col-detail-max);  /* v2: 设上限, 文字换行不跨列 */
     }
     table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
     table.matrix .det-extra {
@@ -436,6 +418,64 @@
       padding: 40px; text-align: center; color: var(--muted); font-size: 14px;
     }
     .err { color: #b23a48; }
+
+    /* ── 屏上响应式 (不泄漏到 print): fluid paper + sticky 科目 + 横滑 ── */
+    @media screen {
+      .stage-wrap {
+        overflow-x: auto;
+        justify-content: safe center;
+      }
+      /* paper-scale 默认 shrink-to-fit; 表格视图必须自己占满视口, 否则 paper width:100% 相对不定宽父级算不成 */
+      .paper-scale:has(> .paper.is-table) {
+        width: 100%;
+        max-width: var(--paper-table-w);
+        min-width: 0;
+      }
+      .paper.is-table.is-landscape {
+        width: 100%;
+        max-width: var(--paper-table-w);
+        min-width: 0;
+      }
+      .paper.is-table .view-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      table.matrix thead th.th-item,
+      table.matrix td.m-item,
+      table.matrix tfoot td.m-item {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+      }
+      table.matrix thead th.th-item { z-index: 3; }
+    }
+
+    /* iPad 768-1180: 合并原两段 1180 块, 必须在所有 .paper.is-table.is-landscape 之后. */
+    @media (max-width: 1180px) {
+      .paper.is-table.is-landscape {
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 8px 4px !important;
+        display: block !important;  /* 屏上禁用 flex column, 让表格自然撑 */
+      }
+      .paper.is-table .view-table-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .stage-wrap { padding: 0 !important; }
+      .paper { box-shadow: none !important; }
+    }
+
+    @media screen and (max-width: 768px) {
+      :root {
+        --col-item-min: 16mm;
+        --col-detail-min: 14mm;
+        --col-detail-max: 28mm;
+      }
+      .paper.is-table .assign-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
 
     /* ── 打印：可多页（A4 横向/竖向均可），sprint 26080103 不再强制单页 ── */
     @media print {
@@ -1116,7 +1156,7 @@
     paper.style.overflow = 'visible';
     wrap.style.height = '';
     wrap.style.maxHeight = '';
-    wrap.style.overflow = 'visible';
+    wrap.style.overflow = '';  /* CSS @media screen 管 overflow-x:auto; 不写 visible 以免盖掉横滑 */
     wrap.style.flex = '';
     table.style.height = '';
     table.style.maxHeight = '';
