@@ -435,9 +435,10 @@
         width: 100%;
         max-width: var(--paper-table-w);
         min-width: 0;
+        display: block;  /* 覆盖 L236 display:flex */
       }
       .paper.is-table .view-table-wrap {
-        overflow-x: auto;
+        overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
       }
       table.matrix thead th.th-item,
@@ -446,6 +447,7 @@
         position: sticky;
         left: 0;
         z-index: 2;
+        box-shadow: 1.5px 0 0 #c9a030;  /* 替代 border-collapse 丢失的右边框 */
       }
       table.matrix thead th.th-item { z-index: 3; }
     }
@@ -468,7 +470,7 @@
 
     @media screen and (max-width: 768px) {
       :root {
-        --col-item-min: 16mm;
+        --col-item-min: 20mm;  /* 原 16mm → 20mm */
         --col-detail-min: 14mm;
         --col-detail-max: 28mm;
       }
