@@ -16,6 +16,13 @@
       --text: #3d3d3d;
       --radius: 20px;
       --sidebar-width: 220px;
+      /* A5 fix: 撞色 palette (4 色, 复用 dizical 已有 sage/rose/lavender/cream)
+         DESIGN.md 硬规则: 不在 dizicute palette 的色不能加, 这里 4 色都已在 dizical 既存
+         未来要做 6 色撞色另提 dizicute palette PR */
+      --color-1: var(--rose);
+      --color-2: var(--sage);
+      --color-3: var(--lavender);
+      --color-4: var(--cream);
     }
 
     body {
@@ -217,7 +224,7 @@
 
     .form-textarea {
       resize: vertical;
-      min-height: 60px;
+      min-height: 110px;
     }
 
     .badge {
@@ -383,8 +390,14 @@
     .assign-subject {
       margin-bottom: 10px;
       padding: 0 0 10px 14px;
-      border-left: 3px solid #FF6B6B;
+      border-left: 3px solid var(--color-1);
+      transition: border-left-color 0.18s ease;
     }
+    .assign-subject:nth-child(4n+1) { border-left-color: var(--color-1); }
+    .assign-subject:nth-child(4n+2) { border-left-color: var(--color-2); }
+    .assign-subject:nth-child(4n+3) { border-left-color: var(--color-3); }
+    .assign-subject:nth-child(4n+4) { border-left-color: var(--color-4); }
+    /* P2 fix: hover 不改色, 保留原撞色 (agy 建议: 改色会误导用户以为触发红色动作) */
 
     .assign-subject:last-child {
       margin-bottom: 0;
@@ -536,8 +549,14 @@
       padding: 12px;
       background: #f9f9fa;
       border-radius: 10px;
-      border-left: 3px solid #FF6B6B;
+      border-left: 3px solid var(--color-1);
+      transition: border-left-color 0.18s ease;
     }
+    .log-entry-row:nth-child(4n+1) { border-left-color: var(--color-1); }
+    .log-entry-row:nth-child(4n+2) { border-left-color: var(--color-2); }
+    .log-entry-row:nth-child(4n+3) { border-left-color: var(--color-3); }
+    .log-entry-row:nth-child(4n+4) { border-left-color: var(--color-4); }
+    /* P2 fix: hover 不改色 (同 .assign-subject) */
 
     .log-entry-row .entry-top {
       display: flex;
@@ -555,12 +574,14 @@
       border: 1px solid #e0e0e0;
     }
 
-/* 老师要求 hint (Q2=C 小字) */
+/* 老师要求 hint (Q2=C 小字) — A5 fix: 单色 (sage = "提示色"), 不参与撞色轮换
+   原 nth-child 设计死色 (每 entry 只有 1 个 hint, 永远命中同一位置). 单色更克制. */
     .entry-assign-hint {
       font-size: 14px; color: #8B6914; background: #FFF8F0;
       padding: 6px 10px; border-radius: 6px;
-      border-left: 2px solid #FF6B6B;
+      border-left: 2px solid var(--sage);
       margin-top: 2px;
+      margin-left: 14px;
     }
     .entry-assign-hint .assign-detail {
       font-weight: 600;
@@ -875,7 +896,7 @@
           <button class="btn btn-secondary" id="addAssignEntryBtn" style="margin-bottom:14px">+ 添加科目要求</button>
           <div class="form-group">
             <label>老师补充说明</label>
-            <textarea class="form-textarea" id="assignNotes" placeholder="老师说的其他注意事项..."></textarea>
+            <textarea class="form-textarea" id="assignNotes" rows="4" placeholder="老师说的其他注意事项..."></textarea>
           </div>
           <div class="form-group">
             <label>📷 配图（风格化卡片）</label>
@@ -1629,6 +1650,18 @@ function calcEntryTotal(entry) {
 document.getElementById('addEntryBtn').addEventListener('click', () => {
   logEntries.push({ item_id: null, item: '', sessions: [] });
   renderLogEntries();
+  // A4 fix: 同样 focus + scrollIntoView 新行 (跟 addAssignEntryBtn 一致)
+  // P1 fix: selector 顺序统一 .item-select 优先 (新增一行第一步是选科目, 不是输分钟)
+  requestAnimationFrame(() => {
+    const rows = document.querySelectorAll('#logEntries .log-entry-row');
+    const last = rows[rows.length - 1];
+    if (!last) return;
+    last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const firstInput = last.querySelector('.item-select, input, textarea, select');
+    if (firstInput) {
+      try { firstInput.focus(); } catch (e) { /* ignore */ }
+    }
+  });
 });
 
 // ── 自动填默认 (Q3=A 选中科目后立刻填) ──
@@ -2013,6 +2046,17 @@ document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
   assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '', segments: [] }); // segments: 需求4 多档速度
   renderAssignEntries();
   scheduleAssignDraftSave(); // 需求1: 添加行也存草稿
+  // A4 fix: 添加后 focus 新行的第一个输入 + 滚动到视图中央
+  requestAnimationFrame(() => {
+    const rows = document.querySelectorAll('#assignEntries .log-entry-row');
+    const last = rows[rows.length - 1];
+    if (!last) return;
+    last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const firstInput = last.querySelector('.item-select, .metronome-input, input, textarea, select');
+    if (firstInput) {
+      try { firstInput.focus(); } catch (e) { /* ignore */ }
+    }
+  });
 });
 
 // ── 配图上传 ──
