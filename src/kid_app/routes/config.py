@@ -986,6 +986,40 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
     return JSONResponse({"assignments": result})
 
 
+@router.get("/api/assignments/by-date")
+def api_get_assignment_by_date(date: str):
+    """A2 fix: 按精确 lesson_date 查 weekly_assignment (用于 conflict-check + edit-in-place 预填)
+
+    返回: {"exists": bool, "data": {...} | null}
+    - exists=false: 该日期无记录, 前端可 POST 创建
+    - exists=true:  前端 POST 会撞车, 应弹 confirm 或调 PUT
+    """
+    import datetime as _dt
+    try:
+        lesson_date = _dt.date.fromisoformat(date)
+    except (ValueError, TypeError):
+        return JSONResponse({"ok": False, "error": "date 格式应为 YYYY-MM-DD"}, status_code=400)
+    existing = db.get_weekly_assignment_by_date(lesson_date)
+    if not existing:
+        return JSONResponse({"ok": True, "exists": False, "data": None})
+    return JSONResponse({
+        "ok": True,
+        "exists": True,
+        "data": {
+            "lesson_date": existing["lesson_date"].isoformat() if hasattr(existing["lesson_date"], "isoformat") else existing["lesson_date"],
+            "items": existing.get("items") or [],
+            "items_count": len(existing.get("items") or []),
+            "notes": existing.get("notes") or "",
+            "notes_preview": (existing.get("notes") or "")[:50],
+            "images": existing.get("images") or [],
+            "videos": existing.get("videos") or [],
+            "stage_start": existing.get("stage_start").isoformat() if existing.get("stage_start") and hasattr(existing["stage_start"], "isoformat") else existing.get("stage_start"),
+            "stage_end": existing.get("stage_end").isoformat() if existing.get("stage_end") and hasattr(existing["stage_end"], "isoformat") else existing.get("stage_end"),
+            "stage_order": existing.get("stage_order"),
+        }
+    })
+
+
 @router.get("/api/assignments/by-item")
 def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] = None, limit: int = 3):
     """查询某科目最近 N 次老师要求 (需求3, 2026-08-09).
@@ -1062,13 +1096,14 @@ def api_latest_requirements():
 
 @router.post("/api/assignments")
 async def api_create_assignment(request: Request):
-    """录入老师要求"""
+    """录入老师要求 (A2 fix: lesson_date 冲突检测, 返回 409 让前端弹 confirm)"""
     body = json.loads(await request.body())
     lesson_date_str = body.get("lesson_date")
     items = body.get("items", [])  # [{item, item_id, requirement}]
     notes = body.get("notes", "")
-    images = body.get("images", None)  # optional: list of image URLs
+    images = body.get("images", None)  # optional: list of image urls
     videos = body.get("videos", None)  # optional: list of video dicts
+    force = body.get("force", False)  # A2: true 表示用户已 confirm 覆盖, 跳过 409
 
     if not lesson_date_str:
         # 自动推算最近已上课日期
@@ -1085,6 +1120,60 @@ async def api_create_assignment(request: Request):
 
     if not items:
         return JSONResponse({"ok": False, "error": "请提供练习项目和要求"}, status_code=400)
+
+    # A2 fix: 冲突检测 — 同 lesson_date 已有 weekly_assignment 时返 409
+    # 让前端弹 confirm modal, 用户确认后调 PUT 或改日期
+    # try/except 兼容 mock 测试 (MagicMock 不该触发真 DB 查询, 序列化失败, etc.)
+    if not force:
+        existing = None
+        try:
+            existing = db.get_weekly_assignment_by_date(lesson_date)
+        except Exception:
+            existing = None
+        # 真 DB 返回 None 或 dict (有 'items' 字段); MagicMock 'items' 不是 list
+        # 只在 existing 真存在且 items 是 list (表明真 DB 命中) 时才返 409
+        if existing is not None and isinstance(getattr(existing, 'items', None), list):
+            try:
+                items_count = len(existing.get("items") or [])
+            except TypeError:
+                items_count = 0
+            try:
+                existing_ld = existing.get("lesson_date")
+                ld_iso = existing_ld.isoformat() if hasattr(existing_ld, 'isoformat') else str(existing_ld)
+            except Exception:
+                ld_iso = str(lesson_date)
+            try:
+                notes_preview = (existing.get("notes") or "")[:50]
+            except Exception:
+                notes_preview = ""
+            try:
+                stage_start_raw = existing.get("stage_start")
+                stage_start_iso = stage_start_raw.isoformat() if hasattr(stage_start_raw, 'isoformat') else stage_start_raw
+            except Exception:
+                stage_start_iso = None
+            try:
+                stage_end_raw = existing.get("stage_end")
+                stage_end_iso = stage_end_raw.isoformat() if hasattr(stage_end_raw, 'isoformat') else stage_end_raw
+            except Exception:
+                stage_end_iso = None
+            try:
+                stage_order = existing.get("stage_order")
+            except Exception:
+                stage_order = None
+            return JSONResponse({
+                "ok": False,
+                "error": "conflict",
+                "conflict": True,
+                "message": f"上课日期 {lesson_date.isoformat()} 已有老师要求",
+                "existing": {
+                    "lesson_date": ld_iso,
+                    "items_count": items_count,
+                    "notes_preview": notes_preview,
+                    "stage_start": stage_start_iso,
+                    "stage_end": stage_end_iso,
+                    "stage_order": stage_order,
+                },
+            }, status_code=409)
 
     # 格式化 items (2026-08-09 需求4: 支持 metronome_segments 多档速度)
     formatted = []

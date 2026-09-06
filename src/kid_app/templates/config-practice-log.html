@@ -2326,6 +2326,65 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
   if (stageEnd) body.stage_end = stageEnd;
   if (stageOrder) body.stage_order = parseInt(stageOrder);
 
+  // A2 fix: 提交前 GET /config/api/assignments/by-date 检查冲突
+  // lesson_date 为空时后端自动推算最近已上课日期, 前端走 POST 让后端 409 兜底
+  let resolvedDate = lessonDate;
+  if (resolvedDate) {
+    try {
+      const checkRes = await fetch(`/config/api/assignments/by-date?date=${encodeURIComponent(resolvedDate)}`);
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.exists && checkData.data) {
+          const ex = checkData.data;
+          const msg =
+            `⚠️ 上课日期 ${ex.lesson_date} 已有老师要求\n\n` +
+            `科目数: ${ex.items_count}\n` +
+            `备注预览: ${ex.notes_preview || '(无)'}\n` +
+            (ex.stage_order ? `期数: 第 ${ex.stage_order} 期\n` : '') +
+            `\n确认覆盖吗?\n\n` +
+            `[确定] = 覆盖 (调 PUT /api/assignments/${ex.lesson_date})\n` +
+            `[取消] = 取消本次录入`;
+          if (!confirm(msg)) return;
+          // 走 PUT 替换 (复用现有端点, P0 防静默清空已由后端保证)
+          const putRes = await fetch(`/config/api/assignments/${encodeURIComponent(ex.lesson_date)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              items: body.items,
+              notes: body.notes,
+              images: body.images,
+              videos: body.videos,
+              stage_start: body.stage_start,
+              stage_end: body.stage_end,
+              stage_order: body.stage_order,
+            }),
+          });
+          const putData = await putRes.json();
+          if (putData.ok) {
+            assignEntries = [];
+            assignImages = [];
+            assignVideos = [];
+            renderAssignEntries();
+            renderAssignImagePreview();
+            renderAssignVideoList();
+            document.getElementById('assignNotes').value = '';
+            document.getElementById('assignStageStart').value = '';
+            document.getElementById('assignStageEnd').value = '';
+            document.getElementById('assignStageOrder').value = '';
+            clearAssignDraft();
+            loadAssignments();
+            alert('✅ 老师要求已更新 (覆盖 ' + ex.lesson_date + ')');
+          } else {
+            alert('❌ ' + (putData.error || '覆盖失败'));
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      // 检查失败不阻塞主流程, 走 POST 让后端 409 兜底
+    }
+  }
+
   const res = await fetch('/config/api/assignments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2346,6 +2405,47 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
     clearAssignDraft(); // 需求1: 提交成功后清草稿
     loadAssignments();
     alert('✅ 老师要求已录入');
+  } else if (data.conflict) {
+    // A2 后端 409 兜底 (lesson_date 为空时由后端自动推算, 前端拿不到日期走此分支)
+    const ex = data.existing || {};
+    const msg =
+      `⚠️ 上课日期 ${ex.lesson_date || '?'} 已有老师要求\n\n` +
+      `科目数: ${ex.items_count || '?'}\n` +
+      `备注预览: ${ex.notes_preview || '(无)'}\n` +
+      `\n确认覆盖吗?`;
+    if (confirm(msg) && ex.lesson_date) {
+      const putRes = await fetch(`/config/api/assignments/${encodeURIComponent(ex.lesson_date)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: body.items,
+          notes: body.notes,
+          images: body.images,
+          videos: body.videos,
+          stage_start: body.stage_start,
+          stage_end: body.stage_end,
+          stage_order: body.stage_order,
+        }),
+      });
+      const putData = await putRes.json();
+      if (putData.ok) {
+        assignEntries = [];
+        assignImages = [];
+        assignVideos = [];
+        renderAssignEntries();
+        renderAssignImagePreview();
+        renderAssignVideoList();
+        document.getElementById('assignNotes').value = '';
+        document.getElementById('assignStageStart').value = '';
+        document.getElementById('assignStageEnd').value = '';
+        document.getElementById('assignStageOrder').value = '';
+        clearAssignDraft();
+        loadAssignments();
+        alert('✅ 老师要求已更新 (覆盖 ' + ex.lesson_date + ')');
+      } else {
+        alert('❌ ' + (putData.error || '覆盖失败'));
+      }
+    }
   } else {
     alert('❌ ' + (data.error || '录入失败'));
   }
