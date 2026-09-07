@@ -835,6 +835,37 @@ class Database(BaseBackend):
                 'videos': json.loads(row['videos']) if row['videos'] else []
             } for row in cursor.fetchall()]
 
+    def get_weekly_assignment_by_date(self, lesson_date: dt.date) -> Optional[Dict]:
+        """A2 fix: 按精确 lesson_date 查 weekly_assignment (用于 conflict-check + edit-in-place 预填).
+
+        与 get_weekly_assignment(week_start) 区别: 该方法按周查, 返回该周最近一条;
+        本方法按精确 lesson_date 查, 用于 A2 conflict 检测 (确认指定日期是否已有要求)
+        和 A1 edit-mode 反填现有 items.
+        """
+        if isinstance(lesson_date, str):
+            lesson_date = dt.date.fromisoformat(lesson_date)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM weekly_assignments
+                WHERE lesson_date = ?
+                LIMIT 1
+            ''', (lesson_date.isoformat(),))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                'id': row['id'],
+                'lesson_date': dt.date.fromisoformat(row['lesson_date']) if isinstance(row['lesson_date'], str) else row['lesson_date'],
+                'stage_start': dt.date.fromisoformat(row['stage_start']) if row['stage_start'] and isinstance(row['stage_start'], str) else (row['stage_start'] if row['stage_start'] else None),
+                'stage_end': dt.date.fromisoformat(row['stage_end']) if row['stage_end'] and isinstance(row['stage_end'], str) else (row['stage_end'] if row['stage_end'] else None),
+                'stage_order': row['stage_order'],
+                'items': json.loads(row['items']) if isinstance(row['items'], str) else row['items'],
+                'notes': row['notes'],
+                'images': json.loads(row['images']) if row['images'] and isinstance(row['images'], str) else (row['images'] if row['images'] else []),
+                'videos': json.loads(row['videos']) if row['videos'] and isinstance(row['videos'], str) else (row['videos'] if row['videos'] else []),
+            }
+
     # Daily practice operations
     def save_daily_practice(self, date: dt.date, items: List[Dict], total_minutes: int, log: Optional[str] = None, practiced: str = 'Y',
                             channel: Optional[str] = None, method: Optional[str] = None, session_id: Optional[str] = None,

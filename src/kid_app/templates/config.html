@@ -320,10 +320,14 @@
     <!-- 配置卡片网格 -->
     <div class="config-grid">
       
-      <!-- 练习科目配置 -->
+      <!-- 练习科目配置 (B1 fix: 删 koboyo_quaver.svg 外链, 用 inline music icon, A4 等 inline 卡片统一) -->
       <a href="/config/practice" class="config-card" data-color="sage">
         <div class="card-icon">
-          <img src="/static/icons/koboyo/koboyo_quaver.svg" width="40" height="40" alt="" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
         </div>
         <div class="card-content">
           <h3>练习科目配置</h3>
@@ -335,10 +339,14 @@
         </div>
       </a>
 
-      <!-- 练习记录（老师要求 + 练习录入 + 周总览 + 统计） -->
+      <!-- 练习记录（老师要求 + 练习录入 + 周总览 + 统计） (B1 fix: 删 koboyo_clipboard_list.svg 外链, inline clipboard-list) -->
       <a href="/config/practice-log" class="config-card" data-color="sage">
         <div class="card-icon">
-          <img src="/static/icons/koboyo/koboyo_clipboard_list.svg" width="40" height="40" alt="" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            <path d="M9 12h.01M9 16h.01M13 12h3M13 16h3"/>
+          </svg>
         </div>
         <div class="card-content">
           <h3>练习记录</h3>
@@ -370,10 +378,16 @@
         </div>
       </a>
 
-      <!-- 盲盒主题配置 -->
+      <!-- 盲盒主题配置 (B1 fix: 删 koboyo_sparkles.svg 外链, inline gift icon) -->
       <a href="/config/blindbox" class="config-card" data-color="rose">
         <div class="card-icon">
-          <img src="/static/icons/koboyo/koboyo_sparkles.svg" width="40" height="40" alt="" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 12 20 22 4 22 4 12"/>
+            <rect x="2" y="7" width="20" height="5"/>
+            <line x1="12" y1="22" x2="12" y2="7"/>
+            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+          </svg>
         </div>
         <div class="card-content">
           <h3>盲盒主题</h3>
