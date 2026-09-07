@@ -2599,6 +2599,17 @@ function startEditAssignment(lessonDate) {
     const renderEditFormItems = () => {
       const wrap = form.querySelector('.edit-items-container');
       if (!wrap) return;
+      // PR-C fix (agy P0): 重渲前反读当前 DOM 输入值, 防止用户打字被 editItems 数组旧值冲掉
+      wrap.querySelectorAll('.edit-item-row').forEach((row, i) => {
+        if (editItems[i]) {
+          const n = row.querySelector('.edit-item-name');
+          const m = row.querySelector('.edit-item-metro');
+          const r = row.querySelector('.edit-item-req');
+          if (n) editItems[i].item = n.value;
+          if (m) editItems[i].metronome = m.value;
+          if (r) editItems[i].requirement = r.value;
+        }
+      });
       wrap.innerHTML = editItems.map((it, i) => `
         <div class="edit-item-row" data-edit-idx="${i}" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
           <input class="edit-item-name" value="${escapeAttr(it.item)}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
