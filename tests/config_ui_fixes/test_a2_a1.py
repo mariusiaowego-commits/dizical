@@ -192,9 +192,9 @@ def test_a1_submit_supports_put_method():
     if not m:
         m = re.search(r"save-edit-btn[^}]*?\.addEventListener", src)
     assert m, "save-edit-btn click handler not bound"
-    # 找后面 1500 字符内含 method: 'PUT' + URL pattern /api/assignments/{date}
+    # 找后面 2500 字符 (PR-E 加注释 + select 解析逻辑使 body 变长, 1500 不够)
     idx = m.start()
-    nearby = src[idx:idx+1500]
+    nearby = src[idx:idx+2500]
     has_put = ("method: 'PUT'" in nearby) or ('method: "PUT"' in nearby) or ("method:'PUT'" in nearby)
     has_url = "/api/assignments/${lessonDate}" in nearby or ("/config/api/assignments/${lessonDate}" in nearby) or ("assignments/${lessonDate}" in nearby)
     assert has_put and has_url, f"save-edit-btn must PUT to /api/assignments/{{lessonDate}}. has_put={has_put}, has_url={has_url}. nearby:\n{nearby[:800]}"
