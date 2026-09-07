@@ -2550,15 +2550,14 @@ function startEditAssignment(lessonDate) {
     const form = document.createElement('div');
     form.className = 'edit-form';
     form.style.cssText = 'margin-top:12px;padding:12px;background:#f9f9f9;border-radius:10px';
-    // Build subject rows
-    let itemsRows = '';
-    (a.items || []).forEach((it, i) => {
-      itemsRows += `<div class="edit-item-row" style="display:flex;gap:6px;margin-bottom:6px">
-        <input class="edit-item-name" value="${it.item}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-        <input class="edit-item-metro" value="${it.metronome || ''}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-        <input class="edit-item-req" value="${it.requirements || it.requirement || ''}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
-      </div>`;
-    });
+    // PR-C fix: editItems 数组 (取代闭包 itemsRows), 支持 + 添加 / 删除单行
+    const editItems = (a.items || []).map(it => ({
+      item: it.item || '',
+      item_id: it.item_id == null || it.item_id === '' ? null : it.item_id,
+      metronome: it.metronome || '',
+      requirement: it.requirements || it.requirement || '',
+    }));
+    const escapeAttr = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     let editVideos = (a.videos || []).map(v => ({
       url: v.url, filename: v.filename || '',
       item_id: v.item_id == null || v.item_id === '' ? null : v.item_id,
@@ -2569,25 +2568,26 @@ function startEditAssignment(lessonDate) {
     const editBindOpts = (selectedId, selectedLabel) => {
       const seen = {};
       let html = '<option value="">本期通用</option>';
-      (a.items || []).forEach(it => {
+      editItems.forEach(it => {
         if (!it.item_id) return;
         const id = String(it.item_id);
         if (seen[id]) return;
         seen[id] = true;
         const sel = String(selectedId) === id ? ' selected' : '';
-        html += `<option value="${id}"${sel}>${String(it.item || '').replace(/</g, '&lt;')}</option>`;
+        html += `<option value="${id}"${sel}>${escapeAttr(it.item || '')}</option>`;
       });
       if (selectedId && !seen[String(selectedId)]) {
-        html += `<option value="${selectedId}" selected>${String(selectedLabel || '已绑科目').replace(/</g, '&lt;')}</option>`;
+        html += `<option value="${selectedId}" selected>${escapeAttr(selectedLabel || '已绑科目')}</option>`;
       }
       return html;
     };
     form.innerHTML = `
       <div style="font-size:13px;font-weight:600;margin-bottom:8px">✏️ 编辑 ${lessonDate}</div>
       <div style="margin-bottom:8px">
-        <input id="editNotes" value="${a.notes || ''}" placeholder="老师补充说明" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
+        <input id="editNotes" value="${escapeAttr(a.notes || '')}" placeholder="老师补充说明" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
       </div>
-      ${itemsRows}
+      <div class="edit-items-container"></div>
+      <button type="button" class="add-edit-item-btn" style="background:#a8d5ba;color:#2E7D32;border:1px dashed #2E7D32;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;margin-top:4px;margin-bottom:8px">+ 添加科目</button>
       <div class="edit-videos" style="margin-top:10px"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="save-edit-btn" style="background:#4CAF50;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer">💾 保存</button>
@@ -2595,6 +2595,55 @@ function startEditAssignment(lessonDate) {
       </div>
     `;
     card.appendChild(form);
+    // PR-C fix: 渲染函数 (取代闭包 itemsRows), 支持动态增删
+    const renderEditFormItems = () => {
+      const wrap = form.querySelector('.edit-items-container');
+      if (!wrap) return;
+      // PR-C fix (agy P0): 重渲前反读当前 DOM 输入值, 防止用户打字被 editItems 数组旧值冲掉
+      wrap.querySelectorAll('.edit-item-row').forEach((row, i) => {
+        if (editItems[i]) {
+          const n = row.querySelector('.edit-item-name');
+          const m = row.querySelector('.edit-item-metro');
+          const r = row.querySelector('.edit-item-req');
+          if (n) editItems[i].item = n.value;
+          if (m) editItems[i].metronome = m.value;
+          if (r) editItems[i].requirement = r.value;
+        }
+      });
+      wrap.innerHTML = editItems.map((it, i) => `
+        <div class="edit-item-row" data-edit-idx="${i}" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+          <input class="edit-item-name" value="${escapeAttr(it.item)}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          <input class="edit-item-metro" value="${escapeAttr(it.metronome)}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          <input class="edit-item-req" value="${escapeAttr(it.requirement)}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
+          ${editItems.length > 1 ? `<button type="button" class="del-edit-item-btn" data-edit-idx="${i}" style="width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,107,107,0.1);color:#FF6B6B;cursor:pointer;font-size:16px;flex-shrink:0" aria-label="删除该行">×</button>` : ''}
+        </div>
+      `).join('');
+      wrap.querySelectorAll('.del-edit-item-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.editIdx, 10);
+          if (isNaN(idx) || idx < 0 || idx >= editItems.length) return;
+          editItems.splice(idx, 1);
+          renderEditFormItems();
+        });
+      });
+    };
+    renderEditFormItems();
+    // PR-C fix: + 添加科目 按钮 handler
+    form.querySelector('.add-edit-item-btn').addEventListener('click', () => {
+      editItems.push({ item: '', item_id: null, metronome: '', requirement: '' });
+      renderEditFormItems();
+      // A4 模式: 焦点跳到新行第一个输入 + scrollIntoView
+      requestAnimationFrame(() => {
+        const rows = form.querySelectorAll('.edit-item-row');
+        const last = rows[rows.length - 1];
+        if (!last) return;
+        last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const firstInput = last.querySelector('input, textarea');
+        if (firstInput) {
+          try { firstInput.focus(); } catch (e) { /* ignore */ }
+        }
+      });
+    });
     const renderEditVideos = () => {
       const wrap = form.querySelector('.edit-videos');
       if (!wrap) return;
@@ -2638,11 +2687,17 @@ function startEditAssignment(lessonDate) {
     renderEditVideos();
 
     form.querySelector('.save-edit-btn').addEventListener('click', async () => {
-      const items = Array.from(form.querySelectorAll('.edit-item-row')).map(row => ({
-        item: row.querySelector('.edit-item-name').value,
-        metronome: row.querySelector('.edit-item-metro').value,
-        requirement: row.querySelector('.edit-item-req').value,
-      }));
+      // PR-C fix: 读 editItems 数组 (而非 querySelectorAll DOM), 支持新增/删除/原数据保留
+      // 注意: 用户可能编辑了 input value, 所以要从对应 DOM row 反读当前值覆盖 editItems[i]
+      const items = editItems.map((it, i) => {
+        const row = form.querySelector(`.edit-item-row[data-edit-idx="${i}"]`);
+        return {
+          item: row ? row.querySelector('.edit-item-name').value.trim() : it.item,
+          item_id: it.item_id,
+          metronome: row ? row.querySelector('.edit-item-metro').value : it.metronome,
+          requirement: row ? row.querySelector('.edit-item-req').value : it.requirement,
+        };
+      }).filter(it => it.item);  // 过滤空行 (用户 + 添加但没填)
       const notes = form.querySelector('#editNotes').value;
       const videos = editVideos.map(v => ({
         url: v.url,
