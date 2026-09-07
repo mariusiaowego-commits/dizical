@@ -539,6 +539,57 @@ class MySQLBackend(BaseBackend):
     def get_weekly_assignment(self, week_start: dt.date) -> Optional[Dict]:
         return self.get_weekly_assignment_for_week(week_start)
 
+    def get_weekly_assignment_by_date(self, lesson_date: dt.date) -> Optional[Dict]:
+        """A2 fix: 按精确 lesson_date 查 weekly_assignment (conflict-check + edit 预填).
+
+        对齐 SQLite database.py 的 get_weekly_assignment_by_date 语义.
+        MySQL 端需处理: 'lesson_date' 可能是 datetime → date; items/images/videos 是 JSON 字符串.
+        """
+        if isinstance(lesson_date, str):
+            lesson_date = dt.date.fromisoformat(lesson_date)
+        with self._get_connection() as conn:
+            with conn.cursor(DatetimeSafeDictCursor) as cur:
+                cur.execute('''
+                    SELECT * FROM weekly_assignments
+                    WHERE lesson_date = %s
+                    LIMIT 1
+                ''', (lesson_date.isoformat(),))
+                row = cur.fetchone()
+                if not row:
+                    return None
+                d = dict(row)
+
+                def _to_date(v):
+                    if v is None:
+                        return None
+                    if isinstance(v, dt.datetime):
+                        return v.date()
+                    return dt.date.fromisoformat(str(v)[:10])
+
+                try:
+                    items = json.loads(d['items']) if d.get('items') else []
+                except (TypeError, ValueError):
+                    items = []
+                try:
+                    images = json.loads(d['images']) if d.get('images') else []
+                except (TypeError, ValueError):
+                    images = []
+                try:
+                    videos = json.loads(d['videos']) if d.get('videos') else []
+                except (TypeError, ValueError):
+                    videos = []
+                return {
+                    'id': d['id'],
+                    'lesson_date': _to_date(d.get('lesson_date')),
+                    'stage_start': _to_date(d.get('stage_start')),
+                    'stage_end': _to_date(d.get('stage_end')),
+                    'stage_order': d.get('stage_order'),
+                    'items': items,
+                    'notes': d.get('notes'),
+                    'images': images,
+                    'videos': videos,
+                }
+
     def get_weekly_assignments_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
