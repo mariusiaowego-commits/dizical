@@ -201,6 +201,56 @@ def test_a1_submit_supports_put_method():
     print(f"  A1: save-edit-btn handler calls PUT /api/assignments/{{date}}  ✓")
 
 
+def test_p0_real_db_conflict_check_409():
+    """P0 fix (agy review): 真 DB 冲突时 POST 必须返 409 (不是 200 静默覆盖)
+
+    这个 test 用真 DB (in-memory SQLite via TestClient) 模拟完整 conflict-check 流程:
+    1. 先 POST 创建一个 assignment
+    2. 再 POST 同一 lesson_date (不带 force) → 必须 409
+    3. 再 POST 同一 lesson_date (带 force=true) → 必须 200
+
+    之前 PR-B 的 12 个 test 都是静态 regex, 没打真 HTTP. 这是 fix 后唯一验证 409 真触发的 test.
+    """
+    from fastapi.testclient import TestClient
+    from src.kid_app.app import app
+    c = TestClient(app)
+    # 用一个固定测试日期避免污染
+    test_date = "2025-01-15"
+    # 清理可能存在的记录
+    try:
+        c.delete(f"/config/api/assignments/{test_date}")
+    except Exception:
+        pass
+    # 1. 首次 POST → 200
+    r1 = c.post("/config/api/assignments", json={
+        "lesson_date": test_date,
+        "items": [{"item": "测试科目", "item_id": 9999, "metronome": "♩=60", "requirement": "首次"}],
+        "notes": "首次备注",
+    })
+    assert r1.status_code == 200, f"first POST should succeed, got {r1.status_code}: {r1.text[:200]}"
+    # 2. 重复 POST (不带 force) → 必须 409
+    r2 = c.post("/config/api/assignments", json={
+        "lesson_date": test_date,
+        "items": [{"item": "测试科目2", "item_id": 9998, "metronome": "♩=80", "requirement": "二次"}],
+        "notes": "二次备注",
+    })
+    assert r2.status_code == 409, f"P0 BUG: conflict POST returned {r2.status_code}, expected 409. Body: {r2.text[:300]}"
+    body2 = r2.json()
+    assert body2.get("conflict") is True, f"409 response missing conflict flag: {body2}"
+    assert body2.get("existing", {}).get("lesson_date") == test_date, f"409 existing.lesson_date wrong: {body2}"
+    # 3. 带 force=true → 必须 200
+    r3 = c.post("/config/api/assignments", json={
+        "lesson_date": test_date,
+        "items": [{"item": "测试科目3", "item_id": 9997, "metronome": "♩=100", "requirement": "强制覆盖"}],
+        "notes": "强制覆盖备注",
+        "force": True,
+    })
+    assert r3.status_code == 200, f"force=true POST should succeed, got {r3.status_code}: {r3.text[:200]}"
+    # 清理
+    c.delete(f"/config/api/assignments/{test_date}")
+    print(f"  P0: 真 DB conflict-check 返 409 + force=true 返 200  ✓")
+
+
 def test_a1_edit_mode_banner():
     """A1 fix: 编辑模式必须有视觉提示用户当前在编辑哪天的记录.
 

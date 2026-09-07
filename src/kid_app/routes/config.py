@@ -1124,15 +1124,24 @@ async def api_create_assignment(request: Request):
     # A2 fix: 冲突检测 — 同 lesson_date 已有 weekly_assignment 时返 409
     # 让前端弹 confirm modal, 用户确认后调 PUT 或改日期
     # try/except 兼容 mock 测试 (MagicMock 不该触发真 DB 查询, 序列化失败, etc.)
+    # P0 fix: 真 DB 返回 dict, 用 existing.get('items') 而不是 getattr(existing, 'items')
+    # getattr(dict, 'items') 会取到内置方法 dict.items (bound method), isinstance(method, list) 永远 False
     if not force:
         existing = None
         try:
             existing = db.get_weekly_assignment_by_date(lesson_date)
         except Exception:
             existing = None
-        # 真 DB 返回 None 或 dict (有 'items' 字段); MagicMock 'items' 不是 list
-        # 只在 existing 真存在且 items 是 list (表明真 DB 命中) 时才返 409
-        if existing is not None and isinstance(getattr(existing, 'items', None), list):
+        # 真 DB 返回 None 或 dict (有 'items' 字段, list 类型);
+        # MagicMock 模拟时 existing 也是 MagicMock (没 get 方法或 get 返 MagicMock)
+        # 只在 existing 真存在 + 是 dict + items 是 list (表明真 DB 命中) 时才返 409
+        existing_items = None
+        if isinstance(existing, dict):
+            try:
+                existing_items = existing.get("items")
+            except Exception:
+                existing_items = None
+        if existing is not None and isinstance(existing_items, list):
             try:
                 items_count = len(existing.get("items") or [])
             except TypeError:
