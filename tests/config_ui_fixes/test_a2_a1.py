@@ -175,7 +175,7 @@ def test_a1_edit_handler_prefills_assignEntries():
     body_start = m.end()
     # 简化 body 提取 (从函数定义开始到下一个 function xxx( 之前)
     next_func = re.search(r"\nfunction\s+\w+\s*\(", src[body_start:])
-    body_end = body_start + (next_func.start() if next_func else 2000)
+    body_end = body_start + (next_func.start() if next_func else 5000)
     body = src[body_start:body_end]
     has_value = "value=" in body and "${" in body
     has_iter = "items" in body and "forEach" in body

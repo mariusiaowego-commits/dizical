@@ -170,6 +170,34 @@ def test_pr_e_e7_real_db_save_roundtrip():
     assert len(items) == 2, f"expected 2 items, got {len(items)}: {items}"
     names = [it.get("item") for it in items]
     assert "吸气长音" in names and "单吐" in names, f"items not match: {names}"
+    # Sprint 26090801 T1: 字段值断言 — 验证 PUT body 的 requirement 值真实落库
+    # (防字段名冲突类 bug 复发: PR-E 真 bug 2 即 select.change 写复数/save 读单数, 数量断言测不出)
+    by_name = {it.get("item"): it for it in items}
+    assert by_name["吸气长音"].get("requirements") == "改后要求 1", \
+        f"requirement 值未落库: {by_name['吸气长音']}"
+    assert by_name["单吐"].get("requirements") == "改后要求 2", \
+        f"requirement 值未落库: {by_name['单吐']}"
     # 清理
     c.delete(f"/config/api/assignments/{test_date}")
     print(f"  PR-E E7: 真 DB PUT 2 items + GET by-date 验证 roundtrip  ✓")
+
+
+def test_pr_e_e8_edit_card_exclusive_collapse():
+    """Sprint 26090801 T2: startEditAssignment 展开新卡前互斥收起其它编辑卡"""
+    src = PRACTICE_LOG_HTML.read_text()
+    # startEditAssignment 函数体内要有互斥收起循环 (agy 建议: 复用 _extract_function_body helper)
+    body = _extract_function_body(src, "startEditAssignment")
+    assert body, "startEditAssignment not found"
+    # 互斥收起: querySelectorAll('.assignment-card.editing') + 自排除 + 收起时删 form
+    assert ".assignment-card.editing" in body, \
+        "startEditAssignment 缺互斥收起: 找不到 querySelectorAll('.assignment-card.editing')"
+    assert "other !== card" in body, "互斥收起必须排除自身 (other !== card)"
+    assert "other.querySelector('.edit-form')?.remove()" in body, \
+        "互斥收起必须同时删掉其它卡的 edit-form, 否则残留脏 form"
+    # toggle 分支 (同卡再点收起) 必须保留
+    assert "classList.contains('editing')" in body, "toggle 收起分支丢失"
+    # fetch race 防护 (agy 二轮建议): _activeEditLesson 记卡 + 回调校验
+    assert "window._activeEditLesson = lessonDate" in body, "缺 fetch race 防护: 未记 _activeEditLesson"
+    assert "window._activeEditLesson !== lessonDate) return" in body, \
+        "fetch 回调缺 race 校验 (in-flight 回调可能把被互斥收起的卡弹回)"
+    print("  PR-E E8: 编辑卡片互斥收起 (含自排除) + fetch race 防护 + toggle 保留  ✓")

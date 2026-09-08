@@ -2586,16 +2586,27 @@ async function deleteAssignment(lessonDate) {
 function startEditAssignment(lessonDate) {
   const card = document.querySelector(`.assignment-card[data-lesson="${lessonDate}"]`);
   if (!card) return;
+  // Sprint 26090801 agy 建议: fetch race 防护 — 记当前请求的卡, 回调校验 (防卡 A fetch in-flight 被互斥收起后回调又弹开)
+  window._activeEditLesson = lessonDate;
   // Toggle: if already editing, close
   if (card.classList.contains('editing')) {
     card.classList.remove('editing');
     card.querySelector('.edit-form')?.remove();
     return;
   }
+  // Sprint 26090801 T2: 互斥收起 — 展开新卡前收起其它编辑中的卡 (任意时刻最多 1 张编辑卡)
+  document.querySelectorAll('.assignment-card.editing').forEach(other => {
+    if (other !== card) {
+      other.classList.remove('editing');
+      other.querySelector('.edit-form')?.remove();
+    }
+  });
   // Find the assignment data from API
   fetch('/config/api/assignments?weeks=16').then(r => r.json()).then(data => {
     const a = data.assignments.find(x => x.lesson_date === lessonDate);
     if (!a) return;
+    // race 校验: 用户已点开其它卡 (互斥收起了本卡) → 丢弃本回调, 不弹回
+    if (window._activeEditLesson !== lessonDate) return;
     card.classList.add('editing');
     const form = document.createElement('div');
     form.className = 'edit-form';
