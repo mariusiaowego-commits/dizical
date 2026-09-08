@@ -2592,6 +2592,13 @@ function startEditAssignment(lessonDate) {
     card.querySelector('.edit-form')?.remove();
     return;
   }
+  // Sprint 26090801 T2: 互斥收起 — 展开新卡前收起其它编辑中的卡 (任意时刻最多 1 张编辑卡)
+  document.querySelectorAll('.assignment-card.editing').forEach(other => {
+    if (other !== card) {
+      other.classList.remove('editing');
+      other.querySelector('.edit-form')?.remove();
+    }
+  });
   // Find the assignment data from API
   fetch('/config/api/assignments?weeks=16').then(r => r.json()).then(data => {
     const a = data.assignments.find(x => x.lesson_date === lessonDate);
