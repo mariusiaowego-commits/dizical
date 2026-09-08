@@ -127,17 +127,49 @@ def test_pr_e_e5_select_change_prefill():
 
 
 def test_pr_e_e6_real_testclient_render():
-    """PR-E E6 (真 TestClient): 加载 /config/practice-log, 找到 edit form HTML 含新结构"""
+    """PR-E E6 (真 TestClient): GET /config/practice-log 路由可达 (302-redirect-guard OK)"""
     from fastapi.testclient import TestClient
     from src.kid_app.app import app
     c = TestClient(app)
     r = c.get("/config/practice-log")
+    # 期望 200 (有会话) 或 302 (无会话跳 login) — 都说明路由 OK
     assert r.status_code in (200, 302), f"GET /config/practice-log unexpected: {r.status_code}"
-    if r.status_code == 302:
-        # 可能需要登录, 用历史作业数据直接 curl by-item 反查 + renderEditFormItems 静态模板
-        # 实际上 edit form 模板来自 JS, 静态 HTML 不含 (动态生成). 只跑静态断言:
-        print(f"  PR-E E6 (curl fallback): /config/practice-log {r.status_code} → 静态断言覆盖 (JS 动态)")
-        return
-    html = r.text
-    # 静态断言: login 重定向后 HTML 是 login 页, 不含 edit form — 跳过
-    print(f"  PR-E E6: HTML 长度 {len(html)}, 不深查 edit form (JS 动态)  -")
+    print(f"  PR-E E6: /config/practice-log 路由可达 (status={r.status_code})  ✓")
+
+
+def test_pr_e_e7_real_db_save_roundtrip():
+    """PR-E E7 (真 DB TestClient): PUT 含 select 改的 item 后 GET by-date 验证完整 roundtrip"""
+    from fastapi.testclient import TestClient
+    from src.kid_app.app import app
+    c = TestClient(app)
+    test_date = "2025-03-10"
+    try:
+        c.delete(f"/config/api/assignments/{test_date}")
+    except Exception:
+        pass
+    # 1. POST 创建 baseline
+    r1 = c.post("/config/api/assignments", json={
+        "lesson_date": test_date,
+        "items": [{"item": "单吐", "item_id": 1343, "metronome": "♩=100", "requirement": "baseline 要求"}],
+    })
+    assert r1.status_code == 200, f"baseline POST failed: {r1.status_code} {r1.text[:200]}"
+    # 2. PUT 用 PR-E 编辑后保存的 body 格式: 改 item + 改 requirement (对齐 select.change 行为)
+    r2 = c.put(f"/config/api/assignments/{test_date}", json={
+        "items": [
+            {"item": "吸气长音", "item_id": 1034, "metronome": "♩=80", "requirement": "改后要求 1"},
+            {"item": "单吐", "item_id": 1343, "metronome": "♩=120", "requirement": "改后要求 2"},
+        ],
+        "notes": "PR-E edit 后保存",
+    })
+    assert r2.status_code == 200, f"PUT failed: {r2.status_code} {r2.text[:200]}"
+    # 3. GET by-date 验证
+    r3 = c.get(f"/config/api/assignments/by-date?date={test_date}")
+    assert r3.status_code == 200, f"GET by-date failed: {r3.status_code}"
+    data = r3.json().get("data", {})
+    items = data.get("items", [])
+    assert len(items) == 2, f"expected 2 items, got {len(items)}: {items}"
+    names = [it.get("item") for it in items]
+    assert "吸气长音" in names and "单吐" in names, f"items not match: {names}"
+    # 清理
+    c.delete(f"/config/api/assignments/{test_date}")
+    print(f"  PR-E E7: 真 DB PUT 2 items + GET by-date 验证 roundtrip  ✓")

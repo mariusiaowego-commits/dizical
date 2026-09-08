@@ -1349,14 +1349,9 @@ function editCopyHistoryReq(idx, hi) {
   const ta = rowEl ? rowEl.querySelector('.edit-item-req') : null;
   if (!h || !ta) return;
   const req = h.requirements || '';
-  // 若当前是预填内容且未编辑, 直接覆盖; 否则追加
-  const prev = editItems[idx].requirements || editItems[idx].requirement || '';
-  if (!prev) {
-    editItems[idx].requirements = req;
-  } else {
-    editItems[idx].requirements = prev + (prev.endsWith('\n') ? '' : '\n') + req;
-  }
-  ta.value = editItems[idx].requirements;
+  // DOM-only (避免 ReferenceError: editItems 是 startEditAssignment 闭包变量, 外部函数访问不到)
+  const prev = (ta.value || '').trim();
+  ta.value = prev ? (prev + (prev.endsWith('\n') ? '' : '\n') + req) : req;
   alert('已复制到要求框');
 }
 
@@ -2731,11 +2726,11 @@ function startEditAssignment(lessonDate) {
           const metroInput = rowEl ? rowEl.querySelector('.edit-item-metro') : null;
           const hintEl = rowEl ? rowEl.querySelector('.edit-entry-preset-hint') : null;
           if (newId && latestRequirements[newId]) {
-            const prev = editItems[idx].requirements || editItems[idx].requirement || '';
+            const prev = editItems[idx].requirement || '';
             const prevMetro = editItems[idx].metronome || '';
             if (ta && (!prev || ta.value === prev)) {
-              editItems[idx].requirements = latestRequirements[newId].requirements || '';
-              ta.value = editItems[idx].requirements;
+              editItems[idx].requirement = latestRequirements[newId].requirements || '';
+              ta.value = editItems[idx].requirement;
             }
             if (metroInput && !prevMetro) {
               editItems[idx].metronome = latestRequirements[newId].metronome || '';
