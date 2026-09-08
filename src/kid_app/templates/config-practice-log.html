@@ -1305,6 +1305,56 @@ function copyHistoryReq(idx, hi) {
   alert('已复制到要求框');
 }
 
+// PR-E: edit 模式历史卡片 (复用 loadItemHistory 模式, 用 data-edit-idx 定位)
+let editItemHistoryCache = {}; // idx -> [{lesson_date, metronome, requirements}]
+
+async function loadEditItemHistory(idx, itemId, itemName) {
+  const rowEl = document.querySelector(`.edit-item-row[data-edit-idx="${idx}"]`);
+  const histEl = rowEl ? rowEl.querySelector('.edit-entry-history') : null;
+  if (!histEl) return;
+  if (!itemId && !itemName) { histEl.style.display = 'none'; return; }
+  try {
+    const q = itemId ? `item_id=${itemId}` : `item=${encodeURIComponent(itemName)}`;
+    const res = await fetch('/config/api/assignments/by-item?' + q + '&limit=3');
+    const data = await res.json();
+    const hist = (data && data.history) || [];
+    editItemHistoryCache[idx] = hist;
+    if (!hist.length) { histEl.style.display = 'none'; return; }
+    const rows = hist.map((h, hi) => {
+      const reqLines = (h.requirements || '').split('\n').filter(Boolean);
+      const reqHtml = reqLines.length ? reqLines.map(r => `<li>${r.replace(/</g, '&lt;')}</li>`).join('') : '<li style="opacity:0.5">无具体要求</li>';
+      const metro = h.metronome ? `<span class="assign-subject-metronome" style="display:inline-block;background:#FF6B6B;color:#fff;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px">${h.metronome}</span>` : '';
+      const segsHtml = (h.metronome_segments && h.metronome_segments.length)
+        ? `<div style="margin:3px 0 0">${h.metronome_segments.map(s => `<span style="display:inline-block;background:#fff;border:1px solid #e0d4b0;color:#8B6914;border-radius:10px;padding:0 6px;font-size:11px;margin-right:4px">${(s.label || '').replace(/</g, '&lt;')} ${(s.tempo || '').replace(/</g, '&lt;')}</span>`).join('')}</div>` : '';
+      return `<div style="padding:5px 0;border-bottom:1px dashed #e8dcc0;font-size:12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-weight:600;color:#5D4037">${h.lesson_date}</span>${metro}
+          <button type="button" onclick="editCopyHistoryReq(${idx}, ${hi})" style="margin-left:auto;padding:2px 8px;border:1px solid #d4c9a8;border-radius:6px;background:#fff;color:#8B6914;cursor:pointer;font-size:11px">复制</button>
+        </div>
+        ${segsHtml}
+        <ul style="margin:3px 0 0;padding-left:16px">${reqHtml}</ul>
+      </div>`;
+    }).join('');
+    histEl.innerHTML = `<div style="font-size:11px;color:#a09070;margin-bottom:2px">历史要求 (最近 ${hist.length} 次)</div>${rows}`;
+    histEl.style.display = 'block';
+  } catch (e) {
+    histEl.style.display = 'none';
+  }
+}
+
+function editCopyHistoryReq(idx, hi) {
+  const cache = editItemHistoryCache[idx];
+  const h = cache && cache[hi];
+  const rowEl = document.querySelector(`.edit-item-row[data-edit-idx="${idx}"]`);
+  const ta = rowEl ? rowEl.querySelector('.edit-item-req') : null;
+  if (!h || !ta) return;
+  const req = h.requirements || '';
+  // DOM-only (避免 ReferenceError: editItems 是 startEditAssignment 闭包变量, 外部函数访问不到)
+  const prev = (ta.value || '').trim();
+  ta.value = prev ? (prev + (prev.endsWith('\n') ? '' : '\n') + req) : req;
+  alert('已复制到要求框');
+}
+
 
 // ── 草稿缓存 (需求1, 2026-08-09): 老师要求录入未提交内容自动存 localStorage ──
 const ASSIGN_DRAFT_KEY = 'dizical:assign-draft:v1';
@@ -2600,22 +2650,45 @@ function startEditAssignment(lessonDate) {
       const wrap = form.querySelector('.edit-items-container');
       if (!wrap) return;
       // PR-C fix (agy P0): 重渲前反读当前 DOM 输入值, 防止用户打字被 editItems 数组旧值冲掉
+      // PR-E: row 改成 select + textarea, 反读 select.value/selectedOptions.text + textarea.value + input.value
       wrap.querySelectorAll('.edit-item-row').forEach((row, i) => {
         if (editItems[i]) {
-          const n = row.querySelector('.edit-item-name');
+          const sel = row.querySelector('.edit-item-select');
           const m = row.querySelector('.edit-item-metro');
           const r = row.querySelector('.edit-item-req');
-          if (n) editItems[i].item = n.value;
+          if (sel) {
+            const newId = parseInt(sel.value, 10);
+            if (newId) {
+              editItems[i].item_id = newId;
+              const pi = practiceItems.find(x => x.item_id == newId);
+              editItems[i].item = pi ? pi.name : '';
+            }
+          }
           if (m) editItems[i].metronome = m.value;
           if (r) editItems[i].requirement = r.value;
         }
       });
       wrap.innerHTML = editItems.map((it, i) => `
-        <div class="edit-item-row" data-edit-idx="${i}" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
-          <input class="edit-item-name" value="${escapeAttr(it.item)}" placeholder="科目名" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-          <input class="edit-item-metro" value="${escapeAttr(it.metronome)}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-          <input class="edit-item-req" value="${escapeAttr(it.requirement)}" placeholder="要求" style="flex:2;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-feature-settings:'calt' 1,'ccmp' 1,'mark' 1,'mkmk' 1">
-          ${editItems.length > 1 ? `<button type="button" class="del-edit-item-btn" data-edit-idx="${i}" style="width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,107,107,0.1);color:#FF6B6B;cursor:pointer;font-size:16px;flex-shrink:0" aria-label="删除该行">×</button>` : ''}
+        <div class="edit-item-row" data-edit-idx="${i}" style="margin-bottom:10px;padding:8px;background:#fff;border:1px solid #ece3cc;border-radius:8px">
+          <div class="entry-top" style="display:flex;gap:6px;align-items:center">
+            <select class="form-select edit-item-select" data-edit-idx="${i}" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+              <option value="">选择科目...</option>
+              ${practiceItems.map(pi => `<option value="${pi.item_id}" ${pi.item_id == it.item_id ? 'selected' : ''}>${escapeAttr(pi.name)} (${pi.item_id})</option>`).join('')}
+            </select>
+            <input class="form-input edit-item-metro" data-edit-idx="${i}" value="${escapeAttr(it.metronome || '')}" placeholder="速度 e.g. ♩=82" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+            <button type="button" class="seg-toggle-btn edit-seg-toggle-btn" data-edit-idx="${i}" title="多档速度 (如: 前3天♩=95 / 后3天♩=100)" style="padding:6px 8px;border:1px solid #d4c9a8;border-radius:6px;background:#faf7ef;color:#8B6914;cursor:pointer;font-size:12px">分段▾</button>
+            ${editItems.length > 1 ? `<button type="button" class="del-edit-item-btn" data-edit-idx="${i}" style="width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,107,107,0.1);color:#FF6B6B;cursor:pointer;font-size:16px;flex-shrink:0" aria-label="删除该行">×</button>` : ''}
+          </div>
+          <div class="entry-segments edit-entry-segments" data-edit-idx="${i}" style="display:none;margin:4px 0 6px;padding:6px 8px;background:#fbf8f0;border:1px dashed #e0d4b0;border-radius:8px">
+            <div style="font-size:11px;color:#a09070;margin-bottom:4px">分段速度 (每段: 说明 + 速度)</div>
+            <div class="edit-seg-rows" data-edit-idx="${i}"></div>
+            <button type="button" class="seg-add-btn edit-seg-add-btn" data-edit-idx="${i}" style="margin-top:4px;padding:3px 10px;border:1px solid #d4c9a8;border-radius:6px;background:#fff;color:#8B6914;cursor:pointer;font-size:12px">＋ 添加分段</button>
+          </div>
+          <div class="entry-preset-hint edit-entry-preset-hint" data-edit-idx="${i}" style="display:none;font-size:12px;color:#8B6914;margin:2px 0 4px"></div>
+          <div class="entry-history edit-entry-history" data-edit-idx="${i}" style="display:none;margin:2px 0 6px;padding:6px 8px;background:#faf7ef;border:1px solid #ece3cc;border-radius:8px"></div>
+          <div class="entry-bottom">
+            <textarea class="form-textarea edit-item-req" data-edit-idx="${i}" rows="3" placeholder="每行一条要求, 如:&#10;注意口风不要漏气&#10;倒序分句练习" style="width:100%;min-height:80px">${escapeAttr(it.requirements || it.requirement || '')}</textarea>
+          </div>
         </div>
       `).join('');
       wrap.querySelectorAll('.del-edit-item-btn').forEach(btn => {
@@ -2624,6 +2697,58 @@ function startEditAssignment(lessonDate) {
           if (isNaN(idx) || idx < 0 || idx >= editItems.length) return;
           editItems.splice(idx, 1);
           renderEditFormItems();
+        });
+      });
+      // PR-E: select.change 预填 (对齐录入 tab 行 1886-1930 + 历史卡片 loadItemHistory)
+      wrap.querySelectorAll('.edit-item-select').forEach(sel => {
+        sel.addEventListener('change', async e => {
+          const idx = parseInt(e.target.dataset.editIdx, 10);
+          if (isNaN(idx) || idx < 0 || idx >= editItems.length) return;
+          const newId = parseInt(e.target.value, 10);
+          const oldId = editItems[idx].item_id;
+          editItems[idx].item_id = newId || null;
+          const pi = practiceItems.find(x => x.item_id == newId);
+          editItems[idx].item = pi ? pi.name : '';
+          // 防呆: 同科目加两条
+          if (newId) {
+            const dup = editItems.find((en, i) => i !== idx && en.item_id === newId);
+            if (dup) {
+              const ok = confirm(`「${dup.item}」已存在, 重复添加提交时只保留最后一次. 继续?`);
+              if (!ok) {
+                sel.value = oldId ? String(oldId) : '';
+                return;
+              }
+            }
+          }
+          // 预填 requirements + metronome (对齐录入 tab)
+          const rowEl = sel.closest('.edit-item-row');
+          const ta = rowEl ? rowEl.querySelector('.edit-item-req') : null;
+          const metroInput = rowEl ? rowEl.querySelector('.edit-item-metro') : null;
+          const hintEl = rowEl ? rowEl.querySelector('.edit-entry-preset-hint') : null;
+          if (newId && latestRequirements[newId]) {
+            const prev = editItems[idx].requirement || '';
+            const prevMetro = editItems[idx].metronome || '';
+            if (ta && (!prev || ta.value === prev)) {
+              editItems[idx].requirement = latestRequirements[newId].requirements || '';
+              ta.value = editItems[idx].requirement;
+            }
+            if (metroInput && !prevMetro) {
+              editItems[idx].metronome = latestRequirements[newId].metronome || '';
+              metroInput.value = editItems[idx].metronome;
+            }
+            if (hintEl) {
+              const ld = latestRequirements[newId].lesson_date || '';
+              const metro = latestRequirements[newId].metronome || '';
+              if (ld) {
+                hintEl.textContent = '📌 上次 ' + ld + (metro ? ' · ' + metro : '') + ' 已预填';
+                hintEl.style.display = 'block';
+              }
+            }
+          } else if (hintEl) {
+            hintEl.style.display = 'none';
+          }
+          // 加载历史卡片 (复用 loadItemHistory, 但用 data-edit-idx 定位 row)
+          await loadEditItemHistory(idx, newId, editItems[idx].item);
         });
       });
     };
@@ -2688,16 +2813,21 @@ function startEditAssignment(lessonDate) {
 
     form.querySelector('.save-edit-btn').addEventListener('click', async () => {
       // PR-C fix: 读 editItems 数组 (而非 querySelectorAll DOM), 支持新增/删除/原数据保留
-      // 注意: 用户可能编辑了 input value, 所以要从对应 DOM row 反读当前值覆盖 editItems[i]
+      // PR-E: row 模板改成 select + textarea, item 名称从 select 取 (不是 input.value)
       const items = editItems.map((it, i) => {
         const row = form.querySelector(`.edit-item-row[data-edit-idx="${i}"]`);
+        const sel = row ? row.querySelector('.edit-item-select') : null;
+        const ta = row ? row.querySelector('.edit-item-req') : null;
+        const metroInput = row ? row.querySelector('.edit-item-metro') : null;
+        // select 改值后, editItems[i].item 已被 change handler 同步更新; 这里再 DOM 取保险
+        const itemName = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace(/\s*\(\d+\)\s*$/, '').trim() : it.item;
         return {
-          item: row ? row.querySelector('.edit-item-name').value.trim() : it.item,
-          item_id: it.item_id,
-          metronome: row ? row.querySelector('.edit-item-metro').value : it.metronome,
-          requirement: row ? row.querySelector('.edit-item-req').value : it.requirement,
+          item: itemName,
+          item_id: sel ? parseInt(sel.value, 10) || null : it.item_id,
+          metronome: metroInput ? metroInput.value : it.metronome,
+          requirement: ta ? ta.value : it.requirement,
         };
-      }).filter(it => it.item);  // 过滤空行 (用户 + 添加但没填)
+      }).filter(it => it.item_id);  // 过滤空科目 (用户 + 添加但没选)
       const notes = form.querySelector('#editNotes').value;
       const videos = editVideos.map(v => ({
         url: v.url,
