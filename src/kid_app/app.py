@@ -761,7 +761,7 @@ def _ring_diff(current, previous, unit="天", ref_period="上周"):
         return f"比{ref_period}{direction}{abs(diff)}天", diff > 0
 
 
-def _milestone_html(category: Optional[str] = None):
+def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = True):
     """生成勋章展示区 HTML
 
     - category=None: 所有成就（/badges 页面用）
@@ -782,7 +782,8 @@ def _milestone_html(category: Optional[str] = None):
     # ── 读 achievements 表元数据 ──────────────────────────────────
     cur = db_adapter.execute(conn, 
         "SELECT id, name, type, category, stat_logic, description, threshold, "
-        "unlocked_template, placeholder, cond_text FROM achievements" +
+        "unlocked_template, placeholder, cond_text, "
+        "unlock_strategy, achieved_at_override FROM achievements" +
         (" WHERE category = ?" if category else "") +
         " ORDER BY sort_order",
         ((category,) if category else ()))
@@ -859,12 +860,22 @@ def _milestone_html(category: Optional[str] = None):
             badge_url, achieved, cv, threshold, res.condition, ach.get("cond_text") or ""
         )
 
+        achieved_at = res.achieved_at
+        achieved_at_str = str(achieved_at or "")
+
         if achieved:
-            unlocked_list.append(card_html)
+            unlocked_list.append((achieved_at_str, card_html))
         else:
             locked_list.append((ratio, card_html))
 
     # milestone: 未解锁只展示最接近的 1 个；seasonal: 展示全部未解锁
+    if unlocked_list:
+        if sort_by_achieved_at:
+            unlocked_list.sort(key=lambda x: x[0], reverse=True)
+        unlocked_html = "".join(html for _, html in unlocked_list)
+    else:
+        unlocked_html = ""
+
     nearest_html = ""
     if locked_list:
         locked_list.sort(key=lambda x: x[0], reverse=True)
@@ -872,7 +883,7 @@ def _milestone_html(category: Optional[str] = None):
             locked_list = locked_list[:1]
         nearest_html = "".join(html for _, html in locked_list)
 
-    return "".join(unlocked_list) + nearest_html
+    return unlocked_html + nearest_html
 
 
 def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv, threshold, condition="", cond_text=""):
@@ -2695,8 +2706,9 @@ def achievements_page():
     prev_month_name = f"{prev_month}月"
     mm_diff_txt, mm_pos = _ring_diff(month_days_count, month_days_prev, ref_period=prev_month_name)
 
-    # ── 卡片3: 勋章展示 ────────────────────────────────
-    milestone_html = _milestone_html("seasonal")
+    # ── 卡片3: 勋章展示 (2 tab: milestone + seasonal) ────
+    milestone_tab_html = _milestone_html("milestone", sort_by_achieved_at=True)
+    seasonal_tab_html = _milestone_html("seasonal", sort_by_achieved_at=True)
 
     # ── 卡片3.5: 每日打卡盲盒 ─────────────────────────
     daily_blindbox_html, checkin_days = _daily_blindbox_html()
@@ -2764,7 +2776,9 @@ def achievements_page():
         month_top1_mins=month_top1_mins,
         month_top2_name=month_top2_name,
         month_top2_mins=month_top2_mins,
-        milestone_html=milestone_html,
+        milestone_tab_html=milestone_tab_html,
+        seasonal_tab_html=seasonal_tab_html,
+        milestone_html=milestone_tab_html,
         daily_blindbox_html=daily_blindbox_html,
         checkin_days=checkin_days,
     )
