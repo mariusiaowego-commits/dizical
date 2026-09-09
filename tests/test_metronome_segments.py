@@ -150,10 +150,16 @@ def test_metronome_single_parsing():
 # ── 前端模板含分段控件 ──
 
 def test_template_has_segments_ui():
+    import unittest.mock as mock
     from fastapi.testclient import TestClient
     from src.kid_app.app import app
-    with TestClient(app) as c:
-        html = c.get("/config/practice-log").text
+
+    async def _mock_user(*args, **kwargs):
+        return {"id": 1, "username": "dad", "role": "dad"}
+
+    with mock.patch("src.kid_app.auth.get_current_user", _mock_user):
+        with TestClient(app) as c:
+            html = c.get("/config/practice-log").text
     assert "seg-toggle-btn" in html          # 分段折叠按钮
     assert "seg-add-btn" in html             # 添加分段
     assert "seg-label" in html               # 段说明输入

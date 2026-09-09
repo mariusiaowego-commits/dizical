@@ -38,7 +38,11 @@ def prod_db_copy(tmp_path: Path) -> Path:
     return db_path
 
 
-def _wire_to_test_db(monkeypatch, db_path: Path):
+import types
+import datetime as _dt
+
+
+def _wire_to_test_db(monkeypatch, db_path: Path, as_of: _dt.date | None = _dt.date(2026, 8, 15)):
     monkeypatch.setenv("DATABASE_URL", "")
     from src import achievement_definitions
     monkeypatch.setattr(achievement_definitions, "_DB_PATH", db_path)
@@ -48,6 +52,14 @@ def _wire_to_test_db(monkeypatch, db_path: Path):
         "get_conn",
         lambda: (__import__("sqlite3").connect(str(db_path)), False),
     )
+    if as_of:
+        class FakeDate(_dt.date):
+            @classmethod
+            def today(cls):
+                return as_of
+        fake_dt = types.SimpleNamespace(**{k: getattr(_dt, k) for k in dir(_dt)})
+        fake_dt.date = FakeDate
+        monkeypatch.setattr(achievement_definitions, "dt", fake_dt)
 
 
 def test_first_to_act_monthly_active_in_aug(monkeypatch, prod_db_copy):

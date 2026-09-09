@@ -20,11 +20,16 @@ import pytest
 
 @pytest.fixture(scope="module")
 def html():
+    import unittest.mock as mock
     from fastapi.testclient import TestClient
     from src.kid_app.app import app
 
-    with TestClient(app) as c:
-        return c.get("/config/practice-log").text
+    async def _mock_user(*args, **kwargs):
+        return {"id": 1, "username": "dad", "role": "dad"}
+
+    with mock.patch("src.kid_app.auth.get_current_user", _mock_user):
+        with TestClient(app) as c:
+            return c.get("/config/practice-log").text
 
 
 def test_draft_functions_exist(html):

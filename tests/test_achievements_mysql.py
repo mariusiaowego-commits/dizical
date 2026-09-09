@@ -59,12 +59,38 @@ def _snapshot(r):
     }
 
 
+@pytest.fixture(autouse=True)
+def _seed_achievements():
+    """向测试库 seed 若干 achievements 行 (至少 1 milestone + 1 seasonal), 保证 calc_all 非空."""
+    from src import db_adapter
+    conn, is_mysql = db_adapter.get_conn()
+    if is_mysql:
+        return
+    from tests.conftest import _INIT_SQL
+    conn.executescript(_INIT_SQL)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM achievements")
+    if cur.fetchone()[0] == 0:
+        cur.execute("""
+            INSERT INTO achievements (
+                id, name, type, category, stat_logic, description,
+                display_format, threshold, seasonal_type, unlock_strategy
+            ) VALUES
+            ('test_m1', '里程碑1', '突破', 'milestone', '', '测试里程碑1', 'count', 1, 'monthly', 'calc'),
+            ('test_s1', '月度赛季1', '季节', 'seasonal', '', '测试赛季1', 'count', 1, 'monthly', 'calc')
+        """)
+        conn.commit()
+    conn.close()
+
+
 def test_calc_all_returns_dict():
-    """基本形状: 必须返 dict, 非空."""
+    """基本形状: 必须返 dict, 且包含 seed 的 achievements."""
     from src.achievement_definitions import calc_all
     r = calc_all()
     assert isinstance(r, dict)
-    assert len(r) > 0
+    assert len(r) >= 2
+    assert "test_m1" in r
+    assert "test_s1" in r
 
 
 def test_calc_all_sqlite_stable(snapshot_path="data/_baseline_sqlite.json"):
