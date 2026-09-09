@@ -121,11 +121,21 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
+    # V2.7 (sprint 26090902): 落盘校验 — 防"UI 显示成功但后端没写盘"
+    # dad 9-9 实踩: 前端显示草稿已创建, hermes /badge-image 查 draft_id 404
+    verify = badge_draft.get_draft(draft.draft_id)
+    if verify is None:
+        return JSONResponse(
+            {"ok": False, "error": f"草稿落盘失败: {draft.draft_id}.json 未写入, 请重试"},
+            status_code=500,
+        )
+
     import json
     result = {
         "ok": True,
         "draft_id": draft.draft_id,
         "json": json.dumps(draft.to_dict(), ensure_ascii=False, indent=2),
+        "file_contract_path": str(badge_draft._badge_data_dir() / f"{draft.draft_id}.json"),
     }
     # 有图片时提示可直接跳到待确认
     if req.image_path:
@@ -285,10 +295,25 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
         return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)
 
+    # V2.7 (sprint 26090902): prod 可见性提示 — 本地 commit ≠ 生产可见
+    # dad 9-9 实踩: 三表写云端 MySQL 后以为"上线", 但静态图只在本地,
+    # prod 容器镜像没此文件 → kid-app 蓝色占位, 要走 git PR + deploy 才可见
+    prod_visibility = {
+        "deployed": False,
+        "db_written": True,
+        "image_on": "local_static_only",
+        "needs": [
+            "git add src/kid_app/static/badges/{id}_v{n}.png".format(id=badge_id, n=image_version),
+            "git commit + push + PR + merge to main",
+            "CloudRun deploy (跟 hermes 说 'deploy badge' 或跑 dizical-cloudrun-deploy 5 步 SOP)",
+        ],
+        "hint": "本地已生效; 生产 kid-app 还需 git+deploy (约 10-15 分钟). 图片 URL 在 prod 生效前显示占位图.",
+    }
     return JSONResponse({
         "ok": True,
         "badge_id": badge_id,
         "image_url": f"/static/badges/{badge_id}_v{image_version}.png",
+        "prod_visibility": prod_visibility,
     })
 
 
