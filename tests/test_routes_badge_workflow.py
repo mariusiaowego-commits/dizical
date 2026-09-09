@@ -83,10 +83,21 @@ class TestPostDraft:
         assert data["ok"] is True
         assert "draft_id" in data
         assert data["json"]
+        assert "file_contract_path" in data
+        assert data["file_contract_path"].endswith(f"{data['draft_id']}.json")
         parsed = json.loads(data["json"])
         assert parsed["meta"] == meta
         assert parsed["schema_version"] == 1
         assert parsed["status"] == "draft_created"
+
+    def test_disk_verification_failure_returns_500(self, client, monkeypatch, tmp_badge_data):
+        """Sprint 26090902: 模拟落盘后 get_draft 查空, 接口应返 500."""
+        from src.kid_app import badge_draft
+        meta = _make_valid_meta("post_fail_disk_xyz")
+        monkeypatch.setattr(badge_draft, "get_draft", lambda did: None)
+        r = client.post("/config/api/badge/draft", json={"meta": meta})
+        assert r.status_code == 500
+        assert "草稿落盘失败" in r.json()["error"]
 
     def test_missing_meta(self, client, tmp_badge_data):
         """Pydantic 校验: 没 meta 字段返 422 (Pydantic BaseModel 自动校验)."""
@@ -171,6 +182,13 @@ class TestCommitFromDraft:
         assert data["ok"] is True
         assert data["badge_id"] == "v2_test_commit_happy_xyz"
         assert data["image_url"] == "/static/badges/v2_test_commit_happy_xyz_v1.png"
+        assert "prod_visibility" in data
+        pv = data["prod_visibility"]
+        assert pv["deployed"] is False
+        assert pv["db_written"] is True
+        assert pv["image_on"] == "local_static_only"
+        assert len(pv["needs"]) == 3
+        assert "hint" in pv
 
         # 验证 DB 三表 (用 badge_write_tx context manager 跟 V1 一致)
         with badge_db.badge_write_tx() as conn:

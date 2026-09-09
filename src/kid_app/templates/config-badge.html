@@ -266,11 +266,13 @@
     // JS 调它们永远 catch 返红, 是误报. 删干净不误导用户.
 
     // ─── Toast ─────────────────────────────────────────
-    function showToast(type, msg) {
+    let _toastTimer = null;
+    function showToast(type, msg, duration = 2500) {
       const t = document.getElementById('toast');
       t.textContent = msg;
       t.className = `toast ${type} show`;
-      setTimeout(() => t.classList.remove('show'), 2500);
+      if (_toastTimer) clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
     }
 
     // ─── V2 初始化: Tab 切换 + Portal 检查 ──────────────
@@ -437,8 +439,31 @@
               }
             }
           } else {
-            showToast('success', `Badge "${data.badge_id}" 已上线! 跳到 /badges 看新图`);
-            setTimeout(() => window.location.href = '/badges', 800);
+            const pv = data.prod_visibility;
+            if (pv && !pv.deployed) {
+              // 本地已生效, 生产还需 deploy — 不自动跳 /badges (跳了也是占位图)
+              showToast('info', `Badge "${data.badge_id}" 本地已生效. 生产 kid-app 需 deploy 后可见`, 8000);
+              if (card) {
+                const actionsEl = card.querySelector('.v21-pending-actions');
+                if (actionsEl) {
+                  actionsEl.innerHTML = `
+                    <div style="background:var(--accent); border:1px solid var(--accent); border-radius:8px; padding:12px 16px; margin-top:8px; font-size:13px; line-height:1.6;">
+                      <strong>✅ 本地已上线 — 生产还需一步</strong><br>
+                      三表已写入云端 MySQL, 图片已写入本地 static/badges/.<br>
+                      生产 kid-app 要看到这张图, 还需要:<br>
+                      <ol style="margin:6px 0 0 18px; padding:0;">
+                        <li>git: 图片文件 commit + push + PR + merge</li>
+                        <li>CloudRun deploy (跟 hermes 说 "<strong>deploy badge</strong>" 即可)</li>
+                      </ol>
+                      deploy 完成前 prod 图显示占位.
+                    </div>
+                  `;
+                }
+              }
+            } else {
+              showToast('success', `Badge "${data.badge_id}" 已上线! 跳到 /badges 看新图`);
+              setTimeout(() => window.location.href = '/badges', 800);
+            }
           }
         } else {
           showToast('error', data.error || 'commit 失败');
@@ -712,6 +737,13 @@
           // 更新提示文案
           document.querySelector('.v21-result-hint').innerHTML =
             '📋 图片已就绪 → 切到 <strong>待确认</strong> tab → 确认上线';
+        } else if (respData.file_contract_path) {
+          showToast('success', `草稿已落盘: ${respData.draft_id}`, 6000);
+          // 长提示走 result 区, toast 6s 可能不够看
+          const hintEl = document.querySelector('.v21-result-hint');
+          if (hintEl) {
+            hintEl.innerHTML = `📋 file contract: <code>${respData.file_contract_path}</code><br>下一步: 切到 hermes chat 跑 <code>/badge-image ${respData.draft_id}</code> 生图`;
+          }
         } else {
           showToast('success', `草稿已创建: ${respData.draft_id}`);
         }

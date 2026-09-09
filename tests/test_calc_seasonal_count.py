@@ -58,6 +58,10 @@ def _wire_to_test_db(monkeypatch, db_path: Path):
     test_conn = sqlite3.connect(str(db_path))
     # 用 property 替换 _get_connection 方法 (default arg 捕到本次 test 的 db_path, 避免闭包 leak)
     monkeypatch.setattr(database.db, "_get_connection", lambda _p=db_path: sqlite3.connect(str(_p)))
+    # 模拟已登录 dad 用户, 绕过 _auth_guard_middleware 重定向
+    async def _mock_user(*args, **kwargs):
+        return {"id": 1, "username": "dad", "role": "dad"}
+    monkeypatch.setattr("src.kid_app.auth.get_current_user", _mock_user)
 
 
 # ─────────────────────────────────────────────────────────────────
