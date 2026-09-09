@@ -5,8 +5,13 @@ worktree 是新 git worktree, data/dizi.db 是新建的. production 跑的
 migrate_achievements.py 会 DROP 旧表 (重置用), 不能直接调.
 这里 session 级别创表, 给所有 test 共享.
 """
+import os
 import sqlite3
 from pathlib import Path
+
+# 测试环境统一启用 insecure cookie (允许 TestClient http) 和 session secret
+os.environ.setdefault("DIZICAL_SESSION_SECRET", "test-secret-for-pytest-only")
+os.environ.setdefault("DIZICAL_INSECURE_COOKIE", "1")
 
 import pytest
 
@@ -81,7 +86,15 @@ def _ensure_badge_tables(tmp_path_factory, monkeypatch_session):
 
     # 2. 触发 Database 单例初始化 (会创 lessons/payments/settings 等基表 + 用 tmp db)
     from src import database
-    _ = database.db._get_connection()
+    if hasattr(database.db, "_conn") and database.db._conn is not None:
+        try:
+            database.db._conn.close()
+        except Exception:
+            pass
+    database.db.db_path = str(tmp_db_path)
+    database.db._conn = None
+    database.db._ensure_db_directory()
+    database.db._init_tables()
 
     # 3. 创 badge 三表 (CREATE IF NOT EXISTS, 不 DROP)
     conn = sqlite3.connect(str(tmp_db_path))

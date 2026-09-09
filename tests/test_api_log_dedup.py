@@ -19,7 +19,10 @@ from src.kid_app.app import app as fastapi_app  # noqa
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    async def _mock_user(*args, **kwargs):
+        return {"id": 1, "username": "dad", "role": "dad"}
+    monkeypatch.setattr("src.kid_app.auth.get_current_user", _mock_user)
     return TestClient(fastapi_app)
 
 
