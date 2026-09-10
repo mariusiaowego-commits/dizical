@@ -209,6 +209,24 @@
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    /* 2026-09-09 sprint 26090904: card-milestones 双 tab icon (复用 sprint 8-3 feat/badges-tab-icons 沉淀的 SVG, 跟 /badges 页 tab icon 一致) */
+    .tab-icon {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      vertical-align: -3px;
+      flex-shrink: 0;
+    }
+    .page-header > span > .tab-icon {
+      width: 22px;
+      height: 22px;
+      vertical-align: -4px;
+    }
+    /* 兼容移动端: 板块标题 icon 跟字体对齐 */
+    @media (max-width: 639px) {
+      .tab-icon { width: 16px; height: 16px; vertical-align: -2px; }
+      .page-header > span > .tab-icon { width: 18px; height: 18px; }
+    }
     /* 未解锁单卡激励视觉强化 (仅在 milestone tab) */
     #tab-pane-milestone #locked-grid-milestone .b-card {
       border: 1.5px dashed rgba(255, 107, 107, 0.45);
@@ -566,17 +584,17 @@
   <!-- 卡片3: 成就展示（双 tab: Milestone / Seasonal） -->
   <div class="ac-card" id="card-milestones">
     <div class="page-header" style="padding:0 0 4px;">
-      <span>🏅 成就展示</span>
+      <span><img class="tab-icon" src="/static/img/tab-icons/trophy.svg" alt="" aria-hidden="true"> 成就展示</span>
       <a href="/badges" style="font-size:13px;font-weight:600;color:#FF6B35;text-decoration:none;">显示全部 →</a>
     </div>
 
     <!-- Tab 切换器 (上/下布局, milestone 在上) -->
     <div class="milestones-tabs" role="tablist" aria-label="成就分类">
       <button class="milestones-tab active" data-tab="milestone" role="tab" aria-selected="true">
-        🎯 Milestone <span class="tab-count" id="milestone-tab-count">0</span>
+        <img class="tab-icon" src="/static/img/tab-icons/trophy.svg" alt="" aria-hidden="true"> Milestone <span class="tab-count" id="milestone-tab-count">0</span>
       </button>
       <button class="milestones-tab" data-tab="seasonal" role="tab" aria-selected="false">
-        🌸 Seasonal <span class="tab-count" id="seasonal-tab-count">0</span>
+        <img class="tab-icon" src="/static/img/tab-icons/star.svg" alt="" aria-hidden="true"> Seasonal <span class="tab-count" id="seasonal-tab-count">0</span>
       </button>
     </div>
 
