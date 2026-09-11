@@ -20,11 +20,11 @@
 
   <main class="ccg-play" id="play" aria-live="polite">
     <div class="ccg-play-col" data-col="holo">
-      <div class="ccg-play-label">方案一 · 纯 CSS 全息</div>
+      <div class="ccg-play-label">方案一 · V 级全息 · 轻点翻转</div>
       <div id="stage-holo"></div>
     </div>
     <div class="ccg-play-col is-off" data-col="px" hidden>
-      <div class="ccg-play-label">方案二 · 3D 视差 · 轻点翻转</div>
+      <div class="ccg-play-label">方案二 · 微视差封装 · 轻点翻转</div>
       <div id="stage-px"></div>
     </div>
   </main>
@@ -121,6 +121,9 @@
         setTimeout(function () {
           CCG.openClaim(CCG.BADGE, startMode === "px" ? "px" : "holo");
         }, 400);
+      }
+      if (params.get("flip") === "1") {
+        setTimeout(function () { CCG.flipAll(); }, 400);
       }
     })();
   </script>

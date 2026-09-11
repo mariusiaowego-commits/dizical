@@ -6,6 +6,7 @@
    badge 形状对齐 GET /api/badge/unclaimed：
      { id, name, tag, image|image_url, cond|cond_text, story|zh_story, date, stars, no }
    布局：竖屏上下 / iPad 横屏左右双栏（见 badge-ccg.css .ccg-claim-*）
+   卡面：轻点翻转（位移 < 6px），拖动倾斜。两套方案共用 .ccg-card-flipper。
    拦截时机由 agy 在 sidebar 里接 GET /api/badge/unclaimed，本文件不自动 fetch。
 #}
 <link rel="stylesheet" href="/static/css/badge-ccg.css">

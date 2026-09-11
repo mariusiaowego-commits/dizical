@@ -40,6 +40,28 @@
     el.style.setProperty("--rotate-y", s.ry + "deg");
     el.style.setProperty("--holo-gain", String(holoGain));
     el.style.setProperty("--lift", s.lift ? s.lift + "px" : "0px");
+    el.style.setProperty("--nx", String(s.nx || 0));
+    el.style.setProperty("--ny", String(s.ny || 0));
+    el.style.setProperty("--from-center", String(s.fromCenter || 0));
+  }
+
+  function backMarkup(d) {
+    return (
+      '<div class="ccg-card-back ccg-back-face">' +
+        '<div class="ccg-foil-stack">' +
+          '<div class="ccg-foil-shine"></div>' +
+          '<div class="ccg-foil-glitter"></div>' +
+          '<div class="ccg-foil-glare"></div>' +
+        '</div>' +
+        '<div class="ccg-dizi-mark" aria-hidden="true"></div>' +
+        '<div class="ccg-seal"><span class="zh">笛韵</span><span class="en">DIZICAL</span></div>' +
+        '<div class="hall">' + d.hall + '</div>' +
+        '<div class="ccg-stars">' + starsHtml(d.stars) + '</div>' +
+        '<div class="serial">No. ' + d.no + '</div>' +
+        '<div class="brand">dizical</div>' +
+        '<div class="ccg-frame"></div>' +
+      '</div>'
+    );
   }
 
   function starsHtml(n) {
@@ -52,21 +74,25 @@
     return (
       '<div class="ccg-shadow"></div>' +
       '<div class="ccg-rotator">' +
-        '<div class="ccg-face ccg-holo-face">' +
-          '<div class="ccg-holo-stock"></div>' +
-          '<div class="ccg-holo-shine"></div>' +
-          '<div class="ccg-holo-art"><img alt="" width="512" height="512" decoding="async" fetchpriority="high" src="' + d.image + '"></div>' +
-          '<div class="ccg-holo-glare"></div>' +
-          '<div class="ccg-frame"></div>' +
-          '<span class="ccg-corner tl"></span><span class="ccg-corner tr"></span>' +
-          '<span class="ccg-corner bl"></span><span class="ccg-corner br"></span>' +
-          '<div class="ccg-holo-head"><span class="ccg-chip">' + d.tag + '</span><span class="ccg-no">No.' + d.no + '</span></div>' +
-          '<div class="ccg-meta">' +
-            '<div class="ccg-kicker">ACHIEVEMENT</div>' +
-            '<div class="ccg-title">' + d.name + '</div>' +
-            '<div class="ccg-sub">' + d.date + '</div>' +
-            '<div class="ccg-stars">' + starsHtml(d.stars) + '</div>' +
+        '<div class="ccg-card-flipper">' +
+          '<div class="ccg-card-front">' +
+            '<div class="ccg-foil-stack">' +
+              '<div class="ccg-foil-stock"></div>' +
+              '<div class="ccg-foil-shine"></div>' +
+              '<div class="ccg-foil-glitter"></div>' +
+              '<div class="ccg-foil-glare"></div>' +
+            '</div>' +
+            '<div class="ccg-holo-art"><img alt="" width="512" height="512" decoding="async" fetchpriority="high" src="' + d.image + '"></div>' +
+            '<div class="ccg-frame"></div>' +
+            '<div class="ccg-holo-head"><span class="ccg-chip">' + d.tag + '</span><span class="ccg-no">No.' + d.no + '</span></div>' +
+            '<div class="ccg-meta">' +
+              '<div class="ccg-kicker">ACHIEVEMENT</div>' +
+              '<div class="ccg-title">' + d.name + '</div>' +
+              '<div class="ccg-sub">' + d.date + '</div>' +
+              '<div class="ccg-stars">' + starsHtml(d.stars) + '</div>' +
+            '</div>' +
           '</div>' +
+          backMarkup(d) +
         '</div>' +
       '</div>'
     );
@@ -75,27 +101,24 @@
   function parallaxMarkup(d) {
     return (
       '<div class="ccg-shadow"></div>' +
-      '<div class="ccg-flip-hint">轻点翻转 · 拖动把玩</div>' +
       '<div class="ccg-rotator">' +
-        '<div class="ccg-px-flipper">' +
-          '<div class="ccg-px-front">' +
-            '<div class="ccg-layer ccg-layer-bg"></div>' +
-            '<div class="ccg-layer ccg-layer-holo"></div>' +
+        '<div class="ccg-card-flipper">' +
+          '<div class="ccg-card-front ccg-px-front">' +
+            '<div class="ccg-foil-stack">' +
+              '<div class="ccg-layer ccg-layer-bg ccg-foil-stock"></div>' +
+              '<div class="ccg-layer ccg-layer-holo ccg-foil-shine"></div>' +
+              '<div class="ccg-layer ccg-foil-glitter"></div>' +
+              '<div class="ccg-foil-glare"></div>' +
+            '</div>' +
             '<div class="ccg-layer ccg-layer-subject"><img alt="" width="512" height="512" decoding="async" fetchpriority="high" src="' + d.image + '"></div>' +
-            '<div class="ccg-layer ccg-layer-frame"></div>' +
+            '<div class="ccg-layer ccg-layer-frame ccg-frame"></div>' +
             '<div class="ccg-layer ccg-layer-text">' +
               '<div class="ccg-kicker">' + d.tag + ' · No.' + d.no + '</div>' +
               '<div class="ccg-title">' + d.name + '</div>' +
               '<div class="ccg-sub">' + d.date + '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="ccg-px-back">' +
-            '<div class="ccg-px-seal"><span>笛</span></div>' +
-            '<div class="hall">' + d.hall + '</div>' +
-            '<div class="bname">' + d.name + '</div>' +
-            '<div class="serial">No. ' + d.no + '</div>' +
-            '<div class="brand">dizical</div>' +
-          '</div>' +
+          backMarkup(d) +
         '</div>' +
       '</div>'
     );
@@ -125,18 +148,17 @@
     stage.innerHTML = scheme === "px" ? parallaxMarkup(d) : holoMarkup(d);
     bindReady(stage);
 
-    var state = { px: 50, py: 50, rx: 0, ry: 0, lift: 0, flip: 0 };
+    var state = { px: 50, py: 50, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0 };
     var interacting = false;
     var dragging = false;
     var moved = 0;
     var startX = 0, startY = 0;
     var pointerId = null;
     var resetTween = null;
+    var flipper = stage.querySelector(".ccg-card-flipper");
 
     applyVars(stage, state);
-    if (scheme === "px") {
-      stage.querySelector(".ccg-px-flipper").style.setProperty("--flip", "0deg");
-    }
+    if (flipper) flipper.style.setProperty("--flip", "0deg");
 
     function killReset() {
       if (resetTween && hasGsap) resetTween.kill();
@@ -149,8 +171,11 @@
       var y = clamp((clientY - r.top) / r.height, 0, 1);
       state.px = x * 100;
       state.py = y * 100;
-      state.rx = clamp(-(y - 0.5) * 2 * maxTilt, -maxTilt, maxTilt);
-      state.ry = clamp((x - 0.5) * 2 * maxTilt, -maxTilt, maxTilt);
+      state.nx = clamp((x - 0.5) * 2, -1, 1);
+      state.ny = clamp((y - 0.5) * 2, -1, 1);
+      state.fromCenter = clamp(Math.hypot(state.nx, state.ny), 0, 1.4);
+      state.rx = clamp(-state.ny * maxTilt, -maxTilt, maxTilt);
+      state.ry = clamp(state.nx * maxTilt, -maxTilt, maxTilt);
       state.lift = 10;
       applyVars(stage, state);
     }
@@ -161,13 +186,14 @@
       stage.classList.remove("is-dragging");
       if (reduce) {
         state.px = 50; state.py = 50; state.rx = 0; state.ry = 0; state.lift = 0;
+        state.nx = 0; state.ny = 0; state.fromCenter = 0;
         applyVars(stage, state);
         return;
       }
       if (hasGsap) {
         killReset();
         resetTween = global.gsap.to(state, {
-          px: 50, py: 50, rx: 0, ry: 0, lift: 0,
+          px: 50, py: 50, rx: 0, ry: 0, lift: 0, nx: 0, ny: 0, fromCenter: 0,
           duration: 0.6,
           ease: "power3.out",
           overwrite: true,
@@ -175,15 +201,16 @@
         });
       } else {
         state.px = 50; state.py = 50; state.rx = 0; state.ry = 0; state.lift = 0;
+        state.nx = 0; state.ny = 0; state.fromCenter = 0;
         applyVars(stage, state);
       }
     }
 
     function flip() {
-      if (scheme !== "px") return;
+      if (!flipper || reduce) return;
       var from = state.flip;
       state.flip = state.flip === 0 ? 180 : 0;
-      var flipper = stage.querySelector(".ccg-px-flipper");
+      flipper.classList.toggle("is-flipped", state.flip === 180);
       var proxy = { f: from };
       if (hasGsap) {
         global.gsap.to(proxy, {
@@ -224,7 +251,7 @@
         var dx = ev.clientX - startX;
         var dy = ev.clientY - startY;
         moved = Math.max(moved, Math.hypot(dx, dy));
-        if (moved > 8) dragging = true;
+        if (moved > 6) dragging = true;
         ev.preventDefault();
       } else if (coarse) {
         return;
@@ -236,10 +263,10 @@
 
     function onUp(ev) {
       if (pointerId != null && ev.pointerId !== pointerId) return;
-      var wasTap = moved < 8;
+      var wasTap = moved < 6;
       pointerId = null;
       try { stage.releasePointerCapture(ev.pointerId); } catch (err) {}
-      if (wasTap && scheme === "px" && !reduce) flip();
+      if (wasTap && !reduce) flip();
       springHome();
     }
 
@@ -262,16 +289,20 @@
       el: stage,
       scheme: scheme,
       state: state,
+      flip: flip,
       interacting: function () { return interacting; },
       tick: function (t) {
         if (interacting || reduce || resetTween) return;
         var s = Math.sin(t / 1800);
         var c = Math.cos(t / 2100);
-        var amp = scheme === "px" ? 6.2 : 3.2;
+        var amp = scheme === "px" ? 3.0 : 3.4;
         state.rx = s * amp;
-        state.ry = c * (amp + 0.4);
-        state.px = 50 + c * 16;
-        state.py = 50 + s * 12;
+        state.ry = c * (amp + 0.3);
+        state.nx = c * 0.55;
+        state.ny = s * 0.55;
+        state.px = 50 + state.nx * 18;
+        state.py = 50 + state.ny * 14;
+        state.fromCenter = Math.hypot(state.nx, state.ny);
         state.lift = 0;
         applyVars(stage, state);
       },
@@ -546,6 +577,9 @@
     checkUnclaimed: checkUnclaimed,
     startFps: startFps,
     setMaxTilt: setMaxTilt,
-    setHoloGain: setHoloGain
+    setHoloGain: setHoloGain,
+    flipAll: function () {
+      cards.forEach(function (c) { if (c.flip) c.flip(); });
+    }
   };
 })(window);
