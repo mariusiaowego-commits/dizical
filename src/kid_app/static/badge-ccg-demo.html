@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#f3ead6">
+  <title>徽章集卡 · 3D 把玩对比</title>
+  <link rel="stylesheet" href="/static/css/badge-ccg.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body class="ccg-demo">
+  <header class="ccg-demo-bar">
+    <div class="ccg-demo-title">徽章集卡 3D</div>
+    <div class="ccg-tabs" role="tablist" aria-label="方案切换">
+      <button type="button" role="tab" id="tab-holo" aria-pressed="true" data-mode="holo">方案一 · 全息光影</button>
+      <button type="button" role="tab" id="tab-px" aria-pressed="false" data-mode="px">方案二 · 分层视差</button>
+      <button type="button" role="tab" id="tab-both" aria-pressed="false" data-mode="both">并排对比</button>
+    </div>
+  </header>
+
+  <main class="ccg-play" id="play" aria-live="polite">
+    <div class="ccg-play-col" data-col="holo">
+      <div class="ccg-play-label">方案一 · 纯 CSS 全息</div>
+      <div id="stage-holo"></div>
+    </div>
+    <div class="ccg-play-col is-off" data-col="px" hidden>
+      <div class="ccg-play-label">方案二 · 3D 视差 · 轻点翻转</div>
+      <div id="stage-px"></div>
+    </div>
+  </main>
+
+  <div class="ccg-demo-actions">
+    <button type="button" class="ccg-btn primary" id="btn-claim">模拟领取入库</button>
+    <button type="button" class="ccg-btn" id="btn-modal">预览拦截弹窗</button>
+  </div>
+
+  <details class="ccg-panel">
+    <summary>性能与调节</summary>
+    <div class="ccg-panel-body">
+      <span>FPS</span>
+      <span class="ccg-fps" id="fps">—</span>
+      <span></span>
+      <label for="tilt">倾斜 ±°</label>
+      <input id="tilt" type="range" min="6" max="20" step="1" value="15">
+      <span id="tilt-val">15</span>
+      <label for="holo">全息强度</label>
+      <input id="holo" type="range" min="0" max="140" step="5" value="100">
+      <span id="holo-val">100%</span>
+    </div>
+  </details>
+
+  <script src="/static/js/badge-ccg.js"></script>
+  <script>
+    (function () {
+      var CCG = window.DizicalCCG;
+      var play = document.getElementById("play");
+      var colH = play.querySelector('[data-col="holo"]');
+      var colP = play.querySelector('[data-col="px"]');
+      var stageHolo = document.getElementById("stage-holo");
+      var stagePx = document.getElementById("stage-px");
+      var mode = "holo";
+
+      function visibleStages() {
+        var list = [];
+        if (!colH.hidden) list.push(stageHolo);
+        if (!colP.hidden) list.push(stagePx);
+        return list;
+      }
+
+      function mount() {
+        CCG.unmountAll(play);
+        if (!colH.hidden) CCG.mountCard(stageHolo, "holo", CCG.BADGE);
+        if (!colP.hidden) CCG.mountCard(stagePx, "px", CCG.BADGE);
+      }
+
+      function setMode(next) {
+        mode = next;
+        document.querySelectorAll(".ccg-tabs button").forEach(function (b) {
+          b.setAttribute("aria-pressed", b.getAttribute("data-mode") === next ? "true" : "false");
+        });
+        colH.hidden = next === "px";
+        colP.hidden = next === "holo";
+        colH.classList.toggle("is-off", next === "px");
+        colP.classList.toggle("is-off", next === "holo");
+        play.classList.toggle("is-compare", next === "both");
+        mount();
+      }
+
+      document.querySelector(".ccg-tabs").addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-mode]");
+        if (btn) setMode(btn.getAttribute("data-mode"));
+      });
+
+      document.getElementById("btn-claim").addEventListener("click", function () {
+        var stages = visibleStages();
+        stages.forEach(function (s) { CCG.claim(s); });
+      });
+
+      document.getElementById("btn-modal").addEventListener("click", function () {
+        var scheme = mode === "px" ? "px" : "holo";
+        CCG.openClaim(CCG.BADGE, scheme);
+      });
+
+      var tilt = document.getElementById("tilt");
+      var holo = document.getElementById("holo");
+      tilt.addEventListener("input", function () {
+        document.getElementById("tilt-val").textContent = tilt.value;
+        CCG.setMaxTilt(tilt.value);
+      });
+      holo.addEventListener("input", function () {
+        document.getElementById("holo-val").textContent = holo.value + "%";
+        CCG.setHoloGain(Number(holo.value) / 100);
+      });
+
+      CCG.startFps(document.getElementById("fps"));
+      var params = new URLSearchParams(location.search);
+      var startMode = params.get("mode") || "holo";
+      if (startMode !== "holo" && startMode !== "px" && startMode !== "both") startMode = "holo";
+      setMode(startMode);
+      if (params.get("modal") === "1") {
+        setTimeout(function () {
+          CCG.openClaim(CCG.BADGE, startMode === "px" ? "px" : "holo");
+        }, 400);
+      }
+    })();
+  </script>
+</body>
+</html>

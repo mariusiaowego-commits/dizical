@@ -1,0 +1,33 @@
+{# sprint-26091101 — 全局拦截领取弹窗骨架
+   接入：在 _sidebar.html 末尾 include 本文件。
+   JS API：
+     DizicalCCG.openClaim(badge, 'holo'|'px')
+     DizicalCCG.closeClaim()
+   badge 形状对齐 GET /api/badge/unclaimed：
+     { id, name, tag, image|image_url, cond|cond_text, story|zh_story, date, stars, no }
+   布局：竖屏上下 / iPad 横屏左右双栏（见 badge-ccg.css .ccg-claim-*）
+   拦截时机由 agy 在 sidebar 里接 GET /api/badge/unclaimed，本文件不自动 fetch。
+#}
+<link rel="stylesheet" href="/static/css/badge-ccg.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="/static/js/badge-ccg.js"></script>
+
+<div id="ccg-claim-overlay" class="ccg-claim-overlay">
+  <div class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="ccg-claim-name">
+    <button type="button" class="ccg-claim-close" aria-label="关闭" onclick="DizicalCCG.closeClaim()">×</button>
+    <div class="ccg-claim-layout">
+      <div class="ccg-claim-stage" id="ccg-claim-stage"></div>
+      <div class="ccg-claim-copy">
+        <div class="ccg-claim-tag" id="ccg-claim-tag"></div>
+        <h2 class="ccg-claim-name" id="ccg-claim-name"></h2>
+        <p class="ccg-claim-cond" id="ccg-claim-cond"></p>
+        <p class="ccg-claim-date" id="ccg-claim-date"></p>
+        <p class="ccg-claim-story" id="ccg-claim-story"></p>
+        <div class="ccg-claim-actions">
+          <button type="button" class="ccg-btn-claim" id="ccg-claim-btn">领取入库</button>
+          <button type="button" class="ccg-btn-skip" id="ccg-claim-skip">先去练笛</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

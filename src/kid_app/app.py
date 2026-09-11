@@ -89,6 +89,10 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/items")
         or path.startswith("/api/practices/")
         or path.startswith("/api/practice-sessions")
+        # Sprint 26091101 feat/badge-3d-ccg: 徽章领取 API kid-facing 弹窗数据源
+        # 跟 /api/achievements 同级公开, kid app 直接调
+        or path.startswith("/api/badge/unclaimed")
+        or path.startswith("/api/badge/claim")
     )
     if PUBLIC:
         return await call_next(request)
@@ -3038,6 +3042,11 @@ app.include_router(config_router)
 # V1 9 端点 + routes/badge_batch.py 整文件删 (批量模式 V2 不做)
 from src.kid_app.routes.badge_workflow import router as badge_workflow_router
 app.include_router(badge_workflow_router)
+
+# Sprint 26091101 feat/badge-3d-ccg: 注册徽章领取 API
+# 全局拦截弹窗数据源 + 入库幂等领取 (走 practice_audit_log 审计)
+from src.kid_app.routes.badge_claim import router as badge_claim_router
+app.include_router(badge_claim_router)
 
 # ─── 注册 minip (微信小程序) 专用路由 ─────────────────────────────────────
 # dizical-minip 项目: 只新增端点，不影响现有功能
