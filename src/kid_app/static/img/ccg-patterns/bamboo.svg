@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="132" viewBox="0 0 132 132">
+  <!-- 竹影翠玉 bamboo (agy 方案 B.6): 竹叶×3 + 水滴 + DIZICAL -->
+  <g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 竹叶 1 (左上, 倾 45°) -->
+    <path d="M28 30 q-6 -6 -4 -14 q8 0 12 6 q-2 8 -8 8 z"/>
+    <!-- 竹叶 2 (右上, 倾 -30°) -->
+    <path d="M82 22 q4 -8 14 -8 q2 10 -4 14 q-8 0 -10 -6 z"/>
+    <!-- 竹叶 3 (中下, 倾 60°) -->
+    <path d="M52 72 q-8 -2 -12 -10 q6 -8 14 -4 q4 8 -2 14 z"/>
+    <!-- 竹叶中央水滴 (翠绿主题标志) -->
+    <path d="M76 60 q-4 0 -4 -6 q0 -6 4 -10 q4 4 4 10 q0 6 -4 6 z"/>
+  </g>
+  <!-- DIZICAL 字样 (必须, 跟 azure 暗纹同位置/字距) -->
+  <text x="10" y="126" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="2.6" fill="#fff">DIZICAL</text>
+</svg>

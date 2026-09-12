@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="132" viewBox="0 0 132 132">
+  <!-- 冰霜晶蓝 frost (agy 方案 B.6): 雪花 + 竹笛 + DIZICAL -->
+  <g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 雪花 1 (左上, 六瓣对称) -->
+    <path d="M36 30 L36 54"/>
+    <path d="M24 42 L48 42"/>
+    <path d="M27 33 L45 51"/>
+    <path d="M45 33 L27 51"/>
+    <!-- 雪花 1 端点小枝 -->
+    <path d="M36 30 l-3 -3 M36 30 l3 -3"/>
+    <path d="M36 54 l-3 3 M36 54 l3 3"/>
+    <path d="M24 42 l-3 -2 M24 42 l-2 -3"/>
+    <path d="M48 42 l3 2 M48 42 l2 3"/>
+    <!-- 竹笛 (右下, 季节呼应"冬日笛韵") -->
+    <path d="M70 92 L112 50 M76 98 L118 56 M70 92 L76 98 M112 50 L118 56"/>
+    <circle cx="86" cy="76" r="2.6" fill="#fff" stroke="none"/>
+    <circle cx="102" cy="60" r="2.6" fill="#fff" stroke="none"/>
+  </g>
+  <!-- DIZICAL 字样 -->
+  <text x="10" y="126" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="2.6" fill="#fff">DIZICAL</text>
+</svg>

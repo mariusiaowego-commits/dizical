@@ -383,7 +383,7 @@
   background-size: 300% 300%;
   background-position: clamp(0%, var(--pointer-x, 50%), 100%) clamp(0%, var(--pointer-y, 50%), 100%);
   -webkit-mask-image:
-    var(--ccg-security-pattern),
+    var(--theme-security-pattern),
     radial-gradient(
       farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
       #fff 6%,
@@ -392,7 +392,7 @@
       transparent 100%
     );
   mask-image:
-    var(--ccg-security-pattern),
+    var(--theme-security-pattern),
     radial-gradient(
       farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
       #fff 6%,
@@ -400,8 +400,8 @@
       rgba(255, 255, 255, 0.28) 78%,
       transparent 100%
     );
-  -webkit-mask-size: var(--ccg-security-size), cover;
-  mask-size: var(--ccg-security-size), cover;
+  -webkit-mask-size: var(--theme-security-size), cover;
+  mask-size: var(--theme-security-size), cover;
   -webkit-mask-repeat: repeat, no-repeat;
   mask-repeat: repeat, no-repeat;
   -webkit-mask-composite: source-in;
@@ -414,8 +414,8 @@
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  background-image: var(--ccg-security-pattern);
-  background-size: var(--ccg-security-size);
+  background-image: var(--theme-security-pattern);
+  background-size: var(--theme-security-size);
   opacity: 0.2;
 }
 

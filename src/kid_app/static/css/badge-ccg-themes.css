@@ -1,0 +1,142 @@
+/*
+ * Sprint 26091101 feat/sprint-26091101-badge-3d-ccg
+ * Part B — 背景主题系统 (agy 方案 B.2 / B.3 / B.5)
+ *
+ * 4 个非默认主题块, 挂在 .ccg-stage[data-ccg-theme="..."] 上覆盖 CSS 变量.
+ * azure 默认值由 badge-ccg.css :root 定义, 这里不重复.
+ *
+ * token 契约 (跟 badge-ccg.css var(--theme-*) 列表对齐, 缺一不可):
+ *   --theme-stock-color / --theme-stock-gradient / --theme-stock-filter
+ *   --theme-light-main / --theme-light-sub / --theme-light-accent
+ *   --theme-security-size / --theme-plate-bg-from / --theme-plate-bg-to / --theme-plate-text
+ *   --theme-frame-hi / --theme-frame-lo / --theme-glow
+ *   --theme-laser-tint (agy 追加: 镭射色偏 filter 表达式; azure=none)
+ */
+
+/* ── 主题 2: 竹影翠玉 bamboo (基本功/每日练习) ─────────────────────────── */
+[data-ccg-theme="bamboo"] {
+  /* 底衬层 */
+  --theme-stock-color: #0a1f14;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #1a3e2a 0%, #143826 34%, #122e30 66%, #0e2420 100%);
+  --theme-stock-filter: saturate(1.18) contrast(1.06);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(120, 220, 160, 0.72);
+  --theme-light-sub:     rgba(180, 230, 210, 0.45);
+  --theme-light-accent:  rgba(40, 160, 120, 0.35);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #f2f6ef;
+  --theme-plate-bg-to:   #e4ead6;
+  --theme-plate-text:    #2a3a25;
+
+  /* 金框色调 */
+  --theme-frame-hi:      #d8f0c8;
+  --theme-frame-lo:      #2a5a3a;
+
+  /* 外发光 */
+  --theme-glow:          hsl(155, 60%, 55%);
+
+  /* 镭射偏冷 (绿/青增强) */
+  --theme-laser-tint:    hue-rotate(110deg) saturate(1.15);
+}
+
+/* ── 主题 3: 朱霞流丹 coral (考级/舞台表演) ──────────────────────────── */
+[data-ccg-theme="coral"] {
+  /* 底衬层 */
+  --theme-stock-color: #2a0e14;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #5e1a2e 0%, #481830 34%, #3a1428 66%, #2e0e1e 100%);
+  --theme-stock-filter: saturate(1.20) contrast(1.05);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(255, 130, 100, 0.68);
+  --theme-light-sub:     rgba(255, 200, 120, 0.55);
+  --theme-light-accent:  rgba(220, 60, 120, 0.35);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #fdf2ef;
+  --theme-plate-bg-to:   #f0ddd4;
+  --theme-plate-text:    #3a1f1a;
+
+  /* 金框色调 */
+  --theme-frame-hi:      #ffd8b0;
+  --theme-frame-lo:      #8a3a2a;
+
+  /* 外发光 */
+  --theme-glow:          hsl(8, 80%, 58%);
+
+  /* 镭射偏暖 (红/黄增强) */
+  --theme-laser-tint:    hue-rotate(-30deg) saturate(1.18);
+}
+
+/* ── 主题 4: 紫霄耀金 imperial (里程碑/殿堂大奖) ─────────────────────── */
+[data-ccg-theme="imperial"] {
+  /* 底衬层 */
+  --theme-stock-color: #1a1030;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #2e1a58 0%, #281650 34%, #221448 66%, #1c1040 100%);
+  --theme-stock-filter: saturate(1.25) contrast(1.10);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(255, 210, 100, 0.82);
+  --theme-light-sub:     rgba(180, 100, 255, 0.55);
+  --theme-light-accent:  rgba(200, 160, 60, 0.40);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #faf4f8;
+  --theme-plate-bg-to:   #ece0e8;
+  --theme-plate-text:    #2e1a44;
+
+  /* 金框色调 (皇紫耀金, 比 azure 更浓烈) */
+  --theme-frame-hi:      #ffe8a0;
+  --theme-frame-lo:      #6a4a18;
+
+  /* 外发光 */
+  --theme-glow:          hsl(280, 70%, 60%);
+
+  /* 镭射全色相均衡 (最华丽, 微偏紫金) */
+  --theme-laser-tint:    saturate(1.22) brightness(1.04);
+}
+
+/* ── 主题 5: 冰霜晶蓝 frost (季节/冬季限定) ─────────────────────────── */
+[data-ccg-theme="frost"] {
+  /* 底衬层 */
+  --theme-stock-color: #0c1824;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #1a3050 0%, #162a48 34%, #122440 66%, #0e1e38 100%);
+  --theme-stock-filter: saturate(1.15) contrast(1.08);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(200, 230, 255, 0.75);
+  --theme-light-sub:     rgba(100, 200, 255, 0.55);
+  --theme-light-accent:  rgba(140, 130, 255, 0.30);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #f0f4f8;
+  --theme-plate-bg-to:   #dce6ee;
+  --theme-plate-text:    #1a2a3a;
+
+  /* 金框色调 */
+  --theme-frame-hi:      #e0f0ff;
+  --theme-frame-lo:      #2a4a6a;
+
+  /* 外发光 */
+  --theme-glow:          hsl(205, 80%, 65%);
+
+  /* 镭射偏冷 (青/蓝增强) */
+  --theme-laser-tint:    hue-rotate(170deg) saturate(1.10);
+}
