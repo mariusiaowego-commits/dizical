@@ -71,8 +71,17 @@
     el.style.setProperty("--lit", String(s.lit == null ? 0.22 : s.lit));
   }
 
+  /* agy 方案 A.3.2: 标题行只留左侧一颗菱形 accent (右侧让给星级), 纯文字 + 星更简洁 */
   function titleHtml(name) {
-    return '<div class="ccg-title"><i class="ccg-orn" aria-hidden="true"></i><span>' + name + '</span><i class="ccg-orn" aria-hidden="true"></i></div>';
+    return '<div class="ccg-title"><i class="ccg-orn" aria-hidden="true"></i><span>' + name + '</span></div>';
+  }
+
+  /* 日期格式: DB 存 'YYYY-MM-DD...'(achieved_at) -> 卡面统一 'YYYY年M月D日' (dad 2026-09-12 定 A-2) */
+  function fmtDate(v) {
+    if (!v) return "";
+    var m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return String(v);
+    return m[1] + "年" + parseInt(m[2], 10) + "月" + parseInt(m[3], 10) + "日";
   }
 
   function backMarkup(d) {
@@ -150,8 +159,8 @@
         '</div>' +
         '<div class="ccg-info-bar">' +
           '<span class="ccg-bar-no">NO.' + d.no + '</span>' +
-          '<span class="ccg-bar-tag">' + d.tag + '</span>' +
-          '<span class="ccg-bar-date">' + d.date + '</span>' +
+          '<span class="ccg-bar-info"><b class="ccg-bar-tag">' + d.tag + '</b> · <span class="ccg-bar-date">' + d.date + '</span></span>' +
+          '<span class="ccg-bar-rarity">◆</span>' +
         '</div>' +
         '<div class="ccg-plate">' +
           '<div class="ccg-plate-head">' +
@@ -201,6 +210,8 @@
     var d = data || BADGE;
     stage.className = "ccg-stage ccg-" + scheme;
     stage.setAttribute("data-scheme", scheme);
+    /* 主题: 徽章数据带 theme 就切 (默认 azure); 主题变量块在 badge-ccg-themes.css */
+    stage.setAttribute("data-ccg-theme", d.theme || "azure");
     stage.innerHTML = cardMarkup(scheme, d);
     bindReady(stage);
 
@@ -532,7 +543,7 @@
       image: d.image || d.image_url || d.badge_url || BADGE.image,
       cond: d.cond || d.cond_text || BADGE.cond,
       story: d.story || d.zh_story || d.description || BADGE.story,
-      date: d.date || d.achieved_at || BADGE.date,
+      date: fmtDate(d.date || d.achieved_at || BADGE.date),
       stars: d.stars || BADGE.stars,
       no: d.no || "001",
       hall: d.hall || BADGE.hall

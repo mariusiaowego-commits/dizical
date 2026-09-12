@@ -31,7 +31,33 @@
   /* 笛韵防伪暗纹 (竹笛剪影 + 星芒 + DIZICAL 字样, 45° 平铺阵列) */
   --ccg-security-pattern: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M7 103 L95 15 M12 108 L100 20 M7 103 L12 108 M95 15 L100 20'/><circle cx='37' cy='73' r='2.8' fill='%23fff' stroke='none'/><circle cx='54' cy='56' r='2.8' fill='%23fff' stroke='none'/><circle cx='71' cy='39' r='2.8' fill='%23fff' stroke='none'/></g><path d='M106 88 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z' fill='%23fff'/><text x='10' y='126' font-family='Helvetica, Arial, sans-serif' font-size='9' font-weight='700' letter-spacing='2.6' fill='%23fff'>DIZICAL</text></svg>");
   --ccg-security-size: 132px 132px;
+
+  /* ── 主题 token 契约 (sprint 26091201) ──────────────────────
+     每套主题只覆盖这些变量; 默认值 = azure 星曜深蓝 (= 现有配色, 零视觉变化)。
+     主题覆盖块在 badge-ccg-themes.css, 用 [data-ccg-theme="..."] 挂在 .ccg-stage 上切换。
+     --theme-laser-tint 是 filter 表达式 (如 hue-rotate(-14deg) saturate(1.2)), 默认 none。 */
+  --theme-stock-color: #0e1a3e;
+  --theme-stock-gradient: linear-gradient(168deg, #22377e 0%, #182a66 34%, #1d1c52 66%, #2c1d40 100%);
+  --theme-stock-filter: saturate(1.22) contrast(1.08);
+  --theme-light-main: rgba(255, 226, 148, 0.78);
+  --theme-light-sub: rgba(86, 178, 255, 0.52);
+  --theme-light-accent: rgba(134, 96, 255, 0.45);
+  --theme-security-size: 132px 132px;
+  --theme-security-pattern: var(--ccg-security-pattern);
+  --theme-plate-bg-from: #fcf7ea;
+  --theme-plate-bg-to: #efe4cc;
+  --theme-plate-text: #3d2a0a;
+  --theme-frame-hi: #ffeaa0;
+  --theme-frame-lo: #b3820a;
+  --theme-glow: #504028;
+  --theme-laser-tint: none;
 }
+
+/* 主题防伪暗纹: 按主题换图案 (azure 用内置笛韵 data URI, 见 --ccg-security-pattern) */
+[data-ccg-theme="bamboo"] { --theme-security-pattern: url("/static/img/ccg-patterns/bamboo.svg"); }
+[data-ccg-theme="coral"] { --theme-security-pattern: url("/static/img/ccg-patterns/coral.svg"); }
+[data-ccg-theme="imperial"] { --theme-security-pattern: url("/static/img/ccg-patterns/imperial.svg"); }
+[data-ccg-theme="frost"] { --theme-security-pattern: url("/static/img/ccg-patterns/frost.svg"); }
 
 /* ── Shared card geometry ─────────────────────────────────── */
 .ccg-stage {
@@ -65,7 +91,7 @@
   position: absolute;
   inset: 12% 8% -6%;
   border-radius: 22px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(80, 64, 40, 0.28), transparent 70%);
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--theme-glow) 28%, transparent), transparent 70%);
   transform: translate3d(calc(var(--nx) * 8px), calc(var(--ny) * 6px + 18px), 0);
   filter: blur(18px);
   pointer-events: none;
@@ -124,8 +150,8 @@
   box-shadow:
     inset 0 0 0 2px #342205,
     inset 0 0 0 5px #d4a017,
-    inset 0 0 0 6px #ffeaa0,
-    inset 0 0 0 9px #b3820a,
+    inset 0 0 0 6px var(--theme-frame-hi),
+    inset 0 0 0 9px var(--theme-frame-lo),
     inset 0 0 0 11px #4e3207;
 }
 .ccg-frame::after {
@@ -176,17 +202,17 @@
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  background-color: #0e1a3e;
+  background-color: var(--theme-stock-color);
   background-image:
-    /* 主光源: 卡面上方明暗分明的径向金色光晕 */
-    radial-gradient(ellipse 56% 42% at 50% 30%, rgba(255, 226, 148, 0.78) 0%, rgba(255, 178, 62, 0.34) 34%, rgba(255, 150, 40, 0) 70%),
-    radial-gradient(ellipse 38% 28% at 50% 30%, rgba(255, 250, 222, 0.62) 0%, rgba(255, 244, 196, 0) 64%),
+    /* 主光源: 卡面上方明暗分明的径向光晕 (色相随主题, 中段/高光由主光派生) */
+    radial-gradient(ellipse 56% 42% at 50% 30%, var(--theme-light-main) 0%, color-mix(in srgb, var(--theme-light-main) 44%, transparent) 34%, transparent 70%),
+    radial-gradient(ellipse 38% 28% at 50% 30%, color-mix(in srgb, var(--theme-light-main) 78%, #fff) 0%, transparent 64%),
     /* 冷调补光, 拉开明暗层次 (通透不脏) */
-    radial-gradient(ellipse 74% 58% at 13% 5%, rgba(86, 178, 255, 0.52) 0%, rgba(86, 178, 255, 0) 62%),
-    radial-gradient(ellipse 68% 54% at 90% 95%, rgba(134, 96, 255, 0.45) 0%, rgba(134, 96, 255, 0) 64%),
+    radial-gradient(ellipse 74% 58% at 13% 5%, var(--theme-light-sub) 0%, transparent 62%),
+    radial-gradient(ellipse 68% 54% at 90% 95%, var(--theme-light-accent) 0%, transparent 64%),
     /* 琉璃底色 */
-    linear-gradient(168deg, #22377e 0%, #182a66 34%, #1d1c52 66%, #2c1d40 100%);
-  filter: saturate(1.22) contrast(1.08);
+    var(--theme-stock-gradient);
+  filter: var(--theme-stock-filter);
 }
 
 /* ── Sunpillar 全息镭射流光 (color-dodge, 随倾斜平滑位移) ── */
@@ -317,7 +343,7 @@
   z-index: 6;
   mix-blend-mode: color-dodge;
   opacity: calc((0.20 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1));
-  filter: brightness(0.85) contrast(1.6) saturate(1.5);
+  filter: var(--theme-laser-tint, none) brightness(0.85) contrast(1.6) saturate(1.5);
   background-repeat: no-repeat;
   background-image: linear-gradient(
     205deg,
@@ -342,7 +368,7 @@
   z-index: 3;
   mix-blend-mode: plus-lighter;
   opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1));
-  filter: brightness(1.08) contrast(1.35) saturate(1.4);
+  filter: var(--theme-laser-tint, none) brightness(1.08) contrast(1.35) saturate(1.4);
   background-repeat: no-repeat;
   background-image: linear-gradient(
     108deg,
@@ -402,10 +428,13 @@
   --art-t: 9.9%;
   --art-h: 51.1%;
   --bar-t: 62.6%;
-  --bar-h: 4.2%;
-  --plate-t: 68.8%;
-  --plate-b: 88%;
-  --foot-b: 3.2%;
+  /* agy 方案 A.3.1: 银条 4.2% -> 4.6% (给文字竖向呼吸); 下方区块 top 不动 */
+  --bar-h: 4.6%;
+  /* agy 方案 A.3.2: plate 下沿 88% -> 89.5%, 给 3 行描述留空间 */
+  --plate-t: 69%;
+  --plate-b: 89.5%;
+  /* agy 方案 A.3.4: 页脚更贴底 3.2% -> 2.8% */
+  --foot-b: 2.8%;
 }
 
 /* 金框: 立体倒角 (左上受光 / 右下压暗) + 内侧包边 */
@@ -482,22 +511,31 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6.4%;
+  padding: 0 5.6%;
   clip-path: polygon(0 50%, 2.4% 0, 97.6% 0, 100% 50%, 97.6% 100%, 2.4% 100%);
+  /* agy 方案 A.3.1: 冲压倒角(上亮下暗) + 拉丝金属(边缘暗中心亮) + 1px 内嵌高光 */
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, 0.14) 100%),
-    linear-gradient(90deg, #949ba4 0%, #e6eaee 11%, #f8fafc 50%, #dee3e8 89%, #8b929b 100%);
-  color: #2a2f36;
-  font-size: calc(var(--card-w) * 0.0278);
-  font-weight: 700;
-  letter-spacing: 0.05em;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.15) 38%, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.12) 78%, rgba(0, 0, 0, 0.22) 100%),
+    linear-gradient(90deg, #8d939c 0%, #d8dde3 8%, #f5f7fa 42%, #f8fafc 58%, #d4d9df 92%, #888f98 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+  color: #1f2329;
+  font-size: calc(var(--card-w) * 0.026);
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
   pointer-events: none;
   white-space: nowrap;
 }
-.ccg-bar-no { color: #2a2f36; font-weight: 800; letter-spacing: 0.04em; }
-.ccg-bar-tag { color: #7d4a10; flex: 1 1 auto; text-align: center; }
-.ccg-bar-date { color: #454b53; font-weight: 600; }
+/* 编号: 主信息, 最深最醒目 */
+.ccg-bar-no { color: #1f2329; font-weight: 800; letter-spacing: 0.06em; font-size: calc(var(--card-w) * 0.03); }
+/* 中段: 分类 · 日期 (分类重、日期轻, 中点分隔) */
+.ccg-bar-info { flex: 1 1 auto; text-align: center; color: #6b5839; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ccg-bar-info .ccg-bar-tag { color: #6b5839; font-weight: 700; }
+.ccg-bar-info .ccg-bar-date { color: #6b5839; font-weight: 500; }
+/* 右侧稀有度标 */
+.ccg-bar-rarity { color: #d4a017; font-size: calc(var(--card-w) * 0.028); flex: 0 0 auto; }
 
 /* 米色说明栏 (仿招式栏) */
 .ccg-plate {
@@ -511,41 +549,56 @@
   flex-direction: column;
   gap: calc(var(--card-w) * 0.01);
   padding: 4.2% 6% 2.6%;
-  border-radius: 3px;
+  border-radius: 4px;
+  /* agy 方案 A.3.2: 顶弧高光 + 珐琅底 (色值随主题) + 0.5px 极细描边增加"嵌入卡面"感 */
   background:
-    radial-gradient(ellipse 92% 58% at 50% 0%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 72%),
-    linear-gradient(178deg, #fcf7ea 0%, #f5ecd8 58%, #efe4cc 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 1px 3px rgba(0, 0, 0, 0.3);
-  color: #3a2c14;
+    radial-gradient(ellipse 88% 52% at 50% 0%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(178deg, var(--theme-plate-bg-from) 0%, var(--theme-plate-bg-to) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 4px rgba(0, 0, 0, 0.28),
+    0 0 0 0.5px rgba(138, 100, 26, 0.18);
+  color: var(--theme-plate-text);
   pointer-events: none;
 }
 .ccg-plate-head {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding-bottom: calc(var(--card-w) * 0.01);
-  border-bottom: 1px solid rgba(122, 92, 38, 0.26);
+  padding-bottom: calc(var(--card-w) * 0.012);
+}
+/* 左重右轻的分割线 (比等宽横线有层次) */
+.ccg-plate-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(180, 140, 50, 0.5) 0%, rgba(180, 140, 50, 0.22) 40%, rgba(180, 140, 50, 0) 100%);
 }
 .ccg-plate-head .ccg-title {
   justify-content: flex-start;
   gap: 5px;
   flex: 1 1 auto;
   min-width: 0;
-  font-size: calc(var(--card-w) * 0.048);
-  color: #47320e;
-  letter-spacing: 0.05em;
+  font-size: calc(var(--card-w) * 0.052);
+  color: var(--theme-plate-text);
+  letter-spacing: 0.06em;
   text-align: left;
   line-height: 1.25;
 }
 .ccg-plate-head .ccg-orn { width: 6px; height: 6px; flex: 0 0 6px; }
 .ccg-plate-desc {
   margin: 0;
-  font-size: calc(var(--card-w) * 0.0295);
-  line-height: 1.5;
-  color: #5c4a28;
+  font-size: calc(var(--card-w) * 0.031);
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--theme-plate-text) 78%, #ffffff);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* dad 待定 A-4: 2 行 vs 3 行 (暂按 agy 建议 3 行) */
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -561,14 +614,14 @@
   align-items: center;
   justify-content: space-between;
   padding-top: calc(var(--card-w) * 0.012);
-  border-top: 1px solid rgba(212, 160, 23, 0.42);
-  font-size: calc(var(--card-w) * 0.0265);
+  border-top: 1px solid rgba(200, 160, 30, 0.3);
+  font-size: calc(var(--card-w) * 0.024);
   font-weight: 600;
-  letter-spacing: 0.08em;
-  color: #a08a5c;
+  letter-spacing: 0.06em;
+  color: #9a8154;
   pointer-events: none;
 }
-.ccg-foot span:last-child { color: #d9ab2c; letter-spacing: 0.2em; }
+.ccg-foot span:last-child { color: #d4a83a; letter-spacing: 0.22em; font-size: calc(var(--card-w) * 0.022); }
 
 .ccg-title {
   display: flex;
@@ -596,13 +649,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   flex: 0 0 auto;
   margin-top: 0;
 }
 .ccg-star {
-  width: calc(var(--card-w) * 0.034);
-  height: calc(var(--card-w) * 0.034);
+  width: calc(var(--card-w) * 0.032);
+  height: calc(var(--card-w) * 0.032);
   background: linear-gradient(145deg, #fff4c4, #d4a017 45%, #8a5a10);
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
