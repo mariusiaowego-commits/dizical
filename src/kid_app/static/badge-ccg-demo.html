@@ -27,6 +27,25 @@
         <option value="coral">朱霞流丹</option>
         <option value="imperial">紫霄耀金</option>
         <option value="frost">冰霜晶蓝</option>
+        <optgroup label="淡色主题">
+          <option value="pearl">珠光象牙</option>
+          <option value="mint">薄荷玉</option>
+          <option value="sakura">樱雪</option>
+        </optgroup>
+      </select>
+    </label>
+    <!-- dad 2026-09-12 image#6 item2: 防伪标签纹样切换 (参考 poke-holo 多种箔纹) -->
+    <label class="ccg-theme-pick" for="ccg-sec-select">
+      <span>防伪纹</span>
+      <select id="ccg-sec-select" aria-label="防伪标签纹样">
+        <option value="theme">主题自带</option>
+        <option value="cosmos">星空微粒</option>
+        <option value="prism">棱镜斜纹</option>
+        <option value="dots">圆点阵</option>
+        <option value="waves">同心波纹</option>
+        <option value="grid">细密网格</option>
+        <option value="honeycomb">六角蜂窝</option>
+        <option value="flute">笛韵刻线</option>
       </select>
     </label>
   </header>
@@ -75,8 +94,12 @@
       // Sprint 26091101 feat/badge-3d-ccg B 线: 背景主题状态 (agy 方案 B.3)
       // 五套主题 id: azure(默认) / bamboo / coral / imperial / frost
       // 写入 .ccg-stage[data-ccg-theme], badge-ccg-themes.css 提供非默认 4 套变量覆盖
-      var VALID_THEMES = ["azure", "bamboo", "coral", "imperial", "frost"];
+      // 淡色主题 (pearl/mint/sakura) 2026-09-12 追加
+      var VALID_THEMES = ["azure", "bamboo", "coral", "imperial", "frost", "pearl", "mint", "sakura"];
       var theme = "azure";
+      // 防伪标签纹样: theme = 跟随主题自带纹样; 其余 id 见 badge-ccg.css 纹样库
+      var VALID_SECS = ["theme", "cosmos", "prism", "dots", "waves", "grid", "honeycomb", "flute"];
+      var sec = "theme";
 
       function visibleStages() {
         var list = [];
@@ -95,12 +118,23 @@
         if (sel && sel.value !== theme) sel.value = theme;
       }
 
+      function applySec() {
+        // 防伪纹样: 与主题同一条写入路径 (attribute 在 stage 上, CSS 用 .ccg-stage[data-ccg-sec=...])
+        document.querySelectorAll(".ccg-stage").forEach(function (el) {
+          if (sec === "theme") el.removeAttribute("data-ccg-sec");
+          else el.setAttribute("data-ccg-sec", sec);
+        });
+        var sel = document.getElementById("ccg-sec-select");
+        if (sel && sel.value !== sec) sel.value = sec;
+      }
+
       function mount() {
         CCG.unmountAll(play);
         if (!colH.hidden) CCG.mountCard(stageHolo, "holo", CCG.BADGE);
         if (!colP.hidden) CCG.mountCard(stagePx, "px", CCG.BADGE);
-        // mount 之后写 theme (badge-ccg.js 的 mountCard 不动 data-ccg-theme 属性)
+        // mount 之后写 theme / 防伪纹 (badge-ccg.js 的 mountCard 不动这些属性)
         applyTheme();
+        applySec();
       }
 
       function setMode(next) {
@@ -152,6 +186,20 @@
       if (VALID_THEMES.indexOf(startTheme) === -1) startTheme = "azure";
       theme = startTheme;
 
+      // dad 2026-09-12 image#6 item2: ?sec=<id> URL param (与 ?theme= 共存)
+      var startSec = params.get("sec") || "theme";
+      if (VALID_SECS.indexOf(startSec) === -1) startSec = "theme";
+      sec = startSec;
+
+      // dad 2026-09-12 image#9/4: ?stars=<0..5> 预览星级
+      // (真卡不由前端定, 由后端 achievements.card_stars 提供)
+      var startStars = parseInt(params.get("stars"), 10);
+      if (!isNaN(startStars)) {
+        var sv = Math.max(0, Math.min(5, startStars));
+        CCG.BADGE.stars = sv;       // demo fixture 口径 (mountCard 直接用 d.stars)
+        CCG.BADGE.card_stars = sv;  // 真卡口径 (openClaim → normalize 读 card_stars)
+      }
+
       // 主题切换监听 (UI 下拉)
       var themeSel = document.getElementById("ccg-theme-select");
       if (themeSel) {
@@ -161,6 +209,18 @@
           if (VALID_THEMES.indexOf(v) === -1) v = "azure";
           theme = v;
           applyTheme();
+        });
+      }
+
+      // 防伪纹样切换监听 (UI 下拉)
+      var secSel = document.getElementById("ccg-sec-select");
+      if (secSel) {
+        secSel.value = sec;
+        secSel.addEventListener("change", function () {
+          var v = secSel.value;
+          if (VALID_SECS.indexOf(v) === -1) v = "theme";
+          sec = v;
+          applySec();
         });
       }
 

@@ -32,6 +32,20 @@
   --ccg-security-pattern: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M7 103 L95 15 M12 108 L100 20 M7 103 L12 108 M95 15 L100 20'/><circle cx='37' cy='73' r='2.8' fill='%23fff' stroke='none'/><circle cx='54' cy='56' r='2.8' fill='%23fff' stroke='none'/><circle cx='71' cy='39' r='2.8' fill='%23fff' stroke='none'/></g><path d='M106 88 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z' fill='%23fff'/><text x='10' y='126' font-family='Helvetica, Arial, sans-serif' font-size='9' font-weight='700' letter-spacing='2.6' fill='%23fff'>DIZICAL</text></svg>");
   --ccg-security-size: 132px 132px;
 
+  /* 圆角体系 (dad 2026-09-12 image#6 item1: "两个圆角矩形角度不同叠在一起" -> 收敛成一组变量)
+     唯一来源 = 卡面半径 R 与金边厚度 rim-w；金边内弧 = R - rim-w；
+     画面窗 + 窗内箔层圆角全部引用内弧半径 ⇒ 全卡弧线只有一套角度, 不再出现两套圆弧错开。 */
+  --ccg-card-r: 18px;
+  --ccg-rim-w: 11px;
+  /* 画面窗内弧 = 卡面半径 R - 窗左右内缩量 ⇒ 窗的圆角与「金框内缘 + 一圈卡身衬底」
+     同心, 衬底宽度四边均匀, 不会在圆角处出现新月形错角 (dad image#9/item1) */
+  --ccg-rim-inner-r: calc(var(--ccg-card-r) - var(--ccg-art-inset));
+  /* dad 2026-09-12 (image#11 item2): 画面窗的左右必须和下面 bar/plate/foot 落在同一条
+     竖线上 (都是内容栏 --art-l 5.4%)。原来贴合金框内缘 (rim-w 11px) ⇒ 比下面模块左右
+     各宽出 5.4%, dad 看它就是"贴着卡片边缘"。改后: 金框 0~11px + 均匀卡身衬底,
+     画面窗从 16.4px 起, 与信息条 / 说明栏 / 页脚齐平 */
+  --ccg-art-inset: var(--art-l, 5.4%);
+
   /* ── 主题 token 契约 (sprint 26091201, B 线) ────────────────
      5 套主题只覆盖这些变量; 默认值 = azure 星曜深蓝 (= 原硬编码配色, 零视觉变化)。
      非默认 4 套覆盖块在 badge-ccg-themes.css, 用 [data-ccg-theme="..."] 挂在 .ccg-stage 上切换。
@@ -51,6 +65,53 @@
   --theme-frame-lo: #b3820a;
   --theme-glow: #504028;
   --theme-laser-tint: none;
+
+  /* ── 箔层极性 token (dad 2026-09-12 image#7/#8) ────────────────
+     .ccg-foil-stack 三层 (shine / glitter / security) 的配方原本只对深底调过:
+       shine = color-dodge + contrast(2.3) + brightness 0.5; ::after 里带深紫/深灰 stops
+     淡色主题必须整套换口味 (soft-light / multiply + 亮 stops + 降透明度), 否则淡卡被压暗/冲白。
+     默认值 = 原深色配方 ⇒ 5 套深色主题视觉零变化。 */
+  --theme-foil-op: 1;
+  --theme-foil-shine-blend: color-dodge;
+  --theme-foil-shine-bright: 0.5;
+  --theme-foil-shine-contrast: 2.3;
+  --theme-foil-shine-sat: 1;
+  --theme-foil-after-stops: hsl(0, 0%, 100%) 5%, hsla(300, 100%, 11%, 0.6) 40%, hsl(0, 0%, 22%) 120%;
+  --theme-foil-after-blend: hard-light;
+  --theme-foil-after-bright: 0.4;
+  --theme-foil-after-contrast: 0.85;
+  --theme-foil-after-op: 1;
+  --theme-foil-glitter-blend: plus-lighter;
+  --theme-foil-sec-blend: plus-lighter;
+  --theme-foil-laser-blend: color-dodge;
+  --theme-foil-laser-bright: 0.85;
+  --theme-foil-laser-contrast: 1.6;
+  --theme-foil-laser-sat: 1.5;
+  --theme-foil-spec-blend: screen;
+  /* 背面 (`.ccg-back-face`) 原本是另一套硬编码口径, 单独给 token 保证深色主题零变化 */
+  --theme-foil-back-bright: 0.5;
+  --theme-foil-back-contrast: 1.9;
+  --theme-foil-back-sat: 1.3;
+  /* 指针聚光灯 3 个色标: 深色主题末端用中性暗灰 (暗底上看不见),
+     淡色主题必须换成亮色, 否则指针周围出现一圈灰暗晕 = dad "还是以深色为主题色"。 */
+  /* 聚光灯 stops: 末端不能是硬切深色 (dad 2026-09-12 image#10):
+     原来的第 3 个色标 hsla(180,11%,35%,1) 60% 是不透明深蓝灰, 在深色主题下
+     沿"60% 等距圆"切出一道硬边, 与窗口的圆角矩形错角叠加 ⇒
+     四角看上去是"一淡一深两个圆角矩形叠在一起".
+     现在改成 低透明度 + 渐变收边到 100%, 立体感保留但不再有边界线.
+     淡色主题各自覆盖这组 token, 不受影响. */
+  --theme-glare-stops: hsla(0, 0%, 100%, 1) 8%,
+    hsla(0, 0%, 100%, 0.58) 34%,
+    hsla(196, 16%, 66%, 0.42) 64%,
+    hsla(205, 22%, 44%, 0.30) 100%;
+
+  /* ── 信息条 (NO.007 / 类型 / 日期 那条横杠) ────────────────────
+     原来是硬编码冷银渐变, 压在淡暖卡上 = 冷暖不同族 (dad image#8 "淡色框和背景不是一套")。
+     默认值 = 原冷银配方 (深色主题零变化)。 */
+  --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, 0.14) 100%),
+    linear-gradient(90deg, #949ba4 0%, #e6eaee 11%, #f8fafc 50%, #dee3e8 89%, #8b929b 100%);
+  --theme-bar-ink: #2a2f36;
+  --theme-bar-ink-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 /* 主题防伪暗纹: 按主题换图案 (azure 用内置笛韵 data URI, 见 --ccg-security-pattern) */
@@ -62,7 +123,8 @@
 /* ── Shared card geometry ─────────────────────────────────── */
 .ccg-stage {
   --card-w: min(300px, 78vw);
-  --card-h: calc(var(--card-w) * 1.4);
+  /* dad 2026-09-12: 1.4 -> 1.5 (原来太矮胖) */
+  --card-h: calc(var(--card-w) * 1.5);
   --nx: 0;
   --ny: 0;
   --from-center: 0;
@@ -125,7 +187,7 @@
 .ccg-card-back {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   overflow: hidden;
   transform-style: preserve-3d;
   -webkit-backface-visibility: hidden;
@@ -141,24 +203,28 @@
 }
 
 /* ── Gold cloisonné rim ───────────────────────────────────── */
+/* dad 2026-09-12 (image#12): 金框必须【贴合整个卡片】= 贴卡的最外边缘 (inset: 0)。
+   曾试过把 .ccg-frame 左右内缩到内容栏 (5.4%), 结果卡最外圈露出一条暗色卡身,
+   变成「暗色描边 + 金色边框」两层叠加 —— dad 说这个不要, 已退回 inset: 0。
+   左右窄于内容栏的问题改由画面窗 (--ccg-art-inset) 负责对齐。 */
 .ccg-frame {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 8;
   box-shadow:
-    inset 0 0 0 2px #342205,
-    inset 0 0 0 5px #d4a017,
+    inset 0 0 0 2px var(--theme-frame-r1, #342205),
+    inset 0 0 0 5px var(--theme-frame-gold, #d4a017),
     inset 0 0 0 6px var(--theme-frame-hi),
     inset 0 0 0 9px var(--theme-frame-lo),
-    inset 0 0 0 11px #4e3207;
+    inset 0 0 0 11px var(--theme-frame-r3, #4e3207);
 }
 .ccg-frame::after {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   opacity: calc((0.3 + var(--from-center, 0) * 0.45) * var(--holo-gain, 1));
   mix-blend-mode: color-dodge;
@@ -189,7 +255,7 @@
 .ccg-foil-stack {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   overflow: hidden;
   isolation: isolate;
   pointer-events: none;
@@ -201,7 +267,7 @@
 .ccg-foil-stock {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   background-color: var(--theme-stock-color);
   background-image:
     /* 主光源: 卡面上方明暗分明的径向光晕 (色相随主题, 中段/高光由主光派生) */
@@ -219,50 +285,60 @@
 .ccg-foil-shine {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 2;
-  opacity: calc((0.34 + var(--lit, 0.22) * 0.46) * var(--holo-gain, 1));
-  mix-blend-mode: color-dodge;
-  filter: brightness(0.92) contrast(2.2) saturate(1.45);
-  background-repeat: no-repeat;
-  background-image: linear-gradient(
-    115deg,
-    var(--sunpillar-1) 0%,
-    var(--sunpillar-2) 17%,
-    var(--sunpillar-3) 33%,
-    var(--sunpillar-4) 50%,
-    var(--sunpillar-5) 67%,
-    var(--sunpillar-6) 83%,
-    var(--sunpillar-1) 100%
+  opacity: calc((0.40 + var(--lit, 0.22) * 0.50) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  mix-blend-mode: var(--theme-foil-shine-blend, color-dodge);
+  /* Trainer Gallery Holofoil — 照抄 simeydotme/pokemon-cards-css public/css/cards/trainer-gallery-holo.css:
+     7 段彩虹色带 (-22° 平铺, 每段 5%), color-dodge 混合, 亮度随指针离心距离抬升
+     淡色主题把 blend / 对比 / 底亮整体换成 soft-light 系 (见 --theme-foil-*) */
+  filter: brightness(calc(var(--from-center, 0) * 0.3 + var(--theme-foil-shine-bright, 0.5)))
+    contrast(var(--theme-foil-shine-contrast, 2.3)) saturate(var(--theme-foil-shine-sat, 1));
+  --space: 5%;
+  background-repeat: repeat;
+  background-image: repeating-linear-gradient(
+    -22deg,
+    hsla(283, 49%, 60%, 0.75) calc(var(--space) * 1),
+    hsla(2, 74%, 59%, 0.75) calc(var(--space) * 2),
+    hsla(53, 67%, 53%, 0.75) calc(var(--space) * 3),
+    hsla(93, 56%, 52%, 0.75) calc(var(--space) * 4),
+    hsla(176, 38%, 50%, 0.75) calc(var(--space) * 5),
+    hsla(228, 100%, 77%, 0.75) calc(var(--space) * 6),
+    hsla(283, 49%, 61%, 0.75) calc(var(--space) * 7)
   );
-  background-size: 260% 260%;
+  background-size: 300% 400%;
   background-position: clamp(0%, var(--pointer-x, 50%), 100%) clamp(0%, var(--pointer-y, 50%), 100%);
 }
 
-/* 光栅刻线: 角度跟随机身倾斜, 掠过时有真实的光扫感 */
+/* Trainer Gallery 金属反光 — TG 的 .card__shine:after 原配方:
+   hard-light 径向, 中心 = 指针坐标*0.5 + 25% (指针不会把高光顶到画面边缘, 光斑始终铺开) */
 .ccg-foil-shine::after {
   content: "";
   position: absolute;
-  inset: -25%;
-  background-image: repeating-linear-gradient(
-    calc(74deg + var(--rotate-y, 0deg) * 1.3),
-    rgba(255, 255, 255, 0) 0 7px,
-    rgba(255, 255, 255, 0.42) 7px 9px,
-    rgba(255, 255, 255, 0) 9px 19px
+  inset: 0;
+  background-image: radial-gradient(
+    farthest-corner ellipse
+      at calc(var(--pointer-x, 50%) * 0.5 + 25%) calc(var(--pointer-y, 50%) * 0.5 + 25%),
+    var(--theme-foil-after-stops,
+      hsl(0, 0%, 100%) 5%, hsla(300, 100%, 11%, 0.6) 40%, hsl(0, 0%, 22%) 120%)
   );
-  mix-blend-mode: overlay;
-  opacity: calc(0.55 * var(--holo-gain, 1));
+  background-position: center center;
+  background-size: 400% 500%;
+  opacity: var(--theme-foil-after-op, 1);
+  filter: brightness(calc(var(--from-center, 0) * 0.2 + var(--theme-foil-after-bright, 0.4)))
+    contrast(var(--theme-foil-after-contrast, 0.85)) saturate(1.1);
+  mix-blend-mode: var(--theme-foil-after-blend, hard-light);
 }
 
 .ccg-foil-glitter {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 2;
-  opacity: calc((0.24 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1));
-  mix-blend-mode: plus-lighter;
+  opacity: calc((0.24 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  mix-blend-mode: var(--theme-foil-glitter-blend, plus-lighter);
   background-image:
     radial-gradient(1px 1px at 12% 16%, #fff 65%, transparent 70%),
     radial-gradient(0.8px 0.8px at 28% 42%, #ffe9a0 65%, transparent 70%),
@@ -297,19 +373,17 @@
 .ccg-foil-glare {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 6;
-  mix-blend-mode: overlay;
-  opacity: calc((0.30 + var(--lit, 0.22) * 0.70) * var(--holo-gain, 1));
+  /* dad 2026-09-12: 换 TG 软光配方 (soft-light + farthest-corner, 末端不留 alpha 断口).
+     旧版 overlay 62% 固定椭圆 + 88%->100% 深色回透明, 光圈边界硬 → "聚光灯不够柔和" */
+  mix-blend-mode: soft-light;
+  opacity: calc((0.62 + var(--lit, 0.22) * 0.38) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
   background-image: radial-gradient(
-    62% 62% at var(--pointer-x, 50%) var(--pointer-y, 50%),
-    hsla(0, 0%, 100%, 0.95) 0%,
-    hsla(0, 0%, 100%, 0.62) 20%,
-    hsla(0, 0%, 100%, 0.14) 46%,
-    hsla(0, 0%, 0%, 0.24) 74%,
-    hsla(0, 0%, 0%, 0.30) 88%,
-    hsla(0, 0%, 0%, 0) 100%
+    farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    var(--theme-glare-stops,
+      hsla(0, 0%, 100%, 1) 10%, hsla(0, 0%, 100%, 0.6) 35%, hsla(180, 11%, 35%, 1) 60%)
   );
   /* 末端必须回到透明 (dad 2026-09-12): radial-gradient 椭圆之外的区域会延续最后一个色标,
      若末端是深色, 光斑滑出金框后整片深色铺满窗口 → "背景镭射出现深色重叠". */
@@ -319,18 +393,19 @@
 .ccg-foil-spec {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 6;
-  mix-blend-mode: screen;
-  opacity: calc((0.34 + var(--lit, 0.22) * 0.66) * var(--holo-gain, 1));
+  mix-blend-mode: var(--theme-foil-spec-blend, screen);
+  opacity: calc((0.30 + var(--lit, 0.22) * 0.60) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  /* dad 2026-09-12: 峰值收一档 + 固定 56% 椭圆改 farthest-corner, 消除高光球边界 */
   background-image: radial-gradient(
-    56% 56% at var(--pointer-x, 50%) var(--pointer-y, 50%),
-    hsla(44, 100%, 92%, 0.78) 0%,
-    hsla(46, 100%, 84%, 0.42) 16%,
-    hsla(210, 80%, 70%, 0.16) 42%,
-    hsla(216, 60%, 40%, 0.05) 62%,
-    hsla(0, 0%, 0%, 0) 80%
+    farthest-corner ellipse at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    hsla(44, 100%, 92%, 0.60) 0%,
+    hsla(46, 100%, 84%, 0.30) 18%,
+    hsla(210, 80%, 70%, 0.12) 46%,
+    hsla(216, 60%, 40%, 0.04) 66%,
+    hsla(0, 0%, 0%, 0) 86%
   );
 }
 
@@ -338,12 +413,13 @@
 .ccg-foil-laser {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 6;
-  mix-blend-mode: color-dodge;
-  opacity: calc((0.20 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1));
-  filter: var(--theme-laser-tint, none) brightness(0.85) contrast(1.6) saturate(1.5);
+  mix-blend-mode: var(--theme-foil-laser-blend, color-dodge);
+  opacity: calc((0.20 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  filter: var(--theme-laser-tint, none) brightness(var(--theme-foil-laser-bright, 0.85))
+    contrast(var(--theme-foil-laser-contrast, 1.6)) saturate(var(--theme-foil-laser-sat, 1.5));
   background-repeat: no-repeat;
   background-image: linear-gradient(
     205deg,
@@ -363,11 +439,11 @@
 .ccg-foil-security {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 3;
-  mix-blend-mode: plus-lighter;
-  opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1));
+  mix-blend-mode: var(--theme-foil-sec-blend, plus-lighter);
+  opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
   filter: var(--theme-laser-tint, none) brightness(1.08) contrast(1.35) saturate(1.4);
   background-repeat: no-repeat;
   background-image: linear-gradient(
@@ -413,7 +489,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   background-image: var(--theme-security-pattern);
   background-size: var(--theme-security-size);
   opacity: 0.2;
@@ -434,48 +510,40 @@
   --foot-b: 3.2%;
 }
 
-/* 金框: 立体倒角 (左上受光 / 右下压暗) + 内侧包边 */
+/* dad 2026-09-12: 金框整体撤掉 — 它与卡面 .ccg-frame 的金边形成"边框叠边框", 设计上重复.
+   现在这里只是个纯定位容器, 画面直接坐在卡面底衬上 (无第二圈线) */
 .ccg-art-frame {
   position: absolute;
-  left: var(--art-l);
-  right: var(--art-l);
+  left: var(--ccg-art-inset);
+  right: var(--ccg-art-inset);
   top: var(--art-t);
   height: var(--art-h);
   z-index: 4;
-  padding: 6px;
-  border-radius: 14px;
-  background:
-    linear-gradient(148deg, rgba(255, 253, 236, 0.78) 0%, rgba(255, 255, 255, 0) 26%, rgba(0, 0, 0, 0) 54%, rgba(26, 13, 0, 0.46) 86%, rgba(96, 58, 8, 0.3) 100%),
-    linear-gradient(158deg, #fff5c6 0%, #f2d478 14%, #d3a531 38%, #a2741a 58%, #e6bd44 78%, #fff2ba 100%);
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.55),
-    0 1px 0 rgba(255, 246, 210, 0.4),
-    inset 0 0 0 1px rgba(88, 56, 8, 0.75);
   pointer-events: none;
-}
-.ccg-art-frame::after {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: 12px;
-  pointer-events: none;
-  background: linear-gradient(148deg, rgba(255, 252, 228, 0.55), rgba(255, 252, 228, 0) 36%);
-  mix-blend-mode: screen;
 }
 
 /* 画面窗口: 凹槽内嵌; 箔层与聚光灯全裁在这里, 指针坐标换算成框内坐标 */
 .ccg-art-window {
   position: absolute;
-  inset: 6px;
-  border-radius: 9px;
+  inset: 0;
+  border-radius: var(--ccg-rim-inner-r);
   overflow: hidden;
   isolation: isolate;
   --pointer-x: var(--aw-x, 50%);
   --pointer-y: var(--aw-y, 50%);
+}
+/* 四边柔性压暗: 挂 ::after (z4 = 箔层之上 / 主视觉之下), 让画面边缘自然融进卡面底衬,
+   不产生"一圈线". 直接写在窗口上是无效的 — 窗口内的箔层会把它整个盖住 */
+.ccg-art-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-rim-inner-r);
+  pointer-events: none;
+  z-index: 4;
   box-shadow:
-    inset 0 0 0 1px rgba(26, 14, 2, 0.92),
-    inset 0 6px 14px rgba(0, 0, 0, 0.55),
-    inset 0 -4px 10px rgba(0, 0, 0, 0.42);
+    inset 0 18px 30px rgba(6, 12, 30, 0.32),
+    inset 0 -16px 26px rgba(6, 12, 30, 0.38);
 }
 
 /* 主视觉 (框内) */
@@ -500,8 +568,8 @@
 /* 银色数据条: 两端收尖的金属条 */
 .ccg-info-bar {
   position: absolute;
-  left: 4.2%;
-  right: 4.2%;
+  left: var(--art-l);
+  right: var(--art-l);
   top: var(--bar-t);
   height: var(--bar-h);
   z-index: 7;
@@ -510,14 +578,13 @@
   justify-content: space-between;
   padding: 0 6.4%;
   clip-path: polygon(0 50%, 2.4% 0, 97.6% 0, 100% 50%, 97.6% 100%, 2.4% 100%);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, 0.14) 100%),
-    linear-gradient(90deg, #949ba4 0%, #e6eaee 11%, #f8fafc 50%, #dee3e8 89%, #8b929b 100%);
-  color: #2a2f36;
+  /* 冷银配方是硬编码历史; 现在走主题 token, 淡色主题换暖族 (dad image#8) */
+  background: var(--theme-bar-bg);
+  color: var(--theme-bar-ink, #2a2f36);
   font-size: calc(var(--card-w) * 0.0278);
   font-weight: 700;
   letter-spacing: 0.05em;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+  text-shadow: var(--theme-bar-ink-shadow, 0 1px 0 rgba(255, 255, 255, 0.75));
   pointer-events: none;
   white-space: nowrap;
 }
@@ -537,21 +604,29 @@
   flex-direction: column;
   gap: calc(var(--card-w) * 0.01);
   padding: 4.2% 6% 2.6%;
-  border-radius: 3px;
-  background:
-    radial-gradient(ellipse 92% 58% at 50% 0%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 72%),
-    linear-gradient(178deg, var(--theme-plate-bg-from) 0%, var(--theme-plate-bg-to) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 1px 3px rgba(0, 0, 0, 0.3);
-  color: var(--theme-plate-text);
+  border-radius: 0;
+  /* dad 2026-09-12: 撤掉米色画布 — 文字直接压在卡面上.
+     对比度用两条保证: ①上透明→下压暗的柔性渐隐 (不是实心底板) ②主题亮色墨 + 深色描影.
+     5 套主题底衬都是暗色 (#0e1a3e/#0a1f14/#2a0e14/#1a1030/#0c1824), 亮字全程可读. */
+  /* dad 2026-09-12 image#6 item3: 渐隐 / 墨色 / 描影全走主题 token —
+     深色主题 = 暗渐隐 + 亮墨 + 深描影; 淡色主题把三者反转 (亮渐隐 + 深墨 + 白描影),
+     同一条规则两套极性, 文字区永远压得住。 */
+  background: var(--theme-plate-scrim, linear-gradient(180deg,
+    rgba(6, 12, 30, 0) 0%,
+    rgba(6, 12, 30, 0.30) 46%,
+    rgba(6, 12, 30, 0.58) 100%));
+  box-shadow: none;
+  color: var(--theme-plate-ink, var(--theme-frame-hi));
+  text-shadow: var(--theme-plate-ink-shadow, 0 1px 2px rgba(3, 7, 18, 0.92), 0 0 12px rgba(3, 7, 18, 0.72));
   pointer-events: none;
 }
 .ccg-plate-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 6px;
   padding-bottom: calc(var(--card-w) * 0.01);
-  border-bottom: 1px solid rgba(122, 92, 38, 0.26);
+  border-bottom: 1px solid var(--theme-plate-rule, color-mix(in srgb, var(--theme-frame-hi) 30%, transparent));
 }
 .ccg-plate-head .ccg-title {
   justify-content: flex-start;
@@ -559,17 +634,18 @@
   flex: 1 1 auto;
   min-width: 0;
   font-size: calc(var(--card-w) * 0.048);
-  color: var(--theme-plate-text);
+  color: var(--theme-plate-ink, var(--theme-frame-hi));
   letter-spacing: 0.05em;
   text-align: left;
   line-height: 1.25;
+  text-shadow: inherit;
 }
 .ccg-plate-head .ccg-orn { width: 6px; height: 6px; flex: 0 0 6px; }
 .ccg-plate-desc {
   margin: 0;
   font-size: calc(var(--card-w) * 0.0295);
   line-height: 1.5;
-  color: color-mix(in srgb, var(--theme-plate-text) 78%, #ffffff);
+  color: var(--theme-plate-ink-sub, color-mix(in srgb, var(--theme-frame-hi) 86%, #ffffff));
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -587,14 +663,15 @@
   align-items: center;
   justify-content: space-between;
   padding-top: calc(var(--card-w) * 0.012);
-  border-top: 1px solid rgba(212, 160, 23, 0.42);
+  border-top: 1px solid var(--theme-foot-rule, rgba(212, 160, 23, 0.42));
   font-size: calc(var(--card-w) * 0.0265);
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #a08a5c;
+  color: var(--theme-foot-ink, #cbb894);
+  text-shadow: var(--theme-foot-ink-shadow, 0 1px 2px rgba(3, 7, 18, 0.85));
   pointer-events: none;
 }
-.ccg-foot span:last-child { color: #d9ab2c; letter-spacing: 0.2em; }
+.ccg-foot span:last-child { color: var(--theme-foot-accent, #d9ab2c); letter-spacing: 0.2em; }
 
 .ccg-title {
   display: flex;
@@ -658,9 +735,10 @@
 .ccg-no {
   font-size: calc(var(--card-w) * 0.0322);
   font-weight: 700;
-  color: #f0cf5e;
+  /* dad 2026-09-12 item3: 编号墨色也走 token — 深色卡是浅金, 淡色卡换成深金 (否则金压米白几乎看不见) */
+  color: var(--theme-no-ink, #f0cf5e);
   letter-spacing: 0.14em;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  text-shadow: var(--theme-no-ink-shadow, 0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
 /* ── Shared card back ─────────────────────────────────────── */
@@ -676,8 +754,9 @@
 }
 
 .ccg-back-face .ccg-foil-shine {
-  opacity: calc((0.14 + var(--from-center, 0) * 0.22) * var(--holo-gain, 1));
-  filter: brightness(0.5) contrast(1.9) saturate(1.3);
+  opacity: calc((0.14 + var(--from-center, 0) * 0.22) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  filter: brightness(var(--theme-foil-back-bright, 0.5))
+    contrast(var(--theme-foil-back-contrast, 1.9)) saturate(var(--theme-foil-back-sat, 1.3));
 }
 .ccg-back-face .ccg-foil-shine::after { opacity: calc(0.26 * var(--holo-gain, 1)); }
 .ccg-back-face .ccg-foil-glitter { opacity: calc(0.1 * var(--holo-gain, 1)); }
@@ -768,7 +847,7 @@
 .ccg-layer {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: var(--ccg-card-r);
   pointer-events: none;
 }
 
@@ -796,15 +875,20 @@
   object-fit: contain;
 }
 
-/* 画面框内的箔层: 圆角跟随窗口, 否则 18px 圆角会在四角漏出底纹 */
+/* 画面框内的箔层: 圆角跟随窗口, 否则 18px 圆角会在四角漏出底纹
+   dad 2026-09-12 image#10: 之前漏了 .ccg-foil-stack 本体 — 它是带 overflow:hidden 的
+   裁剪盒, 仍用 18px 圆角 ⇒ 在 7px 的窗口四角切出一块直角弧度的新月形裸卡身
+   (深色主题下 = 一淡一深两个圆角矩形错角叠加); 它 + 防伪纹 ::before 一起收敛到内弧半径 */
 .ccg-art-window .ccg-foil-stock,
+.ccg-art-window .ccg-foil-stack,
 .ccg-art-window .ccg-foil-shine,
 .ccg-art-window .ccg-foil-glitter,
 .ccg-art-window .ccg-foil-glare,
 .ccg-art-window .ccg-foil-spec,
 .ccg-art-window .ccg-foil-laser,
-.ccg-art-window .ccg-foil-security {
-  border-radius: 8px;
+.ccg-art-window .ccg-foil-security,
+.ccg-art-window .ccg-foil-security::before {
+  border-radius: var(--ccg-rim-inner-r);
 }
 
 .ccg-flip-hint { display: none; }
@@ -1190,3 +1274,44 @@ body.ccg-modal-open .ccg-demo-actions {
       translateZ(var(--lift, 0px)) scale(var(--pulse, 1));
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   防伪标签纹样库 (dad 2026-09-12 image#6 item2: "镭射防伪标签的纹理样式也要做多种",
+   参考 https://poke-holo.simey.me/ 的多种箔纹)
+
+   切换方式: 卡面容器 (.ccg-stage / 弹窗) 加 data-ccg-sec="<id>";
+   不写该属性 (或 "theme") = 沿用主题自带纹样 (--theme-security-pattern)。
+   id 一览:
+     cosmos    星空微粒 —— 密布四芒星 + 细点 (类 poke-holo cosmos holo)
+     prism     棱镜斜纹 —— 双向斜刻线, 类太阳柱 prism
+     dots      圆点阵   —— 大小点交错, 类点阵箔
+     waves     同心波纹 —— 弧线同心扩散, 类水波箔
+     grid      细密网格 —— 防伪纸细网, 类证件底纹
+     honeycomb 六角蜂窝 —— 蜂窝晶格, 类金属蜂窝箔
+     flute     笛韵刻线 —— 内置笛剪影纹 (同 azure 默认, 用于强制覆盖主题纹样)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ccg-stage {
+  --ccg-sec-cosmos: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'><g fill='%23fff'><path d='M14 12 l1.7 5.1 5.1 1.7 -5.1 1.7 -1.7 5.1 -1.7 -5.1 -5.1 -1.7 5.1 -1.7z'/><path d='M66 30 l1.4 4.2 4.2 1.4 -4.2 1.4 -1.4 4.2 -1.4 -4.2 -4.2 -1.4 4.2 -1.4z'/><path d='M40 66 l1.5 4.6 4.6 1.5 -4.6 1.5 -1.5 4.6 -1.5 -4.6 -4.6 -1.5 4.6 -1.5z'/><circle cx='84' cy='70' r='1.9'/><circle cx='50' cy='16' r='1.6'/><circle cx='24' cy='44' r='1.8'/><circle cx='88' cy='12' r='1.4'/><circle cx='72' cy='56' r='1.5'/><circle cx='8' cy='80' r='1.6'/><circle cx='34' cy='88' r='1.3'/><circle cx='58' cy='78' r='1.2'/></g></svg>");
+  --ccg-sec-honeycomb: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='38.2' height='66' viewBox='0 0 38.2 66'><g fill='none' stroke='%23fff' stroke-width='2'><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(0 0)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(38.2 0)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(19.1 33)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(0 66)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(38.2 66)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(19.1 -33)'/></g></svg>");
+  --ccg-sec-prism: repeating-linear-gradient(
+      48deg, rgba(255, 255, 255, 0.95) 0 1.6px, rgba(255, 255, 255, 0) 1.6px 10px),
+    repeating-linear-gradient(
+      -42deg, rgba(255, 255, 255, 0.5) 0 1px, rgba(255, 255, 255, 0) 1px 23px);
+  --ccg-sec-dots: radial-gradient(
+      circle at 30% 30%, #fff 0 1.6px, transparent 1.7px),
+    radial-gradient(circle at 78% 74%, #fff 0 1.1px, transparent 1.2px);
+  --ccg-sec-waves: repeating-radial-gradient(
+    circle at 50% 140%, rgba(255, 255, 255, 0.92) 0 1.2px, rgba(255, 255, 255, 0) 1.2px 12px);
+  --ccg-sec-grid: repeating-linear-gradient(
+      0deg, rgba(255, 255, 255, 0.72) 0 0.8px, transparent 0.8px 7px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.72) 0 0.8px, transparent 0.8px 7px);
+}
+
+/* 每种纹样自带节奏 (mask-size / background-size 的平铺尺寸), 换纹样即换颗粒度 */
+.ccg-stage[data-ccg-sec="cosmos"]    { --theme-security-pattern: var(--ccg-sec-cosmos);    --theme-security-size: 96px 96px; }
+.ccg-stage[data-ccg-sec="prism"]     { --theme-security-pattern: var(--ccg-sec-prism);     --theme-security-size: 22px 22px; }
+.ccg-stage[data-ccg-sec="dots"]      { --theme-security-pattern: var(--ccg-sec-dots);      --theme-security-size: 16px 16px; }
+.ccg-stage[data-ccg-sec="waves"]     { --theme-security-pattern: var(--ccg-sec-waves);     --theme-security-size: 44px 44px; }
+.ccg-stage[data-ccg-sec="grid"]      { --theme-security-pattern: var(--ccg-sec-grid);      --theme-security-size: 12px 12px; }
+.ccg-stage[data-ccg-sec="honeycomb"] { --theme-security-pattern: var(--ccg-sec-honeycomb); --theme-security-size: 38.2px 66px; }
+.ccg-stage[data-ccg-sec="flute"]     { --theme-security-pattern: var(--ccg-security-pattern); --theme-security-size: 132px 132px; }

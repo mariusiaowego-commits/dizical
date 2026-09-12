@@ -101,7 +101,7 @@
             '<div class="ccg-back-lbl">典故</div>' +
             '<div class="ccg-back-val">' + (d.story || "") + '</div>' +
           '</div>' +
-          '<div class="ccg-back-foot">' + d.hall + '</div>' +
+          '<div class="ccg-back-foot"><span class="ccg-stars">' + starsHtml(d.stars) + '</span></div>' +
         '</div>' +
         '<div class="ccg-frame"></div>' +
       '</div>'
@@ -110,7 +110,10 @@
 
   function starsHtml(n) {
     var i, out = "";
-    for (i = 0; i < n; i++) out += '<span class="ccg-star"></span>';
+    /* dad image#9/4: 星级来自后端 achievements.card_stars (resolve_card_stars);
+       前端只做钳位, 不写死任何数量 */
+    var c = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
+    for (i = 0; i < c; i++) out += '<span class="ccg-star"></span>';
     return out;
   }
 
@@ -156,12 +159,11 @@
         '<div class="ccg-plate">' +
           '<div class="ccg-plate-head">' +
             titleHtml(d.name) +
-            '<span class="ccg-stars">' + starsHtml(d.stars) + '</span>' +
           '</div>' +
           '<p class="ccg-plate-desc">' + (d.cond || "") + '</p>' +
         '</div>' +
         '<div class="ccg-foot">' +
-          '<span>' + (d.hall || "") + '</span>' +
+          '<span class="ccg-stars">' + starsHtml(d.stars) + '</span>' +
           '<span>DIZICAL</span>' +
         '</div>' +
       '</div>'
@@ -537,7 +539,8 @@
       cond: d.cond || d.cond_text || BADGE.cond,
       story: d.story || d.zh_story || d.description || BADGE.story,
       date: d.date || d.achieved_at || BADGE.date,
-      stars: d.stars || BADGE.stars,
+      stars: d.card_stars != null ? d.card_stars
+        : (d.stars != null ? d.stars : BADGE.stars),
       no: d.no || "001",
       hall: d.hall || BADGE.hall
     };
