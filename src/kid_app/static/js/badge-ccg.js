@@ -1,5 +1,7 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 3D 模型(倾斜·翻转·微视差·聚光灯)版本: v1.0.0 (定稿基线, 冻结快照 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.1.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.1.0-dev 本轮 3D 代码无功能改动, 只为跟随卡面样式版本一起升号;
+      改了倾斜/翻转/视差/聚光灯逻辑 ⇒ 两个文件同时升号
       改本文件交互/几何 ⇒ 先升版本号 (本行 + badge-ccg.css + demo 页头 chip),
       再用 scripts/freeze-ccg-demo.sh <新版本号> "说明" 冻结, 登记表见 static/demo-archive/VERSIONS.md */
 (function (global) {

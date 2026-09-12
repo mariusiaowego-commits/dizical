@@ -1,5 +1,7 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.0.0 (定稿基线, 冻结快照 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.1.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.1.0-dev 增量: l2 淡色主题金框固定金色 / l4 金框 2px 底座可关(--ccg-frame-base-c) /
+      l5 防伪强度总增益(--ccg-sec-gain) / demo 版本号 chip
       改本文件任何视觉规则 ⇒ 先升版本号 (本行 + badge-ccg.js + demo 页头 chip),
       再用 scripts/freeze-ccg-demo.sh <新版本号> "说明" 冻结, 版本登记表见
       static/demo-archive/VERSIONS.md */
@@ -35,6 +37,9 @@
   /* 笛韵防伪暗纹 (竹笛剪影 + 星芒 + DIZICAL 字样, 45° 平铺阵列) */
   --ccg-security-pattern: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M7 103 L95 15 M12 108 L100 20 M7 103 L12 108 M95 15 L100 20'/><circle cx='37' cy='73' r='2.8' fill='%23fff' stroke='none'/><circle cx='54' cy='56' r='2.8' fill='%23fff' stroke='none'/><circle cx='71' cy='39' r='2.8' fill='%23fff' stroke='none'/></g><path d='M106 88 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z' fill='%23fff'/><text x='10' y='126' font-family='Helvetica, Arial, sans-serif' font-size='9' font-weight='700' letter-spacing='2.6' fill='%23fff'>DIZICAL</text></svg>");
   --ccg-security-size: 132px 132px;
+  /* dad 2026-09-12 l5: 防伪强度总增益 —— 1 = 现值 (demo 定稿看不出强度时可整体加档);
+     同一根数字控制「常驻暗纹」与「聚光灯彩虹」两层, 接生产按卡面定档(弱1/中1.6/强2.4) */
+  --ccg-sec-gain: 1;
 
   /* 圆角体系 (dad 2026-09-12 image#6 item1: "两个圆角矩形角度不同叠在一起" -> 收敛成一组变量)
      唯一来源 = 卡面半径 R 与金边厚度 rim-w；金边内弧 = R - rim-w；
@@ -218,12 +223,16 @@
   pointer-events: none;
   z-index: 8;
   box-shadow:
-    inset 0 0 0 2px var(--theme-frame-r1, #342205),
+    /* dad 2026-09-12 l4「底座」= 这一条 2px 暗色掐丝 (#342205): 去掉时改透明, 几何不变
+       (demo/对比页用 .ccg-stage[data-ccg-base="off"]) */
+    inset 0 0 0 2px var(--ccg-frame-base-c, var(--theme-frame-r1, #342205)),
     inset 0 0 0 5px var(--theme-frame-gold, #d4a017),
     inset 0 0 0 6px var(--theme-frame-hi),
     inset 0 0 0 9px var(--theme-frame-lo),
     inset 0 0 0 11px var(--theme-frame-r3, #4e3207);
 }
+/* 底座 A/B 开关: off = 只把最外那条 2px 暗线收掉, 金框带宽/位置不变 */
+.ccg-stage[data-ccg-base="off"] { --ccg-frame-base-c: transparent; }
 .ccg-frame::after {
   content: "";
   position: absolute;
@@ -447,7 +456,7 @@
   pointer-events: none;
   z-index: 3;
   mix-blend-mode: var(--theme-foil-sec-blend, plus-lighter);
-  opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-sec-gain, 1));
   filter: var(--theme-laser-tint, none) brightness(1.08) contrast(1.35) saturate(1.4);
   background-repeat: no-repeat;
   background-image: linear-gradient(
@@ -496,7 +505,8 @@
   border-radius: var(--ccg-card-r);
   background-image: var(--theme-security-pattern);
   background-size: var(--theme-security-size);
-  opacity: 0.2;
+  /* dad 2026-09-12 l5: 常驻暗纹强度 = 0.2 × 增益 (现值 0.2) */
+  opacity: calc(0.2 * var(--ccg-sec-gain, 1));
 }
 
 /* ── Front layout ─ Amazing Rare 版式 ─────────────────────── */

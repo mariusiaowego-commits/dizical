@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#f3ead6">
-  <meta name="ccg-demo-version" content="v1.0.0">
+  <meta name="ccg-demo-version" content="v1.1.0-dev">
   <title>徽章集卡 · 3D 把玩对比</title>
   <link rel="stylesheet" href="/static/css/badge-ccg.css">
   <!-- Sprint 26091101 feat/badge-3d-ccg: 4 套非默认主题变量 (bamboo/coral/imperial/frost), azure 默认值在 badge-ccg.css -->
@@ -15,7 +15,8 @@
   <header class="ccg-demo-bar">
     <div class="ccg-demo-title">徽章集卡 3D
       <span class="ccg-demo-ver" title="demo 版本号 —— 改卡片样式 / 3D 模型样式前先看这里; 冻结快照见 demo-archive">
-        <span id="ccg-demo-ver">v1.0.0</span>
+        <span id="ccg-demo-ver">v1.1.0-dev</span>
+        <a href="/static/badge-ccg-compare.html">细节对比页</a>
         <a href="/static/demo-archive/VERSIONS.md" target="_blank" rel="noopener">版本表</a>
       </span>
     </div>
@@ -93,7 +94,7 @@
       var CCG = window.DizicalCCG;
       // dad 2026-09-12: demo 自报版本号 —— 改卡片样式 / 3D 模型样式前先看页头这行。
       // 改完冻结: bash scripts/freeze-ccg-demo.sh <新版本号> "说明" (旧版留在 static/demo-archive/)
-      window.CCG_DEMO_VERSION = "v1.0.0";
+      window.CCG_DEMO_VERSION = "v1.1.0-dev";
       (function () {
         var v = window.CCG_DEMO_VERSION;
         var el = document.getElementById("ccg-demo-ver");

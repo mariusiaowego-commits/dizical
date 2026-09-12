@@ -178,13 +178,10 @@
   --theme-no-ink:           #8a6414;
   --theme-no-ink-shadow:    0 1px 0 rgba(255, 255, 255, 0.78);
 
-  /* 金框: 亮金压在米白卡上, 略收对比以免糊 */
+  /* dad 2026-09-12 l2 拍板「固定」: 金框固定金色, 不再跟主题变色。
+     原先 pearl 的 3 条 ring 覆盖已取消, 回落 badge-ccg.css 默认金 (#342205/#d4a017/#4e3207) */
   --theme-frame-hi:         #fff7dc;
   --theme-frame-lo:         #b28a2c;
-  /* dad image#9/7: 金框完全跟主题变色 (3 条 ring 补齐, 默认金色见 badge-ccg.css) */
-  --theme-frame-r1:         #6d5420;
-  --theme-frame-gold:       #e3c67a;
-  --theme-frame-r3:         #7a5d22;
 
   --theme-glow:             hsl(44, 74%, 72%);
   --theme-laser-tint:       hue-rotate(-8deg) saturate(1.02);
@@ -248,12 +245,10 @@
   --theme-no-ink:           #1d6446;
   --theme-no-ink-shadow:    0 1px 0 rgba(255, 255, 255, 0.78);
 
-  --theme-frame-hi:         #e8fff0;
-  --theme-frame-lo:         #5f9c78;
-  /* dad image#9/7: 金框完全跟主题变色 (3 条 ring 补齐, 默认金色见 badge-ccg.css) */
-  --theme-frame-r1:         #14523a;
-  --theme-frame-gold:       #8fcfae;
-  --theme-frame-r3:         #17493a;
+  /* dad 2026-09-12 l2 拍板「固定」: 金框固定金色 —— 原先 mint 金框变绿, 现取消 3 条 ring
+     覆盖 (回落默认金) 并把内圈 hi/lo 也收回金色系 */
+  --theme-frame-hi:         #fff7dc;
+  --theme-frame-lo:         #b28a2c;
 
   --theme-glow:             hsl(152, 62%, 70%);
   --theme-laser-tint:       hue-rotate(96deg) saturate(1.06);
@@ -317,12 +312,10 @@
   --theme-no-ink:           #8f2f4d;
   --theme-no-ink-shadow:    0 1px 0 rgba(255, 255, 255, 0.78);
 
-  --theme-frame-hi:         #ffe9f1;
-  --theme-frame-lo:         #b0687f;
-  /* dad image#9/7: 金框完全跟主题变色 (3 条 ring 补齐, 默认金色见 badge-ccg.css) */
-  --theme-frame-r1:         #7a2b4a;
-  --theme-frame-gold:       #eba3bb;
-  --theme-frame-r3:         #66253f;
+  /* dad 2026-09-12 l2 拍板「固定」: 金框固定金色 —— 原先 sakura 金框变粉, 现取消 3 条 ring
+     覆盖 (回落默认金) 并把内圈 hi/lo 也收回金色系 */
+  --theme-frame-hi:         #fff7dc;
+  --theme-frame-lo:         #b28a2c;
 
   --theme-glow:             hsl(340, 72%, 76%);
   --theme-laser-tint:       hue-rotate(-40deg) saturate(1.08);

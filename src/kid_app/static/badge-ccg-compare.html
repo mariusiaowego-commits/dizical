@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#f3ead6">
+  <meta name="ccg-demo-version" content="v1.1.0-dev">
+  <title>卡面细节 A/B 对比 · 金环 / 底座 / 防伪强度</title>
+  <link rel="stylesheet" href="/static/css/badge-ccg.css">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    /* 对比页自带样式 (不动卡面 CSS) —— dad 2026-09-12 l3/l4/l5 拍板用 */
+    .dg-page { padding: 18px 20px 60px; }
+    .dg-sec { margin: 0 0 34px; }
+    .dg-sec h2 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #5a4318;
+    }
+    .dg-note {
+      margin: 0 0 18px;
+      max-width: 720px;
+      font-size: 12.5px;
+      line-height: 1.85;
+      color: #6b5a34;
+    }
+    .dg-note b { color: #2a2008; }
+    .dg-grid { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+    .dg-cell { margin: 0; }
+    .dg-cell figcaption {
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4a3a12;
+      text-align: center;
+    }
+    .dg-cell figcaption span { display: block; margin-top: 3px; font-weight: 400; color: #7a6a44; }
+    .dg-cell .ccg-stage { --card-w: min(232px, 62vw); }
+
+    /* ① 金环标注: 把金框那 11px 环带整圈涂成半透明洋红 —— 让「金环」这个说法有具体位置 */
+    .dg-cell.ringmap .ccg-frame { box-shadow: inset 0 0 0 11px rgba(233, 30, 220, 0.45) !important; }
+    .dg-cell.ringmap .ccg-card-front {
+      outline: 1px dashed rgba(233, 30, 220, 0.85);
+      outline-offset: -1px;
+    }
+    /* ①b 放大 3 倍看左上角: 五条同心环逐条可数 */
+    .dg-zoom { width: 168px; height: 168px; overflow: hidden; border: 1px solid #d9c9a2; background: #f7f1e2; }
+    /* 用 zoom 而不是 transform: scale —— 3D 代码自己会写 transform, 免得互相覆盖 */
+    .dg-zoom .ccg-stage { --card-w: 300px; zoom: 3; }
+    .dg-zoom .ccg-foil-flip-hint { display: none; }
+  </style>
+</head>
+<body class="ccg-demo dg-page">
+  <header class="ccg-demo-bar">
+    <div class="ccg-demo-title">卡面细节 A/B 对比
+      <span class="ccg-demo-ver" title="版本号 —— 改卡片样式 / 3D 模型样式前先看这里">
+        <span id="ccg-demo-ver">v1.1.0-dev</span>
+        <a href="/static/badge-ccg-demo.html">回 demo</a>
+        <a href="/static/demo-archive/VERSIONS.md" target="_blank" rel="noopener">版本表</a>
+      </span>
+    </div>
+    <label class="ccg-theme-pick" for="dg-theme">
+      <span>主题（只作用于 ①②③）</span>
+      <select id="dg-theme" aria-label="对比页主题">
+        <option value="azure">星曜深蓝 (默认)</option>
+        <option value="bamboo">竹影翠玉</option>
+        <option value="coral">朱霞流丹</option>
+        <option value="imperial">紫霄耀金</option>
+        <option value="frost">冰霜晶蓝</option>
+        <option value="pearl">珠光象牙</option>
+        <option value="mint">薄荷玉</option>
+        <option value="sakura">樱雪</option>
+      </select>
+    </label>
+  </header>
+
+  <main>
+    <!-- ① 金环标注 -------------------------------------------------------------->
+    <section class="dg-sec">
+      <h2>① 「金环」在哪（把那一圈涂成洋红）</h2>
+      <p class="dg-note">
+        大白话：<b>金环 = 卡片最外圈那一圈金属边框</b>，整圈一样宽（11px，约等于卡宽的 3.7%）。
+        上下左右是<b>同一圈</b>，不是上边一条、下边一条。"上下两条金环"是之前的说法太含糊，这里直接把它涂出来。
+        这一圈由 <b>5 条同心环</b>叠成，从外往里数：
+        <b>0–2px 暗色掐丝（就是 l4 说的"底座"）→ 2–5px 主金 #d4a017 → 5–6px 高光 → 6–9px 阴影 → 9–11px 暗金外缘</b>。
+        右边是把左上角放大 3 倍的样子，五条环可以逐条数。
+      </p>
+      <div class="dg-grid">
+        <figure class="dg-cell ringmap">
+          <div class="ccg-stage" id="d-ring"></div>
+          <figcaption>整卡 · 洋红那一圈就是金环<span>宽 11px，四边等宽</span></figcaption>
+        </figure>
+        <figure class="dg-cell ringmap">
+          <div class="dg-zoom"><div class="ccg-stage" id="d-ringzoom"></div></div>
+          <figcaption>左上角放大 3×<span>0–2px 暗线 → 主金 → 高光 → 阴影 → 暗金外缘</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ② 底座 去 / 留 ---------------------------------------------------------->
+    <section class="dg-sec">
+      <h2>② 底座（最外 2px 暗色掐丝）去 / 留</h2>
+      <p class="dg-note">
+        两张卡只差<b>最外面那 2px 一条暗线</b>（<b>#342205</b>），金框的宽度、位置、其余 4 条环完全一样。
+        留 = 现在线上的样子（金框外面再包一条暗边，像掐丝珐琅的底托，卡面更"厚"、边界更硬）；
+        去 = 金框直接压到卡片最外缘，卡面更轻、更贴屏幕。
+      </p>
+      <div class="dg-grid">
+        <figure class="dg-cell">
+          <div class="ccg-stage" id="d-base-on"></div>
+          <figcaption>A · 底座<b>留</b>（现在线上）<span>金框外多 2px 暗线</span></figcaption>
+        </figure>
+        <figure class="dg-cell">
+          <div class="ccg-stage" id="d-base-off" data-ccg-base="off"></div>
+          <figcaption>B · 底座<b>去</b><span>金框直接到卡最外缘</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ③ 防伪强度 -------------------------------------------------------------->
+    <section class="dg-sec">
+      <h2>③ 防伪强度 ×1（现值）/ ×1.6 / ×2.4</h2>
+      <p class="dg-note">
+        同一根强度系数，同时加在两层上：<b>常驻暗纹</b>（不碰鼠标也隐约可见的底纹，现值 0.2）
+        和 <b>聚光灯扫过时的彩虹镭射</b>。把鼠标在卡上来回扫，看三张的差别。
+        现值偏弱，如果选 ×1.6 或 ×2.4，我就按这个档位接生产（见下方"接生产"说明）。
+      </p>
+      <div class="dg-grid">
+        <figure class="dg-cell" style="--ccg-sec-gain:1">
+          <div class="ccg-stage" id="d-sec-1"></div>
+          <figcaption>×1.0 · 现值<span>暗纹 0.20</span></figcaption>
+        </figure>
+        <figure class="dg-cell" style="--ccg-sec-gain:1.6">
+          <div class="ccg-stage" id="d-sec-2"></div>
+          <figcaption>×1.6 · 中<span>暗纹 0.32</span></figcaption>
+        </figure>
+        <figure class="dg-cell" style="--ccg-sec-gain:2.4">
+          <div class="ccg-stage" id="d-sec-3"></div>
+          <figcaption>×2.4 · 强<span>暗纹 0.48</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ④ 淡色主题金框 ---------------------------------------------------------->
+    <section class="dg-sec">
+      <h2>④ 淡色主题的金框（l2 拍板"固定"后）</h2>
+      <p class="dg-note">
+        你拍"固定"之后，薄荷玉 / 樱雪的边框已改回<b>金色</b>，不再跟着主题变绿 / 变粉。
+        这三套淡色主题的卡片底色、文字、镭射色调都没动。
+      </p>
+      <div class="dg-grid">
+        <figure class="dg-cell" data-fixed-theme="mint">
+          <div class="ccg-stage" id="d-mint"></div>
+          <figcaption>薄荷玉 · 金框<span>原先金框是绿的</span></figcaption>
+        </figure>
+        <figure class="dg-cell" data-fixed-theme="sakura">
+          <div class="ccg-stage" id="d-sakura"></div>
+          <figcaption>樱雪 · 金框<span>原先金框是粉的</span></figcaption>
+        </figure>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/badge-ccg.js"></script>
+  <script>
+    (function () {
+      var CCG = window.DizicalCCG;
+      // dad 2026-09-12: demo 自报版本号 (与 badge-ccg-demo.html 同一套规则; 冻结脚本会改写)
+      window.CCG_DEMO_VERSION = "v1.1.0-dev";
+      (function () {
+        var v = window.CCG_DEMO_VERSION;
+        var el = document.getElementById("ccg-demo-ver");
+        if (el) el.textContent = v;
+        var m = document.querySelector('meta[name="ccg-demo-version"]');
+        if (m) m.setAttribute("content", v);
+      })();
+
+      var VALID_THEMES = ["azure", "bamboo", "coral", "imperial", "frost", "pearl", "mint", "sakura"];
+      // ① ② ③ 里的卡跟随主题下拉; ④ 固定 mint / sakura
+      var FOLLOW = [
+        { el: "d-ring", theme: null },
+        { el: "d-ringzoom", theme: null },
+        { el: "d-base-on", theme: null },
+        { el: "d-base-off", theme: null },
+        { el: "d-sec-1", theme: null },
+        { el: "d-sec-2", theme: null },
+        { el: "d-sec-3", theme: null },
+        { el: "d-mint", theme: "mint" },
+        { el: "d-sakura", theme: "sakura" }
+      ];
+      var params = new URLSearchParams(location.search);
+      var theme = params.get("theme") || "azure";
+      if (VALID_THEMES.indexOf(theme) === -1) theme = "azure";
+
+      function mountAll() {
+        CCG.unmountAll();
+        FOLLOW.forEach(function (item) {
+          var el = document.getElementById(item.el);
+          if (!el) return;
+          var data = Object.assign({}, CCG.BADGE, { card_theme: item.theme || theme });
+          CCG.mountCard(el, "holo", data);
+          // mountCard 只改 class / data-ccg-theme, 不动其它 attribute:
+          // data-ccg-base="off" / --ccg-sec-gain 都留在原处继续生效
+        });
+      }
+
+      var sel = document.getElementById("dg-theme");
+      if (sel) {
+        sel.value = theme;
+        sel.addEventListener("change", function () {
+          var v = sel.value;
+          theme = VALID_THEMES.indexOf(v) === -1 ? "azure" : v;
+          mountAll();
+        });
+      }
+      mountAll();
+    })();
+  </script>
+</body>
+</html>
