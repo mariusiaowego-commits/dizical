@@ -158,6 +158,18 @@ def create_draft(meta: dict[str, Any]) -> BadgeDraft:
         # 规整后写回 meta (strip + lower)
         meta["card_theme"] = v.strip().lower()
 
+    # dad image#9/4: card_stars 可选字段校验 — 给就必须是 1..5 整数
+    if "card_stars" in meta and meta["card_stars"] is not None:
+        from src.kid_app.badge_theme import STARS_MAX, STARS_MIN, normalize_card_stars
+
+        n = normalize_card_stars(meta["card_stars"])
+        if n is None:
+            v = meta["card_stars"]
+            raise ValueError(
+                f"meta.card_stars 非法: {v!r}, 必须是 {STARS_MIN}..{STARS_MAX} 的整数"
+            )
+        meta["card_stars"] = n
+
     draft_id = _generate_draft_id(meta["id"])
     now = _now_iso()
     draft = BadgeDraft(

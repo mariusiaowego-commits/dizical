@@ -85,6 +85,9 @@ class Database(BaseBackend):
                 ach_cols = {row[1] for row in cursor.execute("PRAGMA table_info(achievements)").fetchall()}
                 if ach_cols and "card_theme" not in ach_cols:
                     cursor.execute("ALTER TABLE achievements ADD COLUMN card_theme TEXT")
+                # dad image#9/4: 星级列同样幂等迁移
+                if ach_cols and "card_stars" not in ach_cols:
+                    cursor.execute("ALTER TABLE achievements ADD COLUMN card_stars INTEGER")
             except Exception:
                 # 读路径不能因为迁移失败 500, 但 _init_tables 是启动期 — 异常应往上冒
                 # 这里吞异常仅限"表不存在"以外的边缘情况 (生产已观察到的不稳定)

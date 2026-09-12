@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 # Sprint 26091201 feat/badge-3d-ccg B-1:
 # ensure_card_theme_column() 模块级幂等标志 — 每进程只跑一次
 _CARD_THEME_COL_DONE = False
+# ensure_card_stars_column() 模块级幂等标志 (dad image#9/4) — 每进程只跑一次
+_CARD_STARS_COL_DONE = False
 
 
 # ─── 迁移 (双后端幂等) ───────────────────────────────────────────────
@@ -95,6 +97,47 @@ def ensure_card_theme_column(conn: Any) -> None:
         logger.warning(f"badge_db.ensure_card_theme_column 失败 (下次还会重试): {e}")
 
 
+def _ensure_card_stars_sqlite(conn: sqlite3.Connection) -> bool:
+    """SQLite 幂等加 card_stars 列. 返 True=本次新增列, False=列已存在."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(achievements)").fetchall()}
+    if "card_stars" in existing:
+        return False
+    conn.execute("ALTER TABLE achievements ADD COLUMN card_stars INTEGER")
+    return True
+
+
+def _ensure_card_stars_mysql(conn) -> bool:
+    """MySQL 幂等加 card_stars 列. 返 True=本次新增列, False=列已存在."""
+    cur = conn.cursor()
+    cur.execute("SHOW COLUMNS FROM achievements LIKE 'card_stars'")
+    if cur.fetchall():
+        return False
+    cur.execute("ALTER TABLE achievements ADD COLUMN card_stars BIGINT NULL")
+    conn.commit()
+    return True
+
+
+def ensure_card_stars_column(conn: Any) -> None:
+    """ensure_card_stars_column: 双后端幂等 ALTER TABLE achievements ADD card_stars.
+
+    dad image#9/4: 星级必须后端支撑 (achievements.card_stars), 不在前端写死.
+    失败只 logger.warning, 不抛 (读页面不能因为迁移失败 500), 下次还会重试.
+    """
+    global _CARD_STARS_COL_DONE
+    if _CARD_STARS_COL_DONE:
+        return
+    try:
+        if isinstance(conn, sqlite3.Connection):
+            added = _ensure_card_stars_sqlite(conn)
+        else:
+            added = _ensure_card_stars_mysql(conn)
+        if added:
+            logger.info("badge_db: ALTER TABLE achievements ADD COLUMN card_stars (本次新增)")
+        _CARD_STARS_COL_DONE = True
+    except Exception as e:
+        logger.warning(f"badge_db.ensure_card_stars_column 失败 (下次还会重试): {e}")
+
+
 # ─── 事务 ─────────────────────────────────────────────────────────
 
 @contextmanager
@@ -110,6 +153,8 @@ def badge_write_tx() -> Iterator[sqlite3.Connection]:
     # (V2.1 INSERT 引用该列, 缺则 OperationalError)
     conn = db._get_connection()
     ensure_card_theme_column(conn)
+    # dad image#9/4: 写事务进入时确保 card_stars 列就绪
+    ensure_card_stars_column(conn)
     try:
         yield conn
         conn.commit()
@@ -226,6 +271,7 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         "achieved_at_override": None,  # V2.6 (2026-06-16) feat/badge-achieved-at-override
         "display_format": "icon",  # PR #287 follow-up: V2 表单不收 display_format, 给默认值防 KeyError
         "card_theme": None,  # Sprint 26091201 feat/badge-3d-ccg B-1: 卡面主题 (NULL → resolve_card_theme 兜底)
+        "card_stars": None,  # dad image#9/4: 星级 1-5 (NULL → resolve_card_stars 兜底)
     }
     for k, v in defaults.items():
         ach.setdefault(k, v)
@@ -250,6 +296,7 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
         ach["unlock_strategy"],
         ach["achieved_at_override"],
         ach["card_theme"],
+        ach["card_stars"],
     )
     _db_execute(
         conn,
@@ -258,9 +305,9 @@ def insert_achievement_row(conn: sqlite3.Connection, ach: dict[str, Any]) -> Non
           (id, name, type, category, stat_logic, description,
            display_format, threshold, unlocked_template, placeholder,
            sort_order, seasonal_type, cond_text, unlock_strategy,
-           achieved_at_override, card_theme)
+           achieved_at_override, card_theme, card_stars)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         insert_tuple,
     )

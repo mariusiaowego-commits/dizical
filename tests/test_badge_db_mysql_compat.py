@@ -127,15 +127,15 @@ def test_insert_achievement_row_pymysql_uses_positional(monkeypatch):
     sql_str = args[0][0]
     params = args[0][1]
 
-    # SQL 已转 `?` → `%s` (16 个 %s, 0 个 ?) — INSERT 16 列 (B-1 新增 card_theme, 跟 VALUES tuple 长度对齐)
+    # SQL 已转 `?` → `%s` (17 个 %s, 0 个 ?) — INSERT 17 列 (B-1 card_theme + image#9/4 card_stars, 跟 VALUES tuple 长度对齐)
     assert sql_str.count("?") == 0  # 全部已转 %s
-    assert sql_str.count("%s") == 16  # 16 列 INSERT
+    assert sql_str.count("%s") == 17  # 17 列 INSERT (B-1 card_theme + dad image#9/4 card_stars)
     assert "card_theme" in sql_str  # B-1: 卡面主题列在 INSERT 列表里
 
     # Params 应是 16-元素 tuple (用 list 检查更稳, MagicMock tuple isinstance 会 false)
     assert not isinstance(params, dict), f"params 应是 tuple, 拿到 dict: {params}"
     params_list = list(params)
-    assert len(params_list) == 16
+    assert len(params_list) == 17
     # 第一个是 id, 第二个是 name
     assert params_list[0] == "join_exam_23"
     assert params_list[1] == "加入考级"

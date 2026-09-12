@@ -92,3 +92,64 @@ __all__ = [
     "TYPE_THEME_MAP",
     "resolve_card_theme",
 ]
+
+
+# ─── 星级 card_stars 契约 (dad image#9/4) ─────────────────────────────
+# dad 2026-09-12: "ccg-stars 是 hard code 的还是每个 badge 背后有星级的字段支持?
+#                 我建议要有后端的支撑, 不能写死。"
+# 实现: achievements.card_stars 列 (NULL → 本文件按 type 兜底), 前端只做钳位。
+STARS_MIN = 1
+STARS_MAX = 5
+DEFAULT_CARD_STARS = 3
+
+# 无 card_stars 时按 achievements.type 兜底 (星越多越稀有/越难)
+TYPE_STARS_MAP: dict[str, int] = {
+    "突破": 2,   # 23 行 — 日常突破, 最常见
+    "执着": 3,   # 4 行 — 每日坚持
+    "段位": 3,   # 10 行 — 基本功进阶
+    "晋级": 4,   # 2 行 — 考级晋升
+    "神秘": 4,   # 1 行 — 隐藏成就
+    "巅峰": 5,   # 4 行 — 大型考级/舞台
+}
+
+
+def normalize_card_stars(value: object) -> int | None:
+    """脏数据规整: '4' / 4 → 4; 越界钳到 [STARS_MIN, STARS_MAX]; 非数返 None."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        n = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return max(STARS_MIN, min(STARS_MAX, n))
+
+
+def resolve_card_stars(
+    card_stars: object = None,
+    badge_type: object = None,
+    category: object = None,
+) -> int:
+    """单点解析 badge 星级 (1..5).
+
+    优先级 (严格):
+      1. card_stars 显式且可解析 → 钳位后用它
+      2. badge_type 命中 TYPE_STARS_MAP → 用它
+      3. category == "seasonal" → 4
+      4. 兜底 DEFAULT_CARD_STARS (3)
+
+    Args:
+        card_stars: achievements.card_stars (可能 None / 脏值 / 字符串)
+        badge_type: achievements.type ("突破"/"段位"/...)
+        category: achievements.category ("milestone"/"seasonal"/...)
+
+    Returns:
+        int in [STARS_MIN, STARS_MAX], 保证可 JSON 序列化
+    """
+    n = normalize_card_stars(card_stars)
+    if n is not None:
+        return n
+    if isinstance(badge_type, str) and badge_type.strip() in TYPE_STARS_MAP:
+        return TYPE_STARS_MAP[badge_type.strip()]
+    if isinstance(category, str) and category.strip().lower() == "seasonal":
+        return 4
+    return DEFAULT_CARD_STARS

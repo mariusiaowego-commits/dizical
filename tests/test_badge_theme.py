@@ -366,3 +366,32 @@ class TestUnclaimedPayload:
         assert theme_by_id["badge_dw"] == "bamboo"        # 段位
         assert theme_by_id["badge_seasonal"] == "coral"   # 巅峰 (type 命中) — 不是 frost, 因为 type='巅峰' 在 TYPE_THEME_MAP
         assert theme_by_id["badge_explicit"] == "imperial"  # 显式 card_theme='imperial'
+
+
+# ─── dad image#9/4: card_stars 后端字段 ─────────────────────────────
+
+
+def test_resolve_card_stars_priority_and_clamp():
+    from src.kid_app.badge_theme import DEFAULT_CARD_STARS, resolve_card_stars
+
+    # 1. 显式 card_stars 优先 + 钳位 + 字符串容错
+    assert resolve_card_stars(5) == 5
+    assert resolve_card_stars("4") == 4
+    assert resolve_card_stars(99) == 5
+    assert resolve_card_stars(0) == 1
+    # 2. 非法值落 type 兜底
+    assert resolve_card_stars("脏", "巅峰") == 5
+    assert resolve_card_stars(None, "突破") == 2
+    assert resolve_card_stars(None, "段位") == 3
+    # 3. seasonal 兜底
+    assert resolve_card_stars(None, None, "seasonal") == 4
+    # 4. 全空兜底
+    assert resolve_card_stars(None, "不存在", "milestone") == DEFAULT_CARD_STARS
+    assert resolve_card_stars(True) == DEFAULT_CARD_STARS  # bool 不算数
+
+
+def test_resolve_card_stars_range_contract():
+    from src.kid_app.badge_theme import STARS_MAX, STARS_MIN, TYPE_STARS_MAP
+
+    for v in TYPE_STARS_MAP.values():
+        assert STARS_MIN <= v <= STARS_MAX

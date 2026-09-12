@@ -41,9 +41,10 @@ def _sprint26091201_card_theme_migrate() -> None:
     """
     try:
         from src.database import db as _db
-        from src.kid_app.badge_db import ensure_card_theme_column
+        from src.kid_app.badge_db import ensure_card_stars_column, ensure_card_theme_column
         conn = _db._get_connection()
         ensure_card_theme_column(conn)
+        ensure_card_stars_column(conn)  # dad image#9/4
     except Exception as e:
         # 启动期不能因迁移失败挂掉 — 后续 INSERT/SELECT 路径会再尝试
         import logging as _logging
@@ -2825,7 +2826,7 @@ def badges_page():
     # Sprint 26091201 feat/badge-3d-ccg B-1: 多取 a.card_theme, 走 resolve_card_theme 兜底
     cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
-        "unlock_strategy, achieved_at_override, card_theme FROM achievements "
+        "unlock_strategy, achieved_at_override, card_theme, card_stars FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
@@ -2836,7 +2837,7 @@ def badges_page():
     # 2026-08-07 sprint 26080702: 提前查一次当前赛季 (避免每个 badge 都查 SQL)
     current_season = _get_current_season(conn)
     # Sprint 26091201 B-1: 兜底链解析 card_theme
-    from src.kid_app.badge_theme import resolve_card_theme
+    from src.kid_app.badge_theme import resolve_card_stars, resolve_card_theme
     for ach in ach_rows:
         aid = ach["id"]
         res = results.get(aid)
@@ -2878,6 +2879,12 @@ def badges_page():
             "card_theme": resolve_card_theme(
                 badge_type=ach.get("type"),
                 card_theme=ach.get("card_theme"),
+                category=ach.get("category"),
+            ),
+            # dad image#9/4: 星级 (后端字段, 前端只钳位)
+            "card_stars": resolve_card_stars(
+                card_stars=ach.get("card_stars"),
+                badge_type=ach.get("type"),
                 category=ach.get("category"),
             ),
             # 2026-08-07 sprint 26080702: seasonal badge 显示「当前第N赛季 + 累计获取次数」文案
