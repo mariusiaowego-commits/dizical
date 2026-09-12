@@ -169,6 +169,11 @@
           '</div>' +
           '<p class="ccg-plate-desc">' + (d.cond || "") + '</p>' +
         '</div>' +
+        '<div class="ccg-attr-bar">' +
+          '<span>' + (d.hall || "") + '</span>' +
+          '<span>' + (d.tag || "") + '</span>' +
+          '<span>' + (String(d.date || "").match(/\d{4}/) || [""])[0] + '</span>' +
+        '</div>' +
         '<div class="ccg-foot">' +
           '<span>' + (d.hall || "") + '</span>' +
           '<span>DIZICAL</span>' +
@@ -211,7 +216,9 @@
     stage.className = "ccg-stage ccg-" + scheme;
     stage.setAttribute("data-scheme", scheme);
     /* 主题: 徽章数据带 theme 就切 (默认 azure); 主题变量块在 badge-ccg-themes.css */
-    stage.setAttribute("data-ccg-theme", d.theme || "azure");
+    // B-1 (sprint-26091201, dad 2026-09-12 拍板): 主题来自 achievements.card_theme (后端 resolve_card_theme
+    // 已做 type 兜底映射), 前端只认 payload 字段, 不做第二套映射; d.theme 兼容 demo 页/老数据
+    stage.setAttribute("data-ccg-theme", d.card_theme || d.theme || "azure");
     stage.innerHTML = cardMarkup(scheme, d);
     bindReady(stage);
 

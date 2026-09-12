@@ -427,12 +427,18 @@
      与下方 art-frame→info-bar 的 7.2px 节奏对齐. 框底仍在 61% → 下方区块完全不动 */
   --art-t: 9.9%;
   --art-h: 51.1%;
-  --bar-t: 62.6%;
-  /* agy 方案 A.3.1: 银条 4.2% -> 4.6% (给文字竖向呼吸); 下方区块 top 不动 */
-  --bar-h: 4.6%;
-  /* agy 方案 A.3.2: plate 下沿 88% -> 89.5%, 给 3 行描述留空间 */
-  --plate-t: 69%;
-  --plate-b: 89.5%;
+  /* 下半区几何 (dad 2026-09-12 拍板加属性条后重排; art 底线 61% 不动):
+     61.0 金框底 -> 1.5% gap -> 62.5 银条 4.4% -> 67.0
+     1.3% gap -> 68.3 说明栏 19.3% -> 87.6
+     0.8% gap -> 88.4 属性条 3.1% -> 91.5
+     1.4% gap -> 92.9 页脚 -> 97.2 (foot-b 2.8%) */
+  --bar-t: 62.5%;
+  --bar-h: 4.4%;
+  --plate-t: 68.3%;
+  --plate-b: 87.6%;
+  /* agy 方案 A.3.3: 属性条 (殿堂 | 类别 | 年份) */
+  --attr-t: 88.4%;
+  --attr-h: 3.1%;
   /* agy 方案 A.3.4: 页脚更贴底 3.2% -> 2.8% */
   --foot-b: 2.8%;
 }
@@ -547,8 +553,9 @@
   z-index: 7;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--card-w) * 0.01);
-  padding: 4.2% 6% 2.6%;
+  gap: calc(var(--card-w) * 0.008);
+  /* 内边距收紧 (3.0%/2.0%), 让 title + 分割线 + 描述 3 行在 19.3% 高度内放得下 */
+  padding: 3% 6% 2%;
   border-radius: 4px;
   /* agy 方案 A.3.2: 顶弧高光 + 珐琅底 (色值随主题) + 0.5px 极细描边增加"嵌入卡面"感 */
   background:
@@ -567,7 +574,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding-bottom: calc(var(--card-w) * 0.012);
+  padding-bottom: calc(var(--card-w) * 0.008);
 }
 /* 左重右轻的分割线 (比等宽横线有层次) */
 .ccg-plate-head::after {
@@ -602,6 +609,35 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 属性条 (agy 方案 A.3.3, dad 2026-09-12 拍板新增): 殿堂 | 类别 | 年份 (三列等分, 竖线分隔) */
+.ccg-attr-bar {
+  position: absolute;
+  left: var(--art-l);
+  right: var(--art-l);
+  top: var(--attr-t);
+  height: var(--attr-h);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(0, 0, 0, 0.1));
+  box-shadow: inset 0 0 0 0.5px rgba(200, 160, 30, 0.18);
+  font-size: calc(var(--card-w) * 0.024);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #9a8154;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ccg-attr-bar > span {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ccg-attr-bar > span + span { border-left: 1px solid rgba(200, 160, 30, 0.26); }
 
 /* 页脚: 殿堂名 + 品牌 */
 .ccg-foot {
