@@ -1,0 +1,360 @@
+/*
+ * Sprint 26091101 feat/sprint-26091101-badge-3d-ccg
+ * Part B — 背景主题系统 (agy 方案 B.2 / B.3 / B.5)
+ *
+ * 4 个非默认主题块, 挂在 .ccg-stage[data-ccg-theme="..."] 上覆盖 CSS 变量.
+ * azure 默认值由 badge-ccg.css :root 定义, 这里不重复.
+ *
+ * token 契约 (跟 badge-ccg.css var(--theme-*) 列表对齐, 缺一不可):
+ *   --theme-stock-color / --theme-stock-gradient / --theme-stock-filter
+ *   --theme-light-main / --theme-light-sub / --theme-light-accent
+ *   --theme-security-size / --theme-plate-bg-from / --theme-plate-bg-to / --theme-plate-text
+ *   --theme-frame-hi / --theme-frame-lo / --theme-glow
+ *   --theme-laser-tint (agy 追加: 镭射色偏 filter 表达式; azure=none)
+ */
+
+/* ── 主题 2: 竹影翠玉 bamboo (基本功/每日练习) ─────────────────────────── */
+[data-ccg-theme="bamboo"] {
+  /* 底衬层 */
+  --theme-stock-color: #0a1f14;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #1a3e2a 0%, #143826 34%, #122e30 66%, #0e2420 100%);
+  --theme-stock-filter: saturate(1.18) contrast(1.06);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(120, 220, 160, 0.72);
+  --theme-light-sub:     rgba(180, 230, 210, 0.45);
+  --theme-light-accent:  rgba(40, 160, 120, 0.35);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #f2f6ef;
+  --theme-plate-bg-to:   #e4ead6;
+  --theme-plate-text:    #2a3a25;
+
+  /* 金框色调 */
+  --theme-frame-hi:      #d8f0c8;
+  --theme-frame-lo:      #2a5a3a;
+
+  /* 外发光 */
+  --theme-glow:          hsl(155, 60%, 55%);
+
+  /* 镭射偏冷 (绿/青增强) */
+  --theme-laser-tint:    hue-rotate(110deg) saturate(1.15);
+}
+
+/* ── 主题 3: 朱霞流丹 coral (考级/舞台表演) ──────────────────────────── */
+[data-ccg-theme="coral"] {
+  /* 底衬层 */
+  --theme-stock-color: #2a0e14;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #5e1a2e 0%, #481830 34%, #3a1428 66%, #2e0e1e 100%);
+  --theme-stock-filter: saturate(1.20) contrast(1.05);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(255, 130, 100, 0.68);
+  --theme-light-sub:     rgba(255, 200, 120, 0.55);
+  --theme-light-accent:  rgba(220, 60, 120, 0.35);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #fdf2ef;
+  --theme-plate-bg-to:   #f0ddd4;
+  --theme-plate-text:    #3a1f1a;
+
+  /* 金框色调 */
+  --theme-frame-hi:      #ffd8b0;
+  --theme-frame-lo:      #8a3a2a;
+
+  /* 外发光 */
+  --theme-glow:          hsl(8, 80%, 58%);
+
+  /* 镭射偏暖 (红/黄增强) */
+  --theme-laser-tint:    hue-rotate(-30deg) saturate(1.18);
+}
+
+/* ── 主题 4: 紫霄耀金 imperial (里程碑/殿堂大奖) ─────────────────────── */
+[data-ccg-theme="imperial"] {
+  /* 底衬层 */
+  --theme-stock-color: #1a1030;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #2e1a58 0%, #281650 34%, #221448 66%, #1c1040 100%);
+  --theme-stock-filter: saturate(1.25) contrast(1.10);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(255, 210, 100, 0.82);
+  --theme-light-sub:     rgba(180, 100, 255, 0.55);
+  --theme-light-accent:  rgba(200, 160, 60, 0.40);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #faf4f8;
+  --theme-plate-bg-to:   #ece0e8;
+  --theme-plate-text:    #2e1a44;
+
+  /* 金框色调 (皇紫耀金, 比 azure 更浓烈) */
+  --theme-frame-hi:      #ffe8a0;
+  --theme-frame-lo:      #6a4a18;
+
+  /* 外发光 */
+  --theme-glow:          hsl(280, 70%, 60%);
+
+  /* 镭射全色相均衡 (最华丽, 微偏紫金) */
+  --theme-laser-tint:    saturate(1.22) brightness(1.04);
+}
+
+/* ── 主题 5: 冰霜晶蓝 frost (季节/冬季限定) ─────────────────────────── */
+[data-ccg-theme="frost"] {
+  /* 底衬层 */
+  --theme-stock-color: #0c1824;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #1a3050 0%, #162a48 34%, #122440 66%, #0e1e38 100%);
+  --theme-stock-filter: saturate(1.15) contrast(1.08);
+
+  /* 主光源 */
+  --theme-light-main:    rgba(200, 230, 255, 0.75);
+  --theme-light-sub:     rgba(100, 200, 255, 0.55);
+  --theme-light-accent:  rgba(140, 130, 255, 0.30);
+
+  /* 防伪暗纹 */
+  --theme-security-size: 132px 132px;
+
+  /* 说明栏 */
+  --theme-plate-bg-from: #f0f4f8;
+  --theme-plate-bg-to:   #dce6ee;
+  --theme-plate-text:    #1a2a3a;
+
+  /* 金框色调 */
+  --theme-frame-hi:      #e0f0ff;
+  --theme-frame-lo:      #2a4a6a;
+
+  /* 外发光 */
+  --theme-glow:          hsl(205, 80%, 65%);
+
+  /* 镭射偏冷 (青/蓝增强) */
+  --theme-laser-tint:    hue-rotate(170deg) saturate(1.10);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   淡色主题 (dad 2026-09-12 image#6 item3: "为什么主题没有淡色的？全部都是深色主题")
+
+   淡底对文字区是反向极性: 渐隐改亮色、墨色改深色、描影改白色 —— 见 badge-ccg.css
+   .ccg-plate 里的 --theme-plate-ink / --theme-plate-scrim / --theme-plate-ink-shadow。
+   金框仍然保持金色系 (只按主题调色相), 不因为淡底而丢掉品牌金边。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 淡色 1: 珠光象牙 pearl (通用高级感底) ────────────────────────────── */
+[data-ccg-theme="pearl"] {
+  --theme-stock-color: #fbf5e8;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #fffdf8 0%, #f9f1de 36%, #f0e5cb 70%, #e7dabe 100%);
+  --theme-stock-filter: saturate(0.97) contrast(1.03);
+
+  /* 主光源: 暖白柔光 */
+  --theme-light-main:    rgba(255, 248, 224, 0.70);
+  --theme-light-sub:     rgba(255, 232, 186, 0.34);
+  --theme-light-accent:  rgba(214, 172, 92, 0.30);
+
+  --theme-security-size: 132px 132px;
+
+  /* 文字区极性: 深墨 + 亮渐隐 + 白描影 */
+  --theme-plate-ink:        #3a2c11;
+  --theme-plate-ink-sub:    color-mix(in srgb, #4a3a1a 82%, #7a5c1f);
+  --theme-plate-rule:       rgba(122, 92, 31, 0.40);
+  --theme-plate-scrim:      linear-gradient(180deg,
+    rgba(255, 252, 244, 0) 0%, rgba(255, 250, 236, 0.52) 46%, rgba(255, 247, 228, 0.86) 100%);
+  --theme-plate-ink-shadow: 0 1px 0 rgba(255, 255, 255, 0.80), 0 0 10px rgba(255, 255, 255, 0.62);
+
+  --theme-foot-rule:        rgba(150, 116, 34, 0.42);
+  --theme-foot-ink:         #6b5628;
+  --theme-foot-ink-shadow:  0 1px 0 rgba(255, 255, 255, 0.78);
+  --theme-foot-accent:      #a8761a;
+  --theme-no-ink:           #8a6414;
+  --theme-no-ink-shadow:    0 1px 0 rgba(255, 255, 255, 0.78);
+
+  /* 金框: 亮金压在米白卡上, 略收对比以免糊 */
+  --theme-frame-hi:         #fff7dc;
+  --theme-frame-lo:         #b28a2c;
+  /* dad image#9/7: 金框完全跟主题变色 (3 条 ring 补齐, 默认金色见 badge-ccg.css) */
+  --theme-frame-r1:         #6d5420;
+  --theme-frame-gold:       #e3c67a;
+  --theme-frame-r3:         #7a5d22;
+
+  --theme-glow:             hsl(44, 74%, 72%);
+  --theme-laser-tint:       hue-rotate(-8deg) saturate(1.02);
+
+  /* 淡箔配方 (dad image#7: "淡色要配淡色"): soft-light 带出珠光而不是压暗,
+     security 改 multiply 才能让防伪纹理在淡底上显形, shine::after 换亮 stops (去掉深紫/深灰) */
+  --theme-foil-op:              0.72;
+  --theme-foil-shine-blend:     soft-light;
+  --theme-foil-shine-bright:    1.02;
+  --theme-foil-shine-contrast:  1.35;
+  --theme-foil-shine-sat:       0.92;
+  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(44, 74%, 92%, 0.55) 40%, hsla(40, 34%, 84%) 120%;
+  --theme-foil-after-blend:     soft-light;
+  --theme-foil-after-bright:    1.0;
+  --theme-foil-after-contrast:  0.92;
+  --theme-foil-after-op:        0.85;
+  --theme-foil-glitter-blend:   overlay;
+  --theme-foil-sec-blend:       multiply;
+  --theme-foil-laser-blend:     soft-light;
+  --theme-foil-laser-bright:    1.0;
+  --theme-foil-laser-contrast:  1.25;
+  --theme-foil-laser-sat:       0.90;
+  --theme-foil-spec-blend:      soft-light;
+  --theme-foil-back-bright:     1.02;
+  --theme-foil-back-contrast:   1.35;
+  --theme-foil-back-sat:        0.92;
+  --theme-glare-stops:          hsla(0, 0%, 100%, 1) 10%, hsla(48, 82%, 95%, 0.62) 35%, hsla(42, 46%, 88%) 60%;
+
+  /* 信息条同族化: 冷银 -> 跟卡面同色系的浅带 */
+  --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 46%, rgba(140, 110, 50, 0.10) 100%),
+    linear-gradient(90deg, #d8c8a2 0%, #f6ecd4 11%, #fffdf4 50%, #f2e7cd 89%, #d8c8a2 100%);
+  --theme-bar-ink:          #4a3a17;
+  --theme-bar-ink-shadow:   0 1px 0 rgba(255, 255, 255, 0.80);
+
+}
+
+/* ── 淡色 2: 薄荷玉 mint (清爽/日常) ───────────────────────────────── */
+[data-ccg-theme="mint"] {
+  --theme-stock-color: #eefaf1;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #f7fefa 0%, #e6f6ec 36%, #d7eee0 70%, #c9e6d5 100%);
+  --theme-stock-filter: saturate(1.02) contrast(1.02);
+
+  --theme-light-main:    rgba(232, 255, 240, 0.72);
+  --theme-light-sub:     rgba(178, 240, 208, 0.38);
+  --theme-light-accent:  rgba(96, 196, 152, 0.28);
+
+  --theme-security-size: 132px 132px;
+
+  --theme-plate-ink:        #1f3a2b;
+  --theme-plate-ink-sub:    color-mix(in srgb, #274835 82%, #3f7a58);
+  --theme-plate-rule:       rgba(63, 122, 88, 0.40);
+  --theme-plate-scrim:      linear-gradient(180deg,
+    rgba(246, 255, 250, 0) 0%, rgba(240, 254, 246, 0.52) 46%, rgba(232, 251, 240, 0.86) 100%);
+  --theme-plate-ink-shadow: 0 1px 0 rgba(255, 255, 255, 0.82), 0 0 10px rgba(255, 255, 255, 0.64);
+
+  --theme-foot-rule:        rgba(63, 122, 88, 0.42);
+  --theme-foot-ink:         #356b4d;
+  --theme-foot-ink-shadow:  0 1px 0 rgba(255, 255, 255, 0.78);
+  --theme-foot-accent:      #1f7a52;
+  --theme-no-ink:           #1d6446;
+  --theme-no-ink-shadow:    0 1px 0 rgba(255, 255, 255, 0.78);
+
+  --theme-frame-hi:         #e8fff0;
+  --theme-frame-lo:         #5f9c78;
+  /* dad image#9/7: 金框完全跟主题变色 (3 条 ring 补齐, 默认金色见 badge-ccg.css) */
+  --theme-frame-r1:         #14523a;
+  --theme-frame-gold:       #8fcfae;
+  --theme-frame-r3:         #17493a;
+
+  --theme-glow:             hsl(152, 62%, 70%);
+  --theme-laser-tint:       hue-rotate(96deg) saturate(1.06);
+
+  /* 淡箔配方 (dad image#7: "淡色要配淡色"): soft-light 带出珠光而不是压暗,
+     security 改 multiply 才能让防伪纹理在淡底上显形, shine::after 换亮 stops (去掉深紫/深灰) */
+  --theme-foil-op:              0.72;
+  --theme-foil-shine-blend:     soft-light;
+  --theme-foil-shine-bright:    1.02;
+  --theme-foil-shine-contrast:  1.32;
+  --theme-foil-shine-sat:       0.94;
+  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(150, 60%, 93%, 0.55) 40%, hsla(150, 30%, 85%) 120%;
+  --theme-foil-after-blend:     soft-light;
+  --theme-foil-after-bright:    1.0;
+  --theme-foil-after-contrast:  0.92;
+  --theme-foil-after-op:        0.85;
+  --theme-foil-glitter-blend:   overlay;
+  --theme-foil-sec-blend:       multiply;
+  --theme-foil-laser-blend:     soft-light;
+  --theme-foil-laser-bright:    1.0;
+  --theme-foil-laser-contrast:  1.25;
+  --theme-foil-laser-sat:       0.90;
+  --theme-foil-spec-blend:      soft-light;
+  --theme-foil-back-bright:     1.02;
+  --theme-foil-back-contrast:   1.32;
+  --theme-foil-back-sat:        0.94;
+  --theme-glare-stops:          hsla(0, 0%, 100%, 1) 10%, hsla(150, 72%, 95%, 0.62) 35%, hsla(150, 36%, 89%) 60%;
+
+  /* 信息条同族化: 冷银 -> 跟卡面同色系的浅带 */
+  --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 46%, rgba(63, 122, 88, 0.10) 100%),
+    linear-gradient(90deg, #b9d8c4 0%, #e6f6ec 11%, #fbfdf9 50%, #dff1e5 89%, #b9d8c4 100%);
+  --theme-bar-ink:          #1f3a2b;
+  --theme-bar-ink-shadow:   0 1px 0 rgba(255, 255, 255, 0.82);
+
+}
+
+/* ── 淡色 3: 樱雪 sakura (温柔/鼓励向) ─────────────────────────────── */
+[data-ccg-theme="sakura"] {
+  --theme-stock-color: #fdf1f4;
+  --theme-stock-gradient: linear-gradient(168deg,
+    #fffafb 0%, #fceef2 36%, #f7dfe7 70%, #f1d2dd 100%);
+  --theme-stock-filter: saturate(1.02) contrast(1.02);
+
+  --theme-light-main:    rgba(255, 246, 249, 0.72);
+  --theme-light-sub:     rgba(255, 210, 226, 0.38);
+  --theme-light-accent:  rgba(226, 132, 170, 0.26);
+
+  --theme-security-size: 132px 132px;
+
+  --theme-plate-ink:        #4a2130;
+  --theme-plate-ink-sub:    color-mix(in srgb, #5a2838 82%, #8c4a62);
+  --theme-plate-rule:       rgba(140, 74, 98, 0.40);
+  --theme-plate-scrim:      linear-gradient(180deg,
+    rgba(255, 250, 252, 0) 0%, rgba(255, 246, 250, 0.52) 46%, rgba(255, 240, 246, 0.86) 100%);
+  --theme-plate-ink-shadow: 0 1px 0 rgba(255, 255, 255, 0.82), 0 0 10px rgba(255, 255, 255, 0.64);
+
+  --theme-foot-rule:        rgba(140, 74, 98, 0.42);
+  --theme-foot-ink:         #8c4a62;
+  --theme-foot-ink-shadow:  0 1px 0 rgba(255, 255, 255, 0.78);
+  --theme-foot-accent:      #b0355f;
+  --theme-no-ink:           #8f2f4d;
+  --theme-no-ink-shadow:    0 1px 0 rgba(255, 255, 255, 0.78);
+
+  --theme-frame-hi:         #ffe9f1;
+  --theme-frame-lo:         #b0687f;
+  /* dad image#9/7: 金框完全跟主题变色 (3 条 ring 补齐, 默认金色见 badge-ccg.css) */
+  --theme-frame-r1:         #7a2b4a;
+  --theme-frame-gold:       #eba3bb;
+  --theme-frame-r3:         #66253f;
+
+  --theme-glow:             hsl(340, 72%, 76%);
+  --theme-laser-tint:       hue-rotate(-40deg) saturate(1.08);
+
+  /* 淡箔配方 (dad image#7: "淡色要配淡色"): soft-light 带出珠光而不是压暗,
+     security 改 multiply 才能让防伪纹理在淡底上显形, shine::after 换亮 stops (去掉深紫/深灰) */
+  --theme-foil-op:              0.72;
+  --theme-foil-shine-blend:     soft-light;
+  --theme-foil-shine-bright:    1.02;
+  --theme-foil-shine-contrast:  1.33;
+  --theme-foil-shine-sat:       0.93;
+  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(340, 70%, 94%, 0.55) 40%, hsla(340, 32%, 86%) 120%;
+  --theme-foil-after-blend:     soft-light;
+  --theme-foil-after-bright:    1.0;
+  --theme-foil-after-contrast:  0.92;
+  --theme-foil-after-op:        0.85;
+  --theme-foil-glitter-blend:   overlay;
+  --theme-foil-sec-blend:       multiply;
+  --theme-foil-laser-blend:     soft-light;
+  --theme-foil-laser-bright:    1.0;
+  --theme-foil-laser-contrast:  1.25;
+  --theme-foil-laser-sat:       0.90;
+  --theme-foil-spec-blend:      soft-light;
+  --theme-foil-back-bright:     1.02;
+  --theme-foil-back-contrast:   1.33;
+  --theme-foil-back-sat:        0.93;
+  --theme-glare-stops:          hsla(0, 0%, 100%, 1) 10%, hsla(340, 86%, 96%, 0.62) 35%, hsla(340, 44%, 90%) 60%;
+
+  /* 信息条同族化: 冷银 -> 跟卡面同色系的浅带 */
+  --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 46%, rgba(140, 74, 98, 0.10) 100%),
+    linear-gradient(90deg, #e5c3ce 0%, #fbe9ee 11%, #fffafb 50%, #f7dfe7 89%, #e5c3ce 100%);
+  --theme-bar-ink:          #4a2130;
+  --theme-bar-ink-shadow:   0 1px 0 rgba(255, 255, 255, 0.82);
+
+}

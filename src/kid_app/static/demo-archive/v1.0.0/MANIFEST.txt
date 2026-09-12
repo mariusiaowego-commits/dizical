@@ -1,0 +1,19 @@
+版本:     v1.0.0
+冻结时间: 2026-09-13 03:54:26 CST
+冻结依据: 82d52b1 (docs(sprint): 26091201 v1.4.0 — §11 demo 迭代定稿记录 + 5 项遗留待拍板 +)
+变更说明: 首次定稿: 8 主题(5深+3淡) + 金框贴卡最外缘 + 画面窗对齐5.4% + 后端 card_stars
+入口:     /static/demo-archive/v1.0.0/index.html
+
+md5:
+  ab2e6faaa56d001d621733430cfe8918  index.html
+  d928b9f42be973979e3934a8392db04d  badge-ccg.css
+  14ecda1255713b0685814213dc8516fd  badge-ccg-themes.css
+  5b4b3d91e5afb03aa8b60c32850534da  badge-ccg.js
+  019a241d2aa512259bda01b5a74f4748  patterns/  (4 个 svg)
+
+未随包资产 (走线上绝对路径, 同源服务器可加载):
+  /static/badges/assign_pal_v2.png
+  /static/demo-archive/VERSIONS.md
+  http://www.w3.org/2000/svg
+  https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js
+  https://poke-holo.simey.me/

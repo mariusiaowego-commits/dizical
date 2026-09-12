@@ -119,10 +119,10 @@
 }
 
 /* 主题防伪暗纹: 按主题换图案 (azure 用内置笛韵 data URI, 见 --ccg-security-pattern) */
-[data-ccg-theme="bamboo"] { --theme-security-pattern: url("/static/img/ccg-patterns/bamboo.svg"); }
-[data-ccg-theme="coral"] { --theme-security-pattern: url("/static/img/ccg-patterns/coral.svg"); }
-[data-ccg-theme="imperial"] { --theme-security-pattern: url("/static/img/ccg-patterns/imperial.svg"); }
-[data-ccg-theme="frost"] { --theme-security-pattern: url("/static/img/ccg-patterns/frost.svg"); }
+[data-ccg-theme="bamboo"] { --theme-security-pattern: url("./patterns/bamboo.svg"); }
+[data-ccg-theme="coral"] { --theme-security-pattern: url("./patterns/coral.svg"); }
+[data-ccg-theme="imperial"] { --theme-security-pattern: url("./patterns/imperial.svg"); }
+[data-ccg-theme="frost"] { --theme-security-pattern: url("./patterns/frost.svg"); }
 
 /* ── Shared card geometry ─────────────────────────────────── */
 .ccg-stage {
