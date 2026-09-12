@@ -63,7 +63,8 @@ def _ensure_card_theme_mysql(conn) -> bool:
     if "card_theme" in existing:
         return False
     cur.execute("ALTER TABLE achievements ADD COLUMN card_theme TEXT NULL")
-    conn.commit()
+    # 不在此处 commit: MySQL DDL 隐式提交 (ALTER 本身已生效), 且调用方
+    # (badge_write_tx / 启动 hook) 负责提交 — 避免写事务内多一次 commit.
     return True
 
 
