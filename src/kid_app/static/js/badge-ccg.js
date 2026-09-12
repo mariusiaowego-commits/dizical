@@ -56,8 +56,10 @@
     el.style.setProperty("--pointer-x", s.px + "%");
     el.style.setProperty("--pointer-y", s.py + "%");
     if (geo && geo.w > 0 && geo.h > 0) {
-      el.style.setProperty("--aw-x", clamp((((s.px / 100) * geo.cw) - geo.l) / geo.w * 100, -80, 180) + "%");
-      el.style.setProperty("--aw-y", clamp((((s.py / 100) * geo.ch) - geo.t) / geo.h * 100, -80, 180) + "%");
+      /* 光斑允许跑出金框一点点 (边沿自然衰减), 但不能跑到框外很远:
+         跑到框外时椭圆渐变的暗尾会摊满窗口 → 深色重叠 (dad 2026-09-12) */
+      el.style.setProperty("--aw-x", clamp((((s.px / 100) * geo.cw) - geo.l) / geo.w * 100, -10, 110) + "%");
+      el.style.setProperty("--aw-y", clamp((((s.py / 100) * geo.ch) - geo.t) / geo.h * 100, -10, 110) + "%");
     }
     el.style.setProperty("--rotate-x", s.rx + "deg");
     el.style.setProperty("--rotate-y", s.ry + "deg");
