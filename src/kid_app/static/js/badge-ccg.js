@@ -8,7 +8,7 @@
     tag: "突破",
     image: "/static/badges/assign_pal_v2.png",
     cond: "协助完成课后批改",
-    story: "细心批改，温故知新。",
+    story: "细心批改，温故知新。一笔一划帮同学改对题，小笛手也成了大家的批改小帮手。",
     date: "2026年6月16日",
     stars: 3,
     no: "007",
@@ -26,6 +26,9 @@
 
   var hasGsap = typeof global.gsap !== "undefined";
   var maxTilt = 15;
+  /* 静止态聚光灯: 停在上金边/画面上沿, 不压在图案正中 (dad 2026-09-12) */
+  var IDLE_Y = 14;
+  var IDLE_LIT = 0.22;
   var holoGain = 1;
   var cards = [];
   var fpsState = { frames: 0, last: 0, el: null, raf: 0 };
@@ -33,9 +36,29 @@
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
-  function applyVars(el, s) {
+  /* 画面框几何: 光标在卡面坐标系 (0-100%) 的位置换算成画面框内的百分比,
+     画面内的箔层/聚光灯才不会跟着卡面中心走 */
+  function measureArtBox(stage) {
+    var win = stage.querySelector(".ccg-art-window");
+    var front = stage.querySelector(".ccg-card-front");
+    if (!win || !front || !front.offsetWidth) return null;
+    var l = 0, t = 0, node = win;
+    while (node && node !== front) {
+      l += node.offsetLeft;
+      t += node.offsetTop;
+      node = node.offsetParent;
+    }
+    if (node !== front) return null;
+    return { l: l, t: t, w: win.offsetWidth, h: win.offsetHeight, cw: front.offsetWidth, ch: front.offsetHeight };
+  }
+
+  function applyVars(el, s, geo) {
     el.style.setProperty("--pointer-x", s.px + "%");
     el.style.setProperty("--pointer-y", s.py + "%");
+    if (geo && geo.w > 0 && geo.h > 0) {
+      el.style.setProperty("--aw-x", clamp((((s.px / 100) * geo.cw) - geo.l) / geo.w * 100, -80, 180) + "%");
+      el.style.setProperty("--aw-y", clamp((((s.py / 100) * geo.ch) - geo.t) / geo.h * 100, -80, 180) + "%");
+    }
     el.style.setProperty("--rotate-x", s.rx + "deg");
     el.style.setProperty("--rotate-y", s.ry + "deg");
     el.style.setProperty("--holo-gain", String(holoGain));
@@ -43,22 +66,41 @@
     el.style.setProperty("--nx", String(s.nx || 0));
     el.style.setProperty("--ny", String(s.ny || 0));
     el.style.setProperty("--from-center", String(s.fromCenter || 0));
+    el.style.setProperty("--lit", String(s.lit == null ? 0.22 : s.lit));
+  }
+
+  function titleHtml(name) {
+    return '<div class="ccg-title"><i class="ccg-orn" aria-hidden="true"></i><span>' + name + '</span><i class="ccg-orn" aria-hidden="true"></i></div>';
   }
 
   function backMarkup(d) {
     return (
       '<div class="ccg-card-back ccg-back-face">' +
         '<div class="ccg-foil-stack">' +
+          '<div class="ccg-foil-stock"></div>' +
           '<div class="ccg-foil-shine"></div>' +
           '<div class="ccg-foil-glitter"></div>' +
           '<div class="ccg-foil-glare"></div>' +
+          '<div class="ccg-foil-security" aria-hidden="true"></div>' +
         '</div>' +
-        '<div class="ccg-dizi-mark" aria-hidden="true"></div>' +
-        '<div class="ccg-seal"><span class="zh">笛韵</span><span class="en">DIZICAL</span></div>' +
-        '<div class="hall">' + d.hall + '</div>' +
-        '<div class="ccg-stars">' + starsHtml(d.stars) + '</div>' +
-        '<div class="serial">No. ' + d.no + '</div>' +
-        '<div class="brand">dizical</div>' +
+        '<div class="ccg-back-inner">' +
+          '<div class="ccg-back-kicker">' + d.tag + ' · No.' + d.no + '</div>' +
+          '<div class="ccg-back-title">' + d.name + '</div>' +
+          '<div class="ccg-back-rule"></div>' +
+          '<div class="ccg-back-field">' +
+            '<div class="ccg-back-lbl">获取条件</div>' +
+            '<div class="ccg-back-val">' + (d.cond || "") + '</div>' +
+          '</div>' +
+          '<div class="ccg-back-field">' +
+            '<div class="ccg-back-lbl">获得日</div>' +
+            '<div class="ccg-back-val">' + (d.date || "") + '</div>' +
+          '</div>' +
+          '<div class="ccg-back-field ccg-back-story">' +
+            '<div class="ccg-back-lbl">典故</div>' +
+            '<div class="ccg-back-val">' + (d.story || "") + '</div>' +
+          '</div>' +
+          '<div class="ccg-back-foot">' + d.hall + '</div>' +
+        '</div>' +
         '<div class="ccg-frame"></div>' +
       '</div>'
     );
@@ -70,54 +112,66 @@
     return out;
   }
 
-  function holoMarkup(d) {
+  /* 画面内层: 方案二多一层 Z 轴悬浮主体, 方案一主体贴在箔层之上 */
+  function artInner(scheme, d) {
+    var img = '<img alt="" width="512" height="512" decoding="sync" fetchpriority="high" src="' + d.image + '">';
+    var foil =
+      '<div class="ccg-foil-stack">' +
+        '<div class="ccg-foil-shine"></div>' +
+        '<div class="ccg-foil-glitter"></div>' +
+        '<div class="ccg-foil-security" aria-hidden="true"></div>' +
+      '</div>';
+    var subject = scheme === "px"
+      ? '<div class="ccg-layer ccg-layer-subject">' + img + '</div>'
+      : '<div class="ccg-holo-art">' + img + '</div>';
     return (
-      '<div class="ccg-shadow"></div>' +
-      '<div class="ccg-rotator">' +
-        '<div class="ccg-card-flipper">' +
-          '<div class="ccg-card-front">' +
-            '<div class="ccg-foil-stack">' +
-              '<div class="ccg-foil-stock"></div>' +
-              '<div class="ccg-foil-shine"></div>' +
-              '<div class="ccg-foil-glitter"></div>' +
-              '<div class="ccg-foil-glare"></div>' +
-            '</div>' +
-            '<div class="ccg-holo-art"><img alt="" width="512" height="512" decoding="async" fetchpriority="high" src="' + d.image + '"></div>' +
-            '<div class="ccg-frame"></div>' +
-            '<div class="ccg-holo-head"><span class="ccg-chip">' + d.tag + '</span><span class="ccg-no">No.' + d.no + '</span></div>' +
-            '<div class="ccg-meta">' +
-              '<div class="ccg-kicker">ACHIEVEMENT</div>' +
-              '<div class="ccg-title">' + d.name + '</div>' +
-              '<div class="ccg-sub">' + d.date + '</div>' +
-              '<div class="ccg-stars">' + starsHtml(d.stars) + '</div>' +
-            '</div>' +
+      foil +
+      subject +
+      '<div class="ccg-foil-glare"></div>' +
+      '<div class="ccg-foil-spec"></div>' +
+      '<div class="ccg-foil-laser"></div>'
+    );
+  }
+
+  /* Amazing Rare 版式: 上 2/3 = 金框框住主视觉, 下 1/3 = 银数据条 + 米色说明栏 + 页脚 */
+  function frontMarkup(scheme, d) {
+    return (
+      '<div class="ccg-card-front' + (scheme === "px" ? " ccg-px-front" : "") + '">' +
+        '<div class="ccg-foil-stock"></div>' +
+        '<div class="ccg-art-frame">' +
+          '<div class="ccg-art-window">' + artInner(scheme, d) + '</div>' +
+        '</div>' +
+        '<div class="ccg-frame"></div>' +
+        '<div class="ccg-holo-head">' +
+          '<span class="ccg-chip">' + d.tag + '</span>' +
+          '<span class="ccg-no">No.' + d.no + '</span>' +
+        '</div>' +
+        '<div class="ccg-info-bar">' +
+          '<span class="ccg-bar-no">NO.' + d.no + '</span>' +
+          '<span class="ccg-bar-tag">' + d.tag + '</span>' +
+          '<span class="ccg-bar-date">' + d.date + '</span>' +
+        '</div>' +
+        '<div class="ccg-plate">' +
+          '<div class="ccg-plate-head">' +
+            titleHtml(d.name) +
+            '<span class="ccg-stars">' + starsHtml(d.stars) + '</span>' +
           '</div>' +
-          backMarkup(d) +
+          '<p class="ccg-plate-desc">' + (d.cond || "") + '</p>' +
+        '</div>' +
+        '<div class="ccg-foot">' +
+          '<span>' + (d.hall || "") + '</span>' +
+          '<span>DIZICAL</span>' +
         '</div>' +
       '</div>'
     );
   }
 
-  function parallaxMarkup(d) {
+  function cardMarkup(scheme, d) {
     return (
       '<div class="ccg-shadow"></div>' +
       '<div class="ccg-rotator">' +
         '<div class="ccg-card-flipper">' +
-          '<div class="ccg-card-front ccg-px-front">' +
-            '<div class="ccg-foil-stack">' +
-              '<div class="ccg-layer ccg-layer-bg ccg-foil-stock"></div>' +
-              '<div class="ccg-layer ccg-layer-holo ccg-foil-shine"></div>' +
-              '<div class="ccg-layer ccg-foil-glitter"></div>' +
-              '<div class="ccg-foil-glare"></div>' +
-            '</div>' +
-            '<div class="ccg-layer ccg-layer-subject"><img alt="" width="512" height="512" decoding="async" fetchpriority="high" src="' + d.image + '"></div>' +
-            '<div class="ccg-layer ccg-layer-frame ccg-frame"></div>' +
-            '<div class="ccg-layer ccg-layer-text">' +
-              '<div class="ccg-kicker">' + d.tag + ' · No.' + d.no + '</div>' +
-              '<div class="ccg-title">' + d.name + '</div>' +
-              '<div class="ccg-sub">' + d.date + '</div>' +
-            '</div>' +
-          '</div>' +
+          frontMarkup(scheme, d) +
           backMarkup(d) +
         '</div>' +
       '</div>'
@@ -145,10 +199,10 @@
     var d = data || BADGE;
     stage.className = "ccg-stage ccg-" + scheme;
     stage.setAttribute("data-scheme", scheme);
-    stage.innerHTML = scheme === "px" ? parallaxMarkup(d) : holoMarkup(d);
+    stage.innerHTML = cardMarkup(scheme, d);
     bindReady(stage);
 
-    var state = { px: 50, py: 50, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0 };
+    var state = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var interacting = false;
     var dragging = false;
     var moved = 0;
@@ -156,8 +210,11 @@
     var pointerId = null;
     var resetTween = null;
     var flipper = stage.querySelector(".ccg-card-flipper");
+    var artGeo = measureArtBox(stage);
 
-    applyVars(stage, state);
+    function paint() { applyVars(stage, state, artGeo); }
+
+    paint();
     if (flipper) flipper.style.setProperty("--flip", "0deg");
 
     function killReset() {
@@ -177,7 +234,8 @@
       state.rx = clamp(-state.ny * maxTilt, -maxTilt, maxTilt);
       state.ry = clamp(state.nx * maxTilt, -maxTilt, maxTilt);
       state.lift = 10;
-      applyVars(stage, state);
+      state.lit = 1;
+      paint();
     }
 
     function springHome() {
@@ -185,24 +243,24 @@
       dragging = false;
       stage.classList.remove("is-dragging");
       if (reduce) {
-        state.px = 50; state.py = 50; state.rx = 0; state.ry = 0; state.lift = 0;
-        state.nx = 0; state.ny = 0; state.fromCenter = 0;
-        applyVars(stage, state);
+        state.px = 50; state.py = IDLE_Y; state.rx = 0; state.ry = 0; state.lift = 0;
+        state.nx = 0; state.ny = 0; state.fromCenter = 0; state.lit = IDLE_LIT;
+        paint();
         return;
       }
       if (hasGsap) {
         killReset();
         resetTween = global.gsap.to(state, {
-          px: 50, py: 50, rx: 0, ry: 0, lift: 0, nx: 0, ny: 0, fromCenter: 0,
+          px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT,
           duration: 0.6,
           ease: "power3.out",
           overwrite: true,
-          onUpdate: function () { applyVars(stage, state); }
+          onUpdate: paint
         });
       } else {
-        state.px = 50; state.py = 50; state.rx = 0; state.ry = 0; state.lift = 0;
-        state.nx = 0; state.ny = 0; state.fromCenter = 0;
-        applyVars(stage, state);
+        state.px = 50; state.py = IDLE_Y; state.rx = 0; state.ry = 0; state.lift = 0;
+        state.nx = 0; state.ny = 0; state.fromCenter = 0; state.lit = IDLE_LIT;
+        paint();
       }
     }
 
@@ -300,11 +358,13 @@
         state.ry = c * (amp + 0.3);
         state.nx = c * 0.55;
         state.ny = s * 0.55;
-        state.px = 50 + state.nx * 18;
-        state.py = 50 + state.ny * 14;
+        /* 静止光扫只在上带 (金边 + 画面上沿) 游走, 不糊主视觉 */
+        state.px = 50 + state.nx * 26;
+        state.py = IDLE_Y + state.ny * 12;
         state.fromCenter = Math.hypot(state.nx, state.ny);
         state.lift = 0;
-        applyVars(stage, state);
+        state.lit = IDLE_LIT;
+        paint();
       },
       destroy: function () {
         stage.removeEventListener("pointerdown", onDown);

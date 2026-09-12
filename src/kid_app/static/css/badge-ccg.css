@@ -16,8 +16,21 @@
   --ccg-coral: #ff6b6b;
   --ccg-paper: #fff8f0;
   --ccg-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --ccg-void: #070b14;
-  --ccg-navy: #0c1a36;
+  --ccg-void: #16224a;
+  --ccg-navy: #b7c5d4;
+  --ccg-serif: "Songti SC", "STSong", "Noto Serif SC", "Songti TC", "PMingLiU", serif;
+
+  /* sunpillar spectrum — simeydotme/pokemon-cards-css + poke-151 (cards/base.css) */
+  --sunpillar-1: hsl(2, 100%, 73%);
+  --sunpillar-2: hsl(53, 100%, 69%);
+  --sunpillar-3: hsl(93, 100%, 69%);
+  --sunpillar-4: hsl(176, 100%, 76%);
+  --sunpillar-5: hsl(228, 100%, 74%);
+  --sunpillar-6: hsl(283, 100%, 73%);
+
+  /* 笛韵防伪暗纹 (竹笛剪影 + 星芒 + DIZICAL 字样, 45° 平铺阵列) */
+  --ccg-security-pattern: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M7 103 L95 15 M12 108 L100 20 M7 103 L12 108 M95 15 L100 20'/><circle cx='37' cy='73' r='2.8' fill='%23fff' stroke='none'/><circle cx='54' cy='56' r='2.8' fill='%23fff' stroke='none'/><circle cx='71' cy='39' r='2.8' fill='%23fff' stroke='none'/></g><path d='M106 88 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z' fill='%23fff'/><text x='10' y='126' font-family='Helvetica, Arial, sans-serif' font-size='9' font-weight='700' letter-spacing='2.6' fill='%23fff'>DIZICAL</text></svg>");
+  --ccg-security-size: 132px 132px;
 }
 
 /* ── Shared card geometry ─────────────────────────────────── */
@@ -27,6 +40,7 @@
   --nx: 0;
   --ny: 0;
   --from-center: 0;
+  --lit: 0.22;
   position: relative;
   width: var(--card-w);
   height: var(--card-h);
@@ -51,7 +65,7 @@
   position: absolute;
   inset: 12% 8% -6%;
   border-radius: 22px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(8, 16, 40, 0.5), transparent 70%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(80, 64, 40, 0.28), transparent 70%);
   transform: translate3d(calc(var(--nx) * 8px), calc(var(--ny) * 6px + 18px), 0);
   filter: blur(18px);
   pointer-events: none;
@@ -86,8 +100,7 @@
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  overflow: visible;
-  clip-path: inset(0 round 18px);
+  overflow: hidden;
   transform-style: preserve-3d;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -109,11 +122,11 @@
   pointer-events: none;
   z-index: 8;
   box-shadow:
-    inset 0 0 0 2px #3d2a08,
-    inset 0 0 0 5px #e8c547,
-    inset 0 0 0 6px #fff4c4,
-    inset 0 0 0 9px #b8860b,
-    inset 0 0 0 11px #5a3c0c;
+    inset 0 0 0 2px #342205,
+    inset 0 0 0 5px #d4a017,
+    inset 0 0 0 6px #ffeaa0,
+    inset 0 0 0 9px #b3820a,
+    inset 0 0 0 11px #4e3207;
 }
 .ccg-frame::after {
   content: "";
@@ -121,18 +134,19 @@
   inset: 0;
   border-radius: 18px;
   pointer-events: none;
-  opacity: calc(0.55 * var(--holo-gain, 1));
+  opacity: calc((0.3 + var(--from-center, 0) * 0.45) * var(--holo-gain, 1));
   mix-blend-mode: color-dodge;
-  background: repeating-linear-gradient(
-    125deg,
-    hsl(20, 100%, 60%) 0 8px,
-    hsl(50, 100%, 65%) 8px 16px,
-    hsl(170, 90%, 55%) 16px 24px,
-    hsl(260, 90%, 62%) 24px 32px,
-    hsl(330, 95%, 60%) 32px 40px
+  background: linear-gradient(
+    135deg,
+    transparent 20%,
+    rgba(255, 230, 160, 0.25) 38%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 220, 130, 0.35) 56%,
+    transparent 72%
   );
-  background-size: 280% 280%;
+  background-size: 320% 320%;
   background-position: var(--pointer-x, 50%) var(--pointer-y, 50%);
+  background-repeat: no-repeat;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -155,68 +169,62 @@
   transform: translateZ(0);
 }
 
-/* ── Shared V-grade foil (dark stock + rainbow + glitter + glare) ── */
+/* ── V-grade foil: 通透星曜藏青底 (明暗分明的径向金光, 绝不发灰) ── */
 .ccg-foil-stock {
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  background-color: var(--ccg-void);
+  background-color: #0e1a3e;
   background-image:
-    radial-gradient(ellipse 80% 60% at 22% 18%, #163a78 0%, transparent 58%),
-    radial-gradient(ellipse 70% 50% at 82% 88%, #4a3208 0%, transparent 52%),
-    radial-gradient(ellipse 50% 40% at 60% 40%, #1a0e28 0%, transparent 60%),
-    linear-gradient(165deg, #0a1228 0%, #070b14 42%, #161008 100%);
+    /* 主光源: 卡面上方明暗分明的径向金色光晕 */
+    radial-gradient(ellipse 56% 42% at 50% 30%, rgba(255, 226, 148, 0.78) 0%, rgba(255, 178, 62, 0.34) 34%, rgba(255, 150, 40, 0) 70%),
+    radial-gradient(ellipse 38% 28% at 50% 30%, rgba(255, 250, 222, 0.62) 0%, rgba(255, 244, 196, 0) 64%),
+    /* 冷调补光, 拉开明暗层次 (通透不脏) */
+    radial-gradient(ellipse 74% 58% at 13% 5%, rgba(86, 178, 255, 0.52) 0%, rgba(86, 178, 255, 0) 62%),
+    radial-gradient(ellipse 68% 54% at 90% 95%, rgba(134, 96, 255, 0.45) 0%, rgba(134, 96, 255, 0) 64%),
+    /* 琉璃底色 */
+    linear-gradient(168deg, #22377e 0%, #182a66 34%, #1d1c52 66%, #2c1d40 100%);
+  filter: saturate(1.22) contrast(1.08);
 }
 
+/* ── Sunpillar 全息镭射流光 (color-dodge, 随倾斜平滑位移) ── */
 .ccg-foil-shine {
   position: absolute;
   inset: 0;
   border-radius: 18px;
   pointer-events: none;
   z-index: 2;
-  opacity: calc(0.95 * var(--holo-gain, 1));
+  opacity: calc((0.34 + var(--lit, 0.22) * 0.46) * var(--holo-gain, 1));
   mix-blend-mode: color-dodge;
-  filter: contrast(2.4) saturate(1.8) brightness(1.1);
-  background-image:
-    repeating-linear-gradient(
-      125deg,
-      hsl(0, 100%, 54%) 0 8px,
-      #070b14 8px 12px,
-      hsl(38, 100%, 52%) 12px 20px,
-      #070b14 20px 24px,
-      hsl(55, 100%, 50%) 24px 32px,
-      #070b14 32px 36px,
-      hsl(120, 95%, 46%) 36px 44px,
-      #070b14 44px 48px,
-      hsl(175, 100%, 50%) 48px 56px,
-      #070b14 56px 60px,
-      hsl(225, 100%, 58%) 60px 68px,
-      #070b14 68px 72px,
-      hsl(285, 95%, 56%) 72px 80px,
-      #070b14 80px 84px,
-      hsl(330, 100%, 56%) 84px 92px,
-      #070b14 92px 96px
-    ),
-    repeating-linear-gradient(
-      115deg,
-      transparent 0 7px,
-      hsla(50, 100%, 80%, 0.7) 7px 9px,
-      transparent 9px 16px,
-      hsla(190, 100%, 75%, 0.65) 16px 18px,
-      transparent 18px 26px,
-      hsla(320, 100%, 75%, 0.65) 26px 28px
-    ),
-    repeating-linear-gradient(
-      135deg,
-      rgba(6, 10, 22, 0.45) 0 4px,
-      hsla(190, 80%, 70%, 0.4) 5px 6px,
-      rgba(6, 10, 22, 0.45) 7px 14px
-    );
-  background-size: 280% 280%, 220% 220%, 160% 160%;
-  background-position:
-    calc(var(--pointer-x, 50%) * 1.8) calc(var(--pointer-y, 50%) * 1.6),
-    calc(100% - var(--pointer-x, 50%) * 1.5) calc(var(--pointer-y, 50%) * -1.2),
-    calc(100% - var(--pointer-x, 50%)) calc(100% - var(--pointer-y, 50%));
+  filter: brightness(0.92) contrast(2.2) saturate(1.45);
+  background-repeat: no-repeat;
+  background-image: linear-gradient(
+    115deg,
+    var(--sunpillar-1) 0%,
+    var(--sunpillar-2) 17%,
+    var(--sunpillar-3) 33%,
+    var(--sunpillar-4) 50%,
+    var(--sunpillar-5) 67%,
+    var(--sunpillar-6) 83%,
+    var(--sunpillar-1) 100%
+  );
+  background-size: 260% 260%;
+  background-position: var(--pointer-x, 50%) var(--pointer-y, 50%);
+}
+
+/* 光栅刻线: 角度跟随机身倾斜, 掠过时有真实的光扫感 */
+.ccg-foil-shine::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background-image: repeating-linear-gradient(
+    calc(74deg + var(--rotate-y, 0deg) * 1.3),
+    rgba(255, 255, 255, 0) 0 7px,
+    rgba(255, 255, 255, 0.42) 7px 9px,
+    rgba(255, 255, 255, 0) 9px 19px
+  );
+  mix-blend-mode: overlay;
+  opacity: calc(0.55 * var(--holo-gain, 1));
 }
 
 .ccg-foil-glitter {
@@ -225,67 +233,222 @@
   border-radius: 18px;
   pointer-events: none;
   z-index: 2;
-  opacity: calc(0.7 * var(--holo-gain, 1));
+  opacity: calc((0.24 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1));
   mix-blend-mode: plus-lighter;
   background-image:
-    radial-gradient(1.1px 1.1px at 8% 14%, #fff 70%, transparent 72%),
-    radial-gradient(0.9px 0.9px at 22% 38%, #ffe9a0 70%, transparent 72%),
-    radial-gradient(1.2px 1.2px at 41% 8%, #fff 70%, transparent 72%),
-    radial-gradient(0.8px 0.8px at 63% 22%, #c8f0ff 70%, transparent 72%),
-    radial-gradient(1px 1px at 81% 11%, #fff 70%, transparent 72%),
-    radial-gradient(0.7px 0.7px at 93% 34%, #ffd0e8 70%, transparent 72%),
-    radial-gradient(1.1px 1.1px at 14% 62%, #fff 70%, transparent 72%),
-    radial-gradient(0.9px 0.9px at 33% 78%, #ffe9a0 70%, transparent 72%),
-    radial-gradient(1px 1px at 52% 58%, #fff 70%, transparent 72%),
-    radial-gradient(0.8px 0.8px at 71% 84%, #c8f0ff 70%, transparent 72%),
-    radial-gradient(1.2px 1.2px at 88% 66%, #fff 70%, transparent 72%),
-    radial-gradient(0.7px 0.7px at 6% 88%, #ffd0e8 70%, transparent 72%),
-    radial-gradient(1px 1px at 47% 32%, #fff 70%, transparent 72%),
-    radial-gradient(0.8px 0.8px at 76% 48%, #ffe9a0 70%, transparent 72%);
-  background-size: 92px 92px, 118px 118px, 76px 76px, 104px 104px, 88px 88px,
-    130px 130px, 96px 96px, 112px 112px, 84px 84px, 124px 124px, 70px 70px,
-    140px 140px, 100px 100px, 108px 108px;
+    radial-gradient(1px 1px at 12% 16%, #fff 65%, transparent 70%),
+    radial-gradient(0.8px 0.8px at 28% 42%, #ffe9a0 65%, transparent 70%),
+    radial-gradient(1.1px 1.1px at 45% 12%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 68% 26%, #c8f0ff 65%, transparent 70%),
+    radial-gradient(0.9px 0.9px at 84% 15%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 92% 38%, #ffd0e8 65%, transparent 70%),
+    radial-gradient(1px 1px at 16% 68%, #fff 65%, transparent 70%),
+    radial-gradient(0.8px 0.8px at 38% 82%, #ffe9a0 65%, transparent 70%),
+    radial-gradient(0.9px 0.9px at 56% 62%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 74% 88%, #c8f0ff 65%, transparent 70%),
+    radial-gradient(1.1px 1.1px at 86% 70%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 8% 92%, #ffd0e8 65%, transparent 70%);
+  background-size: 110px 110px, 140px 140px, 90px 90px, 125px 125px, 105px 105px,
+    150px 150px, 115px 115px, 135px 135px, 95px 95px, 145px 145px, 85px 85px, 160px 160px;
   background-position:
-    calc(var(--pointer-x, 50%) * 0.6) calc(var(--pointer-y, 50%) * 0.5),
-    calc(100% - var(--pointer-x, 50%) * 0.7) calc(var(--pointer-y, 50%) * 0.4),
+    calc(var(--pointer-x, 50%) * 0.5) calc(var(--pointer-y, 50%) * 0.4),
+    calc(100% - var(--pointer-x, 50%) * 0.6) calc(var(--pointer-y, 50%) * 0.3),
     var(--pointer-x, 50%) calc(100% - var(--pointer-y, 50%)),
     calc(100% - var(--pointer-x, 50%)) var(--pointer-y, 50%),
-    calc(var(--pointer-x, 50%) * 1.2) calc(var(--pointer-y, 50%) * 0.8),
-    calc(100% - var(--pointer-x, 50%) * 1.1) calc(100% - var(--pointer-y, 50%)),
+    calc(var(--pointer-x, 50%) * 0.8) calc(var(--pointer-y, 50%) * 0.6),
+    calc(100% - var(--pointer-x, 50%) * 0.7) calc(100% - var(--pointer-y, 50%)),
     var(--pointer-x, 50%) var(--pointer-y, 50%),
     calc(100% - var(--pointer-x, 50%)) calc(100% - var(--pointer-y, 50%)),
-    calc(var(--pointer-x, 50%) * 0.4) calc(var(--pointer-y, 50%) * 1.3),
-    calc(100% - var(--pointer-x, 50%) * 0.5) calc(var(--pointer-y, 50%) * 0.9),
-    var(--pointer-x, 50%) calc(var(--pointer-y, 50%) * 0.3),
-    calc(var(--pointer-x, 50%) * -0.4) var(--pointer-y, 50%),
-    calc(100% - var(--pointer-x, 50%) * 0.2) calc(100% - var(--pointer-y, 50%) * 0.6),
-    calc(var(--pointer-x, 50%) * 0.9) calc(100% - var(--pointer-y, 50%) * 0.8);
+    calc(var(--pointer-x, 50%) * 0.3) calc(var(--pointer-y, 50%) * 0.8),
+    calc(100% - var(--pointer-x, 50%) * 0.4) calc(var(--pointer-y, 50%) * 0.6),
+    var(--pointer-x, 50%) calc(var(--pointer-y, 50%) * 0.2),
+    calc(var(--pointer-x, 50%) * -0.3) var(--pointer-y, 50%);
 }
 
+/* ── 真实镜面聚光灯 (overlay): 光斑紧随光标, 边缘压暗出立体感 ── */
 .ccg-foil-glare {
   position: absolute;
   inset: 0;
   border-radius: 18px;
   pointer-events: none;
-  z-index: 3;
+  z-index: 6;
   mix-blend-mode: overlay;
-  opacity: calc((0.55 + var(--from-center, 0) * 0.45) * var(--holo-gain, 1));
-  background: radial-gradient(
-    farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+  opacity: calc((0.30 + var(--lit, 0.22) * 0.70) * var(--holo-gain, 1));
+  background-image: radial-gradient(
+    62% 62% at var(--pointer-x, 50%) var(--pointer-y, 50%),
     hsla(0, 0%, 100%, 0.95) 0%,
-    hsla(50, 100%, 90%, 0.45) 10%,
-    hsla(0, 0%, 100%, 0.12) 22%,
-    hsla(220, 40%, 8%, 0.35) 100%
+    hsla(0, 0%, 100%, 0.62) 20%,
+    hsla(0, 0%, 100%, 0.14) 46%,
+    hsla(0, 0%, 0%, 0.26) 76%,
+    hsla(0, 0%, 0%, 0.42) 100%
   );
 }
 
-/* ── Scheme 1 front ───────────────────────────────────────── */
+/* ── 表层主光: screen 叠加, 真正把暗底照亮 (overlay 在暗底上提不亮) ── */
+.ccg-foil-spec {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 6;
+  mix-blend-mode: screen;
+  opacity: calc((0.34 + var(--lit, 0.22) * 0.66) * var(--holo-gain, 1));
+  background-image: radial-gradient(
+    56% 56% at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    hsla(44, 100%, 92%, 0.78) 0%,
+    hsla(46, 100%, 84%, 0.42) 16%,
+    hsla(210, 80%, 70%, 0.16) 42%,
+    hsla(216, 60%, 40%, 0.05) 62%,
+    hsla(0, 0%, 0%, 0) 80%
+  );
+}
+
+/* ── 表层镭射: 全息彩虹掠过图案的二次流光 ── */
+.ccg-foil-laser {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 6;
+  mix-blend-mode: color-dodge;
+  opacity: calc((0.20 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1));
+  filter: brightness(0.85) contrast(1.6) saturate(1.5);
+  background-repeat: no-repeat;
+  background-image: linear-gradient(
+    205deg,
+    var(--sunpillar-2) 0%,
+    var(--sunpillar-4) 20%,
+    var(--sunpillar-6) 40%,
+    var(--sunpillar-1) 58%,
+    var(--sunpillar-3) 78%,
+    var(--sunpillar-5) 100%
+  );
+  background-size: 300% 300%;
+  background-position: calc(100% - var(--pointer-x, 50%)) calc(100% - var(--pointer-y, 50%));
+}
+
+/* ── 笛韵镭射防伪标识 (poke-151 pokeball-holo style) ──
+   常驻极淡暗纹 + 聚光灯扫过时 mask 相交处闪出彩虹镭射高光 */
+.ccg-foil-security {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 3;
+  mix-blend-mode: plus-lighter;
+  opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1));
+  filter: brightness(1.08) contrast(1.35) saturate(1.4);
+  background-repeat: no-repeat;
+  background-image: linear-gradient(
+    108deg,
+    var(--sunpillar-4) 0%,
+    var(--sunpillar-6) 18%,
+    var(--sunpillar-1) 34%,
+    var(--sunpillar-3) 52%,
+    var(--sunpillar-5) 70%,
+    var(--sunpillar-2) 86%,
+    var(--sunpillar-4) 100%
+  );
+  background-size: 300% 300%;
+  background-position: var(--pointer-x, 50%) var(--pointer-y, 50%);
+  -webkit-mask-image:
+    var(--ccg-security-pattern),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+      #fff 6%,
+      rgba(255, 255, 255, 0.85) 40%,
+      rgba(255, 255, 255, 0.28) 78%,
+      transparent 100%
+    );
+  mask-image:
+    var(--ccg-security-pattern),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+      #fff 6%,
+      rgba(255, 255, 255, 0.85) 40%,
+      rgba(255, 255, 255, 0.28) 78%,
+      transparent 100%
+    );
+  -webkit-mask-size: var(--ccg-security-size), cover;
+  mask-size: var(--ccg-security-size), cover;
+  -webkit-mask-repeat: repeat, no-repeat;
+  mask-repeat: repeat, no-repeat;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* 防伪暗纹本体: 无聚光灯时也隐约可见 (仿真实防伪印刷底纹) */
+.ccg-foil-security::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background-image: var(--ccg-security-pattern);
+  background-size: var(--ccg-security-size);
+  opacity: 0.2;
+}
+
+/* ── Front layout ─ Amazing Rare 版式 ─────────────────────── */
+/* 上 2/3 = 金框框住主视觉; 下 1/3 = 银数据条 + 米色说明栏 + 页脚 */
+.ccg-stage {
+  --art-l: 5.4%;
+  --art-t: 8%;
+  --art-h: 53%;
+  --bar-t: 62.6%;
+  --bar-h: 4.2%;
+  --plate-t: 68.8%;
+  --plate-b: 88%;
+  --foot-b: 3.2%;
+}
+
+/* 金框: 立体倒角 (左上受光 / 右下压暗) + 内侧包边 */
+.ccg-art-frame {
+  position: absolute;
+  left: var(--art-l);
+  right: var(--art-l);
+  top: var(--art-t);
+  height: var(--art-h);
+  z-index: 4;
+  padding: 6px;
+  border-radius: 14px;
+  background:
+    linear-gradient(148deg, rgba(255, 253, 236, 0.78) 0%, rgba(255, 255, 255, 0) 26%, rgba(0, 0, 0, 0) 54%, rgba(26, 13, 0, 0.46) 86%, rgba(96, 58, 8, 0.3) 100%),
+    linear-gradient(158deg, #fff5c6 0%, #f2d478 14%, #d3a531 38%, #a2741a 58%, #e6bd44 78%, #fff2ba 100%);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 246, 210, 0.4),
+    inset 0 0 0 1px rgba(88, 56, 8, 0.75);
+  pointer-events: none;
+}
+.ccg-art-frame::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 12px;
+  pointer-events: none;
+  background: linear-gradient(148deg, rgba(255, 252, 228, 0.55), rgba(255, 252, 228, 0) 36%);
+  mix-blend-mode: screen;
+}
+
+/* 画面窗口: 凹槽内嵌; 箔层与聚光灯全裁在这里, 指针坐标换算成框内坐标 */
+.ccg-art-window {
+  position: absolute;
+  inset: 6px;
+  border-radius: 9px;
+  overflow: hidden;
+  isolation: isolate;
+  --pointer-x: var(--aw-x, 50%);
+  --pointer-y: var(--aw-y, 50%);
+  box-shadow:
+    inset 0 0 0 1px rgba(26, 14, 2, 0.92),
+    inset 0 6px 14px rgba(0, 0, 0, 0.55),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.42);
+}
+
+/* 主视觉 (框内) */
 .ccg-holo-art {
   position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 14%;
-  height: 56%;
+  inset: 3% 7% 5%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,58 +461,150 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
 }
 
-.ccg-meta {
+/* 银色数据条: 两端收尖的金属条 */
+.ccg-info-bar {
   position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
+  left: 4.2%;
+  right: 4.2%;
+  top: var(--bar-t);
+  height: var(--bar-h);
   z-index: 7;
-  pointer-events: none;
-  text-align: center;
-}
-.ccg-kicker {
-  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6.4%;
+  clip-path: polygon(0 50%, 2.4% 0, 97.6% 0, 100% 50%, 97.6% 100%, 2.4% 100%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, 0.14) 100%),
+    linear-gradient(90deg, #949ba4 0%, #e6eaee 11%, #f8fafc 50%, #dee3e8 89%, #8b929b 100%);
+  color: #2a2f36;
+  font-size: calc(var(--card-w) * 0.0278);
   font-weight: 700;
-  letter-spacing: 0.18em;
-  color: #d8c090;
-  text-transform: uppercase;
-  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+  pointer-events: none;
+  white-space: nowrap;
 }
+.ccg-bar-no { color: #2a2f36; font-weight: 800; letter-spacing: 0.04em; }
+.ccg-bar-tag { color: #7d4a10; flex: 1 1 auto; text-align: center; }
+.ccg-bar-date { color: #454b53; font-weight: 600; }
+
+/* 米色说明栏 (仿招式栏) */
+.ccg-plate {
+  position: absolute;
+  left: var(--art-l);
+  right: var(--art-l);
+  top: var(--plate-t);
+  bottom: calc(100% - var(--plate-b));
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--card-w) * 0.01);
+  padding: 4.2% 6% 2.6%;
+  border-radius: 3px;
+  background:
+    radial-gradient(ellipse 92% 58% at 50% 0%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 72%),
+    linear-gradient(178deg, #fcf7ea 0%, #f5ecd8 58%, #efe4cc 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 1px 3px rgba(0, 0, 0, 0.3);
+  color: #3a2c14;
+  pointer-events: none;
+}
+.ccg-plate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-bottom: calc(var(--card-w) * 0.01);
+  border-bottom: 1px solid rgba(122, 92, 38, 0.26);
+}
+.ccg-plate-head .ccg-title {
+  justify-content: flex-start;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: calc(var(--card-w) * 0.048);
+  color: #47320e;
+  letter-spacing: 0.05em;
+  text-align: left;
+  line-height: 1.25;
+}
+.ccg-plate-head .ccg-orn { width: 6px; height: 6px; flex: 0 0 6px; }
+.ccg-plate-desc {
+  margin: 0;
+  font-size: calc(var(--card-w) * 0.0295);
+  line-height: 1.5;
+  color: #5c4a28;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 页脚: 殿堂名 + 品牌 */
+.ccg-foot {
+  position: absolute;
+  left: var(--art-l);
+  right: var(--art-l);
+  bottom: var(--foot-b);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: calc(var(--card-w) * 0.012);
+  border-top: 1px solid rgba(212, 160, 23, 0.42);
+  font-size: calc(var(--card-w) * 0.0265);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #a08a5c;
+  pointer-events: none;
+}
+.ccg-foot span:last-child { color: #d9ab2c; letter-spacing: 0.2em; }
+
 .ccg-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #f6e7c4;
-  letter-spacing: 0.06em;
-  line-height: 1.15;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--ccg-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: #5c4010;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-shadow: 0 1px 0 rgba(255, 248, 220, 0.85);
 }
-.ccg-sub {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #c4b08a;
-  letter-spacing: 0.04em;
+.ccg-orn {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  background: linear-gradient(145deg, #fff4c4, #d4a017 48%, #8a5a10);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px rgba(122, 82, 16, 0.25);
 }
 .ccg-stars {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 3px;
-  margin-top: 6px;
+  gap: 2px;
+  flex: 0 0 auto;
+  margin-top: 0;
 }
 .ccg-star {
-  width: 11px;
-  height: 11px;
+  width: calc(var(--card-w) * 0.034);
+  height: calc(var(--card-w) * 0.034);
   background: linear-gradient(145deg, #fff4c4, #d4a017 45%, #8a5a10);
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
 
 .ccg-holo-head {
   position: absolute;
-  top: 16px;
-  left: 20px;
-  right: 20px;
+  top: 3.2%;
+  left: var(--art-l);
+  right: var(--art-l);
   z-index: 7;
   display: flex;
   justify-content: space-between;
@@ -357,144 +612,124 @@
   pointer-events: none;
 }
 .ccg-chip {
-  font-size: 10px;
+  font-size: calc(var(--card-w) * 0.0322);
   font-weight: 700;
   letter-spacing: 0.14em;
   color: #3d2a08;
   background: linear-gradient(180deg, #fff4c8, #e8c547);
   border: 1px solid rgba(122, 82, 16, 0.55);
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: calc(var(--card-w) * 0.009) calc(var(--card-w) * 0.026);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 .ccg-no {
-  font-size: 10px;
+  font-size: calc(var(--card-w) * 0.0322);
   font-weight: 700;
-  color: #e8d5a0;
-  letter-spacing: 0.12em;
+  color: #f0cf5e;
+  letter-spacing: 0.14em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Shared card back ─────────────────────────────────────── */
-.ccg-back-face .ccg-foil-shine {
-  opacity: calc(0.32 * var(--holo-gain, 1));
-  filter: contrast(1.35) saturate(1.15) brightness(0.95);
+/* ── Back face: 温润暗曜琉璃 (暖米金, 同样不发灰) + 收敛的光效 ── */
+.ccg-back-face .ccg-foil-stock {
+  background-color: #f7f1e6;
+  background-image:
+    radial-gradient(ellipse 58% 44% at 50% 22%, rgba(255, 240, 200, 0.95) 0%, rgba(255, 226, 158, 0.35) 42%, rgba(255, 220, 140, 0) 74%),
+    radial-gradient(ellipse 72% 56% at 12% 92%, rgba(222, 202, 152, 0.45) 0%, rgba(222, 202, 152, 0) 62%),
+    radial-gradient(ellipse 64% 50% at 88% 10%, rgba(232, 220, 190, 0.55) 0%, rgba(232, 220, 190, 0) 60%),
+    linear-gradient(168deg, #fdf7e9 0%, #f6ead2 46%, #ecdcbe 100%);
+  filter: saturate(1.06) contrast(1.02);
 }
-.ccg-back-face .ccg-foil-glitter { opacity: calc(0.28 * var(--holo-gain, 1)); }
-.ccg-back-face .ccg-foil-glare { opacity: calc(0.4 * var(--holo-gain, 1)); }
+
+.ccg-back-face .ccg-foil-shine {
+  opacity: calc((0.14 + var(--from-center, 0) * 0.22) * var(--holo-gain, 1));
+  filter: brightness(0.5) contrast(1.9) saturate(1.3);
+}
+.ccg-back-face .ccg-foil-shine::after { opacity: calc(0.26 * var(--holo-gain, 1)); }
+.ccg-back-face .ccg-foil-glitter { opacity: calc(0.1 * var(--holo-gain, 1)); }
+.ccg-back-face .ccg-foil-glare { opacity: calc((0.36 + var(--from-center, 0) * 0.3) * var(--holo-gain, 1)); }
+.ccg-back-face .ccg-foil-security { opacity: calc((0.2 + var(--from-center, 0) * 0.3) * var(--holo-gain, 1)); }
 
 .ccg-back-face {
-  background-color: #0a0e18;
-  background-image:
-    repeating-linear-gradient(45deg, transparent 0 11px, rgba(212, 160, 23, 0.14) 11px 12px),
-    repeating-linear-gradient(-45deg, transparent 0 11px, rgba(212, 160, 23, 0.1) 11px 12px),
-    radial-gradient(circle at 50% 42%, rgba(40, 28, 8, 0.55), transparent 58%),
-    linear-gradient(165deg, #101624 0%, #070b14 50%, #1a1408 100%);
-  box-shadow:
-    inset 0 0 0 2px #3d2a08,
-    inset 0 0 0 7px #e8c547,
-    inset 0 0 0 9px #5a3c0c;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 28px 20px 22px;
-  text-align: center;
-  color: #f6e7c4;
-}
-
-.ccg-dizi-mark {
-  position: absolute;
-  left: 50%;
-  top: 18%;
-  width: 10px;
-  height: 46%;
-  transform: translateX(-50%);
-  border-radius: 6px;
-  background: linear-gradient(180deg, rgba(232, 197, 71, 0.18), rgba(232, 197, 71, 0.05));
-  box-shadow: inset 0 0 0 1px rgba(232, 197, 71, 0.28);
-  pointer-events: none;
-  opacity: 0.7;
-}
-.ccg-dizi-mark::before,
-.ccg-dizi-mark::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(7, 11, 20, 0.85);
-  box-shadow:
-    0 14px 0 rgba(7, 11, 20, 0.85),
-    0 28px 0 rgba(7, 11, 20, 0.85);
-  transform: translateX(-50%);
-}
-.ccg-dizi-mark::before { top: 12%; }
-.ccg-dizi-mark::after { top: 48%; }
-
-.ccg-seal {
-  position: relative;
-  z-index: 2;
-  width: 108px;
-  height: 108px;
-  border-radius: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(circle at 35% 30%, #fff6c8, #e8c547 38%, #8a5a10 78%);
-  box-shadow:
-    inset 0 0 0 3px #3d2a08,
-    inset 0 0 0 7px #f6e27a,
-    inset 0 0 0 9px #5a3c0c,
-    0 8px 20px rgba(0, 0, 0, 0.4);
-  margin-bottom: 16px;
-}
-.ccg-seal .zh {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  color: #3d2a08;
-  line-height: 1;
-}
-.ccg-seal .en {
-  margin-top: 6px;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.28em;
+  background-color: #f7f1e6;
   color: #5c4010;
 }
 
-.ccg-back-face .hall {
+.ccg-back-inner {
   position: relative;
   z-index: 2;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  margin-bottom: 6px;
-  color: #f6e7c4;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 22px 24px;
+  text-align: left;
+  pointer-events: none;
 }
-.ccg-back-face .serial {
-  position: relative;
-  z-index: 2;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  color: #d8c090;
-  margin-top: 10px;
-}
-.ccg-back-face .brand {
-  position: relative;
-  z-index: 2;
-  margin-top: 18px;
+.ccg-back-kicker {
   font-size: 10px;
-  letter-spacing: 0.34em;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #8a6a28;
+  margin-bottom: 8px;
+}
+.ccg-back-title {
+  font-family: var(--ccg-serif);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.25;
+  margin: 0 0 12px;
+}
+.ccg-back-rule {
+  width: 36px;
+  height: 1px;
+  background: linear-gradient(90deg, #d4a017, transparent);
+  margin-bottom: 14px;
+}
+.ccg-back-field {
+  margin-bottom: 12px;
+}
+.ccg-back-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #a08050;
   text-transform: uppercase;
-  color: #c4b08a;
+  margin-bottom: 4px;
+}
+.ccg-back-val {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #5c4010;
+}
+.ccg-back-story {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ccg-back-story .ccg-back-val {
+  font-family: var(--ccg-serif);
+  font-size: 14px;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.7;
+  color: #6b4a10;
+}
+.ccg-back-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: #8a6a28;
+  text-align: center;
 }
 
 /* ── Scheme 2: encapsulated micro-parallax ────────────────── */
 .ccg-px-front {
-  background: var(--ccg-void);
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 20%, #23397f 0%, #16224a 62%, #101a3c 100%);
 }
 
 .ccg-layer {
@@ -513,16 +748,11 @@
 }
 
 .ccg-layer-subject {
-  inset: auto;
-  top: 16%;
-  left: 50%;
-  width: 54%;
-  height: 42%;
+  inset: 3% 7% 5%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: translateZ(5px) translate(-50%, 0)
-    translate3d(calc(var(--nx) * -3px), calc(var(--ny) * -3px), 0);
+  transform: translateZ(5px) translate3d(calc(var(--nx) * -3px), calc(var(--ny) * -3px), 0);
   filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
   z-index: 4;
   mix-blend-mode: normal;
@@ -533,25 +763,16 @@
   object-fit: contain;
 }
 
-.ccg-layer-frame {
+/* 画面框内的箔层: 圆角跟随窗口, 否则 18px 圆角会在四角漏出底纹 */
+.ccg-art-window .ccg-foil-stock,
+.ccg-art-window .ccg-foil-shine,
+.ccg-art-window .ccg-foil-glitter,
+.ccg-art-window .ccg-foil-glare,
+.ccg-art-window .ccg-foil-spec,
+.ccg-art-window .ccg-foil-laser,
+.ccg-art-window .ccg-foil-security {
+  border-radius: 8px;
 }
-
-.ccg-layer-text {
-  left: 14px;
-  right: 14px;
-  top: auto;
-  bottom: 16px;
-  height: auto;
-  inset: auto 14px 16px 14px;
-  transform: translate3d(calc(var(--nx) * -2px), 0, 0);
-  text-align: center;
-  z-index: 7;
-  background: linear-gradient(180deg, rgba(7, 11, 20, 0.05), rgba(7, 11, 20, 0.55));
-  border-radius: 10px;
-  padding: 8px 8px 6px;
-}
-.ccg-layer-text .ccg-title { font-size: 18px; }
-.ccg-layer-text .ccg-sub { font-size: 10px; }
 
 .ccg-flip-hint { display: none; }
 
