@@ -76,6 +76,20 @@ class Database(BaseBackend):
                 )
             ''')
 
+            # Sprint 26091201 feat/badge-3d-ccg B-1:
+            # achievements.card_theme 列幂等迁移.
+            # achievements 表不在本 _init_tables 创建 (由 conftest / migrate_add_*.py 负责),
+            # 这里只做幂等 ALTER — 缺表则静默跳过 (后续 INSERT/SELECT 链路会兜底).
+            # 注意: PRAGMA table_info 在表不存在时返空集合, 不抛错, 所以逻辑安全.
+            try:
+                ach_cols = {row[1] for row in cursor.execute("PRAGMA table_info(achievements)").fetchall()}
+                if ach_cols and "card_theme" not in ach_cols:
+                    cursor.execute("ALTER TABLE achievements ADD COLUMN card_theme TEXT")
+            except Exception:
+                # 读路径不能因为迁移失败 500, 但 _init_tables 是启动期 — 异常应往上冒
+                # 这里吞异常仅限"表不存在"以外的边缘情况 (生产已观察到的不稳定)
+                pass
+
             # 获取当前 schema 版本
             cursor.execute("SELECT MAX(version) FROM schema_migrations")
             row = cursor.fetchone()

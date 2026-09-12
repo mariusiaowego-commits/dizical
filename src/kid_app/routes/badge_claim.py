@@ -97,6 +97,7 @@ def api_unclaimed() -> JSONResponse:
           a.category     AS category,
           a.cond_text    AS cond_text,
           a.description       AS description,
+          a.card_theme   AS card_theme,
           s.achieved_at  AS achieved_at,
           b.url          AS badge_url
         FROM achievement_stats s
@@ -120,6 +121,8 @@ def api_unclaimed() -> JSONResponse:
     try:
         rows = conn.execute(sql).fetchall()
         badges: list[dict[str, Any]] = []
+        # Sprint 26091201 feat/badge-3d-ccg B-1: 兜底链解析 card_theme
+        from src.kid_app.badge_theme import resolve_card_theme
         for r in rows:
             badges.append(
                 {
@@ -129,6 +132,11 @@ def api_unclaimed() -> JSONResponse:
                     "category": r["category"],
                     "cond_text": r["cond_text"],
                     "description": r["description"],
+                    "card_theme": resolve_card_theme(
+                        badge_type=r["type"],
+                        card_theme=r["card_theme"],
+                        category=r["category"],
+                    ),
                     "badge_url": r["badge_url"],
                     "achieved_at": r["achieved_at"],
                 }

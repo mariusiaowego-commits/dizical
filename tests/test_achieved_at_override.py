@@ -38,7 +38,8 @@ def conn(tmp_path):
             seasonal_type TEXT DEFAULT 'monthly', cond_text TEXT,
             unlock_strategy TEXT DEFAULT 'calc',
             achieved_at_override TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            card_theme TEXT  -- Sprint 26091201 feat/badge-3d-ccg B-1
         );
         CREATE TABLE achievement_stats (
             achievement_id TEXT PRIMARY KEY,

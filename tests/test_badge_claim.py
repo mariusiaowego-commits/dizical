@@ -404,3 +404,25 @@ def test_unclaimed_order_by_achieved_at_desc(isolated_db, client):
     r = client.get("/api/badge/unclaimed")
     badges = r.json()["badges"]
     assert [b["id"] for b in badges] == ["newer", "older"]
+
+
+# ─── K. Sprint 26091201 B-1: payload 含 card_theme (端到端) ──────────
+def test_unclaimed_payload_includes_card_theme(isolated_db, client):
+    """Sprint 26091201 feat/badge-3d-ccg B-1:
+    GET /api/badge/unclaimed payload 每个 badge 必须有 card_theme 字段,
+    值由 resolve_card_theme() 兜底链解析 (此处 type=突破 应得 azure)."""
+    db = isolated_db
+    _seed_achievement(
+        db, "theme_test", "主题测试徽章",
+        achieved="Y", achieved_at="2026-09-10 10:00:00", claimed_at=None,
+        description="desc",
+    )
+
+    r = client.get("/api/badge/unclaimed")
+    badges = r.json()["badges"]
+    assert len(badges) == 1
+    b = badges[0]
+    assert "card_theme" in b, f"badge 缺 card_theme 字段 (got keys={list(b.keys())})"
+    # _seed_achievement 用 type='count' (非中文, 不在 TYPE_THEME_MAP), category='milestone'
+    # → 应走默认 azure
+    assert b["card_theme"] == "azure"
