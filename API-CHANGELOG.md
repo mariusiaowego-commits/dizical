@@ -1,5 +1,28 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-09-12 (待 PR #323)
+**分支**: feat/sprint-26091101-badge-3d-ccg (sprint 26091201 B-1)
+**类型**: 🟡 部分兼容（新增可选返回字段 + 新增 DB 列；dizical-minip 不改也能跑，建议择期同步做主题化）
+
+## 变更
+
+### 1.1 三处 badge payload 新增 `card_theme` 字段
+
+- 端点: ① kid-app `/badges` 页内联 payload ② `GET /api/badge/unclaimed` ③ minip `GET /api/achievements`
+- 值域: `azure|bamboo|coral|imperial|frost`（CCG 卡面 `data-ccg-theme` 直接消费，样式在 `badge-ccg-themes.css`）
+- 解析: `src/kid_app/badge_theme.py:resolve_card_theme(badge_type, card_theme, category)` 兜底链 = 显式 `card_theme` → `achievements.type` 映射（突破→azure / 段位→bamboo / 执着→azure / 巅峰→coral / 晋级→azure / 神秘→imperial）→ `category='seasonal'`→frost → azure
+- **影响**: 纯新增字段，老客户端忽略即可。dizical-minip badges-hall 若要主题背景需同步取 `card_theme`
+
+### 1.2 DB: `achievements.card_theme TEXT NULL` (双后端)
+
+- SQLite: `src/database.py:_init_tables` 幂等 ALTER；MySQL: `badge_db.ensure_card_theme_column` 幂等 ALTER（information_schema 探测），由 `app.py` startup hook 触发（MySQL 后端不走 `_init_tables`）
+- 三源同步: `schema_mysql.sql` + `.cloudrun-deploy/schema_mysql.sql` + 测试 fixture 建表语句
+- **云端已生效**: 2026-09-12 本地 8765（`DATABASE_URL` → 云 MySQL）重启触发启动迁移，`/api/achievements` 46 行全部返回 `card_theme`
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-08-29 (待 PR)
 **分支**: feat/config-set-password
 **类型**: 🟡 部分兼容（新增端点, 现有 API 签名基本不变, dizical-minip 无改动）
