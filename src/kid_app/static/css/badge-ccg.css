@@ -1,6 +1,9 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.1.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
-      v1.1.0-dev 增量: l2 淡色主题金框固定金色 / l4 金框 2px 底座可关(--ccg-frame-base-c) /
+   ── 卡面样式版本: v1.2.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.2.0-dev 增量 (dad 2026-09-13 l1): 镭射/防伪箔层从画面窗搬到卡面级铺满整卡 /
+        画面窗退化为纯定位容器 (撤 overflow:hidden + 四边压暗) / 金环 11px→6px 且 5 环→3 环 /
+        页脚文字区加主题化底衬渐隐 (--theme-foot-scrim), 说明栏底衬同步加强;
+      v1.1.0-dev 增量: l2 淡色主题金框固定金色 / l4 金框底座可关(--ccg-frame-base-c) /
       l5 防伪强度总增益(--ccg-sec-gain) / demo 版本号 chip
       改本文件任何视觉规则 ⇒ 先升版本号 (本行 + badge-ccg.js + demo 页头 chip),
       再用 scripts/freeze-ccg-demo.sh <新版本号> "说明" 冻结, 版本登记表见
@@ -41,18 +44,26 @@
      同一根数字控制「常驻暗纹」与「聚光灯彩虹」两层, 接生产按卡面定档(弱1/中1.6/强2.4) */
   --ccg-sec-gain: 1;
 
+  /* dad 2026-09-13 l1「铺满后下面文字部分要根据不同主题的配色做对应的对比展示可视程度的处理」:
+     页脚 (星级 + DIZICAL) 底衬渐隐 —— 镭射铺满整卡后文字直接坐在彩虹箔上,
+     深色主题 = 暗渐隐压住箔光; 淡色主题在 themes.css 里换成亮渐隐 (同 --theme-plate-scrim 的极性逻辑)。 */
+  --theme-foot-scrim: linear-gradient(180deg,
+    rgba(6, 12, 30, 0) 0%, rgba(6, 12, 30, 0.52) 44%, rgba(6, 12, 30, 0.80) 100%);
+
   /* 圆角体系 (dad 2026-09-12 image#6 item1: "两个圆角矩形角度不同叠在一起" -> 收敛成一组变量)
      唯一来源 = 卡面半径 R 与金边厚度 rim-w；金边内弧 = R - rim-w；
      画面窗 + 窗内箔层圆角全部引用内弧半径 ⇒ 全卡弧线只有一套角度, 不再出现两套圆弧错开。 */
   --ccg-card-r: 18px;
-  --ccg-rim-w: 11px;
+  /* dad 2026-09-13 l1: 「外面的金环 11px 太粗了 减少」 → 收到 6px
+     (金框从「一圈粗边框」变成「一条细金属线」, 卡片不再像被相框框住) */
+  --ccg-rim-w: 6px;
   /* 画面窗内弧 = 卡面半径 R - 窗左右内缩量 ⇒ 窗的圆角与「金框内缘 + 一圈卡身衬底」
      同心, 衬底宽度四边均匀, 不会在圆角处出现新月形错角 (dad image#9/item1) */
   --ccg-rim-inner-r: calc(var(--ccg-card-r) - var(--ccg-art-inset));
   /* dad 2026-09-12 (image#11 item2): 画面窗的左右必须和下面 bar/plate/foot 落在同一条
      竖线上 (都是内容栏 --art-l 5.4%)。原来贴合金框内缘 (rim-w 11px) ⇒ 比下面模块左右
      各宽出 5.4%, dad 看它就是"贴着卡片边缘"。改后: 金框 0~11px + 均匀卡身衬底,
-     画面窗从 16.4px 起, 与信息条 / 说明栏 / 页脚齐平 */
+     画面窗从 5.4% 起 (金框 0~6px, dad 2026-09-13 l1 减细后随之内收) */
   --ccg-art-inset: var(--art-l, 5.4%);
 
   /* ── 主题 token 契约 (sprint 26091201, B 线) ────────────────
@@ -223,15 +234,16 @@
   pointer-events: none;
   z-index: 8;
   box-shadow:
-    /* dad 2026-09-12 l4「底座」= 这一条 2px 暗色掐丝 (#342205): 去掉时改透明, 几何不变
+    /* dad 2026-09-12 l4「底座」= 金框最外那条 1px 暗色掐丝 (#342205): 去掉时改透明, 几何不变
        (demo/对比页用 .ccg-stage[data-ccg-base="off"]) */
-    inset 0 0 0 2px var(--ccg-frame-base-c, var(--theme-frame-r1, #342205)),
+    /* dad 2026-09-13 l1「最外围的外框太复杂了」: 5 环 → 3 环
+       (1px 暗掐丝底座 + 4px 主金 + 1px 内高光), 总宽 11px → 6px。
+       去掉的两条 (#b3820a lo / #4e3207 r3) 是同色系暗环, 只贡献"厚度"不贡献层次。 */
+    inset 0 0 0 1px var(--ccg-frame-base-c, var(--theme-frame-r1, #342205)),
     inset 0 0 0 5px var(--theme-frame-gold, #d4a017),
-    inset 0 0 0 6px var(--theme-frame-hi),
-    inset 0 0 0 9px var(--theme-frame-lo),
-    inset 0 0 0 11px var(--theme-frame-r3, #4e3207);
+    inset 0 0 0 var(--ccg-rim-w) var(--theme-frame-hi);
 }
-/* 底座 A/B 开关: off = 只把最外那条 2px 暗线收掉, 金框带宽/位置不变 */
+/* 底座 A/B 开关: off = 只把最外那条 1px 暗线收掉, 金框带宽/位置不变 */
 .ccg-stage[data-ccg-base="off"] { --ccg-frame-base-c: transparent; }
 .ccg-frame::after {
   content: "";
@@ -262,7 +274,7 @@
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
-  padding: 11px;
+  padding: var(--ccg-rim-w);
 }
 
 .ccg-foil-stack {
@@ -275,6 +287,9 @@
   z-index: 1;
   transform: translateZ(0);
 }
+/* dad 2026-09-13 l1: 第二层箔栈 = 「覆在主体之上的扫光」(glare/spec/laser)。
+   合成后在 z6: 主体 (z5) 之上、文字区 (z7) 之下 —— 镭射铺满整卡但绝不糊住文字。 */
+.ccg-foil-over { z-index: 6; }
 
 /* ── V-grade foil: 通透星曜藏青底 (明暗分明的径向金光, 绝不发灰) ── */
 .ccg-foil-stock {
@@ -536,29 +551,19 @@
   pointer-events: none;
 }
 
-/* 画面窗口: 凹槽内嵌; 箔层与聚光灯全裁在这里, 指针坐标换算成框内坐标 */
+/* 画面窗: 【dad 2026-09-13 l1 后已退化为纯定位容器】
+   镭射/防伪箔层已整体搬到卡面级 (.ccg-foil-stack / .ccg-foil-over) 铺满整卡,
+   这里不再 overflow: hidden / isolation —— 那正是 dad 数的"第二个圆角矩形外框"
+   (画面窗自己的镭射底 + 一圈压暗)。窗口现在只负责给主体定位 + 换算指针坐标。 */
 .ccg-art-window {
   position: absolute;
   inset: 0;
   border-radius: var(--ccg-rim-inner-r);
-  overflow: hidden;
-  isolation: isolate;
   --pointer-x: var(--aw-x, 50%);
   --pointer-y: var(--aw-y, 50%);
 }
-/* 四边柔性压暗: 挂 ::after (z4 = 箔层之上 / 主视觉之下), 让画面边缘自然融进卡面底衬,
-   不产生"一圈线". 直接写在窗口上是无效的 — 窗口内的箔层会把它整个盖住 */
-.ccg-art-window::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: var(--ccg-rim-inner-r);
-  pointer-events: none;
-  z-index: 4;
-  box-shadow:
-    inset 0 18px 30px rgba(6, 12, 30, 0.32),
-    inset 0 -16px 26px rgba(6, 12, 30, 0.38);
-}
+/* 四边柔性压暗已撤 (dad 2026-09-13 l1): 它会在画面四周画出一圈暗边 = 明显一个方框,
+   与"镭射铺满整卡"冲突。画面边缘融合改由镜头/主体自带的 drop-shadow 负责。 */
 
 /* 主视觉 (框内) */
 .ccg-holo-art {
@@ -626,9 +631,9 @@
      深色主题 = 暗渐隐 + 亮墨 + 深描影; 淡色主题把三者反转 (亮渐隐 + 深墨 + 白描影),
      同一条规则两套极性, 文字区永远压得住。 */
   background: var(--theme-plate-scrim, linear-gradient(180deg,
-    rgba(6, 12, 30, 0) 0%,
-    rgba(6, 12, 30, 0.30) 46%,
-    rgba(6, 12, 30, 0.58) 100%));
+    rgba(6, 12, 30, 0.06) 0%,
+    rgba(6, 12, 30, 0.46) 46%,
+    rgba(6, 12, 30, 0.78) 100%));
   box-shadow: none;
   color: var(--theme-plate-ink, var(--theme-frame-hi));
   text-shadow: var(--theme-plate-ink-shadow, 0 1px 2px rgba(3, 7, 18, 0.92), 0 0 12px rgba(3, 7, 18, 0.72));
@@ -686,6 +691,21 @@
   pointer-events: none;
 }
 .ccg-foot span:last-child { color: var(--theme-foot-accent, #d9ab2c); letter-spacing: 0.2em; }
+/* dad 2026-09-13 l1: 页脚底衬渐隐 (挂在 ::before, 不影响任何几何 —— 页脚仍坐在原位置)。
+   向左右下各溢出一点, 让渐隐to卡底自然收口, 不出现一条硬边。 */
+.ccg-foot::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--art-l) * -0.30);
+  right: calc(var(--art-l) * -0.30);
+  top: calc(var(--card-w) * -0.030);
+  bottom: calc(var(--card-w) * -0.030);
+  z-index: -1;
+  border-radius: 5px;
+  background: var(--theme-foot-scrim, linear-gradient(180deg,
+    rgba(6, 12, 30, 0) 0%, rgba(6, 12, 30, 0.52) 44%, rgba(6, 12, 30, 0.80) 100%));
+  pointer-events: none;
+}
 
 .ccg-title {
   display: flex;

@@ -1,5 +1,7 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.1.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.2.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.2.0-dev (dad 2026-09-13 l1): 箔层 DOM 改挂卡面级 —— artInner() 只出主体,
+         frontMarkup() 出两组箔栈 (.ccg-foil-stack 背景组 z1 / .ccg-foil-stack.ccg-foil-over 扫光组 z6);
       v1.1.0-dev 本轮 3D 代码无功能改动, 只为跟随卡面样式版本一起升号;
       改了倾斜/翻转/视差/聚光灯逻辑 ⇒ 两个文件同时升号
       改本文件交互/几何 ⇒ 先升版本号 (本行 + badge-ccg.css + demo 页头 chip),
@@ -122,34 +124,38 @@
     return out;
   }
 
-  /* 画面内层: 方案二多一层 Z 轴悬浮主体, 方案一主体贴在箔层之上 */
+  /* 画面内层: 方案二多一层 Z 轴悬浮主体, 方案一主体贴在箔层之上.
+     dad 2026-09-13 l1: 箔层已整体搬到卡面级 (见 frontMarkup), 这里只出主体 ——
+     画面窗不再拥有自己的镭射底 (= dad 数的第二个圆角矩形外框)。 */
   function artInner(scheme, d) {
     var img = '<img alt="" width="512" height="512" decoding="sync" fetchpriority="high" src="' + d.image + '">';
-    var foil =
-      '<div class="ccg-foil-stack">' +
-        '<div class="ccg-foil-shine"></div>' +
-        '<div class="ccg-foil-glitter"></div>' +
-        '<div class="ccg-foil-security" aria-hidden="true"></div>' +
-      '</div>';
-    var subject = scheme === "px"
+    return scheme === "px"
       ? '<div class="ccg-layer ccg-layer-subject">' + img + '</div>'
       : '<div class="ccg-holo-art">' + img + '</div>';
-    return (
-      foil +
-      subject +
-      '<div class="ccg-foil-glare"></div>' +
-      '<div class="ccg-foil-spec"></div>' +
-      '<div class="ccg-foil-laser"></div>'
-    );
   }
 
-  /* Amazing Rare 版式: 上 2/3 = 金框框住主视觉, 下 1/3 = 银数据条 + 米色说明栏 + 页脚 */
+  /* Amazing Rare 版式: 上 2/3 = 金框框住主视觉, 下 1/3 = 银数据条 + 米色说明栏 + 页脚
+     dad 2026-09-13 l1「徽章那张画的 3d 镭射背景 我希望能整个铺满卡片」:
+       箔层从画面窗 (5.4% 内缩 + 裁剪) 改挂卡面级, 分两组:
+         · .ccg-foil-stack       = 背景镭射 (底衬/彩虹流光/星点/防伪纹) → z1, 在主体之下
+         · .ccg-foil-stack.ccg-foil-over = 覆在主体之上的扫光 (聚光灯/主光/镭射) → z6
+       主体 (z5) 夹在两组之间 ⇒ 与旧版同一条视觉顺序, 但镭射铺满整卡, 不再有第二层框。 */
   function frontMarkup(scheme, d) {
     return (
       '<div class="ccg-card-front' + (scheme === "px" ? " ccg-px-front" : "") + '">' +
-        '<div class="ccg-foil-stock"></div>' +
+        '<div class="ccg-foil-stack">' +
+          '<div class="ccg-foil-stock"></div>' +
+          '<div class="ccg-foil-shine"></div>' +
+          '<div class="ccg-foil-glitter"></div>' +
+          '<div class="ccg-foil-security" aria-hidden="true"></div>' +
+        '</div>' +
         '<div class="ccg-art-frame">' +
           '<div class="ccg-art-window">' + artInner(scheme, d) + '</div>' +
+        '</div>' +
+        '<div class="ccg-foil-stack ccg-foil-over">' +
+          '<div class="ccg-foil-glare"></div>' +
+          '<div class="ccg-foil-spec"></div>' +
+          '<div class="ccg-foil-laser"></div>' +
         '</div>' +
         '<div class="ccg-frame"></div>' +
         '<div class="ccg-holo-head">' +
