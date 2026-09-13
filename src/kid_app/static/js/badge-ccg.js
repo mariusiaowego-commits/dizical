@@ -1,6 +1,6 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.5.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
-      v1.5.0-dev (dad 2026-09-13 四轮): 本轮只改光照, 3D 代码零 Functional 改动, 只为跟随卡面样式一起升号
+   ── 卡面样式版本: v1.5.0 (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.5.0 (dad 2026-09-13 四轮): 本轮只改光照, 3D 代码零 Functional 改动, 只为跟随卡面样式一起升号
         (光照减弱/过渡全在 badge-ccg.css);
       v1.4.0-dev (dad 2026-09-13 三轮): 静止无光照 (IDLE_LIT 0.22→0, 光标不在卡上 lit=0) /
         跟随动画幅度加大 (maxTilt 15°→22°, 抬起 10px→20px; 视差与景深在 css);
