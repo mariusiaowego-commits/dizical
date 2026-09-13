@@ -1,5 +1,7 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.3.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.4.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.4.0-dev (dad 2026-09-13 三轮): 静止无光照 (IDLE_LIT 0.22→0, 光标不在卡上 lit=0) /
+        跟随动画幅度加大 (maxTilt 15°→22°, 抬起 10px→20px; 视差与景深在 css);
       v1.3.0-dev (dad 2026-09-13 二轮): 聚光灯强度旋钮 --ccg-light-gain(默认 0.6, glare+spec 两层同乘) /
         页脚 (星级 + DIZICAL) DOM 移入 .ccg-plate 内, 页脚不再自带背景;
       v1.2.0-dev (dad 2026-09-13 l1): 箔层 DOM 改挂卡面级 —— artInner() 只出主体,
@@ -34,10 +36,13 @@
   } catch (e2) {}
 
   var hasGsap = typeof global.gsap !== "undefined";
-  var maxTilt = 15;
+  /* dad 2026-09-13 (4): 跟随动画幅度加大 —— 最大倾角 15° -> 22°, 抬起 10px -> 20px */
+  var maxTilt = 22;
   /* 静止态聚光灯: 停在上金边/画面上沿, 不压在图案正中 (dad 2026-09-12) */
   var IDLE_Y = 14;
-  var IDLE_LIT = 0.22;
+  /* dad 2026-09-13 (3): 静止 = 无光照 —— 光标离开/未上卡时 lit 收到 0 (旧值 0.22 会留一层常亮).
+     收到 0 后 glare/spec 两层 opacity 归零 (见 badge-ccg.css), 只有镭射/防伪常驻层还在。 */
+  var IDLE_LIT = 0;
   var holoGain = 1;
   var cards = [];
   var fpsState = { frames: 0, last: 0, el: null, raf: 0 };
@@ -77,7 +82,7 @@
     el.style.setProperty("--nx", String(s.nx || 0));
     el.style.setProperty("--ny", String(s.ny || 0));
     el.style.setProperty("--from-center", String(s.fromCenter || 0));
-    el.style.setProperty("--lit", String(s.lit == null ? 0.22 : s.lit));
+    el.style.setProperty("--lit", String(s.lit == null ? 0 : s.lit));
   }
 
   function titleHtml(name) {
@@ -255,7 +260,7 @@
       state.fromCenter = clamp(Math.hypot(state.nx, state.ny), 0, 1.4);
       state.rx = clamp(-state.ny * maxTilt, -maxTilt, maxTilt);
       state.ry = clamp(state.nx * maxTilt, -maxTilt, maxTilt);
-      state.lift = 10;
+      state.lift = 20;
       state.lit = 1;
       paint();
     }
