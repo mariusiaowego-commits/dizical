@@ -1,0 +1,20 @@
+版本:     v1.5.0
+冻结时间: 2026-09-13 09:19:49 CST
+冻结依据: eb8aeed (fix(badges): 跟随光照定稿 0.10, CCG 卡冻结为 v1.5.0)
+变更说明: 定稿: 跟随光照 0.10 (-90%) + 320ms 渐变进场消除跳亮; 静止无光照; 页脚留白; 跟手幅度 22deg/20px
+入口:     /static/demo-archive/v1.5.0/index.html
+
+md5:
+  93b3356f0c452039bcfdfd7a77bf1171  index.html
+  ca18c92bba9a860fa3b7bda3aa45eebb  badge-ccg.css
+  8373a63049711967137bed64fdb12960  badge-ccg-themes.css
+  c6e7a2471ff0a3ad4f269e9e4fd50429  badge-ccg.js
+  019a241d2aa512259bda01b5a74f4748  patterns/  (4 个 svg)
+
+未随包资产 (走线上绝对路径, 同源服务器可加载):
+  /static/badge-ccg-compare.html
+  /static/badges/assign_pal_v2.png
+  /static/demo-archive/VERSIONS.md
+  http://www.w3.org/2000/svg
+  https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js
+  https://poke-holo.simey.me/
