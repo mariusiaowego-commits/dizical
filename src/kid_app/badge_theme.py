@@ -16,7 +16,32 @@ from __future__ import annotations
 
 # ─── 契约常量 ────────────────────────────────────────────────────────
 DEFAULT_CARD_THEME = "azure"
-VALID_CARD_THEMES = ("azure", "bamboo", "coral", "imperial", "frost")
+
+# 深色 5 套 (sprint 26091201 首版) — 顺序不可乱 (前端 dropdown 依赖)
+DARK_CARD_THEMES = ("azure", "bamboo", "coral", "imperial", "frost")
+# 淡色 3 套 (sprint 26091301 B2 开放成设计期可选项; 样式早已存在于
+# src/kid_app/static/css/badge-ccg-themes.css 的 [data-ccg-theme=...] 段)
+LIGHT_CARD_THEMES = ("pearl", "mint", "sakura")
+
+# 全部合法 card_theme: 恒为深在前、淡在后 (config 下拉 / 校验共用)
+VALID_CARD_THEMES = DARK_CARD_THEMES + LIGHT_CARD_THEMES
+
+# theme_source 取值 (config 设计期列表告诉 dad 这一行主题从哪来)
+THEME_SOURCE_DB = "db"            # achievements.card_theme 显式合法
+THEME_SOURCE_TYPE = "type"        # 按 achievements.type 兜底
+THEME_SOURCE_FALLBACK = "fallback"  # category=seasonal / 默认 azure
+
+# 中文可读名 (config 下拉展示; 无 emoji, 见 AGENTS.md §UI 偏好)
+THEME_LABELS: dict[str, str] = {
+    "azure": "深海蓝",
+    "bamboo": "竹林翠",
+    "coral": "珊瑚红",
+    "imperial": "皇紫金",
+    "frost": "霜白",
+    "pearl": "珠光象牙",
+    "mint": "薄荷玉",
+    "sakura": "樱雪",
+}
 
 # 按 achievements.type 兜底 (不是 category). 修正 agy B.4 表.
 TYPE_THEME_MAP: dict[str, str] = {
@@ -88,6 +113,12 @@ def resolve_card_theme(
 
 __all__ = [
     "DEFAULT_CARD_THEME",
+    "DARK_CARD_THEMES",
+    "LIGHT_CARD_THEMES",
+    "THEME_LABELS",
+    "THEME_SOURCE_DB",
+    "THEME_SOURCE_FALLBACK",
+    "THEME_SOURCE_TYPE",
     "VALID_CARD_THEMES",
     "TYPE_THEME_MAP",
     "resolve_card_theme",
