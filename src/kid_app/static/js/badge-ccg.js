@@ -1,5 +1,7 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.2.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.3.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.3.0-dev (dad 2026-09-13 二轮): 聚光灯强度旋钮 --ccg-light-gain(默认 0.6, glare+spec 两层同乘) /
+        页脚 (星级 + DIZICAL) DOM 移入 .ccg-plate 内, 页脚不再自带背景;
       v1.2.0-dev (dad 2026-09-13 l1): 箔层 DOM 改挂卡面级 —— artInner() 只出主体,
          frontMarkup() 出两组箔栈 (.ccg-foil-stack 背景组 z1 / .ccg-foil-stack.ccg-foil-over 扫光组 z6);
       v1.1.0-dev 本轮 3D 代码无功能改动, 只为跟随卡面样式版本一起升号;
@@ -172,10 +174,11 @@
             titleHtml(d.name) +
           '</div>' +
           '<p class="ccg-plate-desc">' + (d.cond || "") + '</p>' +
-        '</div>' +
-        '<div class="ccg-foot">' +
-          '<span class="ccg-stars">' + starsHtml(d.stars) + '</span>' +
-          '<span>DIZICAL</span>' +
+          /* dad 2026-09-13: 页脚行 (星级 + DIZICAL) 并入说明栏内, 不再单独成块 */
+          '<div class="ccg-foot">' +
+            '<span class="ccg-stars">' + starsHtml(d.stars) + '</span>' +
+            '<span>DIZICAL</span>' +
+          '</div>' +
         '</div>' +
       '</div>'
     );

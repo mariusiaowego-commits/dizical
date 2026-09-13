@@ -13,7 +13,7 @@ tags: [tech-spec, dizical, badge, ccg, theme]
 
 - 卡面文件：`src/kid_app/static/css/badge-ccg.css` (1164 行)、`src/kid_app/static/js/badge-ccg.js`
 - DOM 由 `badge-ccg.js` 的 `cardHTML()` 生成；demo `src/kid_app/static/badge-ccg-demo.html`
-- 布局变量集中在 `.ccg-stage`：`--art-l 5.4% / --art-t 9.9% / --art-h 51.1% / --bar-t 62.6% / --bar-h 4.2% / --plate-t 68.8% / --plate-b 88% / --foot-b 3.2%`
+- 布局变量集中在 `.ccg-stage`：`--art-l 5.4% / --art-t 9.9% / --art-h 51.1% / --bar-t 62.6% / --bar-h 4.2% / --plate-t 68.8% / --foot-b 3.2%`（v1.3.0-dev 起 `--plate-b` 废除：说明栏直伸到页脚底 `--foot-b`，页脚已并入说明栏内）
 - 箔层栈 (art-window 内)：stock → shine → glitter → security → spec → laser → glare → holo-head
 - 背景配色硬编码：`--ccg-void: #16224a`、箔底 `#0e1a3e`、`--ccg-sunpillar` 12 段光谱
 
