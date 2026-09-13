@@ -45,6 +45,7 @@
       <div class="tab-headers">
         <button class="tab-header active" data-tab="new-draft">新建 Badge 草稿</button>
         <button class="tab-header" data-tab="pending">待确认 Badge</button>
+        <button class="tab-header" data-tab="appearance">卡片外观</button>
       </div>
       <div class="tab-content active" data-tab-content="new-draft">
         <form id="v21NewDraftForm" class="v21-form" onsubmit="return submitNewDraft(event)">
@@ -254,6 +255,35 @@
           <span>加载待确认 badge 列表...</span>
         </div>
       </div>
+      <div class="tab-content" data-tab-content="appearance" style="display:none">
+        <!-- sprint 26091301 B2: 卡片外观 (设计期入口, dad 自己用; 不做用户端主题选择器) -->
+        <div id="v21AppearanceToolbar" class="v21-pending-toolbar">
+          <span class="v21-pending-title">卡片外观</span>
+          <span class="v21-pending-count">共 <b id="v21AppearanceCount">0</b> 条</span>
+          <button type="button" class="v21-refresh-btn" onclick="v21LoadAppearance()">刷新</button>
+        </div>
+        <p class="v21-appearance-note">
+          主题留空 = 跟随类型兜底. 改完点"保存", 只更新这一行, 不整页刷新.
+        </p>
+        <div class="v21-appearance-head">
+          <span>名称</span>
+          <span>类型</span>
+          <span>主题</span>
+          <span>星级</span>
+          <span>操作</span>
+        </div>
+        <div id="v21AppearanceList" class="v21-appearance-list">
+          <!-- 动态渲染 -->
+        </div>
+        <div id="v21AppearanceEmpty" class="v21-pending-empty" style="display:none">
+          <p>还没有徽章</p>
+          <p>先去"新建 Badge 草稿" tab 建一枚, 再回来设主题.</p>
+        </div>
+        <div id="v21AppearanceLoading" class="v21-pending-loading" style="display:none">
+          <div class="braille-spinner" aria-label="加载中">⠿</div>
+          <span>加载徽章列表...</span>
+        </div>
+      </div>
     </div>
 
   <!-- Toast -->
@@ -287,6 +317,10 @@
         // 切到 "待确认" 时拉一次 discoveries (V2.1 阶段 2.2 真实实现)
         if (tabName === 'pending') {
           v21LoadPending();
+        }
+        // sprint 26091301 B2: 切到 "卡片外观" 时拉一次全量列表
+        if (tabName === 'appearance') {
+          v21LoadAppearance();
         }
       });
     });
@@ -863,6 +897,146 @@
       if (pendingContent) {
         pendingContent.style.display = 'block';
         gsap.fromTo(pendingContent, {opacity: 0, y: 8}, {opacity: 1, y: 0, duration: 0.3, ease: 'power2.out'});
+      }
+    }
+
+    // ─── sprint 26091301 B2: 卡片外观 (设计期主题 / 星级) ─────────────
+    // dad 硬约束: 这是设计期配置入口 (dad 自己用), 不做用户端主题选择器.
+    // 保存只更新本行 (行内提示), 不整页刷新.
+    let v21AppearanceThemes = {dark: [], light: [], labels: {}};
+
+    function v21Esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function v21LoadAppearance() {
+      const listEl = document.getElementById('v21AppearanceList');
+      const emptyEl = document.getElementById('v21AppearanceEmpty');
+      const loadingEl = document.getElementById('v21AppearanceLoading');
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'none';
+      loadingEl.style.display = 'flex';
+
+      try {
+        const r = await fetch('/config/api/badge/card-appearance');
+        const data = await r.json();
+        loadingEl.style.display = 'none';
+        if (!data.ok) {
+          showToast('error', data.error || '加载失败');
+          return;
+        }
+        v21AppearanceThemes = data.themes || {dark: [], light: [], labels: {}};
+        v21RenderAppearance(data.data || []);
+      } catch (err) {
+        loadingEl.style.display = 'none';
+        showToast('error', '网络错误: ' + err.message);
+      }
+    }
+
+    function v21ThemeOptionHtml(slug, selected) {
+      const label = (v21AppearanceThemes.labels || {})[slug] || slug;
+      const sel = (slug === selected) ? ' selected' : '';
+      return `<option value="${v21Esc(slug)}"${sel}>${v21Esc(label)}</option>`;
+    }
+
+    function v21ThemeSelectHtml(selected) {
+      // "" = 清空列 → 后端回落 type 兜底
+      const follow = `<option value=""${selected ? '' : ' selected'}>跟随类型兜底</option>`;
+      const dark = (v21AppearanceThemes.dark || []).map(s => v21ThemeOptionHtml(s, selected)).join('');
+      const light = (v21AppearanceThemes.light || []).map(s => v21ThemeOptionHtml(s, selected)).join('');
+      return `<select class="v21-appearance-select" data-field="card_theme">`
+        + follow
+        + (dark ? `<optgroup label="深色">${dark}</optgroup>` : '')
+        + (light ? `<optgroup label="淡色">${light}</optgroup>` : '')
+        + `</select>`;
+    }
+
+    function v21StarsSelectHtml(selected) {
+      let html = `<select class="v21-appearance-select" data-field="card_stars">`;
+      html += `<option value=""${selected ? '' : ' selected'}>空</option>`;
+      for (let n = 1; n <= 5; n++) {
+        const sel = (String(n) === String(selected)) ? ' selected' : '';
+        html += `<option value="${n}"${sel}>${n} 星</option>`;
+      }
+      return html + `</select>`;
+    }
+
+    function v21RenderAppearance(items) {
+      const listEl = document.getElementById('v21AppearanceList');
+      const emptyEl = document.getElementById('v21AppearanceEmpty');
+      document.getElementById('v21AppearanceCount').textContent = items.length;
+      listEl.innerHTML = '';
+
+      if (items.length === 0) {
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'v21-appearance-row';
+        row.setAttribute('data-id', item.id);
+        row.innerHTML = `
+          <div class="v21-appearance-name">
+            <span>${v21Esc(item.name)}</span>
+            <small>${v21Esc(item.type || '')}</small>
+          </div>
+          <div class="v21-appearance-type">${v21Esc(item.type || '-')}</div>
+          <div class="v21-appearance-cell">${v21ThemeSelectHtml(item.card_theme)}</div>
+          <div class="v21-appearance-cell">${v21StarsSelectHtml(item.card_stars)}</div>
+          <div class="v21-appearance-action">
+            <button type="button" class="v21-appearance-save-btn">保存</button>
+            <span class="v21-appearance-msg" data-msg></span>
+          </div>`;
+        row.querySelector('.v21-appearance-save-btn')
+           .addEventListener('click', () => v21SaveAppearance(row));
+        listEl.appendChild(row);
+      });
+    }
+
+    async function v21SaveAppearance(row) {
+      const btn = row.querySelector('.v21-appearance-save-btn');
+      const msg = row.querySelector('[data-msg]');
+      const themeEl = row.querySelector('select[data-field="card_theme"]');
+      const starEl = row.querySelector('select[data-field="card_stars"]');
+      const themeVal = themeEl.value;
+      const starVal = starEl.value;
+
+      btn.disabled = true;
+      msg.className = 'v21-appearance-msg';
+      msg.textContent = '保存中';
+
+      try {
+        const r = await fetch('/config/api/badge/card-appearance', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            id: row.getAttribute('data-id'),
+            card_theme: themeVal ? themeVal : null,       // null = 清列回落兜底
+            card_stars: starVal ? parseInt(starVal, 10) : null,
+          }),
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          msg.className = 'v21-appearance-msg err';
+          msg.textContent = data.error || '保存失败';
+          return;
+        }
+        const d = data.data || {};
+        const label = (v21AppearanceThemes.labels || {})[d.resolved_theme] || d.resolved_theme;
+        msg.className = 'v21-appearance-msg ok';
+        msg.textContent = `已保存 · 生效 ${label} · ${d.resolved_stars} 星`;
+        // 行内回填后端真值 (不整页刷新)
+        themeEl.value = d.card_theme ? d.card_theme : '';
+        starEl.value = d.card_stars ? String(d.card_stars) : '';
+      } catch (err) {
+        msg.className = 'v21-appearance-msg err';
+        msg.textContent = '网络错误: ' + err.message;
+      } finally {
+        btn.disabled = false;
       }
     }
   </script>

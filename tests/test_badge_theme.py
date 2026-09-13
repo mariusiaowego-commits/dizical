@@ -395,3 +395,72 @@ def test_resolve_card_stars_range_contract():
 
     for v in TYPE_STARS_MAP.values():
         assert STARS_MIN <= v <= STARS_MAX
+
+
+# ─── sprint 26091301 B2: 主题目录扩到 8 套 (5 深 + 3 淡) ─────────────
+
+
+class TestThemeCatalog:
+    def test_valid_card_themes_is_8_dark_then_light(self):
+        from src.kid_app.badge_theme import (
+            DARK_CARD_THEMES,
+            LIGHT_CARD_THEMES,
+        )
+
+        assert DARK_CARD_THEMES == ("azure", "bamboo", "coral", "imperial", "frost")
+        assert LIGHT_CARD_THEMES == ("pearl", "mint", "sakura")
+        assert VALID_CARD_THEMES == DARK_CARD_THEMES + LIGHT_CARD_THEMES
+        assert len(VALID_CARD_THEMES) == 8
+        # 深在前淡在后 (前端下拉顺序依赖)
+        assert VALID_CARD_THEMES[:5] == DARK_CARD_THEMES
+        assert set(DARK_CARD_THEMES).isdisjoint(LIGHT_CARD_THEMES)
+
+    def test_theme_labels_cover_all_8(self):
+        from src.kid_app.badge_theme import THEME_LABELS
+
+        assert set(THEME_LABELS) == set(VALID_CARD_THEMES)
+        assert THEME_LABELS["azure"] == "深海蓝"
+        assert THEME_LABELS["bamboo"] == "竹林翠"
+        assert THEME_LABELS["coral"] == "珊瑚红"
+        assert THEME_LABELS["imperial"] == "皇紫金"
+        assert THEME_LABELS["frost"] == "霜白"
+        assert THEME_LABELS["pearl"] == "珠光象牙"
+        assert THEME_LABELS["mint"] == "薄荷玉"
+        assert THEME_LABELS["sakura"] == "樱雪"
+        for v in THEME_LABELS.values():
+            assert v and not any(ord(c) > 0x1F000 for c in v)  # 无 emoji
+
+    @pytest.mark.parametrize("slug", ["pearl", "mint", "sakura"])
+    def test_light_theme_resolvable(self, slug):
+        """淡色 3 套 Python 侧必须认 (之前只在 CSS 里存在)."""
+        assert resolve_card_theme(card_theme=slug) == slug
+        assert resolve_card_theme(card_theme=slug.upper()) == slug
+        assert resolve_card_theme(card_theme=f"  {slug}  ") == slug
+        # 显式淡色压过 type 兜底
+        assert resolve_card_theme(badge_type="巅峰", card_theme=slug) == slug
+
+    def test_light_theme_accepted_by_draft_validation(self):
+        from src.kid_app.badge_draft import create_draft
+
+        for slug in ("pearl", "mint", "sakura"):
+            draft = create_draft({
+                "id": f"test_light_{slug}",
+                "name": "淡色测试徽章",
+                "type": "突破",
+                "category": "milestone",
+                "placeholder": "p",
+                "zh_story": "z",
+                "cond_text": "c",
+                "card_theme": slug,
+            })
+            assert draft.meta["card_theme"] == slug
+
+    def test_light_themes_not_used_as_type_fallback(self):
+        from src.kid_app.badge_theme import LIGHT_CARD_THEMES
+
+        assert set(TYPE_THEME_MAP.values()).isdisjoint(LIGHT_CARD_THEMES)
+
+    def test_dirty_data_still_never_returns_light_mismatch(self):
+        """脏值仍走兜底链 (扩表没改优先级)."""
+        for bad in ["rainbow", "Pearl.", 7, []]:
+            assert resolve_card_theme(badge_type="段位", card_theme=bad) == "bamboo"

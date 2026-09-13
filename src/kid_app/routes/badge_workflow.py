@@ -591,3 +591,203 @@ def api_ai_cond(req: AICondRequest) -> JSONResponse:
     cond_text = cond_text.strip('"\'`')
 
     return JSONResponse({"ok": True, "cond_text": cond_text})
+
+
+# ─── 卡片外观设计期入口 (sprint 26091301 B2) ────────────────────────
+# dad 硬约束: 主题是**设计期配置项** (dad 自己在 config 里改), 不做用户端
+# 主题选择器, dizical-minip 不调用这组端点 (见 API-CHANGELOG §2.3).
+# PIN: 跟本文件既有 /config/api/badge/* 端点一致 — 不 server-side 校验,
+# 由 config 页 localStorage PIN gate 守入口 (见本文件顶部 helpers 注释).
+#
+# 单点解析不复制: 主题走 badge_theme.resolve_card_theme,
+# 星级走 badge_theme.resolve_card_stars (优先级链一个字不改).
+
+_SELECT_APPEARANCE_ROW = (
+    "SELECT id, name, type, category, sort_order, card_theme, card_stars "
+    "FROM achievements"
+)
+
+
+class CardAppearanceUpdateRequest(BaseModel):
+    """卡片外观单行更新 body.
+
+    card_theme / card_stars 用 pydantic model_fields_set 区分三种语义:
+    - 字段没传      → 不动该列
+    - 传 null / ""  → 清空该列 (回落 type 兜底)
+    - 传合法值      → 写该列
+    """
+    id: str = Field(..., min_length=1)
+    card_theme: Any = None
+    card_stars: Any = None
+
+
+def _appearance_row(row: dict) -> dict:
+    """DB 行 → API 结构 (原始列值 + 解析值 + theme_source)."""
+    from src.kid_app import badge_theme
+
+    raw_theme = row.get("card_theme")
+    raw_stars = row.get("card_stars")
+    badge_type = row.get("type")
+    category = row.get("category")
+
+    # theme_source: db (显式列合法) > type (TYPE_THEME_MAP) > fallback
+    if badge_theme._normalize_card_theme(raw_theme) is not None:
+        theme_source = badge_theme.THEME_SOURCE_DB
+    elif isinstance(badge_type, str) and badge_type.strip() in badge_theme.TYPE_THEME_MAP:
+        theme_source = badge_theme.THEME_SOURCE_TYPE
+    else:
+        theme_source = badge_theme.THEME_SOURCE_FALLBACK
+
+    return {
+        "id": row.get("id"),
+        "name": row.get("name"),
+        "type": badge_type,
+        "category": category,
+        "sort_order": row.get("sort_order"),
+        "card_theme": raw_theme,
+        "card_stars": raw_stars,
+        "resolved_theme": badge_theme.resolve_card_theme(badge_type, raw_theme, category),
+        "resolved_stars": badge_theme.resolve_card_stars(raw_stars, badge_type, category),
+        "theme_source": theme_source,
+    }
+
+
+@router.get("/api/badge/card-appearance")
+def api_card_appearance_list() -> JSONResponse:
+    """列出全部 achievements 的卡片外观 (设计期表格用).
+
+    Returns:
+        {ok, count, data: [...], themes: {dark, light, labels}}
+    """
+    from src import db_adapter
+    from src.kid_app import badge_db, badge_theme
+
+    conn, is_mysql = db_adapter.get_conn()
+    try:
+        # 幂等确保 card_theme / card_stars 列 (双后端)
+        badge_db.ensure_card_theme_column(conn)
+        badge_db.ensure_card_stars_column(conn)
+        rows = db_adapter.execute_dicts(
+            conn, _SELECT_APPEARANCE_ROW + " ORDER BY sort_order, id",
+        )
+    except Exception as e:
+        logger.exception("card-appearance list failed")
+        return JSONResponse({"ok": False, "error": f"读取失败: {e}"}, status_code=500)
+    finally:
+        if not is_mysql:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    data = [_appearance_row(r) for r in rows]
+    return JSONResponse({
+        "ok": True,
+        "count": len(data),
+        "data": data,
+        "themes": {
+            "dark": list(badge_theme.DARK_CARD_THEMES),
+            "light": list(badge_theme.LIGHT_CARD_THEMES),
+            "labels": dict(badge_theme.THEME_LABELS),
+        },
+    })
+
+
+@router.post("/api/badge/card-appearance")
+def api_card_appearance_update(req: CardAppearanceUpdateRequest) -> JSONResponse:
+    """更新单张卡的 card_theme / card_stars, 返更新后完整单行结构.
+
+    校验 (严, 不走兜底):
+    - card_theme 非空必须在 8 套 (VALID_CARD_THEMES) 内, 否则 400 + 合法清单
+    - card_stars 必须 1..5 或 null, 越界 400
+    - id 不存在 404
+    """
+    from src import db_adapter
+    from src.kid_app import badge_db, badge_theme
+
+    badge_id = (req.id or "").strip()
+    if not badge_id:
+        return JSONResponse({"ok": False, "error": "id 必填"}, status_code=400)
+
+    fields = req.model_fields_set
+    updates: dict[str, Any] = {}
+
+    if "card_theme" in fields:
+        raw_theme = req.card_theme
+        if raw_theme is None or (isinstance(raw_theme, str) and not raw_theme.strip()):
+            updates["card_theme"] = None  # 清列 → 解析回落 type/category 兜底
+        elif isinstance(raw_theme, str) and raw_theme.strip().lower() in badge_theme.VALID_CARD_THEMES:
+            updates["card_theme"] = raw_theme.strip().lower()
+        else:
+            return JSONResponse({
+                "ok": False,
+                "error": f"card_theme 非法: {raw_theme!r}, 必须是合法主题之一 (或 null/空串清空)",
+                "valid_themes": list(badge_theme.VALID_CARD_THEMES),
+            }, status_code=400)
+
+    if "card_stars" in fields:
+        raw_stars = req.card_stars
+        if raw_stars is None or (isinstance(raw_stars, str) and not raw_stars.strip()):
+            updates["card_stars"] = None
+        else:
+            try:
+                n = int(str(raw_stars).strip())
+            except (TypeError, ValueError):
+                return JSONResponse({
+                    "ok": False,
+                    "error": f"card_stars 非法: {raw_stars!r}, 必须是 1..5 的整数 (或 null/空串清空)",
+                    "valid_range": [badge_theme.STARS_MIN, badge_theme.STARS_MAX],
+                }, status_code=400)
+            if not (badge_theme.STARS_MIN <= n <= badge_theme.STARS_MAX):
+                return JSONResponse({
+                    "ok": False,
+                    "error": f"card_stars 越界: {n}, 必须是 {badge_theme.STARS_MIN}..{badge_theme.STARS_MAX} (或 null/空串清空)",
+                    "valid_range": [badge_theme.STARS_MIN, badge_theme.STARS_MAX],
+                }, status_code=400)
+            updates["card_stars"] = n
+
+    conn, is_mysql = db_adapter.get_conn()
+    try:
+        badge_db.ensure_card_theme_column(conn)
+        badge_db.ensure_card_stars_column(conn)
+
+        cur = db_adapter.execute(
+            conn, "SELECT id FROM achievements WHERE id = ? LIMIT 1", (badge_id,),
+        )
+        if cur.fetchone() is None:
+            return JSONResponse(
+                {"ok": False, "error": f"id={badge_id!r} 不存在"}, status_code=404,
+            )
+
+        if updates:
+            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            db_adapter.execute(
+                conn,
+                f"UPDATE achievements SET {set_clause} WHERE id = ?",
+                list(updates.values()) + [badge_id],
+            )
+            conn.commit()
+            logger.info("card-appearance update: id=%s %s", badge_id, updates)
+
+        rows = db_adapter.execute_dicts(
+            conn, _SELECT_APPEARANCE_ROW + " WHERE id = ? LIMIT 1", (badge_id,),
+        )
+    except Exception as e:
+        logger.exception("card-appearance update failed for %s", badge_id)
+        return JSONResponse({"ok": False, "error": f"更新失败: {e}"}, status_code=500)
+    finally:
+        if not is_mysql:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    if not rows:
+        return JSONResponse(
+            {"ok": False, "error": f"id={badge_id!r} 更新后读取失败"}, status_code=500,
+        )
+    return JSONResponse({
+        "ok": True,
+        "data": _appearance_row(rows[0]),
+        "updated": sorted(updates.keys()),
+    })
