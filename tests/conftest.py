@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS achievements (
     achieved_at_override TEXT,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
     card_theme        TEXT,
-    card_stars        INTEGER
+    card_stars        INTEGER,
+    card_no           INTEGER  -- sprint 26091301 B1: 图鉴编号 (永久不变)
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id TEXT PRIMARY KEY,

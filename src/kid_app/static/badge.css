@@ -870,3 +870,84 @@
       pointer-events: none; opacity: 0; visibility: hidden;
       box-shadow: 0 4px 16px rgba(0,0,0,0.25);
     }
+
+    /* ─── sprint 26091301 B2: 卡片外观 (设计期主题 / 星级) ─────────── */
+    /* 设计期配置入口: 弱化 CTA (灰底描边按钮, 不用 primary 填充), 无 emoji, 无 hover lift */
+    .v21-appearance-note {
+      max-width: 800px;
+      margin: 0 0 22px;
+      padding: 0 4px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .v21-appearance-head,
+    .v21-appearance-row {
+      display: grid;
+      grid-template-columns:
+        minmax(140px, 1.5fr) minmax(76px, 0.8fr)
+        minmax(128px, 1fr) minmax(88px, 0.7fr) minmax(104px, 0.9fr);
+      align-items: center;
+      gap: 12px;
+      max-width: 800px;
+    }
+    .v21-appearance-head {
+      padding: 0 14px 8px;
+      font-size: 11px;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+    }
+    .v21-appearance-list { max-width: 800px; margin-bottom: 22px; }
+    .v21-appearance-row {
+      background: white;
+      border: 1px solid #EFE7DF;
+      border-radius: var(--radius-lg);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .v21-appearance-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .v21-appearance-name span {
+      font-size: 14px; color: var(--secondary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .v21-appearance-name small {
+      font-size: 11px; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .v21-appearance-type { font-size: 12px; color: var(--muted); }
+    .v21-appearance-select {
+      width: 100%;
+      min-height: 32px;
+      padding: 5px 8px;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      background: var(--neutral);
+      color: var(--secondary);
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .v21-appearance-select:focus { border-color: var(--primary); outline: none; }
+    .v21-appearance-action { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+    .v21-appearance-save-btn {
+      padding: 6px 14px;
+      min-height: 32px;
+      background: var(--neutral);
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .v21-appearance-save-btn:hover:not(:disabled) { background: var(--tertiary); }
+    .v21-appearance-save-btn:disabled { opacity: 0.55; cursor: default; }
+    .v21-appearance-msg { font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .v21-appearance-msg.ok { color: var(--secondary); }
+    .v21-appearance-msg.err { color: var(--primary); }
+
+    @media (max-width: 640px) {
+      .v21-appearance-head { display: none; }
+      .v21-appearance-row { grid-template-columns: 1fr; gap: 8px; }
+      .v21-appearance-action { justify-content: flex-start; }
+    }

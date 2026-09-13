@@ -179,9 +179,10 @@ def api_achievements():
 
     # 2. 读 achievements 表
     # Sprint 26091201 feat/badge-3d-ccg B-1: 多取 a.card_theme, 走 resolve_card_theme 兜底
+    # sprint 26091301 B1: 多取 a.card_no (图鉴编号, 小程序可选用 — 本轮不改小程序代码)
     cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
-        "unlock_strategy, achieved_at_override, card_theme, card_stars FROM achievements "
+        "unlock_strategy, achieved_at_override, card_theme, card_stars, card_no FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order"
     )
@@ -241,6 +242,8 @@ def api_achievements():
                 badge_type=ach.get("type"),
                 category=ach.get("category"),
             ),
+            # sprint 26091301 B1: 图鉴编号 (可选字段, 小程序本轮不消费)
+            "card_no": ach.get("card_no"),
             # 2026-08-07 sprint 26080702: seasonal badge 显示赛季+累计次数
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("

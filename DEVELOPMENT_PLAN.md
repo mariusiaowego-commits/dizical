@@ -481,6 +481,15 @@ dad 2026-09-13 拍板：徽章卡编号等工作**不进本次 sprint**（「这
 - 条目: B1 徽章卡编号（`No.007`，方案 A 见 `docs/AI-PRD-徽章卡编号-260912.md`）· B2 主题的设计期选择入口（config 改 `card_theme`，**不做**用户端选择器）· B3 防伪强度定档接生产（`card_sec` 列 + `--ccg-sec-gain` 档位）· B4 金框 1px 暗掐丝底座去/留 · B5 卡面版本化流程（已落地）
 - 原则（dad 原话）：「这几套主题不是为了前端能让用户选择展示的，而是为了我作为每次设计卡片时的选项」
 
+### 2026-09-13 更新：B1 / B2 已开 sprint 26091301
+
+- **PR #323 已 merge**（squash ⇒ main tip `440eb5c`，2026-09-13T02:47:21Z）⇒ CCG 视觉线关闭。
+- **sprint 26091301**（分支 `feat/sprint-26091301-badge-card-no`）收 **B1 卡编号** + **B2 主题设计期入口**：
+  - 文档：`sprints/sprint-26091301-badge-card-no-and-theme-config-2026-09-13/`（sprint / plan / tech-spec / test-plan 四份，Obsidian vault 已镜像）
+  - B1 决策（dad 已拍）：Q1=A 图鉴编号 · Q2=A 类别内自动编排 · Q3=A `card_stars` 已上线 · Q4=A 小程序只加字段
+- **仍等 dad 眼验后拍**：B4 金框 1px 暗掐丝底座去留 · B3 防伪强度档位（弱 ×1 / 中 ×1.6 / 强 ×2.4）
+- **已落地无需开发**：B5 卡面版本化流程（`scripts/freeze-ccg-demo.sh` + `demo-archive/VERSIONS.md`）
+
 ---
 
 **开发收尾**：每次 session 结束前更新 `STATUS.md` 和 `DEVELOPMENT_PLAN.md`，保持后续接手 agent 可读。
