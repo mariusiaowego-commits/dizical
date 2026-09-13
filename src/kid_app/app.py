@@ -896,11 +896,25 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
                         continue
 
         # Sprint 26091302 B6 F3: 传 card_theme/card_stars/card_no 真值给 builder (空也传, 模板据 dataset 决定)
+        # B6 fix: 空主题/星级走 resolve_* 兜底 (type/category 映射), 与 /badges 页口径一致 —
+        #   否则本页 NULL 全落 'azure'/3, 与 badges 页的 type 兜底配色不一致。
+        #   (局部 import, 与 badges_page 同风格)
+        from src.kid_app.badge_theme import resolve_card_stars, resolve_card_theme
         card_html = _build_milestone_card(
             aid, ach["name"], ach["type"], ach["description"],
             badge_url, achieved, cv, threshold, res.condition, ach.get("cond_text") or "",
-            card_theme=ach.get("card_theme"),
-            card_stars=ach.get("card_stars"),
+            # B6 fix: 跟 /badges 页口径统一 — 空主题/星级走 resolve_* 兜底 (type/category 映射),
+            #   否则本页 NULL 全落 'azure'/3, 与 badges 页的 type 兜底配色不一致.
+            card_theme=resolve_card_theme(
+                badge_type=ach.get("type"),
+                card_theme=ach.get("card_theme"),
+                category=ach.get("category"),
+            ),
+            card_stars=resolve_card_stars(
+                card_stars=ach.get("card_stars"),
+                badge_type=ach.get("type"),
+                category=ach.get("category"),
+            ),
             card_no=ach.get("card_no") if has_card_no else None,
         )
 

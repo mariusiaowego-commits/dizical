@@ -211,10 +211,10 @@ function esc(s) {
 }
 
 function cardHTML(d) {
-  /* sprint 26091302 B6: 卡面 HTML 容器 (外壳) — 真正的 CCG 卡 mount 到 #stage 占位 div 上.
-     外壳保留 .badge-card (locked/unlocked class + 网格布局依赖), 内部 PNG + b-name + b-tag + b-lock
-     保留原样作为 mount 前的占位 + 网格尺寸参考 (CSS 已用 grid-template-columns: repeat(2,1fr),
-     不依赖内容元素尺寸). */
+  /* sprint 26091302 B6: 卡面 HTML 容器 (外壳) — 真正的 CCG 卡 mount 到 .ccg-stage-mount 占位 div 上.
+     外壳保留 .badge-card (locked/unlocked class, 网格布局依赖); 内部只有占位 div, 不再输出
+     PNG/b-name/b-tag/b-lock (子卡由 DizicalCCG.mountCard 生成, 锁标走 CSS ::after).
+     CSS 网格用 grid-template-columns: repeat(2,1fr), 不依赖内容元素尺寸. */
   return `<div class="badge-card ${d.achieved?'unlocked':'locked'}"
     data-id="${esc(d.id)}"
     data-name="${esc(d.name)}"
@@ -229,7 +229,7 @@ function cardHTML(d) {
     data-locked="${d.achieved?'no':'yes'}"
     data-card-theme="${esc(d.card_theme||'azure')}"
     data-card-stars="${esc(String(d.card_stars||3))}"
-    data-no="${esc(d.no||'001')}"
+    data-no="${esc(d.card_no != null ? d.card_no : '')}"
     onclick="openModal(this)">
     <div class="ccg-stage-mount" id="stage-${esc(d.id)}"></div>
   </div>`;
@@ -257,7 +257,7 @@ function _swapCardToCCG(bCard, opts) {
     story: bCard.dataset.desc || '',
     date:  bCard.dataset.date || '',
     stars: parseInt(bCard.dataset.cardStars || '3', 10) || 3,
-    no:    bCard.dataset.no || '001',
+    no:    bCard.dataset.no || '',     // B1: 无编号 → '' → formatCardNo 返 '—'
     card_theme: bCard.dataset.cardTheme || 'azure',
   }, { locked: opts && opts.locked, idleSkip: 2 });
 }
@@ -382,7 +382,7 @@ function openModal(card) {
     story: card.dataset.desc || '',
     date:  card.dataset.date || '',
     stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
-    no:    card.dataset.no || '001',
+    no:    card.dataset.no || '',      // B1: 无编号 → '' → formatCardNo 返 '—'
     card_theme: card.dataset.cardTheme || 'azure',
   }, { locked: locked });
 
