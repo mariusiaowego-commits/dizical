@@ -1,5 +1,12 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.4.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.5.0-dev (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.5.0-dev 增量 (dad 2026-09-13 四轮, 只动光照): 「鼠标移动上去后光照感一下子特别强, 特别白」
+        ① 聚光灯总强度再砍 60%: --ccg-light-gain 0.40→0.16 (相对原始 −84%);
+        ② spec 白斑峰值再收: 0.42/0.20/0.09→0.24/0.12/0.05 (hover 有效强度 0.151→0.035, −77%);
+        ③ 叠亮型 (color-dodge/plus-lighter) 层的跟随幅度收窄 —— shine lit 0.50→0.10 (hover 0.90→0.50)、
+           glitter 0.34→0.12 (0.58→0.36)、金框扫光 0.45→0.15 (角落 0.75→0.45)、背面聚光灯 0.45→0.18;
+        ④ 消除"一下子": glare/spec/shine/glitter/laser/security/金框扫光 全部加 320ms opacity 过渡
+           (原先 lit 0→1 是瞬间跳亮, 现在是渐变进场); 静止值一律不变;
       v1.4.0-dev 增量 (dad 2026-09-13 三轮, 4 条): 聚光灯再减弱 (--ccg-light-gain 0.6→0.40)
         + 两层光取消常亮基线, 改由 --lit 独占驱动 (光标不在卡上 = 全卡无光照, JS IDLE_LIT=0)
         + spec 峰值再收一档 (0.60/0.30/0.12→0.42/0.20/0.09) / 说明栏内下留白 token
@@ -53,14 +60,14 @@
   --ccg-sec-gain: 1;
 
   /* dad 2026-09-13: 跟随光标的**聚光灯总强度** —— glare (柔光) + spec (主光) 两层同时乘。
-     1 = 原强度; 0.6 = 上一版; **0.40 = 现默认** (dad 二轮「光照还是太强了, 在 mouse 位置
-     后面的图案有点看不清楚」→ 再减弱 33%)。
+     1 = 原强度; 0.6 = 二轮; 0.40 = 三轮; **0.16 = 现默认** (dad 四轮「光照感太强, 鼠标移动
+     上去后一下子特别强、特别白 —— 减弱再减弱一下」→ 相对三轮再 −60%, 相对原始 −84%)。
      镭射彩虹 (laser) 与防伪 (security) 不在此旋钮内; 想再增减跟随光照就只改这一处。
      注 1: 页脚已并入说明栏 (.ccg-foot 移进 .ccg-plate), 底色不再自带 ⇒ --theme-foot-scrim 已删除,
      文字区 (含星级 / DIZICAL 行) 的底衬统一由 --theme-plate-scrim 负责。
      注 2 (dad 二轮): 两层光的**亮度基线已取消** —— 完全由 --lit 驱动 (光标不在卡上时 lit=0,
-     全卡无光照); 0.40 现在乘的是 hover 时的峰值。 */
-  --ccg-light-gain: 0.40;
+     全卡无光照); 本旋钮乘的是 hover 时的峰值。 */
+  --ccg-light-gain: 0.16;
 
   /* 圆角体系 (dad 2026-09-12 image#6 item1: "两个圆角矩形角度不同叠在一起" -> 收敛成一组变量)
      唯一来源 = 卡面半径 R 与金边厚度 rim-w；金边内弧 = R - rim-w；
@@ -265,7 +272,10 @@
   inset: 0;
   border-radius: var(--ccg-card-r);
   pointer-events: none;
-  opacity: calc((0.3 + var(--from-center, 0) * 0.45) * var(--holo-gain, 1));
+  /* dad 2026-09-13 (4): 金框上的 color-dodge 白光扫过 —— 跟随幅度 0.45 -> 0.15 (角落 0.75 -> 0.45)
+     + 320ms 过渡; 静止基线 0.3 不变 */
+  opacity: calc((0.3 + var(--from-center, 0) * 0.15) * var(--holo-gain, 1));
+  transition: opacity 320ms var(--ccg-ease);
   mix-blend-mode: color-dodge;
   background: linear-gradient(
     135deg,
@@ -330,7 +340,10 @@
   border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 2;
-  opacity: calc((0.40 + var(--lit, 0.22) * 0.50) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  /* dad 2026-09-13 (4): 这层是 color-dodge (叠亮型) 的彩虹箔, hover 时 0.90 会整片发白 ——
+     把跟随幅度从 0.50 收到 0.10 (hover 0.90 -> 0.50), 静止值不变; 并加 320ms 过渡 */
+  opacity: calc((0.40 + var(--lit, 0) * 0.10) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  transition: opacity 320ms var(--ccg-ease);
   mix-blend-mode: var(--theme-foil-shine-blend, color-dodge);
   /* Trainer Gallery Holofoil — 照抄 simeydotme/pokemon-cards-css public/css/cards/trainer-gallery-holo.css:
      7 段彩虹色带 (-22° 平铺, 每段 5%), color-dodge 混合, 亮度随指针离心距离抬升
@@ -379,7 +392,9 @@
   border-radius: var(--ccg-card-r);
   pointer-events: none;
   z-index: 2;
-  opacity: calc((0.24 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  /* dad 2026-09-13 (4): 跟随幅度 0.34 -> 0.12 (hover 0.58 -> 0.36) + 320ms 过渡 */
+  opacity: calc((0.24 + var(--lit, 0) * 0.12) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  transition: opacity 320ms var(--ccg-ease);
   mix-blend-mode: var(--theme-foil-glitter-blend, plus-lighter);
   background-image:
     radial-gradient(1px 1px at 12% 16%, #fff 65%, transparent 70%),
@@ -425,6 +440,8 @@
      dad 2026-09-13 (3): 常量基线 0.62 取消 —— 改由 --lit 独占驱动 (lit=0 => 完全不发光,
      鼠标不在卡上时无光照; lit=1 时与原最大亮度 0.62+0.38=1.00 等价) */
   opacity: calc(var(--lit, 0) * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-light-gain, 1));
+  /* dad 2026-09-13 (4): 进场/离场都走 320ms 渐变 (原来 lit 0->1 是瞬间跳, 所以"一下子特别白") */
+  transition: opacity 320ms var(--ccg-ease);
   background-image: radial-gradient(
     farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
     var(--theme-glare-stops,
@@ -445,14 +462,18 @@
   /* dad 2026-09-13: 乘 --ccg-light-gain (v1.4.0: 0.6 -> 0.40) —— 这层是"冲淡图案"的主因 (screen 提亮)
      dad 2026-09-13 (3): 同样改由 --lit 独占驱动 (lit=0 => 无光照); 并把峰值再收一档
      (0.60/0.30/0.12 -> 0.42/0.20/0.09) —— 光标正下方的图案不再被洗白 */
+  /* dad 2026-09-13 (4): 「鼠标移动上去后光照感一下子特别强, 特别白」——
+     ① 上层白斑峰值再收一档 (0.42/0.20/0.09 -> 0.24/0.12/0.05);
+     ② 本层与 glare / shine / glitter 都加 320ms opacity 过渡, 让"进场"是渐变而不是瞬间跳亮。 */
   opacity: calc(var(--lit, 0) * 0.9 * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-light-gain, 1));
+  transition: opacity 320ms var(--ccg-ease);
   /* dad 2026-09-12: 峰值收一档 + 固定 56% 椭圆改 farthest-corner, 消除高光球边界 */
   background-image: radial-gradient(
     farthest-corner ellipse at var(--pointer-x, 50%) var(--pointer-y, 50%),
-    hsla(44, 100%, 92%, 0.42) 0%,
-    hsla(46, 100%, 84%, 0.20) 18%,
-    hsla(210, 80%, 70%, 0.09) 46%,
-    hsla(216, 60%, 40%, 0.04) 66%,
+    hsla(44, 100%, 92%, 0.24) 0%,
+    hsla(46, 100%, 84%, 0.12) 18%,
+    hsla(210, 80%, 70%, 0.05) 46%,
+    hsla(216, 60%, 40%, 0.03) 66%,
     hsla(0, 0%, 0%, 0) 86%
   );
 }
@@ -465,7 +486,10 @@
   pointer-events: none;
   z-index: 6;
   mix-blend-mode: var(--theme-foil-laser-blend, color-dodge);
-  opacity: calc((0.20 + var(--lit, 0.22) * 0.34) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  opacity: calc((0.20 + var(--lit, 0) * 0.34) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  /* dad 2026-09-13 (4): 数值不动 (dad 认可镭射观感), 只把 lit 的跳变改成 320ms 渐变 ——
+     去掉"鼠标一上去瞬间亮一下"的突变感 */
+  transition: opacity 320ms var(--ccg-ease);
   filter: var(--theme-laser-tint, none) brightness(var(--theme-foil-laser-bright, 0.85))
     contrast(var(--theme-foil-laser-contrast, 1.6)) saturate(var(--theme-foil-laser-sat, 1.5));
   background-repeat: no-repeat;
@@ -491,7 +515,9 @@
   pointer-events: none;
   z-index: 3;
   mix-blend-mode: var(--theme-foil-sec-blend, plus-lighter);
-  opacity: calc((0.28 + var(--lit, 0.22) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-sec-gain, 1));
+  opacity: calc((0.28 + var(--lit, 0) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-sec-gain, 1));
+  /* dad 2026-09-13 (4): 同上, 只加 320ms 过渡不改强度 */
+  transition: opacity 320ms var(--ccg-ease);
   filter: var(--theme-laser-tint, none) brightness(1.08) contrast(1.35) saturate(1.4);
   background-repeat: no-repeat;
   background-image: linear-gradient(
@@ -804,7 +830,7 @@
 }
 .ccg-back-face .ccg-foil-shine::after { opacity: calc(0.26 * var(--holo-gain, 1)); }
 .ccg-back-face .ccg-foil-glitter { opacity: calc(0.1 * var(--holo-gain, 1)); }
-.ccg-back-face .ccg-foil-glare { opacity: calc(var(--lit, 0) * var(--from-center, 0) * 0.45 * var(--holo-gain, 1) * var(--ccg-light-gain, 1)); }
+.ccg-back-face .ccg-foil-glare { opacity: calc(var(--lit, 0) * var(--from-center, 0) * 0.18 * var(--holo-gain, 1) * var(--ccg-light-gain, 1)); }
 .ccg-back-face .ccg-foil-security { opacity: calc((0.2 + var(--from-center, 0) * 0.3) * var(--holo-gain, 1)); }
 
 .ccg-back-face {
