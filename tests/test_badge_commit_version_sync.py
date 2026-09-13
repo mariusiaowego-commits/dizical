@@ -61,7 +61,8 @@ def isolated_db(tmp_path, monkeypatch):
             unlock_strategy   TEXT DEFAULT 'calc',
             achieved_at_override TEXT,
             created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
-            card_theme        TEXT  -- Sprint 26091201 feat/badge-3d-ccg B-1
+            card_theme        TEXT,  -- Sprint 26091201 feat/badge-3d-ccg B-1
+            card_stars        INTEGER  -- dad image#9/4: 星级 1-5 (后端支撑)
         );
         CREATE TABLE achievement_stats (
             achievement_id TEXT PRIMARY KEY,

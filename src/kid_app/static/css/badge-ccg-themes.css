@@ -2,7 +2,9 @@
  * Sprint 26091101 feat/sprint-26091101-badge-3d-ccg
  * Part B — 背景主题系统 (agy 方案 B.2 / B.3 / B.5)
  *
- * 4 个非默认主题块, 挂在 .ccg-stage[data-ccg-theme="..."] 上覆盖 CSS 变量.
+ * 7 个非默认主题块, 挂在 .ccg-stage[data-ccg-theme="..."] 上覆盖 CSS 变量.
+ *  深色 4: bamboo / coral / imperial / frost
+ *  淡色 3: pearl / mint / sakura
  * azure 默认值由 badge-ccg.css :root 定义, 这里不重复.
  *
  * token 契约 (跟 badge-ccg.css var(--theme-*) 列表对齐, 缺一不可):

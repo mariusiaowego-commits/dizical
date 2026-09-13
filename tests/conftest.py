@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS achievements (
     unlock_strategy   TEXT DEFAULT 'calc',
     achieved_at_override TEXT,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
-    card_theme        TEXT
+    card_theme        TEXT,
+    card_stars        INTEGER
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id TEXT PRIMARY KEY,

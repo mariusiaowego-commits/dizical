@@ -10,7 +10,7 @@
 
 - 端点: ① kid-app `/badges` 页内联 payload ② `GET /api/badge/unclaimed` ③ minip `GET /api/achievements`
 - 值域: `azure|bamboo|coral|imperial|frost`（CCG 卡面 `data-ccg-theme` 直接消费，样式在 `badge-ccg-themes.css`）
-- 解析: `src/kid_app/badge_theme.py:resolve_card_theme(badge_type, card_theme, category)` 兜底链 = 显式 `card_theme` → `achievements.type` 映射（突破→azure / 段位→bamboo / 执着→azure / 巅峰→coral / 晋级→azure / 神秘→imperial）→ `category='seasonal'`→frost → azure
+- 解析: `src/kid_app/badge_theme.py:resolve_card_theme(badge_type, card_theme, category)` 兜底链 = 显式 `card_theme` → `achievements.type` 映射（突破→azure / 执着→bamboo / 段位→bamboo / 巅峰→coral / 晋级→coral / 神秘→imperial）→ `category='seasonal'`→frost → azure
 - **影响**: 纯新增字段，老客户端忽略即可。dizical-minip badges-hall 若要主题背景需同步取 `card_theme`
 
 ### 1.2 DB: `achievements.card_theme TEXT NULL` (双后端)

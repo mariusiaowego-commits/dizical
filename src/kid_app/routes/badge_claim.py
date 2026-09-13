@@ -243,7 +243,8 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
                     practice_date,
                     json.dumps({"badge_id": badge_id}),
                     json.dumps({"claimed_at": claimed_at_iso}),
-                    badge_id,
+                    # session_id: badge 领取无练习 session 语义, 留空 (原误塞 badge_id)
+                    None,
                     badge_id,
                 ),
             )
