@@ -102,7 +102,7 @@
           '<div class="ccg-foil-security" aria-hidden="true"></div>' +
         '</div>' +
         '<div class="ccg-back-inner">' +
-          '<div class="ccg-back-kicker">' + d.tag + ' · No.' + d.no + '</div>' +
+          '<div class="ccg-back-kicker">' + d.tag + ' · ' + d.no + '</div>' +
           '<div class="ccg-back-title">' + d.name + '</div>' +
           '<div class="ccg-back-rule"></div>' +
           '<div class="ccg-back-field">' +
@@ -169,10 +169,10 @@
         '<div class="ccg-frame"></div>' +
         '<div class="ccg-holo-head">' +
           '<span class="ccg-chip">' + d.tag + '</span>' +
-          '<span class="ccg-no">No.' + d.no + '</span>' +
+          '<span class="ccg-no">' + d.no + '</span>' +
         '</div>' +
         '<div class="ccg-info-bar">' +
-          '<span class="ccg-bar-no">NO.' + d.no + '</span>' +
+          '<span class="ccg-bar-no">' + d.no + '</span>' +
           '<span class="ccg-bar-tag">' + d.tag + '</span>' +
           '<span class="ccg-bar-date">' + d.date + '</span>' +
         '</div>' +
@@ -550,6 +550,27 @@
     return ov;
   }
 
+  /* sprint 26091301 B1: 图鉴编号显示 token.
+     来源 = 后端 achievements.card_no (图鉴编号, 永久不变) → 'No.%03d' (No.001);
+     无值 (未回填) → '—' (破折号), 禁止再写死 '001' 假号.
+     兼容: demo 页自带 BADGE.no / payload.no 仍可传入 → parseInt 后同样格式化. */
+  function formatCardNo(raw) {
+    if (raw === null || raw === undefined || raw === "") return "—";
+    var n = parseInt(raw, 10);
+    if (isNaN(n)) return String(raw);
+    return "No." + ("00" + n).slice(-3);
+  }
+
+  /* sprint 26091301 B1: 卡面日期 'YYYY-MM-DD...' → '2026年6月16日' (纯前端格式化, 不动 DB).
+     已是中文格式 / 其它字符串 → 原样返回; 空值 → '—'. */
+  function formatCardDate(raw) {
+    if (raw === null || raw === undefined || raw === "") return "—";
+    var s = String(raw).trim();
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return Number(m[1]) + "年" + Number(m[2]) + "月" + Number(m[3]) + "日";
+    return s;
+  }
+
   function normalize(data) {
     var d = data || BADGE;
     return {
@@ -559,10 +580,11 @@
       image: d.image || d.image_url || d.badge_url || BADGE.image,
       cond: d.cond || d.cond_text || BADGE.cond,
       story: d.story || d.zh_story || d.description || BADGE.story,
-      date: d.date || d.achieved_at || BADGE.date,
+      date: formatCardDate(d.date || d.achieved_at || BADGE.date),
       stars: d.card_stars != null ? d.card_stars
         : (d.stars != null ? d.stars : BADGE.stars),
-      no: d.no || "001",
+      /* sprint 26091301 B1: 编号取后端 card_no (无值 → '—', 不再兜底 '001') */
+      no: formatCardNo(d.card_no != null ? d.card_no : d.no),
       hall: d.hall || BADGE.hall
     };
   }

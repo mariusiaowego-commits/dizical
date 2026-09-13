@@ -1,12 +1,31 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-09-13 (待 PR)
-**分支**: feat/sprint-26091301b-badge-theme-picker (sprint 26091301 B2)
-**类型**: 🟡 部分兼容（新增 2 个 `/config` 内部端点 + 设计期主题目录扩到 8 套；dizical-minip 不改也能跑，**本期不需要 minip 同步**）
+**日期**: 2026-09-13 (待 PR) — sprint 26091301 B1 徽章卡编号 / B2 卡片主题设计期入口
+**类型**: 🟡 部分兼容（新增可选返回字段 `card_no` + 新增 DB 列 + 新增 2 个 `/config` 内部端点 + 设计期主题目录 5 → 8 套；dizical-minip 不改也能跑，建议择期同步 `card_no` 展示）
 
 ## 变更
 
+### 2.1 三处 badge payload 新增 `card_no` 字段（图鉴编号）
+
+> 分支 `feat/sprint-26091301-badge-card-no`（PR #324）
+
+- 端点: ① kid-app `/badges` 页内联 payload ② `GET /api/badge/unclaimed` ③ minip `GET /api/achievements`
+- 值域: `int | null`（一卡一号、永久不变；未回填的历史行可为 `null`）
+- 解析: 显式读 `achievements.card_no`；新建徽章不传时兜底 `MAX(card_no)+1`（`badge_db.insert_achievement_row`，与 INSERT 同事务）
+- 前端: `badge-ccg.js:formatCardNo` → `No.%03d`；无值 → `—`（**不再写死 `001` 假号**）
+- **影响**: 纯新增字段，老客户端忽略即可。dizical-minip 若要展示编号需同步取 `card_no`（本轮不改小程序代码）
+
+### 2.2 DB: `achievements.card_no BIGINT NULL`（双后端）
+
+- 迁移: SQLite 走 `src/database.py:_init_tables` 幂等 ALTER；MySQL 走 `badge_db.ensure_card_no_column`（information_schema 幂等 ALTER）+ `app.py` startup hook
+- 唯一性: 部分唯一索引 `idx_achievements_card_no`（允许 NULL → 迁移瞬间不炸写入路径）
+- 回填: `badge_db.backfill_card_no` 启动期幂等执行 —— 只填 `card_no IS NULL` 的行，编排顺序 `category → sort_order → created_at → id`，**已编号的行一条不动**（二次执行返回 0）
+- 三源同步: `schema_mysql.sql` + `.cloudrun-deploy/schema_mysql.sql` + 测试 fixture 建表语句
+- **云端**: 下次 8765 重启触发迁移 + 回填 46 张卡（编号自此永久固定）
+
 ### 2.3 新增卡片外观设计期端点（config 内部接口）
+
+> 分支 `feat/sprint-26091301b-badge-theme-picker`（PR #325）
 
 - 端点（均为 `/config` 前缀，**只有 dizical config 页在用**）:
   - `GET /config/api/badge/card-appearance` — 列出全部 achievements 的卡片外观。返回 `{ok, count, data[], themes}`；`data[]` 每行 `{id, name, type, category, sort_order, card_theme(原始值, 可 null), card_stars(原始值, 可 null), resolved_theme, resolved_stars, theme_source}`，`theme_source ∈ db|type|fallback`（同 `resolve_card_theme` 兜底链的三段来源）。`themes` = `{dark[], light[], labels{}}` 供前端下拉直接渲染。按 `sort_order, id` 排序。
@@ -14,12 +33,13 @@
 - 值域变更: `VALID_CARD_THEMES` 由 5 套 → 8 套 = 深色 `azure|bamboo|coral|imperial|frost` + 淡色 `pearl|mint|sakura`（淡色此前只在 `badge-ccg-themes.css` 存在，Python 侧不认）。新增分组常量 `DARK_CARD_THEMES` / `LIGHT_CARD_THEMES` + 中文名 `THEME_LABELS`。`resolve_card_theme` 优先级链**未改**：显式 `card_theme`（现含 3 淡色）→ `achievements.type` 映射 → `category='seasonal'`→frost → azure
 - 鉴权: 不开新的 server-side PIN 门禁，与同文件既有 `/config/api/badge/*` 端点一致（由 config 页前端 PIN gate 控访问）
 - **影响**: 纯新增端点 + 扩值域。`/api/badge/unclaimed`、`/api/achievements`、kid-app badges payload 的既有字段与签名不变；dizical-minip 不用改。**注意**: 这是 dad 的设计期配置项（决定某张卡用哪套主题/几颗星），**不做用户端主题选择器**；新增淡色主题的卡面视觉在 minip 侧要等 CSS 同步（若 minip 未带淡色样式，落淡色主题会显示成默认深色，不影响数据）
+（见 §2.1 / §2.2，合并时按 B1 → B2 顺序合入）
 
 ---
 
 # Backend 切换 — API 变更
 
-**日期**: 2026-09-12 (待 PR #323)
+**日期**: 2026-09-12（**PR #323 已 merge**，main `440eb5c`）
 **分支**: feat/sprint-26091101-badge-3d-ccg (sprint 26091201 B-1)
 **类型**: 🟡 部分兼容（新增可选返回字段 `card_theme`/`card_stars` + 新增 DB 列；dizical-minip 不改也能跑，建议择期同步做主题化与星级）
 
