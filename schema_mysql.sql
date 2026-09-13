@@ -43,7 +43,7 @@ CREATE TABLE achievements (
     cond_text         TEXT,
     unlock_strategy   TEXT,
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
-, achieved_at_override TEXT, display_on_achievements BIGINT DEFAULT 1, sort_order_override BIGINT);
+, achieved_at_override TEXT, display_on_achievements BIGINT DEFAULT 1, sort_order_override BIGINT, card_theme TEXT NULL, card_stars BIGINT NULL);
 
 DROP TABLE IF EXISTS `daily_practices`;
 CREATE TABLE daily_practices (

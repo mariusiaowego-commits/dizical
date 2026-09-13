@@ -23,7 +23,8 @@ def _worktree_db() -> Path:
 
 
 # 建表 SQL (跟 production 一致, 不带 seasonal_type 默认 'monthly' 是 PR #96 加的,
-# cond_text 列是 feat/badge-cond-text 2026-06-15 加的)
+# cond_text 列是 feat/badge-cond-text 2026-06-15 加的,
+# card_theme 列是 Sprint 26091201 feat/badge-3d-ccg B-1 加的)
 _INIT_SQL = """
 CREATE TABLE IF NOT EXISTS achievements (
     id                TEXT PRIMARY KEY,
@@ -42,7 +43,9 @@ CREATE TABLE IF NOT EXISTS achievements (
     cond_text         TEXT,
     unlock_strategy   TEXT DEFAULT 'calc',
     achieved_at_override TEXT,
-    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    card_theme        TEXT,
+    card_stars        INTEGER
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id TEXT PRIMARY KEY,

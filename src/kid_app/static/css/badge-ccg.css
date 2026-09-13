@@ -1,0 +1,1410 @@
+/* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
+   ── 卡面样式版本: v1.5.0 (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+      v1.5.0 增量 (dad 2026-09-13 四轮, 只动光照): 「鼠标移动上去后光照感一下子特别强, 特别白」
+        ① 聚光灯总强度连砍: --ccg-light-gain 0.40→0.16 (四轮) → **0.10 (五轮定稿, 相对原始 −90%)**;
+        ② spec 白斑峰值再收: 0.42/0.20/0.09→0.24/0.12/0.05 (hover 有效强度 0.151→0.035, −77%);
+        ③ 叠亮型 (color-dodge/plus-lighter) 层的跟随幅度收窄 —— shine lit 0.50→0.10 (hover 0.90→0.50)、
+           glitter 0.34→0.12 (0.58→0.36)、金框扫光 0.45→0.15 (角落 0.75→0.45)、背面聚光灯 0.45→0.18;
+        ④ 消除"一下子": glare/spec/shine/glitter/laser/security/金框扫光 全部加 320ms opacity 过渡
+           (原先 lit 0→1 是瞬间跳亮, 现在是渐变进场); 静止值一律不变;
+      v1.4.0-dev 增量 (dad 2026-09-13 三轮, 4 条): 聚光灯再减弱 (--ccg-light-gain 0.6→0.40)
+        + 两层光取消常亮基线, 改由 --lit 独占驱动 (光标不在卡上 = 全卡无光照, JS IDLE_LIT=0)
+        + spec 峰值再收一档 (0.60/0.30/0.12→0.42/0.20/0.09) / 说明栏内下留白 token
+        (--plate-pad-b, 页脚不再顶死栏底) / 跟手动画幅度加大 (倾角 15→22°, 视差 2/3px→5/8px,
+        景深 2/5px→6/12px, 阴影 8/6px→12/9px);
+      v1.3.0-dev 增量 (dad 2026-09-13 二轮): 聚光灯总强度旋钮 --ccg-light-gain (默认 0.6 = 减弱 40%) /
+        页脚行 (星级 + DIZICAL) 并入说明栏 (.ccg-plate), 页脚不再自带底衬 (--theme-foot-scrim 已删) /
+        说明栏下沿从 88% 伸到 --foot-b, 底衬只剩一层;
+      v1.2.0-dev 增量 (dad 2026-09-13 l1): 镭射/防伪箔层从画面窗搬到卡面级铺满整卡 /
+        画面窗退化为纯定位容器 (撤 overflow:hidden + 四边压暗) / 金环 11px→6px 且 5 环→3 环 /
+        页脚文字区主题化底衬, 说明栏底衬同步加强;
+      v1.1.0-dev 增量: l2 淡色主题金框固定金色 / l4 金框底座可关(--ccg-frame-base-c) /
+      l5 防伪强度总增益(--ccg-sec-gain) / demo 版本号 chip
+      改本文件任何视觉规则 ⇒ 先升版本号 (本行 + badge-ccg.js + demo 页头 chip),
+      再用 scripts/freeze-ccg-demo.sh <新版本号> "说明" 冻结, 版本登记表见
+      static/demo-archive/VERSIONS.md */
+
+@property --flip {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+:root {
+  --ccg-cream: #f7ecd4;
+  --ccg-ink: #2c3e50;
+  --ccg-muted: #6b5a48;
+  --ccg-gold: #d4a017;
+  --ccg-gold-hi: #ffe9a0;
+  --ccg-gold-lo: #8a5a10;
+  --ccg-coral: #ff6b6b;
+  --ccg-paper: #fff8f0;
+  --ccg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ccg-void: #16224a;
+  --ccg-navy: #b7c5d4;
+  --ccg-serif: "Songti SC", "STSong", "Noto Serif SC", "Songti TC", "PMingLiU", serif;
+
+  /* sunpillar spectrum — simeydotme/pokemon-cards-css + poke-151 (cards/base.css) */
+  --sunpillar-1: hsl(2, 100%, 73%);
+  --sunpillar-2: hsl(53, 100%, 69%);
+  --sunpillar-3: hsl(93, 100%, 69%);
+  --sunpillar-4: hsl(176, 100%, 76%);
+  --sunpillar-5: hsl(228, 100%, 74%);
+  --sunpillar-6: hsl(283, 100%, 73%);
+
+  /* 笛韵防伪暗纹 (竹笛剪影 + 星芒 + DIZICAL 字样, 45° 平铺阵列) */
+  --ccg-security-pattern: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M7 103 L95 15 M12 108 L100 20 M7 103 L12 108 M95 15 L100 20'/><circle cx='37' cy='73' r='2.8' fill='%23fff' stroke='none'/><circle cx='54' cy='56' r='2.8' fill='%23fff' stroke='none'/><circle cx='71' cy='39' r='2.8' fill='%23fff' stroke='none'/></g><path d='M106 88 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z' fill='%23fff'/><text x='10' y='126' font-family='Helvetica, Arial, sans-serif' font-size='9' font-weight='700' letter-spacing='2.6' fill='%23fff'>DIZICAL</text></svg>");
+  --ccg-security-size: 132px 132px;
+  /* dad 2026-09-12 l5: 防伪强度总增益 —— 1 = 现值 (demo 定稿看不出强度时可整体加档);
+     同一根数字控制「常驻暗纹」与「聚光灯彩虹」两层, 接生产按卡面定档(弱1/中1.6/强2.4) */
+  --ccg-sec-gain: 1;
+
+  /* dad 2026-09-13: 跟随光标的**聚光灯总强度** —— glare (柔光) + spec (主光) 两层同时乘。
+     1 = 原强度; 0.6 = 二轮; 0.40 = 三轮; 0.16 = 四轮; **0.10 = 定稿 (dad 2026-09-13 五轮:
+     「减到 0.1 然后就 ok 了」→ 相对原始 −90%, 不再是开发中数值)**。
+     镭射彩虹 (laser) 与防伪 (security) 不在此旋钮内; 想再增减跟随光照就只改这一处。
+     注 1: 页脚已并入说明栏 (.ccg-foot 移进 .ccg-plate), 底色不再自带 ⇒ --theme-foot-scrim 已删除,
+     文字区 (含星级 / DIZICAL 行) 的底衬统一由 --theme-plate-scrim 负责。
+     注 2 (dad 二轮): 两层光的**亮度基线已取消** —— 完全由 --lit 驱动 (光标不在卡上时 lit=0,
+     全卡无光照); 本旋钮乘的是 hover 时的峰值。 */
+  --ccg-light-gain: 0.10;
+
+  /* 圆角体系 (dad 2026-09-12 image#6 item1: "两个圆角矩形角度不同叠在一起" -> 收敛成一组变量)
+     唯一来源 = 卡面半径 R 与金边厚度 rim-w；金边内弧 = R - rim-w；
+     画面窗 + 窗内箔层圆角全部引用内弧半径 ⇒ 全卡弧线只有一套角度, 不再出现两套圆弧错开。 */
+  --ccg-card-r: 18px;
+  /* dad 2026-09-13 l1: 「外面的金环 11px 太粗了 减少」 → 收到 6px
+     (金框从「一圈粗边框」变成「一条细金属线」, 卡片不再像被相框框住) */
+  --ccg-rim-w: 6px;
+  /* 画面窗内弧 = 卡面半径 R - 窗左右内缩量 ⇒ 窗的圆角与「金框内缘 + 一圈卡身衬底」
+     同心, 衬底宽度四边均匀, 不会在圆角处出现新月形错角 (dad image#9/item1) */
+  --ccg-rim-inner-r: calc(var(--ccg-card-r) - var(--ccg-art-inset));
+  /* dad 2026-09-12 (image#11 item2): 画面窗的左右必须和下面 bar/plate/foot 落在同一条
+     竖线上 (都是内容栏 --art-l 5.4%)。原来贴合金框内缘 (rim-w 11px) ⇒ 比下面模块左右
+     各宽出 5.4%, dad 看它就是"贴着卡片边缘"。改后: 金框 0~11px + 均匀卡身衬底,
+     画面窗从 5.4% 起 (金框 0~6px, dad 2026-09-13 l1 减细后随之内收) */
+  --ccg-art-inset: var(--art-l, 5.4%);
+
+  /* ── 主题 token 契约 (sprint 26091201, B 线) ────────────────
+     5 套主题只覆盖这些变量; 默认值 = azure 星曜深蓝 (= 原硬编码配色, 零视觉变化)。
+     非默认 4 套覆盖块在 badge-ccg-themes.css, 用 [data-ccg-theme="..."] 挂在 .ccg-stage 上切换。
+     --theme-laser-tint 是 filter 表达式 (如 hue-rotate(-14deg) saturate(1.2)), 默认 none。 */
+  --theme-stock-color: #0e1a3e;
+  --theme-stock-gradient: linear-gradient(168deg, #22377e 0%, #182a66 34%, #1d1c52 66%, #2c1d40 100%);
+  --theme-stock-filter: saturate(1.22) contrast(1.08);
+  --theme-light-main: rgba(255, 226, 148, 0.78);
+  --theme-light-sub: rgba(86, 178, 255, 0.52);
+  --theme-light-accent: rgba(134, 96, 255, 0.45);
+  --theme-security-size: 132px 132px;
+  --theme-security-pattern: var(--ccg-security-pattern);
+  --theme-plate-bg-from: #fcf7ea;
+  --theme-plate-bg-to: #efe4cc;
+  --theme-plate-text: #3d2a0a;
+  --theme-frame-hi: #ffeaa0;
+  --theme-frame-lo: #b3820a;
+  --theme-glow: #504028;
+  --theme-laser-tint: none;
+
+  /* ── 箔层极性 token (dad 2026-09-12 image#7/#8) ────────────────
+     .ccg-foil-stack 三层 (shine / glitter / security) 的配方原本只对深底调过:
+       shine = color-dodge + contrast(2.3) + brightness 0.5; ::after 里带深紫/深灰 stops
+     淡色主题必须整套换口味 (soft-light / multiply + 亮 stops + 降透明度), 否则淡卡被压暗/冲白。
+     默认值 = 原深色配方 ⇒ 5 套深色主题视觉零变化。 */
+  --theme-foil-op: 1;
+  --theme-foil-shine-blend: color-dodge;
+  --theme-foil-shine-bright: 0.5;
+  --theme-foil-shine-contrast: 2.3;
+  --theme-foil-shine-sat: 1;
+  --theme-foil-after-stops: hsl(0, 0%, 100%) 5%, hsla(300, 100%, 11%, 0.6) 40%, hsl(0, 0%, 22%) 120%;
+  --theme-foil-after-blend: hard-light;
+  --theme-foil-after-bright: 0.4;
+  --theme-foil-after-contrast: 0.85;
+  --theme-foil-after-op: 1;
+  --theme-foil-glitter-blend: plus-lighter;
+  --theme-foil-sec-blend: plus-lighter;
+  --theme-foil-laser-blend: color-dodge;
+  --theme-foil-laser-bright: 0.85;
+  --theme-foil-laser-contrast: 1.6;
+  --theme-foil-laser-sat: 1.5;
+  --theme-foil-spec-blend: screen;
+  /* 背面 (`.ccg-back-face`) 原本是另一套硬编码口径, 单独给 token 保证深色主题零变化 */
+  --theme-foil-back-bright: 0.5;
+  --theme-foil-back-contrast: 1.9;
+  --theme-foil-back-sat: 1.3;
+  /* 指针聚光灯 3 个色标: 深色主题末端用中性暗灰 (暗底上看不见),
+     淡色主题必须换成亮色, 否则指针周围出现一圈灰暗晕 = dad "还是以深色为主题色"。 */
+  /* 聚光灯 stops: 末端不能是硬切深色 (dad 2026-09-12 image#10):
+     原来的第 3 个色标 hsla(180,11%,35%,1) 60% 是不透明深蓝灰, 在深色主题下
+     沿"60% 等距圆"切出一道硬边, 与窗口的圆角矩形错角叠加 ⇒
+     四角看上去是"一淡一深两个圆角矩形叠在一起".
+     现在改成 低透明度 + 渐变收边到 100%, 立体感保留但不再有边界线.
+     淡色主题各自覆盖这组 token, 不受影响. */
+  --theme-glare-stops: hsla(0, 0%, 100%, 1) 8%,
+    hsla(0, 0%, 100%, 0.58) 34%,
+    hsla(196, 16%, 66%, 0.42) 64%,
+    hsla(205, 22%, 44%, 0.30) 100%;
+
+  /* ── 信息条 (NO.007 / 类型 / 日期 那条横杠) ────────────────────
+     原来是硬编码冷银渐变, 压在淡暖卡上 = 冷暖不同族 (dad image#8 "淡色框和背景不是一套")。
+     默认值 = 原冷银配方 (深色主题零变化)。 */
+  --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, 0.14) 100%),
+    linear-gradient(90deg, #949ba4 0%, #e6eaee 11%, #f8fafc 50%, #dee3e8 89%, #8b929b 100%);
+  --theme-bar-ink: #2a2f36;
+  --theme-bar-ink-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+/* 主题防伪暗纹: 按主题换图案 (azure 用内置笛韵 data URI, 见 --ccg-security-pattern) */
+[data-ccg-theme="bamboo"] { --theme-security-pattern: url("/static/img/ccg-patterns/bamboo.svg"); }
+[data-ccg-theme="coral"] { --theme-security-pattern: url("/static/img/ccg-patterns/coral.svg"); }
+[data-ccg-theme="imperial"] { --theme-security-pattern: url("/static/img/ccg-patterns/imperial.svg"); }
+[data-ccg-theme="frost"] { --theme-security-pattern: url("/static/img/ccg-patterns/frost.svg"); }
+
+/* ── Shared card geometry ─────────────────────────────────── */
+.ccg-stage {
+  --card-w: min(300px, 78vw);
+  /* dad 2026-09-12: 1.4 -> 1.5 (原来太矮胖) */
+  --card-h: calc(var(--card-w) * 1.5);
+  --nx: 0;
+  --ny: 0;
+  --from-center: 0;
+  /* dad 2026-09-13 (3): 静止无光照 —— 光标不在卡上时 --lit = 0, 跟手两层光 (glare/spec) 归零。
+     JS 侧 IDLE_LIT = 0, 离开时 gsap 把 lit 平滑收敛到 0 (不是硬切)。 */
+  --lit: 0;
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  perspective: 980px;
+  perspective-origin: 50% 48%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  isolation: isolate;
+}
+
+@media (max-height: 800px) and (orientation: landscape) {
+  .ccg-stage { --card-w: min(232px, 46vh); }
+}
+@media (min-width: 1100px) {
+  .ccg-stage { --card-w: min(320px, 34vw); }
+}
+
+.ccg-shadow {
+  position: absolute;
+  inset: 12% 8% -6%;
+  border-radius: 22px;
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--theme-glow) 28%, transparent), transparent 70%);
+  transform: translate3d(calc(var(--nx) * 12px), calc(var(--ny) * 9px + 18px), 0);
+  filter: blur(18px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ccg-rotator {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg))
+    translateZ(var(--lift, 0px)) scale(var(--pulse, 1));
+  will-change: transform;
+  cursor: grab;
+  touch-action: none;
+}
+.ccg-rotator:active,
+.ccg-stage.is-dragging .ccg-rotator { cursor: grabbing; }
+
+.ccg-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateY(var(--flip, 0deg));
+}
+
+.ccg-card-front,
+.ccg-card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  overflow: hidden;
+  transform-style: preserve-3d;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.ccg-card-front {
+  transform: rotateY(0deg) translateZ(1px);
+}
+
+.ccg-card-back {
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+/* ── Gold cloisonné rim ───────────────────────────────────── */
+/* dad 2026-09-12 (image#12): 金框必须【贴合整个卡片】= 贴卡的最外边缘 (inset: 0)。
+   曾试过把 .ccg-frame 左右内缩到内容栏 (5.4%), 结果卡最外圈露出一条暗色卡身,
+   变成「暗色描边 + 金色边框」两层叠加 —— dad 说这个不要, 已退回 inset: 0。
+   左右窄于内容栏的问题改由画面窗 (--ccg-art-inset) 负责对齐。 */
+.ccg-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 8;
+  box-shadow:
+    /* dad 2026-09-12 l4「底座」= 金框最外那条 1px 暗色掐丝 (#342205): 去掉时改透明, 几何不变
+       (demo/对比页用 .ccg-stage[data-ccg-base="off"]) */
+    /* dad 2026-09-13 l1「最外围的外框太复杂了」: 5 环 → 3 环
+       (1px 暗掐丝底座 + 4px 主金 + 1px 内高光), 总宽 11px → 6px。
+       去掉的两条 (#b3820a lo / #4e3207 r3) 是同色系暗环, 只贡献"厚度"不贡献层次。 */
+    inset 0 0 0 1px var(--ccg-frame-base-c, var(--theme-frame-r1, #342205)),
+    inset 0 0 0 5px var(--theme-frame-gold, #d4a017),
+    inset 0 0 0 var(--ccg-rim-w) var(--theme-frame-hi);
+}
+/* 底座 A/B 开关: off = 只把最外那条 1px 暗线收掉, 金框带宽/位置不变 */
+.ccg-stage[data-ccg-base="off"] { --ccg-frame-base-c: transparent; }
+.ccg-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  /* dad 2026-09-13 (4): 金框上的 color-dodge 白光扫过 —— 跟随幅度 0.45 -> 0.15 (角落 0.75 -> 0.45)
+     + 320ms 过渡; 静止基线 0.3 不变 */
+  opacity: calc((0.3 + var(--from-center, 0) * 0.15) * var(--holo-gain, 1));
+  transition: opacity 320ms var(--ccg-ease);
+  mix-blend-mode: color-dodge;
+  background: linear-gradient(
+    135deg,
+    transparent 20%,
+    rgba(255, 230, 160, 0.25) 38%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 220, 130, 0.35) 56%,
+    transparent 72%
+  );
+  background-size: 320% 320%;
+  /* 定位百分比必须夹在 0~100%: 指针划出画面窗(说明栏/页脚)时 --pointer-x/y 会到 ±110%,
+     渐变盒被推出图层外 => 出现一条直角硬边(就是"镭射方框")，clamp 后盒子永远盖满 */
+  background-position: clamp(0%, var(--pointer-x, 50%), 100%) clamp(0%, var(--pointer-y, 50%), 100%);
+  background-repeat: no-repeat;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: var(--ccg-rim-w);
+}
+
+.ccg-foil-stack {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none;
+  z-index: 1;
+  transform: translateZ(0);
+}
+/* dad 2026-09-13 l1: 第二层箔栈 = 「覆在主体之上的扫光」(glare/spec/laser)。
+   合成后在 z6: 主体 (z5) 之上、文字区 (z7) 之下 —— 镭射铺满整卡但绝不糊住文字。 */
+.ccg-foil-over { z-index: 6; }
+
+/* ── V-grade foil: 通透星曜藏青底 (明暗分明的径向金光, 绝不发灰) ── */
+.ccg-foil-stock {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  background-color: var(--theme-stock-color);
+  background-image:
+    /* 主光源: 卡面上方明暗分明的径向光晕 (色相随主题, 中段/高光由主光派生) */
+    radial-gradient(ellipse 56% 42% at 50% 30%, var(--theme-light-main) 0%, color-mix(in srgb, var(--theme-light-main) 44%, transparent) 34%, transparent 70%),
+    radial-gradient(ellipse 38% 28% at 50% 30%, color-mix(in srgb, var(--theme-light-main) 78%, #fff) 0%, transparent 64%),
+    /* 冷调补光, 拉开明暗层次 (通透不脏) */
+    radial-gradient(ellipse 74% 58% at 13% 5%, var(--theme-light-sub) 0%, transparent 62%),
+    radial-gradient(ellipse 68% 54% at 90% 95%, var(--theme-light-accent) 0%, transparent 64%),
+    /* 琉璃底色 */
+    var(--theme-stock-gradient);
+  filter: var(--theme-stock-filter);
+}
+
+/* ── Sunpillar 全息镭射流光 (color-dodge, 随倾斜平滑位移) ── */
+.ccg-foil-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 2;
+  /* dad 2026-09-13 (4): 这层是 color-dodge (叠亮型) 的彩虹箔, hover 时 0.90 会整片发白 ——
+     把跟随幅度从 0.50 收到 0.10 (hover 0.90 -> 0.50), 静止值不变; 并加 320ms 过渡 */
+  opacity: calc((0.40 + var(--lit, 0) * 0.10) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  transition: opacity 320ms var(--ccg-ease);
+  mix-blend-mode: var(--theme-foil-shine-blend, color-dodge);
+  /* Trainer Gallery Holofoil — 照抄 simeydotme/pokemon-cards-css public/css/cards/trainer-gallery-holo.css:
+     7 段彩虹色带 (-22° 平铺, 每段 5%), color-dodge 混合, 亮度随指针离心距离抬升
+     淡色主题把 blend / 对比 / 底亮整体换成 soft-light 系 (见 --theme-foil-*) */
+  filter: brightness(calc(var(--from-center, 0) * 0.3 + var(--theme-foil-shine-bright, 0.5)))
+    contrast(var(--theme-foil-shine-contrast, 2.3)) saturate(var(--theme-foil-shine-sat, 1));
+  --space: 5%;
+  background-repeat: repeat;
+  background-image: repeating-linear-gradient(
+    -22deg,
+    hsla(283, 49%, 60%, 0.75) calc(var(--space) * 1),
+    hsla(2, 74%, 59%, 0.75) calc(var(--space) * 2),
+    hsla(53, 67%, 53%, 0.75) calc(var(--space) * 3),
+    hsla(93, 56%, 52%, 0.75) calc(var(--space) * 4),
+    hsla(176, 38%, 50%, 0.75) calc(var(--space) * 5),
+    hsla(228, 100%, 77%, 0.75) calc(var(--space) * 6),
+    hsla(283, 49%, 61%, 0.75) calc(var(--space) * 7)
+  );
+  background-size: 300% 400%;
+  background-position: clamp(0%, var(--pointer-x, 50%), 100%) clamp(0%, var(--pointer-y, 50%), 100%);
+}
+
+/* Trainer Gallery 金属反光 — TG 的 .card__shine:after 原配方:
+   hard-light 径向, 中心 = 指针坐标*0.5 + 25% (指针不会把高光顶到画面边缘, 光斑始终铺开) */
+.ccg-foil-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    farthest-corner ellipse
+      at calc(var(--pointer-x, 50%) * 0.5 + 25%) calc(var(--pointer-y, 50%) * 0.5 + 25%),
+    var(--theme-foil-after-stops,
+      hsl(0, 0%, 100%) 5%, hsla(300, 100%, 11%, 0.6) 40%, hsl(0, 0%, 22%) 120%)
+  );
+  background-position: center center;
+  background-size: 400% 500%;
+  opacity: var(--theme-foil-after-op, 1);
+  filter: brightness(calc(var(--from-center, 0) * 0.2 + var(--theme-foil-after-bright, 0.4)))
+    contrast(var(--theme-foil-after-contrast, 0.85)) saturate(1.1);
+  mix-blend-mode: var(--theme-foil-after-blend, hard-light);
+}
+
+.ccg-foil-glitter {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 2;
+  /* dad 2026-09-13 (4): 跟随幅度 0.34 -> 0.12 (hover 0.58 -> 0.36) + 320ms 过渡 */
+  opacity: calc((0.24 + var(--lit, 0) * 0.12) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  transition: opacity 320ms var(--ccg-ease);
+  mix-blend-mode: var(--theme-foil-glitter-blend, plus-lighter);
+  background-image:
+    radial-gradient(1px 1px at 12% 16%, #fff 65%, transparent 70%),
+    radial-gradient(0.8px 0.8px at 28% 42%, #ffe9a0 65%, transparent 70%),
+    radial-gradient(1.1px 1.1px at 45% 12%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 68% 26%, #c8f0ff 65%, transparent 70%),
+    radial-gradient(0.9px 0.9px at 84% 15%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 92% 38%, #ffd0e8 65%, transparent 70%),
+    radial-gradient(1px 1px at 16% 68%, #fff 65%, transparent 70%),
+    radial-gradient(0.8px 0.8px at 38% 82%, #ffe9a0 65%, transparent 70%),
+    radial-gradient(0.9px 0.9px at 56% 62%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 74% 88%, #c8f0ff 65%, transparent 70%),
+    radial-gradient(1.1px 1.1px at 86% 70%, #fff 65%, transparent 70%),
+    radial-gradient(0.7px 0.7px at 8% 92%, #ffd0e8 65%, transparent 70%);
+  background-size: 110px 110px, 140px 140px, 90px 90px, 125px 125px, 105px 105px,
+    150px 150px, 115px 115px, 135px 135px, 95px 95px, 145px 145px, 85px 85px, 160px 160px;
+  background-position:
+    calc(var(--pointer-x, 50%) * 0.5) calc(var(--pointer-y, 50%) * 0.4),
+    calc(100% - var(--pointer-x, 50%) * 0.6) calc(var(--pointer-y, 50%) * 0.3),
+    var(--pointer-x, 50%) calc(100% - var(--pointer-y, 50%)),
+    calc(100% - var(--pointer-x, 50%)) var(--pointer-y, 50%),
+    calc(var(--pointer-x, 50%) * 0.8) calc(var(--pointer-y, 50%) * 0.6),
+    calc(100% - var(--pointer-x, 50%) * 0.7) calc(100% - var(--pointer-y, 50%)),
+    var(--pointer-x, 50%) var(--pointer-y, 50%),
+    calc(100% - var(--pointer-x, 50%)) calc(100% - var(--pointer-y, 50%)),
+    calc(var(--pointer-x, 50%) * 0.3) calc(var(--pointer-y, 50%) * 0.8),
+    calc(100% - var(--pointer-x, 50%) * 0.4) calc(var(--pointer-y, 50%) * 0.6),
+    var(--pointer-x, 50%) calc(var(--pointer-y, 50%) * 0.2),
+    calc(var(--pointer-x, 50%) * -0.3) var(--pointer-y, 50%);
+}
+
+/* ── 真实镜面聚光灯 (overlay): 光斑紧随光标, 边缘压暗出立体感 ── */
+.ccg-foil-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 6;
+  /* dad 2026-09-12: 换 TG 软光配方 (soft-light + farthest-corner, 末端不留 alpha 断口).
+     旧版 overlay 62% 固定椭圆 + 88%->100% 深色回透明, 光圈边界硬 → "聚光灯不够柔和" */
+  mix-blend-mode: soft-light;
+  /* dad 2026-09-13: 乘 --ccg-light-gain (v1.4.0: 0.6 -> 0.40) —— 跟随光照太强, 图案被冲淡
+     dad 2026-09-13 (3): 常量基线 0.62 取消 —— 改由 --lit 独占驱动 (lit=0 => 完全不发光,
+     鼠标不在卡上时无光照; lit=1 时与原最大亮度 0.62+0.38=1.00 等价) */
+  opacity: calc(var(--lit, 0) * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-light-gain, 1));
+  /* dad 2026-09-13 (4): 进场/离场都走 320ms 渐变 (原来 lit 0->1 是瞬间跳, 所以"一下子特别白") */
+  transition: opacity 320ms var(--ccg-ease);
+  background-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    var(--theme-glare-stops,
+      hsla(0, 0%, 100%, 1) 10%, hsla(0, 0%, 100%, 0.6) 35%, hsla(180, 11%, 35%, 1) 60%)
+  );
+  /* 末端必须回到透明 (dad 2026-09-12): radial-gradient 椭圆之外的区域会延续最后一个色标,
+     若末端是深色, 光斑滑出金框后整片深色铺满窗口 → "背景镭射出现深色重叠". */
+}
+
+/* ── 表层主光: screen 叠加, 真正把暗底照亮 (overlay 在暗底上提不亮) ── */
+.ccg-foil-spec {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 6;
+  mix-blend-mode: var(--theme-foil-spec-blend, screen);
+  /* dad 2026-09-13: 乘 --ccg-light-gain (v1.4.0: 0.6 -> 0.40) —— 这层是"冲淡图案"的主因 (screen 提亮)
+     dad 2026-09-13 (3): 同样改由 --lit 独占驱动 (lit=0 => 无光照); 并把峰值再收一档
+     (0.60/0.30/0.12 -> 0.42/0.20/0.09) —— 光标正下方的图案不再被洗白 */
+  /* dad 2026-09-13 (4): 「鼠标移动上去后光照感一下子特别强, 特别白」——
+     ① 上层白斑峰值再收一档 (0.42/0.20/0.09 -> 0.24/0.12/0.05);
+     ② 本层与 glare / shine / glitter 都加 320ms opacity 过渡, 让"进场"是渐变而不是瞬间跳亮。 */
+  opacity: calc(var(--lit, 0) * 0.9 * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-light-gain, 1));
+  transition: opacity 320ms var(--ccg-ease);
+  /* dad 2026-09-12: 峰值收一档 + 固定 56% 椭圆改 farthest-corner, 消除高光球边界 */
+  background-image: radial-gradient(
+    farthest-corner ellipse at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    hsla(44, 100%, 92%, 0.24) 0%,
+    hsla(46, 100%, 84%, 0.12) 18%,
+    hsla(210, 80%, 70%, 0.05) 46%,
+    hsla(216, 60%, 40%, 0.03) 66%,
+    hsla(0, 0%, 0%, 0) 86%
+  );
+}
+
+/* ── 表层镭射: 全息彩虹掠过图案的二次流光 ── */
+.ccg-foil-laser {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 6;
+  mix-blend-mode: var(--theme-foil-laser-blend, color-dodge);
+  opacity: calc((0.20 + var(--lit, 0) * 0.34) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  /* dad 2026-09-13 (4): 数值不动 (dad 认可镭射观感), 只把 lit 的跳变改成 320ms 渐变 ——
+     去掉"鼠标一上去瞬间亮一下"的突变感 */
+  transition: opacity 320ms var(--ccg-ease);
+  filter: var(--theme-laser-tint, none) brightness(var(--theme-foil-laser-bright, 0.85))
+    contrast(var(--theme-foil-laser-contrast, 1.6)) saturate(var(--theme-foil-laser-sat, 1.5));
+  background-repeat: no-repeat;
+  background-image: linear-gradient(
+    205deg,
+    var(--sunpillar-2) 0%,
+    var(--sunpillar-4) 20%,
+    var(--sunpillar-6) 40%,
+    var(--sunpillar-1) 58%,
+    var(--sunpillar-3) 78%,
+    var(--sunpillar-5) 100%
+  );
+  background-size: 300% 300%;
+  background-position: calc(100% - clamp(0%, var(--pointer-x, 50%), 100%)) calc(100% - clamp(0%, var(--pointer-y, 50%), 100%));
+}
+
+/* ── 笛韵镭射防伪标识 (poke-151 pokeball-holo style) ──
+   常驻极淡暗纹 + 聚光灯扫过时 mask 相交处闪出彩虹镭射高光 */
+.ccg-foil-security {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+  z-index: 3;
+  mix-blend-mode: var(--theme-foil-sec-blend, plus-lighter);
+  opacity: calc((0.28 + var(--lit, 0) * 0.42 + var(--from-center, 0) * 0.2) * var(--holo-gain, 1) * var(--theme-foil-op, 1) * var(--ccg-sec-gain, 1));
+  /* dad 2026-09-13 (4): 同上, 只加 320ms 过渡不改强度 */
+  transition: opacity 320ms var(--ccg-ease);
+  filter: var(--theme-laser-tint, none) brightness(1.08) contrast(1.35) saturate(1.4);
+  background-repeat: no-repeat;
+  background-image: linear-gradient(
+    108deg,
+    var(--sunpillar-4) 0%,
+    var(--sunpillar-6) 18%,
+    var(--sunpillar-1) 34%,
+    var(--sunpillar-3) 52%,
+    var(--sunpillar-5) 70%,
+    var(--sunpillar-2) 86%,
+    var(--sunpillar-4) 100%
+  );
+  background-size: 300% 300%;
+  background-position: clamp(0%, var(--pointer-x, 50%), 100%) clamp(0%, var(--pointer-y, 50%), 100%);
+  -webkit-mask-image:
+    var(--theme-security-pattern),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+      #fff 6%,
+      rgba(255, 255, 255, 0.85) 40%,
+      rgba(255, 255, 255, 0.28) 78%,
+      transparent 100%
+    );
+  mask-image:
+    var(--theme-security-pattern),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+      #fff 6%,
+      rgba(255, 255, 255, 0.85) 40%,
+      rgba(255, 255, 255, 0.28) 78%,
+      transparent 100%
+    );
+  -webkit-mask-size: var(--theme-security-size), cover;
+  mask-size: var(--theme-security-size), cover;
+  -webkit-mask-repeat: repeat, no-repeat;
+  mask-repeat: repeat, no-repeat;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* 防伪暗纹本体: 无聚光灯时也隐约可见 (仿真实防伪印刷底纹) */
+.ccg-foil-security::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  background-image: var(--theme-security-pattern);
+  background-size: var(--theme-security-size);
+  /* dad 2026-09-12 l5: 常驻暗纹强度 = 0.2 × 增益 (现值 0.2) */
+  opacity: calc(0.2 * var(--ccg-sec-gain, 1));
+}
+
+/* ── Front layout ─ Amazing Rare 版式 ─────────────────────── */
+/* 上 2/3 = 金框框住主视觉; 下 1/3 = 银数据条 + 米色说明栏 + 页脚 */
+.ccg-stage {
+  --art-l: 5.4%;
+  /* 画面与上方 holo-head 留出 ≥7px 间隙 (dad 2026-09-12: 实测曾 -2.2px 压在一起);
+     与下方 art-frame→info-bar 的 7.2px 节奏对齐. 框底仍在 61% → 下方区块完全不动 */
+  --art-t: 9.9%;
+  --art-h: 51.1%;
+  --bar-t: 62.6%;
+  --bar-h: 4.2%;
+  --plate-t: 68.8%;
+  /* dad 2026-09-13: --plate-b 已废除 —— 说明栏原本停在 88%, 页脚另有一条自己的底衬;
+     现在页脚并入本栏, 栏体直接坐到页脚底 (--foot-b), 底衬只有一层。 */
+  /* dad 2026-09-13 (4): 页脚刚并入时离栏底太近 —— 栏内下留白单列一个 token
+     (与上留白同一口径 4.2%, 页脚行下方留出设计留白, 不再是 margin-top:auto 顶死栏底) */
+  --plate-pad-t: 4.2%;
+  --plate-pad-b: 4.2%;
+  --foot-b: 3.2%;
+}
+
+/* dad 2026-09-12: 金框整体撤掉 — 它与卡面 .ccg-frame 的金边形成"边框叠边框", 设计上重复.
+   现在这里只是个纯定位容器, 画面直接坐在卡面底衬上 (无第二圈线) */
+.ccg-art-frame {
+  position: absolute;
+  left: var(--ccg-art-inset);
+  right: var(--ccg-art-inset);
+  top: var(--art-t);
+  height: var(--art-h);
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* 画面窗: 【dad 2026-09-13 l1 后已退化为纯定位容器】
+   镭射/防伪箔层已整体搬到卡面级 (.ccg-foil-stack / .ccg-foil-over) 铺满整卡,
+   这里不再 overflow: hidden / isolation —— 那正是 dad 数的"第二个圆角矩形外框"
+   (画面窗自己的镭射底 + 一圈压暗)。窗口现在只负责给主体定位 + 换算指针坐标。 */
+.ccg-art-window {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-rim-inner-r);
+  --pointer-x: var(--aw-x, 50%);
+  --pointer-y: var(--aw-y, 50%);
+}
+/* 四边柔性压暗已撤 (dad 2026-09-13 l1): 它会在画面四周画出一圈暗边 = 明显一个方框,
+   与"镭射铺满整卡"冲突。画面边缘融合改由镜头/主体自带的 drop-shadow 负责。 */
+
+/* 主视觉 (框内) */
+.ccg-holo-art {
+  position: absolute;
+  inset: 3% 7% 5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+  mix-blend-mode: normal;
+  transform: translateZ(4px);
+}
+.ccg-holo-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+}
+
+/* 银色数据条: 两端收尖的金属条 */
+.ccg-info-bar {
+  position: absolute;
+  left: var(--art-l);
+  right: var(--art-l);
+  top: var(--bar-t);
+  height: var(--bar-h);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6.4%;
+  clip-path: polygon(0 50%, 2.4% 0, 97.6% 0, 100% 50%, 97.6% 100%, 2.4% 100%);
+  /* 冷银配方是硬编码历史; 现在走主题 token, 淡色主题换暖族 (dad image#8) */
+  background: var(--theme-bar-bg);
+  color: var(--theme-bar-ink, #2a2f36);
+  font-size: calc(var(--card-w) * 0.0278);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-shadow: var(--theme-bar-ink-shadow, 0 1px 0 rgba(255, 255, 255, 0.75));
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ccg-bar-no { color: #2a2f36; font-weight: 800; letter-spacing: 0.04em; }
+.ccg-bar-tag { color: #7d4a10; flex: 1 1 auto; text-align: center; }
+.ccg-bar-date { color: #454b53; font-weight: 600; }
+
+/* 米色说明栏 (仿招式栏) */
+.ccg-plate {
+  position: absolute;
+  left: var(--art-l);
+  right: var(--art-l);
+  top: var(--plate-t);
+  bottom: var(--foot-b);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--card-w) * 0.01);
+  padding: var(--plate-pad-t, 4.2%) 6% var(--plate-pad-b, 4.2%);
+  border-radius: 0;
+  /* dad 2026-09-12: 撤掉米色画布 — 文字直接压在卡面上.
+     对比度用两条保证: ①上透明→下压暗的柔性渐隐 (不是实心底板) ②主题亮色墨 + 深色描影.
+     5 套主题底衬都是暗色 (#0e1a3e/#0a1f14/#2a0e14/#1a1030/#0c1824), 亮字全程可读. */
+  /* dad 2026-09-12 image#6 item3: 渐隐 / 墨色 / 描影全走主题 token —
+     深色主题 = 暗渐隐 + 亮墨 + 深描影; 淡色主题把三者反转 (亮渐隐 + 深墨 + 白描影),
+     同一条规则两套极性, 文字区永远压得住。 */
+  background: var(--theme-plate-scrim, linear-gradient(180deg,
+    rgba(6, 12, 30, 0.06) 0%,
+    rgba(6, 12, 30, 0.46) 46%,
+    rgba(6, 12, 30, 0.78) 100%));
+  box-shadow: none;
+  color: var(--theme-plate-ink, var(--theme-frame-hi));
+  text-shadow: var(--theme-plate-ink-shadow, 0 1px 2px rgba(3, 7, 18, 0.92), 0 0 12px rgba(3, 7, 18, 0.72));
+  pointer-events: none;
+}
+.ccg-plate-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: calc(var(--card-w) * 0.01);
+  border-bottom: 1px solid var(--theme-plate-rule, color-mix(in srgb, var(--theme-frame-hi) 30%, transparent));
+}
+.ccg-plate-head .ccg-title {
+  justify-content: flex-start;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: calc(var(--card-w) * 0.048);
+  color: var(--theme-plate-ink, var(--theme-frame-hi));
+  letter-spacing: 0.05em;
+  text-align: left;
+  line-height: 1.25;
+  text-shadow: inherit;
+}
+.ccg-plate-head .ccg-orn { width: 6px; height: 6px; flex: 0 0 6px; }
+.ccg-plate-desc {
+  margin: 0;
+  font-size: calc(var(--card-w) * 0.0295);
+  line-height: 1.5;
+  color: var(--theme-plate-ink-sub, color-mix(in srgb, var(--theme-frame-hi) 86%, #ffffff));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 页脚行: 星级 + 品牌
+   dad 2026-09-13: 原为独立绝对定位区块, 现并入说明栏 (.ccg-plate) 内当最后一行 ——
+   不再有自己的一层底衬/背景, 底衬由 .ccg-plate 统一提供.
+   margin-top:auto 把它顶到栏底 = 原来的 --foot-b 位置 (视觉位置不变). */
+.ccg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: auto;
+  padding-top: calc(var(--card-w) * 0.012);
+  border-top: 1px solid var(--theme-foot-rule, rgba(212, 160, 23, 0.42));
+  font-size: calc(var(--card-w) * 0.0265);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--theme-foot-ink, #cbb894);
+  text-shadow: var(--theme-foot-ink-shadow, 0 1px 2px rgba(3, 7, 18, 0.85));
+  pointer-events: none;
+}
+.ccg-foot span:last-child { color: var(--theme-foot-accent, #d9ab2c); letter-spacing: 0.2em; }
+
+.ccg-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--ccg-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: #5c4010;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-shadow: 0 1px 0 rgba(255, 248, 220, 0.85);
+}
+.ccg-orn {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  background: linear-gradient(145deg, #fff4c4, #d4a017 48%, #8a5a10);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px rgba(122, 82, 16, 0.25);
+}
+.ccg-stars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.ccg-star {
+  width: calc(var(--card-w) * 0.034);
+  height: calc(var(--card-w) * 0.034);
+  background: linear-gradient(145deg, #fff4c4, #d4a017 45%, #8a5a10);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.ccg-holo-head {
+  position: absolute;
+  top: 3.2%;
+  left: var(--art-l);
+  right: var(--art-l);
+  z-index: 7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.ccg-chip {
+  font-size: calc(var(--card-w) * 0.0322);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #3d2a08;
+  background: linear-gradient(180deg, #fff4c8, #e8c547);
+  border: 1px solid rgba(122, 82, 16, 0.55);
+  border-radius: 999px;
+  padding: calc(var(--card-w) * 0.009) calc(var(--card-w) * 0.026);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.ccg-no {
+  font-size: calc(var(--card-w) * 0.0322);
+  font-weight: 700;
+  /* dad 2026-09-12 item3: 编号墨色也走 token — 深色卡是浅金, 淡色卡换成深金 (否则金压米白几乎看不见) */
+  color: var(--theme-no-ink, #f0cf5e);
+  letter-spacing: 0.14em;
+  text-shadow: var(--theme-no-ink-shadow, 0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+/* ── Shared card back ─────────────────────────────────────── */
+/* ── Back face: 温润暗曜琉璃 (暖米金, 同样不发灰) + 收敛的光效 ── */
+.ccg-back-face .ccg-foil-stock {
+  background-color: #f7f1e6;
+  background-image:
+    radial-gradient(ellipse 58% 44% at 50% 22%, rgba(255, 240, 200, 0.95) 0%, rgba(255, 226, 158, 0.35) 42%, rgba(255, 220, 140, 0) 74%),
+    radial-gradient(ellipse 72% 56% at 12% 92%, rgba(222, 202, 152, 0.45) 0%, rgba(222, 202, 152, 0) 62%),
+    radial-gradient(ellipse 64% 50% at 88% 10%, rgba(232, 220, 190, 0.55) 0%, rgba(232, 220, 190, 0) 60%),
+    linear-gradient(168deg, #fdf7e9 0%, #f6ead2 46%, #ecdcbe 100%);
+  filter: saturate(1.06) contrast(1.02);
+}
+
+.ccg-back-face .ccg-foil-shine {
+  opacity: calc((0.14 + var(--from-center, 0) * 0.22) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+  filter: brightness(var(--theme-foil-back-bright, 0.5))
+    contrast(var(--theme-foil-back-contrast, 1.9)) saturate(var(--theme-foil-back-sat, 1.3));
+}
+.ccg-back-face .ccg-foil-shine::after { opacity: calc(0.26 * var(--holo-gain, 1)); }
+.ccg-back-face .ccg-foil-glitter { opacity: calc(0.1 * var(--holo-gain, 1)); }
+.ccg-back-face .ccg-foil-glare { opacity: calc(var(--lit, 0) * var(--from-center, 0) * 0.18 * var(--holo-gain, 1) * var(--ccg-light-gain, 1)); }
+.ccg-back-face .ccg-foil-security { opacity: calc((0.2 + var(--from-center, 0) * 0.3) * var(--holo-gain, 1)); }
+
+.ccg-back-face {
+  background-color: #f7f1e6;
+  color: #5c4010;
+}
+
+.ccg-back-inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 22px 24px;
+  text-align: left;
+  pointer-events: none;
+}
+.ccg-back-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #8a6a28;
+  margin-bottom: 8px;
+}
+.ccg-back-title {
+  font-family: var(--ccg-serif);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.25;
+  margin: 0 0 12px;
+}
+.ccg-back-rule {
+  width: 36px;
+  height: 1px;
+  background: linear-gradient(90deg, #d4a017, transparent);
+  margin-bottom: 14px;
+}
+.ccg-back-field {
+  margin-bottom: 12px;
+}
+.ccg-back-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #a08050;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.ccg-back-val {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #5c4010;
+}
+.ccg-back-story {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ccg-back-story .ccg-back-val {
+  font-family: var(--ccg-serif);
+  font-size: 14px;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.7;
+  color: #6b4a10;
+}
+.ccg-back-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: #8a6a28;
+  text-align: center;
+}
+
+/* ── Scheme 2: encapsulated micro-parallax ────────────────── */
+.ccg-px-front {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 20%, #23397f 0%, #16224a 62%, #101a3c 100%);
+}
+
+.ccg-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ccg-card-r);
+  pointer-events: none;
+}
+
+.ccg-layer-bg {
+  transform: translateZ(0px);
+}
+
+.ccg-layer-holo {
+  /* dad 2026-09-13 (4): 跟随动画幅度加大 —— 视差 2px -> 5px, 景深 2px -> 6px */
+  transform: translateZ(6px) translate3d(calc(var(--nx) * 5px), calc(var(--ny) * 5px), 0);
+}
+
+.ccg-layer-subject {
+  inset: 3% 7% 5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* dad 2026-09-13 (4): 跟随动画幅度加大 —— 视差 3px -> 8px (反向), 景深 5px -> 12px */
+  transform: translateZ(12px) translate3d(calc(var(--nx) * -8px), calc(var(--ny) * -8px), 0);
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
+  z-index: 4;
+  mix-blend-mode: normal;
+}
+.ccg-layer-subject img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 画面框内的箔层: 圆角跟随窗口, 否则 18px 圆角会在四角漏出底纹
+   dad 2026-09-12 image#10: 之前漏了 .ccg-foil-stack 本体 — 它是带 overflow:hidden 的
+   裁剪盒, 仍用 18px 圆角 ⇒ 在 7px 的窗口四角切出一块直角弧度的新月形裸卡身
+   (深色主题下 = 一淡一深两个圆角矩形错角叠加); 它 + 防伪纹 ::before 一起收敛到内弧半径 */
+.ccg-art-window .ccg-foil-stock,
+.ccg-art-window .ccg-foil-stack,
+.ccg-art-window .ccg-foil-shine,
+.ccg-art-window .ccg-foil-glitter,
+.ccg-art-window .ccg-foil-glare,
+.ccg-art-window .ccg-foil-spec,
+.ccg-art-window .ccg-foil-laser,
+.ccg-art-window .ccg-foil-security,
+.ccg-art-window .ccg-foil-security::before {
+  border-radius: var(--ccg-rim-inner-r);
+}
+
+.ccg-flip-hint { display: none; }
+
+/* ── Claim modal ──────────────────────────────────────────── */
+.ccg-claim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(44, 28, 12, 0.62);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  isolation: isolate;
+}
+.ccg-claim-overlay.is-open { display: flex; }
+
+.ccg-claim-dialog {
+  position: relative;
+  width: min(920px, 100%);
+  max-height: 92dvh;
+  background: #fffaf2;
+  border-radius: 24px;
+  border: 2px solid #e8c547;
+  box-shadow: 0 24px 64px rgba(40, 20, 0, 0.28);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+
+.ccg-claim-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #e8c547;
+  background: #fffdf8;
+  color: #8a6a28;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ccg-claim-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 40px 22px 22px;
+  overflow: auto;
+  max-height: 92dvh;
+}
+
+.ccg-claim-stage { flex: 0 0 auto; }
+
+.ccg-claim-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  text-align: center;
+  padding: 8px 12px 8px;
+  background: #fffaf2;
+}
+.ccg-claim-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #8a6a28;
+  margin-bottom: 6px;
+}
+.ccg-claim-name {
+  font-size: 26px;
+  font-weight: 800;
+  color: #6b4a10;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px;
+}
+.ccg-claim-cond {
+  font-size: 15px;
+  font-weight: 600;
+  color: #5a4a3a;
+  margin: 0 0 4px;
+}
+.ccg-claim-date {
+  font-size: 12px;
+  color: #a09080;
+  margin: 0 0 12px;
+}
+.ccg-claim-story {
+  font-size: 15px;
+  font-style: italic;
+  color: #a08060;
+  line-height: 1.7;
+  margin: 0 0 18px;
+  padding-top: 12px;
+  border-top: 1px solid #f0e8d0;
+  max-height: 22vh;
+  overflow: auto;
+}
+
+.ccg-claim-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.ccg-btn-claim {
+  appearance: none;
+  border: 0;
+  min-width: 168px;
+  min-height: 48px;
+  padding: 12px 28px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ff8585, #ff6b6b);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #d45555, 0 10px 18px rgba(255, 107, 107, 0.28);
+  transform: translateY(-2px);
+}
+.ccg-btn-claim:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #d45555;
+}
+
+.ccg-btn-skip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #8a7354;
+  font-size: 13px;
+  padding: 8px 12px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+}
+
+@media (min-width: 900px) and (max-height: 800px), (min-width: 1100px) {
+  .ccg-claim-layout {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+    padding: 36px 40px 32px 32px;
+  }
+  .ccg-claim-copy {
+    text-align: left;
+    flex: 1 1 42%;
+    width: auto;
+  }
+  .ccg-claim-actions { align-items: flex-start; }
+  .ccg-claim-story { max-height: 28vh; text-align: left; }
+  .ccg-claim-overlay .ccg-stage { --card-w: min(240px, 46vh); }
+}
+
+.ccg-spark {
+  position: fixed;
+  z-index: 2500;
+  width: 9px;
+  height: 9px;
+  margin: -4px 0 0 -4px;
+  pointer-events: none;
+  background: linear-gradient(145deg, #fff6c8, #e8c547 40%, #8a5a10);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  will-change: transform, opacity;
+}
+
+.ccg-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(44, 62, 80, 0.9);
+  color: #fffdf8;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 10px 16px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2600;
+}
+.ccg-toast.is-on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition: opacity 200ms var(--ccg-ease), transform 200ms var(--ccg-ease);
+}
+
+/* ── Demo chrome ──────────────────────────────────────────── */
+.ccg-demo,
+.ccg-demo * { box-sizing: border-box; }
+
+body.ccg-modal-open .ccg-play,
+body.ccg-modal-open .ccg-demo-actions {
+  visibility: hidden;
+}
+
+.ccg-demo {
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 36%, #fff8e8 0%, #f3ead6 48%, #e4d2b4 100%);
+  color: var(--ccg-ink);
+  font-family: "PingFang SC", "Hiragino Sans GB", -apple-system, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.ccg-demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 16px 8px;
+  flex: 0 0 auto;
+}
+.ccg-demo-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #8a6a28;
+  text-transform: uppercase;
+}
+/* dad 2026-09-12: demo 版本号 —— 改卡片/3D 样式时随时知道自己看的是第几版;
+   冻结快照见 static/demo-archive/<版本>/ (scripts/freeze-ccg-demo.sh 生成) */
+.ccg-demo-ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 2px 9px;
+  border: 1px solid rgba(184, 134, 11, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.8);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #8a6a28;
+  text-transform: none;
+}
+.ccg-demo-ver a {
+  color: #8a6a28;
+  text-decoration: underline dotted;
+}
+.ccg-tabs {
+  display: flex;
+  background: rgba(255, 253, 248, 0.72);
+  border: 1px solid rgba(184, 134, 11, 0.28);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.ccg-tabs button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #8a7354;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  min-height: 36px;
+}
+.ccg-tabs button[aria-pressed="true"] {
+  background: linear-gradient(180deg, #fff4c8, #e8c547);
+  color: #5c4010;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+.ccg-play {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  padding: 8px 16px 12px;
+  min-height: 0;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+.ccg-play.is-compare { gap: 36px; }
+.ccg-play-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.ccg-play-col.is-off,
+.ccg-play-col[hidden] { display: none !important; }
+.ccg-play-label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #8a6a28;
+  text-transform: uppercase;
+}
+
+.ccg-demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
+
+.ccg-btn {
+  appearance: none;
+  border: 1px solid rgba(184, 134, 11, 0.35);
+  background: #fffdf8;
+  color: #6b4a10;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 10px 16px;
+  min-height: 44px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.ccg-btn.primary {
+  border: 0;
+  background: linear-gradient(180deg, #ff8585, #ff6b6b);
+  color: #fff;
+  box-shadow: 0 4px 0 #d45555;
+}
+
+.ccg-panel {
+  margin: 0 12px 12px;
+  background: rgba(255, 253, 248, 0.86);
+  border: 1px solid rgba(184, 134, 11, 0.22);
+  border-radius: 16px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.ccg-panel summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #8a6a28;
+}
+.ccg-panel summary::-webkit-details-marker { display: none; }
+.ccg-panel-body {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 0 14px 14px;
+  font-size: 12px;
+  color: #6b5a48;
+}
+.ccg-panel-body label { letter-spacing: 0.06em; }
+.ccg-panel-body input[type="range"] { width: 100%; accent-color: #d4a017; }
+.ccg-fps {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: #2e7d4f;
+}
+.ccg-fps.is-mid { color: #b8860b; }
+.ccg-fps.is-low { color: #c0392b; }
+
+@media (max-height: 800px) and (orientation: landscape) {
+  .ccg-demo-bar { padding: 8px 14px 4px; }
+  .ccg-play { padding: 4px 12px; gap: 28px; }
+  .ccg-panel { margin: 0 10px 8px; }
+}
+
+@media (max-width: 860px) {
+  .ccg-play.is-compare { gap: 16px; }
+  .ccg-play.is-compare .ccg-stage { --card-w: min(42vw, 220px); }
+  .ccg-tabs button { padding: 8px 9px; font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ccg-rotator { will-change: auto; }
+  .ccg-foil-shine,
+  .ccg-foil-glare,
+  .ccg-foil-glitter { animation: none; }
+  .ccg-holo-art img,
+  .ccg-layer-subject img { transition: none; }
+}
+
+@media (hover: none) {
+  .ccg-rotator:hover {
+    transform: rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg))
+      translateZ(var(--lift, 0px)) scale(var(--pulse, 1));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   防伪标签纹样库 (dad 2026-09-12 image#6 item2: "镭射防伪标签的纹理样式也要做多种",
+   参考 https://poke-holo.simey.me/ 的多种箔纹)
+
+   切换方式: 卡面容器 (.ccg-stage / 弹窗) 加 data-ccg-sec="<id>";
+   不写该属性 (或 "theme") = 沿用主题自带纹样 (--theme-security-pattern)。
+   id 一览:
+     cosmos    星空微粒 —— 密布四芒星 + 细点 (类 poke-holo cosmos holo)
+     prism     棱镜斜纹 —— 双向斜刻线, 类太阳柱 prism
+     dots      圆点阵   —— 大小点交错, 类点阵箔
+     waves     同心波纹 —— 弧线同心扩散, 类水波箔
+     grid      细密网格 —— 防伪纸细网, 类证件底纹
+     honeycomb 六角蜂窝 —— 蜂窝晶格, 类金属蜂窝箔
+     flute     笛韵刻线 —— 内置笛剪影纹 (同 azure 默认, 用于强制覆盖主题纹样)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ccg-stage {
+  --ccg-sec-cosmos: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'><g fill='%23fff'><path d='M14 12 l1.7 5.1 5.1 1.7 -5.1 1.7 -1.7 5.1 -1.7 -5.1 -5.1 -1.7 5.1 -1.7z'/><path d='M66 30 l1.4 4.2 4.2 1.4 -4.2 1.4 -1.4 4.2 -1.4 -4.2 -4.2 -1.4 4.2 -1.4z'/><path d='M40 66 l1.5 4.6 4.6 1.5 -4.6 1.5 -1.5 4.6 -1.5 -4.6 -4.6 -1.5 4.6 -1.5z'/><circle cx='84' cy='70' r='1.9'/><circle cx='50' cy='16' r='1.6'/><circle cx='24' cy='44' r='1.8'/><circle cx='88' cy='12' r='1.4'/><circle cx='72' cy='56' r='1.5'/><circle cx='8' cy='80' r='1.6'/><circle cx='34' cy='88' r='1.3'/><circle cx='58' cy='78' r='1.2'/></g></svg>");
+  --ccg-sec-honeycomb: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='38.2' height='66' viewBox='0 0 38.2 66'><g fill='none' stroke='%23fff' stroke-width='2'><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(0 0)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(38.2 0)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(19.1 33)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(0 66)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(38.2 66)'/><path d='M0 -22 L19.1 -11 L19.1 11 L0 22 L-19.1 11 L-19.1 -11 Z' transform='translate(19.1 -33)'/></g></svg>");
+  --ccg-sec-prism: repeating-linear-gradient(
+      48deg, rgba(255, 255, 255, 0.95) 0 1.6px, rgba(255, 255, 255, 0) 1.6px 10px),
+    repeating-linear-gradient(
+      -42deg, rgba(255, 255, 255, 0.5) 0 1px, rgba(255, 255, 255, 0) 1px 23px);
+  --ccg-sec-dots: radial-gradient(
+      circle at 30% 30%, #fff 0 1.6px, transparent 1.7px),
+    radial-gradient(circle at 78% 74%, #fff 0 1.1px, transparent 1.2px);
+  --ccg-sec-waves: repeating-radial-gradient(
+    circle at 50% 140%, rgba(255, 255, 255, 0.92) 0 1.2px, rgba(255, 255, 255, 0) 1.2px 12px);
+  --ccg-sec-grid: repeating-linear-gradient(
+      0deg, rgba(255, 255, 255, 0.72) 0 0.8px, transparent 0.8px 7px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.72) 0 0.8px, transparent 0.8px 7px);
+}
+
+/* 每种纹样自带节奏 (mask-size / background-size 的平铺尺寸), 换纹样即换颗粒度 */
+.ccg-stage[data-ccg-sec="cosmos"]    { --theme-security-pattern: var(--ccg-sec-cosmos);    --theme-security-size: 96px 96px; }
+.ccg-stage[data-ccg-sec="prism"]     { --theme-security-pattern: var(--ccg-sec-prism);     --theme-security-size: 22px 22px; }
+.ccg-stage[data-ccg-sec="dots"]      { --theme-security-pattern: var(--ccg-sec-dots);      --theme-security-size: 16px 16px; }
+.ccg-stage[data-ccg-sec="waves"]     { --theme-security-pattern: var(--ccg-sec-waves);     --theme-security-size: 44px 44px; }
+.ccg-stage[data-ccg-sec="grid"]      { --theme-security-pattern: var(--ccg-sec-grid);      --theme-security-size: 12px 12px; }
+.ccg-stage[data-ccg-sec="honeycomb"] { --theme-security-pattern: var(--ccg-sec-honeycomb); --theme-security-size: 38.2px 66px; }
+.ccg-stage[data-ccg-sec="flute"]     { --theme-security-pattern: var(--ccg-security-pattern); --theme-security-size: 132px 132px; }

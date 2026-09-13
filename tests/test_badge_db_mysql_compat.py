@@ -127,14 +127,15 @@ def test_insert_achievement_row_pymysql_uses_positional(monkeypatch):
     sql_str = args[0][0]
     params = args[0][1]
 
-    # SQL 已转 `?` → `%s` (15 个 %s, 0 个 ?) — INSERT 15 列 (跟 VALUES tuple 长度对齐)
+    # SQL 已转 `?` → `%s` (17 个 %s, 0 个 ?) — INSERT 17 列 (B-1 card_theme + image#9/4 card_stars, 跟 VALUES tuple 长度对齐)
     assert sql_str.count("?") == 0  # 全部已转 %s
-    assert sql_str.count("%s") == 15  # 15 列 INSERT
+    assert sql_str.count("%s") == 17  # 17 列 INSERT (B-1 card_theme + dad image#9/4 card_stars)
+    assert "card_theme" in sql_str  # B-1: 卡面主题列在 INSERT 列表里
 
-    # Params 应是 15-元素 tuple (用 list 检查更稳, MagicMock tuple isinstance 会 false)
+    # Params 应是 16-元素 tuple (用 list 检查更稳, MagicMock tuple isinstance 会 false)
     assert not isinstance(params, dict), f"params 应是 tuple, 拿到 dict: {params}"
     params_list = list(params)
-    assert len(params_list) == 15
+    assert len(params_list) == 17
     # 第一个是 id, 第二个是 name
     assert params_list[0] == "join_exam_23"
     assert params_list[1] == "加入考级"
@@ -197,4 +198,61 @@ def test_update_badge_current_pymysql(monkeypatch):
 
     # 验证 UPDATE 调 _db_execute (走 db_adapter)
     mock_conn.commit.assert_called_once()
-    assert mock_cursor.execute.call_count == 2  # UPDATE + INSERT
+    # 事务内还会跑 card_theme 列迁移探针 (SELECT 探 information_schema + 可能 ALTER)
+    # ⇒ 用 SQL 断言而非调用次数断言 (次数随迁移是否已就绪变化)
+    sqls = [c[0][0] for c in mock_cursor.execute.call_args_list]
+    assert any("UPDATE achievement_badges" in s for s in sqls)
+    assert any("INSERT INTO achievement_badges" in s for s in sqls)
+
+
+# ─── Case 5: B-1 card_theme 列迁移 (MySQL 分支) ───────────────────
+
+def _mock_mysql_conn(rows):
+    """pymysql-like mock conn: cursor().fetchall() 返 rows, 便于断言 execute 的 SQL."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = rows
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    return mock_conn, mock_cursor
+
+
+def test_ensure_card_theme_column_mysql_skips_when_present(monkeypatch):
+    """MySQL 分支: 列已存在 → 只探 information_schema, 不发 ALTER."""
+    monkeypatch.setattr(badge_db, "_CARD_THEME_COL_DONE", False, raising=False)
+    conn, cur = _mock_mysql_conn([{"COLUMN_NAME": "card_theme"}])
+
+    badge_db.ensure_card_theme_column(conn)
+
+    sqls = [c[0][0] for c in cur.execute.call_args_list]
+    assert any("COLUMN_NAME" in s for s in sqls)      # 探过 information_schema
+    assert not any("ALTER TABLE" in s for s in sqls)  # 已存在 → 不 ALTER
+    conn.commit.assert_not_called()
+
+
+def test_ensure_card_theme_column_mysql_adds_column(monkeypatch):
+    """MySQL 分支: 缺列 → 发 ALTER 且不自行 commit (MySQL DDL 隐式提交; 由调用方提交)."""
+    monkeypatch.setattr(badge_db, "_CARD_THEME_COL_DONE", False, raising=False)
+    # 表存在但无 card_theme 列 (探针列的是整表列清单; 空 rows 会被判成"表不存在")
+    conn, cur = _mock_mysql_conn(
+        [{"COLUMN_NAME": "id"}, {"COLUMN_NAME": "name"}, {"COLUMN_NAME": "type"}]
+    )
+
+    badge_db.ensure_card_theme_column(conn)
+
+    sqls = [c[0][0] for c in cur.execute.call_args_list]
+    alters = [s for s in sqls if "ALTER TABLE achievements ADD COLUMN card_theme" in s]
+    assert len(alters) == 1
+    conn.commit.assert_not_called()
+
+
+def test_ensure_card_theme_column_mysql_skips_when_table_missing(monkeypatch):
+    """MySQL 分支: 表还不存在 (探针空结果) → 不 ALTER, 交 _init_tables 建表时负责."""
+    monkeypatch.setattr(badge_db, "_CARD_THEME_COL_DONE", False, raising=False)
+    conn, cur = _mock_mysql_conn([])
+
+    badge_db.ensure_card_theme_column(conn)
+
+    sqls = [c[0][0] for c in cur.execute.call_args_list]
+    assert not any("ALTER TABLE" in s for s in sqls)
+    conn.commit.assert_not_called()
+    assert badge_db._CARD_THEME_COL_DONE is True  # 表不存在也算探测完成, 不反复重试

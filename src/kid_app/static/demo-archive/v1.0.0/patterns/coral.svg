@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="132" viewBox="0 0 132 132">
+  <!-- 朱霞流丹 coral (agy 方案 B.6): 祥云 + 音符 + DIZICAL -->
+  <g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 祥云 1 (左上) - 经典卷云 -->
+    <path d="M14 42 q4 -10 14 -10 q4 -6 12 -2 q8 -2 10 6 q-2 6 -8 6 q-2 4 -8 4 q-6 2 -10 -2 q-6 -2 -10 -2 z"/>
+    <!-- 祥云 2 (右下, 镜像旋转) -->
+    <path d="M118 88 q-4 10 -14 10 q-4 6 -12 2 q-8 2 -10 -6 q2 -6 8 -6 q2 -4 8 -4 q6 -2 10 2 q6 2 10 2 z"/>
+    <!-- 八分音符 (舞台表演标志) -->
+    <ellipse cx="50" cy="70" rx="5" ry="3.6" transform="rotate(-18 50 70)"/>
+    <path d="M55 70 L55 50"/>
+    <!-- 八分音符旗 -->
+    <path d="M55 50 q10 4 8 12"/>
+    <!-- 小圆点 (音符下) -->
+    <circle cx="80" cy="86" r="2.4" fill="#fff" stroke="none"/>
+  </g>
+  <!-- DIZICAL 字样 -->
+  <text x="10" y="126" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="2.6" fill="#fff">DIZICAL</text>
+</svg>

@@ -178,9 +178,10 @@ def api_achievements():
     results = calc_all()
 
     # 2. 读 achievements 表
+    # Sprint 26091201 feat/badge-3d-ccg B-1: 多取 a.card_theme, 走 resolve_card_theme 兜底
     cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
-        "unlock_strategy, achieved_at_override FROM achievements "
+        "unlock_strategy, achieved_at_override, card_theme, card_stars FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order"
     )
@@ -190,6 +191,8 @@ def api_achievements():
     # 3. 构建 badge 列表（复用 badges_page 逻辑）
     # 2026-08-07 sprint 26080702: 提前查当前赛季, 拼 season_info 字符串
     from src.kid_app.app import _get_current_season
+    # Sprint 26091201 feat/badge-3d-ccg B-1: 兜底链解析 card_theme
+    from src.kid_app.badge_theme import resolve_card_stars, resolve_card_theme
     current_season = _get_current_season(conn)
     badges = []
     for ach in ach_rows:
@@ -227,6 +230,17 @@ def api_achievements():
             "achieved_at": res.achieved_at,
             "badge_url": get_badge_url(aid),
             "unlock_strategy": ach.get("unlock_strategy") or "calc",
+            "card_theme": resolve_card_theme(
+                badge_type=ach.get("type"),
+                card_theme=ach.get("card_theme"),
+                category=ach.get("category"),
+            ),
+            # dad image#9/4: 星级走后端字段, 前端只钳位
+            "card_stars": resolve_card_stars(
+                card_stars=ach.get("card_stars"),
+                badge_type=ach.get("type"),
+                category=ach.get("category"),
+            ),
             # 2026-08-07 sprint 26080702: seasonal badge 显示赛季+累计次数
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("

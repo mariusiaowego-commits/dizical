@@ -128,6 +128,10 @@ def create_draft(meta: dict[str, Any]) -> BadgeDraft:
 
     Raises:
         ValueError: meta 缺必填字段 或 id 格式错
+
+    Sprint 26091201 feat/badge-3d-ccg B-1:
+      meta 可选带 'card_theme' (str slug). 合法值在 VALID_CARD_THEMES 才入库;
+      脏数据 (非 str / 不在表里) 直接 reject, 不走兜底 (draft 是新数据, 越严越好).
     """
     # 必填字段校验 (跟 STEP 1 表单同步)
     # V2.2.1 (2026-06-15): cond_text 也必填 (用户拍板, 强制 modal-cond ≠ modal-desc)
@@ -141,6 +145,30 @@ def create_draft(meta: dict[str, Any]) -> BadgeDraft:
     # category=seasonal 必填 seasonal_type
     if meta["category"] == "seasonal" and not meta.get("seasonal_type"):
         raise ValueError("category=seasonal 时必填 seasonal_type")
+
+    # Sprint 26091201 B-1: card_theme 可选字段校验 — 给就必须是合法 slug
+    if "card_theme" in meta and meta["card_theme"] is not None:
+        # 延迟 import 避免循环 (badge_theme 不依赖 draft, 反之亦然)
+        from src.kid_app.badge_theme import VALID_CARD_THEMES
+        v = meta["card_theme"]
+        if not isinstance(v, str) or v.strip().lower() not in VALID_CARD_THEMES:
+            raise ValueError(
+                f"meta.card_theme 非法: {v!r}, 必须是 {VALID_CARD_THEMES} 之一"
+            )
+        # 规整后写回 meta (strip + lower)
+        meta["card_theme"] = v.strip().lower()
+
+    # dad image#9/4: card_stars 可选字段校验 — 给就必须是 1..5 整数
+    if "card_stars" in meta and meta["card_stars"] is not None:
+        from src.kid_app.badge_theme import STARS_MAX, STARS_MIN, normalize_card_stars
+
+        n = normalize_card_stars(meta["card_stars"])
+        if n is None:
+            v = meta["card_stars"]
+            raise ValueError(
+                f"meta.card_stars 非法: {v!r}, 必须是 {STARS_MIN}..{STARS_MAX} 的整数"
+            )
+        meta["card_stars"] = n
 
     draft_id = _generate_draft_id(meta["id"])
     now = _now_iso()

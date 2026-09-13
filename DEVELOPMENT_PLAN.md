@@ -473,4 +473,14 @@ DIZICAL_DB_PATH=data/dizical.db
 
 ---
 
+## 🔮 后续 Plan（backlog，不在当前 sprint 内）
+
+dad 2026-09-13 拍板：徽章卡编号等工作**不进本次 sprint**（「这次内容太多了」），统一排入后续清单。
+
+- 📄 清单: `docs/AI-PLAN-ccg-backlog-260913.md`
+- 条目: B1 徽章卡编号（`No.007`，方案 A 见 `docs/AI-PRD-徽章卡编号-260912.md`）· B2 主题的设计期选择入口（config 改 `card_theme`，**不做**用户端选择器）· B3 防伪强度定档接生产（`card_sec` 列 + `--ccg-sec-gain` 档位）· B4 金框 1px 暗掐丝底座去/留 · B5 卡面版本化流程（已落地）
+- 原则（dad 原话）：「这几套主题不是为了前端能让用户选择展示的，而是为了我作为每次设计卡片时的选项」
+
+---
+
 **开发收尾**：每次 session 结束前更新 `STATUS.md` 和 `DEVELOPMENT_PLAN.md`，保持后续接手 agent 可读。

@@ -754,3 +754,15 @@
   // 现在: 只通过顶部 collapse 按钮 (toggle) 切收起/展开
 })();
 </script>
+
+{% include "_badge_claim_modal.html" %}
+<script>
+  // Sprint 26091101: 检查未领取徽章，拦截并展示 3D CCG 领取弹窗
+  (function () {
+    setTimeout(function () {
+      if (window.DizicalCCG && typeof window.DizicalCCG.checkUnclaimed === 'function') {
+        window.DizicalCCG.checkUnclaimed();
+      }
+    }, 500);
+  })();
+</script>

@@ -29,6 +29,30 @@ from pydantic import ValidationError
 app = FastAPI(title="Bamboo Flute Practice")
 
 
+# Sprint 26091201 feat/badge-3d-ccg B-1:
+# 启动期跑一次 card_theme 列幂等迁移 (双后端: SQLite 由 src.database._init_tables 触发,
+# 这里负责 MySQL 路径 — badge_db.ensure_card_theme_column 检测后端类型自动分流).
+@app.on_event("startup")
+def _sprint26091201_card_theme_migrate() -> None:
+    """启动期: 跨后端确保 achievements.card_theme 列就绪.
+
+    MySQL 启动时不会自动跑 _init_tables (那是 SQLite 单例的逻辑),
+    必须显式调 ensure_card_theme_column. 双后端幂等, 重复启动安全.
+    """
+    try:
+        from src.database import db as _db
+        from src.kid_app.badge_db import ensure_card_stars_column, ensure_card_theme_column
+        conn = _db._get_connection()
+        ensure_card_theme_column(conn)
+        ensure_card_stars_column(conn)  # dad image#9/4
+    except Exception as e:
+        # 启动期不能因迁移失败挂掉 — 后续 INSERT/SELECT 路径会再尝试
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            f"启动期 card_theme 迁移失败 (后续会重试): {e}"
+        )
+
+
 # Sprint 26082804: Reviewer 写操作全局拦截 middleware
 # 无论是否在 PUBLIC 列表, 只要携带 reviewer 身份且尝试写操作, 一律 403
 @app.middleware("http")
@@ -89,6 +113,10 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/items")
         or path.startswith("/api/practices/")
         or path.startswith("/api/practice-sessions")
+        # Sprint 26091101 feat/badge-3d-ccg: 徽章领取 API kid-facing 弹窗数据源
+        # 跟 /api/achievements 同级公开, kid app 直接调
+        or path.startswith("/api/badge/unclaimed")
+        or path.startswith("/api/badge/claim")
     )
     if PUBLIC:
         return await call_next(request)
@@ -2795,9 +2823,10 @@ def badges_page():
     results = calc_all()   # dict[aid] → CalcResult
 
     # ── 读所有需要展示的 achievements（排除神秘/晋级等纯统计类） ──────
-    cur = db_adapter.execute(conn, 
+    # Sprint 26091201 feat/badge-3d-ccg B-1: 多取 a.card_theme, 走 resolve_card_theme 兜底
+    cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
-        "unlock_strategy, achieved_at_override FROM achievements "
+        "unlock_strategy, achieved_at_override, card_theme, card_stars FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
@@ -2807,6 +2836,8 @@ def badges_page():
     badges = []
     # 2026-08-07 sprint 26080702: 提前查一次当前赛季 (避免每个 badge 都查 SQL)
     current_season = _get_current_season(conn)
+    # Sprint 26091201 B-1: 兜底链解析 card_theme
+    from src.kid_app.badge_theme import resolve_card_stars, resolve_card_theme
     for ach in ach_rows:
         aid = ach["id"]
         res = results.get(aid)
@@ -2845,6 +2876,17 @@ def badges_page():
             "badge_url": get_badge_url(aid),
             "unlock_strategy": ach.get("unlock_strategy") or "calc",
             "achieved_at_override": str(ach.get("achieved_at_override")) if ach.get("achieved_at_override") else "",
+            "card_theme": resolve_card_theme(
+                badge_type=ach.get("type"),
+                card_theme=ach.get("card_theme"),
+                category=ach.get("category"),
+            ),
+            # dad image#9/4: 星级 (后端字段, 前端只钳位)
+            "card_stars": resolve_card_stars(
+                card_stars=ach.get("card_stars"),
+                badge_type=ach.get("type"),
+                category=ach.get("category"),
+            ),
             # 2026-08-07 sprint 26080702: seasonal badge 显示「当前第N赛季 + 累计获取次数」文案
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("
@@ -3038,6 +3080,11 @@ app.include_router(config_router)
 # V1 9 端点 + routes/badge_batch.py 整文件删 (批量模式 V2 不做)
 from src.kid_app.routes.badge_workflow import router as badge_workflow_router
 app.include_router(badge_workflow_router)
+
+# Sprint 26091101 feat/badge-3d-ccg: 注册徽章领取 API
+# 全局拦截弹窗数据源 + 入库幂等领取 (走 practice_audit_log 审计)
+from src.kid_app.routes.badge_claim import router as badge_claim_router
+app.include_router(badge_claim_router)
 
 # ─── 注册 minip (微信小程序) 专用路由 ─────────────────────────────────────
 # dizical-minip 项目: 只新增端点，不影响现有功能

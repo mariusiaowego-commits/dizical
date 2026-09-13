@@ -12,3 +12,7 @@
 | 2026-09-03 | 26090903 | group view 手机端 assign-grid 2 列 / iPad 3 列 | 纯 CSS 方案（不改 JS），保持桌面 4 列 + 210mm 居中 |
 | 2026-09-03 | 26090903 | agy 换 Claude Opus 4.6 Thinking | 强推理 + 架构设计，适合复杂方案设计；grok 继续前端实现 |
 | 2026-09-03 | 26090903 | sprint-workflow 本次未遵守（事后补救） | 判断为 small 用了 mini-plan in chat，但实际触发了多文件改动 + 多 agent 分工，应升级为 full sprint |
+| 2026-09-11 | 26091101 | 3D卡牌方案一(纯CSS全息)与方案二(分层3D视差)同等精力双实现 | dad明确两套都要看效果可能都保留；纯CSS架构免除Three.js/Blender运行时负担，零依赖适配iPad mini WKWebView |
+| 2026-09-11 | 26091101 | 状态模型解耦为 achieved='Y' 与 claimed_at IS NOT NULL | 解决女儿无获得感痛点，拦截强弹窗配合金色粒子礼花入库动效 |
+| 2026-09-11 | 26091101 | 箔层 .ccg-foil-stack isolation；原画 translateZ(4px/5px) 不加 isolation | color-dodge 会吃掉插画；子层 backface-hidden 会在微倾时闪没 |
+| 2026-09-11 | 26091101 | 3D 卡面 clip-path 代替 overflow:hidden | overflow+preserve-3d 会压平 translateZ，原画无法稳定浮在箔上 |

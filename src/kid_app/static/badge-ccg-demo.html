@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#f3ead6">
+  <meta name="ccg-demo-version" content="v1.5.0">
+  <title>徽章集卡 · 3D 把玩对比</title>
+  <link rel="stylesheet" href="/static/css/badge-ccg.css">
+  <!-- Sprint 26091101 feat/badge-3d-ccg: 4 套非默认主题变量 (bamboo/coral/imperial/frost), azure 默认值在 badge-ccg.css -->
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body class="ccg-demo">
+  <header class="ccg-demo-bar">
+    <div class="ccg-demo-title">徽章集卡 3D
+      <span class="ccg-demo-ver" title="demo 版本号 —— 改卡片样式 / 3D 模型样式前先看这里; 冻结快照见 demo-archive">
+        <span id="ccg-demo-ver">v1.5.0</span>
+        <a href="/static/badge-ccg-compare.html">细节对比页</a>
+        <a href="/static/demo-archive/VERSIONS.md" target="_blank" rel="noopener">版本表</a>
+      </span>
+    </div>
+    <div class="ccg-tabs" role="tablist" aria-label="方案切换">
+      <button type="button" role="tab" id="tab-holo" aria-pressed="true" data-mode="holo">方案一 · 全息光影</button>
+      <button type="button" role="tab" id="tab-px" aria-pressed="false" data-mode="px">方案二 · 分层视差</button>
+      <button type="button" role="tab" id="tab-both" aria-pressed="false" data-mode="both">并排对比</button>
+    </div>
+    <!-- Sprint 26091101 feat/badge-3d-ccg B 线: 背景主题切换 (agy 方案 B.3) -->
+    <label class="ccg-theme-pick" for="ccg-theme-select">
+      <span>主题</span>
+      <select id="ccg-theme-select" aria-label="卡面主题">
+        <option value="azure">星曜深蓝 (默认)</option>
+        <option value="bamboo">竹影翠玉</option>
+        <option value="coral">朱霞流丹</option>
+        <option value="imperial">紫霄耀金</option>
+        <option value="frost">冰霜晶蓝</option>
+        <optgroup label="淡色主题">
+          <option value="pearl">珠光象牙</option>
+          <option value="mint">薄荷玉</option>
+          <option value="sakura">樱雪</option>
+        </optgroup>
+      </select>
+    </label>
+    <!-- dad 2026-09-12 image#6 item2: 防伪标签纹样切换 (参考 poke-holo 多种箔纹) -->
+    <label class="ccg-theme-pick" for="ccg-sec-select">
+      <span>防伪纹</span>
+      <select id="ccg-sec-select" aria-label="防伪标签纹样">
+        <option value="theme">主题自带</option>
+        <option value="cosmos">星空微粒</option>
+        <option value="prism">棱镜斜纹</option>
+        <option value="dots">圆点阵</option>
+        <option value="waves">同心波纹</option>
+        <option value="grid">细密网格</option>
+        <option value="honeycomb">六角蜂窝</option>
+        <option value="flute">笛韵刻线</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="ccg-play" id="play" aria-live="polite">
+    <div class="ccg-play-col" data-col="holo">
+      <div class="ccg-play-label">方案一 · V 级全息 · 轻点翻转</div>
+      <div id="stage-holo"></div>
+    </div>
+    <div class="ccg-play-col is-off" data-col="px" hidden>
+      <div class="ccg-play-label">方案二 · 微视差封装 · 轻点翻转</div>
+      <div id="stage-px"></div>
+    </div>
+  </main>
+
+  <div class="ccg-demo-actions">
+    <button type="button" class="ccg-btn primary" id="btn-claim">模拟领取入库</button>
+    <button type="button" class="ccg-btn" id="btn-modal">预览拦截弹窗</button>
+  </div>
+
+  <details class="ccg-panel">
+    <summary>性能与调节</summary>
+    <div class="ccg-panel-body">
+      <span>FPS</span>
+      <span class="ccg-fps" id="fps">—</span>
+      <span></span>
+      <label for="tilt">倾斜 ±°</label>
+      <input id="tilt" type="range" min="6" max="20" step="1" value="15">
+      <span id="tilt-val">15</span>
+      <label for="holo">全息强度</label>
+      <input id="holo" type="range" min="0" max="140" step="5" value="100">
+      <span id="holo-val">100%</span>
+    </div>
+  </details>
+
+  <script src="/static/js/badge-ccg.js"></script>
+  <script>
+    (function () {
+      var CCG = window.DizicalCCG;
+      // dad 2026-09-12: demo 自报版本号 —— 改卡片样式 / 3D 模型样式前先看页头这行。
+      // 改完冻结: bash scripts/freeze-ccg-demo.sh <新版本号> "说明" (旧版留在 static/demo-archive/)
+      window.CCG_DEMO_VERSION = "v1.5.0";
+      (function () {
+        var v = window.CCG_DEMO_VERSION;
+        var el = document.getElementById("ccg-demo-ver");
+        if (el) el.textContent = v;
+        var m = document.querySelector('meta[name="ccg-demo-version"]');
+        if (m) m.setAttribute("content", v);
+      })();
+      var play = document.getElementById("play");
+      var colH = play.querySelector('[data-col="holo"]');
+      var colP = play.querySelector('[data-col="px"]');
+      var stageHolo = document.getElementById("stage-holo");
+      var stagePx = document.getElementById("stage-px");
+      var mode = "holo";
+      // Sprint 26091101 feat/badge-3d-ccg B 线: 背景主题状态 (agy 方案 B.3)
+      // 五套主题 id: azure(默认) / bamboo / coral / imperial / frost
+      // 写入 .ccg-stage[data-ccg-theme], badge-ccg-themes.css 提供非默认 4 套变量覆盖
+      // 淡色主题 (pearl/mint/sakura) 2026-09-12 追加
+      var VALID_THEMES = ["azure", "bamboo", "coral", "imperial", "frost", "pearl", "mint", "sakura"];
+      var theme = "azure";
+      // 防伪标签纹样: theme = 跟随主题自带纹样; 其余 id 见 badge-ccg.css 纹样库
+      var VALID_SECS = ["theme", "cosmos", "prism", "dots", "waves", "grid", "honeycomb", "flute"];
+      var sec = "theme";
+
+      function visibleStages() {
+        var list = [];
+        if (!colH.hidden) list.push(stageHolo);
+        if (!colP.hidden) list.push(stagePx);
+        return list;
+      }
+
+      function applyTheme() {
+        // 写 data-ccg-theme 到所有 ccg-stage 节点 (mode='both' 时 2 个, 其他 1 个)
+        document.querySelectorAll(".ccg-stage").forEach(function (el) {
+          el.setAttribute("data-ccg-theme", theme);
+        });
+        // 同步下拉框选中态
+        var sel = document.getElementById("ccg-theme-select");
+        if (sel && sel.value !== theme) sel.value = theme;
+      }
+
+      function applySec() {
+        // 防伪纹样: 与主题同一条写入路径 (attribute 在 stage 上, CSS 用 .ccg-stage[data-ccg-sec=...])
+        document.querySelectorAll(".ccg-stage").forEach(function (el) {
+          if (sec === "theme") el.removeAttribute("data-ccg-sec");
+          else el.setAttribute("data-ccg-sec", sec);
+        });
+        var sel = document.getElementById("ccg-sec-select");
+        if (sel && sel.value !== sec) sel.value = sec;
+      }
+
+      function mount() {
+        CCG.unmountAll(play);
+        if (!colH.hidden) CCG.mountCard(stageHolo, "holo", CCG.BADGE);
+        if (!colP.hidden) CCG.mountCard(stagePx, "px", CCG.BADGE);
+        // mount 之后写 theme / 防伪纹 (badge-ccg.js 的 mountCard 不动这些属性)
+        applyTheme();
+        applySec();
+      }
+
+      function setMode(next) {
+        mode = next;
+        document.querySelectorAll(".ccg-tabs button").forEach(function (b) {
+          b.setAttribute("aria-pressed", b.getAttribute("data-mode") === next ? "true" : "false");
+        });
+        colH.hidden = next === "px";
+        colP.hidden = next === "holo";
+        colH.classList.toggle("is-off", next === "px");
+        colP.classList.toggle("is-off", next === "holo");
+        play.classList.toggle("is-compare", next === "both");
+        mount();
+      }
+
+      document.querySelector(".ccg-tabs").addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-mode]");
+        if (btn) setMode(btn.getAttribute("data-mode"));
+      });
+
+      document.getElementById("btn-claim").addEventListener("click", function () {
+        var stages = visibleStages();
+        stages.forEach(function (s) { CCG.claim(s); });
+      });
+
+      document.getElementById("btn-modal").addEventListener("click", function () {
+        var scheme = mode === "px" ? "px" : "holo";
+        CCG.openClaim(CCG.BADGE, scheme);
+      });
+
+      var tilt = document.getElementById("tilt");
+      var holo = document.getElementById("holo");
+      tilt.addEventListener("input", function () {
+        document.getElementById("tilt-val").textContent = tilt.value;
+        CCG.setMaxTilt(tilt.value);
+      });
+      holo.addEventListener("input", function () {
+        document.getElementById("holo-val").textContent = holo.value + "%";
+        CCG.setHoloGain(Number(holo.value) / 100);
+      });
+
+      CCG.startFps(document.getElementById("fps"));
+      var params = new URLSearchParams(location.search);
+      var startMode = params.get("mode") || "holo";
+      if (startMode !== "holo" && startMode !== "px" && startMode !== "both") startMode = "holo";
+
+      // Sprint 26091101 feat/badge-3d-ccg B 线: ?theme=<id> URL param, 与 ?mode= 共存
+      var startTheme = params.get("theme") || "azure";
+      if (VALID_THEMES.indexOf(startTheme) === -1) startTheme = "azure";
+      theme = startTheme;
+
+      // dad 2026-09-12 image#6 item2: ?sec=<id> URL param (与 ?theme= 共存)
+      var startSec = params.get("sec") || "theme";
+      if (VALID_SECS.indexOf(startSec) === -1) startSec = "theme";
+      sec = startSec;
+
+      // dad 2026-09-12 image#9/4: ?stars=<0..5> 预览星级
+      // (真卡不由前端定, 由后端 achievements.card_stars 提供)
+      var startStars = parseInt(params.get("stars"), 10);
+      if (!isNaN(startStars)) {
+        var sv = Math.max(0, Math.min(5, startStars));
+        CCG.BADGE.stars = sv;       // demo fixture 口径 (mountCard 直接用 d.stars)
+        CCG.BADGE.card_stars = sv;  // 真卡口径 (openClaim → normalize 读 card_stars)
+      }
+
+      // 主题切换监听 (UI 下拉)
+      var themeSel = document.getElementById("ccg-theme-select");
+      if (themeSel) {
+        themeSel.value = theme;
+        themeSel.addEventListener("change", function () {
+          var v = themeSel.value;
+          if (VALID_THEMES.indexOf(v) === -1) v = "azure";
+          theme = v;
+          applyTheme();
+        });
+      }
+
+      // 防伪纹样切换监听 (UI 下拉)
+      var secSel = document.getElementById("ccg-sec-select");
+      if (secSel) {
+        secSel.value = sec;
+        secSel.addEventListener("change", function () {
+          var v = secSel.value;
+          if (VALID_SECS.indexOf(v) === -1) v = "theme";
+          sec = v;
+          applySec();
+        });
+      }
+
+      setMode(startMode);
+      if (params.get("modal") === "1") {
+        setTimeout(function () {
+          CCG.openClaim(CCG.BADGE, startMode === "px" ? "px" : "holo");
+        }, 400);
+      }
+      if (params.get("flip") === "1") {
+        setTimeout(function () { CCG.flipAll(); }, 400);
+      }
+    })();
+  </script>
+</body>
+</html>

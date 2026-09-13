@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="132" viewBox="0 0 132 132">
+  <!-- 紫霄耀金 imperial (agy 方案 B.6): 皇冠 + 星芒 + 竹笛 + DIZICAL -->
+  <g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 皇冠 (顶部, 殿堂里程碑标志) -->
+    <path d="M40 36 L46 22 L54 30 L66 16 L78 30 L86 22 L92 36 z"/>
+    <path d="M40 36 L92 36"/>
+    <!-- 皇冠底部宝石圆点 -->
+    <circle cx="50" cy="32" r="2.0" fill="#fff" stroke="none"/>
+    <circle cx="66" cy="28" r="2.0" fill="#fff" stroke="none"/>
+    <circle cx="82" cy="32" r="2.0" fill="#fff" stroke="none"/>
+    <!-- 星芒 (左下) -->
+    <path d="M30 80 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z"/>
+    <!-- 竹笛 (右下, 跟 azure 暗纹同元素, 致敬) -->
+    <path d="M70 88 L108 50 M75 93 L113 55 M70 88 L75 93 M108 50 L113 55"/>
+    <circle cx="84" cy="74" r="2.6" fill="#fff" stroke="none"/>
+    <circle cx="98" cy="60" r="2.6" fill="#fff" stroke="none"/>
+  </g>
+  <!-- DIZICAL 字样 -->
+  <text x="10" y="126" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="2.6" fill="#fff">DIZICAL</text>
+</svg>
