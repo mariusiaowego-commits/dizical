@@ -182,17 +182,17 @@
   <!-- sprint 26091302 B6: 弹窗 (CCG 卡面双栏 — 照 _badge_claim_modal.html 结构).
        卡面可交互 (tilt/holo/翻面); locked 走 CSS 灰化. -->
   <div id="modal-overlay" class="ccg-claim-overlay" onclick="if(event.target===this)closeModal()" style="display:none;">
-    <div id="modal-box" class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="ccg-claim-name">
+    <div id="modal-box" class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="bd-detail-name">
       <button type="button" class="ccg-claim-close" aria-label="关闭" onclick="closeModal()">×</button>
       <div class="ccg-claim-layout">
-        <div class="ccg-claim-stage" id="ccg-claim-stage"></div>
+        <div class="ccg-claim-stage" id="bd-detail-stage"></div>
         <div class="ccg-claim-copy">
-          <div class="ccg-claim-tag" id="ccg-claim-tag"></div>
-          <h2 class="ccg-claim-name" id="ccg-claim-name"></h2>
-          <p class="ccg-claim-cond" id="ccg-claim-cond"></p>
-          <p class="ccg-claim-date" id="ccg-claim-date"></p>
-          <p class="ccg-claim-story" id="ccg-claim-story"></p>
-          <p class="ccg-claim-hint" id="ccg-claim-hint"></p>
+          <div class="ccg-claim-tag" id="bd-detail-tag"></div>
+          <h2 class="ccg-claim-name" id="bd-detail-name"></h2>
+          <p class="ccg-claim-cond" id="bd-detail-cond"></p>
+          <p class="ccg-claim-date" id="bd-detail-date"></p>
+          <p class="ccg-claim-story" id="bd-detail-story"></p>
+          <p class="ccg-claim-hint" id="bd-detail-hint"></p>
         </div>
       </div>
     </div>
@@ -346,13 +346,13 @@ function openModal(card) {
   _unmountClaimStage();
 
   /* 写右侧字段 (照 _badge_claim_modal.html 结构) */
-  document.getElementById('ccg-claim-tag').textContent  = card.dataset.tag || '';
-  document.getElementById('ccg-claim-name').textContent  = card.dataset.name || '';
-  document.getElementById('ccg-claim-cond').textContent  =
+  document.getElementById('bd-detail-tag').textContent  = card.dataset.tag || '';
+  document.getElementById('bd-detail-name').textContent  = card.dataset.name || '';
+  document.getElementById('bd-detail-cond').textContent  =
     card.dataset.cond || card.dataset.condText || card.dataset.desc || '';
-  document.getElementById('ccg-claim-story').textContent = card.dataset.desc || '';
+  document.getElementById('bd-detail-story').textContent = card.dataset.desc || '';
 
-  const dateEl = document.getElementById('ccg-claim-date');
+  const dateEl = document.getElementById('bd-detail-date');
   if (card.dataset.date) {
     const d = new Date(card.dataset.date);
     dateEl.textContent = d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
@@ -361,18 +361,18 @@ function openModal(card) {
     dateEl.style.display = 'none';
   }
 
-  /* season_info 是 seasonal badge 专属字段 (sprint 26080702), 塞到 ccg-claim-story 前缀 */
-  var storyEl = document.getElementById('ccg-claim-story');
+  /* season_info 是 seasonal badge 专属字段 (sprint 26080702), 塞到 bd-detail-story 前缀 */
+  var storyEl = document.getElementById('bd-detail-story');
   if (card.dataset.seasonInfo) {
     storyEl.textContent = '[赛季] ' + card.dataset.seasonInfo + '\n\n' + storyEl.textContent;
   }
 
-  document.getElementById('ccg-claim-hint').textContent =
+  document.getElementById('bd-detail-hint').textContent =
     locked ? '继续加油，下一个成就在等你！' : '';
 
-  /* 在 #ccg-claim-stage 挂一张 CCG 卡 (可交互, opts.locked 走 CSS 灰化) */
+  /* 在 #bd-detail-stage 挂一张 CCG 卡 (可交互, opts.locked 走 CSS 灰化) */
   const claimStage = document.createElement('div');
-  document.getElementById('ccg-claim-stage').appendChild(claimStage);
+  document.getElementById('bd-detail-stage').appendChild(claimStage);
   DizicalCCG.mountCard(claimStage, 'holo', {
     id:    card.dataset.id || '',
     name:  card.dataset.name || '',
@@ -400,12 +400,12 @@ function openModal(card) {
   const tl = gsap.timeline();
   tl.to(overlay, { backgroundColor: 'rgba(0,0,0,0.30)', duration: 0.15, ease:'power2.out' })
     .to(box, { x:0, y:0, scale:1, opacity:1, duration:0.22, ease:'back.out(1.5)' }, 0)
-    .from('#ccg-claim-tag',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.14)
-    .from('#ccg-claim-name',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.17)
-    .from('#ccg-claim-cond',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
-    .from('#ccg-claim-date',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.21)
-    .from('#ccg-claim-story', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
-    .from('#ccg-claim-hint',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
+    .from('#bd-detail-tag',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.14)
+    .from('#bd-detail-name',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.17)
+    .from('#bd-detail-cond',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
+    .from('#bd-detail-date',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.21)
+    .from('#bd-detail-story', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
+    .from('#bd-detail-hint',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
 }
 
 function closeModal() {
@@ -423,7 +423,7 @@ function closeModal() {
 /* sprint 26091302 B6: 关弹窗时卸载单张 CCG 卡 (opts 不传 → 默认是交互卡, 在 cards 数组里;
    unmount() 内部 findIndex 找到 destroy + 清空 innerHTML). */
 function _unmountClaimStage() {
-  var host = document.getElementById('ccg-claim-stage');
+  var host = document.getElementById('bd-detail-stage');
   if (host && window.DizicalCCG && DizicalCCG.unmount) {
     DizicalCCG.unmount(host);
   }
