@@ -8,7 +8,10 @@ kid_app 主仓只新增，不改现有逻辑。
 """
 import datetime as dt
 import json
+import os
 import time
+import urllib.parse
+import urllib.request
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -17,6 +20,76 @@ from src.database import db
 from src import db_adapter  # fix/achievements-mysql-conn (2026-07-24): 跨后端 SQL 适配
 
 router = APIRouter()
+
+# ─── dinghy 微信跳转录入：小程序 URL Link ─────────────────────────────────
+# 生成带参 URL Link，微信内点击直达小程序页面（dizical-minip PR #33 前端已支持预填）。
+# 需要环境变量 WX_APPID / WX_SECRET（CloudBase 配置，不进 git）；
+# 可选 DINGHY_URL_LINK_KEY：设置后请求需带 header X-Dinghy-Key 匹配。
+_URL_LINK_ALLOWED_PATHS = {"/pages/practice/practice"}
+_WX_TOKEN_CACHE = {"token": "", "expires_at": 0.0}
+
+
+def _wx_access_token() -> str:
+    if _WX_TOKEN_CACHE["token"] and time.time() < _WX_TOKEN_CACHE["expires_at"]:
+        return _WX_TOKEN_CACHE["token"]
+    appid = os.environ.get("WX_APPID", "")
+    secret = os.environ.get("WX_SECRET", "")
+    url = (
+        "https://api.weixin.qq.com/cgi-bin/token"
+        f"?grant_type=client_credential&appid={urllib.parse.quote(appid)}"
+        f"&secret={urllib.parse.quote(secret)}"
+    )
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    token = data.get("access_token", "")
+    if not token:
+        raise RuntimeError(data.get("errmsg", "access_token 获取失败"))
+    _WX_TOKEN_CACHE["token"] = token
+    _WX_TOKEN_CACHE["expires_at"] = time.time() + 7000
+    return token
+
+
+@router.post("/api/minip/url-link")
+def api_minip_url_link(payload: dict, request: Request):
+    """生成小程序 URL Link（dinghy 微信跳转预填录入）。
+
+    body: {"path": "/pages/practice/practice", "query": "item_id=1026&sessions=..."}
+    只允许白名单页面；query 长度限制 500；30 天临时链接。
+    """
+    expected_key = os.environ.get("DINGHY_URL_LINK_KEY", "")
+    if expected_key and request.headers.get("X-Dinghy-Key", "") != expected_key:
+        return JSONResponse({"ok": False, "error": "X-Dinghy-Key 不匹配"}, status_code=403)
+    path = str((payload or {}).get("path") or "")
+    query = str((payload or {}).get("query") or "")
+    if path not in _URL_LINK_ALLOWED_PATHS:
+        return JSONResponse({"ok": False, "error": f"path 不在白名单: {path}"}, status_code=400)
+    if len(query) > 500:
+        return JSONResponse({"ok": False, "error": "query 过长（>500）"}, status_code=400)
+    try:
+        access_token = _wx_access_token()
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"access_token 获取失败: {exc}"}, status_code=502)
+    body = {
+        "path": path,
+        "query": query,
+        "is_expire": 1,
+        "expire_type": 1,  # 30 天临时链接，比永久链接安全
+        "env_version": "release",
+    }
+    req = urllib.request.Request(
+        f"https://api.weixin.qq.com/wxa/generate_urllink?access_token={urllib.parse.quote(access_token)}",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": f"url_link 生成失败: {exc}"}, status_code=502)
+    if data.get("errcode", 0) != 0 or not data.get("url_link"):
+        return JSONResponse({"ok": False, "error": data.get("errmsg", "url_link 生成失败")}, status_code=502)
+    return JSONResponse({"ok": True, "url_link": data["url_link"]})
 
 # PIN 失败计数持久化 constants
 PIN_COOLDOWN_SEC = 60
