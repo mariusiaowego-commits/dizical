@@ -5,7 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>呦呦成就殿堂 - 竹笛助手</title>
+  <!-- sprint 26091302 B6: CCG 卡面样式 + 主题 token + JS (v1.6.0-dev) -->
+  <link rel="stylesheet" href="/static/css/badge-ccg.css">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="/static/js/badge-ccg.js"></script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0 0 80px; background: #FFF8F0; }
@@ -159,115 +163,6 @@
       font-weight: 700;
     }
     .tab-btn:active { transform: scale(0.97); }
-
-    /* 弹窗 */
-    #modal-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.30);
-      z-index: 1000;
-      align-items: center; justify-content: center;
-      padding: 16px;
-      overflow: auto;
-    }
-    #modal-overlay.active { display: flex; }
-    #modal-box {
-      background: #fffdf8;
-      border-radius: 24px;
-      border: 2.5px solid #f0c040;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
-      width: 100%; max-width: 720px;
-      max-height: 90vh;
-      padding: 0;
-      display: flex; flex-direction: column;
-      position: relative;
-      overflow: hidden;
-    }
-    /* modal 头部: 图片+名称+tag+cond+date (固定不滚动) */
-    .modal-header {
-      flex-shrink: 0;
-      display: flex; flex-direction: column; align-items: center;
-      padding: 48px 24px 16px;
-    }
-    /* modal 底部: desc+hint (可滚动) */
-    .modal-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 24px 24px;
-      scrollbar-width: thin;
-      scrollbar-color: #d0c0a0 transparent;
-    }
-    #modal-close {
-      position: absolute; top: 12px; right: 12px;
-      width: 36px; height: 36px;
-      background: #fff; border: 2px solid #f0c040;
-      border-radius: 50%;
-      font-size: 18px; color: #c8860a; line-height: 32px; text-align: center;
-      cursor: pointer; font-weight: 900;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-      transition: transform 0.15s;
-      z-index: 10;
-    }
-    #modal-close:hover { transform: scale(1.1); }
-    #modal-close:active { transform: scale(0.9); }
-    #modal-img-wrap {
-      width: min(400px, 70vw); aspect-ratio: 1;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 16px;
-      cursor: pointer;
-      transition: transform 0.18s ease;
-    }
-    #modal-img-wrap:hover { transform: scale(1.05) rotate(-1deg); }
-    #modal-img-wrap:active { transform: scale(0.97); }
-    #modal-img { width: 100%; aspect-ratio: 1; object-fit: contain; }
-    /* 窄屏 modal 自适应 — iPhone 屏 modal 图缩, header 允许收缩 */
-    @media (max-width: 639px) {
-      #modal-img-wrap { width: min(220px, 56vw); }
-      .modal-header { padding: 36px 16px 8px; flex-shrink: 1; }
-      #modal-box { max-height: 88dvh; }
-      #modal-name { font-size: 20px; }
-    }
-    /* 矮视口 (iPad 横屏 1133x744) — 图按视口高度算 */
-    @media (max-height: 800px) {
-      #modal-img-wrap { width: min(220px, 40vh); }
-    }
-    #modal-name {
-      font-size: 28px; font-weight: 900; color: #c8860a;
-      text-align: center; margin-bottom: 6px; letter-spacing: 0.5px;
-    }
-    #modal-tag {
-      font-size: 12px; font-weight: 700;
-      color: #ccc; letter-spacing: 1px; text-transform: uppercase;
-      margin-bottom: 14px;
-    }
-    .modal-divider {
-      width: 40px; height: 2px; background: #f0c040;
-      border-radius: 2px; margin-bottom: 12px;
-    }
-    #modal-cond {
-      font-size: 16px; color: #666; text-align: center;
-      margin-bottom: 6px; font-weight: 600;
-    }
-    #modal-date {
-      font-size: 13px; color: #ccc; margin-bottom: 14px;
-    }
-    #modal-season-info {
-      font-size: 12px; color: #aaa; margin-bottom: 12px; font-style: italic;
-    }
-    #modal-season-info:empty { display: none; }
-    #modal-desc {
-      font-size: 16px; color: #a08060;
-      text-align: center; font-style: italic;
-      line-height: 1.7;
-      white-space: pre-wrap;       /* 让 \n 在长典故里正常换行 */
-      border-top: 1px solid #f0e8d0;
-      padding: 14px 8px 0; width: 100%;
-      display: block;              /* 2026-07-01: 防止 inline 化导致 text-align center 失效 */
-    }
-    #modal-hint {
-      font-size: 13px; color: #bbb; text-align: center; margin-top: 10px;
-    }
-    .subj-time span { font-size: 11px; color: #bbb; }
   </style>
 </head>
 <body>
@@ -284,23 +179,21 @@
 
   <div id="app">加载中...</div>
 
-  <div id="modal-overlay" onclick="if(event.target===this)closeModal()">
-    <div id="modal-box">
-      <div id="modal-close" onclick="closeModal()">×</div>
-      <div class="modal-header">
-        <div id="modal-img-wrap">
-          <img id="modal-img" src="" alt="">
+  <!-- sprint 26091302 B6: 弹窗 (CCG 卡面双栏 — 照 _badge_claim_modal.html 结构).
+       卡面可交互 (tilt/holo/翻面); locked 走 CSS 灰化. -->
+  <div id="modal-overlay" class="ccg-claim-overlay" onclick="if(event.target===this)closeModal()" style="display:none;">
+    <div id="modal-box" class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="ccg-claim-name">
+      <button type="button" class="ccg-claim-close" aria-label="关闭" onclick="closeModal()">×</button>
+      <div class="ccg-claim-layout">
+        <div class="ccg-claim-stage" id="ccg-claim-stage"></div>
+        <div class="ccg-claim-copy">
+          <div class="ccg-claim-tag" id="ccg-claim-tag"></div>
+          <h2 class="ccg-claim-name" id="ccg-claim-name"></h2>
+          <p class="ccg-claim-cond" id="ccg-claim-cond"></p>
+          <p class="ccg-claim-date" id="ccg-claim-date"></p>
+          <p class="ccg-claim-story" id="ccg-claim-story"></p>
+          <p class="ccg-claim-hint" id="ccg-claim-hint"></p>
         </div>
-        <div id="modal-name"></div>
-        <div id="modal-tag"></div>
-        <div class="modal-divider"></div>
-        <div id="modal-cond"></div>
-        <div id="modal-date"></div>
-        <div id="modal-season-info"></div>  <!-- 2026-08-07 sprint 26080702 -->
-      </div>
-      <div class="modal-body">
-        <div id="modal-desc"></div>
-        <div id="modal-hint"></div>
       </div>
     </div>
   </div>
@@ -318,9 +211,10 @@ function esc(s) {
 }
 
 function cardHTML(d) {
-  const lock = !d.achieved
-    ? `<img class="b-lock" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E" alt="🔒">`
-    : '';
+  /* sprint 26091302 B6: 卡面 HTML 容器 (外壳) — 真正的 CCG 卡 mount 到 #stage 占位 div 上.
+     外壳保留 .badge-card (locked/unlocked class + 网格布局依赖), 内部 PNG + b-name + b-tag + b-lock
+     保留原样作为 mount 前的占位 + 网格尺寸参考 (CSS 已用 grid-template-columns: repeat(2,1fr),
+     不依赖内容元素尺寸). */
   return `<div class="badge-card ${d.achieved?'unlocked':'locked'}"
     data-id="${esc(d.id)}"
     data-name="${esc(d.name)}"
@@ -333,12 +227,49 @@ function cardHTML(d) {
     data-season-info="${esc(d.season_info||'')}"
     data-group="${esc(d.group)}"
     data-locked="${d.achieved?'no':'yes'}"
+    data-card-theme="${esc(d.card_theme||'azure')}"
+    data-card-stars="${esc(String(d.card_stars||3))}"
+    data-no="${esc(d.no||'001')}"
     onclick="openModal(this)">
-    <img class="b-img" src="${esc(d.badge_url)}" alt="${esc(d.name)}" onerror="this.style.display='none'">
-    <div class="b-name">${esc(d.name)}</div>
-    <div class="b-tag">${esc(d.typ)}</div>
-    ${lock}
+    <div class="ccg-stage-mount" id="stage-${esc(d.id)}"></div>
   </div>`;
+}
+
+/* sprint 26091302 B6: 把 .badge-card 内部 PNG/b-name/b-tag/b-lock 删掉, 挂 CCG stage 到 .ccg-stage-mount 占位 div.
+   grid 仍依赖 .badge-card 外壳 (locked/unlocked class 保留做 locked 视觉判别). */
+function _swapCardToCCG(bCard, opts) {
+  if (!bCard || !window.DizicalCCG) return;
+  if (bCard._ccgSwapped) return;
+  bCard._ccgSwapped = true;
+  var mountEl = bCard.querySelector('.ccg-stage-mount');
+  if (!mountEl) return;
+  var stage = document.createElement('div');
+  mountEl.appendChild(stage);
+  // F5: 列表卡不再传 opts.static — 绑 pointer / idle drift / hover / 翻面 全开, 跟 demo 同源
+  // F9: 列表卡挂载 idleSkip=2 (第三轮实测 32 卡 skip=1 31fps / skip=2 55fps);
+  //     modal/hero 单卡不传 (走默认 1, 全速).
+  DizicalCCG.mountCard(stage, 'holo', {
+    id:    bCard.dataset.id || '',
+    name:  bCard.dataset.name || '',
+    tag:   bCard.dataset.tag || '',
+    image: bCard.dataset.img || '',
+    cond:  bCard.dataset.condText || bCard.dataset.cond || '',
+    story: bCard.dataset.desc || '',
+    date:  bCard.dataset.date || '',
+    stars: parseInt(bCard.dataset.cardStars || '3', 10) || 3,
+    no:    bCard.dataset.no || '001',
+    card_theme: bCard.dataset.cardTheme || 'azure',
+  }, { locked: opts && opts.locked, idleSkip: 2 });
+}
+
+function _upgradeAllCards(root) {
+  if (!window.DizicalCCG || !DizicalCCG.mountCard) return;
+  var list = (root || document).querySelectorAll('.badge-card');
+  list.forEach(function (bCard) {
+    var locked = bCard.dataset.locked === 'yes';
+    // F5: 不传 opts.static — 列表卡现在跟 demo 静止态逐图层一致 (绑 pointer / hover / 翻面 / idle drift)
+    _swapCardToCCG(bCard, { locked: locked });
+  });
 }
 
 const TABS = [
@@ -400,24 +331,28 @@ function switchTab(group) {
     b.classList.toggle('active', b.id === `tab-${group}`);
   });
   document.getElementById('app').innerHTML = buildTab(group);
+  /* sprint 26091302 B6: tab 切换后, 升级新生成的 .badge-card → CCG 静态卡 */
+  _upgradeAllCards(document.getElementById('app'));
 }
 
+/* sprint 26091302 B6: 弹窗用 CCG 卡面 (可交互 — 不传 opts = 默认行为, 不锁) */
 function openModal(card) {
   const locked  = card.dataset.locked === 'yes';
   const overlay = document.getElementById('modal-overlay');
   const box     = document.getElementById('modal-box');
 
-  document.getElementById('modal-img').src = card.dataset.img;
-  document.getElementById('modal-img').style.filter =
-    locked ? 'saturate(0.55) brightness(0.85)' : '';
-  document.getElementById('modal-name').textContent = card.dataset.name;
-  document.getElementById('modal-tag').textContent  = card.dataset.tag;
-  // 2026-08-03 feat/badges-progress-display: 优先展示 calc 出来的 cond (含 streak/recovery 进度),
-  // 再 fallback 到 condText (用户/AI 填的友好描述), 最后 desc (zh_story).
-  document.getElementById('modal-cond').textContent =
-    card.dataset.cond || card.dataset.condText || card.dataset.desc;
+  /* 关弹窗时残留的 CCG 容器先清掉 (避免打开两次时旧 stage 还残留)
+     同样适用于「同一 session 内换卡」场景 */
+  _unmountClaimStage();
 
-  const dateEl = document.getElementById('modal-date');
+  /* 写右侧字段 (照 _badge_claim_modal.html 结构) */
+  document.getElementById('ccg-claim-tag').textContent  = card.dataset.tag || '';
+  document.getElementById('ccg-claim-name').textContent  = card.dataset.name || '';
+  document.getElementById('ccg-claim-cond').textContent  =
+    card.dataset.cond || card.dataset.condText || card.dataset.desc || '';
+  document.getElementById('ccg-claim-story').textContent = card.dataset.desc || '';
+
+  const dateEl = document.getElementById('ccg-claim-date');
   if (card.dataset.date) {
     const d = new Date(card.dataset.date);
     dateEl.textContent = d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
@@ -426,20 +361,33 @@ function openModal(card) {
     dateEl.style.display = 'none';
   }
 
-  // 2026-08-07 sprint 26080702: 渲染赛季+累计次数 (seasonal badge 专属)
-  const seasonInfoEl = document.getElementById('modal-season-info');
+  /* season_info 是 seasonal badge 专属字段 (sprint 26080702), 塞到 ccg-claim-story 前缀 */
+  var storyEl = document.getElementById('ccg-claim-story');
   if (card.dataset.seasonInfo) {
-    seasonInfoEl.textContent = card.dataset.seasonInfo;
-    seasonInfoEl.style.display = '';
-  } else {
-    seasonInfoEl.style.display = 'none';
+    storyEl.textContent = '[赛季] ' + card.dataset.seasonInfo + '\n\n' + storyEl.textContent;
   }
 
-  document.getElementById('modal-desc').textContent = card.dataset.desc;
-  document.getElementById('modal-hint').textContent =
+  document.getElementById('ccg-claim-hint').textContent =
     locked ? '继续加油，下一个成就在等你！' : '';
 
-  overlay.classList.add('active');
+  /* 在 #ccg-claim-stage 挂一张 CCG 卡 (可交互, opts.locked 走 CSS 灰化) */
+  const claimStage = document.createElement('div');
+  document.getElementById('ccg-claim-stage').appendChild(claimStage);
+  DizicalCCG.mountCard(claimStage, 'holo', {
+    id:    card.dataset.id || '',
+    name:  card.dataset.name || '',
+    tag:   card.dataset.tag || '',
+    image: card.dataset.img || '',
+    cond:  card.dataset.condText || card.dataset.cond || '',
+    story: card.dataset.desc || '',
+    date:  card.dataset.date || '',
+    stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
+    no:    card.dataset.no || '001',
+    card_theme: card.dataset.cardTheme || 'azure',
+  }, { locked: locked });
+
+  /* 显示 — inline style.display 切换 (避免改 badge-ccg.css 的 .ccg-claim-overlay 默认值) */
+  overlay.style.display = 'flex';
 
   const cr = card.getBoundingClientRect();
   const mr = box.getBoundingClientRect();
@@ -452,36 +400,51 @@ function openModal(card) {
   const tl = gsap.timeline();
   tl.to(overlay, { backgroundColor: 'rgba(0,0,0,0.30)', duration: 0.15, ease:'power2.out' })
     .to(box, { x:0, y:0, scale:1, opacity:1, duration:0.22, ease:'back.out(1.5)' }, 0)
-    .from('#modal-img-wrap', { opacity:0, y:6, duration:0.12, ease:'power2.out' }, 0.14)
-    .from('#modal-name',    { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.17)
-    .from('#modal-tag',     { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
-    .from('.modal-divider', { opacity:0, scaleX:0, duration:0.1,  ease:'back.out(2)' }, 0.21)
-    .from('#modal-cond',    { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
-    .from('#modal-date',    { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25)
-    .from('#modal-desc',    { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.27)
-    .from('#modal-hint',    { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.29);
+    .from('#ccg-claim-tag',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.14)
+    .from('#ccg-claim-name',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.17)
+    .from('#ccg-claim-cond',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
+    .from('#ccg-claim-date',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.21)
+    .from('#ccg-claim-story', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
+    .from('#ccg-claim-hint',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
 }
 
 function closeModal() {
   const overlay = document.getElementById('modal-overlay');
   const box     = document.getElementById('modal-box');
   gsap.to(box, { scale: 0.8, opacity: 0, duration: 0.15, ease:'power2.in',
-    onComplete: () => overlay.classList.remove('active') });
+    onComplete: () => {
+      overlay.style.display = 'none';
+      _unmountClaimStage();  /* 卸载 CCG 卡释放 DOM */
+    }
+  });
   gsap.to(overlay, { backgroundColor: 'rgba(0,0,0,0)', duration: 0.15 });
+}
+
+/* sprint 26091302 B6: 关弹窗时卸载单张 CCG 卡 (opts 不传 → 默认是交互卡, 在 cards 数组里;
+   unmount() 内部 findIndex 找到 destroy + 清空 innerHTML). */
+function _unmountClaimStage() {
+  var host = document.getElementById('ccg-claim-stage');
+  if (host && window.DizicalCCG && DizicalCCG.unmount) {
+    DizicalCCG.unmount(host);
+  }
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 
 buildUI();
 
-// 入场动画：section + badge-card 依次淡入上浮
+// 入场动画：section + badge-card 依次淡入上浮 (CCG 卡版本)
 document.addEventListener('DOMContentLoaded', () => {
+  /* sprint 26091302 B6: buildUI() 里 switchTab 已调用, 但那时 DOMContentLoaded 还没触发.
+     这里再补一次升级, 覆盖 buildTab → switchTab 后的 .badge-card. */
+  _upgradeAllCards(document.getElementById('app'));
+
   // 先让 app（#app）淡入
   const app = document.getElementById('app');
   gsap.set(app, { opacity: 0 });
   gsap.to(app, { opacity: 1, duration: 0.3, ease: 'power2.out' });
 
-  // 逐 section 动画
+  // 逐 section + ccg-stage 入场
   const sections = document.querySelectorAll('.section');
   sections.forEach((section, si) => {
     gsap.fromTo(section,
@@ -489,11 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
       { opacity: 1, y: 0, duration: 0.4, ease: 'back.out(1.6)',
         delay: si * 0.12, scrollTrigger: undefined }
     );
-
-    // section 内的 badge-card 依次出现
-    const cards = section.querySelectorAll('.badge-card');
-    cards.forEach((card, ci) => {
-      gsap.fromTo(card,
+    /* sprint 26091302 B6: 入场动效作用在 .ccg-stage (替换原 .badge-card) */
+    const stages = section.querySelectorAll('.ccg-stage');
+    stages.forEach((stage, ci) => {
+      gsap.fromTo(stage,
         { opacity: 0, scale: 0.88, y: 10 },
         { opacity: 1, scale: 1, y: 0,
           duration: 0.32, ease: 'back.out(1.8)',

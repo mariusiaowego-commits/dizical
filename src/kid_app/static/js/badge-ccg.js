@@ -1,5 +1,15 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.5.0 (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.6.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
+      v1.6.0-dev (2026-09-13, 四轮):
+        ① 列表卡 = demo 静止态逐图层一致 (绑 pointer / idle drift / hover tilt / 翻面全开;
+           只把 .badge-grid .ccg-stage 的 --card-w 收到 min(160px,100%) 塞网格格子)
+        ② IntersectionObserver 视口护栏: 不在视口的卡 tick 时跳过 paint (CSS vars 不变 = 正视图层)
+        ③ 每张卡 mount 时随机相位偏移 (Math.random() ∈ [0,1) 进 sin/cos, 错开 44 张同步摇摆)
+        ④ opts.idleSkip=N 默认 1; mount 时按列表/单卡传 2 (skip 调 idle drift 节奏);
+           全局开关 DizicalCCG.setIdleSkip(n) 保留供调试
+        ⑤ opts.locked=true 加 .is-locked class (CSS filter 灰度 + 右下角小锁 SVG)
+        ⑥ 无 gsap 时 (老页面 / 测试 / 完全离线) — stage 加 .ccg-no-gsap class,
+           CSS transition transform 0.7s 兜底翻面动画, 不用 gsap.to
       v1.5.0 (dad 2026-09-13 四轮): 本轮只改光照, 3D 代码零 Functional 改动, 只为跟随卡面样式一起升号
         (光照减弱/过渡全在 badge-ccg.css);
       v1.4.0-dev (dad 2026-09-13 三轮): 静止无光照 (IDLE_LIT 0.22→0, 光标不在卡上 lit=0) /
@@ -47,8 +57,29 @@
   var IDLE_LIT = 0;
   var holoGain = 1;
   var cards = [];
-  var fpsState = { frames: 0, last: 0, el: null, raf: 0 };
+  var lastCcgId = 0;  // F6: 自增 id 分配器 (每次 mountCard +1)
+  var fpsState = { frames: 0, last: 0, el: null, raf: 0, frame: 0 };
+  /* F6 静止态性能护栏: idle skip counter — 默认 1 (每帧 paint). 若 iPad 实测掉帧,
+     调 DizicalCCG.setIdleSkip(2) 跳到每 2 帧 paint 一次. hover/交互期间强制 1 (不跳). */
+  var idleSkip = 1;
   var currentClaimBadge = null;
+  /* F6 视口观察者: 不在视口的卡 tick 时跳过 paint. null = SSR/旧浏览器降级 (全跑). */
+  var visObserver = null;
+  var visVisible = new Set();  // 已 mount 卡 id (在视口里)
+  /* F6 启动期一次性建 IO: 滑出视口 → 从 Set 移除 (tick 跳过);
+     滑入视口 → 加回 Set. SSR 不可用时 catch 静默降级 (visObserver=null → tick 里短路失效,
+     退化为「全部跑」, 不影响功能). */
+  if (typeof window !== "undefined" && "IntersectionObserver" in window) {
+    visObserver = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        var id = e.target._ccgId;
+        if (!id) continue;
+        if (e.isIntersecting) visVisible.add(id);
+        else visVisible.delete(id);
+      }
+    }, { rootMargin: "40px 0px" });  // 略微放大视口边界, 滚动到边缘前就启动 paint
+  }
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
@@ -220,9 +251,13 @@
     });
   }
 
-  function mountCard(stage, scheme, data) {
+  function mountCard(stage, scheme, data, opts) {
     var d = data || BADGE;
-    stage.className = "ccg-stage ccg-" + scheme;
+    var o = opts || {};
+    var isLocked = o.locked === true;
+    var stageClasses = "ccg-stage ccg-" + scheme + (isLocked ? " is-locked" : "");
+    if (!hasGsap) stageClasses += " ccg-no-gsap";  // F7: 无 gsap 时启用 CSS 过渡翻面
+    stage.className = stageClasses;
     stage.setAttribute("data-scheme", scheme);
     /* 主题 (B-1, sprint-26091201): 来自 achievements.card_theme (后端 resolve_card_theme 已做 type 兜底),
        前端只认 payload 字段, 不做第二套映射; d.theme 兼容 demo 页/老数据。
@@ -231,6 +266,17 @@
     stage.innerHTML = cardMarkup(scheme, d);
     bindReady(stage);
 
+    /* F5: 撤掉 opts.static=true 短路路径 — 列表卡现在跟 demo 静止态逐图层一致:
+       金框 135 度柔光 (.ccg-frame::after baseline .3) / 细闪 (.ccg-foil-glitter baseline .24) /
+       金属反光 (.ccg-foil-shine::after brightness .4) 都保留; idle drift 照跑;
+       hover tilt/翻面正常, locked 灰度仍生效 (F4 不变).
+       opts 仍然存在作为扩展点, 但 opts.static === true 行为跟 opts={} 完全一致. */
+    /* F9: opts.idleSkip=N (整数 ≥ 1) — 该卡 mount 后 tick 每 N 帧 paint 一次.
+       默认 0 = 跟随模块 idleSkip (新 mount 走全局); 列表卡挂载传 2 节省帧率
+       (第三轮实测 32 卡 skip=1 31fps, skip=2 55fps). 传值时固化 (_idleSkipFrozen=true),
+       全局 DizicalCCG.setIdleSkip(n) 后续不再覆盖. */
+    var cardIdleSkip = (typeof o.idleSkip === 'number' && o.idleSkip >= 1)
+      ? Math.floor(o.idleSkip) : 0;
     var state = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var interacting = false;
     var dragging = false;
@@ -245,6 +291,17 @@
 
     paint();
     if (flipper) flipper.style.setProperty("--flip", "0deg");
+
+    /* F6: 给每张卡一个稳定 id + 随机相位偏移. id 用 _ccgId 给 IntersectionObserver 当 Set key.
+       phase ∈ [0, 1), 跟 sin/cos 里的 t/1800 / t/2100 相乘成弧度偏移,
+       把 44 张同款卡的 idle drift 错开 (避免视觉同步感). */
+    var ccgId = ++lastCcgId;
+    stage._ccgId = ccgId;
+    stage._idlePhase = Math.random();
+    if (visObserver) {
+      visObserver.observe(stage);
+      visVisible.add(ccgId);  // 默认在视口里 (IntersectionObserver 异步纠正)
+    }
 
     function killReset() {
       if (resetTween && hasGsap) resetTween.kill();
@@ -377,11 +434,23 @@
       scheme: scheme,
       state: state,
       flip: flip,
+      idleSkip: cardIdleSkip || idleSkip,  // F9: per-card override; 0 表示跟随全局 idleSkip
+      _idleSkipFrozen: cardIdleSkip > 0,    // setIdleSkip(n) 跳过已固化的卡
       interacting: function () { return interacting; },
       tick: function (t) {
         if (interacting || reduce || resetTween) return;
-        var s = Math.sin(t / 1800);
-        var c = Math.cos(t / 2100);
+        /* F6 视口跳过: 卡没在视口里就不 paint (CSS vars 不变, 等于正视图层, 无感).
+           用 el._ccgId (mountCard 里赋值) 当 Set key, 避免 DOM ref 持有. */
+        if (visObserver && !visVisible.has(stage._ccgId)) return;
+        /* F6/F9 idle skip: 每 N 帧 paint 一次. interacting/click-flip 时不跳.
+           实时读 rec.idleSkip (per-card 或全局同步值). */
+        if (rec.idleSkip > 1 && !interacting) {
+          if ((fpsState.frame % rec.idleSkip) !== 0) return;
+        }
+        /* F6 每张卡加随机相位偏移 — 避免 44 张同款卡同步摇摆. phase ∈ [0, 2π). */
+        var ph = stage._idlePhase || 0;
+        var s = Math.sin((t + ph * 1800) / 1800);
+        var c = Math.cos((t + ph * 2100) / 2100);
         var amp = scheme === "px" ? 3.0 : 3.4;
         state.rx = s * amp;
         state.ry = c * (amp + 0.3);
@@ -400,6 +469,7 @@
         stage.removeEventListener("pointermove", onMove);
         stage.removeEventListener("pointerup", onUp);
         stage.removeEventListener("pointercancel", onUp);
+        stage._ccgId = null;
       }
     };
     cards.push(rec);
@@ -413,6 +483,28 @@
         cards.splice(cards.indexOf(c), 1);
       }
     });
+  }
+
+  /* F14 (sprint 26091302 B6 第五轮): unmount(stage) 按 DOM 节点卸载单张卡.
+     用途:
+       - 详情弹窗关闭时 (openClaim 的 stage unmount, 避免 setProperty 引用泄漏)
+       - 卡墙重渲染时 (switchTab 切 group / modal-toggle 重新挂载前)
+     行为: 从 cards 数组摘除 + IO unobserve + 清 class/innerHTML.
+     注: 第四轮前 opts.static=true 卡不入 cards 数组, 那段历史已删 — 现在所有卡都进数组. */
+  function unmount(stage) {
+    if (!stage) return;
+    var i = cards.findIndex(function (c) { return c.el === stage; });
+    if (i >= 0) {
+      cards[i].destroy();
+      cards.splice(i, 1);
+    }
+    /* F6: IO unregister (card unmount 时视口不再需要追踪它) */
+    if (visObserver && stage._ccgId) visVisible.delete(stage._ccgId);
+    if (visObserver) visObserver.unobserve(stage);
+    stage.classList.remove("ccg-stage", "ccg-holo", "ccg-px", "is-locked", "ccg-no-gsap", "is-ready");
+    stage.removeAttribute("data-scheme");
+    stage.removeAttribute("data-ccg-theme");
+    stage.innerHTML = "";
   }
 
   function pulse(el) {
@@ -622,6 +714,7 @@
 
   function loop(t) {
     fpsState.frames += 1;
+    fpsState.frame = (fpsState.frame + 1) | 0;  // F6 idle-skip 用 (单调自增)
     if (!fpsState.last) fpsState.last = t;
     if (t - fpsState.last >= 1000) {
       var fps = fpsState.frames;
@@ -650,6 +743,44 @@
     holoGain = clamp(Number(n) || 1, 0, 1.4);
     cards.forEach(function (c) { applyVars(c.el, c.state); });
   }
+  /* F13: setIdleSkip(n, force?) — 默认 force=false 只刷未固化的卡 (per-card mount 时
+     idleSkip>0 的卡保持原值); force=true 连已固化的卡也改成 n, 让真机 A/B 实测能把
+     44 张列表卡强制拉回 1 全速跑一遍再拉回 2. force 不影响未挂载的卡 (后续 mount 仍按
+     opts.idleSkip 决定). */
+  function setIdleSkip(n, force) {
+    n = Math.max(1, parseInt(n, 10) || 1);
+    idleSkip = n;
+    var applyAll = !!force;
+    for (var i = 0; i < cards.length; i++) {
+      if (applyAll || !cards[i]._idleSkipFrozen) cards[i].idleSkip = n;
+    }
+    /* force=true 时也清掉 _idleSkipFrozen 标记, 后续若再调 setIdleSkip(m) 不带 force,
+       已"强制改"的卡会跟随新全局值 — 防止调试切回默认时还有残留固化. */
+    if (applyAll) {
+      for (var j = 0; j < cards.length; j++) cards[j]._idleSkipFrozen = false;
+    }
+  }
+  /* F13: 返回 IO 状态 + idleSkip 细账 — 调试用.
+     idleSkip = 模块全局值 (mountCard 默认 / setIdleSkip(0) 不带 force 时刷此值)
+     perCardFrozen = 仍带 _idleSkipFrozen=true 的卡数 (setIdleSkip(2) 不带 force 不会被刷)
+     effectiveSkipCounts = {skip: count} 各 idleSkip 值的卡数分布 — 看一眼就知道 44 张是不是都 2.
+     forceCapable = true (setIdleSkip 第二个参数支持 force, 强制覆盖所有卡) */
+  function getPerfStats() {
+    var counts = {};
+    for (var i = 0; i < cards.length; i++) {
+      var s = cards[i].idleSkip || 1;
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    return {
+      ioSupported: !!visObserver,
+      visible: visVisible.size,
+      total: cards.length,
+      idleSkip: idleSkip,
+      perCardFrozen: cards.filter(function (c) { return c._idleSkipFrozen; }).length,
+      effectiveSkipCounts: counts,
+      forceCapable: true,
+    };
+  }
 
   if (!fpsState.raf) fpsState.raf = requestAnimationFrame(loop);
 
@@ -660,6 +791,7 @@
   global.DizicalCCG = {
     BADGE: BADGE,
     mountCard: mountCard,
+    unmount: unmount,
     unmountAll: unmountAll,
     claim: claim,
     openClaim: openClaim,
@@ -668,6 +800,8 @@
     startFps: startFps,
     setMaxTilt: setMaxTilt,
     setHoloGain: setHoloGain,
+    setIdleSkip: setIdleSkip,    // F6: 性能护栏 (默认 1, iPad 掉帧调 2)
+    getPerfStats: getPerfStats,  // F6: 调试用
     flipAll: function () {
       cards.forEach(function (c) { if (c.flip) c.flip(); });
     }
