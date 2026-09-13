@@ -1,6 +1,32 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-09-12 (待 PR #323)
+**日期**: 2026-09-13 (待 PR) — sprint 26091301 B1 徽章卡编号
+**分支**: feat/sprint-26091301-badge-card-no
+**类型**: 🟡 部分兼容（新增可选返回字段 `card_no` + 新增 DB 列；dizical-minip 不改也能跑，建议择期同步做编号展示）
+
+## 变更
+
+### 2.1 三处 badge payload 新增 `card_no` 字段（图鉴编号）
+
+- 端点: ① kid-app `/badges` 页内联 payload ② `GET /api/badge/unclaimed` ③ minip `GET /api/achievements`
+- 值域: `int | null`（一卡一号、永久不变；未回填的历史行可为 `null`）
+- 解析: 显式读 `achievements.card_no`；新建徽章不传时兜底 `MAX(card_no)+1`（`badge_db.insert_achievement_row`，与 INSERT 同事务）
+- 前端: `badge-ccg.js:formatCardNo` → `No.%03d`；无值 → `—`（**不再写死 `001` 假号**）
+- **影响**: 纯新增字段，老客户端忽略即可。dizical-minip 若要展示编号需同步取 `card_no`（本轮不改小程序代码）
+
+### 2.2 DB: `achievements.card_no BIGINT NULL`（双后端）
+
+- 迁移: SQLite 走 `src/database.py:_init_tables` 幂等 ALTER；MySQL 走 `badge_db.ensure_card_no_column`（information_schema 幂等 ALTER）+ `app.py` startup hook
+- 唯一性: 部分唯一索引 `idx_achievements_card_no`（允许 NULL → 迁移瞬间不炸写入路径）
+- 回填: `badge_db.backfill_card_no` 启动期幂等执行 —— 只填 `card_no IS NULL` 的行，编排顺序 `category → sort_order → created_at → id`，**已编号的行一条不动**（二次执行返回 0）
+- 三源同步: `schema_mysql.sql` + `.cloudrun-deploy/schema_mysql.sql` + 测试 fixture 建表语句
+- **云端**: 下次 8765 重启触发迁移 + 回填 46 张卡（编号自此永久固定）
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-09-12（**PR #323 已 merge**，main `440eb5c`）
 **分支**: feat/sprint-26091101-badge-3d-ccg (sprint 26091201 B-1)
 **类型**: 🟡 部分兼容（新增可选返回字段 `card_theme`/`card_stars` + 新增 DB 列；dizical-minip 不改也能跑，建议择期同步做主题化与星级）
 

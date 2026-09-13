@@ -99,6 +99,7 @@ def api_unclaimed() -> JSONResponse:
           a.description       AS description,
           a.card_theme   AS card_theme,
           a.card_stars   AS card_stars,
+          a.card_no      AS card_no,
           s.achieved_at  AS achieved_at,
           b.url          AS badge_url
         FROM achievement_stats s
@@ -144,6 +145,8 @@ def api_unclaimed() -> JSONResponse:
                         badge_type=r["type"],
                         category=r["category"],
                     ),
+                    # sprint 26091301 B1: 图鉴编号 (可空 — 前端 None 时显示 '—')
+                    "card_no": r["card_no"],
                     "badge_url": r["badge_url"],
                     "achieved_at": r["achieved_at"],
                 }
