@@ -1,5 +1,15 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.5.0 (基线 v1.0.0 已冻结 static/demo-archive/v1.0.0/)
+   ── 卡面样式版本: v1.6.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
+      v1.6.0-dev (2026-09-13, 四轮):
+        ① 列表卡 .badge-grid .ccg-stage 的 --card-w 收到 min(160px,100%) 塞网格格子;
+           视觉跟 demo 静止态逐图层一致 (金框扫光 .3 / 细闪 .24 / 金属反光 .4 全保留),
+           绑 pointer / idle drift / hover tilt / 翻面全开
+        ② IntersectionObserver (JS 实现) 视口护栏: 不在视口的卡 tick 跳过 paint
+        ③ 每张卡 mount 时随机相位偏移, 错开 idle drift 同步感
+        ④ mountCard opts.idleSkip=N (默认 1) — 列表卡挂载默认 2 节省帧率,
+           全局开关 DizicalCCG.setIdleSkip(n) 保留供调试
+        ⑤ .ccg-stage.is-locked 灰度 + 右下角小锁 SVG ::after (CSS 处理, 不生成 locked PNG)
+        ⑥ .ccg-stage.ccg-no-gsap .ccg-card-flipper transition transform 0.7s — 无 gsap 时兜底翻面动画
       v1.5.0 增量 (dad 2026-09-13 四轮, 只动光照): 「鼠标移动上去后光照感一下子特别强, 特别白」
         ① 聚光灯总强度连砍: --ccg-light-gain 0.40→0.16 (四轮) → **0.10 (五轮定稿, 相对原始 −90%)**;
         ② spec 白斑峰值再收: 0.42/0.20/0.09→0.24/0.12/0.05 (hover 有效强度 0.151→0.035, −77%);
@@ -1368,6 +1378,64 @@ body.ccg-modal-open .ccg-demo-actions {
   }
 }
 
+/* sprint 26091302 B6 — 列表卡 (挂在 /achievements 和 /badges 网格里)
+   F5 复审 (2026-09-13 爸爸否决「列表静态减配」): 列表卡现在跟 demo 静止态逐图层一致.
+   视觉契约:
+    - 绑 pointer 事件 + idle drift + hover tilt/翻面 全开 (跟 demo 同源)
+    - 列表态只受一项调整: --card-w 缩小到 160px 上限 (塞进网格格子, 不撑破)
+    - 锁卡走 .ccg-stage.is-locked CSS filter (F4 保留)
+   注: 早期 .is-static 减配规则已删 — 不再有「静态冻结」概念 */
+.ccg-stage { /* 列表态容器尺寸: 网格里 30+ 张同款卡 限定宽度, demo 不限 */
+  /* 注: --card-w 在 :root 跟 .ccg-stage 默认块已设 min(300px, 78vw).
+     列表态的 grid item 用本选择器覆盖: max 160px 塞网格. 但 hero/modal 仍走默认 300px. */
+}
+.ccg-grid-cell .ccg-stage,
+.badge-grid .ccg-stage {
+  --card-w: min(160px, 100%);
+}
+/* 锁卡 (列表 + 弹窗共用, 与 options.locked=true 配套)
+   视觉契约:
+    - 不生成 locked PNG (跟 AGENTS.md 红线一致: 不生成 locked 灰图, 全 CSS 处理)
+    - 灰度 + 降亮度 + 降饱和度, 跟原 .b-card.locked .b-img grayscale(0.8) 同档
+    - 列表与弹窗一致 (弹窗里 opts.locked=true 仍可 tilt/翻面, 只是视觉灰) */
+.ccg-stage.is-locked {
+  filter: grayscale(0.82) brightness(0.95) contrast(0.92) saturate(0.6);
+  transition: filter 200ms var(--ccg-ease);
+}
+.ccg-stage.is-locked::after {
+  /* F12: 锁卡小锁定位 (实测 5 个候选位置后定稿).
+     - bottom:14px right:14px: 跟 .ccg-foot DIZICAL 横向 0.4px 间距 — 几乎贴在一起
+     - top:14px left:14px (300x450): 跟 .ccg-chip 矩形重叠
+     - top:7% left:14px width:20px: lock bottom 47.5, chip bottom 62, 间距 14.5 — 安全,
+       但 .ccg-holo-head 是 absolute + flex, 不同卡片宽度 chip 内边距变化, iPad 列表卡可能擦边
+     - top:7% left:14px width:16px: lock bottom 47.5, chip bottom 62, 间距 14.5 — 但实测仍重叠,
+       因为 chip 实际从 top:39 起 (含 padding, 不等于 holo-head 的 3.2% top:14.4).
+       gap 实测 ~7px, 但 chip 宽度范围 (40-83) 跟 lock.left:38+16=54 不擦 (lock.right=54 ≤ chip.left=40).
+       结果: lock.x [38,54] vs chip.x [40.7,83] → 水平 overlap [40.7,54]. 垂直 chip [39.2,62] vs
+       lock [55.5,71.5] → overlap [55.5,62] = 6.5px. 仍然 OVERLAP.
+     - top:15% left:14px width:16px (本次定稿, 300x450 = top:67.5): 锁 [38-54, 67.5-83.5].
+       chip bottom=62, 锁顶 67.5 → gap 5.5px. art-window top:9.9%=44.55, 但 ccg-holo-head 已结束;
+       art 占 top:9.9% ~ 61% (44.55-274.5), 锁顶 67.5 落在 art 内 → 但 art 是图片, 锁在 art 上面
+       z-index=7 (art z=5), 视觉上是半透明灰度图标叠在画面左上角 — 这是 OK 的, 不撞任何文字.
+       iPad 列表卡 (160x240): top:15% = 36, 16px 锁 [14-30, 36-52], 跟 holo-head (3.2%=5.12)
+       跟 chip (8-14%) 都不撞. */
+  content: "";
+  position: absolute;
+  top: 15%; left: 14px;
+  width: 16px; height: 16px;
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffffd0'><path d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 7;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+}
+
+/* F7: 无 gsap 时 (旧页面 / 测试 / 完全离线) — 翻面走 CSS transition, 不硬切.
+   @property --flip 已注册为 <angle>, 可以插值. */
+.ccg-stage.ccg-no-gsap .ccg-card-flipper {
+  transition: transform 0.7s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
 /* ═══════════════════════════════════════════════════════════════════════════
    防伪标签纹样库 (dad 2026-09-12 image#6 item2: "镭射防伪标签的纹理样式也要做多种",
    参考 https://poke-holo.simey.me/ 的多种箔纹)

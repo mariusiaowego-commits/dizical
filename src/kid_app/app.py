@@ -816,14 +816,18 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
     results = calc_all()   # dict[aid] → CalcResult
 
     # ── 读 achievements 表元数据 ──────────────────────────────────
-    cur = db_adapter.execute(conn, 
+    # Sprint 26091302 feat/badge-3d-ccg B6 F3: 增补 card_theme, card_stars, card_no.
+    #   card_no 由 PR #324(B1) 引入, 本分支可能尚未有该列; 用 sqlite3.Row.keys() 检测
+    #   (sqlite3.Row 是 dict-like, ach.get() 也会返 None, 但 .keys() 直接判定 schema).
+    cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, stat_logic, description, threshold, "
         "unlocked_template, placeholder, cond_text, "
-        "unlock_strategy, achieved_at_override FROM achievements" +
+        "unlock_strategy, achieved_at_override, card_theme, card_stars FROM achievements" +
         (" WHERE category = ?" if category else "") +
         " ORDER BY sort_order",
         ((category,) if category else ()))
     cols = [d[0] for d in cur.description]
+    has_card_no = "card_no" in cols
     ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
 
     # ── 分离已解锁 / 未解锁 (PR-B: badge_url 改读 DB + cache 60s) ──
@@ -891,9 +895,13 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
                     if y != today_d.year:
                         continue
 
+        # Sprint 26091302 B6 F3: 传 card_theme/card_stars/card_no 真值给 builder (空也传, 模板据 dataset 决定)
         card_html = _build_milestone_card(
             aid, ach["name"], ach["type"], ach["description"],
-            badge_url, achieved, cv, threshold, res.condition, ach.get("cond_text") or ""
+            badge_url, achieved, cv, threshold, res.condition, ach.get("cond_text") or "",
+            card_theme=ach.get("card_theme"),
+            card_stars=ach.get("card_stars"),
+            card_no=ach.get("card_no") if has_card_no else None,
         )
 
         achieved_at = res.achieved_at
@@ -922,11 +930,20 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
     return unlocked_html + nearest_html
 
 
-def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv, threshold, condition="", cond_text=""):
+def _build_milestone_card(
+    ach_id, name, ach_type, desc, badge_url, achieved, cv, threshold,
+    condition="", cond_text="",
+    card_theme=None, card_stars=None, card_no=None,
+):
     """生成单个 milestone 卡片 HTML（对应 .b-card 结构，与 badges 页面一致）
 
     V2.2 (2026-06-15) feat/badge-cond-text: cond_text 字段独立, modal-cond 3 级 fallback:
     cond (calc) > cond_text (user/AI) > desc (zh_story fallback)
+
+    Sprint 26091302 feat/badge-3d-ccg B6 F3:
+      - card_theme/card_stars/card_no 真值写到 data-* 供前端 mount 时读取
+      - 卡片内只输出 .ccg-stage-mount 占位 div (不再输出 .b-img/.b-name/.b-lock,
+        JS 端 DizicalCCG.mountCard 接管; 锁标走 .ccg-stage.is-locked::after CSS)
     """
     import html as _html
     state_cls = "unlocked" if achieved else "locked"
@@ -934,14 +951,13 @@ def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv,
     cond_safe = _html.escape(condition or "")
     desc_safe = _html.escape(desc or "")
     cond_text_safe = _html.escape(cond_text or "")
+    card_theme_safe = _html.escape(str(card_theme) if card_theme is not None else "")
+    card_stars_safe = _html.escape(str(card_stars) if card_stars is not None else "")
+    card_no_safe = _html.escape(str(card_no) if card_no is not None else "")
 
-    # 徽章统一用原图，灰化由 CSS .b-card.locked .b-img { grayscale(1) } 处理
+    # 徽章统一用原图，灰化由 .ccg-stage.is-locked CSS filter 处理 (F3: 不再输出 PNG/.b-lock)
     card_badge_url = badge_url
 
-    pill_html = f"<span class='b-tag {ach_type}'>{ach_type}</span>"
-    lock_icon = "" if achieved else (
-        "<img class='b-lock' src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E\" alt='🔒'>"
-    )
     return (
         f"<div class='b-card {state_cls}' "
         f"data-id='{_html.escape(ach_id)}' "
@@ -953,11 +969,11 @@ def _build_milestone_card(ach_id, name, ach_type, desc, badge_url, achieved, cv,
         f"data-desc=\"{desc_safe}\" "
         f"data-img='{_html.escape(card_badge_url)}' "
         f"data-locked='{locked_flag}' "
+        f"data-card-theme='{card_theme_safe}' "
+        f"data-card-stars='{card_stars_safe}' "
+        f"data-no='{card_no_safe}' "
         f"onclick='openModal(this)'>"
-        f"  <div class='b-img-wrap'><img class='b-img' src='{_html.escape(card_badge_url)}' alt='{_html.escape(name)}' onerror=\"this.style.display='none'\"></div>"
-        f"  <div class='b-name'>{_html.escape(name)}</div>"
-        f"  {pill_html}"
-        f"  {lock_icon}"
+        f"  <div class='ccg-stage-mount' id='stage-{_html.escape(ach_id)}'></div>"
         f"</div>"
     )
 
