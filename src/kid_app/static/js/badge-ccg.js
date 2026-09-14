@@ -35,7 +35,8 @@
     date: "2026年6月16日",
     stars: 3,
     no: "007",
-    hall: "呦呦成就殿堂"
+    hall: "呦呦成就殿堂",
+    card_theme: "pearl"
   };
 
   var reduce = false;
@@ -122,7 +123,11 @@
     return '<div class="ccg-title"><i class="ccg-orn" aria-hidden="true"></i><span>' + name + '</span><i class="ccg-orn" aria-hidden="true"></i></div>';
   }
 
-  function backMarkup(d) {
+  function backMarkup(d, mode) {
+    var isFocus = (mode === "focus");
+    var storyVal = isFocus ? (d.story || d.storyShort || "") : (d.storyShort || d.story || "");
+    var storyLbl = isFocus ? "典故" : "典故·短板";
+
     return (
       '<div class="ccg-card-back ccg-back-face">' +
         '<div class="ccg-foil-stack">' +
@@ -145,8 +150,9 @@
             '<div class="ccg-back-val">' + (d.date || "") + '</div>' +
           '</div>' +
           '<div class="ccg-back-field ccg-back-story">' +
-            '<div class="ccg-back-lbl">典故·短板</div>' +
-            '<div class="ccg-back-val">' + (d.storyShort || d.story || "") + '</div>' +
+            '<div class="ccg-back-lbl">' + storyLbl + '</div>' +
+            '<div class="ccg-back-val">' + storyVal + '</div>' +
+            (isFocus ? '<div class="ccg-story-expand-btn">展开全文 ▾</div>' : '') +
           '</div>' +
           '<div class="ccg-back-foot"><span class="ccg-stars">' + starsHtml(d.stars) + '</span></div>' +
         '</div>' +
@@ -222,13 +228,13 @@
     );
   }
 
-  function cardMarkup(scheme, d) {
+  function cardMarkup(scheme, d, mode) {
     return (
       '<div class="ccg-shadow"></div>' +
       '<div class="ccg-rotator">' +
         '<div class="ccg-card-flipper">' +
           frontMarkup(scheme, d) +
-          backMarkup(d) +
+          backMarkup(d, mode) +
         '</div>' +
       '</div>'
     );
@@ -251,19 +257,145 @@
     });
   }
 
+  /* ── 打字机故事托盘状态与动效 (dad 2026-09-14 需求 2.6 & 2.7) ── */
+  var storyTrayState = {
+    status: "closed", // 'closed' | 'typing' | 'done'
+    timer: null,
+    fullText: "",
+    idx: 0,
+    trayEl: null,
+    textEl: null,
+    cursorEl: null
+  };
+
+  function closeStoryTray() {
+    if (storyTrayState.timer) {
+      clearInterval(storyTrayState.timer);
+      storyTrayState.timer = null;
+    }
+    if (storyTrayState.trayEl) {
+      storyTrayState.trayEl.remove();
+      storyTrayState.trayEl = null;
+    }
+    storyTrayState.status = "closed";
+    storyTrayState.fullText = "";
+    storyTrayState.idx = 0;
+    storyTrayState.textEl = null;
+    storyTrayState.cursorEl = null;
+  }
+
+  function finishStoryTyping() {
+    if (storyTrayState.timer) {
+      clearInterval(storyTrayState.timer);
+      storyTrayState.timer = null;
+    }
+    if (storyTrayState.textEl) {
+      storyTrayState.textEl.textContent = storyTrayState.fullText;
+    }
+    if (storyTrayState.cursorEl) {
+      storyTrayState.cursorEl.style.display = "none";
+    }
+    storyTrayState.status = "done";
+  }
+
+  function handleStoryTrayToggle(stage, text) {
+    if (storyTrayState.status === "typing") {
+      finishStoryTyping();
+      return;
+    }
+    if (storyTrayState.status === "done") {
+      closeStoryTray();
+      return;
+    }
+
+    closeStoryTray();
+
+    var parentLayout = stage.closest(".ccg-claim-layout") ||
+                       stage.closest(".ccg-claim-dialog") ||
+                       stage.parentElement;
+    if (!parentLayout) return;
+
+    var tray = document.createElement("div");
+    tray.className = "ccg-story-tray";
+    tray.id = "ccg-story-tray";
+    tray.innerHTML =
+      '<div class="ccg-story-tray-card">' +
+        '<div class="ccg-story-tray-head">' +
+          '<span class="ccg-story-tray-title">📜 典故全文</span>' +
+          '<span class="ccg-story-tray-tip">点击速览 · 再点收起</span>' +
+        '</div>' +
+        '<div class="ccg-story-tray-body">' +
+          '<span class="ccg-story-text"></span><span class="ccg-story-cursor"></span>' +
+        '</div>' +
+      '</div>';
+
+    var anchor = stage.closest(".ccg-claim-stage") || stage;
+    if (anchor.nextSibling) {
+      parentLayout.insertBefore(tray, anchor.nextSibling);
+    } else {
+      parentLayout.appendChild(tray);
+    }
+
+    var textEl = tray.querySelector(".ccg-story-text");
+    var cursorEl = tray.querySelector(".ccg-story-cursor");
+
+    tray.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    tray.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (storyTrayState.status === "typing") {
+        finishStoryTyping();
+      } else if (storyTrayState.status === "done") {
+        closeStoryTray();
+      }
+    });
+
+    storyTrayState.status = "typing";
+    storyTrayState.fullText = text || "";
+    storyTrayState.idx = 0;
+    storyTrayState.trayEl = tray;
+    storyTrayState.textEl = textEl;
+    storyTrayState.cursorEl = cursorEl;
+
+    var full = storyTrayState.fullText;
+    storyTrayState.timer = setInterval(function () {
+      storyTrayState.idx += 1;
+      textEl.textContent = full.slice(0, storyTrayState.idx);
+      if (storyTrayState.idx >= full.length) {
+        finishStoryTyping();
+      }
+    }, 20);
+  }
+
+  function resetAllFlips() {
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].resetFlip) cards[i].resetFlip();
+    }
+  }
+
   function mountCard(stage, scheme, data, opts) {
     var d = data || BADGE;
     var o = opts || {};
     var isLocked = o.locked === true;
+
+    /* 模式判定 (dad 2026-09-14 需求 1):
+       wall (列表态): 禁止翻面, 点击只打开 modal;
+       focus (modal 放大态 / 把玩舞台): 允许点击翻面看卡背 */
+    var isModal = !!(o.mode === "focus" || (stage.closest && stage.closest(".ccg-claim-stage, .ccg-claim-overlay, #ach-detail-stage, #bd-detail-stage, #ccg-claim-stage, .ccg-claim-layout, .ccg-claim-dialog")));
+    var isWall = !!(o.mode === "wall" || (stage.closest && stage.closest(".badge-grid, .ccg-grid-cell, .b-card, .badge-card, .ccg-stage-mount")));
+    var mode = o.mode || (isModal ? "focus" : (isWall ? "wall" : "focus"));
+    var canFlip = (o.canFlip !== undefined) ? !!o.canFlip : (mode === "focus");
+
     var stageClasses = "ccg-stage ccg-" + scheme + (isLocked ? " is-locked" : "");
     if (!hasGsap) stageClasses += " ccg-no-gsap";  // F7: 无 gsap 时启用 CSS 过渡翻面
+    if (!canFlip) stageClasses += " ccg-no-flip";
     stage.className = stageClasses;
     stage.setAttribute("data-scheme", scheme);
-    /* 主题 (B-1, sprint-26091201): 来自 achievements.card_theme (后端 resolve_card_theme 已做 type 兜底),
-       前端只认 payload 字段, 不做第二套映射; d.theme 兼容 demo 页/老数据。
-       非默认 4 套变量在 badge-ccg-themes.css, 覆盖 .ccg-stage[data-ccg-theme] */
-    stage.setAttribute("data-ccg-theme", d.card_theme || d.theme || "azure");
-    stage.innerHTML = cardMarkup(scheme, d);
+    stage.setAttribute("data-mode", mode);
+
+    /* 主题 (dad 2026-09-14 需求 3): 支持全局 body[data-theme] 或卡级主题, 默认 pearl 淡色主题 */
+    var bodyTheme = (typeof document !== "undefined" && document.body && (document.body.getAttribute("data-theme") || document.body.getAttribute("data-ccg-theme"))) || null;
+    stage.setAttribute("data-ccg-theme", bodyTheme || d.card_theme || d.theme || "pearl");
+    stage.innerHTML = cardMarkup(scheme, d, mode);
     bindReady(stage);
 
     /* F5: 撤掉 opts.static=true 短路路径 — 列表卡现在跟 demo 静止态逐图层一致:
@@ -351,10 +483,15 @@
     }
 
     function flip() {
-      if (!flipper || reduce) return;
+      if (!flipper || reduce || !canFlip) return;
       var from = state.flip;
       state.flip = state.flip === 0 ? 180 : 0;
       flipper.classList.toggle("is-flipped", state.flip === 180);
+      if (state.flip === 0) {
+        closeStoryTray();
+      } else {
+        requestAnimationFrame(checkStoryOverflow);
+      }
       var proxy = { f: from };
       if (hasGsap) {
         global.gsap.to(proxy, {
@@ -364,10 +501,24 @@
           overwrite: true,
           onUpdate: function () {
             flipper.style.setProperty("--flip", proxy.f + "deg");
+          },
+          onComplete: function () {
+            if (state.flip === 180) checkStoryOverflow();
           }
         });
       } else {
         flipper.style.setProperty("--flip", state.flip + "deg");
+        if (state.flip === 180) requestAnimationFrame(checkStoryOverflow);
+      }
+    }
+
+    function resetFlip() {
+      if (state.flip !== 0) {
+        state.flip = 0;
+        if (flipper) {
+          flipper.classList.remove("is-flipped");
+          flipper.style.setProperty("--flip", "0deg");
+        }
       }
     }
 
@@ -410,7 +561,7 @@
       var wasTap = moved < 6;
       pointerId = null;
       try { stage.releasePointerCapture(ev.pointerId); } catch (err) {}
-      if (wasTap && !reduce) flip();
+      if (wasTap && !reduce && canFlip) flip();
       springHome();
     }
 
@@ -429,11 +580,50 @@
     });
     if (!coarse) stage.addEventListener("pointerleave", onLeave);
 
+    /* 卡背故事展开交互 (dad 2026-09-14 需求 2.1 & 2.2 & Brief E)
+       仅在 focus (modal) 态且文字真实溢出 (scrollHeight > clientHeight) 时出现展开按钮；
+       正文保持透传翻面，只有点击「展开全文 ▾」按钮才呼出打字机托盘 */
+    var isFocus = (mode === "focus");
+    var fullStory = d.story || d.storyShort || "";
+    var storyBlock = stage.querySelector(".ccg-back-story");
+
+    function checkStoryOverflow() {
+      if (!isFocus || !storyBlock) return;
+      var valEl = storyBlock.querySelector(".ccg-back-val");
+      if (!valEl) return;
+      if (valEl.clientHeight > 0) {
+        var overflows = (valEl.scrollHeight > valEl.clientHeight + 1);
+        if (overflows) {
+          storyBlock.classList.add("has-overflow");
+        } else {
+          storyBlock.classList.remove("has-overflow");
+        }
+      }
+    }
+
+    var expandBtn = storyBlock ? storyBlock.querySelector(".ccg-story-expand-btn") : null;
+    if (expandBtn && isFocus) {
+      function stopEvent(e) {
+        if (e.stopPropagation) e.stopPropagation();
+      }
+      expandBtn.addEventListener("pointerdown", stopEvent);
+      expandBtn.addEventListener("pointermove", stopEvent);
+      expandBtn.addEventListener("pointerup", stopEvent);
+      expandBtn.addEventListener("mousedown", stopEvent);
+      expandBtn.addEventListener("mouseup", stopEvent);
+      expandBtn.addEventListener("click", function (ev) {
+        if (ev.stopPropagation) ev.stopPropagation();
+        handleStoryTrayToggle(stage, fullStory);
+      });
+      requestAnimationFrame(checkStoryOverflow);
+    }
+
     var rec = {
       el: stage,
       scheme: scheme,
       state: state,
       flip: flip,
+      resetFlip: resetFlip,
       idleSkip: cardIdleSkip || idleSkip,  // F9: per-card override; 0 表示跟随全局 idleSkip
       _idleSkipFrozen: cardIdleSkip > 0,    // setIdleSkip(n) 跳过已固化的卡
       interacting: function () { return interacting; },
@@ -469,6 +659,7 @@
         stage.removeEventListener("pointermove", onMove);
         stage.removeEventListener("pointerup", onUp);
         stage.removeEventListener("pointercancel", onUp);
+        if (!coarse) stage.removeEventListener("pointerleave", onLeave);
         stage._ccgId = null;
       }
     };
@@ -493,18 +684,23 @@
      注: 第四轮前 opts.static=true 卡不入 cards 数组, 那段历史已删 — 现在所有卡都进数组. */
   function unmount(stage) {
     if (!stage) return;
-    var i = cards.findIndex(function (c) { return c.el === stage; });
+    closeStoryTray();
+    resetAllFlips();
+    var stageEl = (stage.classList && stage.classList.contains("ccg-stage")) ? stage : (stage.querySelector ? stage.querySelector(".ccg-stage") : null);
+    if (!stageEl) stageEl = stage;
+    var i = cards.findIndex(function (c) { return c.el === stage || c.el === stageEl; });
     if (i >= 0) {
       cards[i].destroy();
       cards.splice(i, 1);
     }
     /* F6: IO unregister (card unmount 时视口不再需要追踪它) */
-    if (visObserver && stage._ccgId) visVisible.delete(stage._ccgId);
-    if (visObserver) visObserver.unobserve(stage);
-    stage.classList.remove("ccg-stage", "ccg-holo", "ccg-px", "is-locked", "ccg-no-gsap", "is-ready");
-    stage.removeAttribute("data-scheme");
-    stage.removeAttribute("data-ccg-theme");
-    stage.innerHTML = "";
+    if (visObserver && stageEl._ccgId) visVisible.delete(stageEl._ccgId);
+    if (visObserver) visObserver.unobserve(stageEl);
+    stageEl.classList.remove("ccg-stage", "ccg-holo", "ccg-px", "is-locked", "ccg-no-gsap", "is-ready", "ccg-no-flip");
+    stageEl.removeAttribute("data-scheme");
+    stageEl.removeAttribute("data-mode");
+    stageEl.removeAttribute("data-ccg-theme");
+    stageEl.innerHTML = "";
   }
 
   function pulse(el) {
@@ -680,7 +876,8 @@
         : (d.stars != null ? d.stars : BADGE.stars),
       /* sprint 26091301 B1: 编号取后端 card_no (无值 → '—', 不再兜底 '001') */
       no: formatCardNo(d.card_no != null ? d.card_no : d.no),
-      hall: d.hall || BADGE.hall
+      hall: d.hall || BADGE.hall,
+      card_theme: d.card_theme || d.theme || "pearl"
     };
   }
 
@@ -698,7 +895,7 @@
     host.innerHTML = "";
     var stage = document.createElement("div");
     host.appendChild(stage);
-    mountCard(stage, scheme || "holo", d);
+    mountCard(stage, scheme || "holo", d, { mode: "focus", canFlip: true });
     ov.removeAttribute("hidden");
     ov.classList.add("is-open");
     document.body.classList.add("ccg-modal-open");
@@ -711,6 +908,8 @@
   }
 
   function closeClaim() {
+    closeStoryTray();
+    resetAllFlips();
     currentClaimBadge = null;
     var ov = document.getElementById("ccg-claim-overlay");
     if (!ov) return;
@@ -810,8 +1009,21 @@
   if (!fpsState.raf) fpsState.raf = requestAnimationFrame(loop);
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeClaim();
+    if (e.key === "Escape") {
+      closeStoryTray();
+      closeClaim();
+      resetAllFlips();
+    }
   });
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.matches && (t.matches(".ccg-claim-overlay, .ccg-claim-close, #modal-overlay") || t.closest(".ccg-claim-close"))) {
+      closeStoryTray();
+      resetAllFlips();
+    }
+  }, true);
 
   global.DizicalCCG = {
     BADGE: BADGE,
@@ -827,6 +1039,8 @@
     setHoloGain: setHoloGain,
     setIdleSkip: setIdleSkip,    // F6: 性能护栏 (默认 1, iPad 掉帧调 2)
     getPerfStats: getPerfStats,  // F6: 调试用
+    resetAllFlips: resetAllFlips, // dad 2026-09-14 需求 1
+    closeStoryTray: closeStoryTray, // dad 2026-09-14 需求 2.7
     flipAll: function () {
       cards.forEach(function (c) { if (c.flip) c.flip(); });
     }

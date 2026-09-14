@@ -635,7 +635,7 @@
         date:      bCard.dataset.date || '',
         stars:     parseInt(bCard.dataset.cardStars || '3', 10) || 3,
         no:        bCard.dataset.no || '',         // F3: 不许回落 '001'
-        card_theme: bCard.dataset.cardTheme || 'azure',
+        card_theme: bCard.dataset.cardTheme || 'pearl',
       };
       var mountEl = bCard.querySelector('.ccg-stage-mount');
       if (!mountEl) return null;  // F2: 容器不在就不挂 (不再 appendChild 到 bCard 自身, 避免叠在 PNG 上)
@@ -700,7 +700,7 @@
         date: card.dataset.date || '',
         stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
         no: card.dataset.no || '',                // F3: 空值就是空
-        card_theme: card.dataset.cardTheme || 'azure',
+        card_theme: card.dataset.cardTheme || 'pearl',
       }, { locked: locked });
 
       /* 显示 — inline style.display 切换 (避免改 badge-ccg.css 的 .ccg-claim-overlay 默认值) */
