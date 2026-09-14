@@ -629,6 +629,9 @@
         image:     bCard.dataset.img  || '',
         cond:      bCard.dataset.condText || bCard.dataset.cond || '',
         story:     bCard.dataset.desc || '',
+        /* sprint 26091401 F1: 卡背「典故·短板」(后端 achievements.story_short, ≤60 字);
+           空 → normalize 内回落长典故, 保证卡背不空 */
+        story_short: bCard.dataset.storyShort || '',
         date:      bCard.dataset.date || '',
         stars:     parseInt(bCard.dataset.cardStars || '3', 10) || 3,
         no:        bCard.dataset.no || '',         // F3: 不许回落 '001'
@@ -692,6 +695,8 @@
         image: card.dataset.img || '',
         cond: card.dataset.condText || card.dataset.cond || '',
         story: card.dataset.desc || '',
+        /* F1: 卡背「典故·短板」(modal 右侧仍走 dataset.desc 长典故) */
+        story_short: card.dataset.storyShort || '',
         date: card.dataset.date || '',
         stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
         no: card.dataset.no || '',                // F3: 空值就是空

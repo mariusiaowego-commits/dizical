@@ -230,6 +230,7 @@ function cardHTML(d) {
     data-card-theme="${esc(d.card_theme||'azure')}"
     data-card-stars="${esc(String(d.card_stars||3))}"
     data-no="${esc(d.card_no != null ? d.card_no : '')}"
+    data-story-short="${esc(d.story_short || '')}"
     onclick="openModal(this)">
     <div class="ccg-stage-mount" id="stage-${esc(d.id)}"></div>
   </div>`;
@@ -255,6 +256,8 @@ function _swapCardToCCG(bCard, opts) {
     image: bCard.dataset.img || '',
     cond:  bCard.dataset.condText || bCard.dataset.cond || '',
     story: bCard.dataset.desc || '',
+    /* F1: 卡背「典故·短板」(modal 右侧仍走 dataset.desc 长典故) */
+    story_short: bCard.dataset.storyShort || '',
     date:  bCard.dataset.date || '',
     stars: parseInt(bCard.dataset.cardStars || '3', 10) || 3,
     no:    bCard.dataset.no || '',     // B1: 无编号 → '' → formatCardNo 返 '—'

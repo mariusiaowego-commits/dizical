@@ -46,6 +46,8 @@ def _sprint26091201_card_theme_migrate() -> None:
             ensure_card_no_column,
             ensure_card_stars_column,
             ensure_card_theme_column,
+            ensure_story_short_column,
+            seed_story_short,
         )
         conn = _db._get_connection()
         ensure_card_theme_column(conn)
@@ -53,6 +55,10 @@ def _sprint26091201_card_theme_migrate() -> None:
         # sprint 26091301 B1: 图鉴编号列 + 启动期幂等回填 (只填 NULL 行, 可重复跑)
         ensure_card_no_column(conn)
         backfill_card_no(conn)
+        # sprint 26091401 F1: 卡背「典故·短板」列 (≤60 字) + 幂等播种
+        #   (文案源 = src/kid_app/badge_story_short.json, 随包部署; 无文件则 no-op)
+        ensure_story_short_column(conn)
+        seed_story_short(conn)
     except Exception as e:
         # 启动期不能因迁移失败挂掉 — 后续 INSERT/SELECT 路径会再尝试
         import logging as _logging
@@ -819,15 +825,22 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
     # Sprint 26091302 feat/badge-3d-ccg B6 F3: 增补 card_theme, card_stars, card_no.
     #   card_no 由 PR #324(B1) 引入, 本分支可能尚未有该列; 用 sqlite3.Row.keys() 检测
     #   (sqlite3.Row 是 dict-like, ach.get() 也会返 None, 但 .keys() 直接判定 schema).
+    # sprint 26091401 F1: card_no / story_short 按表实际列拼进 SELECT (缺列就不引用,
+    #   页面不因迁移未完成 500). 老代码 has_card_no 判的列根本没进 SELECT → 恒 False,
+    #   图鉴列表编号全显示 '—' (本 PR 一并修).
+    _opt_cols = _ach_optional_cols(conn, "card_no", "story_short")
     cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, stat_logic, description, threshold, "
         "unlocked_template, placeholder, cond_text, "
-        "unlock_strategy, achieved_at_override, card_theme, card_stars FROM achievements" +
-        (" WHERE category = ?" if category else "") +
-        " ORDER BY sort_order",
+        "unlock_strategy, achieved_at_override, card_theme, card_stars"
+        + "".join(", " + _c for _c in _opt_cols)
+        + " FROM achievements"
+        + (" WHERE category = ?" if category else "")
+        + " ORDER BY sort_order",
         ((category,) if category else ()))
     cols = [d[0] for d in cur.description]
     has_card_no = "card_no" in cols
+    has_story_short = "story_short" in cols
     ach_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
 
     # ── 分离已解锁 / 未解锁 (PR-B: badge_url 改读 DB + cache 60s) ──
@@ -916,6 +929,8 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
                 category=ach.get("category"),
             ),
             card_no=ach.get("card_no") if has_card_no else None,
+            # F1: 卡背「典故·短板」(无值 → data-story-short='' → 前端回落长典故)
+            story_short=ach.get("story_short") if has_story_short else None,
         )
 
         achieved_at = res.achieved_at
@@ -944,10 +959,22 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
     return unlocked_html + nearest_html
 
 
+def _ach_optional_cols(conn, *names: str) -> list[str]:
+    """返回 achievements 表里已就绪的可选列名 (缺失的不进 SELECT, 避免整页 500).
+
+    sprint 26091401 F1: 列在启动期幂等迁移里补 (ensure_*), 但迁移失败时页面也要能开 —
+    老代码把 has_card_no 判在 cols 上却没把 card_no 放进 SELECT, 结果永远判 False
+    (图鉴列表编号全显示 '—'). 这里统一按实际列名拼 SELECT.
+    """
+    from src.kid_app.badge_db import achievements_columns
+    have = achievements_columns(conn)
+    return [n for n in names if n in have]
+
+
 def _build_milestone_card(
     ach_id, name, ach_type, desc, badge_url, achieved, cv, threshold,
     condition="", cond_text="",
-    card_theme=None, card_stars=None, card_no=None,
+    card_theme=None, card_stars=None, card_no=None, story_short=None,
 ):
     """生成单个 milestone 卡片 HTML（对应 .b-card 结构，与 badges 页面一致）
 
@@ -968,6 +995,8 @@ def _build_milestone_card(
     card_theme_safe = _html.escape(str(card_theme) if card_theme is not None else "")
     card_stars_safe = _html.escape(str(card_stars) if card_stars is not None else "")
     card_no_safe = _html.escape(str(card_no) if card_no is not None else "")
+    # sprint 26091401 F1: 卡背「典故·短板」— 前端 normalize 走 d.story_short || d.story
+    story_short_safe = _html.escape(str(story_short) if story_short is not None else "")
 
     # 徽章统一用原图，灰化由 .ccg-stage.is-locked CSS filter 处理 (F3: 不再输出 PNG/.b-lock)
     card_badge_url = badge_url
@@ -986,6 +1015,7 @@ def _build_milestone_card(
         f"data-card-theme='{card_theme_safe}' "
         f"data-card-stars='{card_stars_safe}' "
         f"data-no='{card_no_safe}' "
+        f"data-story-short='{story_short_safe}' "
         f"onclick='openModal(this)'>"
         f"  <div class='ccg-stage-mount' id='stage-{_html.escape(ach_id)}'></div>"
         f"</div>"
@@ -2863,9 +2893,13 @@ def badges_page():
     # ── 读所有需要展示的 achievements（排除神秘/晋级等纯统计类） ──────
     # Sprint 26091201 feat/badge-3d-ccg B-1: 多取 a.card_theme, 走 resolve_card_theme 兜底
     # sprint 26091301 B1: 多取 a.card_no (图鉴编号, 前端 No.%03d 展示)
+    # sprint 26091401 F1: card_no / story_short 同样按实际列拼 (缺列不引用)
+    _opt_cols = _ach_optional_cols(conn, "card_no", "story_short")
     cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
-        "unlock_strategy, achieved_at_override, card_theme, card_stars, card_no FROM achievements "
+        "unlock_strategy, achieved_at_override, card_theme, card_stars"
+        + "".join(", " + _c for _c in _opt_cols)
+        + " FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order")
     cols = [d[0] for d in cur.description]
@@ -2928,6 +2962,8 @@ def badges_page():
             ),
             # sprint 26091301 B1: 图鉴编号 (可空 — 未回填时前端显示 '—')
             "card_no": ach.get("card_no"),
+            # sprint 26091401 F1: 卡背「典故·短板」(≤60 字; 空 → 前端回落长 description)
+            "story_short": ach.get("story_short") or "",
             # 2026-08-07 sprint 26080702: seasonal badge 显示「当前第N赛季 + 累计获取次数」文案
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("

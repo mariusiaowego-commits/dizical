@@ -170,7 +170,7 @@ async def api_minip_verify_pin(request: Request):
 def api_achievements():
     """返回所有成就（已解锁 + 未解锁），跟 /badges 页面数据一致。"""
     from src.achievement_definitions import calc_all, CalcResult
-    from src.kid_app.app import get_badge_url
+    from src.kid_app.app import get_badge_url, _ach_optional_cols
 
     conn = db._get_connection()
 
@@ -180,9 +180,13 @@ def api_achievements():
     # 2. 读 achievements 表
     # Sprint 26091201 feat/badge-3d-ccg B-1: 多取 a.card_theme, 走 resolve_card_theme 兜底
     # sprint 26091301 B1: 多取 a.card_no (图鉴编号, 小程序可选用 — 本轮不改小程序代码)
+    # sprint 26091401 F1: card_no / story_short 按表实际列拼 (缺列不引用, 不 500)
+    _opt_cols = _ach_optional_cols(conn, "card_no", "story_short")
     cur = db_adapter.execute(conn,
         "SELECT id, name, type, category, description, threshold, cond_text, "
-        "unlock_strategy, achieved_at_override, card_theme, card_stars, card_no FROM achievements "
+        "unlock_strategy, achieved_at_override, card_theme, card_stars"
+        + "".join(", " + _c for _c in _opt_cols)
+        + " FROM achievements "
         "WHERE category IN ('milestone', '突破', '巅峰', '执着', '段位', '晋级', '神秘', 'seasonal') "
         "ORDER BY sort_order"
     )
@@ -244,6 +248,8 @@ def api_achievements():
             ),
             # sprint 26091301 B1: 图鉴编号 (可选字段, 小程序本轮不消费)
             "card_no": ach.get("card_no"),
+            # sprint 26091401 F1: 卡背「典故·短板」(≤60 字; 可选字段, 小程序不消费)
+            "story_short": ach.get("story_short") or "",
             # 2026-08-07 sprint 26080702: seasonal badge 显示赛季+累计次数
             "season_info": (
                 f"当前第 {current_season.get('order', '?')} 赛季 ("
