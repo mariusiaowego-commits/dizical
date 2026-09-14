@@ -1,5 +1,9 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.6.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
+   ── 卡面样式版本: v1.6.1-dev (sprint 26091302 B6 图鉴接线, 四轮定稿 + B3 定档实装)
+      v1.6.1-dev (2026-09-13, B3 定档实装): --ccg-sec-gain 默认 1 -> 1.6 (中档),
+        淡色三套 (pearl/mint/sakura) 在 badge-ccg-themes.css 各自覆盖回 1 (弱档).
+        期望: 深色 5 套 (azure/bamboo/coral/imperial/frost) 常驻暗纹 opacity = 0.2 × 1.6 = 0.32;
+              淡色 3 套 常驻暗纹 opacity = 0.2 × 1 = 0.2.
       v1.6.0-dev (2026-09-13, 四轮):
         ① 列表卡 .badge-grid .ccg-stage 的 --card-w 收到 min(160px,100%) 塞网格格子;
            视觉跟 demo 静止态逐图层一致 (金框扫光 .3 / 细闪 .24 / 金属反光 .4 全保留),
@@ -65,9 +69,11 @@
   /* 笛韵防伪暗纹 (竹笛剪影 + 星芒 + DIZICAL 字样, 45° 平铺阵列) */
   --ccg-security-pattern: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'><g fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'><path d='M7 103 L95 15 M12 108 L100 20 M7 103 L12 108 M95 15 L100 20'/><circle cx='37' cy='73' r='2.8' fill='%23fff' stroke='none'/><circle cx='54' cy='56' r='2.8' fill='%23fff' stroke='none'/><circle cx='71' cy='39' r='2.8' fill='%23fff' stroke='none'/></g><path d='M106 88 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z' fill='%23fff'/><text x='10' y='126' font-family='Helvetica, Arial, sans-serif' font-size='9' font-weight='700' letter-spacing='2.6' fill='%23fff'>DIZICAL</text></svg>");
   --ccg-security-size: 132px 132px;
-  /* dad 2026-09-12 l5: 防伪强度总增益 —— 1 = 现值 (demo 定稿看不出强度时可整体加档);
-     同一根数字控制「常驻暗纹」与「聚光灯彩虹」两层, 接生产按卡面定档(弱1/中1.6/强2.4) */
-  --ccg-sec-gain: 1;
+  /* dad 2026-09-12 l5: 防伪强度总增益 —— 同一根数字控制「常驻暗纹」与「聚光灯彩虹」两层。
+     B3 定档 (2026-09-13): 默认中档 ×1.6 (深色 5 套 azure/bamboo/coral/imperial/frost 继承此值),
+     淡色 3 套 (pearl/mint/sakura) 在 badge-ccg-themes.css 各自覆盖为 1 (弱档 — 浅底纹太重会喧宾夺主)。
+     旧注释保留用于上下文: 接生产按卡面定档(弱1/中1.6/强2.4), 此处锁中档 1.6。 */
+  --ccg-sec-gain: 1.6;
 
   /* dad 2026-09-13: 跟随光标的**聚光灯总强度** —— glare (柔光) + spec (主光) 两层同时乘。
      1 = 原强度; 0.6 = 二轮; 0.40 = 三轮; 0.16 = 四轮; **0.10 = 定稿 (dad 2026-09-13 五轮:
