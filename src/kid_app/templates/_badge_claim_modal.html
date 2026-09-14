@@ -4,7 +4,10 @@
      DizicalCCG.openClaim(badge, 'holo'|'px')
      DizicalCCG.closeClaim()
    badge 形状对齐 GET /api/badge/unclaimed：
-     { id, name, tag, image|image_url, cond|cond_text, story|zh_story, date, stars, no }
+     { id, name, tag, image|image_url, cond|cond_text, story|zh_story, date, stars, no,
+       story_short }
+   注：story = 长典故 (modal 右侧 ccg-claim-story 用)；story_short = 卡背「典故·短板」(≤60 字)
+       sprint 26091401 F1，来自 achievements.story_short；缺省时卡背回落 story。
    布局：竖屏上下 / iPad 横屏左右双栏（见 badge-ccg.css .ccg-claim-*）
    卡面：轻点翻转（位移 < 6px），拖动倾斜。两套方案共用 .ccg-card-flipper。
    拦截时机由 agy 在 sidebar 里接 GET /api/badge/unclaimed，本文件不自动 fetch。

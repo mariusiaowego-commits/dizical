@@ -20,9 +20,11 @@ V3.1 (sprint 26082401 PR #287, 2026-08-24):
 """
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Iterator
 
 from src.database import db
@@ -38,6 +40,19 @@ _CARD_STARS_COL_DONE = False
 # Sprint 26091301 feat/sprint-26091301-badge-card-no B1:
 # ensure_card_no_column() 模块级幂等标志 — 每进程只跑一次
 _CARD_NO_COL_DONE = False
+# Sprint 26091401 feat/sprint-26091401-ccg-fix F1:
+# ensure_story_short_column() 模块级幂等标志 — 每进程只跑一次
+_STORY_SHORT_COL_DONE = False
+
+# achievements 实际列名缓存 (按后端 key: 'sqlite' / 'mysql').
+# 用途: 页面 SELECT 侧判断可选列 (card_no / story_short) 是否已就绪 —
+# 列不存在就不进 SELECT, 避免迁移未完成时整页 500.
+_ACH_COLUMNS_CACHE: dict[str, set[str]] = {}
+
+
+def _invalidate_columns_cache() -> None:
+    """ALTER 之后清列名缓存, 让后续 SELECT 立刻看到新列."""
+    _ACH_COLUMNS_CACHE.clear()
 
 
 # ─── 迁移 (双后端幂等) ───────────────────────────────────────────────
@@ -228,9 +243,203 @@ def ensure_card_no_column(conn: Any) -> None:
             return
         if added:
             logger.info("badge_db: ALTER TABLE achievements ADD COLUMN card_no (本次新增)")
+            _invalidate_columns_cache()
         _CARD_NO_COL_DONE = True
     except Exception as e:
         logger.warning(f"badge_db.ensure_card_no_column 失败 (下次还会重试): {e}")
+
+
+# ─── story_short 字段 (sprint 26091401 F1) ───────────────────────────
+# dad 2026-09-14 验收反馈: modal 右侧典故太长, 卡背要一句「典故·短板」(≤60 字).
+# = 新增 achievements.story_short 列; 长典故 (description) 一字不动, modal 继续读长文.
+# 播种来源 = 本目录 badge_story_short.json (with_name, 随包部署), 幂等 UPDATE.
+
+STORY_SHORT_MAX_LEN = 60
+
+
+def _ensure_story_short_sqlite(conn: sqlite3.Connection) -> bool | None:
+    """SQLite 幂等加 story_short 列.
+
+    Returns:
+        True  = 本次新增列
+        False = 列已存在
+        None  = achievements 表不存在 (不置 DONE, 下次再试)
+    """
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(achievements)").fetchall()}
+    if not existing:
+        return None
+    if "story_short" in existing:
+        return False
+    conn.execute("ALTER TABLE achievements ADD COLUMN story_short TEXT")
+    conn.commit()
+    return True
+
+
+def _ensure_story_short_mysql(conn) -> bool | None:
+    """MySQL 幂等加 story_short 列.
+
+    Returns:
+        True  = 本次新增列
+        False = 列已存在
+        None  = achievements 表不存在 (不置 DONE, 下次再试)
+    """
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'achievements'"
+    )
+    rows = cur.fetchall()
+    if not rows:
+        return None  # 表不存在 — 由后续 _init_tables / migrate 负责建表
+    existing = {r[0] if not isinstance(r, dict) else r["COLUMN_NAME"] for r in rows}
+    if "story_short" in existing:
+        return False
+    # VARCHAR(255) — 业务上限 60 字, 留足余量; 中文按字符计 (utf8mb4)
+    cur.execute("ALTER TABLE achievements ADD COLUMN story_short VARCHAR(255) NULL")
+    conn.commit()
+    return True
+
+
+def ensure_story_short_column(conn: Any) -> None:
+    """ensure_story_short_column: 双后端幂等 ALTER TABLE achievements ADD story_short.
+
+    sprint 26091401 F1 (dad 4 问之 3): 卡背显示「典故·短板」(≤60 字), modal 右侧
+    继续显示长典故 (description). 列可空 — 未播种时前端 fallback 回长典故,
+    不会出现空卡背.
+
+    失败只 logger.warning, 不抛 (读页面不能因为迁移失败 500), 下次还会重试.
+
+    Args:
+        conn: sqlite3.Connection (dev) 或 pymysql.Connection (cloud)
+    """
+    global _STORY_SHORT_COL_DONE
+    if _STORY_SHORT_COL_DONE:
+        return
+    try:
+        if isinstance(conn, sqlite3.Connection):
+            added = _ensure_story_short_sqlite(conn)
+        else:
+            added = _ensure_story_short_mysql(conn)
+        if added is None:
+            # 表还没有 — 保持 DONE=False, 下次调用再试
+            return
+        if added:
+            logger.info("badge_db: ALTER TABLE achievements ADD COLUMN story_short (本次新增)")
+            _invalidate_columns_cache()
+        _STORY_SHORT_COL_DONE = True
+    except Exception as e:
+        logger.warning(f"badge_db.ensure_story_short_column 失败 (下次还会重试): {e}")
+
+
+def achievements_columns(conn: Any) -> set[str]:
+    """返回 achievements 表实际列名集合 (按后端进程内缓存).
+
+    用途: 页面 SELECT 侧判断可选列 (card_no / story_short) 是否已就绪 ——
+    列不存在就不进 SELECT, 避免迁移未完成时整页 500 (老代码用 cols 检测却没把
+    列放进 SELECT, 判了个寂寞).
+
+    查询失败按空集降级 (不抛): 调用方会退化成"这些列都没有"的老行为.
+    """
+    key = "sqlite" if isinstance(conn, sqlite3.Connection) else "mysql"
+    cached = _ACH_COLUMNS_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        if key == "sqlite":
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(achievements)").fetchall()}
+        else:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'achievements'"
+            )
+            cols = {
+                (r[0] if not isinstance(r, dict) else r["COLUMN_NAME"])
+                for r in cur.fetchall()
+            }
+    except Exception as e:
+        logger.warning(f"badge_db.achievements_columns 失败 (按空集降级): {e}")
+        return set()
+    if cols:
+        _ACH_COLUMNS_CACHE[key] = cols
+    return cols
+
+
+def load_story_short_map(path: str | Path | None = None) -> dict[str, str]:
+    """读 badge_story_short.json → {badge_id: story}.
+
+    契约 (JSON): {"version": 1, "generated_for": "...", "stories": [{"card_no": 1,
+    "id": "all_items", "story": "..."}]}
+    - 只取 id + story; card_no 仅作人读冗余, 落库以 id 为准 (id 是主键)
+    - 超 STORY_SHORT_MAX_LEN 字的条目跳过 + warning (dad 硬要求 ≤60 字)
+    - 文件缺失 / 解析失败 → 返回空 dict (不抛), 前端 fallback 长典故
+    """
+    p = Path(path) if path is not None else Path(__file__).with_name("badge_story_short.json")
+    if not p.exists():
+        logger.info(f"badge_db: 未找到 {p}, 跳过 story_short 播种")
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning(f"badge_db: 解析 {p.name} 失败 (跳过播种): {e}")
+        return {}
+    items = data.get("stories") if isinstance(data, dict) else data
+    out: dict[str, str] = {}
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        bid = str(item.get("id") or "").strip()
+        story = str(item.get("story") or "").strip()
+        if not bid or not story:
+            continue
+        if len(story) > STORY_SHORT_MAX_LEN:
+            logger.warning(
+                f"badge_db: story_short 超 {STORY_SHORT_MAX_LEN} 字, 跳过 {bid} ({len(story)} 字)"
+            )
+            continue
+        out[bid] = story
+    return out
+
+
+def seed_story_short(conn: Any = None, path: str | Path | None = None) -> int:
+    """幂等播种 achievements.story_short (卡背「典故·短板」).
+
+    只写值不同的行 (story_short IS NULL OR <> 新值) → 第二次调用返回 0.
+    绝不碰 description (长典故) / cond_text 等其它列.
+
+    Returns:
+        本次实际写入的行数
+    """
+    if conn is None:
+        conn = db._get_connection()
+    ensure_story_short_column(conn)
+    stories = load_story_short_map(path)
+    if not stories:
+        return 0
+    changed = 0
+    try:
+        for bid, story in stories.items():
+            cur = _db_execute(
+                conn,
+                "UPDATE achievements SET story_short = ? "
+                "WHERE id = ? AND (story_short IS NULL OR story_short <> ?)",
+                (story, bid, story),
+            )
+            changed += int(getattr(cur, "rowcount", 0) or 0)
+        # 即使 changed == 0 也必须 commit:
+        # 上面 46 条 UPDATE (或 0 行匹配) 已经隐式开了写事务 (BEGIN),
+        # 不 commit 就把 RESERVED 锁留在库上 → 其它连接 CREATE TABLE 直接
+        # "database is locked" (实测: test_assign_draft + test_auth_web 必现).
+        conn.commit()
+        logger.info(f"badge_db: story_short 播种 {changed} 行 / 文案 {len(stories)} 条")
+    except Exception as e:
+        logger.warning(f"badge_db.seed_story_short 失败: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    return changed
 
 
 # ─── 事务 ─────────────────────────────────────────────────────────

@@ -91,6 +91,9 @@ class Database(BaseBackend):
                 # sprint 26091301 B1: 图鉴编号列 (dad Q1=A 稳定永久编号)
                 if ach_cols and "card_no" not in ach_cols:
                     cursor.execute("ALTER TABLE achievements ADD COLUMN card_no INTEGER")
+                # sprint 26091401 F1: 卡背「典故·短板」列 (dad: modal 典故太长, 卡背要 ≤60 字短版)
+                if ach_cols and "story_short" not in ach_cols:
+                    cursor.execute("ALTER TABLE achievements ADD COLUMN story_short TEXT")
             except Exception:
                 # 读路径不能因为迁移失败 500, 但 _init_tables 是启动期 — 异常应往上冒
                 # 这里吞异常仅限"表不存在"以外的边缘情况 (生产已观察到的不稳定)

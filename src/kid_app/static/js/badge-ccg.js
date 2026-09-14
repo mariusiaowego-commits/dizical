@@ -145,8 +145,8 @@
             '<div class="ccg-back-val">' + (d.date || "") + '</div>' +
           '</div>' +
           '<div class="ccg-back-field ccg-back-story">' +
-            '<div class="ccg-back-lbl">典故</div>' +
-            '<div class="ccg-back-val">' + (d.story || "") + '</div>' +
+            '<div class="ccg-back-lbl">典故·短板</div>' +
+            '<div class="ccg-back-val">' + (d.storyShort || d.story || "") + '</div>' +
           '</div>' +
           '<div class="ccg-back-foot"><span class="ccg-stars">' + starsHtml(d.stars) + '</span></div>' +
         '</div>' +
@@ -672,6 +672,9 @@
       image: d.image || d.image_url || d.badge_url || BADGE.image,
       cond: d.cond || d.cond_text || BADGE.cond,
       story: d.story || d.zh_story || d.description || BADGE.story,
+      /* sprint 26091401 F1: 卡背「典故·短板」= 后端 achievements.story_short (≤60 字).
+         空 (未播种 / 新 badge) → 回落长典故, 卡背不留白; modal 右侧继续读 d.story 长文. */
+      storyShort: d.story_short || d.storyShort || "",
       date: formatCardDate(d.date || d.achieved_at || BADGE.date),
       stars: d.card_stars != null ? d.card_stars
         : (d.stars != null ? d.stars : BADGE.stars),

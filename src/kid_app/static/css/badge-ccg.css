@@ -860,64 +860,78 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 26px 22px 24px;
+  padding: calc(var(--card-w) * 0.08) calc(var(--card-w) * 0.075) calc(var(--card-w) * 0.07);
   text-align: left;
   pointer-events: none;
+  box-sizing: border-box;
 }
 .ccg-back-kicker {
-  font-size: 10px;
+  font-size: clamp(8.5px, calc(var(--card-w) * 0.033), 13px);
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   color: #8a6a28;
-  margin-bottom: 8px;
+  margin-bottom: calc(var(--card-w) * 0.02);
 }
 .ccg-back-title {
   font-family: var(--ccg-serif);
-  font-size: 22px;
+  font-size: clamp(12px, calc(var(--card-w) * 0.07), 26px);
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   line-height: 1.25;
-  margin: 0 0 12px;
+  margin: 0 0 calc(var(--card-w) * 0.025);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ccg-back-rule {
-  width: 36px;
+  width: calc(var(--card-w) * 0.12);
   height: 1px;
   background: linear-gradient(90deg, #d4a017, transparent);
-  margin-bottom: 14px;
+  margin-bottom: calc(var(--card-w) * 0.025);
 }
 .ccg-back-field {
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--card-w) * 0.022);
 }
 .ccg-back-lbl {
-  font-size: 9px;
+  font-size: clamp(7.5px, calc(var(--card-w) * 0.028), 11px);
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   color: #a08050;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: calc(var(--card-w) * 0.008);
 }
 .ccg-back-val {
-  font-size: 13px;
+  font-size: clamp(9.5px, calc(var(--card-w) * 0.038), 14px);
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.35;
   color: #5c4010;
 }
 .ccg-back-story {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 .ccg-back-story .ccg-back-val {
   font-family: var(--ccg-serif);
-  font-size: 14px;
+  font-size: clamp(9.5px, calc(var(--card-w) * 0.038), 14.5px);
   font-weight: 500;
   font-style: italic;
-  line-height: 1.7;
+  line-height: 1.42;
   color: #6b4a10;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ccg-claim-overlay .ccg-back-story .ccg-back-val {
+  -webkit-line-clamp: unset;
+  display: block;
 }
 .ccg-back-foot {
   margin-top: auto;
-  padding-top: 10px;
-  font-size: 10px;
+  padding-top: calc(var(--card-w) * 0.02);
+  font-size: clamp(8px, calc(var(--card-w) * 0.028), 12px);
   font-weight: 700;
   letter-spacing: 0.28em;
   color: #8a6a28;
@@ -999,8 +1013,8 @@
 
 .ccg-claim-dialog {
   position: relative;
-  width: min(920px, 100%);
-  max-height: 92dvh;
+  width: min(1240px, 96vw);
+  max-height: 94dvh;
   background: #fffaf2;
   border-radius: 24px;
   border: 2px solid #e8c547;
@@ -1035,7 +1049,7 @@
   gap: 18px;
   padding: 40px 22px 22px;
   overflow: auto;
-  max-height: 92dvh;
+  max-height: 94dvh;
 }
 
 .ccg-claim-stage { flex: 0 0 auto; }
@@ -1136,12 +1150,12 @@
   }
   .ccg-claim-copy {
     text-align: left;
-    flex: 1 1 42%;
+    flex: 1 1 38%;
     width: auto;
   }
   .ccg-claim-actions { align-items: flex-start; }
   .ccg-claim-story { max-height: 28vh; text-align: left; }
-  .ccg-claim-overlay .ccg-stage { --card-w: min(240px, 46vh); }
+  .ccg-claim-overlay .ccg-stage { --card-w: min(400px, 52vh); }
 }
 
 .ccg-spark {
@@ -1391,13 +1405,16 @@ body.ccg-modal-open .ccg-demo-actions {
     - 列表态只受一项调整: --card-w 缩小到 160px 上限 (塞进网格格子, 不撑破)
     - 锁卡走 .ccg-stage.is-locked CSS filter (F4 保留)
    注: 早期 .is-static 减配规则已删 — 不再有「静态冻结」概念 */
-.ccg-stage { /* 列表态容器尺寸: 网格里 30+ 张同款卡 限定宽度, demo 不限 */
-  /* 注: --card-w 在 :root 跟 .ccg-stage 默认块已设 min(300px, 78vw).
-     列表态的 grid item 用本选择器覆盖: max 160px 塞网格. 但 hero/modal 仍走默认 300px. */
+.ccg-stage-mount {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 .ccg-grid-cell .ccg-stage,
-.badge-grid .ccg-stage {
-  --card-w: min(160px, 100%);
+.badge-grid .ccg-stage,
+.b-card .ccg-stage,
+.badge-card .ccg-stage {
+  --card-w: min(160px, 44vw);
 }
 /* 锁卡 (列表 + 弹窗共用, 与 options.locked=true 配套)
    视觉契约:
