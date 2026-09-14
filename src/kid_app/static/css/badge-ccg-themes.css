@@ -151,8 +151,11 @@
    金框仍然保持金色系 (只按主题调色相), 不因为淡底而丢掉品牌金边。
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── 淡色 1: 珠光象牙 pearl (通用高级感底) ────────────────────────────── */
-[data-ccg-theme="pearl"] {
+[data-ccg-theme="pearl"],
+[data-theme="pearl"],
+body[data-ccg-theme="pearl"] .ccg-stage,
+body[data-theme="pearl"] .ccg-stage,
+body.theme-pearl .ccg-stage {
   --theme-stock-color: #fbf5e8;
   --theme-stock-gradient: linear-gradient(168deg,
     #fffdf8 0%, #f9f1de 36%, #f0e5cb 70%, #e7dabe 100%);
@@ -190,29 +193,29 @@
   --theme-glow:             hsl(44, 74%, 72%);
   --theme-laser-tint:       hue-rotate(-8deg) saturate(1.02);
 
-  /* 淡箔配方 (dad image#7: "淡色要配淡色"): soft-light 带出珠光而不是压暗,
-     security 改 multiply 才能让防伪纹理在淡底上显形, shine::after 换亮 stops (去掉深紫/深灰) */
-  --theme-foil-op:              0.72;
+  /* 淡箔配方 (dad Brief E 去蒙版):
+     glare 聚光灯收敛至 65% 透明归零; spec 恢复 screen; laser 恢复 color-dodge; 降低表层激光权重 */
+  --theme-foil-op:              0.42;
   --theme-foil-shine-blend:     soft-light;
-  --theme-foil-shine-bright:    1.02;
-  --theme-foil-shine-contrast:  1.35;
-  --theme-foil-shine-sat:       0.92;
-  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(44, 74%, 92%, 0.55) 40%, hsla(40, 34%, 84%) 120%;
+  --theme-foil-shine-bright:    1.0;
+  --theme-foil-shine-contrast:  1.15;
+  --theme-foil-shine-sat:       0.85;
+  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(44, 74%, 92%, 0.35) 30%, hsla(40, 34%, 84%, 0) 65%;
   --theme-foil-after-blend:     soft-light;
   --theme-foil-after-bright:    1.0;
   --theme-foil-after-contrast:  0.92;
-  --theme-foil-after-op:        0.85;
+  --theme-foil-after-op:        0.65;
   --theme-foil-glitter-blend:   overlay;
   --theme-foil-sec-blend:       multiply;
-  --theme-foil-laser-blend:     soft-light;
-  --theme-foil-laser-bright:    1.0;
-  --theme-foil-laser-contrast:  1.25;
-  --theme-foil-laser-sat:       0.90;
-  --theme-foil-spec-blend:      soft-light;
+  --theme-foil-laser-blend:     color-dodge;
+  --theme-foil-laser-bright:    0.85;
+  --theme-foil-laser-contrast:  1.3;
+  --theme-foil-laser-sat:       0.80;
+  --theme-foil-spec-blend:      screen;
   --theme-foil-back-bright:     1.02;
   --theme-foil-back-contrast:   1.35;
   --theme-foil-back-sat:        0.92;
-  --theme-glare-stops:          hsla(0, 0%, 100%, 1) 10%, hsla(48, 82%, 95%, 0.62) 35%, hsla(42, 46%, 88%) 60%;
+  --theme-glare-stops:          hsla(0, 0%, 100%, 0.85) 0%, hsla(48, 82%, 95%, 0.40) 22%, hsla(42, 46%, 88%, 0.10) 45%, hsla(42, 46%, 88%, 0) 65%;
 
   /* 信息条同族化: 冷银 -> 跟卡面同色系的浅带 */
   --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 46%, rgba(140, 110, 50, 0.10) 100%),
@@ -222,8 +225,19 @@
 
 }
 
-/* ── 淡色 2: 薄荷玉 mint (清爽/日常) ───────────────────────────────── */
-[data-ccg-theme="mint"] {
+[data-ccg-theme="pearl"] .ccg-foil-over .ccg-foil-laser,
+[data-theme="pearl"] .ccg-foil-over .ccg-foil-laser,
+body[data-ccg-theme="pearl"] .ccg-foil-over .ccg-foil-laser,
+body[data-theme="pearl"] .ccg-foil-over .ccg-foil-laser,
+body.theme-pearl .ccg-foil-over .ccg-foil-laser {
+  opacity: calc((0.02 + var(--lit, 0) * 0.05) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+}
+
+[data-ccg-theme="mint"],
+[data-theme="mint"],
+body[data-ccg-theme="mint"] .ccg-stage,
+body[data-theme="mint"] .ccg-stage,
+body.theme-mint .ccg-stage {
   --theme-stock-color: #eefaf1;
   --theme-stock-gradient: linear-gradient(168deg,
     #f7fefa 0%, #e6f6ec 36%, #d7eee0 70%, #c9e6d5 100%);
@@ -259,29 +273,29 @@
   --theme-glow:             hsl(152, 62%, 70%);
   --theme-laser-tint:       hue-rotate(96deg) saturate(1.06);
 
-  /* 淡箔配方 (dad image#7: "淡色要配淡色"): soft-light 带出珠光而不是压暗,
-     security 改 multiply 才能让防伪纹理在淡底上显形, shine::after 换亮 stops (去掉深紫/深灰) */
-  --theme-foil-op:              0.72;
+  /* 淡箔配方 (dad Brief E 去蒙版):
+     glare 聚光灯收敛至 65% 透明归零; spec 恢复 screen; laser 恢复 color-dodge; 降低表层激光权重 */
+  --theme-foil-op:              0.42;
   --theme-foil-shine-blend:     soft-light;
-  --theme-foil-shine-bright:    1.02;
-  --theme-foil-shine-contrast:  1.32;
-  --theme-foil-shine-sat:       0.94;
-  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(150, 60%, 93%, 0.55) 40%, hsla(150, 30%, 85%) 120%;
+  --theme-foil-shine-bright:    1.0;
+  --theme-foil-shine-contrast:  1.15;
+  --theme-foil-shine-sat:       0.85;
+  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(150, 60%, 93%, 0.35) 30%, hsla(150, 30%, 85%, 0) 65%;
   --theme-foil-after-blend:     soft-light;
   --theme-foil-after-bright:    1.0;
   --theme-foil-after-contrast:  0.92;
-  --theme-foil-after-op:        0.85;
+  --theme-foil-after-op:        0.65;
   --theme-foil-glitter-blend:   overlay;
   --theme-foil-sec-blend:       multiply;
-  --theme-foil-laser-blend:     soft-light;
-  --theme-foil-laser-bright:    1.0;
-  --theme-foil-laser-contrast:  1.25;
-  --theme-foil-laser-sat:       0.90;
-  --theme-foil-spec-blend:      soft-light;
+  --theme-foil-laser-blend:     color-dodge;
+  --theme-foil-laser-bright:    0.85;
+  --theme-foil-laser-contrast:  1.3;
+  --theme-foil-laser-sat:       0.80;
+  --theme-foil-spec-blend:      screen;
   --theme-foil-back-bright:     1.02;
   --theme-foil-back-contrast:   1.32;
   --theme-foil-back-sat:        0.94;
-  --theme-glare-stops:          hsla(0, 0%, 100%, 1) 10%, hsla(150, 72%, 95%, 0.62) 35%, hsla(150, 36%, 89%) 60%;
+  --theme-glare-stops:          hsla(0, 0%, 100%, 0.85) 0%, hsla(150, 72%, 95%, 0.40) 22%, hsla(150, 36%, 89%, 0.10) 45%, hsla(150, 36%, 89%, 0) 65%;
 
   /* 信息条同族化: 冷银 -> 跟卡面同色系的浅带 */
   --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 46%, rgba(63, 122, 88, 0.10) 100%),
@@ -291,8 +305,19 @@
 
 }
 
-/* ── 淡色 3: 樱雪 sakura (温柔/鼓励向) ─────────────────────────────── */
-[data-ccg-theme="sakura"] {
+[data-ccg-theme="mint"] .ccg-foil-over .ccg-foil-laser,
+[data-theme="mint"] .ccg-foil-over .ccg-foil-laser,
+body[data-ccg-theme="mint"] .ccg-foil-over .ccg-foil-laser,
+body[data-theme="mint"] .ccg-foil-over .ccg-foil-laser,
+body.theme-mint .ccg-foil-over .ccg-foil-laser {
+  opacity: calc((0.02 + var(--lit, 0) * 0.05) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
+}
+
+[data-ccg-theme="sakura"],
+[data-theme="sakura"],
+body[data-ccg-theme="sakura"] .ccg-stage,
+body[data-theme="sakura"] .ccg-stage,
+body.theme-sakura .ccg-stage {
   --theme-stock-color: #fdf1f4;
   --theme-stock-gradient: linear-gradient(168deg,
     #fffafb 0%, #fceef2 36%, #f7dfe7 70%, #f1d2dd 100%);
@@ -328,29 +353,29 @@
   --theme-glow:             hsl(340, 72%, 76%);
   --theme-laser-tint:       hue-rotate(-40deg) saturate(1.08);
 
-  /* 淡箔配方 (dad image#7: "淡色要配淡色"): soft-light 带出珠光而不是压暗,
-     security 改 multiply 才能让防伪纹理在淡底上显形, shine::after 换亮 stops (去掉深紫/深灰) */
-  --theme-foil-op:              0.72;
+  /* 淡箔配方 (dad Brief E 去蒙版):
+     glare 聚光灯收敛至 65% 透明归零; spec 恢复 screen; laser 恢复 color-dodge; 降低表层激光权重 */
+  --theme-foil-op:              0.42;
   --theme-foil-shine-blend:     soft-light;
-  --theme-foil-shine-bright:    1.02;
-  --theme-foil-shine-contrast:  1.33;
-  --theme-foil-shine-sat:       0.93;
-  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(340, 70%, 94%, 0.55) 40%, hsla(340, 32%, 86%) 120%;
+  --theme-foil-shine-bright:    1.0;
+  --theme-foil-shine-contrast:  1.15;
+  --theme-foil-shine-sat:       0.85;
+  --theme-foil-after-stops:     hsl(0, 0%, 100%) 6%, hsla(340, 70%, 94%, 0.35) 30%, hsla(340, 32%, 86%, 0) 65%;
   --theme-foil-after-blend:     soft-light;
   --theme-foil-after-bright:    1.0;
   --theme-foil-after-contrast:  0.92;
-  --theme-foil-after-op:        0.85;
+  --theme-foil-after-op:        0.65;
   --theme-foil-glitter-blend:   overlay;
   --theme-foil-sec-blend:       multiply;
-  --theme-foil-laser-blend:     soft-light;
-  --theme-foil-laser-bright:    1.0;
-  --theme-foil-laser-contrast:  1.25;
-  --theme-foil-laser-sat:       0.90;
-  --theme-foil-spec-blend:      soft-light;
+  --theme-foil-laser-blend:     color-dodge;
+  --theme-foil-laser-bright:    0.85;
+  --theme-foil-laser-contrast:  1.3;
+  --theme-foil-laser-sat:       0.80;
+  --theme-foil-spec-blend:      screen;
   --theme-foil-back-bright:     1.02;
   --theme-foil-back-contrast:   1.33;
   --theme-foil-back-sat:        0.93;
-  --theme-glare-stops:          hsla(0, 0%, 100%, 1) 10%, hsla(340, 86%, 96%, 0.62) 35%, hsla(340, 44%, 90%) 60%;
+  --theme-glare-stops:          hsla(0, 0%, 100%, 0.85) 0%, hsla(340, 72%, 96%, 0.40) 22%, hsla(340, 36%, 90%, 0.10) 45%, hsla(340, 36%, 90%, 0) 65%;
 
   /* 信息条同族化: 冷银 -> 跟卡面同色系的浅带 */
   --theme-bar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 46%, rgba(140, 74, 98, 0.10) 100%),
@@ -358,4 +383,12 @@
   --theme-bar-ink:          #4a2130;
   --theme-bar-ink-shadow:   0 1px 0 rgba(255, 255, 255, 0.82);
 
+}
+
+[data-ccg-theme="sakura"] .ccg-foil-over .ccg-foil-laser,
+[data-theme="sakura"] .ccg-foil-over .ccg-foil-laser,
+body[data-ccg-theme="sakura"] .ccg-foil-over .ccg-foil-laser,
+body[data-theme="sakura"] .ccg-foil-over .ccg-foil-laser,
+body.theme-sakura .ccg-foil-over .ccg-foil-laser {
+  opacity: calc((0.02 + var(--lit, 0) * 0.05) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
 }

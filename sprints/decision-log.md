@@ -4,6 +4,8 @@
 
 | Date | Sprint | Decision | Why |
 |------|--------|----------|-----|
+| 2026-09-14 | 26091402 | 双 agent 分析合并：agy 写 brief D（独立分析）→ 与 hermes brief C 合并 brief E → agy 实施 | dad 拍板「分析也要让 agy 写一轮」；2.1 用 agy 纯 CSS 方案胜 hermes JS 量高取整行方案（字体回退/fons.ready/横竖屏切换风险） |
+| 2026-09-14 | 26091402 | hover 真高光化：glare stops 末端归 transparent @ 65% + laser 回 color-dodge + spec 回 screen + foilOp 0.55→0.42（仅 pearl/mint/sakura 作用域）| pixel 基线：pearl hover gt6% 89.39%→47.93%、max @ 卡面中央跟随指针；azure 逐像素 0 差异 |
 | 2026-09-03 | 26090903 | 桌面响应式 = fluid + max-width:420mm + `@media screen` 隔离 | agy 方案保守（!important 防御），grok 方案更彻底（:has() + sticky + JS fallback），dad 选 grok + agy polish |
 | 2026-09-03 | 26090903 | fillMatrixToPaper 去 overflow='visible'，改 '' 清掉 inline | 让 CSS @media screen 接管 overflow-x:auto，比 !important 更安全 |
 | 2026-09-03 | 26090903 | sticky 边框脱落 → box-shadow 1px 替代 | border-collapse:collapse 与 position:sticky 不兼容，box-shadow 保边框视觉 |

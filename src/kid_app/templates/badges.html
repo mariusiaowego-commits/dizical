@@ -261,7 +261,7 @@ function _swapCardToCCG(bCard, opts) {
     date:  bCard.dataset.date || '',
     stars: parseInt(bCard.dataset.cardStars || '3', 10) || 3,
     no:    bCard.dataset.no || '',     // B1: 无编号 → '' → formatCardNo 返 '—'
-    card_theme: bCard.dataset.cardTheme || 'azure',
+    card_theme: bCard.dataset.cardTheme || 'pearl',
   }, { locked: opts && opts.locked, idleSkip: 2 });
 }
 
@@ -386,7 +386,7 @@ function openModal(card) {
     date:  card.dataset.date || '',
     stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
     no:    card.dataset.no || '',      // B1: 无编号 → '' → formatCardNo 返 '—'
-    card_theme: card.dataset.cardTheme || 'azure',
+    card_theme: card.dataset.cardTheme || 'pearl',
   }, { locked: locked });
 
   /* 显示 — inline style.display 切换 (避免改 badge-ccg.css 的 .ccg-claim-overlay 默认值) */
