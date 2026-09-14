@@ -164,6 +164,8 @@
   --theme-light-accent:  rgba(214, 172, 92, 0.30);
 
   --theme-security-size: 132px 132px;
+  /* B3 定档 (2026-09-13): 淡底浅, 防伪单独用弱档 ×1 (覆回 badge-ccg.css 默认中档 1.6) */
+  --ccg-sec-gain: 1;
 
   /* 文字区极性: 深墨 + 亮渐隐 + 白描影 */
   --theme-plate-ink:        #3a2c11;
@@ -232,6 +234,8 @@
   --theme-light-accent:  rgba(96, 196, 152, 0.28);
 
   --theme-security-size: 132px 132px;
+  /* B3 定档 (2026-09-13): 淡底浅, 防伪单独用弱档 ×1 (覆回 badge-ccg.css 默认中档 1.6) */
+  --ccg-sec-gain: 1;
 
   --theme-plate-ink:        #1f3a2b;
   --theme-plate-ink-sub:    color-mix(in srgb, #274835 82%, #3f7a58);
@@ -299,6 +303,8 @@
   --theme-light-accent:  rgba(226, 132, 170, 0.26);
 
   --theme-security-size: 132px 132px;
+  /* B3 定档 (2026-09-13): 淡底浅, 防伪单独用弱档 ×1 (覆回 badge-ccg.css 默认中档 1.6) */
+  --ccg-sec-gain: 1;
 
   --theme-plate-ink:        #4a2130;
   --theme-plate-ink-sub:    color-mix(in srgb, #5a2838 82%, #8c4a62);
