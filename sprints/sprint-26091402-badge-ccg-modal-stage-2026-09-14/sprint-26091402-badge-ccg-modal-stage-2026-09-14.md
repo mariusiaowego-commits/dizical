@@ -51,11 +51,16 @@ tags: [sprint, dizical]
 - 截图：`/tmp/ccgcmp/shots/{before,after}-{pearl,azure}-{rest,p30,p70}.png`（4×3=12 张）
 - demo 文件：`/tmp/ccgprobe/demo_overlay_variants.html`（五遮罩方案）
 
-## 待办
+## 交付与待办
 
-- [ ] dad 真机点验（2.2 胶囊热区 + 短/中/长故事 + hover 真高光）
-- [ ] dad commit + push + PR（建议 `feat/badge-ccg-pearl-modal-stage-260914`）
-- [ ] dad merge + MCP deploy
+- [x] 代码实施完成（5 前端文件）
+- [x] 8 项独立真实指针探针复验全 PASS
+- [x] 像素量化与深色零变化 PASS
+- [x] 全量测试回归 PASS（768 passed, 8 skipped, 0 failed）
+- [x] Commit: `bc6c2f0` (feat/badge-ccg-pearl-modal-stage-260914)
+- [x] PR: [#329](https://github.com/mariusiaowego-commits/dizical/pull/329) 已创建
+- [ ] dad 检视 PR #329 并 squash merge 到 main
+- [ ] MCP deploy 触发
 - [ ] 生产自检（?cb= 破缓存、curl badge-ccg.css 内容长度核对）
 - [ ] 老 P1（badges.html `No.001`）dad 已说缓办，本轮不动
-- [ ] deploy 验收成功后建议清理（环境/未跟踪产物）
+- [ ] deploy 验收成功后清理未跟踪产物
