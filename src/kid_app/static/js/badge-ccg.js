@@ -1,5 +1,13 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.7.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
+   ── 卡面样式版本: v1.9.0-dev (sprint 26091604 CCG 生命周期与 WebKit 边角治理)
+      v1.9.0-dev (2026-09-16, sprint 26091604 生命周期边角治理):
+        ① window resize 监听收敛为模块单例 (原来每卡 1 个 × 44) + visualViewport.resize,
+           视口变化统一清空所有活跃卡的 cachedRect (rec.resetCachedRect);
+        ② lostpointercapture 防抖 (pointerId === null 直接 return, 不再二次 springHome
+           打断 GSAP 回弹) + destroy 里对称注销;
+        ③ 换卡过渡锁 modal_switch (旧卡 unmount → 新卡 mount 之间 is-frozen 不掉帧) + 5s 看门狗;
+        ④ coarse 动态跟随 (pointer: coarse 的 change 事件) + pointerleave 一律绑定;
+        ⑤ 全局 resize 单例常驻, destroy 只从 cards[] 剔除 (不再逐个解绑)。
       v1.7.0-dev (2026-09-16): Oracle 典藏卡 markup / 精铸金章 / focus lerp 0.08。
       v1.8.0-dev (2026-09-16, sprint 26091603 P0 移动端 3D 零卡顿治理):
         ① setPaused 全局挂起 + body.is-frozen 冻结背景墙 (Modal 打开时非 focus 卡整帧短路);
@@ -263,8 +271,15 @@
     reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   } catch (e) {}
   var coarse = false;
+  /* sprint 26091604 T6: coarse 不能只做「加载时快照」—— iPad 插上/拔掉妙控键盘或鼠标时
+     (pointer: coarse) 会翻转, 必须动态跟随, 否则 idle drift / 跟手系数 / hover 回弹
+     会一直按旧设备类型跑 (插上鼠标后卡墙还在"触屏静止", 或反过来触屏上突然满帧晃动)。 */
   try {
-    coarse = window.matchMedia("(pointer: coarse)").matches;
+    var coarseMq = window.matchMedia("(pointer: coarse)");
+    coarse = coarseMq.matches;
+    var onCoarseChange = function (ev) { coarse = !!(ev && ev.matches); };
+    if (coarseMq.addEventListener) coarseMq.addEventListener("change", onCoarseChange);
+    else if (coarseMq.addListener) coarseMq.addListener(onCoarseChange);  // 老 Safari (<14)
   } catch (e2) {}
 
   var hasGsap = typeof global.gsap !== "undefined";
@@ -294,12 +309,49 @@
     if (isPaused) document.body.classList.add("is-frozen");
     else document.body.classList.remove("is-frozen");
   }
+  /* sprint 26091604 T4: 换卡过渡锁 (modal_switch) 的看门狗。
+     这个 reason 由调用方成对持有/释放 (pauseFor("modal_switch", true/false)); 万一中间抛错
+     漏了释放, 卡墙会被永久冻住 (挂起态下所有非 focus 卡 tick 短路 = 页面像死了)。
+     正常过渡只有几毫秒, 5s 还没放锁就当异常强制放掉。 */
+  var SWITCH_LOCK_MS = 5000;
+  var switchLockTimer = null;
   function pauseFor(reason, on) {
     if (on) pauseReasons[reason] = 1;
     else delete pauseReasons[reason];
+    if (reason === "modal_switch") {
+      if (switchLockTimer) { clearTimeout(switchLockTimer); switchLockTimer = null; }
+      if (on) {
+        switchLockTimer = setTimeout(function () {
+          switchLockTimer = null;
+          pauseFor("modal_switch", false);
+        }, SWITCH_LOCK_MS);
+      }
+    }
     refreshFrozen();
   }
   function setPaused(p) { pauseFor("external", !!p); }  // 对外 API (DizicalCCG.setPaused)
+
+  /* sprint 26091604 T1: 视口 resize 监听收敛为「模块单例」。
+     原来每张卡在 mountCard 里各挂一个 window.addEventListener("resize"): 图鉴 44 张卡 =
+     44 个监听, 横竖屏 / iOS 地址栏收起时要逐个回调, 而且卡片销毁必须逐个解绑 (漏一个就常驻)。
+     现在: 首次 mount 时装 1 个 (window.resize + visualViewport.resize), 视口一变就统一把所有
+     活跃卡的 cachedRect 置空; 单例常驻, destroy 无需解绑, 只从 cards[] 剔除。 */
+  var resizeBound = false;
+  function resetAllCachedRects() {
+    for (var i = 0; i < cards.length; i++) {
+      var rec = cards[i];
+      if (rec && typeof rec.resetCachedRect === "function") rec.resetCachedRect();
+    }
+  }
+  function ensureGlobalResize() {
+    if (resizeBound || typeof window === "undefined") return;
+    resizeBound = true;
+    window.addEventListener("resize", resetAllCachedRects);
+    /* iOS 软键盘弹起 / 地址栏收起只改 visualViewport, 不一定触发 window.resize */
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", resetAllCachedRects);
+    }
+  }
   /* F6 视口观察者: 不在视口的卡 tick 时跳过 paint. null = SSR/旧浏览器降级 (全跑). */
   var visObserver = null;
   var visVisible = new Set();  // 已 mount 卡 id (在视口里)
@@ -870,20 +922,28 @@
       if (!coarse) springHome();
     }
 
+    /* sprint 26091604 T3: lostpointercapture 防抖。
+       iOS Safari 会在 pointerup 之后再补发一发 lostpointercapture; 那时 pointerId 已经是
+       null, 再跑一次 springHome() 会把 onUp 刚起的 GSAP 回弹 tween 直接 kill 掉
+       (观感: 卡片回弹到一半卡住)。真正的「拖动中途丢 capture」(pointerId 还在) 仍照常回弹。 */
+    function onLostPointerCapture() {
+      if (pointerId === null) return;
+      pointerId = null;
+      cachedRect = null;
+      springHome();
+    }
+
     stage.addEventListener("pointerdown", onDown);
     stage.addEventListener("pointermove", onMove);
     stage.addEventListener("pointerup", onUp);
     stage.addEventListener("pointercancel", onUp);
-    stage.addEventListener("lostpointercapture", function () {
-      pointerId = null;
-      cachedRect = null;
-      springHome();
-    });
-    if (!coarse) stage.addEventListener("pointerleave", onLeave);
-
-    /* sprint 26091603 P0-4: 视口尺寸变了 (横竖屏切换) → 缓存失效; destroy 时摘掉监听 */
-    function onViewportResize() { cachedRect = null; }
-    if (typeof window !== "undefined") window.addEventListener("resize", onViewportResize);
+    stage.addEventListener("lostpointercapture", onLostPointerCapture);
+    /* sprint 26091604 T6: pointerleave 一律绑定 —— 绑了以后 onLeave 内部按「当前」coarse
+       判断 (外接键鼠把 coarse 翻成 false 时 hover-out 照样回弹; 触屏下是空操作)。
+       原来只有 !coarse 才绑, 挂载后再插鼠标就会出现「移出卡面不回弹」。 */
+    stage.addEventListener("pointerleave", onLeave);
+    /* sprint 26091604 T1: 视口监听交给模块单例 (见 ensureGlobalResize), 不再每卡一个 */
+    ensureGlobalResize();
 
     /* 卡背故事展开交互 (dad 2026-09-14 需求 2.1 & 2.2 & Brief E)
        仅在 focus (modal) 态且文字真实溢出 (scrollHeight > clientHeight) 时出现展开按钮；
@@ -931,6 +991,9 @@
       idleSkip: cardIdleSkip || idleSkip,  // F9: per-card override; 0 表示跟随全局 idleSkip
       _idleSkipFrozen: cardIdleSkip > 0,    // setIdleSkip(n) 跳过已固化的卡
       interacting: function () { return interacting; },
+      /* sprint 26091604 T1: 供模块级 resize 单例统一清缓存 (视口尺寸变了, 按下期间缓存的
+         stage 矩形就过期了) */
+      resetCachedRect: function () { cachedRect = null; },
       tick: function (t) {
         /* sprint 26091603 P0-1: 挂起态 (Modal 打开) 下非 focus 卡整帧短路 ——
            背景墙 0 计算 / 0 CSS 变量写入, WebKit 不再对 18-44 张 3D 卡实时重绘 + blur 重采样 */
@@ -1000,8 +1063,9 @@
         stage.removeEventListener("pointermove", onMove);
         stage.removeEventListener("pointerup", onUp);
         stage.removeEventListener("pointercancel", onUp);
-        if (!coarse) stage.removeEventListener("pointerleave", onLeave);
-        if (typeof window !== "undefined") window.removeEventListener("resize", onViewportResize);
+        stage.removeEventListener("lostpointercapture", onLostPointerCapture);  // T3: 对称注销
+        stage.removeEventListener("pointerleave", onLeave);
+        /* T1: 全局 resize 是单例常驻, 卡片销毁不需要解绑 (也没有每卡监听可摘) */
         if (isFocus) pauseFor("focus:" + ccgId, false);
         cachedRect = null;
         stage._ccgId = null;
@@ -1236,11 +1300,20 @@
     document.getElementById("ccg-claim-date").textContent = d.date;
     document.getElementById("ccg-claim-story").textContent = d.story;
     var host = document.getElementById("ccg-claim-stage");
-    unmountAll(host);
-    host.innerHTML = "";
-    var stage = document.createElement("div");
-    host.appendChild(stage);
-    mountCard(stage, scheme || "holo", d, { mode: "focus", canFlip: true });
+    /* sprint 26091604 T4: 换卡过渡期持锁 —— 旧卡 unmount 会释放它自己的 focus 锁, 新卡 mount
+       才加回来, 中间那一瞬 pauseReasons 会空掉 (body.is-frozen 掉一帧: 背景墙先解冻再冻回去)。
+       先持 modal_switch 锁, 卸载 + 挂载全做完再释放; try/finally 保证 mount 抛错也不漏锁
+       (另有 5s 看门狗兜底)。 */
+    pauseFor("modal_switch", true);
+    try {
+      unmountAll(host);
+      host.innerHTML = "";
+      var stage = document.createElement("div");
+      host.appendChild(stage);
+      mountCard(stage, scheme || "holo", d, { mode: "focus", canFlip: true });
+    } finally {
+      pauseFor("modal_switch", false);
+    }
     ov.removeAttribute("hidden");
     ov.classList.add("is-open");
     document.body.classList.add("ccg-modal-open");
@@ -1355,6 +1428,9 @@
       /* sprint 26091603 P0-1: 挂起态自查 (调试 / 验收用) */
       paused: isPaused,
       frozenReasons: Object.keys(pauseReasons),
+      /* sprint 26091604: 生命周期自查口 (T1 全局 resize 单例 / T6 动态 coarse) */
+      resizeBound: resizeBound,
+      coarse: coarse,
       frozenBodyClass: !!(typeof document !== "undefined" && document.body && document.body.classList.contains("is-frozen")),
     };
   }
@@ -1393,6 +1469,7 @@
     setHoloGain: setHoloGain,
     setIdleSkip: setIdleSkip,    // F6: 性能护栏 (默认 1, iPad 掉帧调 2)
     setPaused: setPaused,        // sprint 26091603 P0-1: Modal 打开/关闭时冻结背景卡墙
+    pauseFor: pauseFor,          // sprint 26091604 T4: 换卡过渡锁 (modal_switch, 模板侧成对调用)
     getPerfStats: getPerfStats,  // F6: 调试用
     resetAllFlips: resetAllFlips, // dad 2026-09-14 需求 1
     closeStoryTray: closeStoryTray, // dad 2026-09-14 需求 2.7
