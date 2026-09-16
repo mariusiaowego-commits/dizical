@@ -203,6 +203,23 @@
     return "主题";
   }
 
+  var CATEGORY_ABBR = {
+    "突破": "破",
+    "巅峰": "极",
+    "执着": "韧",
+    "段位": "阶",
+    "晋级": "跃",
+    "神秘": "秘",
+    "主题": "典"
+  };
+
+  function categoryAbbr(tag) {
+    var key = artToneFromTag(tag);
+    if (CATEGORY_ABBR[key]) return CATEGORY_ABBR[key];
+    var t = String(tag || "");
+    return t ? t.charAt(0) : "典";
+  }
+
   function oracleSealHtml(tag) {
     var key = artToneFromTag(tag);
     var svg = ORACLE_SEALS[key] || ORACLE_SEALS["主题"] || "";
@@ -352,6 +369,8 @@
        主体 (z5) 夹在两组之间 ⇒ 与旧版同一条视觉顺序, 但镭射铺满整卡, 不再有第二层框。 */
   function frontMarkup(scheme, d) {
     var cat = (d.tag || "主题") + "成就";
+    var catAbbr = categoryAbbr(d.tag);
+    var catLabel = d.tag || "典藏";
     return (
       '<div class="oracle-face oracle-face-front">' +
         '<div class="oracle-card">' +
@@ -366,7 +385,7 @@
             '</div>' +
             '<div class="oracle-frame">' +
               '<div class="oracle-art">' +
-                '<img alt="" width="512" height="512" decoding="sync" fetchpriority="high" src="' + d.image + '">' +
+                '<img alt="" width="512" height="512" loading="lazy" decoding="async" src="' + d.image + '">' +
                 '<div class="oracle-sheen"></div>' +
                 '<div class="oracle-nameplate-wrap">' +
                   '<div class="oracle-nameplate">' +
@@ -379,8 +398,8 @@
               '</div>' +
               '<div class="oracle-footer">' +
                 '<div class="oracle-footer-l">' +
-                  '<span class="oracle-avatar">晨</span>' +
-                  '<span class="oracle-owner-name">晨晨</span>' +
+                  '<span class="oracle-avatar">' + catAbbr + '</span>' +
+                  '<span class="oracle-owner-name">' + catLabel + '</span>' +
                 '</div>' +
                 oracleSealHtml(d.tag) +
                 '<div class="oracle-footer-r"><span>✦</span><span>DIZICAL</span></div>' +
@@ -577,6 +596,9 @@
        全局 DizicalCCG.setIdleSkip(n) 后续不再覆盖. */
     var cardIdleSkip = (typeof o.idleSkip === 'number' && o.idleSkip >= 1)
       ? Math.floor(o.idleSkip) : 0;
+    /* 列表墙默认 idleSkip=4（约 15fps 闲置漂移）；hover/interacting 走 setFromPoint 满帧；
+       focus/modal 不传此值 → 0 → 跟全局 1，60fps lerp + 翻转。 */
+    if (!cardIdleSkip && mode === "wall") cardIdleSkip = 4;
     var state = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var aim = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var interacting = false;
