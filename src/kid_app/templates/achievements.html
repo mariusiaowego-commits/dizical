@@ -777,10 +777,10 @@
         if (tabCount) tabCount.textContent = unlocked.length;
 
         /* sprint 26091602: 保留原总数统计 (上面 uCount/tabCount 已写入完整数量),
-           但 DOM 中只展示最近获得的 3 张卡片 (unlocked 顺序为服务端最新在前).
-           注意: 必须在计数写入之后 remove, 否则数量会变成截断后的 3. */
-        if (unlocked.length > 3) {
-          unlocked.slice(3).forEach(c => c.remove());
+           但 DOM 中只展示最近获得的 5 张卡片 (unlocked 顺序为服务端最新在前).
+           注意: 必须在计数写入之后 remove, 否则数量会变成截断后的 5. */
+        if (unlocked.length > 5) {
+          unlocked.slice(5).forEach(c => c.remove());
         }
 
         /* swap 完 unlocked 后, 再 swap 新搬到 locked-grid 的卡片
