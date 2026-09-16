@@ -652,72 +652,74 @@
       if (window.DizicalCCG && window.DizicalCCG.pauseFor) {
         window.DizicalCCG.pauseFor('modal_switch', true);
       }
-      _unmountClaimStage();
+      try {
+        _unmountClaimStage();
 
-      /* 写右侧字段 (照 _badge_claim_modal.html 结构, 但 id 全是 ach-detail-* 避免撞侧边栏领取弹窗) */
-      document.getElementById('ach-detail-tag').textContent  = card.dataset.tag || '';
-      document.getElementById('ach-detail-name').textContent  = card.dataset.name || '';
-      document.getElementById('ach-detail-cond').textContent  =
-        card.dataset.condText || card.dataset.cond || card.dataset.desc || '';
-      document.getElementById('ach-detail-story').textContent = card.dataset.desc || '';
+        /* 写右侧字段 (照 _badge_claim_modal.html 结构, 但 id 全是 ach-detail-* 避免撞侧边栏领取弹窗) */
+        document.getElementById('ach-detail-tag').textContent  = card.dataset.tag || '';
+        document.getElementById('ach-detail-name').textContent  = card.dataset.name || '';
+        document.getElementById('ach-detail-cond').textContent  =
+          card.dataset.condText || card.dataset.cond || card.dataset.desc || '';
+        document.getElementById('ach-detail-story').textContent = card.dataset.desc || '';
 
-      var dateEl = document.getElementById('ach-detail-date');
-      var dateVal = card.dataset.date;
-      if (dateVal) {
-        try {
-          var d = new Date(dateVal);
-          dateEl.textContent = d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
-        } catch(e) { dateVal = ''; }
-        dateEl.style.display = dateVal ? '' : 'none';
-      } else {
-        dateEl.style.display = 'none';
-      }
+        var dateEl = document.getElementById('ach-detail-date');
+        var dateVal = card.dataset.date;
+        if (dateVal) {
+          try {
+            var d = new Date(dateVal);
+            dateEl.textContent = d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+          } catch(e) { dateVal = ''; }
+          dateEl.style.display = dateVal ? '' : 'none';
+        } else {
+          dateEl.style.display = 'none';
+        }
 
-      document.getElementById('ach-detail-hint').textContent =
-        locked ? '继续加油，下一个成就在等你！' : '';
+        document.getElementById('ach-detail-hint').textContent =
+          locked ? '继续加油，下一个成就在等你！' : '';
 
-      /* 在 #ach-detail-stage 挂一张 CCG 卡 (可交互, opts.locked 走 CSS 灰化) */
-      var stage = document.createElement('div');
-      document.getElementById('ach-detail-stage').appendChild(stage);
-      DizicalCCG.mountCard(stage, 'holo', {
-        id: card.dataset.id || '',
-        name: card.dataset.name || '',
-        tag: card.dataset.tag || '',
-        image: card.dataset.img || '',
-        cond: card.dataset.condText || card.dataset.cond || '',
-        story: card.dataset.desc || '',
-        /* F1: 卡背「典故·短板」(modal 右侧仍走 dataset.desc 长典故) */
-        story_short: card.dataset.storyShort || '',
-        date: card.dataset.date || '',
-        stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
-        no: card.dataset.no || '',                // F3: 空值就是空
-        card_theme: card.dataset.cardTheme || 'pearl',
-      }, { locked: locked });
+        /* 在 #ach-detail-stage 挂一张 CCG 卡 (可交互, opts.locked 走 CSS 灰化) */
+        var stage = document.createElement('div');
+        document.getElementById('ach-detail-stage').appendChild(stage);
+        DizicalCCG.mountCard(stage, 'holo', {
+          id: card.dataset.id || '',
+          name: card.dataset.name || '',
+          tag: card.dataset.tag || '',
+          image: card.dataset.img || '',
+          cond: card.dataset.condText || card.dataset.cond || '',
+          story: card.dataset.desc || '',
+          /* F1: 卡背「典故·短板」(modal 右侧仍走 dataset.desc 长典故) */
+          story_short: card.dataset.storyShort || '',
+          date: card.dataset.date || '',
+          stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
+          no: card.dataset.no || '',                // F3: 空值就是空
+          card_theme: card.dataset.cardTheme || 'pearl',
+        }, { locked: locked });
 
-      /* 显示 — inline style.display 切换 (避免改 badge-ccg.css 的 .ccg-claim-overlay 默认值) */
-      overlay.style.display = 'flex';
+        /* 显示 — inline style.display 切换 (避免改 badge-ccg.css 的 .ccg-claim-overlay 默认值) */
+        overlay.style.display = 'flex';
 
-      var cr = card.getBoundingClientRect();
-      var mr = box.getBoundingClientRect();
-      var fromX = cr.left + cr.width/2  - (mr.left + mr.width/2);
-      var fromY = cr.top  + cr.height/2 - (mr.top  + mr.height/2);
+        var cr = card.getBoundingClientRect();
+        var mr = box.getBoundingClientRect();
+        var fromX = cr.left + cr.width/2  - (mr.left + mr.width/2);
+        var fromY = cr.top  + cr.height/2 - (mr.top  + mr.height/2);
 
-      gsap.set(box, { x: fromX*0.6, y: fromY*0.6, scale: 0.5, opacity: 0 });
-      gsap.set(overlay, { backgroundColor: 'rgba(0,0,0,0)' });
+        gsap.set(box, { x: fromX*0.6, y: fromY*0.6, scale: 0.5, opacity: 0 });
+        gsap.set(overlay, { backgroundColor: 'rgba(0,0,0,0)' });
 
-      var tl = gsap.timeline();
-      tl.to(overlay, { backgroundColor: 'rgba(0,0,0,0.30)', duration: 0.15, ease:'power2.out' })
-        .to(box, { x:0, y:0, scale:1, opacity:1, duration:0.22, ease:'back.out(1.5)' }, 0)
-        .from('#ach-detail-tag',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.14)
-        .from('#ach-detail-name',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.17)
-        .from('#ach-detail-cond',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
-        .from('#ach-detail-date',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.21)
-        .from('#ach-detail-story', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
-        .from('#ach-detail-hint', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
-
-      /* sprint 26091604 T4: 过渡结束放锁 (此时新 focus 卡已持有自己的 focus 锁, 冻结不中断) */
-      if (window.DizicalCCG && window.DizicalCCG.pauseFor) {
-        window.DizicalCCG.pauseFor('modal_switch', false);
+        var tl = gsap.timeline();
+        tl.to(overlay, { backgroundColor: 'rgba(0,0,0,0.30)', duration: 0.15, ease:'power2.out' })
+          .to(box, { x:0, y:0, scale:1, opacity:1, duration:0.22, ease:'back.out(1.5)' }, 0)
+          .from('#ach-detail-tag',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.14)
+          .from('#ach-detail-name',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.17)
+          .from('#ach-detail-cond',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
+          .from('#ach-detail-date',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.21)
+          .from('#ach-detail-story', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
+          .from('#ach-detail-hint', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
+      } finally {
+        /* sprint 26091604 T4: 过渡结束放锁 (此时新 focus 卡已持有自己的 focus 锁, 冻结不中断) */
+        if (window.DizicalCCG && window.DizicalCCG.pauseFor) {
+          window.DizicalCCG.pauseFor('modal_switch', false);
+        }
       }
     }
 
