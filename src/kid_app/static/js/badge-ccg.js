@@ -1,6 +1,12 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
    ── 卡面样式版本: v1.7.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
       v1.7.0-dev (2026-09-16): Oracle 典藏卡 markup / 精铸金章 / focus lerp 0.08。
+      v1.8.0-dev (2026-09-16, sprint 26091603 P0 移动端 3D 零卡顿治理):
+        ① setPaused 全局挂起 + body.is-frozen 冻结背景墙 (Modal 打开时非 focus 卡整帧短路);
+        ② 列表态剥离 #oracle-ink-bleed 分形滤镜 (markup 指向无滤镜墨组, 只有 focus 单卡带滤镜);
+        ③ 触屏列表态去 idle drift (coarse && !isFocus && !interacting → 帧内 return);
+        ④ 触摸跟手: onDown 缓存 getBoundingClientRect (不再每帧读) + focus 缓动 k 0.08→0.35/0.15;
+        ⑤ 响应式图源: wall → badges/thumbs/*.webp, focus → badges/full/*.webp, 失败回退原生 PNG。
       v1.6.0-dev (2026-09-13, 四轮):
         ① 列表卡 = demo 静止态逐图层一致 (绑 pointer / idle drift / hover tilt / 翻面全开;
            只把 .badge-grid .ccg-stage 的 --card-w 收到 min(160px,100%) 塞网格格子)
@@ -184,13 +190,38 @@
 
   var INK_SVG_HTML = "<!-- nameplate \u6bdb\u7b14\u6c34\u58a8\u6cfc\u58a8\u6bcd\u7248 (\u5ba3\u7eb8\u6e17\u58a8\u6ee4\u955c + \u98de\u767d\u4e1d\u7f15 + \u81ea\u7531\u8ff8\u6e85\u58a8\u661f) -->\n<svg class=\"oracle-ink-defs\" width=\"0\" height=\"0\" style=\"position:absolute;visibility:hidden;\" aria-hidden=\"true\" focusable=\"false\">\n  <defs>\n    <!-- \u5ba3\u7eb8\u6c34\u58a8\u8fb9\u7f18\u6e17\u5316\u5fae\u7ed2\u8d28\u611f -->\n    <filter id=\"oracle-ink-bleed\" x=\"-6%\" y=\"-6%\" width=\"112%\" height=\"112%\">\n      <feTurbulence type=\"fractalNoise\" baseFrequency=\"0.04 0.018\" numOctaves=\"3\" result=\"noise\"/>\n      <feDisplacementMap in=\"SourceGraphic\" in2=\"noise\" scale=\"3.0\" xChannelSelector=\"R\" yChannelSelector=\"G\"/>\n    </filter>\n    <linearGradient id=\"oracle-ink-flow\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\">\n      <stop offset=\"0%\" stop-color=\"#fff9f6\" stop-opacity=\"0.95\"/>\n      <stop offset=\"42%\" stop-color=\"#ffede8\" stop-opacity=\"0.90\"/>\n      <stop offset=\"68%\" stop-color=\"#fedacf\" stop-opacity=\"0.80\"/>\n      <stop offset=\"86%\" stop-color=\"#fed8ce\" stop-opacity=\"0.55\"/>\n      <stop offset=\"100%\" stop-color=\"#fed8ce\" stop-opacity=\"0.20\"/>\n    </linearGradient>\n    <g id=\"oracle-ink-splash-graphic\" filter=\"url(#oracle-ink-bleed)\" fill=\"url(#oracle-ink-flow)\">\n    <path d=\"M 0,16 C 0,6 6,0 16,0 C 130,-3 260,0 390,3 C 450,5 500,10 550,22 C 600,34 650,48 705,38 C 660,54 590,64 540,74 C 620,80 730,96 810,118 C 740,132 630,140 560,146 C 630,158 710,180 690,202 C 640,212 570,218 500,224 C 380,232 260,238 140,240 L 0,240 Z\" />\n    <path d=\"M 520,20 C 600,14 690,12 770,18 C 690,24 600,22 520,23 Z\" opacity=\"0.92\" />\n    <path d=\"M 550,34 C 640,26 740,26 820,36 C 740,42 640,36 550,36 Z\" opacity=\"0.9\" />\n    <path d=\"M 490,52 C 600,44 720,48 840,62 C 720,68 600,56 490,54 Z\" opacity=\"0.94\" />\n    <path d=\"M 530,74 C 650,68 780,76 880,94 C 780,102 650,88 530,79 Z\" opacity=\"0.96\" />\n    <path d=\"M 550,96 C 680,92 800,102 905,112 C 800,118 680,108 550,100 Z\" opacity=\"0.93\" />\n    <path d=\"M 520,118 C 640,122 760,128 870,126 C 760,134 640,128 520,122 Z\" opacity=\"0.9\" />\n    <path d=\"M 500,140 C 620,146 730,160 820,150 C 730,166 620,152 500,144 Z\" opacity=\"0.88\" />\n    <path d=\"M 510,166 C 610,178 700,194 775,180 C 700,198 610,184 510,172 Z\" opacity=\"0.85\" />\n    <path d=\"M 470,194 C 560,206 650,218 725,206 C 650,224 560,214 470,200 Z\" opacity=\"0.82\" />\n    <path d=\"M 580,14 C 670,8 760,8 830,14 C 760,19 670,16 580,16 Z\" opacity=\"0.8\" />\n    <path d=\"M 610,54 C 710,48 800,52 875,64 C 800,68 710,60 610,56 Z\" opacity=\"0.84\" />\n    <path d=\"M 630,132 C 730,138 820,140 890,134 C 820,144 730,144 630,136 Z\" opacity=\"0.82\" />\n    <ellipse cx=\"760.0\" cy=\"20.0\" rx=\"5.5\" ry=\"2.8\" transform=\"rotate(12.0 760.0 20.0)\" opacity=\"0.95\" />\n    <ellipse cx=\"805.0\" cy=\"34.0\" rx=\"5.0\" ry=\"2.5\" transform=\"rotate(10.0 805.0 34.0)\" opacity=\"0.92\" />\n    <ellipse cx=\"840.0\" cy=\"60.0\" rx=\"6.5\" ry=\"3.2\" transform=\"rotate(8.0 840.0 60.0)\" opacity=\"0.95\" />\n    <ellipse cx=\"875.0\" cy=\"92.0\" rx=\"7.5\" ry=\"3.6\" transform=\"rotate(5.0 875.0 92.0)\" opacity=\"0.95\" />\n    <ellipse cx=\"915.0\" cy=\"110.0\" rx=\"5.5\" ry=\"2.8\" transform=\"rotate(2.0 915.0 110.0)\" opacity=\"0.90\" />\n    <ellipse cx=\"865.0\" cy=\"128.0\" rx=\"6.5\" ry=\"3.2\" transform=\"rotate(-4.0 865.0 128.0)\" opacity=\"0.92\" />\n    <ellipse cx=\"825.0\" cy=\"150.0\" rx=\"5.5\" ry=\"2.8\" transform=\"rotate(-8.0 825.0 150.0)\" opacity=\"0.88\" />\n    <ellipse cx=\"780.0\" cy=\"178.0\" rx=\"4.8\" ry=\"2.5\" transform=\"rotate(-12.0 780.0 178.0)\" opacity=\"0.85\" />\n    <ellipse cx=\"735.0\" cy=\"204.0\" rx=\"4.2\" ry=\"2.2\" transform=\"rotate(-15.0 735.0 204.0)\" opacity=\"0.82\" />\n    <ellipse cx=\"777.7\" cy=\"21.5\" rx=\"1.2\" ry=\"1.0\" transform=\"rotate(12.0 777.7 21.5)\" opacity=\"0.71\" />\n    <ellipse cx=\"771.8\" cy=\"33.8\" rx=\"1.5\" ry=\"1.2\" transform=\"rotate(12.0 771.8 33.8)\" opacity=\"0.71\" />\n    <ellipse cx=\"815.2\" cy=\"36.2\" rx=\"1.2\" ry=\"1.0\" transform=\"rotate(10.0 815.2 36.2)\" opacity=\"0.69\" />\n    <ellipse cx=\"820.1\" cy=\"39.2\" rx=\"2.0\" ry=\"1.6\" transform=\"rotate(10.0 820.1 39.2)\" opacity=\"0.69\" />\n    <ellipse cx=\"860.3\" cy=\"57.9\" rx=\"1.2\" ry=\"0.9\" transform=\"rotate(8.0 860.3 57.9)\" opacity=\"0.71\" />\n    <ellipse cx=\"891.2\" cy=\"101.8\" rx=\"1.8\" ry=\"1.4\" transform=\"rotate(5.0 891.2 101.8)\" opacity=\"0.71\" />\n    <ellipse cx=\"889.7\" cy=\"98.9\" rx=\"1.5\" ry=\"1.2\" transform=\"rotate(5.0 889.7 98.9)\" opacity=\"0.71\" />\n    <ellipse cx=\"925.9\" cy=\"102.5\" rx=\"2.1\" ry=\"1.7\" transform=\"rotate(2.0 925.9 102.5)\" opacity=\"0.68\" />\n    <ellipse cx=\"933.7\" cy=\"118.2\" rx=\"1.0\" ry=\"0.8\" transform=\"rotate(2.0 933.7 118.2)\" opacity=\"0.68\" />\n    <ellipse cx=\"874.0\" cy=\"123.4\" rx=\"1.2\" ry=\"1.0\" transform=\"rotate(-4.0 874.0 123.4)\" opacity=\"0.69\" />\n    <ellipse cx=\"877.8\" cy=\"134.3\" rx=\"1.8\" ry=\"1.5\" transform=\"rotate(-4.0 877.8 134.3)\" opacity=\"0.69\" />\n    <ellipse cx=\"838.3\" cy=\"142.6\" rx=\"2.1\" ry=\"1.7\" transform=\"rotate(-8.0 838.3 142.6)\" opacity=\"0.66\" />\n    <ellipse cx=\"790.8\" cy=\"172.1\" rx=\"2.0\" ry=\"1.6\" transform=\"rotate(-12.0 790.8 172.1)\" opacity=\"0.64\" />\n    <ellipse cx=\"798.5\" cy=\"166.2\" rx=\"1.4\" ry=\"1.1\" transform=\"rotate(-12.0 798.5 166.2)\" opacity=\"0.64\" />\n    <ellipse cx=\"752.2\" cy=\"206.5\" rx=\"1.5\" ry=\"1.2\" transform=\"rotate(-15.0 752.2 206.5)\" opacity=\"0.61\" />\n    <ellipse cx=\"607.2\" cy=\"120.2\" rx=\"1.7\" ry=\"1.2\" transform=\"rotate(2.3 607.2 120.2)\" opacity=\"0.82\" />\n    <ellipse cx=\"616.4\" cy=\"119.1\" rx=\"3.2\" ry=\"1.8\" transform=\"rotate(7.9 616.4 119.1)\" opacity=\"0.83\" />\n    <ellipse cx=\"761.0\" cy=\"141.5\" rx=\"2.8\" ry=\"1.2\" transform=\"rotate(6.9 761.0 141.5)\" opacity=\"0.54\" />\n    <ellipse cx=\"700.9\" cy=\"157.1\" rx=\"4.4\" ry=\"2.8\" transform=\"rotate(8.7 700.9 157.1)\" opacity=\"0.68\" />\n    <ellipse cx=\"687.3\" cy=\"74.3\" rx=\"8.2\" ry=\"3.2\" transform=\"rotate(-11.1 687.3 74.3)\" opacity=\"0.69\" />\n    <ellipse cx=\"628.2\" cy=\"73.6\" rx=\"2.8\" ry=\"1.4\" transform=\"rotate(-10.2 628.2 73.6)\" opacity=\"0.72\" />\n    <ellipse cx=\"579.6\" cy=\"89.8\" rx=\"1.8\" ry=\"0.7\" transform=\"rotate(0.6 579.6 89.8)\" opacity=\"0.89\" />\n    <ellipse cx=\"689.4\" cy=\"111.0\" rx=\"1.7\" ry=\"1.1\" transform=\"rotate(1.6 689.4 111.0)\" opacity=\"0.62\" />\n    <ellipse cx=\"640.5\" cy=\"97.8\" rx=\"1.4\" ry=\"0.7\" transform=\"rotate(2.2 640.5 97.8)\" opacity=\"0.83\" />\n    <ellipse cx=\"790.4\" cy=\"87.6\" rx=\"5.4\" ry=\"2.7\" transform=\"rotate(0.2 790.4 87.6)\" opacity=\"0.58\" />\n    <ellipse cx=\"569.8\" cy=\"97.3\" rx=\"3.5\" ry=\"2.2\" transform=\"rotate(2.0 569.8 97.3)\" opacity=\"0.97\" />\n    <ellipse cx=\"701.4\" cy=\"93.4\" rx=\"5.1\" ry=\"2.3\" transform=\"rotate(-1.7 701.4 93.4)\" opacity=\"0.75\" />\n    <ellipse cx=\"742.7\" cy=\"156.8\" rx=\"2.2\" ry=\"1.2\" transform=\"rotate(4.4 742.7 156.8)\" opacity=\"0.59\" />\n    <ellipse cx=\"808.7\" cy=\"117.9\" rx=\"2.0\" ry=\"1.3\" transform=\"rotate(2.9 808.7 117.9)\" opacity=\"0.56\" />\n    <ellipse cx=\"682.2\" cy=\"97.9\" rx=\"1.3\" ry=\"0.9\" transform=\"rotate(-0.2 682.2 97.9)\" opacity=\"0.77\" />\n    <ellipse cx=\"704.4\" cy=\"107.1\" rx=\"1.7\" ry=\"1.2\" transform=\"rotate(5.0 704.4 107.1)\" opacity=\"0.76\" />\n    <ellipse cx=\"589.1\" cy=\"101.3\" rx=\"5.1\" ry=\"2.8\" transform=\"rotate(0.6 589.1 101.3)\" opacity=\"0.77\" />\n    <ellipse cx=\"639.9\" cy=\"161.0\" rx=\"2.7\" ry=\"1.2\" transform=\"rotate(11.1 639.9 161.0)\" opacity=\"0.66\" />\n    <ellipse cx=\"637.7\" cy=\"76.8\" rx=\"1.8\" ry=\"1.1\" transform=\"rotate(-10.1 637.7 76.8)\" opacity=\"0.66\" />\n    <ellipse cx=\"603.1\" cy=\"111.0\" rx=\"6.2\" ry=\"3.4\" transform=\"rotate(-3.9 603.1 111.0)\" opacity=\"0.75\" />\n    <ellipse cx=\"597.6\" cy=\"84.9\" rx=\"2.9\" ry=\"1.8\" transform=\"rotate(-0.0 597.6 84.9)\" opacity=\"0.79\" />\n    <ellipse cx=\"577.0\" cy=\"139.0\" rx=\"1.1\" ry=\"0.7\" transform=\"rotate(8.1 577.0 139.0)\" opacity=\"0.96\" />\n    <ellipse cx=\"831.2\" cy=\"106.9\" rx=\"4.6\" ry=\"2.4\" transform=\"rotate(-5.7 831.2 106.9)\" opacity=\"0.50\" />\n    <ellipse cx=\"564.1\" cy=\"112.5\" rx=\"8.1\" ry=\"3.4\" transform=\"rotate(-1.7 564.1 112.5)\" opacity=\"0.84\" />\n    <ellipse cx=\"569.1\" cy=\"84.4\" rx=\"8.1\" ry=\"3.4\" transform=\"rotate(-10.4 569.1 84.4)\" opacity=\"0.91\" />\n    <ellipse cx=\"813.9\" cy=\"215.6\" rx=\"1.9\" ry=\"1.4\" transform=\"rotate(19.7 813.9 215.6)\" opacity=\"0.48\" />\n    <ellipse cx=\"676.4\" cy=\"100.9\" rx=\"3.1\" ry=\"1.7\" transform=\"rotate(-1.8 676.4 100.9)\" opacity=\"0.62\" />\n    <ellipse cx=\"653.1\" cy=\"130.9\" rx=\"6.0\" ry=\"3.0\" transform=\"rotate(6.6 653.1 130.9)\" opacity=\"0.79\" />\n    <ellipse cx=\"720.4\" cy=\"116.8\" rx=\"2.1\" ry=\"1.6\" transform=\"rotate(6.8 720.4 116.8)\" opacity=\"0.72\" />\n    <ellipse cx=\"595.8\" cy=\"95.0\" rx=\"1.7\" ry=\"0.8\" transform=\"rotate(1.8 595.8 95.0)\" opacity=\"0.75\" />\n    <ellipse cx=\"748.1\" cy=\"128.9\" rx=\"1.9\" ry=\"1.0\" transform=\"rotate(3.8 748.1 128.9)\" opacity=\"0.53\" />\n    <ellipse cx=\"669.9\" cy=\"60.2\" rx=\"4.1\" ry=\"2.1\" transform=\"rotate(-10.4 669.9 60.2)\" opacity=\"0.74\" />\n    <ellipse cx=\"854.6\" cy=\"111.1\" rx=\"1.9\" ry=\"0.8\" transform=\"rotate(0.1 854.6 111.1)\" opacity=\"0.51\" />\n    <ellipse cx=\"623.5\" cy=\"85.6\" rx=\"1.8\" ry=\"1.2\" transform=\"rotate(-8.2 623.5 85.6)\" opacity=\"0.72\" />\n    <ellipse cx=\"661.7\" cy=\"81.0\" rx=\"1.4\" ry=\"0.9\" transform=\"rotate(-9.6 661.7 81.0)\" opacity=\"0.71\" />\n    <ellipse cx=\"628.9\" cy=\"89.8\" rx=\"2.8\" ry=\"1.9\" transform=\"rotate(0.1 628.9 89.8)\" opacity=\"0.86\" />\n    <ellipse cx=\"590.4\" cy=\"128.1\" rx=\"4.5\" ry=\"2.1\" transform=\"rotate(3.9 590.4 128.1)\" opacity=\"0.84\" />\n    <ellipse cx=\"571.1\" cy=\"111.6\" rx=\"3.3\" ry=\"1.5\" transform=\"rotate(4.5 571.1 111.6)\" opacity=\"0.89\" />\n    <ellipse cx=\"637.5\" cy=\"86.9\" rx=\"3.0\" ry=\"1.5\" transform=\"rotate(-2.9 637.5 86.9)\" opacity=\"0.86\" />\n    <ellipse cx=\"839.5\" cy=\"207.9\" rx=\"2.0\" ry=\"1.0\" transform=\"rotate(17.3 839.5 207.9)\" opacity=\"0.47\" />\n    <ellipse cx=\"619.3\" cy=\"130.7\" rx=\"1.2\" ry=\"0.6\" transform=\"rotate(8.9 619.3 130.7)\" opacity=\"0.89\" />\n    <ellipse cx=\"780.4\" cy=\"147.5\" rx=\"2.4\" ry=\"1.5\" transform=\"rotate(11.7 780.4 147.5)\" opacity=\"0.54\" />\n    <ellipse cx=\"650.2\" cy=\"121.8\" rx=\"4.1\" ry=\"2.0\" transform=\"rotate(-1.8 650.2 121.8)\" opacity=\"0.75\" />\n    <ellipse cx=\"695.6\" cy=\"81.4\" rx=\"5.2\" ry=\"2.6\" transform=\"rotate(-12.1 695.6 81.4)\" opacity=\"0.60\" />\n    <ellipse cx=\"635.8\" cy=\"127.2\" rx=\"4.0\" ry=\"2.3\" transform=\"rotate(3.0 635.8 127.2)\" opacity=\"0.76\" />\n    <ellipse cx=\"786.3\" cy=\"29.2\" rx=\"3.0\" ry=\"1.8\" transform=\"rotate(-12.7 786.3 29.2)\" opacity=\"0.60\" />\n    <ellipse cx=\"822.5\" cy=\"166.4\" rx=\"5.1\" ry=\"2.5\" transform=\"rotate(13.0 822.5 166.4)\" opacity=\"0.54\" />\n    <ellipse cx=\"775.2\" cy=\"172.4\" rx=\"7.9\" ry=\"3.8\" transform=\"rotate(11.2 775.2 172.4)\" opacity=\"0.59\" />\n    <ellipse cx=\"560.9\" cy=\"109.6\" rx=\"3.3\" ry=\"1.8\" transform=\"rotate(-2.6 560.9 109.6)\" opacity=\"0.89\" />\n    <ellipse cx=\"670.0\" cy=\"112.1\" rx=\"3.4\" ry=\"1.5\" transform=\"rotate(2.5 670.0 112.1)\" opacity=\"0.77\" />\n    <ellipse cx=\"614.3\" cy=\"80.2\" rx=\"2.5\" ry=\"1.2\" transform=\"rotate(-4.6 614.3 80.2)\" opacity=\"0.83\" />\n    <ellipse cx=\"607.4\" cy=\"82.8\" rx=\"2.6\" ry=\"1.2\" transform=\"rotate(-5.2 607.4 82.8)\" opacity=\"0.90\" />\n    <ellipse cx=\"597.9\" cy=\"117.8\" rx=\"3.1\" ry=\"1.2\" transform=\"rotate(3.8 597.9 117.8)\" opacity=\"0.84\" />\n    <ellipse cx=\"666.2\" cy=\"130.0\" rx=\"6.0\" ry=\"3.0\" transform=\"rotate(7.9 666.2 130.0)\" opacity=\"0.79\" />\n    </g>\n  </defs>\n</svg>";
 
+  /* sprint 26091603 P0-2: 列表墙只要「静态矢量水墨」, 不要 feTurbulence(fractalNoise) +
+     feDisplacementMap 的分形滤镜 —— 该滤镜会让 WebKit 在列表态把整层回落 CPU Software
+     Rasterization (掉帧元凶). 做法: 墨组本体 (#oracle-ink-splash-graphic) 摘掉 filter 属性,
+     另建一个只有 1 行的包装组 (#oracle-ink-splash-graphic-bleed) 承载动态滤镜, 只给 focus 单卡用.
+     为什么不用 CSS 摘: filter 挂在「被引用的那个分组」上, CSS filter 只作用在 <use> 自己身上,
+     摘不掉分组属性 —— markup 才是承重点 (CSS 里另有显式 none 兜底). */
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var XLINK_NS = "http://www.w3.org/1999/xlink";
+  function splitInkBleed() {
+    if (typeof document === "undefined") return;
+    var g = document.getElementById("oracle-ink-splash-graphic");
+    if (!g || g.getAttribute("data-ink-split") === "1") return;
+    var bleed = document.createElementNS(SVG_NS, "g");
+    bleed.setAttribute("id", "oracle-ink-splash-graphic-bleed");
+    bleed.setAttribute("filter", "url(#oracle-ink-bleed)");
+    var use = document.createElementNS(SVG_NS, "use");
+    use.setAttribute("href", "#oracle-ink-splash-graphic");
+    use.setAttributeNS(XLINK_NS, "xlink:href", "#oracle-ink-splash-graphic");
+    bleed.appendChild(use);
+    g.removeAttribute("filter");
+    g.setAttribute("data-ink-split", "1");
+    if (g.parentNode) g.parentNode.appendChild(bleed);
+  }
   function ensureInkSvg() {
     if (typeof document === "undefined") return;
-    if (document.getElementById("oracle-ink-splash-graphic")) return;
-    var wrap = document.createElement("div");
-    wrap.innerHTML = INK_SVG_HTML;
-    var svg = wrap.firstElementChild;
-    if (svg) document.body.insertBefore(svg, document.body.firstChild);
+    if (!document.getElementById("oracle-ink-splash-graphic")) {
+      var wrap = document.createElement("div");
+      wrap.innerHTML = INK_SVG_HTML;
+      var svg = wrap.firstElementChild;
+      if (svg) document.body.insertBefore(svg, document.body.firstChild);
+    }
+    splitInkBleed();
   }
 
   function artToneFromTag(tag) {
@@ -252,6 +283,23 @@
      调 DizicalCCG.setIdleSkip(2) 跳到每 2 帧 paint 一次. hover/交互期间强制 1 (不跳). */
   var idleSkip = 1;
   var currentClaimBadge = null;
+  /* sprint 26091603 P0-1: 全局挂起 (Modal 打开 → 冻结背景卡墙).
+     用「原因标记集合」而不是裸 boolean: 领取弹窗 reason + 详情 modal 的 focus 卡 reason
+     可能同时挂着, 任一路释放都不该提前解冻 (提前解冻 = blur / 3D 重绘风暴中途复发). */
+  var isPaused = false;
+  var pauseReasons = {};
+  function refreshFrozen() {
+    isPaused = Object.keys(pauseReasons).length > 0;
+    if (typeof document === "undefined" || !document.body) return;
+    if (isPaused) document.body.classList.add("is-frozen");
+    else document.body.classList.remove("is-frozen");
+  }
+  function pauseFor(reason, on) {
+    if (on) pauseReasons[reason] = 1;
+    else delete pauseReasons[reason];
+    refreshFrozen();
+  }
+  function setPaused(p) { pauseFor("external", !!p); }  // 对外 API (DizicalCCG.setPaused)
   /* F6 视口观察者: 不在视口的卡 tick 时跳过 paint. null = SSR/旧浏览器降级 (全跑). */
   var visObserver = null;
   var visVisible = new Set();  // 已 mount 卡 id (在视口里)
@@ -354,8 +402,28 @@
   /* 画面内层: 方案二多一层 Z 轴悬浮主体, 方案一主体贴在箔层之上.
      dad 2026-09-13 l1: 箔层已整体搬到卡面级 (见 frontMarkup), 这里只出主体 ——
      画面窗不再拥有自己的镭射底 (= dad 数的第二个圆角矩形外框)。 */
-  function artInner(scheme, d) {
-    var img = '<img alt="" width="512" height="512" decoding="sync" fetchpriority="high" src="' + d.image + '">';
+  /* sprint 26091603 P0-5: 响应式图源 —— 列表墙只要 320px 缩略图, 聚焦单卡才吃 1024px 全图.
+     只改写 /static/badges/<name>.png 这一种来源 (已是 webp / 外链 / 别的目录一律原样返回).
+     转码产物由 P1 管线 (scripts/generate_badge_webp.py) 生成; 文件还没生成时 <img> 会 error,
+     bindReady 里一次性回退原生 PNG —— 所以这里可以乐观地先要 webp. */
+  function resolveCardImage(src, mode) {
+    if (!src) return src;
+    var m = String(src).match(/^\/static\/badges\/([^\/]+)\.png$/i);
+    if (!m) return src;
+    return (mode === "wall")
+      ? "/static/badges/thumbs/" + m[1] + ".webp"
+      : "/static/badges/full/" + m[1] + ".webp";
+  }
+
+  /* 图源 + 回退原图一起出; 只有真换了源才带 data-fallback (否则 error 时会自指). */
+  function imgTag(src, orig, attrs) {
+    var fb = (src && orig && src !== orig) ? ' data-fallback="' + orig + '"' : "";
+    return '<img alt="" ' + attrs + ' src="' + src + '"' + fb + '>';
+  }
+
+  function artInner(scheme, d, mode) {
+    var img = imgTag(resolveCardImage(d.image, mode), d.image,
+      'width="512" height="512" decoding="sync" fetchpriority="high"');
     return scheme === "px"
       ? '<div class="ccg-layer ccg-layer-subject">' + img + '</div>'
       : '<div class="ccg-holo-art">' + img + '</div>';
@@ -367,10 +435,14 @@
          · .ccg-foil-stack       = 背景镭射 (底衬/彩虹流光/星点/防伪纹) → z1, 在主体之下
          · .ccg-foil-stack.ccg-foil-over = 覆在主体之上的扫光 (聚光灯/主光/镭射) → z6
        主体 (z5) 夹在两组之间 ⇒ 与旧版同一条视觉顺序, 但镭射铺满整卡, 不再有第二层框。 */
-  function frontMarkup(scheme, d) {
+  function frontMarkup(scheme, d, mode) {
     var cat = (d.tag || "主题") + "成就";
     var catAbbr = categoryAbbr(d.tag);
     var catLabel = d.tag || "典藏";
+    /* sprint 26091603 P0-2 / P0-5: 列表墙 (wall) 用无滤镜静态墨组 + 缩略图;
+       focus 单卡才挂动态水墨滤镜 (#oracle-ink-splash-graphic-bleed) 与 1024px 全图。 */
+    var inkHref = (mode === "focus") ? "#oracle-ink-splash-graphic-bleed" : "#oracle-ink-splash-graphic";
+    var artSrc = resolveCardImage(d.image, mode);
     return (
       '<div class="oracle-face oracle-face-front">' +
         '<div class="oracle-card">' +
@@ -385,11 +457,11 @@
             '</div>' +
             '<div class="oracle-frame">' +
               '<div class="oracle-art">' +
-                '<img alt="" width="512" height="512" loading="lazy" decoding="async" src="' + d.image + '">' +
+                imgTag(artSrc, d.image, 'width="512" height="512" loading="lazy" decoding="async"') +
                 '<div class="oracle-sheen"></div>' +
                 '<div class="oracle-nameplate-wrap">' +
                   '<div class="oracle-nameplate">' +
-                    '<svg class="oracle-ink-svg" viewBox="0 0 1000 240" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true"><use href="#oracle-ink-splash-graphic"></use></svg>' +
+                    '<svg class="oracle-ink-svg" viewBox="0 0 1000 240" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true"><use href="' + inkHref + '"></use></svg>' +
                     '<span class="oracle-cat">' + cat + '</span>' +
                     '<span class="oracle-name">' + d.name + '</span>' +
                   '</div>' +
@@ -416,7 +488,7 @@
       '<div class="ccg-shadow"></div>' +
       '<div class="ccg-rotator">' +
         '<div class="ccg-card-flipper oracle-flipper">' +
-          frontMarkup(scheme, d) +
+          frontMarkup(scheme, d, mode) +
           backMarkup(d, mode) +
         '</div>' +
       '</div>'
@@ -432,6 +504,15 @@
       if (left <= 0) stage.classList.add("is-ready");
     }
     imgs.forEach(function (img) {
+      /* sprint 26091603 P0-5: webp 缺失 (P1 产物还没生成) / 加载失败 → 一次性回退原生 PNG.
+         回退只做一次 (回退时立刻摘掉 data-fallback), 避免 404 → 换 src → 再 404 的死循环. */
+      var fb = img.getAttribute("data-fallback");
+      if (fb) {
+        img.addEventListener("error", function () {
+          img.removeAttribute("data-fallback");
+          img.setAttribute("src", fb);
+        }, { once: true });
+      }
       if (img.complete) done();
       else {
         img.addEventListener("load", done, { once: true });
@@ -609,6 +690,8 @@
     var resetTween = null;
     var flipper = stage.querySelector(".ccg-card-flipper");
     var artGeo = measureArtBox(stage);
+    /* sprint 26091603 P0-4: 按下期间缓存的 stage 矩形 (onDown 写入, onUp/lostpointercapture/resize 清) */
+    var cachedRect = null;
 
     function paint() { applyVars(stage, state, artGeo); }
 
@@ -621,6 +704,10 @@
     var ccgId = ++lastCcgId;
     stage._ccgId = ccgId;
     stage._idlePhase = Math.random();
+    /* sprint 26091603 P0-1: focus 卡 (modal 大卡) 一挂载就冻结背景墙.
+       模板里的详情 modal (achievements/badges 的 openModal) 就是 mount 一张 focus 卡,
+       在 JS 侧收紧这一条, 比去 3 个模板里散着接 setPaused 更不容易漏. destroy 时按同 key 释放. */
+    if (isFocus) pauseFor("focus:" + ccgId, true);
     if (visObserver) {
       visObserver.observe(stage);
       visVisible.add(ccgId);  // 默认在视口里 (IntersectionObserver 异步纠正)
@@ -632,7 +719,8 @@
     }
 
     function setFromPoint(clientX, clientY) {
-      var r = stage.getBoundingClientRect();
+      /* 按下期间复用 onDown 缓存的 rect (见 P0-4 注释); 未按下 (鼠标 hover) 仍量实时值 */
+      var r = cachedRect || stage.getBoundingClientRect();
       var x = clamp((clientX - r.left) / r.width, 0, 1);
       var y = clamp((clientY - r.top) / r.height, 0, 1);
       var nx = clamp((x - 0.5) * 2, -1, 1);
@@ -736,6 +824,11 @@
       startX = ev.clientX;
       startY = ev.clientY;
       pointerId = ev.pointerId;
+      /* sprint 26091603 P0-4: 按下时量一次并缓存 —— pointermove 期间直接复用, 不再每帧
+         getBoundingClientRect(). paint() 写 CSS var 之后再读 rect 会强制同步布局,
+         触屏 60fps 拖动下就是 Layout Thrashing (掉帧 + 触感发飘).
+         stage 自身不做 transform (倾斜/抬起都在 .ccg-rotator 子元素上), 按住期间这个 rect 稳定. */
+      cachedRect = stage.getBoundingClientRect();
       killReset();
       stage.classList.add("is-dragging");
       try { stage.setPointerCapture(ev.pointerId); } catch (err) {}
@@ -766,6 +859,7 @@
       if (pointerId != null && ev.pointerId !== pointerId) return;
       var wasTap = moved < 6;
       pointerId = null;
+      cachedRect = null;
       try { stage.releasePointerCapture(ev.pointerId); } catch (err) {}
       if (wasTap && !reduce && canFlip) flip();
       springHome();
@@ -782,9 +876,14 @@
     stage.addEventListener("pointercancel", onUp);
     stage.addEventListener("lostpointercapture", function () {
       pointerId = null;
+      cachedRect = null;
       springHome();
     });
     if (!coarse) stage.addEventListener("pointerleave", onLeave);
+
+    /* sprint 26091603 P0-4: 视口尺寸变了 (横竖屏切换) → 缓存失效; destroy 时摘掉监听 */
+    function onViewportResize() { cachedRect = null; }
+    if (typeof window !== "undefined") window.addEventListener("resize", onViewportResize);
 
     /* 卡背故事展开交互 (dad 2026-09-14 需求 2.1 & 2.2 & Brief E)
        仅在 focus (modal) 态且文字真实溢出 (scrollHeight > clientHeight) 时出现展开按钮；
@@ -833,6 +932,13 @@
       _idleSkipFrozen: cardIdleSkip > 0,    // setIdleSkip(n) 跳过已固化的卡
       interacting: function () { return interacting; },
       tick: function (t) {
+        /* sprint 26091603 P0-1: 挂起态 (Modal 打开) 下非 focus 卡整帧短路 ——
+           背景墙 0 计算 / 0 CSS 变量写入, WebKit 不再对 18-44 张 3D 卡实时重绘 + blur 重采样 */
+        if (isPaused && !isFocus) return;
+        /* sprint 26091603 P0-3: 触屏 (coarse) 列表态去 idle drift ——
+           卡墙安静如精致印刷品, 杜绝 18 张卡同时跑 sin/cos; 只有进 Modal 聚焦 (isFocus)
+           或手指正按着 (interacting) 才给 3D 把玩 */
+        if (coarse && !isFocus && !interacting) return;
         if (isFocus && !reduce) {
           if (!interacting) {
             var phF = stage._idlePhase || 0;
@@ -848,7 +954,9 @@
             aim.lift = 0;
             aim.fromCenter = Math.hypot(aim.nx, aim.ny);
           }
-          var k = 0.08;
+          /* sprint 26091603 P0-4: 缓动响应提速 —— k=0.08 在触屏上像 500ms 泥潭,
+             触屏取 0.35 (几乎跟手), 鼠标/桌面保留 0.15 */
+          var k = coarse ? 0.35 : 0.15;
           state.rx += (aim.rx - state.rx) * k;
           state.ry += (aim.ry - state.ry) * k;
           state.nx += (aim.nx - state.nx) * k;
@@ -893,6 +1001,9 @@
         stage.removeEventListener("pointerup", onUp);
         stage.removeEventListener("pointercancel", onUp);
         if (!coarse) stage.removeEventListener("pointerleave", onLeave);
+        if (typeof window !== "undefined") window.removeEventListener("resize", onViewportResize);
+        if (isFocus) pauseFor("focus:" + ccgId, false);
+        cachedRect = null;
         stage._ccgId = null;
       }
     };
@@ -1133,6 +1244,9 @@
     ov.removeAttribute("hidden");
     ov.classList.add("is-open");
     document.body.classList.add("ccg-modal-open");
+    /* sprint 26091603 P0-1: 弹窗打开 → 冻结背景墙 (focus 卡自己还持一份 reason,
+       两份都在才解冻, 避免中途闪一下解冻) */
+    pauseFor("claim", true);
     document.body.style.overflow = "hidden";
     if (hasGsap) {
       var box = ov.querySelector(".ccg-claim-dialog");
@@ -1152,6 +1266,7 @@
     document.body.classList.remove("ccg-modal-open");
     document.body.style.overflow = "";
     unmountAll(document.getElementById("ccg-claim-stage"));
+    pauseFor("claim", false);
   }
 
   function checkUnclaimed(scheme) {
@@ -1237,6 +1352,10 @@
       perCardFrozen: cards.filter(function (c) { return c._idleSkipFrozen; }).length,
       effectiveSkipCounts: counts,
       forceCapable: true,
+      /* sprint 26091603 P0-1: 挂起态自查 (调试 / 验收用) */
+      paused: isPaused,
+      frozenReasons: Object.keys(pauseReasons),
+      frozenBodyClass: !!(typeof document !== "undefined" && document.body && document.body.classList.contains("is-frozen")),
     };
   }
 
@@ -1273,6 +1392,7 @@
     setMaxTilt: setMaxTilt,
     setHoloGain: setHoloGain,
     setIdleSkip: setIdleSkip,    // F6: 性能护栏 (默认 1, iPad 掉帧调 2)
+    setPaused: setPaused,        // sprint 26091603 P0-1: Modal 打开/关闭时冻结背景卡墙
     getPerfStats: getPerfStats,  // F6: 调试用
     resetAllFlips: resetAllFlips, // dad 2026-09-14 需求 1
     closeStoryTray: closeStoryTray, // dad 2026-09-14 需求 2.7
