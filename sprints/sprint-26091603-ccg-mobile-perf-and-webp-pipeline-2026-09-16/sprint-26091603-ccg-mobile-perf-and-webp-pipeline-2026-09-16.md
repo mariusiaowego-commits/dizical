@@ -4,9 +4,9 @@ type: sprint
 version: 1.0.0
 start_date: 2026-09-16
 end_date: 2026-09-16
-status: 进行中
+status: 已完成
 priority: 高
-summary: "iPad mini 移动端 3D 动效零卡顿治理与 WebP 缩略图分流管线 (P0+P1)"
+summary: "iPad mini 移动端 3D 动效零卡顿治理与 WebP 缩略图分流管线 (P0+P1) (PR #334 MERGED, CloudRun Deploy #129 已上线)"
 tags: [sprint, dizical, perf, ccg, webp]
 ---
 
@@ -32,22 +32,23 @@ Dad 拍板方案 A：**P0（前端渲染性能止血）+ P1（WebP 缩略图分�
 ## 3. 核心任务清单
 
 ### P0 · 架构级零卡顿治理 (`ds-flash`)
-- [ ] **Modal 冻结机制**：弹窗打开时设置 `DizicalCCG.setPaused(true)`，非 focus 卡片跳过 `tick()`，背景网格添加 `.is-frozen`（`transform: none`，停用一切后台重绘与混合渲染）。
-- [ ] **列表态剥离重滤镜**：`.ccg-stage[data-mode="wall"]` 彻底移除 SVG `#oracle-ink-bleed`，静态水墨渐变兜底；动态分形滤镜仅在 Modal 聚焦单卡时启用。
-- [ ] **触屏端去自动晃动**：`@media (pointer: coarse)` 或 `coarse` 状态下，列表态禁用 idle drift，卡片保持精致印刷品质感。
-- [ ] **触摸跟手直接响应**：缓存 `getBoundingClientRect()` 避免 `pointermove` 中的 layout thrashing；跟手缓动大幅提速（延迟 < 20ms）。
-- [ ] **前端响应式图源接入**：列表优先加载 `thumbs/` 缩略图，Modal 渐进无缝换为 `full/` 高清图。
+- [x] **Modal 冻结机制**：弹窗打开时设置 `DizicalCCG.setPaused(true)`，非 focus 卡片跳过 `tick()`，背景网格添加 `.is-frozen`（`transform: none`，停用一切后台重绘与混合渲染）。
+- [x] **列表态剥离重滤镜**：`.ccg-stage[data-mode="wall"]` 彻底移除 SVG `#oracle-ink-bleed`，静态水墨渐变兜底；动态分形滤镜仅在 Modal 聚焦单卡时启用。
+- [x] **触屏端去自动晃动**：`@media (pointer: coarse)` 或 `coarse` 状态下，列表态禁用 idle drift，卡片保持精致印刷品质感。
+- [x] **触摸跟手直接响应**：缓存 `getBoundingClientRect()` 避免 `pointermove` 中的 layout thrashing；跟手缓动大幅提速（延迟 < 20ms）。
+- [x] **前端响应式图源接入**：列表优先加载 `thumbs/` 缩略图，Modal 渐进无缝换为 `full/` 高清图。
 
 ### P1 · 资产现代化转码与缩略图分流 (`minimax-m3`)
-- [ ] **转码自动化脚本**：编写 `scripts/generate_badge_webp.py`，遍历现存 44 张 PNG 生成：
+- [x] **转码自动化脚本**：编写 `scripts/generate_badge_webp.py`，遍历现存 44 张 PNG 生成：
   - `src/kid_app/static/badges/thumbs/*.webp`（320×320 @2x，透明 WebP，15–30KB）
   - `src/kid_app/static/badges/full/*.webp`（1024×1024，透明 WebP，80–120KB）
-- [ ] **无缝兼容 Fallback**：原 PNG 保持原位不动，作为老旧浏览器兜底。
-- [ ] **构建产物防膨胀**：校验构建包体积，确保 `.cloudrun-deploy` 在合理范围。
+- [x] **无缝兼容 Fallback**：原 PNG 保持原位不动，作为老旧浏览器兜底。
+- [x] **构建产物防膨胀**：校验构建包体积，确保 `.cloudrun-deploy` 在合理范围。
 
 ### Audit & 把关 (`agy` + `grok`)
-- [ ] **Grok 终局 Code Review**：审查 `git diff`，查验 WebKit / Safari 极端边缘情况。
-- [ ] **AGY 多模态资产核验**：肉眼抽检 WebP 透明通道纯净度（无黑边/无白边）。
-- [ ] **全量回归测试**：768 pytest 0 回归。
-- [ ] **本地 8765 验证**：无头浏览器截帧与性能对比。
-- [ ] **Review Packet 呈报 Dad**：拍板后部署生产。
+- [x] **Grok 终局 Code Review**：审查 `git diff`，查验 WebKit / Safari 极端边缘情况。
+- [x] **AGY 多模态资产核验**：肉眼抽检 WebP 透明通道纯净度（无黑边/无白边）。
+- [x] **全量回归测试**：768 pytest 0 回归。
+- [x] **本地 8765 验证**：无头浏览器截帧与性能对比。
+- [x] **Review Packet 呈报 Dad**：拍板后部署生产。
+
