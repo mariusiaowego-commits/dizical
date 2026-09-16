@@ -392,3 +392,27 @@ body[data-theme="sakura"] .ccg-foil-over .ccg-foil-laser,
 body.theme-sakura .ccg-foil-over .ccg-foil-laser {
   opacity: calc((0.02 + var(--lit, 0) * 0.05) * var(--holo-gain, 1) * var(--theme-foil-op, 1));
 }
+
+
+/* ── Oracle 画窗 7 分类氛围底 (demo_ccg_v3 合流) ───────────────── */
+[data-art-tone="突破"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #2a114f 0%, #461f70 45%, #183e2b 100%);
+}
+[data-art-tone="巅峰"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #0e3a75 0%, #1f6496 50%, #85581a 100%);
+}
+[data-art-tone="执着"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #131c38 0%, #233060 50%, #432266 100%);
+}
+[data-art-tone="晋级"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #064e3b 0%, #0f766e 50%, #115e59 100%);
+}
+[data-art-tone="神秘"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #160724 0%, #280b3d 50%, #0d1b30 100%);
+}
+[data-art-tone="段位"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #7f1d1d 0%, #991b1b 50%, #581c87 100%);
+}
+[data-art-tone="主题"] .oracle-art {
+  --oracle-art-tone: linear-gradient(160deg, #854d0e 0%, #a16207 50%, #3e1e04 100%);
+}

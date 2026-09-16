@@ -183,10 +183,9 @@
        卡面可交互 (tilt/holo/翻面); locked 走 CSS 灰化. -->
   <div id="modal-overlay" class="ccg-claim-overlay" onclick="if(event.target===this)closeModal()" style="display:none;">
     <div id="modal-box" class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="bd-detail-name">
-      <button type="button" class="ccg-claim-close" aria-label="关闭" onclick="closeModal()">×</button>
       <div class="ccg-claim-layout">
         <div class="ccg-claim-stage" id="bd-detail-stage"></div>
-        <div class="ccg-claim-copy">
+        <div class="ccg-claim-copy" hidden>
           <div class="ccg-claim-tag" id="bd-detail-tag"></div>
           <h2 class="ccg-claim-name" id="bd-detail-name"></h2>
           <p class="ccg-claim-cond" id="bd-detail-cond"></p>
