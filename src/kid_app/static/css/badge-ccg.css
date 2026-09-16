@@ -1642,6 +1642,7 @@ body.ccg-modal-open .ccg-demo-actions {
     calc(var(--nx, 0) * -12px) calc(var(--ny, 0) * -12px + 28px) 56px rgba(58, 42, 10, 0.10);
   overflow: hidden;
   isolation: isolate;
+  contain: layout style;
   container-type: inline-size;
   container-name: oraclecard;
 }
@@ -1701,12 +1702,12 @@ body.ccg-modal-open .ccg-demo-actions {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: center 12%;
+  object-position: center 26%;
   padding: 6px 8px 0 8px;
   box-sizing: border-box;
   display: block;
   filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5));
-  transform: translateY(-8px);
+  transform: translateY(2px);
 }
 .oracle-sheen {
   position: absolute;
@@ -1779,6 +1780,8 @@ body.ccg-modal-open .ccg-demo-actions {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: flex-start !important;
+  text-align: left !important;
   box-sizing: border-box;
   color: #2C3E50;
 }
@@ -1793,6 +1796,8 @@ body.ccg-modal-open .ccg-demo-actions {
 .oracle-nameplate .oracle-name {
   position: relative;
   z-index: 2;
+  text-align: left !important;
+  align-self: flex-start !important;
 }
 .oracle-nameplate::after {
   content: "";

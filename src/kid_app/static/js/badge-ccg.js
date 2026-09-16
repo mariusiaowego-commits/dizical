@@ -385,7 +385,7 @@
             '</div>' +
             '<div class="oracle-frame">' +
               '<div class="oracle-art">' +
-                '<img alt="" width="512" height="512" decoding="sync" fetchpriority="high" src="' + d.image + '">' +
+                '<img alt="" width="512" height="512" loading="lazy" decoding="async" src="' + d.image + '">' +
                 '<div class="oracle-sheen"></div>' +
                 '<div class="oracle-nameplate-wrap">' +
                   '<div class="oracle-nameplate">' +
@@ -596,6 +596,9 @@
        全局 DizicalCCG.setIdleSkip(n) 后续不再覆盖. */
     var cardIdleSkip = (typeof o.idleSkip === 'number' && o.idleSkip >= 1)
       ? Math.floor(o.idleSkip) : 0;
+    /* 列表墙默认 idleSkip=4（约 15fps 闲置漂移）；hover/interacting 走 setFromPoint 满帧；
+       focus/modal 不传此值 → 0 → 跟全局 1，60fps lerp + 翻转。 */
+    if (!cardIdleSkip && mode === "wall") cardIdleSkip = 4;
     var state = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var aim = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var interacting = false;
