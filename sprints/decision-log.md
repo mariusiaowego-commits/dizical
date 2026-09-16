@@ -18,3 +18,4 @@
 | 2026-09-11 | 26091101 | 状态模型解耦为 achieved='Y' 与 claimed_at IS NOT NULL | 解决女儿无获得感痛点，拦截强弹窗配合金色粒子礼花入库动效 |
 | 2026-09-11 | 26091101 | 箔层 .ccg-foil-stack isolation；原画 translateZ(4px/5px) 不加 isolation | color-dodge 会吃掉插画；子层 backface-hidden 会在微倾时闪没 |
 | 2026-09-11 | 26091101 | 3D 卡面 clip-path 代替 overflow:hidden | overflow+preserve-3d 会压平 translateZ，原画无法稳定浮在箔上 |
+| 2026-09-16 | 26091601 | 典藏卡全面重构：1px 细金掐丝边 + 矢量水墨泼墨名牌 + 7系分类底板与专属印章 + 3D刚性整卡翻转 | dad 多轮定稿收敛，彻底解决粗重金框喧宾夺主与名牌多边形生硬切割；纯 CSS 刚性整卡 180° 翻转保证象牙白卡背与四角回纹完整展示 |
