@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oracle PR #330 生产卡面排演与 3D 把玩（免登录直验）</title>
+  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091602">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091602">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="/static/js/badge-ccg.js?v=26091602"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #faf6ec;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Songti SC", serif;
+      padding: 24px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .header {
+      max-width: 1480px;
+      margin: 0 auto 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid rgba(120, 53, 15, 0.15);
+      padding-bottom: 12px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+      color: #3d2a0a;
+      font-weight: 700;
+    }
+    .hint {
+      font-size: 13px;
+      color: #92400e;
+      background: rgba(245, 158, 11, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+    #wall {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 18px;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+    .cell {
+      /* sprint 26091602: 去卡片外层白色框 + 阴影, 视觉重心回归卡面本身 */
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .cell:hover {
+      transform: translateY(-4px);
+      box-shadow: none;
+    }
+    .cell .ccg-stage {
+      --card-w: 180px;
+      margin: 0 auto;
+    }
+    .cap {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #78350f;
+      margin-top: 10px;
+      letter-spacing: 1px;
+    }
+    .subcap {
+      text-align: center;
+      font-size: 11px;
+      color: #a16207;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>✦ Oracle 典藏卡体系实装验证（PR #330 / main ca5363e）</h1>
+    <div class="hint">💡 提示：点击任意卡片即可呼出沉浸式 3D Modal 舞台把玩，在 Modal 内轻点卡面可整卡 3D 刚性翻转</div>
+  </div>
+
+  <div id="wall"></div>
+
+  <script>
+    var tags = ["突破", "巅峰", "执着", "晋级", "神秘", "段位", "主题"];
+    var names = ["批改小帮手", "展翅高飞", "夜猫子", "晋级之路", "神秘礼遇", "段位勋章", "主题典藏"];
+    var imgs = [
+      "/static/badges/assign_pal_v2.png",
+      "/static/badges/eagle_spread_wings.png",
+      "/static/badges/night_owl.png",
+      "/static/badges/grade_3-u.png",
+      "/static/badges/lucky_61_2026.png",
+      "/static/badges/medal_badge.png",
+      "/static/badges/zizhudiao_a_v1.png"
+    ];
+    var conds = [
+      "协助完成课后批改",
+      "连续专注练习达成",
+      "深夜坚持温故知新",
+      "考级顺利通过晋级",
+      "达成隐藏神秘成就",
+      "专业段位考核通过",
+      "主题曲目完美吹奏"
+    ];
+    var stories = [
+      "细心批改，温故知新。一笔一划帮同学改对题，小笛手也成了大家的批改小帮手。在竹笛学堂的每一个课后时光，红笔与乐谱之间交织着认真的专注与汗水。不论是调性的微小偏差，还是指法与气息的细微不足，都在一次次的耐心指导与纠错中迎刃而解。",
+      "展翅如鹰，志在苍穹。每一次吹奏都是向更高艺术殿堂的冲刺，音符如羽翼般丰满，带领笛声穿云破雾，飞向遥远的天际。",
+      "月光作伴，夜色未央。当整座城市归于宁静，窗前悠扬的笛声依旧回荡，那是对完美乐章最深沉的执着与热爱。",
+      "循序渐进，步步登高。每一个音级的跨越都凝结着无数次反复练习的刻苦，汗水浇灌出最优雅动听的考级华章。",
+      "机缘巧合，灵感偶得。在不经意的日常吹拂中，触动了隐藏在乐谱深处的神秘共鸣，获得这枚独一无二的纪念勋章。",
+      "匠心独具，千锤百炼。在严苛的段位评审面前，以稳定沉着的气息与精妙绝伦的技巧，征服了在场的每一位倾听者。",
+      "经典传承，曲韵悠长。紫竹青青，水乡悠悠，将传统名曲的江南风韵展现得淋漓尽致，成为众人交口称赞的保留佳作。"
+    ];
+
+    tags.forEach(function (tag, i) {
+      var cell = document.createElement("div");
+      cell.className = "cell";
+
+      var stage = document.createElement("div");
+      cell.appendChild(stage);
+
+      var cap = document.createElement("div");
+      cap.className = "cap";
+      cap.textContent = tag + " · " + names[i];
+      cell.appendChild(cap);
+
+      var subcap = document.createElement("div");
+      subcap.className = "subcap";
+      subcap.textContent = "点击进入 3D 舞台把玩";
+      cell.appendChild(subcap);
+
+      document.getElementById("wall").appendChild(cell);
+
+      var cardData = {
+        id: "audit-" + (i + 1),
+        name: names[i],
+        tag: tag,
+        image: imgs[i],
+        cond: conds[i],
+        story: stories[i],
+        date: "2026年9月16日",
+        stars: 3,
+        no: String(i + 1).padStart(3, "0")
+      };
+
+      DizicalCCG.mountCard(stage, "holo", cardData, { mode: "wall", canFlip: false, idleSkip: 8 });
+
+      cell.onclick = function () {
+        DizicalCCG.openClaim(cardData, "holo");
+      };
+    });
+
+    /* ── 第 8 张: 未解锁（Locked）测试卡 ──────────────────────────────
+       验证需求 6 的两个面:
+         · 列表态  : 左上角小锁图标 + 灰度滤镜生效, 且无外层白框 (.cell 已改 transparent)
+         · Modal 内: 小锁图标完全消失 (badge-ccg.css:2259-2265 focus 态 ::after → display:none)
+       标签「神秘」+ 名字「传说之音」, 与上面 7 张金卡区分. */
+    (function () {
+      var tag = "神秘";
+      var name = "传说之音";
+
+      var cell = document.createElement("div");
+      cell.className = "cell";
+
+      var stage = document.createElement("div");
+      cell.appendChild(stage);
+
+      var cap = document.createElement("div");
+      cap.className = "cap";
+      cap.textContent = tag + " · " + name;
+      cell.appendChild(cap);
+
+      var subcap = document.createElement("div");
+      subcap.className = "subcap";
+      subcap.textContent = "🔒 未解锁 · 点击进 Modal 验证小锁消失";
+      cell.appendChild(subcap);
+
+      document.getElementById("wall").appendChild(cell);
+
+      var cardData = {
+        id: "audit-locked",
+        name: name,
+        tag: tag,
+        image: "/static/badges/medal_badge.png",
+        cond: "尚未达成 · 用于验证未解锁态视觉",
+        story: "传说之音，静待时机。当坚持跨过某道门槛，这段旋律自会在笛声中浮现。此卡用于验证「未解锁」态在卡墙与 Modal 中的不同表现。",
+        date: "2026年9月16日",
+        stars: 0,
+        no: "008"
+      };
+
+      DizicalCCG.mountCard(stage, "holo", cardData, { mode: "wall", locked: true, canFlip: false });
+
+      cell.onclick = function () {
+        DizicalCCG.openClaim(cardData, "holo", { locked: true });
+      };
+    })();
+  </script>
+</body>
+</html>

@@ -1749,6 +1749,8 @@ body.ccg-modal-open .ccg-demo-actions {
   z-index: 6;
 }
 .oracle-pin svg {
+  width: 16px;
+  height: 16px;
   opacity: 1;
   filter: drop-shadow(0 0.5px 0 rgba(255, 251, 235, 0.65));
 }
@@ -2095,6 +2097,171 @@ body.ccg-modal-open .ccg-demo-actions {
   font-weight: 700;
   letter-spacing: 0.12em;
   color: #6b5a34;
+}
+
+/* ── 列表态 compact（wall / 卡宽 ≤240px）：名牌·胸针·页脚按比例收。
+     focus/modal 走上方默认值，下面用 [data-mode="focus"] 再钉死一遍。 ── */
+.ccg-stage[data-mode="wall"] .oracle-art {
+  bottom: 24px;
+}
+.ccg-stage[data-mode="wall"] .oracle-nameplate {
+  min-height: 34px;
+  padding: 1cqw 2.5cqw;
+}
+.ccg-stage[data-mode="wall"] .oracle-nameplate .oracle-cat {
+  font-size: clamp(8px, 2.8cqw, 9px);
+  margin-bottom: 1px;
+}
+.ccg-stage[data-mode="wall"] .oracle-nameplate .oracle-name {
+  font-size: clamp(11px, 4.2cqw, 13px);
+}
+.ccg-stage[data-mode="wall"] .oracle-slogan {
+  padding: 1cqw 2.5cqw;
+  font-size: clamp(7.5px, 2.6cqw, 8.5px);
+}
+.ccg-stage[data-mode="wall"] .oracle-pin {
+  top: 7px;
+  left: 7px;
+  width: 16px;
+  height: 16px;
+}
+.ccg-stage[data-mode="wall"] .oracle-pin svg {
+  width: 10px;
+  height: 10px;
+}
+.ccg-stage[data-mode="wall"] .oracle-footer {
+  left: 8px;
+  right: 8px;
+  bottom: 4px;
+  height: 20px;
+  font-size: clamp(8px, 2.8cqw, 9px);
+}
+.ccg-stage[data-mode="wall"] .oracle-footer-l,
+.ccg-stage[data-mode="wall"] .oracle-footer-r {
+  gap: 4px;
+  font-size: clamp(8px, 2.8cqw, 9px);
+}
+.ccg-stage[data-mode="wall"] .oracle-avatar {
+  width: 13px;
+  height: 13px;
+  font-size: 8px;
+}
+.ccg-stage[data-mode="wall"] .oracle-seal {
+  width: 16px;
+  height: 16px;
+}
+
+@container oraclecard (max-width: 240px) {
+  .oracle-art { bottom: 24px; }
+  .oracle-nameplate {
+    min-height: 34px;
+    padding: 1cqw 2.5cqw;
+  }
+  .oracle-nameplate .oracle-cat {
+    font-size: clamp(8px, 2.8cqw, 9px);
+    margin-bottom: 1px;
+  }
+  .oracle-nameplate .oracle-name {
+    font-size: clamp(11px, 4.2cqw, 13px);
+  }
+  .oracle-slogan {
+    padding: 1cqw 2.5cqw;
+    font-size: clamp(7.5px, 2.6cqw, 8.5px);
+  }
+  .oracle-pin {
+    top: 7px;
+    left: 7px;
+    width: 16px;
+    height: 16px;
+  }
+  .oracle-pin svg {
+    width: 10px;
+    height: 10px;
+  }
+  .oracle-footer {
+    left: 8px;
+    right: 8px;
+    bottom: 4px;
+    height: 20px;
+    font-size: clamp(8px, 2.8cqw, 9px);
+  }
+  .oracle-footer-l,
+  .oracle-footer-r {
+    gap: 4px;
+    font-size: clamp(8px, 2.8cqw, 9px);
+  }
+  .oracle-avatar {
+    width: 13px;
+    height: 13px;
+    font-size: 8px;
+  }
+  .oracle-seal {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Modal / focus：钉死大卡尺寸，不受 container query 或列表 compact 影响 */
+.ccg-stage[data-mode="focus"] .oracle-art {
+  bottom: 38px;
+}
+.ccg-stage[data-mode="focus"] .oracle-nameplate {
+  min-height: 52px;
+  padding: 1.8cqw 3.4cqw;
+}
+.ccg-stage[data-mode="focus"] .oracle-nameplate .oracle-cat {
+  font-size: clamp(8.5px, 3.2cqw, 11px);
+  margin-bottom: 2px;
+}
+.ccg-stage[data-mode="focus"] .oracle-nameplate .oracle-name {
+  font-size: clamp(13px, 5.6cqw, 22px);
+}
+.ccg-stage[data-mode="focus"] .oracle-slogan {
+  padding: 1.7cqw 3.4cqw;
+  font-size: clamp(8px, 3.1cqw, 11px);
+}
+.ccg-stage[data-mode="focus"] .oracle-pin {
+  top: clamp(10px, 3.8cqw, 14px);
+  left: clamp(10px, 3.8cqw, 14px);
+  width: clamp(23px, 8cqw, 27px);
+  height: clamp(23px, 8cqw, 27px);
+}
+.ccg-stage[data-mode="focus"] .oracle-pin svg {
+  width: 16px;
+  height: 16px;
+}
+.ccg-stage[data-mode="focus"] .oracle-footer {
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 28px;
+  font-size: clamp(9px, 3.2cqw, 11.5px);
+}
+.ccg-stage[data-mode="focus"] .oracle-footer-l,
+.ccg-stage[data-mode="focus"] .oracle-footer-r {
+  gap: 6px;
+  font-size: inherit;
+}
+.ccg-stage[data-mode="focus"] .oracle-avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+.ccg-stage[data-mode="focus"] .oracle-seal {
+  width: 26px;
+  height: 26px;
+}
+.ccg-stage[data-mode="focus"] .oracle-back-seal .oracle-seal {
+  width: 36px;
+  height: 36px;
+}
+
+/* 详情 Modal 把玩时不展示列表锁标，避免挡住卡背典故 */
+.ccg-stage[data-mode="focus"].is-locked::after,
+.ccg-claim-stage .ccg-stage.is-locked::after,
+#ach-detail-stage .ccg-stage.is-locked::after,
+#bd-detail-stage .ccg-stage.is-locked::after {
+  display: none !important;
 }
 
 /* 沉浸式 3D 舞台：无关闭钮、文案在卡背，点空白退出；领取按钮仍露出 */

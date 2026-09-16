@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>呦呦成就殿堂 - 竹笛助手</title>
   <!-- sprint 26091302 B6: CCG 卡面样式 + 主题 token + JS (v1.6.0-dev) -->
-  <link rel="stylesheet" href="/static/css/badge-ccg.css">
-  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css">
+  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091602">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091602">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="/static/js/badge-ccg.js"></script>
+  <script src="/static/js/badge-ccg.js?v=26091602"></script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0 0 80px; background: #FFF8F0; }
@@ -62,36 +62,27 @@
       .badge-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; }
     }
 
-    /* 大卡片 */
+    /* 大卡片 — sprint 26091602: 去外层白底框/边框/内边距, 视觉重心回归 CCG 卡面本身 */
     .badge-card {
       display: flex; flex-direction: column; align-items: center;
-      padding: 18px 12px 14px;
+      padding: 0;
       border-radius: 18px;
-      background: #fffdf8;
-      border: 2px solid #f0e8d0;
+      background: transparent;
+      border: none;
       cursor: pointer;
       position: relative;
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform 0.15s;
     }
     .badge-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(180,140,20,0.22);
+      box-shadow: none;
     }
     .badge-card:active { transform: scale(0.97); }
 
-    .badge-card.unlocked::before {
-      content: ''; position: absolute; top: -10px; left: -10px;
-      width: 52px; height: 52px;
-      background: radial-gradient(circle, rgba(255,215,0,0.25) 0%, transparent 70%);
-      pointer-events: none;
-    }
+    .badge-card.unlocked::before { display: none; }
 
-    .badge-card.locked {
-      background: #f9f8f6;
-      border-color: #e8e4de;
-      filter: saturate(0.3) brightness(0.95);
-    }
-    .badge-card.locked:hover { filter: saturate(0.5) brightness(0.9); }
+    .badge-card.locked { background: transparent; border: none; filter: none; }
+    .badge-card.locked:hover { filter: none; }
 
     .b-img {
       width: 100px; height: 100px; object-fit: contain;

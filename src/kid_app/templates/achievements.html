@@ -7,12 +7,12 @@
   <title>我的成就 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <!-- sprint 26091302 B6: CCG 卡面样式 + 主题 token (sprint v1.6.0-dev) -->
-  <link rel="stylesheet" href="/static/css/badge-ccg.css">
-  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css">
+  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091602">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091602">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <!-- sprint 26091302 B6: CCG 卡面 JS (DizicalCCG.mountCard 带 opts 第 4 参数) -->
-  <script src="/static/js/badge-ccg.js"></script>
+  <script src="/static/js/badge-ccg.js?v=26091602"></script>
   <style>
     body { padding-bottom: 80px; }
     .nav {
@@ -225,40 +225,27 @@
       transform: translateY(-2px);
     }
 
-    /* 统一卡片 */
-    .b-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: 20px 14px 16px;
+    /* 统一卡片 — sprint 26091602: 去外层白底框 (排除盲盒 #card-daily-blindbox .b-card) */
+    .b-card:not(#card-daily-blindbox .b-card) {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      padding: 0;
       border-radius: 16px;
       cursor: pointer;
       position: relative;
-      overflow: hidden;
-      transition: box-shadow 0.2s, transform 0.2s;
+      overflow: visible;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      transition: transform 0.2s;
     }
-    .b-card.unlocked {
-      background: #fffdf8;
+    .b-card.unlocked:not(#card-daily-blindbox .b-card) {
+      background: transparent;
       border: none;
       box-shadow: none;
     }
-    .b-card.unlocked::before {
-      content: '';
-      position: absolute;
-      top: -10px; left: -10px;
-      width: 70px; height: 70px;
-      background: radial-gradient(circle, rgba(255,215,0,0.22) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .b-card.unlocked:hover {
-      box-shadow: none;
-      transform: translateY(-2px);
-    }
-    .b-card.locked {
-      background: #fffdf8;
-      border: none;
-    }
+    .b-card.unlocked:not(#card-daily-blindbox .b-card)::before { display: none; }
+    .b-card.unlocked:not(#card-daily-blindbox .b-card):hover { box-shadow: none; transform: translateY(-2px); }
+    .b-card.locked:not(#card-daily-blindbox .b-card) { background: transparent; border: none; }
     /* 锁卡视觉在 sprint 26091302 B6 F2 改为: .ccg-stage.is-locked CSS filter 处理 (badge-ccg.css),
        不再依赖 .b-img / .b-name 的灰度规则 — 死代码清理.
        真正生效的「锁卡」提示是 CCG 卡右下角的小锁 icon (badge-ccg.css .is-locked::after). */
@@ -789,6 +776,13 @@
 
         var tabCount = document.getElementById(cat + '-tab-count');
         if (tabCount) tabCount.textContent = unlocked.length;
+
+        /* sprint 26091602: 保留原总数统计 (上面 uCount/tabCount 已写入完整数量),
+           但 DOM 中只展示最近获得的 3 张卡片 (unlocked 顺序为服务端最新在前).
+           注意: 必须在计数写入之后 remove, 否则数量会变成截断后的 3. */
+        if (unlocked.length > 3) {
+          unlocked.slice(3).forEach(c => c.remove());
+        }
 
         /* swap 完 unlocked 后, 再 swap 新搬到 locked-grid 的卡片
            (因为移动节点是 querySelectorAll 重新扫的, 第一次扫时这些卡还在 unlocked-grid) */
