@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>呦呦成就殿堂 - 竹笛助手</title>
   <!-- sprint 26091302 B6: CCG 卡面样式 + 主题 token + JS (v1.6.0-dev) -->
-  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091604">
-  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091604">
+  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091605">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091605">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="/static/js/badge-ccg.js?v=26091604"></script>
+  <script src="/static/js/badge-ccg.js?v=26091605"></script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0 0 80px; background: #FFF8F0; }
@@ -335,6 +335,11 @@ function openModal(card) {
 
   /* 关弹窗时残留的 CCG 容器先清掉 (避免打开两次时旧 stage 还残留)
      同样适用于「同一 session 内换卡」场景 */
+  /* sprint 26091604 T4: 换卡过渡期持锁 (同 badge-ccg.js 的 modal_switch, 带 5s 看门狗;
+     与 achievements.html 详情弹窗是同一处缝隙, 两个页面保持一致) */
+  if (window.DizicalCCG && window.DizicalCCG.pauseFor) {
+    window.DizicalCCG.pauseFor('modal_switch', true);
+  }
   _unmountClaimStage();
 
   /* 写右侧字段 (照 _badge_claim_modal.html 结构) */
@@ -397,7 +402,12 @@ function openModal(card) {
     .from('#bd-detail-cond',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.19)
     .from('#bd-detail-date',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.21)
     .from('#bd-detail-story', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.23)
-    .from('#bd-detail-hint',  { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
+    .from('#bd-detail-hint', { opacity:0, y:4, duration:0.12, ease:'power2.out' }, 0.25);
+
+  /* sprint 26091604 T4: 过渡结束放锁 (此时新 focus 卡已持有自己的 focus 锁, 冻结不中断) */
+  if (window.DizicalCCG && window.DizicalCCG.pauseFor) {
+    window.DizicalCCG.pauseFor('modal_switch', false);
+  }
 }
 
 function closeModal() {

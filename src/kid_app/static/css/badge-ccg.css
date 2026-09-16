@@ -1,5 +1,7 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.7.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿 + B3 定档实装)
+   ── 卡面样式版本: v1.9.0-dev (sprint 26091604 CCG 生命周期与 WebKit 边角治理)
+      v1.9.0-dev (2026-09-16, sprint 26091604): .is-frozen 补齐 --nx / --ny 归零 ——
+        冻结时投影偏移变量也一起压平, 卡面 + 投影完全静止 (原只压旋转/升沉)。
       v1.7.0-dev (2026-09-16, Oracle 典藏卡生产合流): 象牙白卡纸 + 弱金边 + 水墨标牌 + 通栏 slogan + 精铸金章 + 整卡翻转。
       v1.8.0-dev (2026-09-16, sprint 26091603 P0 移动端 3D 零卡顿治理):
         ① body.is-frozen 冻结背景卡墙 (Modal 打开期间非 focus 卡 transform/动画/光照全归零);
@@ -2301,6 +2303,10 @@ body.ccg-modal-open .ccg-demo-actions {
   --ry: 0deg !important;
   --lift: 0px !important;
   --lit: 0 !important;
+  /* sprint 26091604 T5: 投影偏移变量一起归零 —— --nx/--ny 驱动 .ccg-shadow / 各层视差,
+     只压旋转不压它, 冻结瞬间投影还留着最后一次鼠标位置的偏移 (卡面平了, 影子还歪着)。 */
+  --nx: 0 !important;
+  --ny: 0 !important;
 }
 .is-frozen .ccg-stage:not([data-mode="focus"]) * {
   animation: none !important;
