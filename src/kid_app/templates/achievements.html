@@ -579,10 +579,9 @@
            class 名保留 .ccg-claim-* 不动 (样式复用 badge-ccg.css). -->
     <div id="modal-overlay" class="ccg-claim-overlay" onclick="if(event.target===this)closeModal()" style="display:none;">
       <div id="modal-box" class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="ach-detail-name">
-        <button type="button" class="ccg-claim-close" aria-label="关闭" onclick="closeModal()">×</button>
         <div class="ccg-claim-layout">
           <div class="ccg-claim-stage" id="ach-detail-stage"></div>
-          <div class="ccg-claim-copy">
+          <div class="ccg-claim-copy" hidden>
             <div class="ccg-claim-tag" id="ach-detail-tag"></div>
             <h2 class="ccg-claim-name" id="ach-detail-name"></h2>
             <p class="ccg-claim-cond" id="ach-detail-cond"></p>
