@@ -1,5 +1,6 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.6.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
+   ── 卡面样式版本: v1.7.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿)
+      v1.7.0-dev (2026-09-16): Oracle 典藏卡 markup / 精铸金章 / focus lerp 0.08。
       v1.6.0-dev (2026-09-13, 四轮):
         ① 列表卡 = demo 静止态逐图层一致 (绑 pointer / idle drift / hover tilt / 翻面全开;
            只把 .badge-grid .ccg-stage 的 --card-w 收到 min(160px,100%) 塞网格格子)
@@ -38,6 +39,176 @@
     hall: "呦呦成就殿堂",
     card_theme: "pearl"
   };
+
+
+  /* ── Oracle 典藏卡生产合流 (2026-09-16) ── */
+  var ORACLE_SEALS = {
+  "突破": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path d="M30.74 26.98L20.70 16.93L14.42 19.45L15.05 25.72L20.70 40.79L30.74 39.53Z"/>
+    <path d="M33.26 26.98L43.30 16.93L49.58 19.45L48.95 25.72L43.30 40.79L33.26 39.53Z"/>
+    <path d="M32.00 11.94L38.17 24.29L34.78 24.29L34.78 45.89L38.17 48.97L32.00 53.60L25.83 48.97L29.22 45.89L29.22 24.29L25.83 24.29Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M30.74 26.98L20.70 16.93L14.42 19.45L15.05 25.72L20.70 40.79L30.74 39.53Z"/>
+    <path d="M33.26 26.98L43.30 16.93L49.58 19.45L48.95 25.72L43.30 40.79L33.26 39.53Z"/>
+    <path d="M32.00 11.94L38.17 24.29L34.78 24.29L34.78 45.89L38.17 48.97L32.00 53.60L25.83 48.97L29.22 45.89L29.22 24.29L25.83 24.29Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M30.75 28.25L23.25 20.76L19.51 22.00L20.76 27.00L25.75 35.75L30.75 34.50Z"/>
+    <path d="M33.25 28.25L40.75 20.76L44.49 22.00L43.24 27.00L38.25 35.75L33.25 34.50Z"/>
+    <path d="M32.00 18.00L35.11 25.78L33.24 25.78L33.24 41.33L32.00 43.67L30.76 41.33L30.76 25.78L28.89 25.78Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M30.75 28.25L23.25 20.76L19.51 22.00L20.76 27.00L25.75 35.75L30.75 34.50Z"/>
+    <path d="M33.25 28.25L40.75 20.76L44.49 22.00L43.24 27.00L38.25 35.75L33.25 34.50Z"/>
+    <path d="M32.00 18.00L35.11 25.78L33.24 25.78L33.24 41.33L32.00 43.67L30.76 41.33L30.76 25.78L28.89 25.78Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`,
+  "巅峰": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path d="M16.73 47.27L16.73 38.36L18.64 28.18L21.18 38.36L24.36 23.09L27.55 38.36L32.00 16.73L36.45 38.36L39.64 23.09L42.82 38.36L45.36 28.18L47.27 38.36L47.27 47.27Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M16.73 47.27L16.73 38.36L18.64 28.18L21.18 38.36L24.36 23.09L27.55 38.36L32.00 16.73L36.45 38.36L39.64 23.09L42.82 38.36L45.36 28.18L47.27 38.36L47.27 47.27Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M21.63 43.52L21.63 38.91L25.09 27.39L27.97 38.91L32.00 22.78L36.03 38.91L38.91 27.39L42.37 38.91L42.37 43.52Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M21.63 43.52L21.63 38.91L25.09 27.39L27.97 38.91L32.00 22.78L36.03 38.91L38.91 27.39L42.37 38.91L42.37 43.52Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`,
+  "执着": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path d="M32.00 10.40L36.98 17.05L40.31 18.71L43.63 25.35L46.95 28.68L48.62 35.32L45.29 41.97L40.31 46.95L32.00 51.94L23.69 46.95L18.71 41.97L15.38 35.32L17.05 28.68L20.37 25.35L23.69 18.71L27.02 17.05Z"/>
+    <path d="M27.24 46.29L36.76 46.29L38.35 52.64L25.65 52.64Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32.00 10.40L36.98 17.05L40.31 18.71L43.63 25.35L46.95 28.68L48.62 35.32L45.29 41.97L40.31 46.95L32.00 51.94L23.69 46.95L18.71 41.97L15.38 35.32L17.05 28.68L20.37 25.35L23.69 18.71L27.02 17.05Z"/>
+    <path d="M27.24 46.29L36.76 46.29L38.35 52.64L25.65 52.64Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M32.00 18.50L36.22 25.25L38.75 28.62L39.59 35.38L36.22 42.12L32.00 45.50L27.78 42.12L24.41 35.38L25.25 28.62L27.78 25.25Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M32.00 18.50L36.22 25.25L38.75 28.62L39.59 35.38L36.22 42.12L32.00 45.50L27.78 42.12L24.41 35.38L25.25 28.62L27.78 25.25Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`,
+  "晋级": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path d="M25.90 17.35L38.10 17.35L38.10 25.90L44.21 25.90L44.21 35.66L47.87 35.66L47.87 46.65L16.13 46.65L16.13 35.66L19.79 35.66L19.79 25.90L25.90 25.90Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M25.90 17.35L38.10 17.35L38.10 25.90L44.21 25.90L44.21 35.66L47.87 35.66L47.87 46.65L16.13 46.65L16.13 35.66L19.79 35.66L19.79 25.90L25.90 25.90Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M26.92 20.58L37.08 20.58L37.08 26.92L42.15 26.92L42.15 34.54L37.08 34.54L26.92 34.54L26.92 26.92Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M26.92 20.58L37.08 20.58L37.08 26.92L42.15 26.92L42.15 34.54L37.08 34.54L26.92 34.54L26.92 26.92Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`,
+  "神秘": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path fill-rule="evenodd" d="M32.00 10.80L50.53 42.90L13.47 42.90ZM32.00 53.60L13.47 21.50L50.53 21.50Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path fill-rule="evenodd" d="M32.00 10.80L50.53 42.90L13.47 42.90ZM32.00 53.60L13.47 21.50L50.53 21.50Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M32.00 21.50L34.30 28.02L41.09 26.75L36.60 32.00L41.09 37.25L34.30 35.98L32.00 42.50L29.70 35.98L22.91 37.25L27.40 32.00L22.91 26.75L29.70 28.02Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M32.00 21.50L34.30 28.02L41.09 26.75L36.60 32.00L41.09 37.25L34.30 35.98L32.00 42.50L29.70 35.98L22.91 37.25L27.40 32.00L22.91 26.75L29.70 28.02Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`,
+  "段位": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path d="M20.69 51.23L51.23 20.69A5.60 5.60 0 0 1 43.31 12.77L12.77 43.31A5.60 5.60 0 0 1 20.69 51.23Z"/>
+    <path d="M12.77 20.69L43.31 51.23A5.60 5.60 0 0 1 51.23 43.31L20.69 12.77A5.60 5.60 0 0 1 12.77 20.69Z"/>
+    <path d="M32.00 23.80L40.20 32.00L32.00 40.20L23.80 32.00Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M20.69 51.23L51.23 20.69A5.60 5.60 0 0 1 43.31 12.77L12.77 43.31A5.60 5.60 0 0 1 20.69 51.23Z"/>
+    <path d="M12.77 20.69L43.31 51.23A5.60 5.60 0 0 1 51.23 43.31L20.69 12.77A5.60 5.60 0 0 1 12.77 20.69Z"/>
+    <path d="M32.00 23.80L40.20 32.00L32.00 40.20L23.80 32.00Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M21.97 43.23L43.12 23.71A2.00 2.00 0 0 1 40.41 20.77L19.25 40.29A2.00 2.00 0 0 1 21.97 43.23Z"/>
+    <path d="M19.25 23.71L40.41 43.23A2.00 2.00 0 0 1 43.12 40.29L21.97 20.77A2.00 2.00 0 0 1 19.25 23.71Z"/>
+    <path d="M32.00 26.50L37.50 32.00L32.00 37.50L26.50 32.00Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M21.97 43.23L43.12 23.71A2.00 2.00 0 0 1 40.41 20.77L19.25 40.29A2.00 2.00 0 0 1 21.97 43.23Z"/>
+    <path d="M19.25 23.71L40.41 43.23A2.00 2.00 0 0 1 43.12 40.29L21.97 20.77A2.00 2.00 0 0 1 19.25 23.71Z"/>
+    <path d="M32.00 26.50L37.50 32.00L32.00 37.50L26.50 32.00Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`,
+  "主题": `<svg viewBox="0 0 64 64" shape-rendering="geometricPrecision" aria-hidden="true">
+  <circle cx="32" cy="32" r="26.6" fill="none" stroke="#6b3f0a" stroke-width="1.4" opacity=".55"/>
+  <circle cx="32" cy="32" r="25.2" fill="none" stroke="#fef08a" stroke-width=".9" opacity=".5"/>
+  <g fill="#3d2a0a" opacity=".5" transform="translate(1 1.1)">
+    <path d="M32.00 10.20L37.05 25.04L52.73 25.26L40.18 34.66L44.81 49.64L32.00 40.60L19.19 49.64L23.82 34.66L11.27 25.26L26.95 25.04Z"/>
+  </g>
+  <g fill="#5c3410" stroke="#fde68a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32.00 10.20L37.05 25.04L52.73 25.26L40.18 34.66L44.81 49.64L32.00 40.60L19.19 49.64L23.82 34.66L11.27 25.26L26.95 25.04Z"/>
+  </g>
+  <g fill="#ca8a04" transform="translate(-0.55 -0.8)">
+    <path d="M31.20 18.50L34.14 26.95L43.09 27.14L35.96 32.55L38.55 41.11L31.20 36.00L23.85 41.11L26.44 32.55L19.31 27.14L28.26 26.95Z"/>
+  </g>
+  <g fill="#fef08a" opacity=".55">
+    <path d="M31.20 18.50L34.14 26.95L43.09 27.14L35.96 32.55L38.55 41.11L31.20 36.00L23.85 41.11L26.44 32.55L19.31 27.14L28.26 26.95Z"/>
+  </g>
+  <circle cx="28.6" cy="26.2" r="1.7" fill="#fffbeb" opacity=".9"/>
+</svg>`
+};
+
+  var INK_SVG_HTML = "<!-- nameplate \u6bdb\u7b14\u6c34\u58a8\u6cfc\u58a8\u6bcd\u7248 (\u5ba3\u7eb8\u6e17\u58a8\u6ee4\u955c + \u98de\u767d\u4e1d\u7f15 + \u81ea\u7531\u8ff8\u6e85\u58a8\u661f) -->\n<svg class=\"oracle-ink-defs\" width=\"0\" height=\"0\" style=\"position:absolute;visibility:hidden;\" aria-hidden=\"true\" focusable=\"false\">\n  <defs>\n    <!-- \u5ba3\u7eb8\u6c34\u58a8\u8fb9\u7f18\u6e17\u5316\u5fae\u7ed2\u8d28\u611f -->\n    <filter id=\"oracle-ink-bleed\" x=\"-6%\" y=\"-6%\" width=\"112%\" height=\"112%\">\n      <feTurbulence type=\"fractalNoise\" baseFrequency=\"0.04 0.018\" numOctaves=\"3\" result=\"noise\"/>\n      <feDisplacementMap in=\"SourceGraphic\" in2=\"noise\" scale=\"3.0\" xChannelSelector=\"R\" yChannelSelector=\"G\"/>\n    </filter>\n    <linearGradient id=\"oracle-ink-flow\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\">\n      <stop offset=\"0%\" stop-color=\"#fff9f6\" stop-opacity=\"0.95\"/>\n      <stop offset=\"42%\" stop-color=\"#ffede8\" stop-opacity=\"0.90\"/>\n      <stop offset=\"68%\" stop-color=\"#fedacf\" stop-opacity=\"0.80\"/>\n      <stop offset=\"86%\" stop-color=\"#fed8ce\" stop-opacity=\"0.55\"/>\n      <stop offset=\"100%\" stop-color=\"#fed8ce\" stop-opacity=\"0.20\"/>\n    </linearGradient>\n    <g id=\"oracle-ink-splash-graphic\" filter=\"url(#oracle-ink-bleed)\" fill=\"url(#oracle-ink-flow)\">\n    <path d=\"M 0,16 C 0,6 6,0 16,0 C 130,-3 260,0 390,3 C 450,5 500,10 550,22 C 600,34 650,48 705,38 C 660,54 590,64 540,74 C 620,80 730,96 810,118 C 740,132 630,140 560,146 C 630,158 710,180 690,202 C 640,212 570,218 500,224 C 380,232 260,238 140,240 L 0,240 Z\" />\n    <path d=\"M 520,20 C 600,14 690,12 770,18 C 690,24 600,22 520,23 Z\" opacity=\"0.92\" />\n    <path d=\"M 550,34 C 640,26 740,26 820,36 C 740,42 640,36 550,36 Z\" opacity=\"0.9\" />\n    <path d=\"M 490,52 C 600,44 720,48 840,62 C 720,68 600,56 490,54 Z\" opacity=\"0.94\" />\n    <path d=\"M 530,74 C 650,68 780,76 880,94 C 780,102 650,88 530,79 Z\" opacity=\"0.96\" />\n    <path d=\"M 550,96 C 680,92 800,102 905,112 C 800,118 680,108 550,100 Z\" opacity=\"0.93\" />\n    <path d=\"M 520,118 C 640,122 760,128 870,126 C 760,134 640,128 520,122 Z\" opacity=\"0.9\" />\n    <path d=\"M 500,140 C 620,146 730,160 820,150 C 730,166 620,152 500,144 Z\" opacity=\"0.88\" />\n    <path d=\"M 510,166 C 610,178 700,194 775,180 C 700,198 610,184 510,172 Z\" opacity=\"0.85\" />\n    <path d=\"M 470,194 C 560,206 650,218 725,206 C 650,224 560,214 470,200 Z\" opacity=\"0.82\" />\n    <path d=\"M 580,14 C 670,8 760,8 830,14 C 760,19 670,16 580,16 Z\" opacity=\"0.8\" />\n    <path d=\"M 610,54 C 710,48 800,52 875,64 C 800,68 710,60 610,56 Z\" opacity=\"0.84\" />\n    <path d=\"M 630,132 C 730,138 820,140 890,134 C 820,144 730,144 630,136 Z\" opacity=\"0.82\" />\n    <ellipse cx=\"760.0\" cy=\"20.0\" rx=\"5.5\" ry=\"2.8\" transform=\"rotate(12.0 760.0 20.0)\" opacity=\"0.95\" />\n    <ellipse cx=\"805.0\" cy=\"34.0\" rx=\"5.0\" ry=\"2.5\" transform=\"rotate(10.0 805.0 34.0)\" opacity=\"0.92\" />\n    <ellipse cx=\"840.0\" cy=\"60.0\" rx=\"6.5\" ry=\"3.2\" transform=\"rotate(8.0 840.0 60.0)\" opacity=\"0.95\" />\n    <ellipse cx=\"875.0\" cy=\"92.0\" rx=\"7.5\" ry=\"3.6\" transform=\"rotate(5.0 875.0 92.0)\" opacity=\"0.95\" />\n    <ellipse cx=\"915.0\" cy=\"110.0\" rx=\"5.5\" ry=\"2.8\" transform=\"rotate(2.0 915.0 110.0)\" opacity=\"0.90\" />\n    <ellipse cx=\"865.0\" cy=\"128.0\" rx=\"6.5\" ry=\"3.2\" transform=\"rotate(-4.0 865.0 128.0)\" opacity=\"0.92\" />\n    <ellipse cx=\"825.0\" cy=\"150.0\" rx=\"5.5\" ry=\"2.8\" transform=\"rotate(-8.0 825.0 150.0)\" opacity=\"0.88\" />\n    <ellipse cx=\"780.0\" cy=\"178.0\" rx=\"4.8\" ry=\"2.5\" transform=\"rotate(-12.0 780.0 178.0)\" opacity=\"0.85\" />\n    <ellipse cx=\"735.0\" cy=\"204.0\" rx=\"4.2\" ry=\"2.2\" transform=\"rotate(-15.0 735.0 204.0)\" opacity=\"0.82\" />\n    <ellipse cx=\"777.7\" cy=\"21.5\" rx=\"1.2\" ry=\"1.0\" transform=\"rotate(12.0 777.7 21.5)\" opacity=\"0.71\" />\n    <ellipse cx=\"771.8\" cy=\"33.8\" rx=\"1.5\" ry=\"1.2\" transform=\"rotate(12.0 771.8 33.8)\" opacity=\"0.71\" />\n    <ellipse cx=\"815.2\" cy=\"36.2\" rx=\"1.2\" ry=\"1.0\" transform=\"rotate(10.0 815.2 36.2)\" opacity=\"0.69\" />\n    <ellipse cx=\"820.1\" cy=\"39.2\" rx=\"2.0\" ry=\"1.6\" transform=\"rotate(10.0 820.1 39.2)\" opacity=\"0.69\" />\n    <ellipse cx=\"860.3\" cy=\"57.9\" rx=\"1.2\" ry=\"0.9\" transform=\"rotate(8.0 860.3 57.9)\" opacity=\"0.71\" />\n    <ellipse cx=\"891.2\" cy=\"101.8\" rx=\"1.8\" ry=\"1.4\" transform=\"rotate(5.0 891.2 101.8)\" opacity=\"0.71\" />\n    <ellipse cx=\"889.7\" cy=\"98.9\" rx=\"1.5\" ry=\"1.2\" transform=\"rotate(5.0 889.7 98.9)\" opacity=\"0.71\" />\n    <ellipse cx=\"925.9\" cy=\"102.5\" rx=\"2.1\" ry=\"1.7\" transform=\"rotate(2.0 925.9 102.5)\" opacity=\"0.68\" />\n    <ellipse cx=\"933.7\" cy=\"118.2\" rx=\"1.0\" ry=\"0.8\" transform=\"rotate(2.0 933.7 118.2)\" opacity=\"0.68\" />\n    <ellipse cx=\"874.0\" cy=\"123.4\" rx=\"1.2\" ry=\"1.0\" transform=\"rotate(-4.0 874.0 123.4)\" opacity=\"0.69\" />\n    <ellipse cx=\"877.8\" cy=\"134.3\" rx=\"1.8\" ry=\"1.5\" transform=\"rotate(-4.0 877.8 134.3)\" opacity=\"0.69\" />\n    <ellipse cx=\"838.3\" cy=\"142.6\" rx=\"2.1\" ry=\"1.7\" transform=\"rotate(-8.0 838.3 142.6)\" opacity=\"0.66\" />\n    <ellipse cx=\"790.8\" cy=\"172.1\" rx=\"2.0\" ry=\"1.6\" transform=\"rotate(-12.0 790.8 172.1)\" opacity=\"0.64\" />\n    <ellipse cx=\"798.5\" cy=\"166.2\" rx=\"1.4\" ry=\"1.1\" transform=\"rotate(-12.0 798.5 166.2)\" opacity=\"0.64\" />\n    <ellipse cx=\"752.2\" cy=\"206.5\" rx=\"1.5\" ry=\"1.2\" transform=\"rotate(-15.0 752.2 206.5)\" opacity=\"0.61\" />\n    <ellipse cx=\"607.2\" cy=\"120.2\" rx=\"1.7\" ry=\"1.2\" transform=\"rotate(2.3 607.2 120.2)\" opacity=\"0.82\" />\n    <ellipse cx=\"616.4\" cy=\"119.1\" rx=\"3.2\" ry=\"1.8\" transform=\"rotate(7.9 616.4 119.1)\" opacity=\"0.83\" />\n    <ellipse cx=\"761.0\" cy=\"141.5\" rx=\"2.8\" ry=\"1.2\" transform=\"rotate(6.9 761.0 141.5)\" opacity=\"0.54\" />\n    <ellipse cx=\"700.9\" cy=\"157.1\" rx=\"4.4\" ry=\"2.8\" transform=\"rotate(8.7 700.9 157.1)\" opacity=\"0.68\" />\n    <ellipse cx=\"687.3\" cy=\"74.3\" rx=\"8.2\" ry=\"3.2\" transform=\"rotate(-11.1 687.3 74.3)\" opacity=\"0.69\" />\n    <ellipse cx=\"628.2\" cy=\"73.6\" rx=\"2.8\" ry=\"1.4\" transform=\"rotate(-10.2 628.2 73.6)\" opacity=\"0.72\" />\n    <ellipse cx=\"579.6\" cy=\"89.8\" rx=\"1.8\" ry=\"0.7\" transform=\"rotate(0.6 579.6 89.8)\" opacity=\"0.89\" />\n    <ellipse cx=\"689.4\" cy=\"111.0\" rx=\"1.7\" ry=\"1.1\" transform=\"rotate(1.6 689.4 111.0)\" opacity=\"0.62\" />\n    <ellipse cx=\"640.5\" cy=\"97.8\" rx=\"1.4\" ry=\"0.7\" transform=\"rotate(2.2 640.5 97.8)\" opacity=\"0.83\" />\n    <ellipse cx=\"790.4\" cy=\"87.6\" rx=\"5.4\" ry=\"2.7\" transform=\"rotate(0.2 790.4 87.6)\" opacity=\"0.58\" />\n    <ellipse cx=\"569.8\" cy=\"97.3\" rx=\"3.5\" ry=\"2.2\" transform=\"rotate(2.0 569.8 97.3)\" opacity=\"0.97\" />\n    <ellipse cx=\"701.4\" cy=\"93.4\" rx=\"5.1\" ry=\"2.3\" transform=\"rotate(-1.7 701.4 93.4)\" opacity=\"0.75\" />\n    <ellipse cx=\"742.7\" cy=\"156.8\" rx=\"2.2\" ry=\"1.2\" transform=\"rotate(4.4 742.7 156.8)\" opacity=\"0.59\" />\n    <ellipse cx=\"808.7\" cy=\"117.9\" rx=\"2.0\" ry=\"1.3\" transform=\"rotate(2.9 808.7 117.9)\" opacity=\"0.56\" />\n    <ellipse cx=\"682.2\" cy=\"97.9\" rx=\"1.3\" ry=\"0.9\" transform=\"rotate(-0.2 682.2 97.9)\" opacity=\"0.77\" />\n    <ellipse cx=\"704.4\" cy=\"107.1\" rx=\"1.7\" ry=\"1.2\" transform=\"rotate(5.0 704.4 107.1)\" opacity=\"0.76\" />\n    <ellipse cx=\"589.1\" cy=\"101.3\" rx=\"5.1\" ry=\"2.8\" transform=\"rotate(0.6 589.1 101.3)\" opacity=\"0.77\" />\n    <ellipse cx=\"639.9\" cy=\"161.0\" rx=\"2.7\" ry=\"1.2\" transform=\"rotate(11.1 639.9 161.0)\" opacity=\"0.66\" />\n    <ellipse cx=\"637.7\" cy=\"76.8\" rx=\"1.8\" ry=\"1.1\" transform=\"rotate(-10.1 637.7 76.8)\" opacity=\"0.66\" />\n    <ellipse cx=\"603.1\" cy=\"111.0\" rx=\"6.2\" ry=\"3.4\" transform=\"rotate(-3.9 603.1 111.0)\" opacity=\"0.75\" />\n    <ellipse cx=\"597.6\" cy=\"84.9\" rx=\"2.9\" ry=\"1.8\" transform=\"rotate(-0.0 597.6 84.9)\" opacity=\"0.79\" />\n    <ellipse cx=\"577.0\" cy=\"139.0\" rx=\"1.1\" ry=\"0.7\" transform=\"rotate(8.1 577.0 139.0)\" opacity=\"0.96\" />\n    <ellipse cx=\"831.2\" cy=\"106.9\" rx=\"4.6\" ry=\"2.4\" transform=\"rotate(-5.7 831.2 106.9)\" opacity=\"0.50\" />\n    <ellipse cx=\"564.1\" cy=\"112.5\" rx=\"8.1\" ry=\"3.4\" transform=\"rotate(-1.7 564.1 112.5)\" opacity=\"0.84\" />\n    <ellipse cx=\"569.1\" cy=\"84.4\" rx=\"8.1\" ry=\"3.4\" transform=\"rotate(-10.4 569.1 84.4)\" opacity=\"0.91\" />\n    <ellipse cx=\"813.9\" cy=\"215.6\" rx=\"1.9\" ry=\"1.4\" transform=\"rotate(19.7 813.9 215.6)\" opacity=\"0.48\" />\n    <ellipse cx=\"676.4\" cy=\"100.9\" rx=\"3.1\" ry=\"1.7\" transform=\"rotate(-1.8 676.4 100.9)\" opacity=\"0.62\" />\n    <ellipse cx=\"653.1\" cy=\"130.9\" rx=\"6.0\" ry=\"3.0\" transform=\"rotate(6.6 653.1 130.9)\" opacity=\"0.79\" />\n    <ellipse cx=\"720.4\" cy=\"116.8\" rx=\"2.1\" ry=\"1.6\" transform=\"rotate(6.8 720.4 116.8)\" opacity=\"0.72\" />\n    <ellipse cx=\"595.8\" cy=\"95.0\" rx=\"1.7\" ry=\"0.8\" transform=\"rotate(1.8 595.8 95.0)\" opacity=\"0.75\" />\n    <ellipse cx=\"748.1\" cy=\"128.9\" rx=\"1.9\" ry=\"1.0\" transform=\"rotate(3.8 748.1 128.9)\" opacity=\"0.53\" />\n    <ellipse cx=\"669.9\" cy=\"60.2\" rx=\"4.1\" ry=\"2.1\" transform=\"rotate(-10.4 669.9 60.2)\" opacity=\"0.74\" />\n    <ellipse cx=\"854.6\" cy=\"111.1\" rx=\"1.9\" ry=\"0.8\" transform=\"rotate(0.1 854.6 111.1)\" opacity=\"0.51\" />\n    <ellipse cx=\"623.5\" cy=\"85.6\" rx=\"1.8\" ry=\"1.2\" transform=\"rotate(-8.2 623.5 85.6)\" opacity=\"0.72\" />\n    <ellipse cx=\"661.7\" cy=\"81.0\" rx=\"1.4\" ry=\"0.9\" transform=\"rotate(-9.6 661.7 81.0)\" opacity=\"0.71\" />\n    <ellipse cx=\"628.9\" cy=\"89.8\" rx=\"2.8\" ry=\"1.9\" transform=\"rotate(0.1 628.9 89.8)\" opacity=\"0.86\" />\n    <ellipse cx=\"590.4\" cy=\"128.1\" rx=\"4.5\" ry=\"2.1\" transform=\"rotate(3.9 590.4 128.1)\" opacity=\"0.84\" />\n    <ellipse cx=\"571.1\" cy=\"111.6\" rx=\"3.3\" ry=\"1.5\" transform=\"rotate(4.5 571.1 111.6)\" opacity=\"0.89\" />\n    <ellipse cx=\"637.5\" cy=\"86.9\" rx=\"3.0\" ry=\"1.5\" transform=\"rotate(-2.9 637.5 86.9)\" opacity=\"0.86\" />\n    <ellipse cx=\"839.5\" cy=\"207.9\" rx=\"2.0\" ry=\"1.0\" transform=\"rotate(17.3 839.5 207.9)\" opacity=\"0.47\" />\n    <ellipse cx=\"619.3\" cy=\"130.7\" rx=\"1.2\" ry=\"0.6\" transform=\"rotate(8.9 619.3 130.7)\" opacity=\"0.89\" />\n    <ellipse cx=\"780.4\" cy=\"147.5\" rx=\"2.4\" ry=\"1.5\" transform=\"rotate(11.7 780.4 147.5)\" opacity=\"0.54\" />\n    <ellipse cx=\"650.2\" cy=\"121.8\" rx=\"4.1\" ry=\"2.0\" transform=\"rotate(-1.8 650.2 121.8)\" opacity=\"0.75\" />\n    <ellipse cx=\"695.6\" cy=\"81.4\" rx=\"5.2\" ry=\"2.6\" transform=\"rotate(-12.1 695.6 81.4)\" opacity=\"0.60\" />\n    <ellipse cx=\"635.8\" cy=\"127.2\" rx=\"4.0\" ry=\"2.3\" transform=\"rotate(3.0 635.8 127.2)\" opacity=\"0.76\" />\n    <ellipse cx=\"786.3\" cy=\"29.2\" rx=\"3.0\" ry=\"1.8\" transform=\"rotate(-12.7 786.3 29.2)\" opacity=\"0.60\" />\n    <ellipse cx=\"822.5\" cy=\"166.4\" rx=\"5.1\" ry=\"2.5\" transform=\"rotate(13.0 822.5 166.4)\" opacity=\"0.54\" />\n    <ellipse cx=\"775.2\" cy=\"172.4\" rx=\"7.9\" ry=\"3.8\" transform=\"rotate(11.2 775.2 172.4)\" opacity=\"0.59\" />\n    <ellipse cx=\"560.9\" cy=\"109.6\" rx=\"3.3\" ry=\"1.8\" transform=\"rotate(-2.6 560.9 109.6)\" opacity=\"0.89\" />\n    <ellipse cx=\"670.0\" cy=\"112.1\" rx=\"3.4\" ry=\"1.5\" transform=\"rotate(2.5 670.0 112.1)\" opacity=\"0.77\" />\n    <ellipse cx=\"614.3\" cy=\"80.2\" rx=\"2.5\" ry=\"1.2\" transform=\"rotate(-4.6 614.3 80.2)\" opacity=\"0.83\" />\n    <ellipse cx=\"607.4\" cy=\"82.8\" rx=\"2.6\" ry=\"1.2\" transform=\"rotate(-5.2 607.4 82.8)\" opacity=\"0.90\" />\n    <ellipse cx=\"597.9\" cy=\"117.8\" rx=\"3.1\" ry=\"1.2\" transform=\"rotate(3.8 597.9 117.8)\" opacity=\"0.84\" />\n    <ellipse cx=\"666.2\" cy=\"130.0\" rx=\"6.0\" ry=\"3.0\" transform=\"rotate(7.9 666.2 130.0)\" opacity=\"0.79\" />\n    </g>\n  </defs>\n</svg>";
+
+  function ensureInkSvg() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("oracle-ink-splash-graphic")) return;
+    var wrap = document.createElement("div");
+    wrap.innerHTML = INK_SVG_HTML;
+    var svg = wrap.firstElementChild;
+    if (svg) document.body.insertBefore(svg, document.body.firstChild);
+  }
+
+  function artToneFromTag(tag) {
+    var t = String(tag || "");
+    var keys = ["突破", "巅峰", "执着", "晋级", "神秘", "段位", "主题"];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      if (t.indexOf(keys[i]) !== -1) return keys[i];
+    }
+    return "主题";
+  }
+
+  function oracleSealHtml(tag) {
+    var key = artToneFromTag(tag);
+    var svg = ORACLE_SEALS[key] || ORACLE_SEALS["主题"] || "";
+    return '<div class="oracle-seal" role="img" aria-label="' + key + ' · 精铸金章">' +
+      '<span class="oracle-seal-face">' + svg + '</span></div>';
+  }
 
   var reduce = false;
   try {
@@ -111,6 +282,8 @@
     }
     el.style.setProperty("--rotate-x", s.rx + "deg");
     el.style.setProperty("--rotate-y", s.ry + "deg");
+    el.style.setProperty("--rx", s.rx + "deg");
+    el.style.setProperty("--ry", s.ry + "deg");
     el.style.setProperty("--holo-gain", String(holoGain));
     el.style.setProperty("--lift", s.lift ? s.lift + "px" : "0px");
     el.style.setProperty("--nx", String(s.nx || 0));
@@ -127,36 +300,27 @@
     var isFocus = (mode === "focus");
     var storyVal = isFocus ? (d.story || d.storyShort || "") : (d.storyShort || d.story || "");
     var storyLbl = isFocus ? "典故" : "典故·短板";
-
+    var kicker = (d.tag || "") + (d.no ? " · " + d.no : "");
     return (
-      '<div class="ccg-card-back ccg-back-face">' +
-        '<div class="ccg-foil-stack">' +
-          '<div class="ccg-foil-stock"></div>' +
-          '<div class="ccg-foil-shine"></div>' +
-          '<div class="ccg-foil-glitter"></div>' +
-          '<div class="ccg-foil-glare"></div>' +
-          '<div class="ccg-foil-security" aria-hidden="true"></div>' +
+      '<div class="oracle-face oracle-face-back">' +
+        '<div class="oracle-card">' +
+          '<div class="oracle-back-inner">' +
+            '<div class="oracle-back-kicker">' + kicker + '</div>' +
+            '<div class="oracle-back-title">' + d.name + '</div>' +
+            '<div class="oracle-back-rule"></div>' +
+            '<div class="oracle-back-field">' +
+              '<div class="oracle-back-lbl">获取条件</div>' +
+              '<div class="oracle-back-val">' + (d.cond || "") + '</div>' +
+            '</div>' +
+            '<div class="oracle-back-field oracle-back-story ccg-back-story">' +
+              '<div class="oracle-back-lbl">' + storyLbl + '</div>' +
+              '<div class="oracle-back-val ccg-back-val">' + storyVal + '</div>' +
+              (isFocus ? '<div class="ccg-story-expand-btn">展开全文 ▾</div>' : "") +
+            '</div>' +
+            '<div class="oracle-back-seal">' + oracleSealHtml(d.tag) + '</div>' +
+            '<div class="oracle-back-foot"><span>✦</span><span>DIZICAL</span></div>' +
+          '</div>' +
         '</div>' +
-        '<div class="ccg-back-inner">' +
-          '<div class="ccg-back-kicker">' + d.tag + ' · ' + d.no + '</div>' +
-          '<div class="ccg-back-title">' + d.name + '</div>' +
-          '<div class="ccg-back-rule"></div>' +
-          '<div class="ccg-back-field">' +
-            '<div class="ccg-back-lbl">获取条件</div>' +
-            '<div class="ccg-back-val">' + (d.cond || "") + '</div>' +
-          '</div>' +
-          '<div class="ccg-back-field">' +
-            '<div class="ccg-back-lbl">获得日</div>' +
-            '<div class="ccg-back-val">' + (d.date || "") + '</div>' +
-          '</div>' +
-          '<div class="ccg-back-field ccg-back-story">' +
-            '<div class="ccg-back-lbl">' + storyLbl + '</div>' +
-            '<div class="ccg-back-val">' + storyVal + '</div>' +
-            (isFocus ? '<div class="ccg-story-expand-btn">展开全文 ▾</div>' : '') +
-          '</div>' +
-          '<div class="ccg-back-foot"><span class="ccg-stars">' + starsHtml(d.stars) + '</span></div>' +
-        '</div>' +
-        '<div class="ccg-frame"></div>' +
       '</div>'
     );
   }
@@ -187,41 +351,41 @@
          · .ccg-foil-stack.ccg-foil-over = 覆在主体之上的扫光 (聚光灯/主光/镭射) → z6
        主体 (z5) 夹在两组之间 ⇒ 与旧版同一条视觉顺序, 但镭射铺满整卡, 不再有第二层框。 */
   function frontMarkup(scheme, d) {
+    var cat = (d.tag || "主题") + "成就";
     return (
-      '<div class="ccg-card-front' + (scheme === "px" ? " ccg-px-front" : "") + '">' +
-        '<div class="ccg-foil-stack">' +
-          '<div class="ccg-foil-stock"></div>' +
-          '<div class="ccg-foil-shine"></div>' +
-          '<div class="ccg-foil-glitter"></div>' +
-          '<div class="ccg-foil-security" aria-hidden="true"></div>' +
-        '</div>' +
-        '<div class="ccg-art-frame">' +
-          '<div class="ccg-art-window">' + artInner(scheme, d) + '</div>' +
-        '</div>' +
-        '<div class="ccg-foil-stack ccg-foil-over">' +
-          '<div class="ccg-foil-glare"></div>' +
-          '<div class="ccg-foil-spec"></div>' +
-          '<div class="ccg-foil-laser"></div>' +
-        '</div>' +
-        '<div class="ccg-frame"></div>' +
-        '<div class="ccg-holo-head">' +
-          '<span class="ccg-chip">' + d.tag + '</span>' +
-          '<span class="ccg-no">' + d.no + '</span>' +
-        '</div>' +
-        '<div class="ccg-info-bar">' +
-          '<span class="ccg-bar-no">' + d.no + '</span>' +
-          '<span class="ccg-bar-tag">' + d.tag + '</span>' +
-          '<span class="ccg-bar-date">' + d.date + '</span>' +
-        '</div>' +
-        '<div class="ccg-plate">' +
-          '<div class="ccg-plate-head">' +
-            titleHtml(d.name) +
-          '</div>' +
-          '<p class="ccg-plate-desc">' + (d.cond || "") + '</p>' +
-          /* dad 2026-09-13: 页脚行 (星级 + DIZICAL) 并入说明栏内, 不再单独成块 */
-          '<div class="ccg-foot">' +
-            '<span class="ccg-stars">' + starsHtml(d.stars) + '</span>' +
-            '<span>DIZICAL</span>' +
+      '<div class="oracle-face oracle-face-front">' +
+        '<div class="oracle-card">' +
+          '<div class="oracle-rotator">' +
+            '<div class="oracle-pin" title="竹笛金章">' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#78350f" stroke-width="2.5" stroke-linecap="round">' +
+                '<line x1="3" y1="21" x2="21" y2="3"/>' +
+                '<circle cx="9" cy="15" r="1.2" fill="#78350f"/>' +
+                '<circle cx="12" cy="12" r="1.2" fill="#78350f"/>' +
+                '<circle cx="15" cy="9" r="1.2" fill="#78350f"/>' +
+              '</svg>' +
+            '</div>' +
+            '<div class="oracle-frame">' +
+              '<div class="oracle-art">' +
+                '<img alt="" width="512" height="512" decoding="sync" fetchpriority="high" src="' + d.image + '">' +
+                '<div class="oracle-sheen"></div>' +
+                '<div class="oracle-nameplate-wrap">' +
+                  '<div class="oracle-nameplate">' +
+                    '<svg class="oracle-ink-svg" viewBox="0 0 1000 240" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true"><use href="#oracle-ink-splash-graphic"></use></svg>' +
+                    '<span class="oracle-cat">' + cat + '</span>' +
+                    '<span class="oracle-name">' + d.name + '</span>' +
+                  '</div>' +
+                  '<div class="oracle-slogan">' + (d.cond || "") + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="oracle-footer">' +
+                '<div class="oracle-footer-l">' +
+                  '<span class="oracle-avatar">晨</span>' +
+                  '<span class="oracle-owner-name">晨晨</span>' +
+                '</div>' +
+                oracleSealHtml(d.tag) +
+                '<div class="oracle-footer-r"><span>✦</span><span>DIZICAL</span></div>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>'
@@ -232,7 +396,7 @@
     return (
       '<div class="ccg-shadow"></div>' +
       '<div class="ccg-rotator">' +
-        '<div class="ccg-card-flipper">' +
+        '<div class="ccg-card-flipper oracle-flipper">' +
           frontMarkup(scheme, d) +
           backMarkup(d, mode) +
         '</div>' +
@@ -384,6 +548,9 @@
     var isWall = !!(o.mode === "wall" || (stage.closest && stage.closest(".badge-grid, .ccg-grid-cell, .b-card, .badge-card, .ccg-stage-mount")));
     var mode = o.mode || (isModal ? "focus" : (isWall ? "wall" : "focus"));
     var canFlip = (o.canFlip !== undefined) ? !!o.canFlip : (mode === "focus");
+    var isFocus = (mode === "focus");
+
+    ensureInkSvg();
 
     var stageClasses = "ccg-stage ccg-" + scheme + (isLocked ? " is-locked" : "");
     if (!hasGsap) stageClasses += " ccg-no-gsap";  // F7: 无 gsap 时启用 CSS 过渡翻面
@@ -395,6 +562,7 @@
     /* 主题 (dad 2026-09-14 需求 3): 支持全局 body[data-theme] 或卡级主题, 默认 pearl 淡色主题 */
     var bodyTheme = (typeof document !== "undefined" && document.body && (document.body.getAttribute("data-theme") || document.body.getAttribute("data-ccg-theme"))) || null;
     stage.setAttribute("data-ccg-theme", bodyTheme || d.card_theme || d.theme || "pearl");
+    stage.setAttribute("data-art-tone", artToneFromTag(d.tag));
     stage.innerHTML = cardMarkup(scheme, d, mode);
     bindReady(stage);
 
@@ -410,6 +578,7 @@
     var cardIdleSkip = (typeof o.idleSkip === 'number' && o.idleSkip >= 1)
       ? Math.floor(o.idleSkip) : 0;
     var state = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, flip: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
+    var aim = { px: 50, py: IDLE_Y, rx: 0, ry: 0, lift: 0, nx: 0, ny: 0, fromCenter: 0, lit: IDLE_LIT };
     var interacting = false;
     var dragging = false;
     var moved = 0;
@@ -444,13 +613,25 @@
       var r = stage.getBoundingClientRect();
       var x = clamp((clientX - r.left) / r.width, 0, 1);
       var y = clamp((clientY - r.top) / r.height, 0, 1);
-      state.px = x * 100;
-      state.py = y * 100;
-      state.nx = clamp((x - 0.5) * 2, -1, 1);
-      state.ny = clamp((y - 0.5) * 2, -1, 1);
-      state.fromCenter = clamp(Math.hypot(state.nx, state.ny), 0, 1.4);
-      state.rx = clamp(-state.ny * maxTilt, -maxTilt, maxTilt);
-      state.ry = clamp(state.nx * maxTilt, -maxTilt, maxTilt);
+      var nx = clamp((x - 0.5) * 2, -1, 1);
+      var ny = clamp((y - 0.5) * 2, -1, 1);
+      var px = x * 100;
+      var py = y * 100;
+      var rx = clamp(-ny * maxTilt, -maxTilt, maxTilt);
+      var ry = clamp(nx * maxTilt, -maxTilt, maxTilt);
+      var fromCenter = clamp(Math.hypot(nx, ny), 0, 1.4);
+      if (isFocus && !reduce) {
+        aim.px = px; aim.py = py;
+        aim.nx = nx; aim.ny = ny;
+        aim.rx = rx; aim.ry = ry;
+        aim.lift = 20; aim.lit = 1;
+        aim.fromCenter = fromCenter;
+        return;
+      }
+      state.px = px; state.py = py;
+      state.nx = nx; state.ny = ny;
+      state.rx = rx; state.ry = ry;
+      state.fromCenter = fromCenter;
       state.lift = 20;
       state.lit = 1;
       paint();
@@ -460,6 +641,9 @@
       interacting = false;
       dragging = false;
       stage.classList.remove("is-dragging");
+      if (isFocus && !reduce) {
+        return;
+      }
       if (reduce) {
         state.px = 50; state.py = IDLE_Y; state.rx = 0; state.ry = 0; state.lift = 0;
         state.nx = 0; state.ny = 0; state.fromCenter = 0; state.lit = IDLE_LIT;
@@ -583,9 +767,8 @@
     /* 卡背故事展开交互 (dad 2026-09-14 需求 2.1 & 2.2 & Brief E)
        仅在 focus (modal) 态且文字真实溢出 (scrollHeight > clientHeight) 时出现展开按钮；
        正文保持透传翻面，只有点击「展开全文 ▾」按钮才呼出打字机托盘 */
-    var isFocus = (mode === "focus");
     var fullStory = d.story || d.storyShort || "";
-    var storyBlock = stage.querySelector(".ccg-back-story");
+    var storyBlock = stage.querySelector(".oracle-back-story") || stage.querySelector(".ccg-back-story");
 
     function checkStoryOverflow() {
       if (!isFocus || !storyBlock) return;
@@ -628,6 +811,34 @@
       _idleSkipFrozen: cardIdleSkip > 0,    // setIdleSkip(n) 跳过已固化的卡
       interacting: function () { return interacting; },
       tick: function (t) {
+        if (isFocus && !reduce) {
+          if (!interacting) {
+            var phF = stage._idlePhase || 0;
+            var sF = Math.sin((t + phF * 1800) / 1800);
+            var cF = Math.cos((t + phF * 2100) / 2100);
+            aim.rx = sF * 5.5;
+            aim.ry = cF * 7;
+            aim.nx = Math.sin((t + phF * 2100) / 2100) * 0.45;
+            aim.ny = Math.cos((t + phF * 1800) / 1800) * 0.35;
+            aim.px = 50 + aim.nx * 18;
+            aim.py = 50 + aim.ny * 14;
+            aim.lit = 0.72;
+            aim.lift = 0;
+            aim.fromCenter = Math.hypot(aim.nx, aim.ny);
+          }
+          var k = 0.08;
+          state.rx += (aim.rx - state.rx) * k;
+          state.ry += (aim.ry - state.ry) * k;
+          state.nx += (aim.nx - state.nx) * k;
+          state.ny += (aim.ny - state.ny) * k;
+          state.px += (aim.px - state.px) * k;
+          state.py += (aim.py - state.py) * k;
+          state.lit += (aim.lit - state.lit) * k;
+          state.lift += ((aim.lift || 0) - (state.lift || 0)) * k;
+          state.fromCenter = Math.hypot(state.nx, state.ny);
+          paint();
+          return;
+        }
         if (interacting || reduce || resetTween) return;
         /* F6 视口跳过: 卡没在视口里就不 paint (CSS vars 不变, 等于正视图层, 无感).
            用 el._ccgId (mountCard 里赋值) 当 Set key, 避免 DOM ref 持有. */
@@ -700,6 +911,7 @@
     stageEl.removeAttribute("data-scheme");
     stageEl.removeAttribute("data-mode");
     stageEl.removeAttribute("data-ccg-theme");
+    stageEl.removeAttribute("data-art-tone");
     stageEl.innerHTML = "";
   }
 
@@ -1027,6 +1239,7 @@
 
   global.DizicalCCG = {
     BADGE: BADGE,
+    ORACLE_SEALS: ORACLE_SEALS,
     mountCard: mountCard,
     unmount: unmount,
     unmountAll: unmountAll,

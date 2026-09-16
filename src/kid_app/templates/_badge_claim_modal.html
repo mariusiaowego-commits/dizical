@@ -8,8 +8,8 @@
        story_short }
    注：story = 长典故 (modal 右侧 ccg-claim-story 用)；story_short = 卡背「典故·短板」(≤60 字)
        sprint 26091401 F1，来自 achievements.story_short；缺省时卡背回落 story。
-   布局：竖屏上下 / iPad 横屏左右双栏（见 badge-ccg.css .ccg-claim-*）
-   卡面：轻点翻转（位移 < 6px），拖动倾斜。两套方案共用 .ccg-card-flipper。
+   布局：沉浸式 3D 舞台（无关闭钮 / 点空白退出）。领取按钮留在卡下。
+   卡面：Oracle 典藏卡。轻点整卡翻转（位移 < 6px），拖动倾斜。
    拦截时机由 agy 在 sidebar 里接 GET /api/badge/unclaimed，本文件不自动 fetch。
 #}
 <link rel="stylesheet" href="/static/css/badge-ccg.css">
@@ -19,15 +19,14 @@
 
 <div id="ccg-claim-overlay" class="ccg-claim-overlay">
   <div class="ccg-claim-dialog" role="dialog" aria-modal="true" aria-labelledby="ccg-claim-name">
-    <button type="button" class="ccg-claim-close" aria-label="关闭" onclick="DizicalCCG.closeClaim()">×</button>
     <div class="ccg-claim-layout">
       <div class="ccg-claim-stage" id="ccg-claim-stage"></div>
       <div class="ccg-claim-copy">
-        <div class="ccg-claim-tag" id="ccg-claim-tag"></div>
-        <h2 class="ccg-claim-name" id="ccg-claim-name"></h2>
-        <p class="ccg-claim-cond" id="ccg-claim-cond"></p>
-        <p class="ccg-claim-date" id="ccg-claim-date"></p>
-        <p class="ccg-claim-story" id="ccg-claim-story"></p>
+        <div class="ccg-claim-tag" id="ccg-claim-tag" hidden></div>
+        <h2 class="ccg-claim-name" id="ccg-claim-name" hidden></h2>
+        <p class="ccg-claim-cond" id="ccg-claim-cond" hidden></p>
+        <p class="ccg-claim-date" id="ccg-claim-date" hidden></p>
+        <p class="ccg-claim-story" id="ccg-claim-story" hidden></p>
         <div class="ccg-claim-actions">
           <button type="button" class="ccg-btn-claim" id="ccg-claim-btn">领取入库</button>
           <button type="button" class="ccg-btn-skip" id="ccg-claim-skip">先去练笛</button>

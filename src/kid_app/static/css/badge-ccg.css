@@ -1,5 +1,6 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.6.1-dev (sprint 26091302 B6 图鉴接线, 四轮定稿 + B3 定档实装)
+   ── 卡面样式版本: v1.7.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿 + B3 定档实装)
+      v1.7.0-dev (2026-09-16, Oracle 典藏卡生产合流): 象牙白卡纸 + 弱金边 + 水墨标牌 + 通栏 slogan + 精铸金章 + 整卡翻转。
       v1.6.1-dev (2026-09-13, B3 定档实装): --ccg-sec-gain 默认 1 -> 1.6 (中档),
         淡色三套 (pearl/mint/sakura) 在 badge-ccg-themes.css 各自覆盖回 1 (弱档).
         期望: 深色 5 套 (azure/bamboo/coral/imperial/frost) 常驻暗纹 opacity = 0.2 × 1.6 = 0.32;
@@ -57,6 +58,12 @@
   --ccg-void: #16224a;
   --ccg-navy: #b7c5d4;
   --ccg-serif: "Songti SC", "STSong", "Noto Serif SC", "Songti TC", "PMingLiU", serif;
+
+  /* Oracle 衬线：nameplate / slogan / 卡背标题。改字体只动这一处。 */
+  --oracle-font-serif: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", "STSong", "SimSun", serif;
+  --oracle-font-nameplate-title: var(--oracle-font-serif);
+  --oracle-font-nameplate-cat: var(--oracle-font-serif);
+  --oracle-font-slogan: var(--oracle-font-serif);
 
   /* sunpillar spectrum — simeydotme/pokemon-cards-css + poke-151 (cards/base.css) */
   --sunpillar-1: hsl(2, 100%, 73%);
@@ -1607,3 +1614,494 @@ body.ccg-modal-open .ccg-demo-actions {
 .ccg-stage[data-ccg-sec="grid"]      { --theme-security-pattern: var(--ccg-sec-grid);      --theme-security-size: 12px 12px; }
 .ccg-stage[data-ccg-sec="honeycomb"] { --theme-security-pattern: var(--ccg-sec-honeycomb); --theme-security-size: 38.2px 66px; }
 .ccg-stage[data-ccg-sec="flute"]     { --theme-security-pattern: var(--ccg-security-pattern); --theme-security-size: 132px 132px; }
+
+
+/* ════════════════════════════════════════════════════════════
+   Oracle 典藏卡 (demo_ccg_v3.html 生产合流 2026-09-16)
+   倾斜由 .ccg-rotator 的 --rotate-x/--rotate-y 承担；.oracle-card 不再自转。
+   ════════════════════════════════════════════════════════════ */
+
+.ccg-stage .oracle-card {
+  transform: none;
+  will-change: auto;
+}
+
+.oracle-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(155deg, #f9f6ee 0%, #f1ece0 60%, #e8e0cb 100%);
+  border-radius: 18px;
+  padding: 0;
+  transform-style: preserve-3d;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1.5px rgba(212, 160, 23, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    calc(var(--nx, 0) * -7px) calc(var(--ny, 0) * -7px + 14px) 36px rgba(58, 42, 10, 0.16),
+    calc(var(--nx, 0) * -12px) calc(var(--ny, 0) * -12px + 28px) 56px rgba(58, 42, 10, 0.10);
+  overflow: hidden;
+  isolation: isolate;
+  container-type: inline-size;
+  container-name: oraclecard;
+}
+.oracle-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,0.45) 0%, transparent 38%),
+    radial-gradient(circle at 82% 76%, rgba(212, 160, 23, 0.06) 0%, transparent 42%);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.oracle-rotator {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.oracle-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  z-index: 1;
+}
+.oracle-art {
+  position: absolute;
+  top: 7px; left: 7px; right: 7px; bottom: 38px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 0 0 0 1px rgba(212, 160, 23, 0.18),
+    0 4px 14px rgba(58, 42, 10, 0.18);
+  z-index: 2;
+  --oracle-art-tone: linear-gradient(160deg, #854d0e 0%, #a16207 50%, #3e1e04 100%);
+  background:
+    radial-gradient(ellipse at 28% 16%, rgba(255, 255, 255, 0.10), transparent 46%),
+    radial-gradient(ellipse at 78% 92%, rgba(0, 0, 0, 0.16), transparent 52%),
+    var(--oracle-art-tone);
+}
+.oracle-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 8;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 0 0 0 1px rgba(212, 160, 23, 0.35);
+}
+.oracle-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center 12%;
+  padding: 6px 8px 0 8px;
+  box-sizing: border-box;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5));
+  transform: translateY(-8px);
+}
+.oracle-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(
+    calc(115deg + var(--nx, 0) * 22deg),
+    transparent 0%,
+    transparent calc(var(--pointer-y, 50%) - 20%),
+    rgba(255, 107, 157, 0.28) calc(var(--pointer-y, 50%) - 12%),
+    rgba(192, 132, 252, 0.50) calc(var(--pointer-y, 50%) - 5%),
+    rgba(96, 165, 250, 0.55) var(--pointer-y, 50%),
+    rgba(52, 211, 153, 0.45) calc(var(--pointer-y, 50%) + 5%),
+    rgba(253, 224, 71, 0.30) calc(var(--pointer-y, 50%) + 12%),
+    transparent calc(var(--pointer-y, 50%) + 20%),
+    transparent 100%
+  );
+  mix-blend-mode: color-dodge;
+  opacity: var(--lit, 0.65);
+  transition: opacity 0.2s ease;
+}
+.oracle-pin {
+  position: absolute;
+  top: clamp(10px, 3.8cqw, 14px);
+  left: clamp(10px, 3.8cqw, 14px);
+  width: clamp(23px, 8cqw, 27px);
+  height: clamp(23px, 8cqw, 27px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 32% 28%, #fffbeb 0%, #fef08a 16%, #facc15 42%, #eab308 68%, #d97706 100%);
+  border-radius: 50%;
+  border: 0.6px solid #fde68a;
+  box-shadow:
+    0 1.2px 0 rgba(255, 251, 235, 0.92) inset,
+    0 -1.2px 2px rgba(146, 64, 14, 0.42) inset,
+    0 2px 6px rgba(61, 42, 10, 0.32),
+    0 1px 2px rgba(180, 83, 9, 0.28);
+  z-index: 6;
+}
+.oracle-pin svg {
+  opacity: 1;
+  filter: drop-shadow(0 0.5px 0 rgba(255, 251, 235, 0.65));
+}
+.oracle-nameplate-wrap {
+  position: absolute;
+  left: 1.5px;
+  right: 1.5px;
+  bottom: 1.5px;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-bottom-left-radius: 10.5px;
+  border-bottom-right-radius: 10.5px;
+}
+.oracle-nameplate {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 1.8cqw 3.4cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  color: #2C3E50;
+}
+.oracle-nameplate .oracle-ink-svg {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+.oracle-nameplate .oracle-cat,
+.oracle-nameplate .oracle-name {
+  position: relative;
+  z-index: 2;
+}
+.oracle-nameplate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(
+    calc(118deg + var(--nx, 0) * 28deg),
+    transparent 0%,
+    transparent calc(var(--pointer-x, 42%) - 20%),
+    rgba(255, 255, 255, 0.45) calc(var(--pointer-x, 42%) - 5%),
+    rgba(253, 224, 71, 0.32) var(--pointer-x, 42%),
+    rgba(255, 107, 157, 0.18) calc(var(--pointer-x, 42%) + 8%),
+    transparent calc(var(--pointer-x, 42%) + 24%)
+  );
+  mix-blend-mode: overlay;
+}
+.oracle-nameplate .oracle-cat {
+  display: block;
+  font-family: var(--oracle-font-nameplate-cat);
+  font-size: clamp(8.5px, 3.2cqw, 11px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #D94848;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+.oracle-nameplate .oracle-name {
+  display: block;
+  font-family: var(--oracle-font-nameplate-title);
+  font-size: clamp(13px, 5.6cqw, 22px);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  color: #2C3E50;
+  white-space: nowrap;
+}
+.oracle-slogan {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 1.7cqw 3.4cqw;
+  background: rgba(11, 19, 41, 0.9);
+  color: #e2e8f0;
+  font-family: var(--oracle-font-slogan);
+  font-size: clamp(8px, 3.1cqw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  border: 0;
+  border-radius: 0;
+  border-bottom-left-radius: 10.5px;
+  border-bottom-right-radius: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.oracle-slogan::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(253, 224, 71, 0.22) calc(42% + var(--nx, 0) * 18%),
+    rgba(253, 224, 71, 0.7) calc(50% + var(--nx, 0) * 18%),
+    rgba(253, 224, 71, 0.22) calc(58% + var(--nx, 0) * 18%),
+    transparent 100%
+  );
+}
+.oracle-slogan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    calc(102deg + var(--nx, 0) * 24deg),
+    transparent 0%,
+    transparent calc(var(--pointer-x, 50%) - 18%),
+    rgba(255, 255, 255, 0.2) var(--pointer-x, 50%),
+    transparent calc(var(--pointer-x, 50%) + 18%)
+  );
+  mix-blend-mode: overlay;
+}
+.oracle-footer {
+  position: absolute;
+  left: 12px; right: 12px; bottom: 6px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 3;
+  font-size: clamp(9px, 3.2cqw, 11.5px);
+}
+.oracle-footer-l, .oracle-footer-r {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #6b5a34;
+  letter-spacing: 0.05em;
+}
+.oracle-avatar {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fef08a 0%, #d4a017 100%);
+  border: 0.8px solid rgba(212, 160, 23, 0.5);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: #78350f;
+  line-height: 1;
+  overflow: hidden;
+  flex: none;
+}
+.oracle-seal {
+  --gold-hi: #fffbeb;
+  --gold-lit: #fef08a;
+  --gold-mid: #d4a017;
+  --gold-deep: #854d0e;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  position: relative;
+  border-radius: 50%;
+  isolation: isolate;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from calc(var(--nx, 0) * 14deg),
+    #c9a024 0deg 4.15deg,
+    #efe08a 4.25deg 4.95deg,
+    #7a4e12 5.05deg 6deg
+  );
+  box-shadow:
+    0 0 0 0.5px #6b3f0a,
+    inset 0 0.6px 0 rgba(255, 251, 235, 0.72),
+    inset 0 -1px 1.5px rgba(61, 42, 10, 0.48),
+    0 1px 1px rgba(61, 42, 10, 0.28),
+    0 2px 5px rgba(61, 42, 10, 0.22);
+}
+.oracle-seal::before {
+  content: "";
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, var(--gold-hi) 0%, var(--gold-lit) 22%, var(--gold-mid) 58%, var(--gold-deep) 100%);
+  box-shadow:
+    inset 0 0.5px 0 rgba(255, 251, 235, 0.78),
+    inset 0 -1px 1.5px rgba(61, 42, 10, 0.42),
+    0 0 0 0.5px rgba(133, 77, 14, 0.35);
+  pointer-events: none;
+  z-index: 0;
+}
+.oracle-seal-face {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  z-index: 1;
+  overflow: hidden;
+  background: radial-gradient(circle at 34% 30%, #f6de7a 0%, #e0b13a 34%, #c48914 62%, #a16207 86%, var(--gold-deep) 100%);
+  box-shadow:
+    inset 1px 1.5px 2.5px rgba(61, 42, 10, 0.58),
+    inset -0.5px -0.5px 1px rgba(255, 251, 235, 0.32),
+    0 0 0 0.6px rgba(133, 77, 14, 0.5),
+    0 0.5px 0 rgba(255, 251, 235, 0.45);
+}
+.oracle-seal-face svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.oracle-seal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    calc(125deg + var(--nx, 0) * 40deg),
+    rgba(255, 251, 235, 0) 34%,
+    rgba(255, 251, 235, 0.55) 47%,
+    rgba(254, 240, 138, 0.18) 52%,
+    rgba(255, 251, 235, 0) 64%
+  );
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.85;
+}
+
+/* 整卡翻转：正反面都是完整象牙卡板 */
+.oracle-flipper {
+  transform-style: preserve-3d;
+}
+.oracle-face {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.oracle-face-front { transform: rotateY(0deg) translateZ(1px); }
+.oracle-face-back  { transform: rotateY(180deg) translateZ(1px); }
+.ccg-stage[data-mode="focus"] .ccg-rotator,
+.ccg-claim-overlay .ccg-rotator {
+  overflow: visible;
+}
+
+.oracle-back-inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 20px 16px;
+  background: transparent;
+  border-radius: inherit;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    inset 0 0 0 2.5px rgba(212, 160, 23, 0.42);
+  color: #2C3E50;
+}
+.oracle-back-kicker {
+  font-family: var(--oracle-font-nameplate-cat);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #D94848;
+  margin-bottom: 6px;
+}
+.oracle-back-title {
+  font-family: var(--oracle-font-nameplate-title);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  color: #2C3E50;
+  margin: 0 0 10px;
+}
+.oracle-back-rule {
+  width: 36px;
+  height: 1.5px;
+  background: linear-gradient(90deg, #d4a017, transparent);
+  margin-bottom: 14px;
+}
+.oracle-back-field { margin-bottom: 12px; }
+.oracle-back-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #D94848;
+  margin-bottom: 4px;
+}
+.oracle-back-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #2C3E50;
+}
+.oracle-back-story {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.oracle-back-story .oracle-back-val {
+  font-family: var(--oracle-font-serif);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.55;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.oracle-back-seal {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 10px;
+}
+.oracle-back-seal .oracle-seal {
+  width: 36px;
+  height: 36px;
+}
+.oracle-back-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #6b5a34;
+}
+
+/* 沉浸式 3D 舞台：无关闭钮、文案在卡背，点空白退出；领取按钮仍露出 */
+.ccg-claim-close { display: none !important; }
+.ccg-claim-overlay .ccg-claim-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  cursor: default;
+}
