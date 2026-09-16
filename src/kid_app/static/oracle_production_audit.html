@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Oracle PR #330 生产卡面排演与 3D 把玩（免登录直验）</title>
-  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091603">
-  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091603">
+  <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091604">
+  <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091604">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="/static/js/badge-ccg.js?v=26091603"></script>
+  <script src="/static/js/badge-ccg.js?v=26091604"></script>
   <style>
     body {
       margin: 0;
@@ -204,6 +204,19 @@
         DizicalCCG.openClaim(cardData, "holo", { locked: true });
       };
     })();
+
+    /* Automated QA hook for headless screenshotting */
+    var qp = new URLSearchParams(window.location.search);
+    if (qp.get("open") === "1" || qp.get("flip") === "1") {
+      var firstCell = document.querySelector(".cell");
+      if (firstCell) firstCell.click();
+      if (qp.get("flip") === "1") {
+        var flipper = document.querySelector("#ccg-claim-stage .oracle-flipper");
+        if (flipper) {
+          flipper.style.transform = "rotateY(180deg)";
+        }
+      }
+    }
   </script>
 </body>
 </html>

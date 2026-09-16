@@ -1,6 +1,9 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
    ── 卡面样式版本: v1.7.0-dev (sprint 26091302 B6 图鉴接线, 四轮定稿 + B3 定档实装)
       v1.7.0-dev (2026-09-16, Oracle 典藏卡生产合流): 象牙白卡纸 + 弱金边 + 水墨标牌 + 通栏 slogan + 精铸金章 + 整卡翻转。
+      v1.8.0-dev (2026-09-16, sprint 26091603 P0 移动端 3D 零卡顿治理):
+        ① body.is-frozen 冻结背景卡墙 (Modal 打开期间非 focus 卡 transform/动画/光照全归零);
+        ② 列表态 (data-mode="wall") 显式声明不进 SVG 分形滤镜管线 (墨组本体在 markup 侧已摘掉 filter)。
       v1.6.1-dev (2026-09-13, B3 定档实装): --ccg-sec-gain 默认 1 -> 1.6 (中档),
         淡色三套 (pearl/mint/sakura) 在 badge-ccg-themes.css 各自覆盖回 1 (弱档).
         期望: 深色 5 套 (azure/bamboo/coral/imperial/frost) 常驻暗纹 opacity = 0.2 × 1.6 = 0.32;
@@ -2277,3 +2280,48 @@ body.ccg-modal-open .ccg-demo-actions {
   margin-top: 18px;
   cursor: default;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   sprint 26091603 P0-1 · Modal 打开时冻结背景卡墙 (freeze loop)
+   ──────────────────────────────────────────────────────────────────────────
+   body.is-frozen 由 DizicalCCG.setPaused(true) / focus 大卡挂载时加上 (JS 侧)。
+   冻结期间背景墙要满足两件事:
+     · 3D 图层整体退出合成 —— 18-44 张卡不再让 Modal 的 backdrop-filter blur
+       反复重新采样 + 重绘 (iPad mini 掉帧的主因);
+     · 非 focus 卡回到「平整静止」态: 全部 transform 归零, 不留一张卡歪在半空。
+   注: --rotate-*/--rx/--ry/--lift/--lit 是 JS 写在 element.style 上的内联自定义属性,
+       普通声明压不住内联值, 所以这几条必须带 !important (自定义属性同样吃层叠优先级)。
+   ══════════════════════════════════════════════════════════════════════════ */
+.is-frozen .ccg-stage:not([data-mode="focus"]) {
+  transform: none !important;
+  animation: none !important;
+  --rotate-x: 0deg !important;
+  --rotate-y: 0deg !important;
+  --rx: 0deg !important;
+  --ry: 0deg !important;
+  --lift: 0px !important;
+  --lit: 0 !important;
+}
+.is-frozen .ccg-stage:not([data-mode="focus"]) * {
+  animation: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   sprint 26091603 P0-2 · 列表态永不进 SVG 分形滤镜管线
+   ──────────────────────────────────────────────────────────────────────────
+   feTurbulence(fractalNoise) + feDisplacementMap 会让 WebKit 在列表态把整层
+   回落 CPU Software Rasterization —— 这是掉帧元凶, 列表墙必须彻底摘掉它。
+   真正摘掉滤镜的是 markup (JS 侧): 墨组本体 #oracle-ink-splash-graphic 已去掉
+   filter 属性, 列表卡 <use> 指的就是这个无滤镜组; 只有 focus 单卡才指向带
+   filter 的包装组 #oracle-ink-splash-graphic-bleed。
+   为什么 CSS 摘不掉: filter 挂在「被引用的那个分组」上, CSS filter 只作用在
+   <use> 元素自身 (filter 不可继承), 压不住被引用组的 filter 属性 —— 所以 markup
+   才是承重点, 下面这条只作显式声明 + 防残留引用 (任何列表面的 use 都禁止挂滤镜)。
+   ══════════════════════════════════════════════════════════════════════════ */
+.ccg-stage[data-mode="wall"] .oracle-nameplate use,
+.ccg-stage[data-mode="wall"] .oracle-nameplate .oracle-ink-svg {
+  filter: none !important;
+}
+/* focus 单卡的动态水墨滤镜由 markup 侧 #oracle-ink-splash-graphic-bleed 分组自带的
+   filter 属性提供 (走 SVG 属性路径, 不依赖 CSS `filter: url()` 的跨引擎支持度)。
+   这里刻意不写 CSS url() 版本 —— 那会和分组属性叠加成 feDisplacementMap 双重位移。 */
