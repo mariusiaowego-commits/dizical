@@ -88,3 +88,12 @@ data/_baseline_*.json
 .agents/
 scripts/migrate_*.py
 scripts/migrate_*.sh
+
+# 2026-09-17 仓库卫生 (dizical-hygiene-260917):
+# - dizical-ai/: 独立 Node 云托管服务 (CloudBase AI) 的本地工作目录; 源码去留待定, 先忽略本地产物
+# - data/lib/: 运行时数据 (badge draft/图片, 21M), 仅本机服务读取
+# - test_cos_badge_v1.png: COS 发货测试 fixture, 由 tests/test_badge_cos_shipping.py 运行时写出
+dizical-ai/node_modules/
+dizical-ai/logs/
+data/lib/
+src/kid_app/static/badges/test_cos_badge_v1.png
