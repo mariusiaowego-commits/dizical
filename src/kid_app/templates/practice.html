@@ -130,6 +130,8 @@
     /* 尺子三档 + 数字字号 (demo 定稿值); 数字字体走系统等宽栈 → 0 字节自托管成本 */
     --tick-cur:#FF6B6B;   --tick-cur-h:28px;
     --ruler-row-h:32px;
+    /* 新计时器需要横向空间: 刻度尺 60 格 + 两侧 38px 步进键 (旧 dial knob 只需 180px 直径) */
+    flex: 0 0 auto; width: 520px; max-width: 100%;
     background:#FFFDF5;border:1px solid #F0D060;border-radius:20px;
     padding:26px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:0;overflow:hidden;
   }
