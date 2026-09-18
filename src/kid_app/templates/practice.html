@@ -2802,12 +2802,6 @@
     // ════════════════════════════════════════════════
 
     // Fun descriptions — scattered intervals
-    const TIMER_DESCS = {
-      5: '就这？手都没热呢', 7: '再加把劲呗', 10: '不错的开始',
-      13: '有点意思了', 15: '标准练习量', 18: '开始上强度了',
-      20: '手指开始酸了！', 23: '停不下来？', 25: '要卷死谁啊！',
-      28: '体力怪物！', 30: '你是认真的？！',
-    };
     const EXTRA_DESCS = {
       2: '蚊子腿也是肉', 3: '三分钟 意思意思', 5: '小小加练',
       8: '越练越起劲', 10: '够意思！', 13: '加练也要卷？',
@@ -2998,7 +2992,6 @@
       // 旋钮吸附点：只有 5/10/15/20/25/30 有阻力
       const snapPoints = [5, 10, 15, 20, 25, 30];
       // 完整数值范围用于 activity wheel
-      const timerValues = Array.from({length: 26}, (_, i) => i + 5);
       const extraValues = Array.from({length: 30}, (_, i) => i + 1);
 
 
@@ -3038,7 +3031,7 @@ const FONT='ui-monospace,SFMono-Regular,Menlo,monospace';
 const fmt=s=>{const t=Math.max(0,Math.round(s));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');};
 const BUBBLE_SYMBOLS=['♪','♫','♩','♬','♭','♯','♮'];   // 只用 BMP 基本乐符 (Musical Symbols 补充区 𝄞𝄢𝄽𝄾 在很多设备上缺字形 → 白框)
 const BUBBLE_COLORS=['#FF6B6B','#FF9F45','#FFD23F','#7BC96F','#3FBF9F','#4FA8D9','#6E8CF5','#B27BE0','#FF8FB1','#E8607A'];
-let bubblePool=[],bubbleIdx=0,bubbleSymbols=[],firedBubbles=0;
+let bubblePool=[],bubbleIdx=0,bubbleSymbols=[];
 let VINE_SVG_H=14;
 const VINE_RAIL_Y=0.6, VINE_STROKE='#D9C79A', VINE_BUD='#FF6B6B';
 const VINE_CFG={density:0.90,depth:19,chord:16,random:1.0,flower:1.5};
@@ -3081,9 +3074,10 @@ const S = {
   get sec(){ return elapsed; },      set sec(v){ elapsed = v; },
   get running(){ return timerRunning; }, set running(v){ timerRunning = v; },
   get paused(){ return paused; },    set paused(v){ paused = v; },
-  iv: null
 };
 const dur = () => AC_DUR;                 // demo 有慢放开关; 生产页无 → 固定时长
+/* GSAP 可能双挂 (本地文件被误删 + CDN 不可达): 动效降级, 计时/拖拽必须照常 */
+const hasGsap = () => (typeof window.gsap !== 'undefined') && !!window.gsap;
 function setHint(){}                      // dad 已删除提示行, 留空实现兼容 demo 函数里的调用
 
 /* 数字渲染统一入口: 按数值变化方向决定滚轮方向 (变小时反向滚), 与 demo 的方向感知弹簧一致 */
@@ -3094,13 +3088,13 @@ function ttRenderDigits(totalSec, force){
   if (counter) renderCounter(counter, totalSec, force ? 1 : dir, dur());
 }
 
-/* 选择态: ±1 分钟 与 拖尺子 都走这里 */
+/* 选择态: ±1 分钟 与 拖尺子 都走这里 (守卫用 started: 计时中与暂停中都不许改时长) */
 function ttStepMin(delta){
-  if (timerRunning) return;
+  if (started) return;
   ttSetDuration(duration + delta);
 }
 function ttSetDuration(v){
-  if (timerRunning) return;
+  if (started) return;
   v = Math.min(MAX_MIN, Math.max(MIN_MIN, Math.round(v)));
   if (v === duration) return;
   duration = v;
@@ -3117,14 +3111,7 @@ function ttSetDuration(v){
 function ttInitTimer(){
   const root = document.getElementById('ttCounter');
   if (!root) return;
-  counter = makeCounter(root);
-  buildRuler(document.getElementById('rulerRow'));
-  buildBubbles();
-  buildVine();
-  ttLastSec = duration * 60;
-  renderCounter(counter, duration * 60, 1, 0.35);
-  paintRulerSelect(duration);
-  setSelectModality();
+  // 先绑交互: 后面任何动效初始化异常都不该让尺子拖不动 / 数字不显示
   const ri = document.getElementById('rulerInput');
   if (ri) {
     ri.addEventListener('input', () => ttSetDuration(parseInt(ri.value, 10)));
@@ -3132,23 +3119,29 @@ function ttInitTimer(){
     ri.addEventListener('pointerup', () => scheduleSecSettle(80));
     ri.addEventListener('pointercancel', () => scheduleSecSettle(80));
   }
+  try {
+    counter = makeCounter(root);
+    buildRuler(document.getElementById('rulerRow'));
+    if (hasGsap()) { buildBubbles(); buildVine(); }   // 花纹/气泡纯装饰, 没 gsap 就不建
+    ttLastSec = duration * 60;
+    renderCounter(counter, duration * 60, 1, 0.35);
+    paintRulerSelect(duration);
+    setSelectModality();
+  } catch (e) {
+    console.warn('[timer] 视觉层初始化失败 (动效降级, 计时不受影响):', e);
+  }
 }
 /* 进入运行态(首次开始 / 继续): 状态胶囊改文案, 尺子从 0 走, 花纹从细线起点开始长 */
 function ttOnStart(){
+  ttSetControlsEnabled(false);           // 计时开始: 尺子/步进键锁住 (暂停态同样锁, else 胶囊会丢「已暂停」)
   setRunningModality();
   paintRulerRunning(0);
   revealVine(0, false);
   ttRenderDigits(elapsed);
 }
-/* 每秒: 数字正计时 + 尺子进度 + 花纹生长 + 红针脉冲 + 红针顶端冒音符 */
-function ttOnTick(){
-  if (!counter) return;
-  ttRenderDigits(elapsed);
-  const p = Math.min(1, elapsed / (duration * 60));
-  paintRulerRunning(p);
-  revealVine(p);
-  pulseMarker();
-  emitBubbles();
+function ttSetControlsEnabled(on){
+  const ids = ['rulerInput', 'ttStepMinus', 'ttStepPlus'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = !on; });
 }
 function ttPauseLabel(on){
   const el = document.getElementById('metaVal');
@@ -3158,6 +3151,7 @@ function ttPauseLabel(on){
 }
 /* 退出运行态(正常结束 / 提前结束 / 放弃 / 重置): 花纹自右向左收卷 + 气泡清空 + 回到选择态 */
 function ttOnExit(){
+  ttSetControlsEnabled(true);            // 回选择态: 解锁
   retractVine();
   stopBubbles();
   clearInterval(secFlickerIv); secFlickerIv = null;
@@ -3274,13 +3268,10 @@ function emitBubbles(xOverride){
     b.style.setProperty('--bd',(1.1+Math.random()*0.5).toFixed(2)+'s');
     void b.offsetWidth;                                  // 强制重排 → 动画从头播
     b.classList.remove('no-anim');
-    firedBubbles++;
   }
-  const chip=document.getElementById('bubbleCount');
-  if(chip) chip.textContent='气泡已发射 '+firedBubbles;
 }
 
-function stopBubbles(){bubblePool.forEach(b=>{gsap.killTweensOf(b);gsap.set(b,{opacity:0});});}
+function stopBubbles(){if(!hasGsap())return;bubblePool.forEach(b=>{gsap.killTweensOf(b);gsap.set(b,{opacity:0});});}
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
@@ -3293,6 +3284,7 @@ function hash01(a,b){
 }
 
 function buildVine(){
+  if(!hasGsap())return;
   const ruler=document.getElementById('ruler');if(!ruler)return;
   const old=ruler.querySelector('.ruler-vine');if(old)old.remove();
   const w=Math.round(ruler.getBoundingClientRect().width);if(w<20)return;
@@ -3389,6 +3381,7 @@ function buildVine(){
 }
 
 function bloomFlowersUpTo(x){
+  if(!hasGsap())return;
   const svg=document.querySelector('.ruler-vine');if(!svg)return;
   svg.querySelectorAll('.vine-flower').forEach(f=>{
     const fx=parseFloat(f.dataset.x||'0');
@@ -3438,6 +3431,7 @@ function retractVine(){
 }
 
 function celebrateVine(){
+  if(!hasGsap())return;
   const g=document.querySelector('.ruler-vine g[fill]');
   if(!g||reducedMotion())return;
   gsap.fromTo(g,{scale:1},{scale:1.25,duration:.22,ease:'sine.inOut',yoyo:true,repeat:1,
