@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>practice 计时器 · 选择时间态 v2 高保真 demo（现状 vs v2）— sprint 26091701</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root{
+    --primary:#FF6B6B; --secondary:#2C3E50; --muted:#666666;
+    --card-bg:#FFFDF5; --card-border:#F0D060; --gold:#E8D8B0;
+    --knob-size:180px; --dial-gap:20px; --wheel-w:88px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:18px 16px 60px;background:#FAF7F0;color:var(--secondary);
+       font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif}
+  header{max-width:1720px;margin:0 auto 14px}
+  h1{font-size:20px;margin:0 0 6px;letter-spacing:-.3px}
+  .sub{font-size:13px;color:#7F8C8D;line-height:1.75}
+  .sub code{background:#EFEAE0;padding:1px 5px;border-radius:4px;font-size:12px}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:10px 14px;
+           background:#fff;border:1px solid #EDE6D8;border-radius:12px}
+  .toolbar .grp{display:flex;gap:6px;align-items:center;font-size:13px}
+  .toolbar button{font-size:13px;padding:6px 14px;border-radius:999px;cursor:pointer;
+                  border:1px solid #E0D8C8;background:#fff;color:var(--secondary)}
+  .toolbar button.on{background:var(--secondary);color:#fff;border-color:var(--secondary)}
+  .toolbar label{font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer}
+
+  .stage{max-width:1720px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:1080px){.stage{grid-template-columns:1fr}}
+  .side{background:#fff;border:1px solid #EDE6D8;border-radius:16px;padding:14px}
+  .side h2{font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:11px;font-weight:800;color:#fff;background:#8A8578;padding:2px 8px;border-radius:999px}
+  .side.after .tag{background:var(--primary)}
+  .side .desc{font-size:12px;color:#7F8C8D;line-height:1.6;min-height:32px;margin-bottom:10px}
+
+  /* 设备视口模拟: 宽度 = 目标设备 CSS 宽度, 高度放开 */
+  .viewport{border:1px dashed #D8CFBC;border-radius:12px;padding:12px 10px;margin:0 auto;
+            background:repeating-linear-gradient(45deg,#FCFAF4,#FCFAF4 10px,#F8F5EC 10px,#F8F5EC 20px)}
+  .vw-label{font-size:11px;color:#A9A399;text-align:center;margin-bottom:8px;font-family:ui-monospace,Menlo,monospace}
+
+  .timer-block{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;
+               padding:14px 12px;display:flex;justify-content:center}
+  .timer-block.col{flex-direction:column;align-items:center;gap:2px}
+
+  /* ── A. 现状结构 (before) ── */
+  .legacy .picker-card{display:flex;align-items:center;gap:0;padding:4px 0;position:relative}
+  .legacy .picker-col{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 auto}
+  .legacy .picker-label{font-size:13px;font-weight:600;color:#7F8C8D;text-align:center}
+
+  /* ── B. v2 结构 (after): 座舱 + dial-row ── */
+  .v2 .picker-label{font-size:13px;font-weight:600;color:#7F8C8D;text-align:center;margin-bottom:8px}
+  .timer-instrument-pod{
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    padding:12px 16px;border-radius:24px;border:1.5px solid var(--gold);
+    background:linear-gradient(180deg,#FFFDF8 0%,#F5EDE0 100%);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.05), 0 10px 22px -14px rgba(0,0,0,.22);
+    position:relative;
+  }
+  .timer-dial-row{display:flex;flex-direction:row;align-items:center;justify-content:center;
+                  gap:var(--dial-gap)}
+  .timer-dial-row .activity-wheel{background:#F9F4EB;border:1px solid #EFE3CC}
+
+  /* ── 共用: dial knob (practice.html L157-214 原样) ── */
+  .dial-knob{--knob-size:180px;position:relative;width:var(--knob-size);height:var(--knob-size);
+             user-select:none;-webkit-user-select:none;touch-action:none}
+  .dial-disc{position:absolute;inset:0;border-radius:50%;
+             background:linear-gradient(180deg,#FFFDF8 0%,#F0E8D0 100%);
+             box-shadow:0 1px 0 rgba(255,255,255,.95) inset,0 -2px 4px rgba(0,0,0,.08) inset,
+                        0 10px 20px -8px rgba(0,0,0,.15),0 3px 6px rgba(0,0,0,.06)}
+  .dial-ticks{position:absolute;inset:0;pointer-events:none;transition:transform 80ms ease-out}
+  .dial-ticks.dragging{transition:none}
+  .dial-face{position:absolute;top:18%;left:18%;right:18%;bottom:18%;border-radius:50%;
+             background:linear-gradient(180deg,#FFFFFF 0%,#FFF8F0 100%);
+             box-shadow:0 1px 0 rgba(255,255,255,.95) inset,0 -1px 0 rgba(0,0,0,.06) inset,
+                        0 0 0 1px rgba(0,0,0,.06),0 6px 14px -5px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.06);
+             display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+  .dial-value{font-size:36px;font-weight:900;color:#2C3E50;line-height:1;letter-spacing:-1px}
+  .dial-unit{font-size:12px;font-weight:600;color:#999;margin-top:1px}
+
+  /* ── 共用: activity wheel (practice.html L217-317 原样 + v2 微调) ── */
+  .activity-wheel{position:relative;width:var(--wheel-w);height:180px;overflow:hidden;
+                  touch-action:none;user-select:none;-webkit-user-select:none;border-radius:16px}
+  .wheel-item{position:absolute;left:0;right:0;height:36px;display:flex;align-items:center;
+              padding:0 10px;cursor:pointer;
+              transition:transform 280ms cubic-bezier(.34,1.56,.64,1),opacity 200ms ease;
+              will-change:transform,opacity}
+  .wheel-right{display:flex;align-items:center;gap:6px}
+  .wheel-pill{padding:4px 12px;border-radius:14px;font-size:13px;font-weight:500;border:1px solid transparent;
+              transition:all 250ms cubic-bezier(.34,1.56,.64,1);white-space:nowrap;min-width:38px;text-align:center}
+  .wheel-item.selected .wheel-pill{background:#fff;color:#171717;border-color:rgba(0,0,0,.08);font-weight:700;
+              box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  .wheel-item:not(.selected) .wheel-pill{background:transparent;color:#C0B8A8;border-color:transparent}
+  .wheel-icon{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:0;
+              transition:all 250ms cubic-bezier(.34,1.56,.64,1)}
+  .wheel-item.selected .wheel-icon{background:#FF6B6B;color:#fff;
+              box-shadow:0 4px 10px -3px rgba(255,107,107,.5),0 1px 0 rgba(255,255,255,.7) inset}
+  .wheel-item:not(.selected) .wheel-icon{background:#FFF0E8;color:#c8860a;
+              box-shadow:0 1px 0 rgba(255,255,255,.7) inset}
+  .wheel-indicator{width:0;height:4px;border-radius:2px;background:#2C3E50;opacity:0;flex-shrink:0;
+              transition:width 250ms cubic-bezier(.34,1.56,.64,1),opacity 200ms ease}
+  .wheel-item.selected .wheel-indicator{width:8px;opacity:1}
+  .activity-wheel::before,.activity-wheel::after{content:'';position:absolute;left:0;right:0;height:30px;
+              pointer-events:none;z-index:2}
+  .activity-wheel::before{top:0;background:linear-gradient(to bottom,#FFFDF8,transparent)}
+  .activity-wheel::after{bottom:0;background:linear-gradient(to top,#FFF8F0,transparent)}
+
+  /* S2: 触控热区扩到 44px (伪元素), 可开「显示热区」看见 */
+  .wheel-item::after{content:'';position:absolute;left:0;right:0;top:-4px;bottom:-4px}
+  .show-zones .wheel-item::after{background:rgba(255,107,107,.10);border-top:1px dashed rgba(255,107,107,.5);
+              border-bottom:1px dashed rgba(255,107,107,.5)}
+
+  /* 按钮 (v2: 统一 primary + ghost) */
+  .action-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+  .btn{border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;
+       padding:14px 24px;border-radius:24px}
+  .btn-before{padding:10px 20px;font-size:15px;border-radius:20px}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.10)}
+  .btn-danger{background:#4ECDC4;color:#fff}
+  .btn-ghost{background:#F2EEE6;color:#8A8578}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* 运行态 B (worktree 已实装版本) */
+  .picker-card{position:relative}
+  .timer-countdown{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:14px;opacity:0;pointer-events:none}
+  .cd-value{font-size:56px;font-weight:900;color:#2C3E50;line-height:1;letter-spacing:-1.5px;
+       font-variant-numeric:tabular-nums}
+  .cd-bar-track{width:62%;height:4px;border-radius:999px;background:rgba(255,107,107,.14);overflow:hidden}
+  .cd-bar-fill{height:100%;width:0%;border-radius:999px;background:#FF6B6B}
+  .cd-hint{font-size:12px;font-weight:500;color:#666}
+  .picker-card.is-running .dial-knob,.picker-card.is-running .activity-wheel{pointer-events:none}
+  .timer-instrument-pod.is-running .dial-knob,.timer-instrument-pod.is-running .activity-wheel{pointer-events:none}
+  .timer-instrument-pod .timer-countdown{border-radius:22px}
+
+  .readout{font-size:12px;line-height:1.7;color:#5C5C5C;background:#FAF8F2;border-radius:10px;
+           padding:9px 11px;margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .readout b{color:var(--secondary)}
+  .readout .bad{color:#C0392B;font-weight:700}
+  .readout .good{color:#1E8449;font-weight:700}
+  .note{max-width:1720px;margin:16px auto 0;font-size:12px;color:#7F8C8D;line-height:1.9}
+  .note b{color:var(--secondary)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>practice 计时器 · 选择时间态 v2 高保真 demo（左=现状 / 右=v2）</h1>
+  <div class="sub">
+    sprint 26091701 · 结构、尺寸、间距、交互全部复用 <code>practice.html</code> 真代码（dial knob CSS + <code>createDialKnob()</code> + <code>createActivityWheel()</code>）。
+    底部读数实时量当前渲染结果：<b>wheel 选中项中线 vs 表盘中心线的偏差</b> 和 <b>wheel→表盘间实际间距</b>。
+  </div>
+  <div class="toolbar">
+    <div class="grp"><span>设备：</span>
+      <button class="dev on" data-w="440" data-knob="148" data-gap="12" data-wheel="76">iPhone 440</button>
+      <button class="dev" data-w="744" data-knob="168" data-gap="16" data-wheel="84">iPad 竖屏 744</button>
+      <button class="dev" data-w="1133" data-knob="180" data-gap="18" data-wheel="84">iPad 横屏 1133</button>
+      <button class="dev" data-w="1728" data-knob="180" data-gap="20" data-wheel="88">Mac 1728</button>
+    </div>
+    <label><input type="checkbox" id="zones"> 显示 44px 触控热区</label>
+    <button onclick="resetAll()">重置</button>
+    <button onclick="startBoth()">两边同时开始</button>
+  </div>
+</header>
+
+<div class="stage">
+  <!-- ══════ 现状 ══════ -->
+  <section class="side legacy" id="sideBefore">
+    <h2><span class="tag">现状</span> 选择时间态（今天线上）</h2>
+    <div class="desc">wheel 与 dial 是透明卡片上两个并列子节点，<code>.picker-col</code> 底部挂按钮 → 交叉轴居中把 wheel 整体拉低 14px；间距 gap:0。</div>
+    <div class="viewport" id="vwBefore"><div class="vw-label" id="vwbLabel"></div>
+      <div class="timer-block">
+        <div class="picker-card" id="cardBefore">
+          <div class="activity-wheel" id="wheelB"></div>
+          <div class="picker-col">
+            <div class="picker-label">主计时</div>
+            <div class="dial-knob" id="knobB">
+              <div class="dial-disc"></div>
+              <svg class="dial-ticks" id="ticksB" viewBox="-110 -110 220 220"></svg>
+              <div class="dial-face"><div class="dial-value" id="valueB">10</div><div class="dial-unit">分钟</div></div>
+            </div>
+            <div class="action-btns">
+              <button class="btn btn-before btn-danger" id="startB" onclick="toggleB()">开始</button>
+              <button class="btn btn-before btn-danger" id="earlyB" onclick="earlyB()" disabled style="display:none">提前结束</button>
+            </div>
+          </div>
+          <div class="timer-countdown" id="cdB">
+            <div class="cd-value" id="cdValueB">10:00</div>
+            <div class="cd-bar-track"><div class="cd-bar-fill" id="cdBarB"></div></div>
+            <div class="cd-hint" id="cdHintB">练习中</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="readout" id="roBefore">测量中…</div>
+  </section>
+
+  <!-- ══════ v2 ══════ -->
+  <section class="side after" id="sideAfter">
+    <h2><span class="tag">v2</span> 一体化胶囊座舱 + dial-row 对齐</h2>
+    <div class="desc">label 提到座舱上方；座舱内 <code>.timer-dial-row</code> 只放 wheel + dial，<code>align-items:center</code> → 中心线永久重合；间距走设备常量；wheel 项 36px + 伪元素扩至 44px 热区（点相邻数字 = ±1）。</div>
+    <div class="viewport" id="vwAfter"><div class="vw-label" id="vwaLabel"></div>
+      <div class="timer-block col">
+        <div class="picker-wrap">
+          <div class="picker-label">主计时</div>
+          <div class="timer-instrument-pod" id="podAfter">
+            <div class="timer-dial-row">
+              <div class="activity-wheel" id="wheelA"></div>
+              <div class="dial-knob" id="knobA">
+                <div class="dial-disc"></div>
+                <svg class="dial-ticks" id="ticksA" viewBox="-110 -110 220 220"></svg>
+                <div class="dial-face"><div class="dial-value" id="valueA">10</div><div class="dial-unit">分钟</div></div>
+              </div>
+            </div>
+            <div class="timer-countdown" id="cdA">
+              <div class="cd-value" id="cdValueA">10:00</div>
+              <div class="cd-bar-track"><div class="cd-bar-fill" id="cdBarA"></div></div>
+              <div class="cd-hint" id="cdHintA">练习中</div>
+            </div>
+          </div>
+        </div>
+        <div class="action-btns">
+          <button class="btn btn-primary" id="startA" onclick="toggleA()">开始</button>
+          <button class="btn btn-ghost" id="earlyA" onclick="earlyA()" disabled style="display:none">提前结束</button>
+        </div>
+      </div>
+    </div>
+    <div class="readout" id="roAfter">测量中…</div>
+  </section>
+</div>
+
+<div class="note">
+  <b>怎么读两侧读数</b>：ΔY = wheel 选中项图文中心线 − 表盘中心线。现状应该量出 <b>≈ +14px（偏下）</b>；v2 应该 ≈ 0px。<br>
+  <b>怎么验 S2</b>：勾「显示 44px 触控热区」能看到每行热区（36px 行高 + 上下各 4px）。点选中项（10）正上方的 9 → 精确减 1；正下方 11 → 精确加 1。滚轮 / 触摸滑动 / 拖表盘圆弧三种选值方式都保留且互相同步。<br>
+  <b>怎么验 B 交接</b>：点「开始」——wheel 左移淡出、旋钮缩小消失、56px 大字 + 4px 进度条接管；点「暂停」整块压暗提示「已暂停」；「提前结束」可见可点（这是 9-18 修掉的 overlay 吃点击 bug）。<br>
+  <b>未包含</b>：session-panel（速度/BPM/内容）、打卡与后端、protect modal / 离开守卫 / elapsed 语义（真页面不动）。间距常量：iPhone 12 / iPad 竖屏 16 / iPad 横屏 18 / Mac 20。
+</div>
+
+<script>
+/* ═══ 真代码搬运 1: createDialKnob (practice.html createDialKnob, 原样 + setProgress 暴露) ═══ */
+function createDialKnob(opts){
+  const {containerEl,ticksEl,valueEl,onChange,initial=10,min=1,max=30,step=1,
+         snapVals=[],dotCount=30,color='#FF6B6B',sensitivity=0.25}=opts;
+  const SVG_NS='http://www.w3.org/2000/svg',DOT_RADIUS=80,OUTER_TICKS=60,SNAP_RADIUS=0.8;
+  const range=max-min; let currentValue=initial,isDragging=false,lastAngle=0;
+  ticksEl.innerHTML='';
+  for(let i=0;i<OUTER_TICKS;i++){
+    const angle=(i/OUTER_TICKS)*360-90,rad=(angle*Math.PI)/180,isMarker=(i%5===0);
+    const line=document.createElementNS(SVG_NS,'line');
+    line.setAttribute('x1',Math.cos(rad)*100);line.setAttribute('y1',Math.sin(rad)*100);
+    line.setAttribute('x2',Math.cos(rad)*(isMarker?88:94));line.setAttribute('y2',Math.sin(rad)*(isMarker?88:94));
+    line.setAttribute('stroke-width',isMarker?1.8:1);line.setAttribute('stroke-linecap','round');
+    line.setAttribute('stroke',isMarker?'#c8860a':'rgba(200,160,40,0.3)');
+    ticksEl.appendChild(line);
+  }
+  for(let i=0;i<dotCount;i++){
+    const angle=(i/dotCount)*360-90,rad=(angle*Math.PI)/180;
+    const c=document.createElementNS(SVG_NS,'circle');
+    c.setAttribute('cx',Math.cos(rad)*DOT_RADIUS);c.setAttribute('cy',Math.sin(rad)*DOT_RADIUS);
+    c.setAttribute('r',2);c.setAttribute('fill','#E8E0D0');ticksEl.appendChild(c);
+  }
+  const activeGroup=document.createElementNS(SVG_NS,'g');ticksEl.appendChild(activeGroup);
+  const arcPath=document.createElementNS(SVG_NS,'path');
+  arcPath.setAttribute('fill','none');arcPath.setAttribute('stroke',color);
+  arcPath.setAttribute('stroke-width',1.2);arcPath.setAttribute('stroke-opacity',0.25);
+  arcPath.setAttribute('stroke-linecap','round');activeGroup.appendChild(arcPath);
+  function paint(ratio){
+    const ratio2=Math.max(0,Math.min(1,ratio));
+    const filledDots=Math.round(ratio2*dotCount);
+    ticksEl.style.transform='rotate('+(ratio2*360)+'deg)';
+    activeGroup.querySelectorAll('.active-dot').forEach(d=>d.remove());
+    for(let i=0;i<filledDots;i++){
+      const angle=(i/dotCount)*360-90,rad=(angle*Math.PI)/180;
+      const c=document.createElementNS(SVG_NS,'circle');
+      c.setAttribute('cx',Math.cos(rad)*DOT_RADIUS);c.setAttribute('cy',Math.sin(rad)*DOT_RADIUS);
+      c.setAttribute('r',i===filledDots-1?4:3);c.setAttribute('fill',color);
+      c.classList.add('active-dot');activeGroup.insertBefore(c,arcPath);
+    }
+    if(filledDots>1){
+      const startRad=(-90*Math.PI)/180,endA=((filledDots-1)/dotCount)*360-90,endRad=(endA*Math.PI)/180;
+      const large=(endA-(-90))>180?1:0;
+      arcPath.setAttribute('d','M '+Math.cos(startRad)*DOT_RADIUS+' '+Math.sin(startRad)*DOT_RADIUS+' A '+DOT_RADIUS+' '+DOT_RADIUS+' 0 '+large+' 1 '+Math.cos(endRad)*DOT_RADIUS+' '+Math.sin(endRad)*DOT_RADIUS);
+      arcPath.style.display='';
+    } else arcPath.style.display='none';
+  }
+  function updateVisual(){
+    paint((currentValue-min)/range);
+    if(valueEl)valueEl.textContent=currentValue;
+    if(onChange)onChange(currentValue);
+  }
+  function snapValue(v){
+    v=Math.round(v/step)*step;
+    for(const sv of snapVals){if(Math.abs(v-sv)<=SNAP_RADIUS)return sv;}
+    return Math.max(min,Math.min(max,v));
+  }
+  function getAngle(cx,cy){
+    const rect=containerEl.getBoundingClientRect();
+    return (Math.atan2(cy-(rect.top+rect.height/2),cx-(rect.left+rect.width/2))*180)/Math.PI;
+  }
+  containerEl.addEventListener('pointerdown',e=>{isDragging=true;lastAngle=getAngle(e.clientX,e.clientY);
+    containerEl.setPointerCapture(e.pointerId);ticksEl.classList.add('dragging');e.preventDefault();});
+  containerEl.addEventListener('pointermove',e=>{
+    if(!isDragging)return;
+    const angle=getAngle(e.clientX,e.clientY);let delta=angle-lastAngle;
+    if(delta>180)delta-=360; if(delta<-180)delta+=360;
+    currentValue=snapValue(currentValue+delta*sensitivity);lastAngle=angle;updateVisual();});
+  containerEl.addEventListener('pointerup',()=>{isDragging=false;ticksEl.classList.remove('dragging');});
+  containerEl.addEventListener('pointercancel',()=>{isDragging=false;ticksEl.classList.remove('dragging');});
+  containerEl.addEventListener('wheel',e=>{e.preventDefault();
+    currentValue=snapValue(currentValue+(e.deltaY>0?-step:step));updateVisual();},{passive:false});
+  updateVisual();
+  return {getValue:()=>currentValue,setValue:v=>{currentValue=snapValue(v);updateVisual();}};
+}
+
+/* ═══ 真代码搬运 2: createActivityWheel (practice.html createActivityWheel, 原样) ═══ */
+function createActivityWheel(opts){
+  const {containerEl,values,initial,onChange,ARC_RADIUS=280,ARC_STEP_DEG=10,VISIBLE_RANGE=5}=opts;
+  let selectedIdx=values.indexOf(initial);if(selectedIdx<0)selectedIdx=0;
+  containerEl.innerHTML='';
+  const items=values.map((v,i)=>{
+    const el=document.createElement('div');el.className='wheel-item';
+    el.innerHTML='<div class="wheel-right"><span class="wheel-pill">'+v+'</span>'
+      +'<div class="wheel-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
+      +'<div class="wheel-indicator"></div></div>';
+    el.addEventListener('click',()=>{selectedIdx=i;updateWheel(true);if(onChange)onChange(values[selectedIdx]);});
+    containerEl.appendChild(el);return el;
+  });
+  function updateWheel(animate){
+    items.forEach((el,i)=>{
+      const offset=i-selectedIdx,absOffset=Math.abs(offset);
+      const angleRad=(offset*ARC_STEP_DEG*Math.PI)/180;
+      const arcX=ARC_RADIUS*(1-Math.cos(angleRad)),arcY=ARC_RADIUS*Math.sin(angleRad);
+      const scale=Math.max(0.72,1-absOffset*0.06);
+      const opacity=absOffset>VISIBLE_RANGE?0:Math.max(0.25,1-absOffset*0.18);
+      el.classList.toggle('selected',offset===0);
+      el.style.top='calc(50% + '+(-18+arcY)+'px)';
+      el.style.transform='translateX('+arcX+'px) scale('+scale+')';
+      el.style.opacity=opacity;
+      el.style.pointerEvents=absOffset>VISIBLE_RANGE?'none':'auto';
+      if(animate){el.style.transition='transform 280ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease';
+        setTimeout(()=>el.style.transition='',300);}
+    });
+  }
+  let wheelAccum=0;const WHEEL_THRESHOLD=35;
+  containerEl.addEventListener('wheel',e=>{
+    e.preventDefault();wheelAccum+=e.deltaY;
+    if(Math.abs(wheelAccum)<WHEEL_THRESHOLD)return;
+    const steps=Math.trunc(wheelAccum/WHEEL_THRESHOLD);wheelAccum-=steps*WHEEL_THRESHOLD;
+    const newIdx=Math.max(0,Math.min(values.length-1,selectedIdx+steps));
+    if(newIdx!==selectedIdx){selectedIdx=newIdx;updateWheel(true);if(onChange)onChange(values[selectedIdx]);}
+  },{passive:false});
+  let touchStartY=0;
+  containerEl.addEventListener('touchstart',e=>{touchStartY=e.touches[0].clientY;},{passive:true});
+  containerEl.addEventListener('touchmove',e=>{
+    const dy=touchStartY-e.touches[0].clientY;
+    if(Math.abs(dy)>25){const steps=Math.trunc(dy/25);touchStartY=e.touches[0].clientY;
+      const newIdx=Math.max(0,Math.min(values.length-1,selectedIdx+steps));
+      if(newIdx!==selectedIdx){selectedIdx=newIdx;updateWheel(true);if(onChange)onChange(values[selectedIdx]);}}
+  },{passive:true});
+  updateWheel(false);
+  return {getValue:()=>values[selectedIdx],setValue:v=>{const idx=values.indexOf(v);if(idx>=0){selectedIdx=idx;updateWheel(true);}}};
+}
+
+/* ═══ 状态机 (与 worktree 实装一致: 开始 = B 交接) ═══ */
+const SNAP=[5,10,15,20,25,30];
+const VALUES=Array.from({length:26},(_,i)=>i+5);
+const DUR=10;
+const st={B:{el:0,run:false,paused:false,done:false,iv:null},A:{el:0,run:false,paused:false,done:false,iv:null}};
+const knobs={},wheels={};
+function fmt(s){const m=Math.floor(s/60).toString().padStart(2,'0'),x=Math.floor(s%60).toString().padStart(2,'0');return m+':'+x;}
+
+function measure(side){
+  const root=document.getElementById(side==='before'?'sideBefore':'sideAfter');
+  const item=root.querySelector('.wheel-item.selected');
+  const face=root.querySelector('.dial-face');
+  const wheel=root.querySelector('.activity-wheel');
+  const knob=root.querySelector('.dial-knob');
+  if(!item||!face||!wheel||!knob)return null;
+  const a=item.getBoundingClientRect(),b=face.getBoundingClientRect();
+  const c=wheel.getBoundingClientRect(),d=knob.getBoundingClientRect();
+  const dY=(a.top+a.height/2)-(b.top+b.height/2);
+  const gap=d.left-c.right;
+  const hot=item.getBoundingClientRect().height+8;
+  return {dY,gap,hot,wheelW:c.width,knobW:d.width};
+}
+function renderReadout(){
+  const b=measure('before'),a=measure('after');
+  const z=document.getElementById('zones').checked?' · 热区已显示':'';
+  if(b)document.getElementById('roBefore').innerHTML=
+    'ΔY（wheel 选中项中线 − 表盘中心线）= <span class="bad">'+b.dY.toFixed(1)+'px</span>（偏下）'
+    +' · wheel→表盘间距 <span class="bad">'+b.gap.toFixed(1)+'px</span>'
+    +' · wheel '+b.wheelW.toFixed(0)+'px / 旋钮 '+b.knobW.toFixed(0)+'px'
+    +' · 触控热区 '+b.hot.toFixed(0)+'px'+z;
+  if(a)document.getElementById('roAfter').innerHTML=
+    'ΔY（wheel 选中项中线 − 表盘中心线）= <span class="good">'+a.dY.toFixed(1)+'px</span>（对齐）'
+    +' · wheel→表盘间距 <span class="good">'+a.gap.toFixed(1)+'px</span>'
+    +' · wheel '+a.wheelW.toFixed(0)+'px / 旋钮 '+a.knobW.toFixed(0)+'px'
+    +' · 触控热区 '+a.hot.toFixed(0)+'px'+z;
+}
+
+/* 现状侧 (B) */
+function toggleB(){
+  const s=st.B,card=document.getElementById('cardBefore'),cd=document.getElementById('cdB');
+  if(s.done){resetB();return;}
+  if(!s.run){
+    s.run=true;s.paused=false;
+    if(window.gsap){gsap.to([document.getElementById('wheelB'),document.getElementById('knobB')],
+      {opacity:0,scale:.6,duration:.3,ease:'back.in(2)'});
+      gsap.to(cd,{opacity:1,duration:.3,delay:.12});}
+    document.getElementById('cdB').style.pointerEvents='none';
+    document.getElementById('startB').textContent='暂停';
+    const e=document.getElementById('earlyB');e.style.display='inline-block';e.disabled=false;
+    tick('B');
+  } else if(!s.paused){
+    s.paused=true;clearInterval(s.iv);document.getElementById('startB').textContent='继续';
+    document.getElementById('cdHintB').textContent='已暂停';
+    if(window.gsap)gsap.to(cd,{opacity:.45,duration:.18});
+  } else {
+    s.paused=false;tick('B');document.getElementById('startB').textContent='暂停';
+    document.getElementById('cdHintB').textContent='练习中';
+    if(window.gsap)gsap.to(cd,{opacity:1,duration:.18});
+  }
+}
+function earlyB(){const s=st.B;s.done=true;clearInterval(s.iv);document.getElementById('startB').textContent='重新开始';}
+function resetB(){
+  clearInterval(st.B.iv);st.B={el:0,run:false,paused:false,done:false,iv:null};
+  document.getElementById('startB').textContent='开始';
+  document.getElementById('earlyB').style.display='none';
+  document.getElementById('cdValueB').textContent=fmt(DUR*60);
+  document.getElementById('cdBarB').style.width='0%';
+  document.getElementById('cdHintB').textContent='练习中';
+  if(window.gsap){gsap.to(['#wheelB','#knobB'],{opacity:1,scale:1,duration:.28,ease:'power2.out',clearProps:'transform'});
+    gsap.to('#cdB',{opacity:0,duration:.2});}
+}
+
+/* v2 侧 (A) */
+function toggleA(){
+  const s=st.A,pod=document.getElementById('podAfter'),cd=document.getElementById('cdA');
+  if(s.done){resetA();return;}
+  if(!s.run){
+    s.run=true;s.paused=false;
+    if(window.gsap){gsap.to([document.getElementById('wheelA'),document.getElementById('knobA')],
+      {opacity:0,scale:.6,x:-20,duration:.28,ease:'back.in(2)'});
+      gsap.to(cd,{opacity:1,duration:.32,delay:.12});
+      gsap.fromTo('#cdValueA',{scale:.92,opacity:0},{scale:1,opacity:1,duration:.32,ease:'back.out(2)',delay:.12});}
+    pod.classList.add('is-running');
+    document.getElementById('startA').textContent='暂停';
+    const e=document.getElementById('earlyA');e.style.display='inline-block';e.disabled=false;
+    tick('A');
+  } else if(!s.paused){
+    s.paused=true;clearInterval(s.iv);document.getElementById('startA').textContent='继续';
+    document.getElementById('cdHintA').textContent='已暂停';
+    if(window.gsap)gsap.to(cd,{opacity:.45,duration:.18});
+  } else {
+    s.paused=false;tick('A');document.getElementById('startA').textContent='暂停';
+    document.getElementById('cdHintA').textContent='练习中';
+    if(window.gsap)gsap.to(cd,{opacity:1,duration:.18});
+  }
+}
+function earlyA(){const s=st.A;s.done=true;clearInterval(s.iv);document.getElementById('startA').textContent='重新开始';}
+function resetA(){
+  clearInterval(st.A.iv);st.A={el:0,run:false,paused:false,done:false,iv:null};
+  document.getElementById('podAfter').classList.remove('is-running');
+  document.getElementById('startA').textContent='开始';
+  document.getElementById('earlyA').style.display='none';
+  document.getElementById('cdValueA').textContent=fmt(DUR*60);
+  document.getElementById('cdBarA').style.width='0%';
+  document.getElementById('cdHintA').textContent='练习中';
+  if(window.gsap){gsap.to(['#wheelA','#knobA'],{opacity:1,scale:1,x:0,duration:.28,ease:'power2.out',clearProps:'transform'});
+    gsap.to('#cdA',{opacity:0,duration:.2});}
+}
+function tick(side){
+  const s=st[side];
+  clearInterval(s.iv);
+  s.iv=setInterval(()=>{
+    s.el+=1;
+    const remain=Math.max(0,DUR*60-s.el);
+    document.getElementById('cdValue'+side).textContent=fmt(remain);
+    document.getElementById('cdBar'+side).style.width=Math.min(100,s.el/(DUR*60)*100).toFixed(2)+'%';
+    if(remain<=0){clearInterval(s.iv);s.done=true;
+      document.getElementById('start'+side).textContent='重新开始';
+      if(window.gsap)gsap.fromTo('#cdValue'+side,{scale:1},{scale:1.18,duration:.28,ease:'back.out(2)',yoyo:true,repeat:1});}
+  },1000);
+}
+
+function resetAll(){resetB();resetA();renderReadout();}
+function startBoth(){if(!st.B.run)toggleB();if(!st.A.run)toggleA();}
+
+/* 设备切换 */
+function applyDevice(btn){
+  document.querySelectorAll('.dev').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const w=+btn.dataset.w,knob=+btn.dataset.knob,gap=+btn.dataset.gap,wheel=+btn.dataset.wheel;
+  document.querySelectorAll('.viewport').forEach(v=>{v.style.width=w+'px';v.style.maxWidth='100%';});
+  document.querySelectorAll('.vw-label').forEach(l=>{l.textContent=btn.textContent.trim()+' · 容器 '+w+'px · 旋转 '+knob+'px · 间距 '+gap+'px · wheel '+wheel+'px';});
+  document.documentElement.style.setProperty('--knob-size',knob+'px');
+  document.documentElement.style.setProperty('--dial-gap',gap+'px');
+  document.documentElement.style.setProperty('--wheel-w',wheel+'px');
+  requestAnimationFrame(()=>setTimeout(renderReadout,60));
+}
+
+window.addEventListener('load',()=>{
+  const base={min:5,max:30,step:1,snapVals:SNAP,dotCount:30,color:'#FF6B6B',sensitivity:0.25,initial:DUR};
+  knobs.B=createDialKnob(Object.assign({},base,{containerEl:document.getElementById('knobB'),ticksEl:document.getElementById('ticksB'),
+    valueEl:document.getElementById('valueB'),onChange:v=>{if(wheels.B)wheels.B.setValue(v);renderReadout();}}));
+  wheels.B=createActivityWheel({containerEl:document.getElementById('wheelB'),values:VALUES,initial:DUR,
+    onChange:v=>{if(knobs.B)knobs.B.setValue(v);renderReadout();}});
+  knobs.A=createDialKnob(Object.assign({},base,{containerEl:document.getElementById('knobA'),ticksEl:document.getElementById('ticksA'),
+    valueEl:document.getElementById('valueA'),onChange:v=>{if(wheels.A)wheels.A.setValue(v);renderReadout();}}));
+  wheels.A=createActivityWheel({containerEl:document.getElementById('wheelA'),values:VALUES,initial:DUR,
+    onChange:v=>{if(knobs.A)knobs.A.setValue(v);renderReadout();}});
+
+  document.querySelectorAll('.dev').forEach(b=>b.addEventListener('click',()=>applyDevice(b)));
+  document.getElementById('zones').addEventListener('change',e=>{
+    document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('show-zones',e.target.checked));});
+  document.querySelector('.dev.on').click();
+  window.addEventListener('resize',()=>setTimeout(renderReadout,120));
+  setTimeout(renderReadout,200);
+});
+</script>
+</body>
+</html>

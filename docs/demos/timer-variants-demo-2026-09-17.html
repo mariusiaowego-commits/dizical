@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>practice 计时器 · 变体对照 demo (A/B/C) — sprint 26091701</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root {
+    --primary: #FF6B6B;
+    --secondary: #2C3E50;
+    --card-bg: #FFFDF5;
+    --card-border: #F0D060;
+    --muted: #999;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 16px 48px;
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #FAF7F0;
+    color: var(--secondary);
+  }
+  header { max-width: 1600px; margin: 0 auto 18px; }
+  h1 { font-size: 20px; margin: 0 0 6px; letter-spacing: -0.3px; }
+  .sub { font-size: 13px; color: #7F8C8D; line-height: 1.7; }
+  .sub code { background: #EFEAE0; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-top: 12px; padding: 10px 14px; background: #fff;
+    border: 1px solid #EDE6D8; border-radius: 12px;
+  }
+  .toolbar label { font-size: 13px; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .toolbar button {
+    font-size: 13px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid #E0D8C8; background: #fff; color: var(--secondary);
+  }
+  .grid {
+    max-width: 1600px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, minmax(330px, 1fr)); gap: 16px;
+  }
+  @media (max-width: 1180px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: #fff; border: 1px solid #EDE6D8; border-radius: 16px;
+    padding: 14px 14px 18px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .panel.sel { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(255,107,107,0.15); }
+  .p-head { display: flex; align-items: baseline; gap: 8px; }
+  .p-tag {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+    color: #fff; background: var(--secondary); padding: 2px 8px; border-radius: 999px;
+  }
+  .panel.sel .p-tag { background: var(--primary); }
+  .p-name { font-size: 15px; font-weight: 700; }
+  .p-desc { font-size: 12px; color: #7F8C8D; line-height: 1.6; min-height: 34px; }
+  /* 真代码: practice.html L1039 起的 .timer-block 结构 + L157 CSS, 原样搬 */
+  .timer-block {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 18px; padding: 16px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    position: relative; min-height: 300px; justify-content: center;
+  }
+  .dial-knob {
+    --knob-size: 180px;
+    position: relative;
+    width: var(--knob-size);
+    height: var(--knob-size);
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  .dial-disc {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: linear-gradient(180deg, #FFFDF8 0%, #F0E8D0 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.95) inset,
+      0 -2px 4px rgba(0,0,0,0.08) inset,
+      0 10px 20px -8px rgba(0,0,0,0.15),
+      0 3px 6px rgba(0,0,0,0.06);
+  }
+  .dial-ticks {
+    position: absolute; inset: 0; pointer-events: none;
+    transition: transform 80ms ease-out;
+  }
+  .dial-ticks.dragging { transition: none; }
+  .dial-face {
+    position: absolute; top: 18%; left: 18%; right: 18%; bottom: 18%;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FFF8F0 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.95) inset,
+      0 -1px 0 rgba(0,0,0,0.06) inset,
+      0 0 0 1px rgba(0,0,0,0.06),
+      0 6px 14px -5px rgba(0,0,0,0.12),
+      0 2px 4px rgba(0,0,0,0.06);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .dial-value { font-size: 36px; font-weight: 900; color: #2C3E50; line-height: 1; letter-spacing: -1px; }
+  .dial-unit { font-size: 12px; font-weight: 600; color: #999; margin-top: 1px; }
+
+  /* 按钮: 三变体统一 (方案 A 的 S3 修正) */
+  .timer-btns { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit;
+    font-size: 16px; font-weight: 700;
+    padding: 14px 24px; border-radius: 24px;
+  }
+  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,0.10); }
+  .btn-ghost { background: #F2EEE6; color: #8A8578; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ── 变体 A: 呼吸弧 ── */
+  .vA .dial-knob.is-running { pointer-events: none; }
+  .vA .dial-value.is-counting { font-size: 28px; letter-spacing: 0; }
+  .vA .dial-disc.is-running { animation: breatheA 4s ease-in-out infinite; }
+  @keyframes breatheA { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+  .vA .dial-face.is-counting { animation: breatheValA 4s ease-in-out infinite; }
+  @keyframes breatheValA { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+  .fx-crossfade { transition: opacity 160ms ease-out, transform 160ms ease-out; }
+  .fx-out { opacity: 0; transform: scale(0.92); }
+
+  /* ── 变体 B: 极简数字 ── */
+  .vB .countdown {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    opacity: 0; pointer-events: none;
+  }
+  .vB .cd-value { font-size: 56px; font-weight: 900; color: var(--secondary); line-height: 1; letter-spacing: -1.5px; }
+  .vB .cd-bar-track { width: 62%; height: 4px; border-radius: 999px; background: #EFE9DC; overflow: hidden; }
+  .vB .cd-bar-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 999px; }
+  .vB .cd-hint { font-size: 12px; color: #A9A399; }
+
+  /* ── 变体 C: 双态 knob ── */
+  .vC .dial-value.is-counting { font-size: 30px; letter-spacing: 0; }
+  @keyframes glitchC {
+    0%   { text-shadow: 2px 0 rgba(255,0,60,0.55), -2px 0 rgba(0,220,255,0.55); transform: translate(0,0); }
+    25%  { text-shadow: -2px 0 rgba(255,0,60,0.55), 2px 0 rgba(0,220,255,0.55); transform: translate(1px,-1px); }
+    50%  { text-shadow: 2px 1px rgba(255,0,60,0.5), -2px -1px rgba(0,220,255,0.5); transform: translate(-1px,1px); }
+    100% { text-shadow: none; transform: translate(0,0); }
+  }
+  .glitch-once { animation: glitchC 420ms steps(2, end) 1; }
+
+  .readout {
+    font-size: 12px; color: #7F8C8D; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #FAF8F2; border-radius: 8px; padding: 8px 10px; line-height: 1.6;
+    min-height: 52px;
+  }
+  .readout b { color: var(--secondary); }
+  .note { max-width: 1600px; margin: 20px auto 0; font-size: 12px; color: #7F8C8D; line-height: 1.8; }
+  .note b { color: var(--secondary); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>practice 计时器 · 变体对照 demo（A / B / C）</h1>
+  <div class="sub">
+    sprint 26091701 · 复用 <code>practice.html</code> 真代码（dial knob CSS L157-214 + <code>createDialKnob()</code> L2753-2848 原样搬运）。
+    每个面板可独立点：开始 → 暂停 → 继续 → 提前结束。<br>
+    <b>演示倍速</b>：真实一秒 = 一分钟，方便 10 分钟倒计时在 10 秒内跑完；关掉即为真实速度。
+  </div>
+  <div class="toolbar">
+    <label><input type="checkbox" id="fast" checked> 倍速 ×60（演示用，真实一秒 = 一分钟）</label>
+    <button onclick="allReset()">全部重置</button>
+    <button onclick="allStart()">三变体同时开始</button>
+    <button onclick="document.querySelectorAll('.panel').forEach(p=>p.classList.remove('sel'))">清除选中</button>
+    <span class="sub" style="margin:0">点面板标题可选为「候选」</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- ══ 变体 A ══ -->
+  <section class="panel vA sel" id="panelA">
+    <div class="p-head" onclick="document.querySelectorAll('.panel').forEach(p=>p.classList.remove('sel'));this.closest('.panel').classList.add('sel')">
+      <span class="p-tag">A</span><span class="p-name">呼吸弧（agy 推荐）</span>
+    </div>
+    <div class="p-desc">运行态旋钮锁定 + 外环进度弧顺时针填充 + 数字 crossfade 到 mm:ss（28px）+ 4s 呼吸脉动。idle 保持分钟数。</div>
+
+    <div class="timer-block">
+      <div class="dial-knob" id="knobA">
+        <div class="dial-disc" id="discA"></div>
+        <svg class="dial-ticks" id="ticksA" viewBox="-110 -110 220 220"></svg>
+        <div class="dial-face" id="faceA">
+          <div class="dial-value fx-crossfade" id="valueA">10</div>
+          <div class="dial-unit" id="unitA">分钟</div>
+        </div>
+      </div>
+      <div class="timer-btns">
+        <button class="btn btn-primary" id="startA" onclick="toggleA()">开始</button>
+        <button class="btn btn-ghost" id="earlyA" onclick="earlyA()" disabled>提前结束</button>
+      </div>
+    </div>
+    <div class="readout" id="rA">idle · duration=10 分</div>
+  </section>
+
+  <!-- ══ 变体 B ══ -->
+  <section class="panel vB" id="panelB">
+    <div class="p-head" onclick="document.querySelectorAll('.panel').forEach(p=>p.classList.remove('sel'));this.closest('.panel').classList.add('sel')">
+      <span class="p-tag">B</span><span class="p-name">极简数字</span>
+    </div>
+    <div class="p-desc">开始时旋钮缩小消失（back.in(2) 0.3s），原位换成 56px 大字 mm:ss + 4px 横条进度（珊瑚红）。结束时数字 bounce。</div>
+
+    <div class="timer-block">
+      <div class="dial-knob" id="knobB">
+        <div class="dial-disc"></div>
+        <svg class="dial-ticks" id="ticksB" viewBox="-110 -110 220 220"></svg>
+        <div class="dial-face">
+          <div class="dial-value" id="valueB">10</div>
+          <div class="dial-unit">分钟</div>
+        </div>
+      </div>
+      <div class="countdown" id="cdB">
+        <div class="cd-value" id="cdValueB">10:00</div>
+        <div class="cd-bar-track"><div class="cd-bar-fill" id="cdBarB"></div></div>
+        <div class="cd-hint">大字倒计时 + 横条进度</div>
+      </div>
+      <div class="timer-btns">
+        <button class="btn btn-primary" id="startB" onclick="toggleB()">开始</button>
+        <button class="btn btn-ghost" id="earlyB" onclick="earlyB()" disabled>提前结束</button>
+      </div>
+    </div>
+    <div class="readout" id="rB">idle · duration=10 分</div>
+  </section>
+
+  <!-- ══ 变体 C ══ -->
+  <section class="panel vC" id="panelC">
+    <div class="p-head" onclick="document.querySelectorAll('.panel').forEach(p=>p.classList.remove('sel'));this.closest('.panel').classList.add('sel')">
+      <span class="p-tag">C</span><span class="p-name">双态 knob（复用 glitch）</span>
+    </div>
+    <div class="p-desc">旋钮始终可见；运行态外环点阵倒转（从满到空）+ 数字 mm:ss，每分钟触发一次已有但从未调用的 glitch 动效 + knob bounce。</div>
+
+    <div class="timer-block">
+      <div class="dial-knob" id="knobC">
+        <div class="dial-disc"></div>
+        <svg class="dial-ticks" id="ticksC" viewBox="-110 -110 220 220"></svg>
+        <div class="dial-face">
+          <div class="dial-value" id="valueC">10</div>
+          <div class="dial-unit" id="unitC">分钟</div>
+        </div>
+      </div>
+      <div class="timer-btns">
+        <button class="btn btn-primary" id="startC" onclick="toggleC()">开始</button>
+        <button class="btn btn-ghost" id="earlyC" onclick="earlyC()" disabled>提前结束</button>
+      </div>
+    </div>
+    <div class="readout" id="rC">idle · duration=10 分</div>
+  </section>
+
+</div>
+
+<div class="note">
+  <b>看什么</b>：① 拖旋钮的吸附手感（demo 已把 <code>SNAP_RADIUS</code> 从 0.8 放宽到 1.5，解 agy 问题 I1）；② 点开始后 10 秒内的运行态节奏（倍速下 1 秒 = 1 分钟，每分钟节点会触发 C 的 glitch）；③ 暂停/继续/提前结束的状态切换是否顺。<br>
+  <b>三变体共通</b>：按钮统一到 DESIGN.md token <code>colors.primary = #FF6B6B</code>（解问题 S3：原页面「开始」用青绿 #4ECDC4、「提前结束」用珊瑚红，语义打架）；「提前结束」保持 ghost 灰。安全语义（protect modal / 离开守卫 / 暂停保留 elapsed / 取消恢复）本 demo 未实现，真实页面不改。
+</div>
+
+<script>
+/* ────────────────────────────────────────────────────────────────
+   真代码搬运: practice.html L2753-2848 createDialKnob
+   唯一改动: 返回对象多暴露 setProgress(r) —— 供变体 A/C 驱动外环进度
+   （原函数只暴露 getValue/setValue，进度与选值绑定；运行态需要解耦）
+   ──────────────────────────────────────────────────────────────── */
+function createDialKnob(opts) {
+  const {
+    containerEl, ticksEl, valueEl, onChange,
+    initial = 10, min = 1, max = 30, step = 1,
+    snapVals = [], dotCount = 30, color = '#FF6B6B', sensitivity = 0.25,
+  } = opts;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const DOT_RADIUS = 80, OUTER_TICKS = 60, SNAP_RADIUS = 1.5; // demo: 0.8 -> 1.5 (解 I1)
+  const range = max - min;
+  let currentValue = initial, isDragging = false, lastAngle = 0;
+
+  ticksEl.innerHTML = '';
+  for (let i = 0; i < OUTER_TICKS; i++) {
+    const angle = (i / OUTER_TICKS) * 360 - 90;
+    const rad = (angle * Math.PI) / 180;
+    const isMarker = (i % 5 === 0);
+    const line = document.createElementNS(SVG_NS, 'line');
+    line.setAttribute('x1', Math.cos(rad) * 100);
+    line.setAttribute('y1', Math.sin(rad) * 100);
+    line.setAttribute('x2', Math.cos(rad) * (isMarker ? 88 : 94));
+    line.setAttribute('y2', Math.sin(rad) * (isMarker ? 88 : 94));
+    line.setAttribute('stroke-width', isMarker ? 1.8 : 1);
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('stroke', isMarker ? '#c8860a' : 'rgba(200,160,40,0.3)');
+    ticksEl.appendChild(line);
+  }
+  for (let i = 0; i < dotCount; i++) {
+    const angle = (i / dotCount) * 360 - 90;
+    const rad = (angle * Math.PI) / 180;
+    const c = document.createElementNS(SVG_NS, 'circle');
+    c.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
+    c.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
+    c.setAttribute('r', 2);
+    c.setAttribute('fill', '#E8E0D0');
+    ticksEl.appendChild(c);
+  }
+  const activeGroup = document.createElementNS(SVG_NS, 'g');
+  ticksEl.appendChild(activeGroup);
+  const arcPath = document.createElementNS(SVG_NS, 'path');
+  arcPath.setAttribute('fill', 'none');
+  arcPath.setAttribute('stroke', color);
+  arcPath.setAttribute('stroke-width', 1.2);
+  arcPath.setAttribute('stroke-opacity', 0.25);
+  arcPath.setAttribute('stroke-linecap', 'round');
+  activeGroup.appendChild(arcPath);
+
+  function paintRatio(ratio, rotateTicks) {
+    ratio = Math.max(0, Math.min(1, ratio));
+    const filledDots = Math.round(ratio * dotCount);
+    if (rotateTicks) ticksEl.style.transform = 'rotate(' + (ratio * 360) + 'deg)';
+    activeGroup.querySelectorAll('.active-dot').forEach(d => d.remove());
+    for (let i = 0; i < filledDots; i++) {
+      const angle = (i / dotCount) * 360 - 90;
+      const rad = (angle * Math.PI) / 180;
+      const c = document.createElementNS(SVG_NS, 'circle');
+      c.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
+      c.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
+      c.setAttribute('r', i === filledDots - 1 ? 4 : 3);
+      c.setAttribute('fill', color);
+      c.classList.add('active-dot');
+      activeGroup.insertBefore(c, arcPath);
+    }
+    if (filledDots > 1) {
+      const startRad = (-90 * Math.PI) / 180;
+      const endA = ((filledDots - 1) / dotCount) * 360 - 90;
+      const endRad = (endA * Math.PI) / 180;
+      const large = (endA - (-90)) > 180 ? 1 : 0;
+      arcPath.setAttribute('d', 'M ' + Math.cos(startRad)*DOT_RADIUS + ' ' + Math.sin(startRad)*DOT_RADIUS + ' A ' + DOT_RADIUS + ' ' + DOT_RADIUS + ' 0 ' + large + ' 1 ' + Math.cos(endRad)*DOT_RADIUS + ' ' + Math.sin(endRad)*DOT_RADIUS);
+      arcPath.style.display = '';
+    } else { arcPath.style.display = 'none'; }
+  }
+  function updateVisual() {
+    paintRatio((currentValue - min) / range, true);
+    // idle 态文字由外部控制（运行态要显示 mm:ss 而不是分钟数）
+    if (valueEl && !valueEl.dataset.locked) valueEl.textContent = currentValue;
+    if (onChange) onChange(currentValue);
+  }
+  function snapValue(v) {
+    v = Math.round(v / step) * step;
+    for (const sv of snapVals) { if (Math.abs(v - sv) <= SNAP_RADIUS) return sv; }
+    return Math.max(min, Math.min(max, v));
+  }
+  function getAngle(cx, cy) {
+    const rect = containerEl.getBoundingClientRect();
+    return (Math.atan2(cy - (rect.top + rect.height / 2), cx - (rect.left + rect.width / 2)) * 180) / Math.PI;
+  }
+  containerEl.addEventListener('pointerdown', (e) => {
+    isDragging = true; lastAngle = getAngle(e.clientX, e.clientY);
+    containerEl.setPointerCapture(e.pointerId); ticksEl.classList.add('dragging'); e.preventDefault();
+  });
+  containerEl.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const angle = getAngle(e.clientX, e.clientY);
+    let delta = angle - lastAngle;
+    if (delta > 180) delta -= 360; if (delta < -180) delta += 360;
+    currentValue = snapValue(currentValue + delta * sensitivity);
+    lastAngle = angle; updateVisual();
+  });
+  containerEl.addEventListener('pointerup', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
+  containerEl.addEventListener('pointercancel', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
+  containerEl.addEventListener('wheel', (e) => {
+    e.preventDefault(); currentValue = snapValue(currentValue + (e.deltaY > 0 ? -step : step)); updateVisual();
+  }, { passive: false });
+  updateVisual();
+  return {
+    getValue: () => currentValue,
+    setValue: (v) => { currentValue = snapValue(v); updateVisual(); },
+    setProgress: (r) => paintRatio(r, false),
+    setSelectedRatio: (r) => paintRatio(r, true),
+    setValueLabel: (v) => { if (valueEl) valueEl.textContent = v; },
+  };
+}
+
+/* ── 三变体共用状态机 ── */
+const SNAP = [5, 10, 15, 20, 25, 30];
+const DUR = 10; // 分钟
+const SPEED = () => (document.getElementById('fast').checked ? 60 : 1); // ×60 演示
+const state = {
+  A: { elapsed: 0, running: false, paused: false, done: false },
+  B: { elapsed: 0, running: false, paused: false, done: false },
+  C: { elapsed: 0, running: false, paused: false, done: false },
+};
+const knobs = {};
+const timers = {};
+let lastNudgeMin = { A: -1, B: -1, C: -1 };
+
+function fmt(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+/* ── 变体 A ── */
+function toggleA() {
+  const st = state.A;
+  if (st.done) { resetA(); return; }
+  if (!st.running) {
+    st.running = true; st.paused = false;
+    document.getElementById('knobA').classList.add('is-running');
+    document.getElementById('discA').classList.add('is-running');
+    document.getElementById('faceA').classList.add('is-counting');
+    const v = document.getElementById('valueA');
+    v.classList.add('fx-out');
+    setTimeout(() => {
+      v.dataset.locked = '1';
+      v.classList.add('is-counting');
+      v.textContent = fmt(DUR * 60);
+      v.classList.remove('fx-out');
+      document.getElementById('unitA').style.opacity = '0';
+    }, 160);
+    document.getElementById('startA').textContent = '暂停';
+    document.getElementById('earlyA').disabled = false;
+    st.paused = false;
+    tickA();
+  } else if (!st.paused) {
+    st.paused = true; clearInterval(timers.A);
+    document.getElementById('startA').textContent = '继续';
+    document.getElementById('discA').classList.remove('is-running');
+    document.getElementById('faceA').classList.remove('is-counting');
+  } else {
+    st.paused = false; tickA();
+    document.getElementById('startA').textContent = '暂停';
+    document.getElementById('discA').classList.add('is-running');
+    document.getElementById('faceA').classList.add('is-counting');
+  }
+  readA();
+}
+function tickA() {
+  const st = state.A;
+  clearInterval(timers.A);
+  timers.A = setInterval(() => {
+    st.elapsed += SPEED();
+    const remain = Math.max(0, DUR * 60 - st.elapsed);
+    document.getElementById('valueA').textContent = fmt(remain);
+    knobs.A.setProgress(st.elapsed / (DUR * 60));   // 进度弧顺时针填充
+    readA();
+    if (remain <= 0) { clearInterval(timers.A); st.done = true; document.getElementById('startA').textContent = '重新开始'; document.getElementById('discA').classList.remove('is-running'); document.getElementById('faceA').classList.remove('is-counting'); readA('完成 ✓'); }
+  }, 1000);
+}
+function earlyA() { const st = state.A; st.done = true; clearInterval(timers.A); document.getElementById('discA').classList.remove('is-running'); document.getElementById('faceA').classList.remove('is-counting'); document.getElementById('startA').textContent = '重新开始'; readA('提前结束 → 弹窗（真实页面有 finishEarlyModal）'); }
+function resetA() {
+  const st = state.A = { elapsed: 0, running: false, paused: false, done: false };
+  clearInterval(timers.A);
+  document.getElementById('knobA').classList.remove('is-running');
+  document.getElementById('discA').classList.remove('is-running');
+  document.getElementById('faceA').classList.remove('is-counting');
+  const v = document.getElementById('valueA');
+  delete v.dataset.locked; v.classList.remove('is-counting'); v.textContent = DUR;
+  document.getElementById('unitA').style.opacity = '1';
+  document.getElementById('startA').textContent = '开始';
+  document.getElementById('earlyA').disabled = true;
+  knobs.A.setSelectedRatio((DUR - 1) / (30 - 1));
+  readA();
+}
+function readA(extra) {
+  const st = state.A;
+  const base = 'idle · duration=' + (knobs.A ? knobs.A.getValue() : DUR) + ' 分';
+  const run = 'elapsed=' + st.elapsed + 's · 剩余=' + fmt(Math.max(0, DUR * 60 - st.elapsed)) + ' · 弧填充=' + Math.round(100 * st.elapsed / (DUR * 60)) + '%';
+  document.getElementById('rA').innerHTML = '<b>' + (st.running || st.done ? run : base) + '</b>' + (extra ? ' · ' + extra : '') + (st.paused ? ' · 暂停' : '');
+}
+
+/* ── 变体 B ── */
+function toggleB() {
+  const st = state.B;
+  if (st.done) { resetB(); return; }
+  const knob = document.getElementById('knobB');
+  const cd = document.getElementById('cdB');
+  if (!st.running) {
+    st.running = true; st.paused = false;
+    gsap.to(knob, { scale: 0.6, opacity: 0, duration: 0.3, ease: 'back.in(2)' });
+    gsap.to(cd, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.12 });
+    document.getElementById('startB').textContent = '暂停';
+    document.getElementById('earlyB').disabled = false;
+    tickB();
+  } else if (!st.paused) {
+    st.paused = true; clearInterval(timers.B);
+    gsap.to(knob, { opacity: 0.35, duration: 0.2 });
+    gsap.to(cd, { opacity: 0.35, duration: 0.2 });
+    document.getElementById('startB').textContent = '继续';
+  } else {
+    st.paused = false; tickB();
+    gsap.to(knob, { opacity: 0, duration: 0.2 });
+    gsap.to(cd, { opacity: 1, duration: 0.2 });
+    document.getElementById('startB').textContent = '暂停';
+  }
+  readB();
+}
+function tickB() {
+  const st = state.B;
+  clearInterval(timers.B);
+  timers.B = setInterval(() => {
+    st.elapsed += SPEED();
+    const remain = Math.max(0, DUR * 60 - st.elapsed);
+    document.getElementById('cdValueB').textContent = fmt(remain);
+    document.getElementById('cdBarB').style.width = Math.round(100 * st.elapsed / (DUR * 60)) + '%';
+    readB();
+    if (remain <= 0) {
+      clearInterval(timers.B); st.done = true;
+      gsap.fromTo('#cdValueB', { scale: 1 }, { scale: 1.18, duration: 0.28, ease: 'back.out(2)', yoyo: true, repeat: 1 });
+      document.getElementById('startB').textContent = '重新开始';
+      readB('完成 ✓ 数字 bounce');
+    }
+  }, 1000);
+}
+function earlyB() { const st = state.B; st.done = true; clearInterval(timers.B); document.getElementById('startB').textContent = '重新开始'; readB('提前结束 → 弹窗'); }
+function resetB() {
+  state.B = { elapsed: 0, running: false, paused: false, done: false };
+  clearInterval(timers.B);
+  gsap.to('#knobB', { scale: 1, opacity: 1, duration: 0.25, ease: 'power2.out' });
+  gsap.to('#cdB', { opacity: 0, duration: 0.2 });
+  document.getElementById('cdValueB').textContent = fmt(DUR * 60);
+  document.getElementById('cdBarB').style.width = '0%';
+  document.getElementById('startB').textContent = '开始';
+  document.getElementById('earlyB').disabled = true;
+  readB();
+}
+function readB(extra) {
+  const st = state.B;
+  const base = 'idle · duration=' + DUR + ' 分';
+  const run = 'elapsed=' + st.elapsed + 's · 剩余=' + fmt(Math.max(0, DUR * 60 - st.elapsed)) + ' · 横条=' + Math.round(100 * st.elapsed / (DUR * 60)) + '%';
+  document.getElementById('rB').innerHTML = '<b>' + (st.running || st.done ? run : base) + '</b>' + (extra ? ' · ' + extra : '') + (st.paused ? ' · 暂停' : '');
+}
+
+/* ── 变体 C ── */
+function toggleC() {
+  const st = state.C;
+  if (st.done) { resetC(); return; }
+  if (!st.running) {
+    st.running = true; st.paused = false; lastNudgeMin.C = -1;
+    document.getElementById('knobC').classList.add('is-running');
+    const v = document.getElementById('valueC');
+    v.classList.add('is-counting');
+    v.textContent = fmt(DUR * 60);
+    document.getElementById('unitC').style.opacity = '0';
+    document.getElementById('startC').textContent = '暂停';
+    document.getElementById('earlyC').disabled = false;
+    tickC();
+  } else if (!st.paused) {
+    st.paused = true; clearInterval(timers.C);
+    document.getElementById('startC').textContent = '继续';
+  } else {
+    st.paused = false; tickC();
+    document.getElementById('startC').textContent = '暂停';
+  }
+  readC();
+}
+function tickC() {
+  const st = state.C;
+  clearInterval(timers.C);
+  timers.C = setInterval(() => {
+    st.elapsed += SPEED();
+    const remain = Math.max(0, DUR * 60 - st.elapsed);
+    const val = document.getElementById('valueC');
+    val.textContent = fmt(remain);
+    knobs.C.setProgress(remain / (DUR * 60));        // 倒转: 从满到空
+    const minNow = Math.floor(st.elapsed / 60);
+    if (minNow !== lastNudgeMin.C) {
+      lastNudgeMin.C = minNow;
+      if (minNow > 0) {                               // 每分钟: 一次 glitch + knob bounce
+        val.classList.remove('glitch-once');
+        void val.offsetWidth;
+        val.classList.add('glitch-once');
+        gsap.fromTo('#knobC', { scale: 1 }, { scale: 1.05, duration: 0.22, ease: 'power2.out', yoyo: true, repeat: 1 });
+      }
+    }
+    readC();
+    if (remain <= 0) { clearInterval(timers.C); st.done = true; document.getElementById('startC').textContent = '重新开始'; readC('完成 ✓'); }
+  }, 1000);
+}
+function earlyC() { const st = state.C; st.done = true; clearInterval(timers.C); document.getElementById('startC').textContent = '重新开始'; readC('提前结束 → 弹窗'); }
+function resetC() {
+  state.C = { elapsed: 0, running: false, paused: false, done: false };
+  clearInterval(timers.C);
+  lastNudgeMin.C = -1;
+  document.getElementById('knobC').classList.remove('is-running');
+  const v = document.getElementById('valueC');
+  v.classList.remove('is-counting', 'glitch-once'); v.textContent = DUR;
+  document.getElementById('unitC').style.opacity = '1';
+  document.getElementById('startC').textContent = '开始';
+  document.getElementById('earlyC').disabled = true;
+  knobs.C.setSelectedRatio((DUR - 1) / (30 - 1));
+  readC();
+}
+function readC(extra) {
+  const st = state.C;
+  const base = 'idle · duration=' + (knobs.C ? knobs.C.getValue() : DUR) + ' 分';
+  const run = 'elapsed=' + st.elapsed + 's · 剩余=' + fmt(Math.max(0, DUR * 60 - st.elapsed)) + ' · 环剩=' + Math.round(100 * Math.max(0, DUR * 60 - st.elapsed) / (DUR * 60)) + '%';
+  document.getElementById('rC').innerHTML = '<b>' + (st.running || st.done ? run : base) + '</b>' + (extra ? ' · ' + extra : '') + (st.paused ? ' · 暂停' : '');
+}
+
+/* ── 全局 ── */
+function allReset() { resetA(); resetB(); resetC(); }
+function allStart() { if (!state.A.running) toggleA(); if (!state.B.running) toggleB(); if (!state.C.running) toggleC(); }
+
+window.addEventListener('load', () => {
+  const base = { initial: DUR, min: 1, max: 30, step: 1, snapVals: SNAP, dotCount: 30, color: '#FF6B6B', sensitivity: 0.25 };
+  knobs.A = createDialKnob(Object.assign({}, base, {
+    containerEl: document.getElementById('knobA'), ticksEl: document.getElementById('ticksA'),
+    valueEl: document.getElementById('valueA'), onChange: () => readA(),
+  }));
+  knobs.B = createDialKnob(Object.assign({}, base, {
+    containerEl: document.getElementById('knobB'), ticksEl: document.getElementById('ticksB'),
+    valueEl: document.getElementById('valueB'), onChange: () => readB(),
+  }));
+  knobs.C = createDialKnob(Object.assign({}, base, {
+    containerEl: document.getElementById('knobC'), ticksEl: document.getElementById('ticksC'),
+    valueEl: document.getElementById('valueC'), onChange: () => readC(),
+  }));
+  readA(); readB(); readC();
+});
+</script>
+</body>
+</html>

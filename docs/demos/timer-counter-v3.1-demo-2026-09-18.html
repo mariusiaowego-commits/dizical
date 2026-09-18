@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>practice 计时器 v3.1 demo · 滚轮数字 + 刻度尺 + 状态过渡 — sprint 26091701</title>
+<!-- 本地 GSAP (sha256 28033e44…, v3.12.5): 不依赖 CDN —— demo 曾在 CDN 拉不下来时整页动效全死 -->
+<script src="vendor/gsap.min.js"></script>
+<script>if(!window.gsap){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');}</script>
+<!-- 字体候选 (对照用; 真页面若采用按 DESIGN.md 规则走 designrepo dizicute token + 本地自托管子集) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-mono@5/500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5/500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5/500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-mono@5/700.css">
+<style>
+  :root{
+    --primary:#FF6B6B; --secondary:#2C3E50; --muted:#666;
+    --card-bg:#FFFDF5; --card-border:#F0D060;
+    /* 尺子三档 (几何/灰度照抄 Rare UI 参考页; 强调色用本项目 primary) */
+    --tick-light:#C2C2CC; --tick-light-h:14px;
+    --tick-dark:#3C3C43;  --tick-dark-h:20px;
+    --tick-cur:#FF6B6B;   --tick-cur-h:28px;
+    --ruler-row-h:32px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:20px 16px 60px;background:#EBEBEB;color:var(--secondary);
+       font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif}
+  header{max-width:1080px;margin:0 auto 14px}
+  h1{font-size:20px;margin:0 0 6px;letter-spacing:-.3px}
+  .sub{font-size:13px;color:#5C5C5C;line-height:1.75}
+  .sub code{background:#E2E2E2;padding:1px 5px;border-radius:4px;font-size:12px}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:10px 14px;
+           background:#fff;border:1px solid #E2E2E2;border-radius:12px}
+  .toolbar button{font-size:13px;padding:6px 14px;border-radius:999px;cursor:pointer;
+                  border:1px solid #DDD;background:#fff;color:var(--secondary)}
+  .toolbar button.on{background:var(--secondary);color:#fff;border-color:var(--secondary)}
+  .toolbar label{font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer}
+
+  .stage{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(360px,560px) 1fr;gap:16px}
+  @media (max-width:980px){.stage{grid-template-columns:1fr}}
+  .panel{background:#fff;border:1px solid #E2E2E2;border-radius:16px;padding:16px}
+  .panel h2{font-size:15px;margin:0 0 10px}
+
+  /* ══ 计时器卡片 ══ */
+  /* ══ 计时器卡片 (better-layout: 按组用间距, 组内紧 4px / 组间 ≥20px; 全部居中对齐到同一中轴) ══ */
+  #timerCard{
+    background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;
+    padding:26px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:0;overflow:hidden;
+  }
+  /* 组 1: 时间读数 (大数字 + 其下紧贴的总计说明)
+     注: 滚轮数字的窗口高 1.5em、字形居中 → 字形下方有 ~0.25em 空白, 所以用负 margin 把这行拉近 */
+  .readout{--num-size:72px;display:flex;flex-direction:column;align-items:center;gap:0}
+  /* agy 选项1: 「总计」做成状态胶囊岛; dad: 在 agy 的 -0.25em 基础上再往下 4px */
+  .readout-sub{font-size:13px;font-weight:600;color:#8A8578;letter-spacing:.01em;
+               display:inline-flex;align-items:baseline;gap:2px;
+               padding:3px 10px;background:#FFF0E8;border:1px solid #F0D060;border-radius:999px;
+               margin-block-start:calc(var(--num-size) * -.25 + 4px)}
+  .readout-sub small{font-size:12px;font-weight:600;color:#A9A399}
+  /* 数字: 照搬参考页 inline-flex items-center tabular-nums font-mono text-6xl tracking-tight
+     (参考页 mono = Geist Mono; 这里字体走变量, 便于对照切换) */
+  .ac-root{display:inline-flex;align-items:center;font-variant-numeric:tabular-nums;
+           font-family:var(--num-font,ui-monospace,SFMono-Regular,Menlo,monospace);
+           font-weight:500;letter-spacing:-.02em;
+           color:var(--secondary);line-height:1;font-size:var(--num-size);will-change:transform}
+  /* dad: 选择时间 → 计时，数字不许变大小/不许位移 → 两态同字号, 切态时不改 font-size */
+  @media (max-width:520px){
+    .readout{--num-size:56px}
+  }
+  .ac-digit{position:relative;display:inline-grid;overflow:hidden;height:1.5em;line-height:1.5;
+            -webkit-mask-image:var(--ac-fade);mask-image:var(--ac-fade)}
+  .ac-sizer{visibility:hidden;grid-area:1/1;display:grid}
+  .ac-stack{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center}
+  .ac-face{height:1.5em;display:flex;align-items:center;justify-content:center}
+  .ac-mark{display:inline-block;margin:0 -.1em}   /* 参考页 mark: -mx-[0.1em] */
+
+  /* ══ 刻度尺 (几何照抄参考页: 行高 32px / 底部对齐 / 2px 宽 pill / 三档高) ══ */
+  .ruler-row{display:flex;height:var(--ruler-row-h);align-items:flex-end;justify-content:space-between;
+             border-bottom:1.5px solid #E8D8B0;padding-bottom:2px}
+  .ruler-wrap{display:flex;align-items:center;gap:10px;width:100%;max-width:520px;margin-block-start:18px}
+  /* 音符气泡: 层不裁剪 (dad: 不能有"钻到图层后面消失"的观感), 用升幅上限避免碰到上方时间 */
+  .notes-bubbles{position:absolute;inset-inline:0;bottom:22px;height:22px;
+                 pointer-events:none;z-index:4;overflow:visible}
+  .bubble{position:absolute;bottom:0;line-height:1;color:#FF6B6B;opacity:0;
+          font-family:"Apple Symbols","Segoe UI Symbol","Noto Music",serif;
+          will-change:transform,opacity;
+          /* 冒泡: 纯 CSS 关键帧 (合成层, 不依赖 rAF/GSAP ticker; 参数走 CSS 变量做随机) */
+          animation:bubbleUp var(--bd,1.2s) cubic-bezier(.22,.61,.36,1) forwards}
+  .bubble.no-anim{animation:none}
+  @keyframes bubbleUp{
+    0%   {opacity:0;transform:translate3d(0,0,0) scale(.9) rotate(0deg)}
+    14%  {opacity:1}
+    60%  {opacity:1}
+    100% {opacity:0;transform:translate3d(var(--bx,6px),var(--by,-16px),0) scale(1) rotate(var(--br,8deg))}
+  }
+  /* agy 方案1: 跑道胶囊嵌入式触控键 (高度锁 32px = 刻度尺行高, 与尺子齐平) */
+  .step-btn{
+    flex:0 0 auto;width:38px;height:32px;border-radius:10px;
+    border:1.5px solid #E8D8B0;background:#FFF8F0;color:#5D4037;
+    font-family:inherit;font-size:16px;font-weight:700;line-height:1;
+    display:grid;place-items:center;cursor:pointer;position:relative;
+    transition:border-color 120ms ease,background-color 120ms ease,color 120ms ease,transform 90ms ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .step-btn:hover{border-color:#D9C79A;background:#FFF3E2}
+  .step-btn:active{transform:scale(.94);background:#FFE8C0;border-color:#C8860A;color:#2C3E50}
+  .step-btn:disabled{opacity:.35;border-color:#DCD6CC;color:#C2C2CC;background:#FFF8F0;cursor:default}
+  .step-btn:disabled:hover{border-color:#DCD6CC}
+  .ruler{position:relative;flex:1 1 auto;padding:0 1px;border-radius:12px}
+  /* 底轨卷草纹 (dad 修正: 从细线【下方】生长): SVG 顶边贴在细线上, 花纹向下长 */
+  .ruler-vine{position:absolute;left:0;top:calc(100% - 1.5px);pointer-events:none;z-index:1;overflow:visible}
+  /* dad: 刻度更细更密 —— 每分钟 2 格 (主格=整分, 次格=半分钟), 线更细 */
+  .tick{width:1.5px;border-radius:999px;transition:height 200ms ease,background-color 200ms ease}
+  .tick.minor{width:1px}
+  .tick.major.future{height:14px;background:#C2C2CC}
+  .tick.major.past{height:20px;background:#3C3C43}
+  .tick.minor.future{height:9px;background:#DCDCE4}
+  .tick.minor.past{height:13px;background:#5A5A64}
+  /* 当前格 = 参考页的红色标记: 3px 宽 + 负边距占同一槽 (替掉该格, 不并排),
+     且 height/background 都带 200ms 过渡 → 标记移走时这格会从高红针过渡回矮灰格 */
+  .tick.cur{width:3px;height:var(--tick-cur-h);margin:0 -.5px;background:var(--tick-cur);border-radius:999px}
+  /* 参考页做法: 尺子是 aria-hidden 的视觉层, 上面盖一个透明 range 原生控件负责拖拽。
+     iPad 无键盘 → 不做键盘控制: tabindex=-1 且不画 focus 描边 (dad: 那圈黑框不好看) */
+  .ruler-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:grab;
+               appearance:none;background:transparent;border:0;margin:0;outline:none}
+  .ruler-input:active{cursor:grabbing}
+  .ruler-input:disabled{cursor:default}
+  .ruler-input:focus,.ruler-input:focus-visible{outline:none;box-shadow:none}
+
+  .meta-row{display:flex;align-items:baseline;justify-content:center;text-align:center;gap:8px;
+            font-size:13px;color:#8A8578;min-height:18px;margin-block-start:10px}
+  .meta-row .val{font-weight:800;color:var(--secondary);font-size:15px}
+  .meta-row .val small{font-weight:600;color:#8A8578;font-size:12px;margin-inline-start:2px}
+
+  .btn-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;min-height:52px;align-items:center;
+           margin-block-start:28px}   /* v2: 22 → 28px, 给细线下方的垂蔓腾出 10px 专属带 */
+  .btn{border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;
+       padding:14px 26px;border-radius:24px}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.10)}
+  .btn-ghost{background:#F2EEE6;color:#8A8578}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* 只用于演示的辅助说明 */
+  .legend{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;font-size:12px;color:#5C5C5C}
+  .legend .item{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .legend .swatch{height:28px;display:flex;align-items:flex-end}
+  .tick-demo{width:3px;border-radius:999px;background:var(--tick-cur);height:28px}
+  .tick-demo.dark{width:2px;height:20px;background:var(--tick-dark)}
+  .tick-demo.light{width:2px;height:14px;background:var(--tick-light)}
+  table.spec{width:100%;border-collapse:collapse;font-size:12px;color:#3C3C43}
+  table.spec td,table.spec th{border-bottom:1px solid #EEE;padding:6px 8px;text-align:left}
+  table.spec th{color:#8A8578;font-weight:600}
+  .phase{display:flex;align-items:center;gap:8px;font-size:12px;color:#3C3C43;margin:6px 0}
+  .phase .bar{height:8px;border-radius:999px;background:var(--secondary);opacity:.85}
+  .phase .label{min-width:150px;color:#5C5C5C}
+  .note{max-width:1080px;margin:16px auto 0;font-size:12px;color:#5C5C5C;line-height:1.9}
+  .note b{color:var(--secondary)}
+
+  /* ══ 数字字体对照条 ══ */
+  .font-strip{max-width:1080px;margin:0 auto 14px;display:flex;gap:10px;flex-wrap:wrap;
+              padding:12px;background:#fff;border:1px solid #E2E2E2;border-radius:12px}
+  .font-strip .title{width:100%;font-size:12px;color:#8A8578;margin-bottom:2px}
+  .font-tile{border:1px solid #E2E2E2;border-radius:10px;padding:8px 12px;cursor:pointer;background:#fff;
+             display:flex;flex-direction:column;gap:2px;min-width:150px;text-align:left;
+             transition:border-color 120ms ease,box-shadow 120ms ease}
+  .font-tile:hover{border-color:#C9C9C9}
+  .font-tile.on{border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,107,107,.16)}
+  .font-tile .sample{font-size:26px;font-weight:500;letter-spacing:-.02em;color:var(--secondary);
+                     font-variant-numeric:tabular-nums;line-height:1.15}
+  .font-tile .name{font-size:11px;color:#8A8578}
+  .font-tile .cost{font-size:11px;color:#A9A399}
+  /* 花纹调参台 (demo only) */
+  .vine-panel{margin:14px auto 0;max-width:900px;border:1px solid #E8D8B0;border-radius:12px;
+              background:#FFFCF3;padding:10px 6px}
+  .vp-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:6px 14px}
+  .vp-row label{display:flex;align-items:center;gap:6px;font-size:12px;color:#6B6656}
+  .vp-row input[type=range]{width:110px}
+  .vp-row output{font-variant-numeric:tabular-nums;font-size:12px;color:#2F3D4C;min-width:38px;
+                 font-family:"JetBrains Mono",ui-monospace,monospace}
+  .vp-actions{border-top:1px dashed #E8D8B0;padding-top:10px}
+  .vp-out{font-size:12px;color:#8A6A3A;background:#FFF6E4;border:1px solid #E8D8B0;
+          border-radius:8px;padding:4px 8px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>practice 计时器 v3.1 · 滚轮数字 + 刻度尺 + 状态过渡（选择时间 → 计时中）</h1>
+  <div class="sub">
+    尺子不再是填充条：照参考页 <code>flex h-8 items-end justify-between</code> 的刻度尺复刻 —— 每格 <code>w-0.5 rounded-full</code>（2px 宽）、
+    已过 <code>h-5 #3C3C43</code>（20px 深灰）、未到 <code>h-3.5 #C2C2CC</code>（14px 浅灰）、当前 <code>h-7 w-[3px]</code>（28px 高 3px 宽，强调色），底部对齐；
+    尺子本身 <code>aria-hidden</code>，上面盖一个透明原生 <code>input[type=range]</code> 负责拖拽/键盘（参考页同款做法）。<br>
+    强调色参考页用 <code>#FC4C01</code>，这里换成项目 primary <code>#FF6B6B</code>（DESIGN.md 规则：不引新色）。
+  </div>
+  <div class="toolbar">
+    <button onclick="replayTransition()">重放过渡（选择时间 → 计时中）</button>
+    <button onclick="resetAll()">重置到选择态</button>
+    <label><input type="checkbox" id="slowmo"> 过渡慢放 ×0.35（看清时序）</label>
+    <button onclick="setDuration(30)">时长设 30 分钟（验长总时长时标记是否看得出在走）</button>
+    <button onclick="setDuration(1)">时长设 1 分钟</button>
+    <button onclick="testBubbles()">试：立刻冒 5 个音符（验气泡动效）</button>
+    <span class="sub" id="bubbleCount" style="margin:0">气泡已发射 0</span>
+  </div>
+
+  <!-- ══ 花纹调参台 (只在 demo 里, 不影响生产) ══ -->
+  <div class="vine-panel">
+    <div class="vp-row">
+      <label>密度 <input type="range" id="vpDensity" min="0.30" max="1" step="0.05" value="0.90">
+        <output id="vpDensityV">0.90</output></label>
+      <label>垂深 <input type="range" id="vpDepth" min="4" max="24" step="1" value="19">
+        <output id="vpDepthV">19px</output></label>
+      <label>弧宽 <input type="range" id="vpChord" min="3" max="18" step="0.5" value="16">
+        <output id="vpChordV">16px</output></label>
+      <label>随机性 <input type="range" id="vpRandom" min="0" max="1" step="0.05" value="1">
+        <output id="vpRandomV">1.00</output></label>
+      <label>花大小 <input type="range" id="vpFlower" min="0.5" max="2.4" step="0.1" value="1.5">
+        <output id="vpFlowerV">1.5×</output></label>
+    </div>
+    <div class="vp-row vp-actions">
+      <button onclick="applyVineCfg(true)">全量重绘（看整条花纹）</button>
+      <button onclick="vinePreset('密')">预设：密</button>
+      <button onclick="vinePreset('疏')">预设：疏</button>
+      <button onclick="vinePreset('长')">预设：长</button>
+      <button onclick="vinePreset('野')">预设：野（随机拉满）</button>
+      <code class="vp-out" id="vpOut"></code>
+    </div>
+    <div class="sub" style="padding:0 14px 10px">拖任意滑杆 = 花纹立刻按新参数全量重绘；满意后把上面那行参数发我，我按它固化。</div>
+  </div>
+</header>
+
+<!-- ══ 数字字体对照 (点一下即应用到计时器) ══ -->
+<div class="font-strip" id="fontStrip">
+  <span class="title">数字字体对照 — 参考页用的是 Geist Mono（Vercel 开源，SIL OFL）。当前已按你的选型设为 <b>JetBrains Mono</b>；点其它块可即时切换对比。</span>
+</div>
+
+<div class="stage">
+  <section class="panel">
+    <h2>计时器（一个控件，两态）</h2>
+    <div id="timerCard">
+      <!-- 组 1: 时间读数 (大数字 + 紧贴其下的总计/时长说明) -->
+      <div class="readout">
+        <div class="ac-root" id="counter"></div>
+        <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+      </div>
+      <!-- 组 2: 时长刻度尺 + 两侧步进按钮 -->
+      <div class="ruler-wrap">
+        <button class="step-btn minus" id="stepMinus" onclick="stepMin(-1)" aria-label="减少一分钟">−</button>
+        <div class="ruler" id="ruler">
+          <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+          <div class="notes-bubbles" aria-hidden="true"></div>
+          <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10"
+                 tabindex="-1" aria-label="练习时长（分钟）">
+        </div>
+        <button class="step-btn plus" id="stepPlus" onclick="stepMin(1)" aria-label="增加一分钟">+</button>
+      </div>
+      <!-- 状态/提示行已按 dad 要求移除 (不再重复解释文字) -->
+      <!-- 组 3: 操作按钮 -->
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnStart" onclick="toggleTimer()">开始</button>
+        <button class="btn btn-ghost" id="btnEarly" onclick="endEarly()" style="display:none">提前结束</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>尺子规格（照参考页实测值）</h2>
+    <div class="legend">
+      <div class="item"><div class="swatch"><span class="tick-demo dark"></span></div><span>已过 2×20px<br>#3C3C43</span></div>
+      <div class="item"><div class="swatch"><span class="tick-demo"></span></div><span>当前 3×28px<br>#FF6B6B（参考页 #FC4C01）</span></div>
+      <div class="item"><div class="swatch"><span class="tick-demo light"></span></div><span>未到 2×14px<br>#C2C2CC</span></div>
+    </div>
+    <table class="spec">
+      <tr><th>项</th><th>参考页实测</th><th>本项目取值</th></tr>
+      <tr><td>行容器</td><td><code>flex h-8 items-end justify-between</code>（32px 高，底部对齐）</td><td>同</td></tr>
+      <tr><td>格子</td><td>2px 宽 pill，<code>transition height/background 200ms</code></td><td>同</td></tr>
+      <tr><td>已过 / 未到</td><td>20px #3C3C43 ｜ 14px #C2C2CC</td><td>同</td></tr>
+      <tr><td>当前</td><td>3px 宽 28px 高 #FC4C01，<code>-mx-[0.5px]</code></td><td>3px × 28px #FF6B6B，同负边距</td></tr>
+      <tr><td>交互</td><td>尺子 aria-hidden，上层透明 <code>input[type=range]</code>，<code>cursor-grab/grabbing</code></td><td>同</td></tr>
+      <tr><td>格数 / 步进</td><td>参考页 40 格（装饰性），step 1</td><td>30 格 = 30 分钟，step 1 分钟</td></tr>
+    </table>
+
+    <h2 style="margin-top:16px">过渡时序（选择时间 → 计时中，总 620ms）</h2>
+    <div class="phase"><span class="label">① 选择态 chrome 淡出</span><span class="bar" style="width:120px"></span><span>0 → 180ms</span></div>
+    <div class="phase"><span class="label">② 数字滚回 00:00</span><span class="bar" style="width:250px"></span><span>0 → 420ms（自身弹簧）</span></div>
+    <div class="phase"><span class="label">③ 数字放大 64→76px + 上浮</span><span class="bar" style="width:220px"></span><span>180 → 520ms</span></div>
+    <div class="phase"><span class="label">④ 尺子塌缩：已过 → 0 格</span><span class="bar" style="width:240px"></span><span>180 → 520ms（错峰 12ms/格）</span></div>
+    <div class="phase"><span class="label">⑤ 按钮交叉淡入</span><span class="bar" style="width:200px"></span><span>300 → 620ms</span></div>
+    <div class="phase"><span class="label">⑥ 游标开始每秒推进</span><span class="bar" style="width:150px"></span><span>620ms → 计时中</span></div>
+    <div class="phase"><span class="label">⑦ 每秒脉冲（当前格自身）</span><span class="bar" style="width:120px"></span><span>scaleY 1→1.1→1，200ms 一个来回；暂停即停</span></div>
+
+    <h2 style="margin-top:16px">刻度尺复刻（照参考页 markup 的行为）</h2>
+    <table class="spec">
+      <tr><th>项</th><th>做法</th><th>行为 / 代价</th></tr>
+      <tr><td>标记</td><td>红标就是刻度行里的一个槽位：3px 宽 + 左右各 −0.5px 负边距（净占 2px），落在哪一格就替掉哪一格</td><td>不并排、不错位；格数不增不减</td></tr>
+      <tr><td>离开时的过渡</td><td>该格元素不换，靠 <code>transition: height 200ms, background-color 200ms</code> 从「高红针（28px）」回落成「矮灰格（14px）」；反向到达时同一条过渡把它顶起来</td><td>这就是你要的那段「红针缩回灰格」动画；纯 CSS，双向都动</td></tr>
+      <tr><td>推进节奏</td><td>选择态：标记＝所选分钟那一格；计时态：标记＝进度 × 29 格（每分钟跨一格）</td><td>跨格时两侧各自走 200ms 形变，读起来连续</td></tr>
+      <tr><td>长总时长看得见</td><td>每秒给当前格自身来一次 <code>scaleY 1→1.1→1</code> 的脉冲（100ms×2）</td><td>只动这一个元素、只写 transform；合成层，0 重排；暂停即停</td></tr>
+      <tr><td>暂停</td><td>立即停：清秒脉冲，标记定格在当秒真实格里，零微颤</td><td>暂停态不许有动效，否则撒谎</td></tr>
+      <tr><td>已删除</td><td>数字浮雕影（dad: 太丑）｜「当前格随时间长高」候选（破坏齐整感）</td><td>回退到参考页原样（无 text-shadow）</td></tr>
+    </table>
+  </section>
+</div>
+
+<div class="note">
+  <b>这版改了什么</b>：① 尺子按参考页真实 markup/几何复刻（不再是填充条），当前格是「高一点的强调色格」；② 过渡动画做成真正一段可看的流程（点「重放过渡」重播，勾「慢放」看清时序）。<br>
+  <b>计时中的尺子</b>：格子按分钟走，橙色游标按秒连续推进（30 格 / 总时长，每秒前进 1 分钟当量），已过的格变深灰、未到的变浅灰。<br>
+  <b>仍未包含</b>：session-panel（速度/BPM/内容）、打卡后端、protect modal / 离开守卫 / elapsed 语义（真页面不动）；纯 vanilla + GSAP，无新依赖。
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   数字滚轮: 移植自 Rare UI AnimatedCounter (rareui.com/components/animatedcounter)
+   11 面/列 (0..9 + 重复 0) / 1.5em 窗口 / mask 缓动淡出 / 方向感知弹簧 / sizer 定宽 / 渲染取模防滚空
+   金额 → MM:SS; React+motion → vanilla + GSAP; 出处署名保留。
+   ══════════════════════════════════════════════════════════════════════ */
+const AC_FADE='linear-gradient(to bottom,'+
+  'rgba(0,0,0,0) 0%,rgba(0,0,0,0.06) 5.5%,rgba(0,0,0,0.5) 11%,rgba(0,0,0,0.94) 16.5%,'+
+  '#000 22%,#000 78%,'+
+  'rgba(0,0,0,0.94) 83.5%,rgba(0,0,0,0.5) 89%,rgba(0,0,0,0.06) 94.5%,rgba(0,0,0,0) 100%)';
+const AC_WHEEL=[0,1,2,3,4,5,6,7,8,9,0];
+const AC_DUR=0.6, AC_EASE='back.out(1.4)';
+const mod=(n,m)=>((n%m)+m)%m;
+const FONT='ui-monospace,SFMono-Regular,Menlo,monospace';
+
+function makeDigitCol(){
+  const col=document.createElement('span');
+  col.className='ac-digit';
+  col.style.setProperty('--ac-fade',AC_FADE);
+  const sizer=document.createElement('span');
+  sizer.className='ac-sizer';
+  '0123456789'.split('').forEach(d=>{          // 10 个字面重叠 → 取最宽宽度
+    const s=document.createElement('span');s.style.gridArea='1/1';s.textContent=d;sizer.appendChild(s);
+  });
+  const stack=document.createElement('span');
+  stack.className='ac-stack';
+  AC_WHEEL.forEach(f=>{
+    const face=document.createElement('span');face.className='ac-face';face.textContent=String(f);
+    stack.appendChild(face);
+  });
+  col.appendChild(sizer);col.appendChild(stack);
+  col._stack=stack;col._p=0;
+  return col;
+}
+function rollCol(col,digit,dir,dur){
+  if(!col)return;
+  const stack=col._stack,W=AC_WHEEL.length;
+  const render=p=>{stack.style.transform='translateY('+(-(mod(p,10)*100/W))+'%)';};
+  if(!window.gsap){col._p=digit;render(digit);return;}
+  const from=col._p;
+  const goal = dir<0 ? from - mod(from-digit,10) : from + mod(digit-from,10);
+  const proxy={p:from};
+  gsap.to(proxy,{p:goal,duration:dur||AC_DUR,ease:AC_EASE,overwrite:true,
+    onUpdate:()=>{col._p=proxy.p;render(proxy.p);},
+    onComplete:()=>{const m=mod(proxy.p,10);col._p=Math.abs(m)<1e-6?0:m;render(col._p);}});
+}
+function makeCounter(rootEl){
+  rootEl.innerHTML='';const cols=[];
+  [ 'M1','M0','mark','S1','S0' ].forEach(k=>{
+    if(k==='mark'){
+      const m=document.createElement('span');m.className='ac-mark';m.textContent=':';rootEl.appendChild(m);
+    }else{
+      const c=makeDigitCol();rootEl.appendChild(c);cols.push(c);
+    }
+  });
+  return {cols:cols};
+}
+function renderCounter(counter,totalSec,dir,dur){
+  const t=Math.max(0,Math.round(totalSec)),mm=Math.floor(t/60),ss=t%60;
+  const ds=[Math.floor(mm/10)%10,mm%10,Math.floor(ss/10)%10,ss%10];
+  // 定时器习惯: 固定 4 位, 分钟高位补 0 (01:00 / 09:30 / 30:00), 不隐藏列
+  counter.cols.forEach((c,i)=>rollCol(c,ds[i],dir,dur));
+}
+const fmt=s=>{const t=Math.max(0,Math.round(s));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   音符气泡 (dad 2026-09-18 规格): 从红色刻度顶端冒出的小符号, 随机出现,
+   小幅上浮后消散; 一次可并排 2 个朝不同方向散开; 尺寸小, 克制。
+   符号集: 简单音符 / 高音谱号 / 低音谱号 / 休止符 —— 用系统符号字体渲染
+   (不手画 SVG, 字形质量交给系统字体), 并在运行时过滤掉本机缺字形的符号。
+   ══════════════════════════════════════════════════════════════════════════ */
+const BUBBLE_SYMBOLS=['♪','♫','♩','♬','♭','♯','♮'];   // 只用 BMP 基本乐符 (Musical Symbols 补充区 𝄞𝄢𝄽𝄾 在很多设备上缺字形 → 白框)
+/* 多色随机 (dad 2026-09-18: 要五颜六色, 不能只用主题珊瑚红; 每次随机取一个) */
+const BUBBLE_COLORS=['#FF6B6B','#FF9F45','#FFD23F','#7BC96F','#3FBF9F','#4FA8D9','#6E8CF5','#B27BE0','#FF8FB1','#E8607A'];
+function glyphSupported(ch){
+  /* 真正的豆腐块检测: 把字形画到 canvas 上数墨量, 与"私用区必然缺字形"的豆腐块墨量对比 */
+  try{
+    const cv=document.createElement('canvas');cv.width=40;cv.height=40;
+    const c=cv.getContext('2d');
+    const ink=s=>{c.clearRect(0,0,40,40);
+      c.font='32px "Apple Symbols","Segoe UI Symbol","Noto Music",serif';
+      c.textBaseline='top';c.fillStyle='#000';c.fillText(s,2,2);
+      const d=c.getImageData(0,0,40,40).data;let n=0;
+      for(let i=3;i<d.length;i+=4) if(d[i]>32) n++;
+      return n;};
+    const n1=ink(ch), tofu=ink('\uE0FF');
+    if(n1===0) return false;
+    return Math.abs(n1-tofu) > 2;
+  }catch(e){return true;}
+}
+let bubblePool=[],bubbleIdx=0,bubbleSymbols=[],firedBubbles=0;
+function buildBubbles(){
+  const layer=document.querySelector('.notes-bubbles');if(!layer)return;
+  layer.innerHTML='';bubblePool=[];
+  for(let i=0;i<22;i++){                              // 池子放 22 个: 每秒最多 4 个 × 1.6s 寿命 ≈ 7 个同时在飞, 余量充足
+    const b=document.createElement('span');b.className='bubble';
+    layer.appendChild(b);bubblePool.push(b);
+  }
+  // 运行时过滤本机缺字形的符号 (缺字形会渲染成豆腐块)
+  bubbleSymbols=BUBBLE_SYMBOLS.filter(glyphSupported);
+  if(!bubbleSymbols.length) bubbleSymbols=['♪'];
+}
+/* 随机发射: 数量/符号/颜色/速度/轨迹/时长全部随机
+   xOverride: 调试用固定落点 (不传则取红针位置) */
+function emitBubbles(xOverride){
+  if(!bubblePool.length)return;
+  const marker=ticks[markerIdx];
+  const slotX=(typeof xOverride==='number')?xOverride:(marker?marker.offsetLeft+marker.offsetWidth/2:null);
+  if(slotX==null)return;
+  const r=Math.random();                              // 1(30%) / 2(35%) / 3(25%) / 4(10%)
+  const count=r<0.30?1:(r<0.65?2:(r<0.90?3:4));
+  for(let i=0;i<count;i++){
+    const b=bubblePool[bubbleIdx=(bubbleIdx+1)%bubblePool.length];
+    const ch=bubbleSymbols[Math.floor(Math.random()*bubbleSymbols.length)];
+    const size=12+Math.random()*5;                    // 12~17px 随机字号
+    const side=(count===2)?(i===0?-1:1):(Math.random()<0.5?-1:1);
+    gsap.killTweensOf(b);
+    b.textContent=ch;                                   // 直接写 textContent (不走 GSAP)
+    b.style.color=BUBBLE_COLORS[Math.floor(Math.random()*BUBBLE_COLORS.length)];   // 每次随机取色
+    const bx=(side*(7+Math.random()*11)).toFixed(1)+'px';
+    const by=(-(5+Math.random()*5)).toFixed(1)+'px';    // 上浮 5~10px
+    const br=(side*(6+Math.random()*14)).toFixed(1)+'deg';
+    b.classList.add('no-anim');                          // 先停动画, 复位
+    b.style.left=(slotX-9+(Math.random()*6-3))+'px';
+    b.style.fontSize=size.toFixed(1)+'px';
+    b.style.setProperty('--bx',bx);
+    b.style.setProperty('--by',by);
+    b.style.setProperty('--br',br);
+    b.style.setProperty('--bd',(1.1+Math.random()*0.5).toFixed(2)+'s');
+    void b.offsetWidth;                                  // 强制重排 → 动画从头播
+    b.classList.remove('no-anim');
+    firedBubbles++;
+  }
+  const chip=document.getElementById('bubbleCount');
+  if(chip) chip.textContent='气泡已发射 '+firedBubbles;
+}
+function stopBubbles(){bubblePool.forEach(b=>{gsap.killTweensOf(b);gsap.set(b,{opacity:0});});}
+/* 测试用: 连发 5 个音符, 便于一眼确认气泡动效是否在跑 */
+function testBubbles(){ for(let i=0;i<5;i++) setTimeout(emitBubbles, i*160); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   底轨卷草纹 (agy/Gemini 方案, dad 2026-09-18): 从细直线底轨上长出的花纹。
+   规格: 单元=微弯斜弧 7.5±1.1px / 跨度 ~6.7px / 线宽 1.2px; 奇偶交替左右倾 66°±4°;
+        28% 侧芽 2.5px; 20% 末梢红果 r=1px (#FF6B6B); 主茎 #C4B79B;
+        栅格周期 = 每格一个单元 (60 格); 种子 mulberry32((min*10007)^0x5F3759DF) → 同长度永久确定;
+        渲染 = 单一预编译 SVG + clipPath 向右渐进揭示 (节点 ≤4);
+        只生长在"已练侧"(0 → 红指针); 已长成部分绝对静止; 暂停刹车锁死在当秒。
+   ══════════════════════════════════════════════════════════════════════════ */
+let VINE_SVG_H=14;
+const VINE_RAIL_Y=0.6, VINE_STROKE='#D9C79A', VINE_BUD='#FF6B6B';
+/* 花纹可调参数 (demo 调参台驱动; 生产里会固化成常量): 密度/垂深/弧宽/随机强度/花大小 */
+/* 花纹参数: dad 2026-09-18 二次定稿 —— 密度0.90 垂深19 弧宽16.0 随机1.00 花1.5 */
+const VINE_CFG={density:0.90,depth:19,chord:16,random:1.0,flower:1.5};
+const VINE_PRESETS={
+  '密':{density:1.0,depth:9,chord:6,random:0.45,flower:1.0},
+  '疏':{density:0.5,depth:7,chord:11,random:0.55,flower:1.1},
+  '长':{density:0.8,depth:18,chord:9,random:0.5,flower:1.4},
+  '野':{density:0.9,depth:16,chord:14,random:1.0,flower:1.7}
+};
+const reducedMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* ══ 花种 (agy 2026-09-18 设计, 6 款): 每朵随机出一款, 概率按 agy 分配 ══
+   坐标基准 = 垂枝末端 (0,0), 只向 y≤0 (上方) 展开; FS 缩放由外层 g 承担
+   hw/vh = 该款在 FS=1 时的横向半宽 / 向上高度 (供花与花的二维避让计算) */
+const VINE_FLOWERS={
+  /* 常量 = Playwright 实测外廓 (FS=1.5 测得 ÷1.5), 已含安全余量; dn = 花向下探出末端的深度 */
+  five:{p:0.35,hw:4.25,vh:4.15,dn:3.95,bloom:'pop',  svg:()=>[0,72,144,216,288].map(a=>'<ellipse cx="0" cy="-2.5" rx="1.0" ry="1.6" fill="#E9CCA6" transform="rotate('+a+',0,0)"/>').join('')
+            +'<circle cx="0" cy="0" r="0.8" fill="#FF6B6B"/>'},
+  cross:{p:0.20,hw:3.65,vh:3.65,dn:3.65,bloom:'stagger',svg:()=>[0,90,180,270].map(a=>'<circle cx="0" cy="-2.2" r="1.4" fill="#E9CCA6" transform="rotate('+a+',0,0)"/>').join('')
+            +'<circle cx="0" cy="0" r="0.8" fill="#E8C79A"/>'},
+  bell:{p:0.20,hw:3.85,vh:4.75,dn:1.10,bloom:'elastic',svg:()=>'<ellipse cx="-1.2" cy="-2" rx="0.9" ry="2" fill="#E9CCA6" transform="rotate(-30,0,0)"/>'
+            +'<ellipse cx="1.2" cy="-2" rx="0.9" ry="2" fill="#E9CCA6" transform="rotate(30,0,0)"/>'
+            +'<ellipse cx="0" cy="-2.5" rx="1.2" ry="2.2" fill="#E9CCA6"/>'
+            +'<circle cx="0" cy="-0.5" r="0.6" fill="#FF6B6B"/>'},
+  tulip:{p:0.15,hw:3.20,vh:5.55,dn:0.05,bloom:'tulip',svg:()=>'<ellipse cx="-1" cy="-2.8" rx="0.9" ry="2.2" fill="#E8C79A" transform="rotate(-20,0,-1)"/>'
+            +'<ellipse cx="1" cy="-2.8" rx="0.9" ry="2.2" fill="#E8C79A" transform="rotate(20,0,-1)"/>'
+            +'<ellipse cx="0" cy="-3" rx="1.1" ry="2.5" fill="#FF6B6B"/>'},
+  star:{p:0.08,hw:2.90,vh:5.55,dn:0.55,bloom:'spin',  svg:()=>[0,60,120].map(a=>'<ellipse cx="0" cy="-2.5" rx="0.5" ry="3.0" fill="#E9CCA6" transform="rotate('+a+',0,-2.5)"/>').join('')
+            +'<circle cx="0" cy="-2.5" r="0.8" fill="#FF6B6B"/>'},
+  berry:{p:0.02,hw:2.65,vh:5.85,dn:0.05,bloom:'stagger',svg:()=>'<circle cx="-1.5" cy="-2.0" r="1.1" fill="#FF6B6B"/>'
+            +'<circle cx="1.2" cy="-3.2" r="1.3" fill="#E9CCA6"/>'
+            +'<circle cx="-0.2" cy="-4.8" r="1.0" fill="#FF6B6B"/>'}
+};
+const VINE_FLOWER_IDS=Object.keys(VINE_FLOWERS);
+function pickFlower(r){let a=0;for(const id of VINE_FLOWER_IDS){a+=VINE_FLOWERS[id].p;if(r<a)return id;}return 'five';}
+/* 花种取值: 对 (槽位, 时长) 做雪崩哈希 → 均匀且与几何随机流互不相关
+   (mulberry32 用相邻种子时前几十个输出会相关, 直接拿来抽花种会明显偏斜) */
+function hash01(a,b){
+  let h=Math.imul((a|0)^0x9E3779B9,2654435761)^Math.imul((b|0)+0x85EBCA6B,2246822519);
+  h^=h>>>13; h=Math.imul(h,1274126177); h^=h>>>16;
+  return (h>>>0)/4294967296;
+}
+/* 花最上探 ≈6.6px(FS=1); 垂枝深度必须 ≥ FS×该值, 否则花会戳到细线上方 */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let vineState={clip:null};
+function buildVine(){
+  const ruler=document.getElementById('ruler');if(!ruler)return;
+  const old=ruler.querySelector('.ruler-vine');if(old)old.remove();
+  const w=Math.round(ruler.getBoundingClientRect().width);if(w<20)return;
+  const rnd=mulberry32(((S.durMin*10007)^0x5F3759DF)>>>0);
+  const pitch=w/TICKS;
+  const CFG=VINE_CFG, RJ=CFG.random;                  // RJ = 随机强度 (0~1)
+  VINE_SVG_H=Math.max(10,Math.ceil(CFG.depth+4+(CFG.flower-1)*2.5));
+  let stems='',dots='',flowers='';
+  const placed=[];                                    // 已放的花 {x,h,hw,vh,dn} → 供二维避让
+  const FS0=CFG.flower, DEPTH_MAX=CFG.depth;
+  /* 与【所有】已放花做二维检查: 横向够远 或 纵向错开 才算不撞 (只跟左邻比会漏: 偏摆会被夹住) */
+  function fits(fx,h,SP){
+    for(const p of placed){
+      const need=(SP.hw+p.hw)*FS0+3.0;                       // 横向所需中心距
+      const vneed=(Math.max(SP.vh,p.vh)+Math.max(SP.dn,p.dn))*FS0+2.0;  // 纵向错开所需深度差
+      if(Math.abs(fx-p.x)<need && Math.abs(h-p.h)<vneed) return false;
+    }
+    return true;
+  }
+  for(let i=0;i<TICKS;i++){
+    const x=pitch*(i+0.5);
+    if(rnd()>(CFG.density)) continue;                 // 密度: 未达密度的槽位留空
+    const side=(i%2===0)?1:-1;                        // 奇偶交替偏向
+    const kind=rnd();                                 // <0.60 回到细线的弧 / ≥0.60 垂枝开花 (占四成, 花更密)
+    let hung=false;
+    if(kind>=0.60){
+      /* 垂枝 + 末端花: 候选落点依次尝试(自然偏摆 → 加大偏摆推开), 全都撞才降级成弧
+         深度下限 = 该花种自身高度(否则花瓣会冲到细线上方), 上限 = 垂深 */
+      const FS=FS0;
+      const sp=pickFlower(hash01(i,S.durMin));        // 随机花种 (槽位+时长雪崩哈希, 权重符合设计)
+      const SP=VINE_FLOWERS[sp];
+      const hMin=SP.vh*FS0+1.2, hMax=Math.max(DEPTH_MAX,hMin);
+      const baseH=Math.max(hMin,Math.min(hMax,CFG.depth*(0.42+0.58*rnd())));
+      const nat=x+side*(0.8+rnd()*(1.4+2.2*RJ));      // 自然落点 (奇偶交替偏向)
+      let fx=null, hh=null;
+      for(const cand of [nat, nat+side*3.5, nat+side*6.5, nat-side*3.5, nat-side*6.5]){
+        const cx=Math.max(8,Math.min(w-8,cand));
+        if(fits(cx,baseH,SP)){ fx=cx; hh=baseH; break; }
+        const hn=(baseH-hMin>hMax-baseH)?hMin:hMax;   // 深度换到另一端再试一次
+        if(Math.abs(hn-baseH)>1 && fits(cx,hn,SP)){ fx=cx; hh=hn; break; }
+      }
+      if(fx!==null){
+        const r=1.6+rnd()*2.2;
+        const ty=VINE_RAIL_Y+hh;
+        stems+='M'+x.toFixed(1)+' '+VINE_RAIL_Y+' A'+r.toFixed(2)+' '+r.toFixed(2)
+             +' 0 0 '+((fx>x)?0:1)+' '+fx.toFixed(1)+' '+ty.toFixed(1)+' ';
+        flowers+='<g class="vine-flower" data-x="'+fx.toFixed(1)+'" data-h="'+hh.toFixed(1)+'" data-sp="'+sp+'" '
+               +'transform="translate('+fx.toFixed(1)+' '+ty.toFixed(1)+')" style="transform-origin:0 0">'
+               +'<g transform="scale('+FS.toFixed(2)+')">'+SP.svg()+'</g></g>';
+        placed.push({x:fx,h:hh,hw:SP.hw,vh:SP.vh,dn:SP.dn});
+        hung=true;
+      }
+    }
+    if(!hung){
+      /* 主弧: 两端都落回细线 (半圆弧), 半径由弦长与拱高反算 → 一定是圆弧 */
+      const cd=(CFG.chord*(0.55+0.45*RJ*rnd()));      // 弦长随随机强度抖动
+      const d=(CFG.depth*(0.35+0.65*rnd()));
+      const c=Math.max(2.2,cd);
+      const dd=Math.max(1.8,d);
+      const r=(c*c/4+dd*dd)/(2*dd);
+      const x2=x+side*c;
+      const sweep=(side>0)?0:1;                       // 向下鼓 (y 轴向下: 从左往右走用 sweep=0)
+      stems+='M'+x.toFixed(1)+' '+VINE_RAIL_Y+' A'+r.toFixed(2)+' '+r.toFixed(2)
+           +' 0 0 '+sweep+' '+x2.toFixed(1)+' '+VINE_RAIL_Y+' ';
+      if(rnd()<0.34+0.4*RJ){                          // 叠一层小弧 (双弧) → 随机感
+        const c2=(2+rnd()*3)*(0.7+0.6*RJ), d2=Math.max(1.6,(CFG.depth*0.55)*(0.3+0.7*rnd()));
+        const r2=(c2*c2/4+d2*d2)/(2*d2);
+        const x3=x+side*(c*0.45);
+        stems+='M'+x3.toFixed(1)+' '+VINE_RAIL_Y+' A'+r2.toFixed(2)+' '+r2.toFixed(2)
+             +' 0 0 '+sweep+' '+(x3+side*c2).toFixed(1)+' '+VINE_RAIL_Y+' ';
+      }
+      if(rnd()<0.18+0.2*RJ){                          // 弧顶结一颗红果 (落在弧的最低点)
+        const rr=(c*c/4+dd*dd)/(2*dd);
+        const mx=x+side*c/2, my=VINE_RAIL_Y+rr-Math.sqrt(Math.max(0,(rr*rr)-(c*c/4)));
+        dots+='<circle cx="'+mx.toFixed(1)+'" cy="'+my.toFixed(1)+'" r="1"/>';
+      }
+    }
+  }
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','ruler-vine');svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('width',w);svg.setAttribute('height',VINE_SVG_H);
+  svg.setAttribute('viewBox','0 0 '+w+' '+VINE_SVG_H);
+  svg.innerHTML='<defs><clipPath id="vineClip"><rect x="0" y="0" width="0" height="'+VINE_SVG_H+'"/></clipPath></defs>'
+    +'<g clip-path="url(#vineClip)">'
+    +'<path d="'+stems+'" fill="none" stroke="'+VINE_STROKE+'" stroke-width="1.2" '
+    +'stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'
+    +'<g fill="'+VINE_BUD+'">'+dots+'</g>'
+    +flowers
+    +'</g>';
+  ruler.appendChild(svg);
+  vineState.clip=svg.querySelector('#vineClip rect');
+  svg.querySelectorAll('.vine-flower').forEach(f=>gsap.set(f,{scale:.06}));   // 花出厂即"未开": 由揭示过程触发开花
+  revealVine(S.running?S.sec/(S.durMin*60):0,false);
+}
+/* 末端离开细线的垂枝, 用"长出一朵小花"收尾 (不放任它凭空结束)
+   6 种花款各自的开花规格 (agy 设计): pop / stagger / elastic / tulip / spin */
+function bloomFlowersUpTo(x){
+  const svg=document.querySelector('.ruler-vine');if(!svg)return;
+  svg.querySelectorAll('.vine-flower').forEach(f=>{
+    const fx=parseFloat(f.dataset.x||'0');
+    if(fx>x+0.5) return;
+    if(f.dataset.bloomed) return;
+    f.dataset.bloomed='1';
+    const sp=f.dataset.sp||'five';
+    if(reducedMotion()){gsap.set(f,{scale:1});return;}
+    if(sp==='cross'||sp==='berry'){                   // 花瓣/浆果逐颗冒出
+      gsap.fromTo(f.querySelectorAll('circle'),{scale:0,transformOrigin:'0px 0px'},
+        {scale:1,duration:.35,ease:'back.out(2)',stagger:sp==='berry'?.06:.04});
+      gsap.set(f,{scale:1});
+    }else if(sp==='bell'){                            // 钟形: 弹性
+      gsap.fromTo(f,{scale:0},{scale:1,duration:.45,ease:'elastic.out(1,0.6)'});
+    }else if(sp==='tulip'){                           // 郁金香: 先拔高再撑开
+      gsap.fromTo(f,{scaleY:0,scaleX:.5},{scaleY:1,scaleX:1,duration:.4,ease:'power3.out'});
+    }else if(sp==='star'){                            // 芒星: 边转边开
+      gsap.fromTo(f,{scale:0,rotation:-90},{scale:1,rotation:0,duration:.5,ease:'back.out(2)'});
+    }else{                                            // 五瓣: 整体弹出
+      gsap.fromTo(f,{scale:.06},{scale:1,duration:.38,ease:'back.out(2.2)'});
+    }
+  });
+}
+/* ══ 花纹调参台 (demo only): 滑杆 → 立刻按新参数全量重绘 ══ */
+function applyVineCfg(fullReveal){
+  const g=id=>document.getElementById(id);
+  if(!g('vpDensity')) return;
+  VINE_CFG.density=+g('vpDensity').value;
+  VINE_CFG.depth  =+g('vpDepth').value;
+  VINE_CFG.chord  =+g('vpChord').value;
+  VINE_CFG.random =+g('vpRandom').value;
+  VINE_CFG.flower =+g('vpFlower').value;
+  g('vpDensityV').textContent=VINE_CFG.density.toFixed(2);
+  g('vpDepthV').textContent  =VINE_CFG.depth+'px';
+  g('vpChordV').textContent  =VINE_CFG.chord.toFixed(1)+'px';
+  g('vpRandomV').textContent =VINE_CFG.random.toFixed(2);
+  g('vpFlowerV').textContent =VINE_CFG.flower.toFixed(1)+'×';
+  g('vpOut').textContent='密度'+VINE_CFG.density.toFixed(2)+' 垂深'+VINE_CFG.depth
+                        +' 弧宽'+VINE_CFG.chord.toFixed(1)+' 随机'+VINE_CFG.random.toFixed(2)
+                        +' 花'+VINE_CFG.flower.toFixed(1);
+  buildVine();                                        // 重算 SVG 高度
+  const row=document.querySelector('.btn-row');
+  if(row) row.style.marginBlockStart=(VINE_SVG_H+14)+'px';   // 按钮排给花纹让位
+  if(fullReveal){
+    const svg=document.querySelector('.ruler-vine');
+    if(svg){gsap.set(svg.querySelector('#vineClip rect'),{attr:{width:9999}});bloomFlowersUpTo(9999);}
+  }
+}
+function vinePreset(name){
+  const p=VINE_PRESETS[name];if(!p)return;
+  const g=id=>document.getElementById(id);
+  g('vpDensity').value=p.density; g('vpDepth').value=p.depth;  g('vpChord').value=p.chord;
+  g('vpRandom').value=p.random;   g('vpFlower').value=p.flower;
+  applyVineCfg(true);
+}
+let vineTuneTimer=null;
+let vineRebuildTimer=null;
+function buildVineDebounced(ms){                      // 拖尺子会连发很多次 → 去抖重建
+  clearTimeout(vineRebuildTimer);
+  vineRebuildTimer=setTimeout(()=>buildVine(),ms||120);
+}
+function wireVinePanel(){
+  ['vpDensity','vpDepth','vpChord','vpRandom','vpFlower'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',()=>{
+      applyVineCfg(true);                       // 调参时全量展开, 方便一次看整条
+      clearTimeout(vineTuneTimer);
+      vineTuneTimer=setTimeout(()=>{            // 停手 1.6s 且未开始计时 → 收回, 细线下方恢复干净
+        if(!S.running) retractVine();
+      },1600);
+    });
+  });
+  applyVineCfg(false);                          // 打开时【不】展开: 计时没开始, 细线下不应有东西
+}
+/* 花纹只生长在已练侧: 揭示宽度 = 红指针位置 */
+function revealVine(progress,animate){
+  if(!vineState.clip)return;
+  const ruler=document.getElementById('ruler');if(!ruler)return;
+  const w=ruler.getBoundingClientRect().width;
+  const marker=ticks[markerIdx];
+  const target=marker?(marker.offsetLeft+marker.offsetWidth/2):progress*w;
+  if(reducedMotion()){
+    gsap.set(vineState.clip,{attr:{width:Math.max(0,target)}});
+    bloomFlowersUpTo(target);
+    return;
+  }
+  if(animate===false){gsap.set(vineState.clip,{attr:{width:Math.max(0,target)}});bloomFlowersUpTo(target);return;}
+  gsap.to(vineState.clip,{attr:{width:Math.max(0,target)},duration:.35,ease:'power2.out',overwrite:true});
+  bloomFlowersUpTo(target);
+}
+function retractVine(){
+  if(!vineState.clip)return;
+  const svg=document.querySelector('.ruler-vine');
+  if(svg) svg.querySelectorAll('.vine-flower').forEach(f=>{delete f.dataset.bloomed;gsap.set(f,{scale:.06});});
+  if(reducedMotion()){gsap.set(vineState.clip,{attr:{width:0}});return;}
+  gsap.to(vineState.clip,{attr:{width:0},duration:.22,ease:'power2.inOut',overwrite:true});
+}
+function celebrateVine(){
+  const g=document.querySelector('.ruler-vine g[fill]');
+  if(!g||reducedMotion())return;
+  gsap.fromTo(g,{scale:1},{scale:1.25,duration:.22,ease:'sine.inOut',yoyo:true,repeat:1,
+    transformOrigin:'50% 100%'});
+}
+
+const TICKS=60, SLOTS_PER_MIN=2, MIN_MIN=1, MAX_MIN=30;
+let ticks=[], markerIdx=-1;
+function buildRuler(rowEl){
+  rowEl.innerHTML='';ticks=[];
+  for(let i=0;i<TICKS;i++){
+    const t=document.createElement('span');
+    t.className='tick '+(i%2===0?'major':'minor')+' future';   // 偶 index = 整分主格
+    rowEl.appendChild(t);ticks.push(t);
+  }
+}
+function rulerWidth(){ return document.getElementById('ruler').getBoundingClientRect().width; }
+/* ══ 标记 = 落在某一格上的 .cur (照参考页: 同一槽位替掉那格, height/background 200ms 过渡) ══
+   标记移走时那格不换元素, 由 CSS transition 把它从「高红针」过渡回「矮灰格」—— 这就是 dad 要的那段过渡 */
+function setMarker(idx){
+  idx=Math.max(0,Math.min(TICKS-1,Math.round(idx)));
+  if(idx===markerIdx)return;
+  markerIdx=idx;
+  ticks.forEach((t,i)=>{
+    const kind=(i%2===0)?'major':'minor';
+    t.className='tick '+kind+' '+(i<idx?'past':(i===idx?'cur':'future'));
+  });
+}
+/* 每秒擒纵脉冲: 只作用在当前格自身 (scaleY 合成层, 不触发重排), 长总时长也看得出在走 */
+function pulseMarker(){
+  if(!window.gsap||markerIdx<0)return;
+  const t=ticks[markerIdx];if(!t)return;
+  gsap.fromTo(t,{scaleY:1},{scaleY:1.1,duration:.1,ease:'sine.inOut',yoyo:true,repeat:1,
+    onComplete:()=>gsap.set(t,{scaleY:1})});
+}
+/* 选择态: 第 N 分钟 → 标记落在第 N 个主格上 (该格被红标替掉, 左侧深灰, 右侧浅灰) */
+function paintRulerSelect(minute){
+  setMarker((Math.min(MAX_MIN,Math.max(MIN_MIN,minute))-1)*SLOTS_PER_MIN);
+}
+/* 计时态: 标记按真实进度逐格推进 (每分钟跨一格, 跨格时那两格各自做 200ms 形变过渡) */
+function paintRulerRunning(progress){
+  setMarker(progress*(TICKS-1));
+}
+
+/* ══ 状态机 ══ */
+const S={durMin:10,sec:0,running:false,paused:false,iv:null};
+let counter;
+const slow=()=>document.getElementById('slowmo').checked?0.35:1;
+const dur=()=>AC_DUR*slow();
+
+function setSelectModality(){
+  document.getElementById('metaVal').innerHTML=S.durMin+'<small>分钟</small>';
+  setHint('每格 1 分钟；也可点两侧 +/− 精调');
+}
+function setRunningModality(){
+  document.getElementById('metaVal').innerHTML='总计 '+S.durMin+'<small>分钟</small>';
+  setHint('计时中 · 正计时');
+}
+/* #metaHint 已按 dad 要求从 DOM 移除 → 所有写入走空安全 helper, 不再抛错 */
+function setHint(t){const e=document.getElementById('metaHint');if(e)e.textContent=t;}
+
+function toggleTimer(){
+  if(S.running){ togglePause(); return; }
+  startRun();
+}
+function startRun(){
+  if(S.running)return;
+  S.running=true;S.paused=false;S.sec=0;
+  const card=document.getElementById('timerCard');
+  const rulerInput=document.getElementById('rulerInput');
+  const pill=document.getElementById('metaVal');
+  const bStart=document.getElementById('btnStart'),bEarly=document.getElementById('btnEarly');
+  const bMinus=document.getElementById('stepMinus'),bPlus=document.getElementById('stepPlus');
+  const k=slow();
+  rulerInput.disabled=true;
+  bMinus.disabled=true;bPlus.disabled=true;
+
+  /* 数字: 不缩放/不位移/不改字号, 只让滚轮从「所选时长」滚回 00:00 (读感 = 时钟直接开始走) */
+  renderCounter(counter,0,-1,dur());
+
+  /* agy v3.2 时序: 总 480ms (慢放按 k 等比拉长) */
+  const tl=gsap.timeline();
+  /* 0-200ms 步进按钮让位 (±14px, power2.in) / 0-180ms 状态说明上移淡出 */
+  tl.to(bMinus,{x:-14,opacity:0,duration:.20*k,ease:'power2.in'},0)
+    .to(bPlus, {x: 14,opacity:0,duration:.20*k,ease:'power2.in'},0)
+    .to(pill,{opacity:0,duration:.12*k,ease:'power2.out'},0)
+    .to('.ruler-wrap',{y:-2,duration:.24*k,ease:'power2.inOut'},0);
+  /* 60-300ms 尺子从选择器改写成进度器 (错峰 8ms/格) */
+  tl.add(()=>{
+      markerIdx=-1;
+      ticks.forEach((el,i)=>setTimeout(()=>{el.className='tick future';}, i*8*k));
+    },.06*k)
+    .add(()=>paintRulerRunning(0),.06*k+((TICKS*8*k)+60)/1000);
+  /* 180-360ms 运行态状态胶囊从下方微浮淡入 */
+  tl.add(()=>{card.classList.add('running');setRunningModality();},.18*k)
+    .fromTo(pill,{opacity:0,y:4},{opacity:1,y:0,duration:.18*k,ease:'power2.out'},.18*k);
+  /* 200-440ms 按钮交叉: [开始] 缩放淡出 → [暂停] 弹性弹出; [提前结束] 同时浮现 */
+  tl.add(()=>{bEarly.style.display='inline-block';},.20*k)
+    .to(bStart,{opacity:0,scale:.94,duration:.14*k,ease:'power2.in'},.20*k)
+    .add(()=>{bStart.textContent='暂停';},.34*k)
+    .to(bStart,{opacity:1,scale:1,duration:.20*k,ease:'back.out(1.5)'},.34*k)
+    .fromTo(bEarly,{opacity:0,scale:.94},{opacity:1,scale:1,duration:.20*k,ease:'back.out(1.5)'},.34*k);
+  /* 480ms 过渡收尾 → 不抢跑: 停一拍后由整秒节奏触发第一次步进 */
+  tl.add(()=>{ if(S.running) tick(); },.48*k);
+}
+function tick(){
+  clearInterval(S.iv);
+  S.iv=setInterval(()=>{
+    if(S.paused)return;
+    S.sec+=1;
+    renderCounter(counter,S.sec,1,dur());
+    paintRulerRunning(S.sec/(S.durMin*60));
+    revealVine(S.sec/(S.durMin*60));     // 卷草纹随进度从底轨向右生长 (只长在已练侧)
+    pulseMarker();                       // 每秒: 当前格自身做一次 scaleY 脉冲 (长总时长也看得见在走)
+    emitBubbles();                        // 每秒发射 1~4 个 (数量随机, 颜色随机)
+    setRunningModality();
+    if(S.sec>=S.durMin*60){
+      clearInterval(S.iv);S.running=false;
+      stopBubbles();celebrateVine();     // 完成: 红果微光呼吸一下
+      document.getElementById('btnStart').textContent='开始';
+      document.getElementById('btnEarly').style.display='none';
+      setHint('到点 · 弹打卡窗（真页面走 finishNormalModal）');
+      if(window.gsap)gsap.fromTo('#counter',{scale:1},{scale:1.06,duration:.26,ease:'back.out(2)',yoyo:true,repeat:1});
+    }
+  },1000);
+}
+function togglePause(){
+  if(!S.running)return;
+  S.paused=!S.paused;
+  document.getElementById('btnStart').textContent=S.paused?'继续':'暂停';
+  setHint(S.paused?'已暂停（elapsed 保留）':'计时中 · 正计时');
+  if(S.paused) stopBubbles();      // 暂停即停: 气泡消失
+}
+function endEarly(){
+  if(!S.running)return;
+  clearInterval(S.iv);S.running=false;
+  stopBubbles();retractVine();
+  document.getElementById('btnStart').textContent='开始';
+  document.getElementById('btnEarly').style.display='none';
+  document.getElementById('rulerInput').disabled=false;
+  setHint('提前结束（真页面弹 finishEarlyModal）');
+}
+/* 反向过渡: 计时中 → 选择态 (结束/放弃/打卡成功走这条) */
+function resetAll(){
+  clearInterval(S.iv);
+  clearInterval(secFlickerIv);secFlickerIv=null;
+  clearTimeout(secSettleTimer);
+  stopBubbles();                       // 回选择态: 清空气泡
+  retractVine();                       // 卷草纹自右向左收卷归零
+  S.running=false;S.paused=false;
+  const card=document.getElementById('timerCard');
+  const bStart=document.getElementById('btnStart'),bEarly=document.getElementById('btnEarly');
+  const bMinus=document.getElementById('stepMinus'),bPlus=document.getElementById('stepPlus');
+  document.getElementById('rulerInput').disabled=false;
+  bMinus.disabled=false;bPlus.disabled=false;
+  bEarly.style.display='none';
+  S.sec=0;
+  /* 反向过渡 (agy v3.2: 320ms): 按钮换回、尺子按所选时长重新展开、步进按钮滑回、数字滚回预选时长 */
+  const pill=document.getElementById('metaVal');
+  const k=slow();
+  const tl=gsap.timeline();
+  tl.add(()=>{bStart.textContent='开始';},0)
+    .to(bStart,{opacity:1,scale:1,duration:.20*k,ease:'power2.out'},0)
+    .to(bEarly,{opacity:0,duration:.14*k,ease:'power2.out'},0)
+    .to('.ruler-wrap',{y:0,duration:.24*k,ease:'power2.inOut'},0)
+    .to(pill,{opacity:0,duration:.12*k,ease:'power2.out'},0)
+    .add(()=>{
+      card.classList.remove('running');
+      markerIdx=-1;                                  // 解绑, 强制按当前时长重画标记
+      renderCounter(counter,S.durMin*60,-1,dur());   // 数字平滑滚回预选时长 (自身弹簧)
+      paintRulerSelect(S.durMin);                    // 尺子自左向右重新展开
+      setSelectModality();
+    },.10*k);
+  tl.to([bMinus,bPlus],{x:0,opacity:1,duration:.24*k,ease:'back.out(1.5)'},.14*k)
+    .fromTo(pill,{opacity:0,y:4},{opacity:1,y:0,duration:.16*k,ease:'power2.out'},.16*k);
+}
+function replayTransition(){
+  resetAll();
+  setTimeout(()=>startRun(), 260);
+}
+
+/* ══ 数字字体对照条 (参考页 = Geist Mono) ══ */
+const FONTS=[
+  {id:'geist',    name:'Geist Mono（参考页同款）', stack:'"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+                  cost:'自托管 woff2 ~26KB；只留数字+冒号可压到 ~3KB'},
+  {id:'system',   name:'SF Mono / 系统等宽',        stack:'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  cost:'0 字节（系统自带，iPad/Mac 都有）'},
+  {id:'menlo',    name:'Menlo（系统）',            stack:'Menlo, Monaco, "Courier New", monospace',
+                  cost:'0 字节（系统自带）'},
+  {id:'jb',       name:'JetBrains Mono',           stack:'"JetBrains Mono", ui-monospace, monospace',
+                  cost:'自托管 woff2 ~30KB'},
+  {id:'plex',     name:'IBM Plex Mono',            stack:'"IBM Plex Mono", ui-monospace, monospace',
+                  cost:'自托管 woff2 ~28KB'},
+  {id:'space',    name:'Space Mono 700（性格最强）', stack:'"Space Mono", ui-monospace, monospace',
+                  cost:'自托管 woff2 ~18KB，只有 400/700 两档'},
+  {id:'pingfang', name:'PingFang 数字（项目正文，非等宽）', stack:'-apple-system, "PingFang SC", sans-serif',
+                  cost:'0 字节，但非等宽、滚轮会横向抖'},
+];
+function buildFontStrip(){
+  const strip=document.getElementById('fontStrip');
+  FONTS.forEach((f,i)=>{
+    const b=document.createElement('button');
+    b.className='font-tile'+(i===0?' on':'');
+    const s=document.createElement('span');s.className='sample';s.textContent='10:00';s.style.fontFamily=f.stack;
+    const n=document.createElement('span');n.className='name';n.textContent=f.name;
+    const c=document.createElement('span');c.className='cost';c.textContent=f.cost;
+    b.appendChild(s);b.appendChild(n);b.appendChild(c);
+    b.addEventListener('click',()=>applyFont(f.id));
+    strip.appendChild(b);
+  });
+  applyFont('jb');   // dad 2026-09-18 选型: JetBrains Mono
+}
+function applyFont(id){
+  const f=FONTS.find(x=>x.id===id);if(!f)return;
+  document.documentElement.style.setProperty('--num-font',f.stack);
+  document.querySelectorAll('.font-tile').forEach((t,i)=>t.classList.toggle('on',FONTS[i].id===id));
+}
+
+window.addEventListener('load',()=>{
+  counter=makeCounter(document.getElementById('counter'));
+  buildRuler(document.getElementById('rulerRow'));
+  buildBubbles();
+  buildVine();
+  wireVinePanel();
+  buildFontStrip();
+
+  const input=document.getElementById('rulerInput');
+  input.addEventListener('input',()=>{
+    const v=parseInt(input.value,10);
+    const dir=v>=S.durMin?1:-1;
+    S.durMin=v;
+    document.getElementById('metaVal').innerHTML=v+'<small>分钟</small>';
+    renderCounter(counter,v*60,dir,dur());
+    paintRulerSelect(v);
+    startSecFlicker();                 // 拖动时秒位做随机滚动 (dad: 整块都要“动起来”的感觉)
+    scheduleSecSettle();
+    buildVineDebounced(200);           // 拖尺子改时长 → 花纹按新时长重建
+  });
+  input.addEventListener('pointerdown',()=>{startSecFlicker();});
+  input.addEventListener('pointerup',()=>{scheduleSecSettle(80);});
+  input.addEventListener('pointercancel',()=>{scheduleSecSettle(80);});
+  input.addEventListener('change',()=>{scheduleSecSettle(120);});
+
+  renderCounter(counter,S.durMin*60,1,0.35);
+  paintRulerSelect(S.durMin);
+  setSelectModality();
+
+  /* 调试钩子: ?debug=bubbles → 立刻开始计时, 并在固定 x 处每 300ms 强制喷气泡
+     (固定落点 = 尺子 3/4 处, 远离红针, 便于用截图验证气泡是否真的渲染出来) */
+  if(location.search.indexOf('debug=bubbles')>=0){
+    startRun();
+    const rulerW=document.getElementById('ruler').getBoundingClientRect().width;
+    setInterval(()=>{ emitBubbles(rulerW*0.75); },300);
+  }
+  if(location.search.indexOf('debug=vine')>=0){ startRun(); }
+
+  // 旋屏/改窗口后重算游标基底 (transform 用 px, 需要重算)
+  window.addEventListener('resize',()=>{
+    setTimeout(()=>{
+      buildVine();                                   // 栅格按新宽度重建 (同种子 → 形态一致)
+      if(S.running) paintRulerRunning(S.sec/(S.durMin*60));
+      else paintRulerSelect(S.durMin);
+    },120);
+  });
+});
+
+/* ══ 拖动刻度尺时秒位的“顺向快滚” + 停下后弹性卡扣回 :00 ══
+   (agy 评审: 纯随机乱数字易读成故障闪烁 → 改为极速顺向翻滚, 松手 280ms 弹性落 00) */
+let secFlickerIv=null, secSettleTimer=null, secSpin=0;
+function startSecFlicker(){
+  if(S.running)return;
+  if(secFlickerIv)return;
+  secSpin=0;
+  secFlickerIv=setInterval(()=>{
+    secSpin=(secSpin+3)%60;                       // 每秒当量 3, 60ms 一跳 → 读成高速顺向滚动
+    rollCol(counter.cols[2],Math.floor(secSpin/10),1,0.22);
+    rollCol(counter.cols[3],secSpin%10,1,0.22);
+  },60);
+}
+function scheduleSecSettle(delay){
+  clearTimeout(secSettleTimer);
+  secSettleTimer=setTimeout(settleSecToZero, delay||140);
+}
+function settleSecToZero(){
+  clearInterval(secFlickerIv);secFlickerIv=null;
+  if(S.running)return;
+  rollCol(counter.cols[2],0,-1,0.28);   // 秒十位弹性落 0
+  rollCol(counter.cols[3],0,-1,0.28);   // 秒个位弹性落 0
+}
+
+/* ══ 游标左右两个步进按钮 (±1 分钟; iPad 无键盘, 用按钮代替方向键) ══ */
+function stepMin(delta){
+  if(S.running)return;
+  setDuration(S.durMin+delta);
+}
+function setDuration(v){
+  if(S.running)return;
+  v=Math.min(MAX_MIN,Math.max(MIN_MIN,Math.round(v)));
+  if(v===S.durMin)return;
+  const dir=v>S.durMin?1:-1;
+  S.durMin=v;
+  document.getElementById('rulerInput').value=v;
+  document.getElementById('metaVal').innerHTML=v+'<small>分钟</small>';
+  renderCounter(counter,v*60,dir,dur());
+  paintRulerSelect(v);
+  buildVineDebounced();                              // 时长变了 → 花纹按新种子重建 (之前漏了: 花纹一直停在初始时长的形态)
+  // dad: 点 + / − 时秒位也要动起来 → 复用拖动那套「顺向快滚 + 落回 :00」
+  startSecFlicker();
+  scheduleSecSettle(200);
+}
+</script>
+</body>
+</html>

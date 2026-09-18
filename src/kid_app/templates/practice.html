@@ -7,7 +7,10 @@
   <title>练习打卡 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <!-- GSAP 本地自托管 (v3.12.5, sha256 28033e44…): CDN 会间歇性 ERR_CONNECTION_CLOSED,
+       一旦拉不到整页动效全死 → 本地优先, 失败才回退 CDN -->
+  <script src="/static/vendor/gsap.min.js"></script>
+  <script>if(!window.gsap){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');}</script>
   <style>
     body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
@@ -122,6 +125,102 @@
     .timer-block { display: flex; flex-direction: row; gap: 10px; align-items: stretch; }
     .timer-block .picker-card { flex: 0 0 auto; }
     .timer-block .session-panel { flex: 1; min-width: 0; margin: 0; }
+
+  #timerCard{
+    /* 尺子三档 + 数字字号 (demo 定稿值); 数字字体走系统等宽栈 → 0 字节自托管成本 */
+    --tick-cur:#FF6B6B;   --tick-cur-h:28px;
+    --ruler-row-h:32px;
+    /* 新计时器需要横向空间: 刻度尺 60 格 + 两侧 38px 步进键 (旧 dial knob 只需 180px 直径) */
+    flex: 0 0 auto; width: 520px; max-width: 100%;
+    background:#FFFDF5;border:1px solid #F0D060;border-radius:20px;
+    padding:26px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:0;overflow:hidden;
+  }
+  /* 组 1: 时间读数 (大数字 + 其下紧贴的总计说明)
+     注: 滚轮数字的窗口高 1.5em、字形居中 → 字形下方有 ~0.25em 空白, 所以用负 margin 把这行拉近 */
+  .readout{--num-size:72px;display:flex;flex-direction:column;align-items:center;gap:0}
+  /* agy 选项1: 「总计」做成状态胶囊岛; dad: 在 agy 的 -0.25em 基础上再往下 4px */
+  .readout-sub{font-size:13px;font-weight:600;color:#8A8578;letter-spacing:.01em;
+               display:inline-flex;align-items:baseline;gap:2px;
+               padding:3px 10px;background:#FFF0E8;border:1px solid #F0D060;border-radius:999px;
+               margin-block-start:calc(var(--num-size) * -.25 + 4px)}
+  .readout-sub small{font-size:12px;font-weight:600;color:#A9A399}
+  /* 数字: 照搬参考页 inline-flex items-center tabular-nums font-mono text-6xl tracking-tight
+     (参考页 mono = Geist Mono; 这里字体走变量, 便于对照切换) */
+  .ac-root{display:inline-flex;align-items:center;font-variant-numeric:tabular-nums;
+           font-family:var(--num-font,ui-monospace,SFMono-Regular,Menlo,monospace);
+           font-weight:500;letter-spacing:-.02em;
+           color:#2C3E50;line-height:1;font-size:var(--num-size);will-change:transform}
+  /* dad: 选择时间 → 计时，数字不许变大小/不许位移 → 两态同字号, 切态时不改 font-size */
+  @media (max-width:520px){
+    .readout{--num-size:56px}
+  }
+  .ac-digit{position:relative;display:inline-grid;overflow:hidden;height:1.5em;line-height:1.5;
+            -webkit-mask-image:var(--ac-fade);mask-image:var(--ac-fade)}
+  .ac-sizer{visibility:hidden;grid-area:1/1;display:grid}
+  .ac-stack{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center}
+  .ac-face{height:1.5em;display:flex;align-items:center;justify-content:center}
+  .ac-mark{display:inline-block;margin:0 -.1em}   /* 参考页 mark: -mx-[0.1em] */
+
+  /* ══ 刻度尺 (几何照抄参考页: 行高 32px / 底部对齐 / 2px 宽 pill / 三档高) ══ */
+  .ruler-row{display:flex;height:var(--ruler-row-h);align-items:flex-end;justify-content:space-between;
+             border-bottom:1.5px solid #E8D8B0;padding-bottom:2px}
+  .ruler-wrap{display:flex;align-items:center;gap:10px;width:100%;max-width:520px;margin-block-start:18px}
+  /* 音符气泡: 层不裁剪 (dad: 不能有"钻到图层后面消失"的观感), 用升幅上限避免碰到上方时间 */
+  .notes-bubbles{position:absolute;inset-inline:0;bottom:22px;height:22px;
+                 pointer-events:none;z-index:4;overflow:visible}
+  .tt-bubble{position:absolute;bottom:0;line-height:1;color:#FF6B6B;opacity:0;
+          font-family:"Apple Symbols","Segoe UI Symbol","Noto Music",serif;
+          will-change:transform,opacity;
+          /* 冒泡: 纯 CSS 关键帧 (合成层, 不依赖 rAF/GSAP ticker; 参数走 CSS 变量做随机) */
+          animation:bubbleUp var(--bd,1.2s) cubic-bezier(.22,.61,.36,1) forwards}
+  .tt-bubble.no-anim{animation:none}
+  @keyframes bubbleUp{
+    0%   {opacity:0;transform:translate3d(0,0,0) scale(.9) rotate(0deg)}
+    14%  {opacity:1}
+    60%  {opacity:1}
+    100% {opacity:0;transform:translate3d(var(--bx,6px),var(--by,-16px),0) scale(1) rotate(var(--br,8deg))}
+  }
+  /* agy 方案1: 跑道胶囊嵌入式触控键 (高度锁 32px = 刻度尺行高, 与尺子齐平) */
+  .step-btn{
+    flex:0 0 auto;width:38px;height:32px;border-radius:10px;
+    border:1.5px solid #E8D8B0;background:#FFF8F0;color:#5D4037;
+    font-family:inherit;font-size:16px;font-weight:700;line-height:1;
+    display:grid;place-items:center;cursor:pointer;position:relative;
+    transition:border-color 120ms ease,background-color 120ms ease,color 120ms ease,transform 90ms ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .step-btn:hover{border-color:#D9C79A;background:#FFF3E2}
+  .step-btn:active{transform:scale(.94);background:#FFE8C0;border-color:#C8860A;color:#2C3E50}
+  .step-btn:disabled{opacity:.35;border-color:#DCD6CC;color:#C2C2CC;background:#FFF8F0;cursor:default}
+  .step-btn:disabled:hover{border-color:#DCD6CC}
+  .ruler{position:relative;flex:1 1 auto;padding:0 1px;border-radius:12px}
+  /* 底轨卷草纹 (dad 修正: 从细线【下方】生长): SVG 顶边贴在细线上, 花纹向下长 */
+  .ruler-vine{position:absolute;left:0;top:calc(100% - 1.5px);pointer-events:none;z-index:1;overflow:visible}
+  /* dad: 刻度更细更密 —— 每分钟 2 格 (主格=整分, 次格=半分钟), 线更细 */
+  .tick{width:1.5px;border-radius:999px;transition:height 200ms ease,background-color 200ms ease}
+  .tick.minor{width:1px}
+  .tick.major.future{height:14px;background:#C2C2CC}
+  .tick.major.past{height:20px;background:#3C3C43}
+  .tick.minor.future{height:9px;background:#DCDCE4}
+  .tick.minor.past{height:13px;background:#5A5A64}
+  /* 当前格 = 参考页的红色标记: 3px 宽 + 负边距占同一槽 (替掉该格, 不并排),
+     且 height/background 都带 200ms 过渡 → 标记移走时这格会从高红针过渡回矮灰格 */
+  .tick.cur{width:3px;height:var(--tick-cur-h);margin:0 -.5px;background:var(--tick-cur);border-radius:999px}
+  /* 参考页做法: 尺子是 aria-hidden 的视觉层, 上面盖一个透明 range 原生控件负责拖拽。
+     iPad 无键盘 → 不做键盘控制: tabindex=-1 且不画 focus 描边 (dad: 那圈黑框不好看) */
+  .ruler-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:grab;
+               appearance:none;background:transparent;border:0;margin:0;outline:none}
+  .ruler-input:active{cursor:grabbing}
+  .ruler-input:disabled{cursor:default}
+  .ruler-input:focus,.ruler-input:focus-visible{outline:none;box-shadow:none}
+
+  .meta-row{display:flex;align-items:baseline;justify-content:center;text-align:center;gap:8px;
+            font-size:13px;color:#8A8578;min-height:18px;margin-block-start:10px}
+  .meta-row .val{font-weight:800;color:#2C3E50;font-size:15px}
+  .meta-row .val small{font-weight:600;color:#8A8578;font-size:12px;margin-inline-start:2px}
+
+  .btn-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;min-height:52px;align-items:center;
+           margin-block-start:28px}   /* v2: 22 → 28px, 给细线下方的垂蔓腾出 10px 专属带 */
     
     .section-divider {
       border: none; border-top: 1px dashed #E8D8B0;
@@ -343,9 +442,6 @@
     .item-bubble .bubble-name { font-size: 13px; color: #fff; font-weight: bold; white-space: nowrap; }
     @keyframes bubbleFadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
     .item-bubble.animate { animation: bubbleFadeIn 0.3s ease-out; }
-
-    /* 数字时间显示:已废弃(改用 picker 中央 num 实时变化) */
-    .timer-display { display: none; }
 
     /* 确认打卡区域 */
     .confirm-area {
@@ -1037,26 +1133,30 @@
         <div class="dci-assign"><span class="dci-assign-label">老师要求</span><span class="dci-assign-text" id="dciAssignText">—</span></div>
       </div>
       <div class="timer-block">
-        <div class="picker-card">
-          <div class="activity-wheel" id="timerWheel"></div>
-          <div class="picker-col">
-            <div class="picker-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span> 主计时</div>
-            <div class="dial-knob" id="timerKnobEl">
-              <div class="dial-disc"></div>
-              <svg class="dial-ticks" id="timerTicks" viewBox="-110 -110 220 220"></svg>
-              <div class="dial-face">
-                <div class="dial-value" id="timerValue">10</div>
-                <div class="dial-unit">分钟</div>
-              </div>
+        <div id="timerCard">
+          <!-- 组 1: 时间读数 (滚轮数字 + 紧贴其下的状态胶囊) -->
+          <div class="readout">
+            <div class="ac-root" id="ttCounter"></div>
+            <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+          </div>
+          <!-- 组 2: 时长刻度尺 + 两侧步进按钮 (拖动尺子改时长; 计时中变进度器) -->
+          <div class="ruler-wrap">
+            <button class="step-btn minus" id="ttStepMinus" onclick="ttStepMin(-1)" aria-label="减少一分钟">−</button>
+            <div class="ruler" id="ruler">
+              <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+              <div class="notes-bubbles" aria-hidden="true"></div>
+              <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10"
+                     tabindex="-1" aria-label="练习时长（分钟）">
             </div>
-            <div class="timer-display" id="timer-display" style="display:none">00:00</div>
-            <div class="action-btns">
-              <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
-              <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
-            </div>
-            <div class="confirm-area" id="confirmArea">
-              <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
-            </div>
+            <button class="step-btn plus" id="ttStepPlus" onclick="ttStepMin(1)" aria-label="增加一分钟">+</button>
+          </div>
+          <!-- 组 3: 操作按钮 -->
+          <div class="btn-row">
+            <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()" disabled>开始</button>
+            <button class="btn btn-danger" id="finishEarlyBtn" onclick="finishEarly()" style="display:none">提前结束</button>
+          </div>
+          <div class="confirm-area" id="confirmArea">
+            <p>练习完成！共计 <span class="confirm-mins" id="confirmMins">0</span> 分钟</p>
           </div>
         </div>
         <div class="session-panel" id="sessionPanel">
@@ -1340,9 +1440,7 @@
     let pendingExtraMins = 10;  // 副半圆 picker 当前选值
     let selectedExtraItemId = null;  // V4: 补录 grid 选中的 item_id
     let selectedExtraItemName = null; // V4: 补录 grid 选中的 item_name
-    let timerPicker = null;  // dial knob picker 实例
     let extraPicker = null;  // dial knob picker 实例
-    let timerWheel = null;   // activity wheel 实例
     let extraWheel = null;   // activity wheel 实例
     let todayDate = "{{today_date}}";
     // 行为日志：进入时间 (CST 本地时间字符串, 2026-06-13 修复 UTC 时区错位 bug)
@@ -1867,10 +1965,9 @@
     }
 
     function setPickerTime(mins) {
-      duration = mins;
-      if (timerPicker) timerPicker.setValue(mins);
-      if (timerWheel) timerWheel.setValue(mins);
-      if (!started) resetTimer();
+      // 新计时器: 时长直接落到 duration, 由 ttSetDuration 同步数字/尺子/花纹
+      if (!started) { ttSetDuration(mins); resetTimer(); }
+      else { duration = mins; }
     }
 
     function resetTimer() {
@@ -1880,10 +1977,7 @@
       paused = false;
       finishPending = false;
       elapsed = 0;
-      // 恢复中央数值为默认
-      const valueEl = document.getElementById('timerValue');
-      if (valueEl) valueEl.textContent = '10';
-      document.getElementById('timer-display').textContent = '00:00';
+      // 恢复中央数值为默认 (新计时器: 滚轮数字 + 尺子 + 花纹)
       document.getElementById('startBtn').disabled = true;
       document.getElementById('startBtn').textContent = '开始';
       updateStartBtnState();
@@ -1891,10 +1985,7 @@
       const confirmArea = document.getElementById('confirmArea');
       if (confirmArea) confirmArea.classList.remove('show');
       // 重新显示 picker + 数字,隐藏时间显示
-      const pickerWrap = document.getElementById('timerPickerWrap');
-      const timeDisp = document.getElementById('timer-display');
-      if (pickerWrap) pickerWrap.style.display = '';
-      if (timeDisp) timeDisp.style.display = 'none';
+      ttOnExit();        // 花纹自右向左收卷 + 气泡清空 + 回到选择态
       const addBtn = document.getElementById('addExtraBtn');
       if (addBtn) addBtn.disabled = !selectedItemId;
     }
@@ -1908,6 +1999,7 @@
         timerRunning = false;
         document.getElementById('startBtn').textContent = '继续';
         document.getElementById('finishEarlyBtn').textContent = '提前结束';
+        ttPauseLabel(true);          // 状态胶囊改「已暂停」
         renderTimerDisplay();
         return;
       }
@@ -1917,6 +2009,7 @@
         timerRunning = true;
         document.getElementById('startBtn').textContent = '暂停';
         document.getElementById('finishEarlyBtn').textContent = '提前结束';
+        ttPauseLabel(false);
         renderTimerDisplay();
         startTickInterval();
         return;
@@ -1929,10 +2022,9 @@
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
       document.getElementById('finishEarlyBtn').textContent = '提前结束';
-      // 中央数值切换为 mm:ss 形式
-      const valueEl = document.getElementById('timerValue');
+      // 中央数字切到正计时读数, 尺子从 0 走, 花纹开始长
       renderTimerDisplay(true);
-      // 首次 start 触发首次 glitch 动效(由 renderTimerDisplay forceRebuild 内部处理)
+      ttOnStart();                   // 进入运行态: 尺子从 0 走 + 花纹从细线起点开始长
       startTickInterval();
     }
 
@@ -1963,25 +2055,31 @@
       });
     }
 
+    /* 中央数字 + 尺子 + 花纹的统一渲染入口: 只读 duration / elapsed / started, 不改状态
+       (sprint 26091801: 数字换成滚轮 odometer, 尺子在运行态变进度器, 细线下长花纹) */
     function renderTimerDisplay(forceRebuild) {
-      const valueEl = document.getElementById('timerValue');
-      if (!valueEl) return;
-      const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
-      const s = (elapsed % 60).toString().padStart(2, '0');
-      const timeStr = m + ':' + s;
-      if (forceRebuild || valueEl.textContent !== timeStr) {
-        valueEl.textContent = timeStr;
-        // GSAP glitch 动效
-        if (typeof gsap !== 'undefined' && forceRebuild) {
-          gsap.fromTo(valueEl, { opacity: 0, scale: 1.1 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' });
-        }
+      if (typeof counter === 'undefined' || !counter) return;
+      if (started) {
+        // 运行 / 暂停态: 数字 = 已练秒数 (正计时), 尺子 = 进度, 花纹跟红针生长
+        ttRenderDigits(elapsed);
+        const p = Math.min(1, elapsed / (duration * 60));
+        paintRulerRunning(p);
+        revealVine(p);
+      } else {
+        // 选择态: 数字 = 所选时长 (mm:00)
+        ttRenderDigits(duration * 60, forceRebuild);
+        paintRulerSelect(duration);
       }
     }
+
+    // ═══ 运行态切换 (sprint 26091801 · demo 定稿: 沉浸式正计时 + 花纹/气泡) ═══
 
     function startTickInterval() {
       timerInterval = setInterval(() => {
         elapsed++;
         renderTimerDisplay();   // 不传 forceRebuild,走保留 DOM 路径,只对变化的 digit 触发
+        pulseMarker();          // 当前格自身脉冲 (长总时长也看得见在走)
+        emitBubbles();          // 红针顶端随机冒音符
         if (elapsed >= duration * 60) {
           clearInterval(timerInterval);
           timerRunning = false;
@@ -1994,6 +2092,7 @@
           document.getElementById('confirmMins').textContent = duration;
           const normalModal = document.getElementById('finishNormalModal');
           normalModal.classList.add('open');
+          celebrateVine();        // 归零: 纹末红果微光呼吸一下
           gsap.fromTo('#finishNormalModal .finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(2)' });
           playChime();
         }
@@ -2054,7 +2153,7 @@
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
       // 重建中央数值 + 恢复显示
-      const valueEl = document.getElementById('timerValue');
+      ttPauseLabel(false);        // 取消提前结束 → 状态胶囊恢复「总计 N 分钟」
       renderTimerDisplay(true);   // 重建显示
       startTickInterval();
     }
@@ -2069,18 +2168,17 @@
       elapsed = 0;
       finishSavedElapsed = 0;
       clearInterval(timerInterval);
-      // 中央数值回到 idle "10" / "分钟"
-      const valueEl = document.getElementById('timerValue');
-      if (valueEl) valueEl.textContent = '10';
+      // 放弃本次 → 花纹收卷 + 回选择态, 时长回到默认 10 分钟
+      duration = 10;
+      ttLastSec = -1;
+      ttOnExit();
+      const ri = document.getElementById('rulerInput');
+      if (ri) ri.value = duration;
       // 按钮恢复
       const startBtn = document.getElementById('startBtn');
       const finishBtn = document.getElementById('finishEarlyBtn');
       startBtn.textContent = '开始';
       finishBtn.style.display = 'none';
-      // 重置 timer picker 到默认 10
-      if (timerPicker) timerPicker.setValue(10);
-      if (timerWheel) timerWheel.setValue(10);
-      duration = 10;
       // 重置 finishSave 标志
       finishSavedElapsed = 0;
     }
@@ -2704,12 +2802,6 @@
     // ════════════════════════════════════════════════
 
     // Fun descriptions — scattered intervals
-    const TIMER_DESCS = {
-      5: '就这？手都没热呢', 7: '再加把劲呗', 10: '不错的开始',
-      13: '有点意思了', 15: '标准练习量', 18: '开始上强度了',
-      20: '手指开始酸了！', 23: '停不下来？', 25: '要卷死谁啊！',
-      28: '体力怪物！', 30: '你是认真的？！',
-    };
     const EXTRA_DESCS = {
       2: '蚊子腿也是肉', 3: '三分钟 意思意思', 5: '小小加练',
       8: '越练越起劲', 10: '够意思！', 13: '加练也要卷？',
@@ -2900,24 +2992,9 @@
       // 旋钮吸附点：只有 5/10/15/20/25/30 有阻力
       const snapPoints = [5, 10, 15, 20, 25, 30];
       // 完整数值范围用于 activity wheel
-      const timerValues = Array.from({length: 26}, (_, i) => i + 5);
       const extraValues = Array.from({length: 30}, (_, i) => i + 1);
 
-      timerPicker = createDialKnob({
-        containerEl: document.getElementById('timerKnobEl'),
-        ticksEl: document.getElementById('timerTicks'),
-        valueEl: document.getElementById('timerValue'),
-        initial: 10, min: 5, max: 30, step: 1,
-        snapVals: snapPoints, sensitivity: 0.25,
-        onChange: (v) => { duration = v; if (timerWheel) timerWheel.setValue(v); },
-      });
 
-      timerWheel = createActivityWheel({
-        containerEl: document.getElementById('timerWheel'),
-        values: timerValues, descs: TIMER_DESCS, icons: WHEEL_ICONS,
-        initial: 10,
-        onChange: (v) => { duration = v; if (timerPicker) timerPicker.setValue(v); },
-      });
 
       extraPicker = createDialKnob({
         containerEl: document.getElementById('extraKnobEl'),
@@ -2937,7 +3014,501 @@
     }
 
     // Init
+/* ══════════════════════════════════════════════════════════════════════
+   计时器视觉层 — 移植自 sprint 26091701 定稿 demo
+   docs/demos/timer-counter-v3.1-demo-2026-09-18.html
+   数字滚轮移植自 Rare UI AnimatedCounter (rareui.com/components/animatedcounter)
+   本层只负责【视图】; 状态真值仍是生产页的 duration / elapsed / timerRunning
+   ══════════════════════════════════════════════════════════════════════ */
+const AC_FADE='linear-gradient(to bottom,'+
+  'rgba(0,0,0,0) 0%,rgba(0,0,0,0.06) 5.5%,rgba(0,0,0,0.5) 11%,rgba(0,0,0,0.94) 16.5%,'+
+  '#000 22%,#000 78%,'+
+  'rgba(0,0,0,0.94) 83.5%,rgba(0,0,0,0.5) 89%,rgba(0,0,0,0.06) 94.5%,rgba(0,0,0,0) 100%)';
+const AC_WHEEL=[0,1,2,3,4,5,6,7,8,9,0];
+const AC_DUR=0.6, AC_EASE='back.out(1.4)';
+const mod=(n,m)=>((n%m)+m)%m;
+const FONT='ui-monospace,SFMono-Regular,Menlo,monospace';
+const fmt=s=>{const t=Math.max(0,Math.round(s));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');};
+const BUBBLE_SYMBOLS=['♪','♫','♩','♬','♭','♯','♮'];   // 只用 BMP 基本乐符 (Musical Symbols 补充区 𝄞𝄢𝄽𝄾 在很多设备上缺字形 → 白框)
+const BUBBLE_COLORS=['#FF6B6B','#FF9F45','#FFD23F','#7BC96F','#3FBF9F','#4FA8D9','#6E8CF5','#B27BE0','#FF8FB1','#E8607A'];
+let bubblePool=[],bubbleIdx=0,bubbleSymbols=[];
+let VINE_SVG_H=14;
+const VINE_RAIL_Y=0.6, VINE_STROKE='#D9C79A', VINE_BUD='#FF6B6B';
+const VINE_CFG={density:0.90,depth:19,chord:16,random:1.0,flower:1.5};
+const VINE_FLOWERS={
+  /* 常量 = Playwright 实测外廓 (FS=1.5 测得 ÷1.5), 已含安全余量; dn = 花向下探出末端的深度 */
+  five:{p:0.35,hw:4.25,vh:4.15,dn:3.95,bloom:'pop',  svg:()=>[0,72,144,216,288].map(a=>'<ellipse cx="0" cy="-2.5" rx="1.0" ry="1.6" fill="#E9CCA6" transform="rotate('+a+',0,0)"/>').join('')
+            +'<circle cx="0" cy="0" r="0.8" fill="#FF6B6B"/>'},
+  cross:{p:0.20,hw:3.65,vh:3.65,dn:3.65,bloom:'stagger',svg:()=>[0,90,180,270].map(a=>'<circle cx="0" cy="-2.2" r="1.4" fill="#E9CCA6" transform="rotate('+a+',0,0)"/>').join('')
+            +'<circle cx="0" cy="0" r="0.8" fill="#E8C79A"/>'},
+  bell:{p:0.20,hw:3.85,vh:4.75,dn:1.10,bloom:'elastic',svg:()=>'<ellipse cx="-1.2" cy="-2" rx="0.9" ry="2" fill="#E9CCA6" transform="rotate(-30,0,0)"/>'
+            +'<ellipse cx="1.2" cy="-2" rx="0.9" ry="2" fill="#E9CCA6" transform="rotate(30,0,0)"/>'
+            +'<ellipse cx="0" cy="-2.5" rx="1.2" ry="2.2" fill="#E9CCA6"/>'
+            +'<circle cx="0" cy="-0.5" r="0.6" fill="#FF6B6B"/>'},
+  tulip:{p:0.15,hw:3.20,vh:5.55,dn:0.05,bloom:'tulip',svg:()=>'<ellipse cx="-1" cy="-2.8" rx="0.9" ry="2.2" fill="#E8C79A" transform="rotate(-20,0,-1)"/>'
+            +'<ellipse cx="1" cy="-2.8" rx="0.9" ry="2.2" fill="#E8C79A" transform="rotate(20,0,-1)"/>'
+            +'<ellipse cx="0" cy="-3" rx="1.1" ry="2.5" fill="#FF6B6B"/>'},
+  star:{p:0.08,hw:2.90,vh:5.55,dn:0.55,bloom:'spin',  svg:()=>[0,60,120].map(a=>'<ellipse cx="0" cy="-2.5" rx="0.5" ry="3.0" fill="#E9CCA6" transform="rotate('+a+',0,-2.5)"/>').join('')
+            +'<circle cx="0" cy="-2.5" r="0.8" fill="#FF6B6B"/>'},
+  berry:{p:0.02,hw:2.65,vh:5.85,dn:0.05,bloom:'stagger',svg:()=>'<circle cx="-1.5" cy="-2.0" r="1.1" fill="#FF6B6B"/>'
+            +'<circle cx="1.2" cy="-3.2" r="1.3" fill="#E9CCA6"/>'
+            +'<circle cx="-0.2" cy="-4.8" r="1.0" fill="#FF6B6B"/>'}
+};
+const VINE_FLOWER_IDS=Object.keys(VINE_FLOWERS);
+let vineState={clip:null};
+const TICKS=60, SLOTS_PER_MIN=2, MIN_MIN=1, MAX_MIN=30;
+let ticks=[], markerIdx=-1;
+let secFlickerIv=null, secSettleTimer=null, secSpin=0;
+const reducedMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let counter;
+
+/* ══════════════════════════════════════════════════════════════════════
+   新计时器 · 生产接线层 (sprint 26091801)
+   ─ 视觉/动效函数逐字移植自定稿 demo: docs/demos/timer-counter-v3.1-demo-2026-09-18.html
+   ─ 数字滚轮移植自 Rare UI AnimatedCounter (rareui.com/components/animatedcounter)
+   ─ 状态真值仍是本页原有的 duration / elapsed / timerRunning / paused / started
+     (下面的 S 是只读桥: 让移植函数直接读写生产状态, 不另起一套状态)
+   ══════════════════════════════════════════════════════════════════════ */
+const S = {
+  get durMin(){ return duration; },  set durMin(v){ duration = v; },
+  get sec(){ return elapsed; },      set sec(v){ elapsed = v; },
+  get running(){ return timerRunning; }, set running(v){ timerRunning = v; },
+  get paused(){ return paused; },    set paused(v){ paused = v; },
+};
+const dur = () => AC_DUR;                 // demo 有慢放开关; 生产页无 → 固定时长
+/* GSAP 可能双挂 (本地文件被误删 + CDN 不可达): 动效降级, 计时/拖拽必须照常 */
+const hasGsap = () => (typeof window.gsap !== 'undefined') && !!window.gsap;
+function setHint(){}                      // dad 已删除提示行, 留空实现兼容 demo 函数里的调用
+
+/* 数字渲染统一入口: 按数值变化方向决定滚轮方向 (变小时反向滚), 与 demo 的方向感知弹簧一致 */
+let ttLastSec = -1;
+function ttRenderDigits(totalSec, force){
+  const dir = (totalSec >= ttLastSec) ? 1 : -1;
+  ttLastSec = totalSec;
+  if (counter) renderCounter(counter, totalSec, force ? 1 : dir, dur());
+}
+
+/* 选择态: ±1 分钟 与 拖尺子 都走这里 (守卫用 started: 计时中与暂停中都不许改时长) */
+function ttStepMin(delta){
+  if (started) return;
+  ttSetDuration(duration + delta);
+}
+function ttSetDuration(v){
+  if (started) return;
+  v = Math.min(MAX_MIN, Math.max(MIN_MIN, Math.round(v)));
+  if (v === duration) return;
+  duration = v;
+  const ri = document.getElementById('rulerInput');
+  if (ri) ri.value = v;
+  ttRenderDigits(v * 60);
+  paintRulerSelect(v);
+  setSelectModality();
+  buildVine();                            // 时长变 → 花纹按新种子重画 (与 demo 行为一致)
+  startSecFlicker();
+  scheduleSecSettle(200);
+}
+
+function ttInitTimer(){
+  const root = document.getElementById('ttCounter');
+  if (!root) return;
+  // 先绑交互: 后面任何动效初始化异常都不该让尺子拖不动 / 数字不显示
+  const ri = document.getElementById('rulerInput');
+  if (ri) {
+    ri.addEventListener('input', () => ttSetDuration(parseInt(ri.value, 10)));
+    ri.addEventListener('pointerdown', () => startSecFlicker());
+    ri.addEventListener('pointerup', () => scheduleSecSettle(80));
+    ri.addEventListener('pointercancel', () => scheduleSecSettle(80));
+  }
+  try {
+    counter = makeCounter(root);
+    buildRuler(document.getElementById('rulerRow'));
+    if (hasGsap()) { buildBubbles(); buildVine(); }   // 花纹/气泡纯装饰, 没 gsap 就不建
+    ttLastSec = duration * 60;
+    renderCounter(counter, duration * 60, 1, 0.35);
+    paintRulerSelect(duration);
+    setSelectModality();
+  } catch (e) {
+    console.warn('[timer] 视觉层初始化失败 (动效降级, 计时不受影响):', e);
+  }
+}
+/* 进入运行态(首次开始 / 继续): 状态胶囊改文案, 尺子从 0 走, 花纹从细线起点开始长 */
+function ttOnStart(){
+  ttSetControlsEnabled(false);           // 计时开始: 尺子/步进键锁住 (暂停态同样锁, else 胶囊会丢「已暂停」)
+  setRunningModality();
+  paintRulerRunning(0);
+  revealVine(0, false);
+  ttRenderDigits(elapsed);
+}
+function ttSetControlsEnabled(on){
+  const ids = ['rulerInput', 'ttStepMinus', 'ttStepPlus'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = !on; });
+}
+function ttPauseLabel(on){
+  const el = document.getElementById('metaVal');
+  if (!el) return;
+  if (on) el.textContent = '已暂停';
+  else el.innerHTML = '总计 ' + duration + '<small>分钟</small>';
+}
+/* 退出运行态(正常结束 / 提前结束 / 放弃 / 重置): 花纹自右向左收卷 + 气泡清空 + 回到选择态 */
+function ttOnExit(){
+  ttSetControlsEnabled(true);            // 回选择态: 解锁
+  retractVine();
+  stopBubbles();
+  clearInterval(secFlickerIv); secFlickerIv = null;
+  ttRenderDigits(duration * 60);
+  paintRulerSelect(duration);
+  setSelectModality();
+}
+
+function makeDigitCol(){
+  const col=document.createElement('span');
+  col.className='ac-digit';
+  col.style.setProperty('--ac-fade',AC_FADE);
+  const sizer=document.createElement('span');
+  sizer.className='ac-sizer';
+  '0123456789'.split('').forEach(d=>{          // 10 个字面重叠 → 取最宽宽度
+    const s=document.createElement('span');s.style.gridArea='1/1';s.textContent=d;sizer.appendChild(s);
+  });
+  const stack=document.createElement('span');
+  stack.className='ac-stack';
+  AC_WHEEL.forEach(f=>{
+    const face=document.createElement('span');face.className='ac-face';face.textContent=String(f);
+    stack.appendChild(face);
+  });
+  col.appendChild(sizer);col.appendChild(stack);
+  col._stack=stack;col._p=0;
+  return col;
+}
+
+function rollCol(col,digit,dir,dur){
+  if(!col)return;
+  const stack=col._stack,W=AC_WHEEL.length;
+  const render=p=>{stack.style.transform='translateY('+(-(mod(p,10)*100/W))+'%)';};
+  if(!window.gsap){col._p=digit;render(digit);return;}
+  const from=col._p;
+  const goal = dir<0 ? from - mod(from-digit,10) : from + mod(digit-from,10);
+  const proxy={p:from};
+  gsap.to(proxy,{p:goal,duration:dur||AC_DUR,ease:AC_EASE,overwrite:true,
+    onUpdate:()=>{col._p=proxy.p;render(proxy.p);},
+    onComplete:()=>{const m=mod(proxy.p,10);col._p=Math.abs(m)<1e-6?0:m;render(col._p);}});
+}
+
+function makeCounter(rootEl){
+  rootEl.innerHTML='';const cols=[];
+  [ 'M1','M0','mark','S1','S0' ].forEach(k=>{
+    if(k==='mark'){
+      const m=document.createElement('span');m.className='ac-mark';m.textContent=':';rootEl.appendChild(m);
+    }else{
+      const c=makeDigitCol();rootEl.appendChild(c);cols.push(c);
+    }
+  });
+  return {cols:cols};
+}
+
+function renderCounter(counter,totalSec,dir,dur){
+  const t=Math.max(0,Math.round(totalSec)),mm=Math.floor(t/60),ss=t%60;
+  const ds=[Math.floor(mm/10)%10,mm%10,Math.floor(ss/10)%10,ss%10];
+  // 定时器习惯: 固定 4 位, 分钟高位补 0 (01:00 / 09:30 / 30:00), 不隐藏列
+  counter.cols.forEach((c,i)=>rollCol(c,ds[i],dir,dur));
+}
+
+function glyphSupported(ch){
+  /* 真正的豆腐块检测: 把字形画到 canvas 上数墨量, 与"私用区必然缺字形"的豆腐块墨量对比 */
+  try{
+    const cv=document.createElement('canvas');cv.width=40;cv.height=40;
+    const c=cv.getContext('2d');
+    const ink=s=>{c.clearRect(0,0,40,40);
+      c.font='32px "Apple Symbols","Segoe UI Symbol","Noto Music",serif';
+      c.textBaseline='top';c.fillStyle='#000';c.fillText(s,2,2);
+      const d=c.getImageData(0,0,40,40).data;let n=0;
+      for(let i=3;i<d.length;i+=4) if(d[i]>32) n++;
+      return n;};
+    const n1=ink(ch), tofu=ink('\uE0FF');
+    if(n1===0) return false;
+    return Math.abs(n1-tofu) > 2;
+  }catch(e){return true;}
+}
+
+function buildBubbles(){
+  const layer=document.querySelector('.notes-bubbles');if(!layer)return;
+  layer.innerHTML='';bubblePool=[];
+  for(let i=0;i<22;i++){                              // 池子放 22 个: 每秒最多 4 个 × 1.6s 寿命 ≈ 7 个同时在飞, 余量充足
+    const b=document.createElement('span');b.className='tt-bubble';   // 与 CSS 同名 (生产页已有 .bubble 类, 规避冲突)
+    layer.appendChild(b);bubblePool.push(b);
+  }
+  // 运行时过滤本机缺字形的符号 (缺字形会渲染成豆腐块)
+  bubbleSymbols=BUBBLE_SYMBOLS.filter(glyphSupported);
+  if(!bubbleSymbols.length) bubbleSymbols=['♪'];
+}
+
+function emitBubbles(xOverride){
+  if(!bubblePool.length)return;
+  const marker=ticks[markerIdx];
+  const slotX=(typeof xOverride==='number')?xOverride:(marker?marker.offsetLeft+marker.offsetWidth/2:null);
+  if(slotX==null)return;
+  const r=Math.random();                              // 1(30%) / 2(35%) / 3(25%) / 4(10%)
+  const count=r<0.30?1:(r<0.65?2:(r<0.90?3:4));
+  for(let i=0;i<count;i++){
+    const b=bubblePool[bubbleIdx=(bubbleIdx+1)%bubblePool.length];
+    const ch=bubbleSymbols[Math.floor(Math.random()*bubbleSymbols.length)];
+    const size=12+Math.random()*5;                    // 12~17px 随机字号
+    const side=(count===2)?(i===0?-1:1):(Math.random()<0.5?-1:1);
+    gsap.killTweensOf(b);
+    b.textContent=ch;                                   // 直接写 textContent (不走 GSAP)
+    b.style.color=BUBBLE_COLORS[Math.floor(Math.random()*BUBBLE_COLORS.length)];   // 每次随机取色
+    const bx=(side*(7+Math.random()*11)).toFixed(1)+'px';
+    const by=(-(5+Math.random()*5)).toFixed(1)+'px';    // 上浮 5~10px
+    const br=(side*(6+Math.random()*14)).toFixed(1)+'deg';
+    b.classList.add('no-anim');                          // 先停动画, 复位
+    b.style.left=(slotX-9+(Math.random()*6-3))+'px';
+    b.style.fontSize=size.toFixed(1)+'px';
+    b.style.setProperty('--bx',bx);
+    b.style.setProperty('--by',by);
+    b.style.setProperty('--br',br);
+    b.style.setProperty('--bd',(1.1+Math.random()*0.5).toFixed(2)+'s');
+    void b.offsetWidth;                                  // 强制重排 → 动画从头播
+    b.classList.remove('no-anim');
+  }
+}
+
+function stopBubbles(){if(!hasGsap())return;bubblePool.forEach(b=>{gsap.killTweensOf(b);gsap.set(b,{opacity:0});});}
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function pickFlower(r){let a=0;for(const id of VINE_FLOWER_IDS){a+=VINE_FLOWERS[id].p;if(r<a)return id;}return 'five';}
+
+function hash01(a,b){
+  let h=Math.imul((a|0)^0x9E3779B9,2654435761)^Math.imul((b|0)+0x85EBCA6B,2246822519);
+  h^=h>>>13; h=Math.imul(h,1274126177); h^=h>>>16;
+  return (h>>>0)/4294967296;
+}
+
+function buildVine(){
+  if(!hasGsap())return;
+  const ruler=document.getElementById('ruler');if(!ruler)return;
+  const old=ruler.querySelector('.ruler-vine');if(old)old.remove();
+  const w=Math.round(ruler.getBoundingClientRect().width);if(w<20)return;
+  const rnd=mulberry32(((S.durMin*10007)^0x5F3759DF)>>>0);
+  const pitch=w/TICKS;
+  const CFG=VINE_CFG, RJ=CFG.random;                  // RJ = 随机强度 (0~1)
+  VINE_SVG_H=Math.max(10,Math.ceil(CFG.depth+4+(CFG.flower-1)*2.5));
+  let stems='',dots='',flowers='';
+  const placed=[];                                    // 已放的花 {x,h,hw,vh,dn} → 供二维避让
+  const FS0=CFG.flower, DEPTH_MAX=CFG.depth;
+  /* 与【所有】已放花做二维检查: 横向够远 或 纵向错开 才算不撞 (只跟左邻比会漏: 偏摆会被夹住) */
+  function fits(fx,h,SP){
+    for(const p of placed){
+      const need=(SP.hw+p.hw)*FS0+3.0;                       // 横向所需中心距
+      const vneed=(Math.max(SP.vh,p.vh)+Math.max(SP.dn,p.dn))*FS0+2.0;  // 纵向错开所需深度差
+      if(Math.abs(fx-p.x)<need && Math.abs(h-p.h)<vneed) return false;
+    }
+    return true;
+  }
+  for(let i=0;i<TICKS;i++){
+    const x=pitch*(i+0.5);
+    if(rnd()>(CFG.density)) continue;                 // 密度: 未达密度的槽位留空
+    const side=(i%2===0)?1:-1;                        // 奇偶交替偏向
+    const kind=rnd();                                 // <0.60 回到细线的弧 / ≥0.60 垂枝开花 (占四成, 花更密)
+    let hung=false;
+    if(kind>=0.60){
+      /* 垂枝 + 末端花: 候选落点依次尝试(自然偏摆 → 加大偏摆推开), 全都撞才降级成弧
+         深度下限 = 该花种自身高度(否则花瓣会冲到细线上方), 上限 = 垂深 */
+      const FS=FS0;
+      const sp=pickFlower(hash01(i,S.durMin));        // 随机花种 (槽位+时长雪崩哈希, 权重符合设计)
+      const SP=VINE_FLOWERS[sp];
+      const hMin=SP.vh*FS0+1.2, hMax=Math.max(DEPTH_MAX,hMin);
+      const baseH=Math.max(hMin,Math.min(hMax,CFG.depth*(0.42+0.58*rnd())));
+      const nat=x+side*(0.8+rnd()*(1.4+2.2*RJ));      // 自然落点 (奇偶交替偏向)
+      let fx=null, hh=null;
+      for(const cand of [nat, nat+side*3.5, nat+side*6.5, nat-side*3.5, nat-side*6.5]){
+        const cx=Math.max(8,Math.min(w-8,cand));
+        if(fits(cx,baseH,SP)){ fx=cx; hh=baseH; break; }
+        const hn=(baseH-hMin>hMax-baseH)?hMin:hMax;   // 深度换到另一端再试一次
+        if(Math.abs(hn-baseH)>1 && fits(cx,hn,SP)){ fx=cx; hh=hn; break; }
+      }
+      if(fx!==null){
+        const r=1.6+rnd()*2.2;
+        const ty=VINE_RAIL_Y+hh;
+        stems+='M'+x.toFixed(1)+' '+VINE_RAIL_Y+' A'+r.toFixed(2)+' '+r.toFixed(2)
+             +' 0 0 '+((fx>x)?0:1)+' '+fx.toFixed(1)+' '+ty.toFixed(1)+' ';
+        flowers+='<g class="vine-flower" data-x="'+fx.toFixed(1)+'" data-h="'+hh.toFixed(1)+'" data-sp="'+sp+'" '
+               +'transform="translate('+fx.toFixed(1)+' '+ty.toFixed(1)+')" style="transform-origin:0 0">'
+               +'<g transform="scale('+FS.toFixed(2)+')">'+SP.svg()+'</g></g>';
+        placed.push({x:fx,h:hh,hw:SP.hw,vh:SP.vh,dn:SP.dn});
+        hung=true;
+      }
+    }
+    if(!hung){
+      /* 主弧: 两端都落回细线 (半圆弧), 半径由弦长与拱高反算 → 一定是圆弧 */
+      const cd=(CFG.chord*(0.55+0.45*RJ*rnd()));      // 弦长随随机强度抖动
+      const d=(CFG.depth*(0.35+0.65*rnd()));
+      const c=Math.max(2.2,cd);
+      const dd=Math.max(1.8,d);
+      const r=(c*c/4+dd*dd)/(2*dd);
+      const x2=x+side*c;
+      const sweep=(side>0)?0:1;                       // 向下鼓 (y 轴向下: 从左往右走用 sweep=0)
+      stems+='M'+x.toFixed(1)+' '+VINE_RAIL_Y+' A'+r.toFixed(2)+' '+r.toFixed(2)
+           +' 0 0 '+sweep+' '+x2.toFixed(1)+' '+VINE_RAIL_Y+' ';
+      if(rnd()<0.34+0.4*RJ){                          // 叠一层小弧 (双弧) → 随机感
+        const c2=(2+rnd()*3)*(0.7+0.6*RJ), d2=Math.max(1.6,(CFG.depth*0.55)*(0.3+0.7*rnd()));
+        const r2=(c2*c2/4+d2*d2)/(2*d2);
+        const x3=x+side*(c*0.45);
+        stems+='M'+x3.toFixed(1)+' '+VINE_RAIL_Y+' A'+r2.toFixed(2)+' '+r2.toFixed(2)
+             +' 0 0 '+sweep+' '+(x3+side*c2).toFixed(1)+' '+VINE_RAIL_Y+' ';
+      }
+      if(rnd()<0.18+0.2*RJ){                          // 弧顶结一颗红果 (落在弧的最低点)
+        const rr=(c*c/4+dd*dd)/(2*dd);
+        const mx=x+side*c/2, my=VINE_RAIL_Y+rr-Math.sqrt(Math.max(0,(rr*rr)-(c*c/4)));
+        dots+='<circle cx="'+mx.toFixed(1)+'" cy="'+my.toFixed(1)+'" r="1"/>';
+      }
+    }
+  }
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','ruler-vine');svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('width',w);svg.setAttribute('height',VINE_SVG_H);
+  svg.setAttribute('viewBox','0 0 '+w+' '+VINE_SVG_H);
+  svg.innerHTML='<defs><clipPath id="vineClip"><rect x="0" y="0" width="0" height="'+VINE_SVG_H+'"/></clipPath></defs>'
+    +'<g clip-path="url(#vineClip)">'
+    +'<path d="'+stems+'" fill="none" stroke="'+VINE_STROKE+'" stroke-width="1.2" '
+    +'stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'
+    +'<g fill="'+VINE_BUD+'">'+dots+'</g>'
+    +flowers
+    +'</g>';
+  ruler.appendChild(svg);
+  vineState.clip=svg.querySelector('#vineClip rect');
+  svg.querySelectorAll('.vine-flower').forEach(f=>gsap.set(f,{scale:.06}));   // 花出厂即"未开": 由揭示过程触发开花
+  revealVine(S.running?S.sec/(S.durMin*60):0,false);
+}
+
+function bloomFlowersUpTo(x){
+  if(!hasGsap())return;
+  const svg=document.querySelector('.ruler-vine');if(!svg)return;
+  svg.querySelectorAll('.vine-flower').forEach(f=>{
+    const fx=parseFloat(f.dataset.x||'0');
+    if(fx>x+0.5) return;
+    if(f.dataset.bloomed) return;
+    f.dataset.bloomed='1';
+    const sp=f.dataset.sp||'five';
+    if(reducedMotion()){gsap.set(f,{scale:1});return;}
+    if(sp==='cross'||sp==='berry'){                   // 花瓣/浆果逐颗冒出
+      gsap.fromTo(f.querySelectorAll('circle'),{scale:0,transformOrigin:'0px 0px'},
+        {scale:1,duration:.35,ease:'back.out(2)',stagger:sp==='berry'?.06:.04});
+      gsap.set(f,{scale:1});
+    }else if(sp==='bell'){                            // 钟形: 弹性
+      gsap.fromTo(f,{scale:0},{scale:1,duration:.45,ease:'elastic.out(1,0.6)'});
+    }else if(sp==='tulip'){                           // 郁金香: 先拔高再撑开
+      gsap.fromTo(f,{scaleY:0,scaleX:.5},{scaleY:1,scaleX:1,duration:.4,ease:'power3.out'});
+    }else if(sp==='star'){                            // 芒星: 边转边开
+      gsap.fromTo(f,{scale:0,rotation:-90},{scale:1,rotation:0,duration:.5,ease:'back.out(2)'});
+    }else{                                            // 五瓣: 整体弹出
+      gsap.fromTo(f,{scale:.06},{scale:1,duration:.38,ease:'back.out(2.2)'});
+    }
+  });
+}
+
+function revealVine(progress,animate){
+  if(!vineState.clip)return;
+  const ruler=document.getElementById('ruler');if(!ruler)return;
+  const w=ruler.getBoundingClientRect().width;
+  const marker=ticks[markerIdx];
+  const target=marker?(marker.offsetLeft+marker.offsetWidth/2):progress*w;
+  if(reducedMotion()){
+    gsap.set(vineState.clip,{attr:{width:Math.max(0,target)}});
+    bloomFlowersUpTo(target);
+    return;
+  }
+  if(animate===false){gsap.set(vineState.clip,{attr:{width:Math.max(0,target)}});bloomFlowersUpTo(target);return;}
+  gsap.to(vineState.clip,{attr:{width:Math.max(0,target)},duration:.35,ease:'power2.out',overwrite:true});
+  bloomFlowersUpTo(target);
+}
+
+function retractVine(){
+  if(!vineState.clip)return;
+  const svg=document.querySelector('.ruler-vine');
+  if(svg) svg.querySelectorAll('.vine-flower').forEach(f=>{delete f.dataset.bloomed;gsap.set(f,{scale:.06});});
+  if(reducedMotion()){gsap.set(vineState.clip,{attr:{width:0}});return;}
+  gsap.to(vineState.clip,{attr:{width:0},duration:.22,ease:'power2.inOut',overwrite:true});
+}
+
+function celebrateVine(){
+  if(!hasGsap())return;
+  const g=document.querySelector('.ruler-vine g[fill]');
+  if(!g||reducedMotion())return;
+  gsap.fromTo(g,{scale:1},{scale:1.25,duration:.22,ease:'sine.inOut',yoyo:true,repeat:1,
+    transformOrigin:'50% 100%'});
+}
+
+function buildRuler(rowEl){
+  rowEl.innerHTML='';ticks=[];
+  for(let i=0;i<TICKS;i++){
+    const t=document.createElement('span');
+    t.className='tick '+(i%2===0?'major':'minor')+' future';   // 偶 index = 整分主格
+    rowEl.appendChild(t);ticks.push(t);
+  }
+}
+
+function rulerWidth(){ return document.getElementById('ruler').getBoundingClientRect().width; }
+
+function setMarker(idx){
+  idx=Math.max(0,Math.min(TICKS-1,Math.round(idx)));
+  if(idx===markerIdx)return;
+  markerIdx=idx;
+  ticks.forEach((t,i)=>{
+    const kind=(i%2===0)?'major':'minor';
+    t.className='tick '+kind+' '+(i<idx?'past':(i===idx?'cur':'future'));
+  });
+}
+
+function pulseMarker(){
+  if(!window.gsap||markerIdx<0)return;
+  const t=ticks[markerIdx];if(!t)return;
+  gsap.fromTo(t,{scaleY:1},{scaleY:1.1,duration:.1,ease:'sine.inOut',yoyo:true,repeat:1,
+    onComplete:()=>gsap.set(t,{scaleY:1})});
+}
+
+function paintRulerSelect(minute){
+  setMarker((Math.min(MAX_MIN,Math.max(MIN_MIN,minute))-1)*SLOTS_PER_MIN);
+}
+
+function paintRulerRunning(progress){
+  setMarker(progress*(TICKS-1));
+}
+
+function setSelectModality(){
+  document.getElementById('metaVal').innerHTML=S.durMin+'<small>分钟</small>';
+  setHint('每格 1 分钟；也可点两侧 +/− 精调');
+}
+
+function setRunningModality(){
+  document.getElementById('metaVal').innerHTML='总计 '+S.durMin+'<small>分钟</small>';
+  setHint('计时中 · 正计时');
+}
+
+function startSecFlicker(){
+  if(S.running)return;
+  if(secFlickerIv)return;
+  secSpin=0;
+  secFlickerIv=setInterval(()=>{
+    secSpin=(secSpin+3)%60;                       // 每秒当量 3, 60ms 一跳 → 读成高速顺向滚动
+    rollCol(counter.cols[2],Math.floor(secSpin/10),1,0.22);
+    rollCol(counter.cols[3],secSpin%10,1,0.22);
+  },60);
+}
+
+function scheduleSecSettle(delay){
+  clearTimeout(secSettleTimer);
+  secSettleTimer=setTimeout(settleSecToZero, delay||140);
+}
+
+function settleSecToZero(){
+  clearInterval(secFlickerIv);secFlickerIv=null;
+  if(S.running)return;
+  rollCol(counter.cols[2],0,-1,0.28);   // 秒十位弹性落 0
+  rollCol(counter.cols[3],0,-1,0.28);   // 秒个位弹性落 0
+}
+
     initPickers();
+    ttInitTimer();
     loadTodayRecords();
     // PR-C (260815): 初始化补录 dashboard (空态显示 "—")
     updateDashboardExtra();
