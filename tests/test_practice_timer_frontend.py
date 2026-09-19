@@ -141,3 +141,155 @@ def test_timer_module_is_state_bridge_not_second_source_of_truth(html):
     assert "get durMin(){ return duration; }" in html
     assert "get sec(){ return elapsed; }" in html
     assert "get running(){ return timerRunning; }" in html
+
+
+def test_inline_page_script_no_js_syntax_error(html):
+    """sprint 26091901: inline page script 不能有 JS 语法错 (上轮 brace 错位导致整个 IIFE 抛 'Unexpected token }' → 计时器全部丢渲染).
+       静态提取 <script>...</script> 块, 替换 Jinja 变量, 用 node --check 验语法.
+    """
+    import re, subprocess, tempfile, os
+    scripts = re.findall(r'<script>(.+?)</script>', html, re.DOTALL)
+    # 找含 ttInitTimer 的内联 script (page-level)
+    page_scripts = [s for s in scripts if 'ttInitTimer' in s or 'onDragEnd' in s]
+    assert page_scripts, "找不到 inline page script (ttInitTimer/onDragEnd), sprint 24091901 可能未实装"
+    # 替换 Jinja 变量 {{xxx}} → null, 防止 node 把它当语法错
+    for i, s in enumerate(page_scripts):
+        cleaned = re.sub(r'\{\{[^}]+\}\}', 'null', s)
+        # 写到临时文件, node --check
+        with tempfile.NamedTemporaryFile(suffix='.js', delete=False, mode='w') as f:
+            f.write(cleaned)
+            tmp = f.name
+        try:
+            r = subprocess.run(['node', '--check', tmp], capture_output=True, text=True, timeout=15)
+            assert r.returncode == 0, f"inline page script #{i} 有 JS 语法错:\n{r.stderr}"
+        finally:
+            os.unlink(tmp)
+
+
+# ── 7. sprint 26091901: iPad ruler 自定义 Pointer Events 拖拽 ─────────────
+def test_ruler_input_touch_action_none(html):
+    """iPad WebKit 上手必须用 touch-action:none 拦截上下滚动 (否则 pointercancel 频繁触发)"""
+    assert ".ruler-input" in html and "touch-action:none" in html, \
+        "缺 touch-action:none, iPad Safari 拖拽会被上下滚动打断"
+
+
+def test_timer_card_and_step_btn_touch_action_manipulation(html):
+    """sprint 26091901 follow-up: iPad Safari 双击 zoom 误操作
+       CSS touch-action:manipulation 在 #timerCard 与 .step-btn 上, 消 300ms 点击延迟 + 禁双击 zoom
+    """
+    # #timerCard 卡片容器
+    timer_block_idx = html.find("#timerCard{")
+    assert timer_block_idx > 0
+    block = html[timer_block_idx:timer_block_idx + 700]
+    assert "touch-action:manipulation" in block, \
+        "#timerCard 必须 touch-action:manipulation (消双击 zoom + 300ms 延迟)"
+    # .step-btn 步进按钮
+    step_block_idx = html.find(".step-btn{")
+    assert step_block_idx > 0
+    step_block = html[step_block_idx:step_block_idx + 800]
+    assert "touch-action:manipulation" in step_block, \
+        ".step-btn 必须 touch-action:manipulation"
+    assert "user-select:none" in step_block, \
+        ".step-btn 必须 user-select:none (防狂点误选 +/- 文本)"
+
+
+def test_ruler_input_touch_action_none_not_regressed(html):
+    """sprint 26091901 follow-up: .ruler-input 仍保持 touch-action:none (sprint 26091901 实装, 不被 #timerCard 容器覆盖)"""
+    # 检查 .ruler-input 块内仍有 touch-action:none
+    ruler_block_idx = html.find(".ruler-input{")
+    assert ruler_block_idx > 0
+    ruler_block = html[ruler_block_idx:ruler_block_idx + 500]
+    assert "touch-action:none" in ruler_block, \
+        ".ruler-input 仍必须 touch-action:none (sprint 26091901 拖拽功能)"
+
+
+def test_ruler_pointer_capture_used(html):
+    """pointerdown 必须调用 setPointerCapture, pointerup 必须 releasePointerCapture"""
+    assert "setPointerCapture" in html, "缺 setPointerCapture (iPad 拖出尺子范围会丢事件)"
+    assert "releasePointerCapture" in html, "缺 releasePointerCapture (拖完 capture 残留会卡住)"
+
+
+def test_tick_cur_dragging_class(html):
+    """拖拽中红针微高亮: .ruler.is-dragging .tick.cur (P1 修法: 容器挂类, 跨分钟不掉)"""
+    assert ".ruler.is-dragging .tick.cur" in html, \
+        "缺 .ruler.is-dragging .tick.cur (P1 修法: 容器挂类, paintRulerSelect 切格时不会丢)"
+    # 必须三件套绑在该选择器块内 (不是散落)
+    block_idx = html.find(".ruler.is-dragging .tick.cur")
+    assert block_idx > 0
+    block = html[block_idx:block_idx + 220]
+    assert "scaleY(1.2)" in block, ".ruler.is-dragging .tick.cur 缺 scaleY(1.2)"
+    assert "brightness(1.15)" in block, ".ruler.is-dragging .tick.cur 缺 brightness(1.15)"
+    assert "transition:none" in block, ".ruler.is-dragging .tick.cur 缺 transition:none (60fps 跟手要禁用过渡)"
+
+
+def test_ruler_drag_toggles_container_is_dragging(html):
+    """P1: pointerdown 给 #ruler 加 .is-dragging, onDragEnd 移除"""
+    # pointerdown 加类 (用精确 marker, line ~3133 区别于常量块 3068)
+    pdown = html.find("sprint 26091901: 自定义 Pointer Events — 整段尺子按下相对拖拽")
+    pdown_start = html.find("ri.addEventListener('pointerdown'", pdown)
+    assert pdown_start > 0
+    handler = html[pdown_start:pdown_start + 800]
+    assert "rulerEl.classList.add('is-dragging')" in handler, \
+        "pointerdown 必须给 #ruler 加 .is-dragging"
+    # onDragEnd 移除类
+    pend = html.find("const onDragEnd =")
+    handler_end = html[pend:pend + 700]
+    assert "rulerEl.classList.remove('is-dragging')" in handler_end, \
+        "onDragEnd 必须移除 #ruler .is-dragging"
+
+
+def test_ruler_drag_uses_relative_displacement(html):
+    """pointermove 用相对位移 (dragCtx.startX + deltaMin), 绝不能 jump-to-click-position"""
+    assert "dragCtx.startX" in html, "pointermove 必须用 dragCtx.startX 起点"
+    assert "dragCtx.startDur" in html, "pointermove 必须以按下时 duration 为基准"
+    assert "deltaMin" in html, "缺 deltaMin 相对位移变量"
+
+
+def test_ruler_drag_clamps_to_1_30_minutes(html):
+    """钳位 1~30 分钟, 永不出现 0 分钟 (与 ttSetDuration 钳位 + MIN_MIN/MAX_MIN 一致)"""
+    # ttSetDuration 现有钳位
+    assert "Math.min(MAX_MIN, Math.max(MIN_MIN" in html, "ttSetDuration 必须钳位"
+    # pointermove 二次钳位
+    assert "Math.min(MAX_MIN, Math.max(MIN_MIN, dragCtx.startDur" in html, \
+        "pointermove 必须钳位, 否则允许越界"
+    # MIN_MIN=1 保证不会出现 0
+    assert "MIN_MIN=1" in html and "MAX_MIN=30" in html, \
+        "边界常量必须锁在 1~30 (与打卡链路 finalMins>=1 兼容)"
+
+
+def test_ruler_drag_running_guard(html):
+    """计时中/暂停态 (started===true) 在 pointerdown 第一行必须守卫返回, 不允许改时长"""
+    # 找 sprint 26091901 自定义 Pointer Events 的事件块 marker (line ~3133, 区别于常量块 3068)
+    pdown = html.find("sprint 26091901: 自定义 Pointer Events — 整段尺子按下相对拖拽")
+    assert pdown > 0, "找不到 sprint 26091901 自定义 Pointer Events 事件块, 拖拽事件未实装"
+    # 找 pointerdown handler 起点
+    pdown_start = html.find("ri.addEventListener('pointerdown'", pdown)
+    assert pdown_start > 0
+    handler = html[pdown_start:pdown_start + 200]
+    assert "if (started) return" in handler, \
+        "pointerdown 必须以 started 守卫开头 (计时中绝不允许改时长)"
+
+
+def test_ruler_drag_pointermove_has_skipvine(html):
+    """pointermove 期间调 ttSetDuration 必须 skipVine=true, 防 SVG 高频重画掉帧"""
+    pmove = html.find("ri.addEventListener('pointermove'")
+    assert pmove > 0
+    handler = html[pmove:pmove + 600]
+    assert "ttSetDuration(nextDur, true)" in handler, \
+        "pointermove 必须 skipVine=true (高频拖拽期间 SVG 防抖)"
+
+
+def test_ruler_drag_release_has_spring_back(html):
+    """pointerup 必须有 GSAP spring 回弹 (scaleY 1.2 → 1.0, back.out)"""
+    pend = html.find("const onDragEnd =")
+    assert pend > 0
+    handler = html[pend:pend + 700]
+    assert "back.out(2)" in handler, "松手缺 back.out(2) spring 回弹"
+    assert "scaleY: 1.2" in handler and "scaleY: 1.0" in handler, \
+        "松手缺 scaleY 1.2 → 1.0 回弹过渡"
+
+
+def test_ruler_drag_buildvine_debounced(html):
+    """buildVineDebounced 必须存在, 拖拽期间防抖重建花纹, 避免每帧重画"""
+    assert "function buildVineDebounced" in html, "缺 buildVineDebounced 防抖函数"
+    assert "buildVineDebounced(150)" in html, "松手后必须触发 buildVineDebounced(150)"

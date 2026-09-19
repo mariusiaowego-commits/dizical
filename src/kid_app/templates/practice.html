@@ -134,6 +134,7 @@
     flex: 0 0 auto; width: 520px; max-width: 100%;
     background:#FFFDF5;border:1px solid #F0D060;border-radius:20px;
     padding:26px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:0;overflow:hidden;
+    touch-action:manipulation;        /* sprint 26091901 follow-up: iPad Safari 禁双击 zoom + 消 300ms 点击延迟 (W3C 标准) */
   }
   /* 组 1: 时间读数 (大数字 + 其下紧贴的总计说明)
      注: 滚轮数字的窗口高 1.5em、字形居中 → 字形下方有 ~0.25em 空白, 所以用负 margin 把这行拉近 */
@@ -188,6 +189,8 @@
     display:grid;place-items:center;cursor:pointer;position:relative;
     transition:border-color 120ms ease,background-color 120ms ease,color 120ms ease,transform 90ms ease;
     -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;        /* sprint 26091901 follow-up: iPad Safari 禁双击 zoom + 消 300ms 点击延迟 */
+    -webkit-user-select:none;user-select:none;  /* 防儿童狂点误选 +/- 文本高亮 */
   }
   .step-btn:hover{border-color:#D9C79A;background:#FFF3E2}
   .step-btn:active{transform:scale(.94);background:#FFE8C0;border-color:#C8860A;color:#2C3E50}
@@ -209,10 +212,14 @@
   /* 参考页做法: 尺子是 aria-hidden 的视觉层, 上面盖一个透明 range 原生控件负责拖拽。
      iPad 无键盘 → 不做键盘控制: tabindex=-1 且不画 focus 描边 (dad: 那圈黑框不好看) */
   .ruler-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:grab;
-               appearance:none;background:transparent;border:0;margin:0;outline:none}
+               appearance:none;background:transparent;border:0;margin:0;outline:none;
+               touch-action:none}                          /* sprint 26091901: iPad WebKit 上下滚动拦截 */
   .ruler-input:active{cursor:grabbing}
   .ruler-input:disabled{cursor:default}
   .ruler-input:focus,.ruler-input:focus-visible{outline:none;box-shadow:none}
+  /* sprint 26091901: 拖拽中当前红针微高亮; 拖拽禁用 transition 保证 60fps 即时响应。
+     容器挂 .is-dragging 而非 .tick.cur.dragging, 避免 paintRulerSelect 重写 tick.className 时丢失 */
+  .ruler.is-dragging .tick.cur{transform:scaleY(1.2);filter:brightness(1.15);transition:none}
 
   .meta-row{display:flex;align-items:baseline;justify-content:center;text-align:center;gap:8px;
             font-size:13px;color:#8A8578;min-height:18px;margin-block-start:10px}
@@ -3061,6 +3068,13 @@ let ticks=[], markerIdx=-1;
 let secFlickerIv=null, secSettleTimer=null, secSpin=0;
 const reducedMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let counter;
+/* sprint 26091901: 自定义 Pointer Events 拖拽运行时上下文。整段尺子按下 → 相对位移驱动时长。 */
+let dragCtx = { active:false, startX:0, startDur:0, pointerId:null };
+/* sprint 26091901: SVG 花纹高频重建防抖; pointermove 期间改时长不重画, pointerup 后才统一画 */
+function buildVineDebounced(ms){
+  clearTimeout(buildVineDebounced._t);
+  buildVineDebounced._t = setTimeout(()=>{ if (hasGsap()) buildVine(); }, ms);
+}
 
 /* ══════════════════════════════════════════════════════════════════════
    新计时器 · 生产接线层 (sprint 26091801)
@@ -3093,7 +3107,7 @@ function ttStepMin(delta){
   if (started) return;
   ttSetDuration(duration + delta);
 }
-function ttSetDuration(v){
+function ttSetDuration(v, skipVine){
   if (started) return;
   v = Math.min(MAX_MIN, Math.max(MIN_MIN, Math.round(v)));
   if (v === duration) return;
@@ -3103,7 +3117,8 @@ function ttSetDuration(v){
   ttRenderDigits(v * 60);
   paintRulerSelect(v);
   setSelectModality();
-  buildVine();                            // 时长变 → 花纹按新种子重画 (与 demo 行为一致)
+  /* sprint 26091901: 拖拽中 (skipVine=true) 改时长只刷新数字+红针, 花纹防抖到松手再画 */
+  if (skipVine) buildVineDebounced(150); else buildVine();
   startSecFlicker();
   scheduleSecSettle(200);
 }
@@ -3113,11 +3128,56 @@ function ttInitTimer(){
   if (!root) return;
   // 先绑交互: 后面任何动效初始化异常都不该让尺子拖不动 / 数字不显示
   const ri = document.getElementById('rulerInput');
+  const rulerEl = document.getElementById('ruler');
   if (ri) {
+    // a) 原生 input 事件保留 → 键盘/辅助技术/原生 a11y 兜底
     ri.addEventListener('input', () => ttSetDuration(parseInt(ri.value, 10)));
-    ri.addEventListener('pointerdown', () => startSecFlicker());
-    ri.addEventListener('pointerup', () => scheduleSecSettle(80));
-    ri.addEventListener('pointercancel', () => scheduleSecSettle(80));
+
+    // sprint 26091901: 自定义 Pointer Events — 整段尺子按下相对拖拽, 不跳变
+    ri.addEventListener('pointerdown', (e) => {
+      if (started) return;                                      // 计时中/暂停: 守卫
+      if (e.button !== undefined && e.button !== 0) return;     // 鼠标只接主键
+      dragCtx.active = true;
+      dragCtx.startX = e.clientX;
+      dragCtx.startDur = duration;
+      dragCtx.pointerId = e.pointerId;
+      try { ri.setPointerCapture(e.pointerId); } catch (_) {}
+      // sprint 26091901 P1: 挂容器 .is-dragging, CSS 选择器跟随 paintRulerSelect 切 .tick.cur
+      if (rulerEl) rulerEl.classList.add('is-dragging');
+      startSecFlicker();
+    });
+    ri.addEventListener('pointermove', (e) => {
+      if (!dragCtx.active) return;
+      const w = rulerEl ? rulerEl.getBoundingClientRect().width : 0;
+      if (w <= 0) return;
+      const pxPerMin = w / (MAX_MIN - MIN_MIN);                 // 动态 ≈ 14.5px/min
+      const deltaMin = Math.round((e.clientX - dragCtx.startX) / pxPerMin);
+      const nextDur = Math.min(MAX_MIN, Math.max(MIN_MIN, dragCtx.startDur + deltaMin));
+      if (nextDur !== duration) ttSetDuration(nextDur, true);   // skipVine 防抖
+    });
+    const onDragEnd = (e) => {
+      if (!dragCtx.active) return;
+      try { ri.releasePointerCapture(dragCtx.pointerId); } catch (_) {}
+      // sprint 26091901 P1: 移除容器 .is-dragging, 视觉高亮随 .tick.cur 切格自动跟随
+      if (rulerEl) rulerEl.classList.remove('is-dragging');
+      // 松手 spring 回弹针对当前最新 .tick.cur (跨分钟后再弹新红针)
+      const cur = document.querySelector('.tick.cur');
+      if (cur) {
+        if (hasGsap()) {
+          gsap.fromTo(cur, {scaleY: 1.2},
+                      {scaleY: 1.0, duration: 0.24, ease: 'back.out(2)', clearProps: 'transform'});
+        } else {
+          cur.style.transform = '';
+        }
+      }
+      scheduleSecSettle(80);
+      buildVineDebounced(150);
+      dragCtx.active = false;
+    };
+    ri.addEventListener('pointerup', onDragEnd);
+    ri.addEventListener('pointercancel', onDragEnd);
+    // 失焦兜底: tab 切走 / window blur 时强制结束拖拽, 防 stuck
+    window.addEventListener('blur', onDragEnd);
   }
   try {
     counter = makeCounter(root);
