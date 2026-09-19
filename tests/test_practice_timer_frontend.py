@@ -168,9 +168,14 @@ def test_inline_page_script_no_js_syntax_error(html):
 
 # ── 7. sprint 26091901: iPad ruler 自定义 Pointer Events 拖拽 ─────────────
 def test_ruler_input_touch_action_none(html):
-    """iPad WebKit 上手必须用 touch-action:none 拦截上下滚动 (否则 pointercancel 频繁触发)"""
-    assert ".ruler-input" in html and "touch-action:none" in html, \
-        "缺 touch-action:none, iPad Safari 拖拽会被上下滚动打断"
+    """iPad WebKit 上手必须用 touch-action:none 拦截上下滚动 (否则 pointercancel 频繁触发)
+       P1-2 fix: 用 .ruler-input{} 块内切片检查, 防注释/老代码残留子串干扰
+    """
+    idx = html.find(".ruler-input{")
+    assert idx > 0, "缺 .ruler-input 块"
+    block = html[idx:idx + 500]
+    assert "touch-action:none" in block, \
+        ".ruler-input 块内必须 touch-action:none (防注释残留干扰)"
 
 
 def test_timer_card_and_step_btn_touch_action_manipulation(html):
@@ -204,9 +209,16 @@ def test_ruler_input_touch_action_none_not_regressed(html):
 
 
 def test_ruler_pointer_capture_used(html):
-    """pointerdown 必须调用 setPointerCapture, pointerup 必须 releasePointerCapture"""
-    assert "setPointerCapture" in html, "缺 setPointerCapture (iPad 拖出尺子范围会丢事件)"
-    assert "releasePointerCapture" in html, "缺 releasePointerCapture (拖完 capture 残留会卡住)"
+    """pointerdown 必须调用 setPointerCapture, pointerup 必须 releasePointerCapture
+       P1-2 fix: 老 dial knob (extraSection, sprint 26091604) 也有 setPointerCapture 残留, 用 sprint 26091901 marker 之后限定 ruler 区域
+    """
+    # 找 sprint 26091901 自定义 Pointer Events 事件块 marker (line ~3133)
+    pdown = html.find("sprint 26091901: 自定义 Pointer Events — 整段尺子按下相对拖拽")
+    assert pdown > 0, "找不到 sprint 26091901 自定义 Pointer Events 事件块, 拖拽事件未实装"
+    # 在 ruler 区域内 (sprint 26091901 ttInitTimer 块) 检查 setPointerCapture / releasePointerCapture
+    ruler_block = html[pdown:pdown + 4000]  # 整段 ttInitTimer 块
+    assert "setPointerCapture" in ruler_block, "sprint 26091901 ruler 缺 setPointerCapture"
+    assert "releasePointerCapture" in ruler_block, "sprint 26091901 ruler 缺 releasePointerCapture"
 
 
 def test_tick_cur_dragging_class(html):
@@ -258,16 +270,20 @@ def test_ruler_drag_clamps_to_1_30_minutes(html):
 
 
 def test_ruler_drag_running_guard(html):
-    """计时中/暂停态 (started===true) 在 pointerdown 第一行必须守卫返回, 不允许改时长"""
+    """计时中/暂停态 (started===true) 在 pointerdown 第一行必须守卫返回, 不允许改时长
+       P1-2 fix: 必须找到 pointerdown handler 的"真正第一行", 不是注释或无关子串
+    """
     # 找 sprint 26091901 自定义 Pointer Events 的事件块 marker (line ~3133, 区别于常量块 3068)
     pdown = html.find("sprint 26091901: 自定义 Pointer Events — 整段尺子按下相对拖拽")
     assert pdown > 0, "找不到 sprint 26091901 自定义 Pointer Events 事件块, 拖拽事件未实装"
     # 找 pointerdown handler 起点
     pdown_start = html.find("ri.addEventListener('pointerdown'", pdown)
     assert pdown_start > 0
-    handler = html[pdown_start:pdown_start + 200]
-    assert "if (started) return" in handler, \
-        "pointerdown 必须以 started 守卫开头 (计时中绝不允许改时长)"
+    handler_start = pdown_start + html[pdown_start:pdown_start + 200].find("(e) =>") + 6
+    # 跳过 opening paren, 取 handler 函数体内**前 100 字符** (去掉注释干扰)
+    handler_body = html[handler_start:handler_start + 100]
+    assert "if (started) return" in handler_body, \
+        f"pointerdown handler 第一行必须以 started 守卫开头 (防计时中改时长), 实测 handler 前 100 字符: {handler_body!r}"
 
 
 def test_ruler_drag_pointermove_has_skipvine(html):
