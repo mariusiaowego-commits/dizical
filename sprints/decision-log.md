@@ -28,3 +28,9 @@
 | 2026-09-18 | 26091801 | #timerCard 宽度显式写死 min(520px, 100%) | demo 的宽度来自它自己的 grid 舞台, 搬进生产 flex 行后卡片塌成 216px / 60 格尺子格距 1.8px 挤成一团 (审计一轮 CSS 推导判定阻塞, orchestrator Playwright 实测确认, 审计三轮微夹具独立复现); 移植定稿设计必须把尺寸写成约束 |
 | 2026-09-18 | 26091801 | 计时器视觉层对 gsap 全部判空 + 先绑交互再建动效 | 本地与 CDN 双挂时动效可降级, 但「拖尺子改时长」这类交互绝不能因动效初始化异常而失效 |
 
+| 2026-09-19 | 26091901 | ruler 拖拽改用自定义 Pointer Events (down/move/up/cancel + setPointerCapture) 而非保留 `<input type=range>` 原生 | iPad Safari 原生 input 行为是「按非 thumb 区域 = jump-to-position」, dad 9-19 实测要的是「按任何位置 = 相对位移增减」. 自定义 Pointer Events + 起点 clientX + 每帧重算 pxPerMin 是唯一干净实现 |
+| 2026-09-19 | 26091901 | 1 tick = 30s (≈14px/min) 1:1 物理映射 | dad 拍板, 儿童手指滑多少红针走多少, 1 分钟 ≈ 2 ticks, 不漂移 |
+| 2026-09-19 | 26091901 | dragging 类挂 `#timerCard.is-dragging` 而非 `.tick.cur.dragging` | agy 自审报 P1: paintRulerSelect 跨分钟时重写 tick.className, `.tick.cur.dragging` 类被覆盖丢失. 容器挂类 + CSS 选择器 `.ruler.is-dragging .tick.cur` 自动跟随 `.tick.cur` 切格 |
+| 2026-09-19 | 26091901 | iPad Safari 双击 zoom 误操作修复 = CSS `touch-action: manipulation` 在 `#timerCard` + `.step-btn` | agy 出方案, dad 拍板备选 A. W3C 标准方案, 0 运行时开销, 局部隔离 (其他区域保留 zoom a11y). viewport user-scalable=no iOS 10+ 强制忽略, 排除 |
+| 2026-09-19 | 26091901 | e2e 仓内化首例 (`scripts/e2e_sprint_26091901/` 4 文件) | 之前 sprint 的 e2e 验证只在 /tmp 临时跑过, wardne audit + dad 接手无现成脚本可独立复跑. 本次 3 playwright 脚本 + README + BASE_URL/USERNAME/PASSWORD 三个 env 参数化, 跨 demo/prod 可复用 |
+| 2026-09-19 | 26091901 | 静态契约负控: 全文子串搜索 = 假阴性高发, 改用块内切片 + sprint marker 限定 | warden round-1 报 3 处测试假阴性 (handler 注释残留 + ruler-input 注释残留 + 老 dial knob 子串残留), round-2 强化后 8/8 BITE. 教训: 静态契约的负控必须 100% bite 才能证明契约真锁住功能 |
