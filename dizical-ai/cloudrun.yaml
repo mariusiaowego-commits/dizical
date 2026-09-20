@@ -1,0 +1,31 @@
+service:
+  name: dizical-ai
+  region: ap-shanghai
+  description: "dizical AI 生图徽章 + AI 周报服务 (CloudBase AI 资源包)"
+
+container:
+  port: 8080
+  cpu: 0.5
+  memory: 1
+
+env:
+  NODE_ENV: production
+  CLOUDBASE_ENV_ID: cloud1-d4gfwyvsk1435e2e4
+  TIMEOUT_MS: 60000
+
+scaling:
+  min_instances: 0
+  max_instances: 3
+  target_cpu: 60
+
+network:
+  public_access: false
+  wechat_private: false
+
+healthcheck:
+  path: /health
+  port: 8080
+  initial_delay_seconds: 10
+  period_seconds: 30
+  timeout_seconds: 5
+  failure_threshold: 3

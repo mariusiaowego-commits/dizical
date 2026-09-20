@@ -95,5 +95,6 @@ scripts/migrate_*.sh
 # - test_cos_badge_v1.png: COS 发货测试 fixture, 由 tests/test_badge_cos_shipping.py 运行时写出
 dizical-ai/node_modules/
 dizical-ai/logs/
+dizical-ai/.cloudrun-deploy/   # 部署暂存目录 (构建产物, 与源码重复)
 data/lib/
 src/kid_app/static/badges/test_cos_badge_v1.png

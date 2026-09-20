@@ -1,0 +1,18 @@
+{
+  "name": "dizical-ai",
+  "version": "0.1.0",
+  "description": "CloudBase AI service for dizical",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "smoke": "node scripts/smoke-e1-e2.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@cloudbase/node-sdk": "^3.18.3",
+    "express": "^4.21.2"
+  }
+}
