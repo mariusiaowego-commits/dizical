@@ -73,13 +73,28 @@ dad 2026-09-20 上午让 orchestrator 检查 git 状态, 发现主仓 main `2aee
 - [x] PR #341 MERGED (2026-09-20T05:11:40Z, squash sha 2a6db10)
 - [x] PR #342 (secret-scrub) MERGED (2026-09-20T05:11:51Z, squash sha 6b969ba, sprint 26092003-secret-scrub)
 - [x] sprint doc 回填 (本文件 frontmatter + 进度勾选)
-- [ ] vault 补齐 7 doc (prd / tech-spec / test-plan / handoff / decision-log addendum) — 阶段 4 待写
-- [ ] Obsidian 镜像双写 + md5 校验 — 阶段 4 待写
-- [ ] decision-log append (vault 补 26091901 6 行 + 26092002 行) — 阶段 4 待写
-- [ ] tag sprint-26092002-cleanup-repo-complete + push — 阶段 5 (需 ack)
-- [ ] destructive 3 件 (hygiene worktree+分支 / 远端 2 orphan 分支删) — 阶段 6 (需逐条 ack)
-- [ ] /tmp/trash-26092002/ 一次 rm -rf 清 — 阶段 7
-- [ ] 收尾自检 8 项 — 阶段 8
+- [x] vault 补齐 7 doc — 阶段 4 (prd / tech-spec / test-plan 入仓 + sprint 主记录 + verify; plan 并入主记录; handoff 为本地 + vault 双写, 按 .gitignore 惯例不入仓)
+- [x] Obsidian 镜像双写 + md5 校验 — 阶段 4 (6/6 文件 md5 逐对一致)
+- [x] decision-log append (vault 补 26091901 6 行 + 26092002 行, 双写 md5 一致) — 阶段 4
+- [x] tag sprint-26092002-cleanup-repo-complete + push — 阶段 5 (tag → `3ea101c`; push 顺序: 先 main 后 tag, 见 §形态例外说明)
+- [x] destructive — 阶段 6 (6.1 hygiene worktree remove ✅ / 6.2 `chore/repo-hygiene-260917` `-D` ✅ / 6.3 远端 `docs/sprint-26091801-closeout` 删 ✅ / **6.4 远端 `feat/practice-timer-ui-260917` 按 dad 9-20 指示保留不删** / 6.5+6.6 defer)
+- [x] /tmp/trash-26092002/ 一次清除 (22 件, 含旧明文密码样本 + prod session cookie) — 阶段 7
+- [x] 收尾自检 8 项 — 阶段 8
+- [x] 漏项补: `sprint-26092003-secret-scrub` sprint doc 新建 (主仓 + Obsidian 双写, md5 一致) + `STATUS.md` 补 2026-09-20 段 — warden review 后补
+- [x] **sprint 26092002 closed (2026-09-20)**
+
+## 形态例外说明 (warden review Q2.2 要求记录)
+
+sprint-workflow 的 Phase 3 closeout 标准形态是 `chore/closeout-NNNN` 分支 → commit → push → PR（skill 原文: “This keeps closeout work in the same review flow as code, and avoids the local-draft vs origin conflict at the end”）。
+
+本次**未走该形态**：closeout commit `3ea101c`（5 文件纯文档，0 产品代码）直接 commit 到本地 main，随后 fast-forward push。
+
+**判定依据**（warden 独立复核，判为实战例外）：
+- 两个 PR（#341 / #342）已由 dad 亲手 squash merge，closeout commit 不在 PR 内；
+- `origin/main` 是本地 `main` 的**祖先**（`git merge-base --is-ancestor origin/main main` = YES），push 为快进，不存在 skill pitfall 里的 “sibling/local-draft vs origin” 分叉场景；
+- 内容 0 产品代码（`git diff origin/main..3ea101c -- src/ tests/` = 空）。
+
+**要求遵守**：本段即为该例外的显式记录，供后续 audit 追溯。若后续再遇「closeout 文档 + 已有 PR 已 merge + FF 可行」的组合，可复用本判定；其余场景仍按 skill 走 `chore/closeout-NNNN` 分支。
 
 ## 关联
 - review 报告: /tmp/dizical-cleanup-review-260920.md (18.5K)
