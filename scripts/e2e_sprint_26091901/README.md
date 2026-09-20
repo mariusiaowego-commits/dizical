@@ -13,11 +13,11 @@ export DATABASE_URL="mysql+pymysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOST:$MY
 export DIZICAL_INSECURE_COOKIE=1
 /opt/homebrew/bin/uvicorn src.kid_app.app:app --host 0.0.0.0 --port 8904 --log-level warning
 
-# 2. dad 账号密码 (debug 期间多次 reset, 当前密码)
-#    sprint 26091901 PR merge 后, dad 自设密码, 通过 env 覆盖
-#    或默认用 'YoYo0905bamboo' (本 sprint 期间使用, PR merge 后由 dad 改密)
+# 2. dad 账号密码 (必须通过 env 传入, 脚本不允许 fallback 默认值)
+#    sprint 26091901 PR merge 后由 dad 自设密码, 通过 env 覆盖
+#    强制要求 (脚本内 assert, 误用会立刻 fail 而不是用错密码登录)
 export USERNAME=dad
-export PASSWORD=YoYo0905bamboo
+export PASSWORD="<your-password-here>"  # 必填, 不要 commit 明文
 
 # 3. playwright (已装; dev 环境用)
 python3 -c "import playwright"  # 验可用
@@ -42,7 +42,7 @@ python3 scripts/e2e_sprint_26091901/e2e_interactions.py
 |------|------|------|
 | `BASE_URL` | `http://127.0.0.1:8904` | 改测 prod / Tailscale 远程 |
 | `USERNAME` | `dad` | dad 账号 |
-| `PASSWORD` | `YoYo0905bamboo` | sprint 期间 debug 密码, PR merge 后 dad 改密 |
+| `PASSWORD` | **必填 (env)** | sprint 26091901 起强制 env 传入, 脚本内 assert, 无默认 |
 
 ## 期望输出
 
