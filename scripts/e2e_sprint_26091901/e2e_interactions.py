@@ -8,7 +8,8 @@ from playwright.sync_api import sync_playwright
 
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8904")
 USERNAME = os.environ.get("USERNAME", "dad")
-PASSWORD = os.environ.get("PASSWORD", "YoYo0905bamboo")
+# sprint 26092003-secret-scrub: 强制要求 PASSWORD env, 不允许 fallback 默认值 (防 commit 明文回潮)
+PASSWORD = os.environ["PASSWORD"]  # KeyError 是预期行为 (运维误用, 不要悄悄用错密码登录)
 
 errors, warnings = [], []
 
