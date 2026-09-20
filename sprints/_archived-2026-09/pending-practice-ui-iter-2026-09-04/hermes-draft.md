@@ -1,5 +1,5 @@
 ---
-status: process-draft        # NOT authoritative. 过程稿, 启动 sprint 时 supersedes
+status: archived             # 2026-09-20 作废归档, 原因见 ../README.md (原: process-draft)
 sprint: pending              # 等 dad 拍板 sprint-id 后改为 sprint-<id>-practice-ui-iter
 date: 2026-09-04
 author: Hermes (dizical-hermes @ w9:pC)

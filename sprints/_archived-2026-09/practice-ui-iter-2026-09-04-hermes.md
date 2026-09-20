@@ -1,5 +1,7 @@
 # Practice 页 UI/UX 优化迭代方案 — Hermes 版
 
+> ⚠️ **2026-09-20 作废归档**：原因见 `./README.md`。当前 practice UI 重构以刻度尺版代码为基准，不以本文件为依据。
+
 > 日期: 2026-09-04
 > 目标页: `/practice` (https://dizical-prod-283401-10-1454535414.sh.run.tcloudbase.com/practice)
 > 出品: Hermes (dizical-hermes @ w9:pC)
