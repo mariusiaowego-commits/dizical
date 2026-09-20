@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+.env.bak
+.env.example
+.gitignore
+.cloudrun-deploy
+logs
+tests
+*.md
+README.md
