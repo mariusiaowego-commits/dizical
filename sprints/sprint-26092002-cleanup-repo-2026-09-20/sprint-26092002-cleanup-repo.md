@@ -1,12 +1,25 @@
 ---
 sprint: sprint-26092002-cleanup-repo
 date: 2026-09-20
-status: 进行中
-branch: chore/cleanup-repo-260920
-base: origin/main @ 2aee3fb
-worktree: /Users/mt16/.herdr/worktrees/dizical/cleanup-260920 (待建)
-author: orchestrator pane w10:pA (MiniMax-M3) + minimax pane w10:pB (deepseek-v4.1-flash, read-only review)
+status: 已完成
+branch: chore/cleanup-repo-260920 (已 squash merge → main 6b969ba / 2a6db10)
+base: origin/main @ 2aee3fb → 6b969ba (2 squash commit)
+worktree: 未建独立 worktree, 直接在主 checkout /Users/mt16/dev/dizical 完成
+commit:
+  - 3e39953 chore(sprint) 15 files +2387
+  - 75861c5 chore(docs) 62 files +1097
+  - 6819931 chore(dizical-ai) 10 files +2051
+  - 0cf2d6d fix(security) 5 files +72/-8 (PR #342)
+  - 2a6db10 squash merge of #341
+  - 6b969ba squash merge of #342
+pr:
+  - 341: chore(repo): sprint 26092002 历史遗留收尾 — MERGED 2026-09-20T05:11:40Z
+  - 342: fix(security): 洗 e2e 脚本明文 dad 密码 + 防回潮契约 — MERGED 2026-09-20T05:11:51Z
+tag: sprint-26092002-cleanup-repo-complete (closeout 阶段 5 加)
+author: orchestrator pane w10:pA (MiniMax-M3) + minimax pane w10:pB (deepseek-v4.1-flash, read-only review) + warden pane w10:pD (MiniMax-M3, PR-level audit)
 reviewers: dad (终审 + merge)
+warden_audit: /tmp/warden-audit-cleanup-260920.md (W_VERDICT=MERGE, 0 P0/0 P1 BLOCKER)
+minimax_review: /tmp/minimax-warden-review-260920.md
 ---
 
 # sprint-26092002-cleanup-repo — 历史遗留收尾 + 主仓 dirty 入库
@@ -49,16 +62,24 @@ dad 2026-09-20 上午让 orchestrator 检查 git 状态, 发现主仓 main `2aee
 - [x] vault stub 建 (主仓 + Obsidian 镜像, 空目录)
 - [x] deepseek 3 份详情交付 (tmp 清单 / commit 拆分 / push 策略)
 - [x] vault 主记录 + verify (本文件 + verify-2026-09-20.md)
-- [ ] git checkout -b chore/cleanup-repo-260920 origin/main
-- [ ] commit 1 chore(sprint) — 13 文件
-- [ ] commit 2 chore(docs) — 63 文件
-- [ ] commit 3 chore(dizical-ai) — 10 文件
-- [ ] STATUS.md L15/16 补丁 (工作区, 不入 commit)
-- [ ] /tmp 归档 9 + 删 19
-- [ ] git worktree prune
-- [ ] git push + gh pr create (含 6 问 review packet)
-- [ ] 等 dad review+merge
-- [ ] closeout: vault 补齐 7 doc (剩余 5 doc: prd / tech-spec / test-plan / handoff / decision-log 追加) + tag `sprint-26092002-cleanup-repo-complete`
+- [x] git checkout -b chore/cleanup-repo-260920 origin/main
+- [x] commit 1 chore(sprint) — 15 文件 +2387 (3e39953)
+- [x] commit 2 chore(docs) — 62 文件 +1097 (75861c5)
+- [x] commit 3 chore(dizical-ai) — 10 文件 +2051 (6819931)
+- [x] STATUS.md L15/16 补丁 (工作区, 不入 commit)
+- [x] /tmp 归档 9 + 删 22 (入 trash-26092002)
+- [x] git worktree prune
+- [x] git push + gh pr create (PR #341, 含 6 问 review packet)
+- [x] PR #341 MERGED (2026-09-20T05:11:40Z, squash sha 2a6db10)
+- [x] PR #342 (secret-scrub) MERGED (2026-09-20T05:11:51Z, squash sha 6b969ba, sprint 26092003-secret-scrub)
+- [x] sprint doc 回填 (本文件 frontmatter + 进度勾选)
+- [ ] vault 补齐 7 doc (prd / tech-spec / test-plan / handoff / decision-log addendum) — 阶段 4 待写
+- [ ] Obsidian 镜像双写 + md5 校验 — 阶段 4 待写
+- [ ] decision-log append (vault 补 26091901 6 行 + 26092002 行) — 阶段 4 待写
+- [ ] tag sprint-26092002-cleanup-repo-complete + push — 阶段 5 (需 ack)
+- [ ] destructive 3 件 (hygiene worktree+分支 / 远端 2 orphan 分支删) — 阶段 6 (需逐条 ack)
+- [ ] /tmp/trash-26092002/ 一次 rm -rf 清 — 阶段 7
+- [ ] 收尾自检 8 项 — 阶段 8
 
 ## 关联
 - review 报告: /tmp/dizical-cleanup-review-260920.md (18.5K)
