@@ -305,8 +305,8 @@
 
   <div>
     <div class="sizer box350">
-      <span class="dim">350 × 260 · 老师要求卡</span>
-      <div class="card h260" style="display:flex;flex-direction:column">
+      <span class="dim">350 × 自适应（原定 260，见下方待定项）· 老师要求卡</span>
+      <div class="card" style="display:flex;flex-direction:column;min-height:260px">
         <div class="row between">
           <span class="card-sub strong">本周老师要求</span>
           <span class="pill ghost" style="min-height:26px;padding:2px 10px;font-size:11.5px">示范视频</span>
@@ -318,14 +318,16 @@
           <li>倒序分句（半句、比如第 4 句 / 下半句）练好；波音「~~」6 67-6，其中 <span class="key">67 要迅速</span>。</li>
         </ol>
         <span class="spacer"></span>
-        <div class="row between">
-          <span class="card-sub">排版后默认展示全文；极端长文（175 字级）才走阅读层</span>
+        <div class="row between" style="padding-top:10px;border-top:1px solid var(--border-card)">
+          <span class="card-sub">超出高度上限才收住，收到卡内底部</span>
           <button class="pill" data-open-reader style="min-height:34px">展开全文</button>
         </div>
       </div>
     </div>
-    <p class="note">正文 16px / 行高 1.6，<b>按段落排版、默认展示全文</b>；只有极端长文（175 字级）才收住并出现「展开全文」→ 全屏阅读层。<br>
-      <b>待确认</b>：是否把要求卡上限从 260px 放宽到约 320px（右栏让 40px），换取更多情况下的全文可见。</p>
+    <p class="note">
+      <b>修正记录</b>：① 卡片高度改内容自适应（不再裁切正文）②「展开全文」固定在<b>卡内底部</b>，不再溢出卡外 ③ 真正超上限时才出现该按钮（本页为演示常显）。<br>
+      <b>待你定</b>：高度上限取 260px 还是放宽到 ~320px（右栏让 40px）？定 260 则极端长文更常走阅读层；定 320 则更多情况直接全文可见。
+    </p>
   </div>
 
   <div>
