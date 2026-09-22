@@ -32,8 +32,11 @@
     --text-muted:     var(--c-muted);
     --text-on-cta:    var(--c-neutral);
     --cta-bg:         var(--c-primary);
-    --shadow-card:    0 4px 16px rgba(44, 62, 80, 0.04), 0 1px 2px rgba(44, 62, 80, 0.02);
-    --shadow-raised:  0 6px 22px rgba(44, 62, 80, 0.07), 0 2px 4px rgba(44, 62, 80, 0.03);
+    /* R1 双层物理漫反射阴影 + R2 1px 顶边倒角内高光 */
+    --shadow-card:    0 1px 3px rgba(44, 62, 80, 0.03), 0 8px 24px -4px rgba(44, 62, 80, 0.05),
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.90);
+    --shadow-raised:  0 2px 6px rgba(44, 62, 80, 0.04), 0 14px 34px -6px rgba(44, 62, 80, 0.09),
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
     --ring:           var(--c-primary);
     --badge-neutral-bg:     rgba(44, 62, 80, 0.08);
     --text-on-cta-subtle:   rgba(255, 255, 255, 0.85);
@@ -52,8 +55,10 @@
     --text-muted:     rgba(255, 248, 240, 0.62);
     --text-on-cta:    var(--c-neutral);
     --cta-bg:         var(--c-primary);
-    --shadow-card:    0 4px 16px rgba(0, 0, 0, 0.18);
-    --shadow-raised:  0 6px 22px rgba(0, 0, 0, 0.24);
+    --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.20), 0 8px 24px -4px rgba(0, 0, 0, 0.28),
+                      inset 0 1px 0 0 rgba(255, 248, 240, 0.06);
+    --shadow-raised:  0 2px 6px rgba(0, 0, 0, 0.24), 0 14px 34px -6px rgba(0, 0, 0, 0.34),
+                      inset 0 1px 0 0 rgba(255, 248, 240, 0.08);
     --ring:           var(--c-primary);
     --badge-neutral-bg:     rgba(255, 248, 240, 0.10);
     --text-on-cta-subtle:   rgba(255, 255, 255, 0.85);
@@ -99,10 +104,16 @@
   }
   .card.hero { border-radius: 20px; padding: 20px 24px; box-shadow: var(--shadow-raised); }
   .card.flush { padding: 0; overflow: hidden; }
-  .card.selected { border: 2px solid var(--border-active); background: var(--surface-subtle); }
+  /* R10 选中呼吸光环：外扩半透明光晕，不用粗红框 */
+  .card.selected { border: 2px solid var(--border-active); background: var(--surface-subtle);
+                   box-shadow: inset 0 1px 0 rgba(255,255,255,0.8),
+                               0 0 0 1px rgba(255,107,107,0.15),
+                               0 8px 24px -4px rgba(255,107,107,0.12); }
   .card.archived { background: var(--surface-archived); border-color: var(--border-card); }
-  .card:active.pressable, .pressable:active { transform: scale(0.98); }
-  .pressable { transition: transform 70ms ease, border-color .18s ease, background-color .18s ease; }
+  /* R8 微缩防抖：90ms 弹簧曲线，消灭迟滞感 */
+  .card:active.pressable, .pressable:active { transform: scale(0.985); }
+  .pressable { transition: transform 90ms cubic-bezier(0.16, 1, 0.3, 1),
+                           border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
   .card.focusable:focus-visible, button:focus-visible, input:focus-visible,
   [tabindex]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
@@ -120,8 +131,10 @@
   .req-list .key { font-weight: 700; }
   .card-sub.strong { font-size: 14px; font-weight: 600; color: var(--text-main); }
   /* D3 标签对比度 */
-  .pill.tag { background: rgba(44, 62, 80, 0.05); border-color: rgba(44, 62, 80, 0.16);
-              color: var(--text-main); font-weight: 600; }
+  /* R5 高对比度加厚标签 */
+  .pill.tag { background: var(--surface-card); border-color: rgba(44, 62, 80, 0.12);
+              color: var(--text-main); font-weight: 600;
+              box-shadow: 0 1px 2px rgba(44, 62, 80, 0.04), inset 0 1px 0 rgba(255,255,255,0.9); }
   .pill.more { background: var(--surface-subtle); border-color: var(--border-active); font-weight: 700; }
   /* D2 段位行 */
   .seg-row { display: flex; align-items: center; gap: 10px; }
@@ -133,6 +146,14 @@
   .anim-pop { animation: popIn .18s ease-out; }
   .anim-drop { animation: dropIn .18s ease-out; }
   .spacer { flex: 1 1 auto; }
+  /* R6 左侧权威色带（老师要求卡） */
+  .card.req-card { border-left: 4px solid var(--c-primary); }
+  /* R7 两端渐隐分隔线 */
+  .sep-fade { height: 1px; border: 0; margin: 10px 0 8px;
+              background: linear-gradient(90deg, transparent, rgba(44,62,80,0.08) 20%, rgba(44,62,80,0.08) 80%, transparent); }
+  /* R12 速度段悬浮抽屉行 */
+  .seg-item { border-radius: 12px; border-color: var(--border-strong);
+              box-shadow: 0 8px 24px -4px rgba(44, 62, 80, 0.08), inset 0 1px 0 rgba(255,255,255,0.9); }
 
   /* 药丸 / 标签 */
   .pill { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -148,19 +169,26 @@
   .pill.big { min-height: 44px; padding: 10px 16px; font-size: 15px; }
 
   /* 音符分段胶囊（每格触控 ≥44×44） */
-  .segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 9999px;
-               padding: 3px; gap: 3px; background: var(--surface-card); }
+  /* R3 物理凹槽底座（Sunken Well） */
+  .segmented { display: inline-flex; border: 1px solid rgba(44, 62, 80, 0.06); border-radius: 9999px;
+               padding: 3px; gap: 3px; background: rgba(44, 62, 80, 0.04);
+               box-shadow: inset 0 1px 2px rgba(44, 62, 80, 0.06); }
   .seg-btn { min-width: 52px; min-height: 44px; border: 0; background: transparent; border-radius: 9999px;
              font-size: 18px; font-weight: 600; color: var(--text-main); cursor: pointer; font-family: inherit;
              display: inline-flex; align-items: center; justify-content: center;
              white-space: nowrap; flex: 0 0 auto; transition: background-color .15s ease, color .15s ease; }
   .seg-btn .cap { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
-  .seg-btn.on { background: var(--cta-bg); color: var(--text-on-cta); }
+  /* R4 实体浮凸按键（Raised Chip） */
+  .seg-btn.on { background: var(--cta-bg); color: var(--text-on-cta);
+                box-shadow: 0 2px 6px -1px rgba(255, 107, 107, 0.40),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.35); }
   .seg-btn.on .cap { color: var(--text-on-cta-subtle); }
 
   /* BPM 步进器 */
-  .stepper { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border-strong);
-             border-radius: 14px; background: var(--surface-card); padding: 2px; }
+  .stepper { display: inline-flex; align-items: center; gap: 2px; border: 1px solid rgba(44, 62, 80, 0.06);
+             border-radius: 14px; background: rgba(44, 62, 80, 0.04); padding: 2px;
+             box-shadow: inset 0 1px 2px rgba(44, 62, 80, 0.06); }
+  .stepper button { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9); }
   .stepper button { width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer;
                     font-size: 20px; font-weight: 700; color: var(--text-main); font-family: inherit;
                     border-radius: 12px; }
@@ -170,8 +198,12 @@
                   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
   /* CTA */
-  .cta { width: 100%; min-height: 48px; border: 0; border-radius: 24px; cursor: pointer;
-         background: var(--cta-bg); color: var(--text-on-cta); font: inherit; font-size: 18px; font-weight: 700; }
+  /* R9 珊瑚红实体 CTA：上白光 + 下暗影 + 底部弥散光晕（全部为 alpha 叠层，不引新色） */
+  .cta { width: 100%; min-height: 48px; border: 1px solid rgba(255, 107, 107, 0.6); border-radius: 24px; cursor: pointer;
+         background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0.06) 100%), var(--cta-bg);
+         color: var(--text-on-cta); font: inherit; font-size: 18px; font-weight: 700;
+         box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 4px 14px -2px rgba(255, 107, 107, 0.45); }
+  .cta:active:not(:disabled) { transform: scale(0.985); }
   .cta:disabled { opacity: 0.42; cursor: not-allowed; }
   .cta-why { font-size: 12.5px; color: var(--text-muted); margin-top: 8px; text-align: center; min-height: 18px; }
 
@@ -208,6 +240,8 @@
   .overlay { position: fixed; inset: 0; background: var(--surface-overlay); display: none;
              align-items: center; justify-content: center; padding: 24px; z-index: 20; }
   .overlay.open { display: flex; }
+  /* R11 静态浮层亚克力磨砂（仅弹层用；练习区禁用，防 iPad 掉帧） */
+  .overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
   .reader { background: var(--surface-card); border-radius: 20px; box-shadow: var(--shadow-raised);
             width: min(860px, 100%); max-height: 86vh; overflow: auto; padding: 26px 30px; }
   .reader h4 { margin: 0 0 4px; font-size: 15px; color: var(--text-muted); font-weight: 600; }
@@ -306,7 +340,7 @@
   <div>
     <div class="sizer box350">
       <span class="dim">350 × 自适应（原定 260，见下方待定项）· 老师要求卡</span>
-      <div class="card" style="display:flex;flex-direction:column;min-height:260px">
+      <div class="card req-card" style="display:flex;flex-direction:column;min-height:260px">
         <div class="row between">
           <span class="card-sub strong">本周老师要求</span>
           <span class="pill ghost" style="min-height:26px;padding:2px 10px;font-size:11.5px">示范视频</span>
@@ -318,7 +352,8 @@
           <li>倒序分句（半句、比如第 4 句 / 下半句）练好；波音「~~」6 67-6，其中 <span class="key">67 要迅速</span>。</li>
         </ol>
         <span class="spacer"></span>
-        <div class="row between" style="padding-top:10px;border-top:1px solid var(--border-card)">
+        <hr class="sep-fade">
+        <div class="row between">
           <span class="card-sub">超出高度上限才收住，收到卡内底部</span>
           <button class="pill" data-open-reader style="min-height:34px">展开全文</button>
         </div>
@@ -417,13 +452,13 @@
       <button class="pill" id="segToggle">还有 2 段</button>
     </div>
     <div id="segList" class="stack" style="display:none">
-      <div class="card flush pressable" style="padding:10px 12px">
+      <div class="card seg-item pressable" style="padding:10px 12px">
         <div class="seg-row"><span class="badge-num shrink0">1</span><span class="seg-desc">4/4 分 5 句逆向练习</span><b class="seg-bpm">♩=76</b></div>
       </div>
-      <div class="card flush pressable" style="padding:10px 12px">
+      <div class="card seg-item pressable" style="padding:10px 12px">
         <div class="seg-row"><span class="badge-num shrink0">2</span><span class="seg-desc">2/4 练习单位「一根连线」一练</span><b class="seg-bpm">♩=60–66</b></div>
       </div>
-      <div class="card flush pressable" style="padding:10px 12px">
+      <div class="card seg-item pressable" style="padding:10px 12px">
         <div class="seg-row"><span class="badge-num shrink0">3</span><span class="seg-desc">背谱</span><b class="seg-bpm">♩=66</b></div>
       </div>
       <p class="note" style="margin:0">默认回填<b>第一条</b>的 bpm_max（§8-A3）；段位文字来自 <code>section</code> / <code>notes</code>。</p>
@@ -482,6 +517,25 @@
     <p class="note">1 本周老师要求里的科目 → 2 最近练过且在用 → 3 其他在用（共 10 个）→ 4 归档分组（37 个，<b>不过滤</b>，带「已归档」药丸）。<br>开机默认自动选中第一顺位，界面直接处于就绪态。</p>
   </div>
 </div>
+
+<!-- ══════════ F. 质感配方应用表 ══════════ -->
+<h2>F. 质感配方应用表（R1-R12，agy v2 提炼）</h2>
+<p class="note">方向：<b>A 厚磅纸感轻浮起</b> 为全局基石 + <b>C 精工仪器台</b> 的核心控制件（凹槽 + 浮凸按键 + 实体 CTA）。全部为纯 CSS，不引新色、不加常态模糊滤镜。</p>
+<table class="tokens">
+  <tr><th>#</th><th>手法</th><th>用在哪（本页可直接看到）</th></tr>
+  <tr><td>R1</td><td>双层物理漫反射阴影</td><td>所有卡片：远环境光 + 近接触影</td></tr>
+  <tr><td>R2</td><td>1px 顶边倒角内高光</td><td>所有卡片顶沿一条半透明白反光（与外描边成双环）</td></tr>
+  <tr><td>R3</td><td>物理凹槽底座</td><td>D1 音符分段器 / D2 BPM 步进器（微凹 + 内阴影）</td></tr>
+  <tr><td>R4</td><td>实体浮凸按键</td><td>D1 选中项（顶白光 + 底部珊瑚光晕）</td></tr>
+  <tr><td>R5</td><td>高对比度加厚标签</td><td>D3 内容标签（白底 + 0.12 描边 + 内高光）</td></tr>
+  <tr><td>R6</td><td>左侧权威色带</td><td>B/E 老师要求卡左沿 4px 珊瑚红</td></tr>
+  <tr><td>R7</td><td>两端渐隐微细分隔线</td><td>要求卡底部那条线（替掉表格感实线）</td></tr>
+  <tr><td>R8</td><td>微缩防抖触控动效</td><td>所有可点卡片：90ms 弹簧曲线按压缩放</td></tr>
+  <tr><td>R9</td><td>珊瑚红实体 CTA</td><td>D4 开始练习按钮（上白光 + 下暗影 + 光晕）</td></tr>
+  <tr><td>R10</td><td>选中呼吸光环</td><td>C 状态矩阵的「选中」格（光晕代替粗红框）</td></tr>
+  <tr><td>R11</td><td>静态浮层亚克力磨砂</td><td>F 之前那张长文阅读层（仅弹层，练习区禁用）</td></tr>
+  <tr><td>R12</td><td>速度段悬浮抽屉行</td><td>D2 展开后的三个速度段（带投影的二级选择条）</td></tr>
+</table>
 
 <!-- ══════════ 阅读层 ══════════ -->
 <div class="overlay" id="readerOverlay">
