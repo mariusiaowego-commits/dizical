@@ -34,6 +34,8 @@
   }
 
   *, *::before, *::after { box-sizing: border-box; }
+  /* 状态切换必须用这条兜底：容器自身写了 display，[hidden] 的默认 display:none 会被覆盖 */
+  [hidden] { display: none !important; }
   html, body { margin: 0; }
   body {
     background: var(--surface-page); color: var(--text-main);
