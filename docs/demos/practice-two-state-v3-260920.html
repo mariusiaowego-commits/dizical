@@ -314,7 +314,12 @@
     margin: 14px 16px 0;
     border-radius: 14px;
     overflow: hidden;
-    background: linear-gradient(135deg, rgba(255, 107, 107, 0.16) 0%, rgba(44, 62, 80, 0.08) 100%), var(--surface-card);
+    /* 真实 hero 图（Nous Portal image_gen 生成，本地落盘 assets/）：
+       cover 裁切 + 暖白遮罩保文字可读；换图只改这一行 url */
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.06) 42%, rgba(255,248,240,0.52) 100%),
+      url("./assets/practice-hero-dizi-260922.png") center 42% / cover no-repeat,
+      var(--surface-card);
     border: 1px solid var(--border-card);
     display: flex;
     flex-direction: column;
@@ -982,7 +987,7 @@
             <span class="pk-monogram-circle">笛</span>
             <span>DIZICAL ARCHIVE</span>
           </div>
-          <span class="pk-sub">档案编号 #1034</span>
+          <span class="pk-sub">档案编号 No.1034</span>
         </div>
 
         <!-- 沉浸式 Heroic 占位图（参考图 01 & 02） -->
