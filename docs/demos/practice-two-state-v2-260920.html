@@ -435,12 +435,18 @@
 
   /* ══════ 模块 3：仪表盘卡（高 330px，两态居中对齐）══════ */
   .pk-instr-deck {
-    height: 330px;
+    /* 原为 height: 330px（写死）→ 实测内容比 330 高，导致底部 CTA 溢出卡片外。
+       改：min-height 保住两态视觉节奏，高度随内容自适应；槽 1 两态都锁 100px，
+       所以滚轮数字的纵向位置依然不跳。 */
+    min-height: 330px;
+    height: auto;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 8px;
     padding: 16px 20px;
+    overflow: visible;
   }
 
   /* Slot 1：顶部视觉槽 / 身份栏（统一锁定 100px 高度，保证下方的 72px 滚轮数字两态绝对不位移） */
@@ -555,13 +561,16 @@
     align-items: center;
   }
   .pk-instr-deck .ruler-wrap {
+    /* 原为 width: 480px（写死）→ 窄窗口下横向溢出。改流体：不超父容器，最大 480。 */
+    width: 100%;
     max-width: 480px;
-    width: 480px;
+    min-width: 0;
     margin: 10px auto 0;
     display: flex;
     align-items: center;
     gap: 12px;
   }
+  .pk-instr-deck .ruler { min-width: 0; flex: 1 1 auto; }
   /* 生产真件内的 step-btn 增强触控尺寸 ≥44×44px */
   .pk-instr-deck .step-btn {
     width: 44px;
