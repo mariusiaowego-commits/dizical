@@ -46,9 +46,9 @@ PingFang SC (苹方, iOS/macOS 系统自带). Web fallback: `system-ui, -apple-s
 
 | 用途 | 允许 | 禁止 |
 |---|---|---|
-| 票务 / 档案气质的文字 | 票头小字、票号、档案编号、`● TICKET` 类小标、票面主标题（科目名）可选 **、票面主数字（速度 / 时长）用细体衬线 `font-weight:300` + `tabular-nums`** | 正文、控件文字、次要数字 |
+| 票务 / 档案气质的文字 | 票头小字、票号、档案编号、`● TICKET` 类小标、票面主标题（科目名，**粗体衬线**） | 正文、控件文字、数字 |
 
-数字：**票面主数字（速度 / 时长）走 `--font-serif` 细体 + `tabular-nums`**（2026-09-23 dad 拍板）；其余次要数字走 monospace + `tabular-nums`；正文走 PingFang SC 栈。
+**数字一律走 monospace + `tabular-nums`**（2026-09-23 dad 试过细体衬线后否掉，改回）；正文走 PingFang SC 栈。
 
 ### 圆角 (4)
 
