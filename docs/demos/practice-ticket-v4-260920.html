@@ -110,19 +110,21 @@
     scrollbar-color: rgba(44, 62, 80, 0.18) transparent;
   }
 
-  /* ══════ 顶栏 40px ══════ */
+  /* ══════ 顶栏 40px（与下方舞台 max-width 1280 居中左右边缘对齐） ══════ */
   .pk-top {
-    max-width: 1060px;
+    max-width: 1280px;
+    width: 100%;
     height: 40px;
     margin: 0 auto 10px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 0 16px;
+    padding: 0 14px;
     background: var(--surface-card);
     border: 1px solid var(--border-card);
     border-radius: 12px;
     box-shadow: var(--shadow-card);
+    box-sizing: border-box;
   }
   .pk-brand {
     font-size: 13.5px;
@@ -148,6 +150,22 @@
     border-radius: 9999px;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+  .pk-server-clock {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-well);
+    border: 1px solid var(--border-card);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    box-sizing: border-box;
   }
 
   .pk-pill {
@@ -191,21 +209,21 @@
     font-weight: 500;
   }
 
-  /* ══════ 主舞台布局（多设备三档形态适配） ══════ */
+  /* ══════ 主舞台布局（多设备三档形态适配 · 与 pk-top 严格对齐左右边缘） ══════ */
   .pk-stage-wrap {
     display: flex;
     gap: 24px;
     align-items: start;
-    justify-content: center;
+    justify-content: flex-start;
     max-width: 1280px;
     width: 100%;
     margin: 0 auto;
-    padding: 0 16px;
+    padding: 0;
     box-sizing: border-box;
     transition: gap 0.55s ease;
   }
 
-  /* 左侧：练习票卡列（准备态 380px，计时态收拢至 220px） */
+  /* 左侧：练习票卡列（准备态 380px，计时态收拢至 220px，以左边框为轴心） */
   .pk-left-col {
     width: 380px;
     flex-shrink: 0;
@@ -215,49 +233,63 @@
     gap: 8px;
     container-type: inline-size;
     container-name: ticket;
+    transform-origin: left center;
     transition: opacity 0.26s ease;
   }
 
-  /* 右侧：中轴主栏（仪表卡 + 老师要求卡，流体填充） */
+  /* 右侧：中轴主栏（仪表卡 + 老师要求卡，流体填充并右侧 flush 对齐 pk-top） */
   .pk-main-col {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-width: 0;
-    max-width: 780px;
     display: flex;
     flex-direction: column;
     gap: 14px;
     transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* ② 中屏（1024px–1199px，如 iPad 横屏 1133×744 / 1024×768）：两栏保持并排，比例收窄 */
+  /* ② 中屏（1024px–1199px，如 iPad 横屏 1133×744 / 1024×768）：两栏保持并排，比例收窄，左右边缘依然与 pk-top 对齐 */
   @media (max-width: 1199px) and (min-width: 1024px) {
+    .pk-top {
+      max-width: 100%;
+    }
     .pk-stage-wrap {
+      max-width: 100%;
       gap: 16px;
-      padding: 0 12px;
+      padding: 0;
     }
     .pk-left-col {
       width: 360px;
     }
   }
 
-  /* ③ 窄屏（< 1024px，如 iPad 竖屏 744×1133、手机 440×956）：单列堆叠（票卡在上、仪表在下） */
+  /* ③ 窄屏（< 1024px，如 iPad 竖屏 744×1133、手机 440×956）：单列堆叠（与 pk-top 同宽对齐） */
   @media (max-width: 1023px) {
+    .pk-top {
+      max-width: 580px;
+      width: 100%;
+      margin: 0 auto 10px;
+      padding: 0 10px;
+      gap: 8px;
+    }
     .pk-stage-wrap {
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      padding: 0 12px;
+      max-width: 580px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0;
     }
     .pk-left-col, .pk-main-col {
       width: 100%;
-      max-width: 540px;
+      max-width: 100%;
     }
     #practiceStage.stage-running .pk-stage-wrap {
       flex-direction: column;
       align-items: center;
     }
     #practiceStage.stage-running .pk-left-col {
-      width: 260px;
+      width: 100%;
       max-width: 100%;
       margin: 0 auto;
     }
@@ -266,7 +298,7 @@
   /* 手机端极窄屏（≤ 480px，如 iPhone 440×956）细节微调 */
   @media (max-width: 480px) {
     .pk-stage-wrap {
-      padding: 0 8px;
+      padding: 0;
       gap: 10px;
     }
     .pk-left-col, .pk-main-col {
@@ -274,7 +306,8 @@
       max-width: 100%;
     }
     .pk-top {
-      padding: 6px 10px;
+      max-width: 100%;
+      padding: 0 8px;
       gap: 6px;
     }
     .pk-brand {
@@ -758,7 +791,12 @@
     width: 220px;
   }
   #practiceStage.stage-running .pk-ticket {
-    padding: 10px 10px 12px;
+    height: 578px;
+    min-height: 578px;
+    padding: 12px 14px 14px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
   }
   #practiceStage.stage-running .pk-ticket-header-row {
     margin-bottom: 6px;
@@ -814,7 +852,7 @@
     line-height: 1;
   }
   #practiceStage.stage-running .pk-perforation-line {
-    margin: 10px -10px 10px;
+    margin: 16px -14px 16px;
   }
   #practiceStage.stage-running .pk-stub-memo-block {
     margin-top: 8px;
@@ -1499,6 +1537,7 @@
     <button class="pk-pill mini" id="pkStateToggle">切到练习态</button>
     <button class="pk-pill mini ok" id="pkRecords">今日记录 15分 · 3次 ▾</button>
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
+    <div class="pk-server-clock" id="serverClock" title="当前时间 (CST)"></div>
   </header>
 
   <!-- ══════════ 主舞台 ══════════ -->
@@ -2628,13 +2667,31 @@ function pkTick() {
   }, 1000);
 }
 
+/* 当前时间每秒刷新（与生产 serverClock 语义与格式保持严格一致） */
+function updateServerClock() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const pad = document.getElementById('serverClock');
+  if (pad) {
+    pad.textContent = `${y}-${mo}-${d} ${h}:${mi}:${s}`;
+  }
+}
+setInterval(updateServerClock, 1000);
+updateServerClock();
+
 /* ══════════════════════════════════════════════════════════
    打卡动效引擎与计时态收拢卡 GSAP Timeline
    1. 点击「检票 · 开始练习」→ 文案先赋，再行动效
-   2. 票卡纵向从右向左收窄成 220px 竖向长条卡片 (0.6s, power3.inOut)
-   3. 蒙版淡入 + 打卡机卡头滑入插槽 + 核心参数总线分项交错显现 (stagger 0.05)
-   4. 反向展开：卡头抽回，票卡展开回展开态 (0.6s, power3.inOut)，clearProps 0 残留
-   5. 兜底保护：prefers-reduced-motion (≤100ms fade) / typeof gsap === 'undefined'
+   2. 票卡以左边框为轴心，纵向从右向左收窄成 220px 竖向长条卡片 (0.6s, power3.inOut)
+   3. 高度完全不变（逐像素一致，禁止 scale，禁止高度变矮）
+   4. 蒙版淡入 + 打卡机卡头滑入插槽 + 核心参数总线分项交错显现 (stagger 0.05)
+   5. 反向展开：卡头抽回，票卡展开回展开态 (0.6s, power3.inOut)，clearProps 0 残留
+   6. 兜底保护：prefers-reduced-motion (≤100ms fade) / typeof gsap === 'undefined'
 ══════════════════════════════════════════════════════════ */
 let runTimeline = null;
 
@@ -2650,9 +2707,17 @@ function enterRun() {
 
   const stage = document.getElementById('practiceStage');
   const leftCol = document.getElementById('pkLeftCol');
+  const ticketCard = document.getElementById('pkTicketCard');
   const lockOverlay = document.getElementById('pkTicketLockOverlay');
   const insertedHead = document.getElementById('pkInsertedHead');
   const runTelemetry = document.getElementById('pkRunTelemetry');
+
+  // 保证高度完全一致：测定准备态卡片高度，收拢态逐像素对齐（禁止变矮，禁止高度漂移）
+  const prepHeight = ticketCard ? ticketCard.offsetHeight : 578;
+  if (ticketCard) {
+    ticketCard.style.height = prepHeight + 'px';
+    ticketCard.style.minHeight = prepHeight + 'px';
+  }
 
   document.getElementById('pkBrand').textContent = '进行中';
   document.getElementById('pkBrand').classList.add('running');
@@ -2669,27 +2734,35 @@ function enterRun() {
   }
 
   const isDesktop = window.innerWidth >= 1024;
-  const targetColWidth = isDesktop ? 220 : 260;
+  const targetColWidth = isDesktop ? 220 : leftCol.parentElement.offsetWidth;
   const startColWidth = leftCol.offsetWidth || (isDesktop ? 380 : 360);
 
-  // 兜底 1: 无 GSAP 环境直接切终态（0 报错）
+  // 兜底 1: 无 GSAP 环境直接切终态（0 报错，终态高度仍不变）
   if (typeof gsap === 'undefined') {
     stage.classList.remove('stage-prep');
     stage.classList.add('stage-running');
     lockOverlay.style.display = 'flex';
     lockOverlay.style.opacity = '1';
     leftCol.style.width = targetColWidth + 'px';
+    if (ticketCard) {
+      ticketCard.style.height = prepHeight + 'px';
+      ticketCard.style.minHeight = prepHeight + 'px';
+    }
     if (typeof ttOnStart === 'function') ttOnStart();
     pkTick();
     return;
   }
 
-  // 兜底 2: prefers-reduced-motion 分支（仅 ≤100ms 淡入淡出，不做位移收窄）
+  // 兜底 2: prefers-reduced-motion 分支（仅 ≤100ms 淡入淡出，不做位移收窄，终态高度仍不变）
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReduced) {
     stage.classList.remove('stage-prep');
     stage.classList.add('stage-running');
     leftCol.style.width = targetColWidth + 'px';
+    if (ticketCard) {
+      ticketCard.style.height = prepHeight + 'px';
+      ticketCard.style.minHeight = prepHeight + 'px';
+    }
     lockOverlay.style.display = 'flex';
     gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.1, ease: 'linear' });
     if (typeof ttOnStart === 'function') ttOnStart();
@@ -2697,19 +2770,24 @@ function enterRun() {
     return;
   }
 
-  // GSAP 完整动画 Timeline（0.6s, power3.inOut 对称，stagger 0.05）
+  // GSAP 完整动画 Timeline（0.6s, power3.inOut 对称，stagger 0.05, overwrite: 'auto'）
   lockOverlay.style.display = 'flex';
   stage.classList.remove('stage-prep');
   stage.classList.add('stage-running');
 
   runTimeline = gsap.timeline({
+    overwrite: 'auto',
     onComplete: () => {
       // 动画完成后清除 width inline style，由 CSS 类名精准管控
       gsap.set(leftCol, { clearProps: 'width' });
+      if (ticketCard) {
+        ticketCard.style.height = prepHeight + 'px';
+        ticketCard.style.minHeight = prepHeight + 'px';
+      }
     }
   });
 
-  // (1) 票卡宽度从初始宽度纵向从右向左收窄 (0.6s, power3.inOut)
+  // (1) 票卡以左边框为轴心，宽度从初始宽度纵向向左推进收窄 (0.6s, power3.inOut)
   runTimeline.fromTo(leftCol,
     { width: startColWidth },
     { width: targetColWidth, duration: 0.6, ease: 'power3.inOut' },
@@ -2755,6 +2833,7 @@ function exitRun() {
 
   const stage = document.getElementById('practiceStage');
   const leftCol = document.getElementById('pkLeftCol');
+  const ticketCard = document.getElementById('pkTicketCard');
   const lockOverlay = document.getElementById('pkTicketLockOverlay');
   const insertedHead = document.getElementById('pkInsertedHead');
   const runTelemetry = document.getElementById('pkRunTelemetry');
@@ -2778,7 +2857,13 @@ function exitRun() {
   const targetColWidth = isWide ? 380 : (isMed ? 360 : (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 540));
   const startColWidth = leftCol ? leftCol.offsetWidth : 220;
 
-  // 彻底复位的清理函数（0 残留保证：清除 GSAP 注入的所有 inline style）
+  const prepHeight = ticketCard ? ticketCard.offsetHeight : 578;
+  if (ticketCard) {
+    ticketCard.style.height = prepHeight + 'px';
+    ticketCard.style.minHeight = prepHeight + 'px';
+  }
+
+  // 彻底复位的清理函数（0 残留保证：清除 GSAP 注入的所有 inline style，高度复位）
   const resetToPrepClean = () => {
     stage.classList.remove('stage-running');
     stage.classList.add('stage-prep');
@@ -2786,8 +2871,12 @@ function exitRun() {
       lockOverlay.style.display = 'none';
       lockOverlay.style.opacity = '0';
     }
+    if (ticketCard) {
+      ticketCard.style.height = '';
+      ticketCard.style.minHeight = '';
+    }
     if (typeof gsap !== 'undefined') {
-      gsap.set([leftCol, lockOverlay, insertedHead, runTelemetry].filter(Boolean), { clearProps: 'all' });
+      gsap.set([leftCol, ticketCard, lockOverlay, insertedHead, runTelemetry].filter(Boolean), { clearProps: 'all' });
       if (runTelemetry) {
         const teleItems = runTelemetry.querySelectorAll('.pk-tele-block');
         if (teleItems.length) gsap.set(teleItems, { clearProps: 'all' });
@@ -2813,11 +2902,12 @@ function exitRun() {
     return;
   }
 
-  // GSAP 展开反向动画 Timeline (0.6s, power3.inOut 对称)
+  // GSAP 展开反向动画 Timeline (0.6s, power3.inOut 对称，overwrite: 'auto')
   stage.classList.remove('stage-running');
   stage.classList.add('stage-prep');
 
   runTimeline = gsap.timeline({
+    overwrite: 'auto',
     onComplete: resetToPrepClean
   });
 
