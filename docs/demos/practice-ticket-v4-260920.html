@@ -50,7 +50,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    padding: 12px 16px 40px;
+    padding: 10px 16px 20px;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -113,7 +113,7 @@
   .pk-top {
     max-width: 1060px;
     height: 40px;
-    margin: 0 auto 14px;
+    margin: 0 auto 10px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -209,7 +209,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
@@ -243,9 +243,9 @@
   .pk-ticket {
     background: linear-gradient(180deg, rgba(255, 107, 107, 0.07) 0%, rgba(255, 107, 107, 0.02) 100%), var(--surface-page);
     border: 1px solid rgba(44, 62, 80, 0.12);
-    border-radius: 20px;
+    border-radius: 18px;
     box-shadow: var(--shadow-ticket);
-    padding: 16px 18px;
+    padding: 12px 14px 14px;
     box-sizing: border-box;
     position: relative;
     overflow: visible;
@@ -285,7 +285,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
   /* 打孔设计（正圆保障：aspect-ratio 1/1 + flex-shrink 0，抗压扁） */
@@ -329,10 +329,6 @@
     background: rgba(44, 62, 80, 0.22);
     border: none;
   }
-  .pk-hole-punch.decorative {
-    border: 1.5px dashed rgba(44, 62, 80, 0.35);
-    background: transparent;
-  }
 
   .pk-ticket-folio-trigger {
     display: inline-flex;
@@ -353,11 +349,11 @@
     border-color: var(--border-active);
   }
 
-  /* 顶部大图块（占票面约 42% 高度） */
+  /* 顶部大图块（压缩至 140px，保持票面主视觉） */
   .pk-ticket-hero-frame {
     width: 100%;
-    height: 200px;
-    border-radius: 14px;
+    height: 140px;
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
     border: 1px solid rgba(44, 62, 80, 0.10);
@@ -397,17 +393,17 @@
     color: var(--text-muted);
   }
 
-  /* 艺术家姓名位（大号粗体衬线，分两行居中） */
+  /* 艺术家姓名位（居中衬线科目名） */
   .pk-ticket-subject-block {
     text-align: center;
-    margin-top: 14px;
-    padding: 0 8px;
+    margin-top: 6px;
+    padding: 0 4px;
     cursor: pointer;
   }
   .pk-ticket-subject-title {
     font-family: var(--font-serif);
-    font-size: 31px;
-    font-weight: 800;
+    font-size: 24px;
+    font-weight: 700;
     color: var(--text-main);
     line-height: 1.2;
     letter-spacing: 0.02em;
@@ -416,9 +412,9 @@
     word-break: break-word;
   }
   .pk-ticket-subject-sub {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    margin-top: 6px;
+    margin-top: 2px;
     letter-spacing: 0.02em;
   }
 
@@ -426,9 +422,9 @@
   .pk-ticket-digits-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 14px;
-    padding: 10px 0;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 4px 0;
     border-top: 1px solid rgba(44, 62, 80, 0.08);
     border-bottom: 1px solid rgba(44, 62, 80, 0.08);
   }
@@ -438,19 +434,19 @@
     align-items: center;
     justify-content: center;
     position: relative;
-    padding: 2px 4px;
+    padding: 0 4px;
   }
   .pk-ticket-num-col:first-child {
     border-right: 1px solid rgba(44, 62, 80, 0.08);
   }
   .pk-bignum-val {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-serif);
     font-variant-numeric: tabular-nums;
-    font-size: 38px;
-    font-weight: 800;
+    font-size: 32px;
+    font-weight: 300; /* 细体衬线 */
     color: var(--text-main);
     line-height: 1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 
   /* 44px 触控命中区与注解交互 */
@@ -458,17 +454,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
   }
   .pk-mini-stepper-btn {
-    width: 34px;
-    height: 34px;
-    min-height: 44px; /* 触控命中区保障 */
-    min-width: 44px;
+    width: 30px;
+    height: 30px;
+    min-height: 40px; /* 触控命中区保障 */
+    min-width: 40px;
     border: 0;
     background: transparent;
     color: var(--text-muted);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     cursor: pointer;
     display: grid;
@@ -490,15 +486,16 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    margin-top: 4px;
-    padding: 3px 8px;
-    min-height: 28px;
+    margin-top: 2px;
+    padding: 2px 8px;
+    min-height: 24px;
     border-radius: 9999px;
     background: var(--surface-card);
     border: 1px solid rgba(44, 62, 80, 0.10);
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--text-main);
+    font-family: var(--font-serif);
+    font-size: 11px;
+    font-weight: 400; /* 细体注字 */
+    color: var(--text-muted);
     cursor: pointer;
     box-shadow: 0 1px 2px rgba(44, 62, 80, 0.03);
     white-space: nowrap;
@@ -508,66 +505,70 @@
     color: var(--c-primary);
   }
 
-  /* 撕裂虚线（带两侧半圆盖片缺角 · 回退到 v6 前原生方案） */
+  /* 撕裂虚线（带两侧内侧半圆咬口缺角 · 外侧完全裁切无残留） */
   .pk-perforation-line {
     position: relative;
     height: 0;
-    border-top: 2px dashed rgba(44, 62, 80, 0.22);
-    margin: 16px -18px 14px;
+    border-top: 2px dashed rgba(44, 62, 80, 0.20);
+    margin: 8px -14px 6px;
   }
   .pk-perf-notch-left, .pk-perf-notch-right {
     position: absolute;
     top: -9px;
-    width: 18px;
+    width: 9px;
     height: 18px;
-    border-radius: 50%;
     background: var(--surface-page);
     border: 1px solid rgba(44, 62, 80, 0.14);
     box-sizing: border-box;
   }
   .pk-perf-notch-left {
-    left: -10px;
-    box-shadow: inset -2px 0 4px rgba(44, 62, 80, 0.06);
+    left: 0;
+    border-radius: 0 9px 9px 0;
+    border-left: none;
+    box-shadow: inset -2px 0 3px rgba(44, 62, 80, 0.05);
   }
   .pk-perf-notch-right {
-    right: -10px;
-    box-shadow: inset 2px 0 4px rgba(44, 62, 80, 0.06);
+    right: 0;
+    border-radius: 9px 0 0 9px;
+    border-right: none;
+    box-shadow: inset 2px 0 3px rgba(44, 62, 80, 0.05);
   }
 
-  /* 票根区（composer + 2排胶囊标签 + 手写体批注 + 细线参数网格 + 底部条码打孔条） */
+  /* 票根区（composer + 2排胶囊标签 + 科目独立信息备注区） */
   .pk-ticket-stub-col {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 6px;
     position: relative;
   }
 
   /* 2 排 Session 胶囊标签网格（始终可见，<= 2 排） */
   .pk-session-tags-wrap {
     width: 100%;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   .pk-session-tags-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    max-height: 72px;
-    min-height: 70px;
+    gap: 4px;
+    max-height: 60px;
+    min-height: 56px;
     overflow: hidden;
   }
-  .pk-session-pill {
-    height: 32px;
-    padding: 0 10px;
+  .pk-session-pill, .pk-session-tag {
+    height: 28px;
+    padding: 0 9px;
     border-radius: 9999px;
     background: var(--surface-card);
     border: 1px solid rgba(44, 62, 80, 0.10);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--text-main);
     cursor: pointer;
     white-space: nowrap;
     max-width: 140px;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     display: inline-flex;
@@ -577,161 +578,161 @@
     -webkit-tap-highlight-color: transparent;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
-  .pk-session-pill:hover {
+  .pk-session-pill:hover, .pk-session-tag:hover {
     border-color: rgba(44, 62, 80, 0.22);
     color: var(--c-primary);
   }
-  /* 选中态：淡底色 + 珊瑚字色，严格无第二道红框 */
-  .pk-session-pill.is-active {
+  /* 选中态：淡底色 + 珊瑚字色，严格无第二道红框，瞬时生效无过渡延迟 */
+  .pk-session-pill.is-active, .pk-session-tag.is-active {
     background: rgba(255, 107, 107, 0.08);
-    border-color: transparent;
+    border-color: transparent !important;
     color: var(--c-primary);
     font-weight: 700;
+    transition: none !important;
   }
-  .pk-session-pill.more-pill {
+  .pk-session-pill.more-pill, .pk-session-tag.more-pill {
     color: var(--text-muted);
     font-weight: 500;
     border-style: dashed;
     border-color: rgba(44, 62, 80, 0.18);
   }
-  .pk-session-pill.more-pill:hover {
+  .pk-session-pill.more-pill:hover, .pk-session-tag.more-pill:hover {
     color: var(--c-primary);
     border-color: var(--c-primary);
   }
-
-  /* 手写体要领批注（参考 01 元素：斜体衬线，占位真实要领短摘要） */
-  .pk-stub-handwritten-row {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 12.5px;
-    color: var(--text-main);
-    padding: 5px 8px;
-    background: rgba(255, 107, 107, 0.04);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-height: 28px;
-    box-sizing: border-box;
-  }
-  .pk-handwritten-text {
+  .pk-pill-text {
+    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .pk-handwritten-mark {
-    color: var(--c-primary);
-    opacity: 0.6;
-    font-weight: 700;
+    display: inline-block;
   }
 
-  /* 细线参数网格（参考 01 元素：1px 细线分隔 3 列网格） */
-  .pk-stub-param-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    border-top: 1px solid rgba(44, 62, 80, 0.10);
-    border-bottom: 1px solid rgba(44, 62, 80, 0.10);
-    padding: 6px 0;
-    margin-top: 2px;
-  }
-  .pk-param-cell {
+  /* ══════ 科目独立信息备注区（参考图 A 重做，紧凑双行布局） ══════ */
+  .pk-stub-memo-block {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px;
-  }
-  .pk-param-cell:not(:last-child) {
-    border-right: 1px solid rgba(44, 62, 80, 0.10);
-  }
-  .pk-param-label {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 10px;
-    color: var(--text-muted);
-    line-height: 1.2;
-    white-space: nowrap;
-  }
-  .pk-param-val {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--text-main);
+    gap: 4px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(44, 62, 80, 0.03);
+    border: 1px solid rgba(44, 62, 80, 0.06);
     margin-top: 2px;
-    line-height: 1.2;
-    white-space: nowrap;
   }
-
-  /* 底部印章、横向条码与右下打孔条 */
-  .pk-stub-footer-strip {
+  .pk-memo-kicker-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-top: 2px;
-    padding-top: 6px;
-    border-top: 1px dashed rgba(44, 62, 80, 0.10);
   }
-  /* 微型圆形印章（参考 01 元素：严格至多单圈细线外环 + 旋转 -6deg + 极淡底，坚决无内圈/双圈） */
-  .pk-stamp-seal {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 107, 107, 0.40);
-    padding: 2px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 107, 107, 0.04);
-    transform: rotate(-6deg);
-    flex-shrink: 0;
+  .pk-memo-kicker {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
   }
-  .pk-stamp-text {
-    font-family: var(--font-serif);
-    font-size: 8.5px;
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--c-primary);
-    letter-spacing: 0.02em;
-    max-width: 32px;
-    text-align: center;
-  }
-
   .pk-barcode-wrap {
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-shrink: 1;
-    min-width: 0;
+    gap: 5px;
+    flex-shrink: 0;
   }
   .pk-barcode-svg {
-    width: 80px;
-    height: 18px;
-    opacity: 0.82;
+    width: 56px;
+    height: 10px;
+    opacity: 0.75;
     flex-shrink: 0;
   }
   .pk-barcode-code {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 10px;
+    font-size: 9px;
+    font-weight: 600;
     color: var(--text-muted);
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     white-space: nowrap;
+  }
+  .pk-memo-main-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 32px;
+  }
+  .pk-memo-left-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .pk-memo-vert-bar {
+    width: 3px;
+    height: 24px;
+    background: var(--c-primary);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .pk-memo-text-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .pk-memo-subject-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pk-memo-requirement {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .pk-memo-right-number {
+    display: flex;
+    align-items: baseline;
+    gap: 1px;
+    flex-shrink: 0;
+    text-align: right;
+    line-height: 1.25;
+  }
+  .pk-memo-num-prefix {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .pk-memo-bignum {
+    font-family: var(--font-serif);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    min-height: 32px;
   }
 
   /* 票卡主 CTA */
   .pk-ticket-cta {
     width: 100%;
-    min-height: 48px;
-    border-radius: 24px;
+    min-height: 44px;
+    border-radius: 22px;
     cursor: pointer;
     font: inherit;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
     border: 1px solid rgba(255, 107, 107, 0.6);
     color: var(--text-on-cta);
@@ -747,9 +748,10 @@
   .pk-ticket-cta:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; }
   .pk-why-hint {
     text-align: center;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--text-muted);
     min-height: 16px;
+    margin-top: 2px;
   }
 
   /* ══════ Grok Session Selector（上浮面板 · 不撑高票卡 · 实时过滤） ══════ */
@@ -1061,6 +1063,14 @@
     flex-direction: column;
     align-items: center;
   }
+  /* 真实计时器滚轮数字容器（防止 ac-stack 未遮罩下垂产生隐式溢出） */
+  .ac-root { display: inline-flex; align-items: center; justify-content: center; }
+  .ac-digit { position: relative; display: inline-grid; overflow: hidden; height: 1.5em; line-height: 1.5;
+              -webkit-mask-image: var(--ac-fade); mask-image: var(--ac-fade); }
+  .ac-sizer { visibility: hidden; grid-area: 1/1; display: grid; }
+  .ac-stack { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; }
+  .ac-face { height: 1.5em; display: flex; align-items: center; justify-content: center; }
+  .ac-mark { display: inline-block; margin: 0 -0.1em; }
   .pk-instr-deck .ruler-wrap {
     max-width: 480px;
     width: 480px;
@@ -1291,11 +1301,25 @@
 
   .pk-footer-note {
     max-width: 1060px;
-    margin: 16px auto 0;
-    font-size: 12px;
+    margin: 6px auto 0;
+    font-size: 11px;
     color: var(--text-muted);
-    line-height: 1.7;
+    line-height: 1.35;
     padding: 0 8px;
+  }
+  @media (max-height: 800px) {
+    body {
+      padding: 6px 16px 8px;
+    }
+    .pk-top {
+      margin: 0 auto 6px;
+    }
+    .pk-footer-note {
+      margin: 4px auto 0;
+      font-size: 10px;
+      line-height: 1.3;
+      opacity: 0.65;
+    }
   }
 </style>
 </head>
@@ -1394,66 +1418,32 @@
             <div class="pk-session-tags-grid" id="pkSessionTags"></div>
           </div>
 
-          <!-- ③ 手写体批注位（参考 01 斜体手写语汇，占位真实要领短摘要） -->
-          <!-- 后续 dad 手写图片替换占位 -->
-          <div class="pk-stub-handwritten-row">
-            <span class="pk-handwritten-mark">“</span>
-            <span class="pk-handwritten-text" id="pkHandwrittenNote">使劲吹响，耳朵震</span>
-            <span class="pk-handwritten-mark">”</span>
-          </div>
-
-          <!-- ④ 细线参数网格（参考 01 细分隔线 3 列网格） -->
-          <div class="pk-stub-param-grid">
-            <div class="pk-param-cell">
-              <span class="pk-param-label">速度基准</span>
-              <span class="pk-param-val" id="pkParamMetro">♩ = 80</span>
+          <!-- ③ 科目独立信息备注区（参考图 A 重做，结构化档案索引） -->
+          <div class="pk-stub-memo-block" id="pkStubMemoBlock">
+            <!-- 顶行：分类/平台小字（左对齐） + 条形码与编码（右对齐） -->
+            <div class="pk-memo-kicker-row">
+              <span class="pk-memo-kicker">DIZICAL · 竹笛练习档案</span>
+              <div class="pk-barcode-wrap">
+                <svg class="pk-barcode-svg" viewBox="0 0 56 10" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="0" y="0" width="1.5" height="10"/><rect x="3" y="0" width="1" height="10"/><rect x="6" y="0" width="2" height="10"/><rect x="10" y="0" width="1" height="10"/><rect x="13" y="0" width="2.5" height="10"/><rect x="17" y="0" width="1" height="10"/><rect x="20" y="0" width="2" height="10"/><rect x="24" y="0" width="1.5" height="10"/><rect x="27" y="0" width="2" height="10"/><rect x="31" y="0" width="1" height="10"/><rect x="34" y="0" width="2" height="10"/><rect x="38" y="0" width="1" height="10"/><rect x="41" y="0" width="2" height="10"/><rect x="45" y="0" width="1.5" height="10"/><rect x="48" y="0" width="2" height="10"/><rect x="52" y="0" width="1.5" height="10"/>
+                </svg>
+                <span class="pk-barcode-code" id="pkTicketBarcodeCode">DZ-1034-W</span>
+              </div>
             </div>
-            <div class="pk-param-cell">
-              <span class="pk-param-label">建议用时</span>
-              <span class="pk-param-val" id="pkParamDur">10 分钟</span>
+            <!-- 主带：左侧细竖条+粗体标题+短要求，右侧超大档案编号 -->
+            <div class="pk-memo-main-band">
+              <div class="pk-memo-left-group">
+                <div class="pk-memo-vert-bar"></div>
+                <div class="pk-memo-text-stack">
+                  <div class="pk-memo-subject-title" id="pkMemoSubject">吸气长音</div>
+                  <div class="pk-memo-requirement" id="pkMemoSnippet">使劲吹响，耳朵震</div>
+                </div>
+              </div>
+              <div class="pk-memo-right-number" title="科目档案索引编号">
+                <span class="pk-memo-num-prefix">No.</span>
+                <span class="pk-memo-bignum" id="pkMemoIdVal">1034</span>
+              </div>
             </div>
-            <div class="pk-param-cell">
-              <span class="pk-param-label">档案索引</span>
-              <span class="pk-param-val" id="pkParamId">No.1034</span>
-            </div>
-          </div>
-
-          <!-- ⑤ 底部条形码、印章与右下打孔条 -->
-          <div class="pk-stub-footer-strip">
-            <!-- 左侧微型圆形印章（严格至多单圈细线外环，无内圈，杜绝框套框） -->
-            <div class="pk-stamp-seal" id="pkStampSeal" title="课程重点标记">
-              <span class="pk-stamp-text" id="pkStampText">本周<br>重点</span>
-            </div>
-
-            <!-- 中间横向条形码 -->
-            <div class="pk-barcode-wrap">
-              <svg class="pk-barcode-svg" viewBox="0 0 80 18" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect x="0" y="0" width="2" height="18"/>
-                <rect x="4" y="0" width="1" height="18"/>
-                <rect x="7" y="0" width="3" height="18"/>
-                <rect x="12" y="0" width="1" height="18"/>
-                <rect x="15" y="0" width="2" height="18"/>
-                <rect x="19" y="0" width="4" height="18"/>
-                <rect x="25" y="0" width="1" height="18"/>
-                <rect x="28" y="0" width="2" height="18"/>
-                <rect x="32" y="0" width="3" height="18"/>
-                <rect x="37" y="0" width="1" height="18"/>
-                <rect x="40" y="0" width="2" height="18"/>
-                <rect x="44" y="0" width="4" height="18"/>
-                <rect x="50" y="0" width="1" height="18"/>
-                <rect x="53" y="0" width="3" height="18"/>
-                <rect x="58" y="0" width="2" height="18"/>
-                <rect x="62" y="0" width="1" height="18"/>
-                <rect x="65" y="0" width="3" height="18"/>
-                <rect x="70" y="0" width="2" height="18"/>
-                <rect x="74" y="0" width="4" height="18"/>
-                <rect x="78" y="0" width="2" height="18"/>
-              </svg>
-              <span class="pk-barcode-code" id="pkTicketBarcodeCode">DZ-1034-W</span>
-            </div>
-
-            <!-- 右下打孔（纯装饰收藏语义） -->
-            <div class="pk-hole-punch decorative" title="收藏打孔标记"></div>
           </div>
         </div>
 
@@ -2201,17 +2191,28 @@ function renderSessionPills() {
 
   const maxDirect = 6;
   const showMore = list.length > maxDirect;
-  const displayList = showMore ? list.slice(0, 5) : list;
+  let displayList;
+  if (showMore) {
+    displayList = list.slice(0, 5);
+    if (content && list.includes(content) && !displayList.includes(content)) {
+      displayList[4] = content;
+    }
+  } else {
+    displayList = list.slice();
+  }
 
   container.innerHTML = '';
 
   displayList.forEach(tag => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'pk-session-pill' + (content === tag ? ' is-active' : '');
+    btn.className = 'pk-session-pill pk-session-tag' + (content === tag ? ' is-active' : '');
     btn.dataset.tag = tag;
     btn.title = tag;
-    btn.textContent = tag;
+    const txt = document.createElement('span');
+    txt.className = 'pk-pill-text';
+    txt.textContent = tag;
+    btn.appendChild(txt);
     btn.addEventListener('click', () => {
       content = tag;
       if (sessionUI) sessionUI.setValue(tag);
@@ -2225,10 +2226,13 @@ function renderSessionPills() {
   if (showMore) {
     const moreBtn = document.createElement('button');
     moreBtn.type = 'button';
-    moreBtn.className = 'pk-session-pill more-pill';
+    moreBtn.className = 'pk-session-pill pk-session-tag more-pill';
     moreBtn.id = 'pkPillMoreBtn';
     moreBtn.setAttribute('aria-label', '查看更多练习内容选项');
-    moreBtn.textContent = '更多 ▾';
+    const txt = document.createElement('span');
+    txt.className = 'pk-pill-text';
+    txt.textContent = '更多 ▾';
+    moreBtn.appendChild(txt);
     moreBtn.addEventListener('click', () => {
       if (sessionUI) sessionUI.open();
     });
@@ -2239,6 +2243,11 @@ function renderSessionPills() {
 function updatePillSelection() {
   const container = document.getElementById('pkSessionTags');
   if (!container) return;
+  const currentTags = Array.from(container.querySelectorAll('[data-tag]')).map(b => b.dataset.tag);
+  if (content && !currentTags.includes(content)) {
+    renderSessionPills();
+    return;
+  }
   container.querySelectorAll('.pk-session-pill[data-tag]').forEach(btn => {
     if (btn.dataset.tag === content) {
       btn.classList.add('is-active');
@@ -2247,6 +2256,7 @@ function updatePillSelection() {
     }
   });
 }
+window.renderSessionPills = renderSessionPills;
 
 /* 渲染票卡各部 */
 function renderTicket() {
@@ -2264,9 +2274,9 @@ function renderTicket() {
   const nameEl = document.getElementById('pkTicketSubjectName');
   nameEl.textContent = cur.name;
   if (cur.name.length > 7) {
-    nameEl.style.fontSize = '26px';
+    nameEl.style.fontSize = '22px';
   } else {
-    nameEl.style.fontSize = '31px';
+    nameEl.style.fontSize = '24px';
   }
   document.getElementById('pkTicketSubjectSub').textContent = cur.sub || ("档案编号 No." + cur.id);
 
@@ -2278,29 +2288,18 @@ function renderTicket() {
   const bc = document.getElementById('pkTicketBarcodeCode');
   if (bc) bc.textContent = 'DZ-' + cur.id + '-W';
 
-  // 票根区：手写体要领批注（参考 01 元素，真实数据短摘要）
-  const noteEl = document.getElementById('pkHandwrittenNote');
-  if (noteEl) {
+  // 票根区：科目独立信息备注区（参考图 A 重做，结构化档案索引）
+  const memoSub = document.getElementById('pkMemoSubject');
+  if (memoSub) memoSub.textContent = cur.name;
+  const memoSnip = document.getElementById('pkMemoSnippet');
+  if (memoSnip) {
     const rawNote = (cur.reqItems && cur.reqItems[0]) || cur.reqSnippet || "按老师要求练习";
-    const cleanText = rawNote.replace(/<[^>]+>/g, '');
-    const shortNote = cleanText.length > 18 ? cleanText.slice(0, 17) + '…' : cleanText;
-    noteEl.textContent = shortNote;
-    noteEl.title = cleanText;
+    const cleanText = rawNote.replace(/<[^>]+>/g, '').trim();
+    memoSnip.textContent = cleanText.length > 14 ? cleanText.slice(0, 13) + '…' : cleanText;
+    memoSnip.title = cleanText;
   }
-
-  // 票根区：细线参数网格（参考 01 元素）
-  const paramMetro = document.getElementById('pkParamMetro');
-  if (paramMetro) paramMetro.textContent = cur.metro || '♩ = 60';
-  const paramDur = document.getElementById('pkParamDur');
-  if (paramDur) paramDur.textContent = duration + ' 分钟';
-  const paramId = document.getElementById('pkParamId');
-  if (paramId) paramId.textContent = 'No.' + cur.id;
-
-  // 票根区：微型圆形印章（参考 01 元素，单圈印章）
-  const stampText = document.getElementById('pkStampText');
-  if (stampText) {
-    stampText.innerHTML = isFocus ? '本周<br>重点' : isArch ? '归档<br>科目' : '在用<br>曲目';
-  }
+  const memoId = document.getElementById('pkMemoIdVal');
+  if (memoId) memoId.textContent = cur.id;
 
   // 渲染 2 排胶囊标签
   renderSessionPills();
@@ -2727,8 +2726,6 @@ function closeReader() {
       origSetDuration(v, skip);
       const durEl = document.getElementById('pkTicketDurVal');
       if (durEl) durEl.textContent = duration;
-      const paramDur = document.getElementById('pkParamDur');
-      if (paramDur) paramDur.textContent = duration + ' 分钟';
     };
   }
 
