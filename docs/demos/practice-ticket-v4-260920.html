@@ -16,6 +16,7 @@
     --c-muted: #666666;
     --c-accent: #FF8C5A;
     --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --practice-mask-color: rgba(44, 62, 80, 0.35);
   }
   [data-theme="dizicute"] {
     --surface-page: var(--c-tertiary);
@@ -190,47 +191,124 @@
     font-weight: 500;
   }
 
-  /* ══════ 主舞台布局（多设备流体双栏适配） ══════ */
+  /* ══════ 主舞台布局（多设备三档形态适配） ══════ */
   .pk-stage-wrap {
-    display: grid;
-    grid-template-columns: minmax(340px, 380px) 1fr;
-    gap: 16px;
+    display: flex;
+    gap: 24px;
     align-items: start;
-    max-width: 1060px;
+    justify-content: center;
+    max-width: 1280px;
     width: 100%;
     margin: 0 auto;
-    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0 16px;
+    box-sizing: border-box;
+    transition: gap 0.55s ease;
   }
 
-  /* 左侧：练习票卡列（流体自适应） */
+  /* 左侧：练习票卡列（准备态 380px，计时态收拢至 220px） */
   .pk-left-col {
-    width: 100%;
-    min-width: 0;
+    width: 380px;
+    flex-shrink: 0;
     position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+    container-type: inline-size;
+    container-name: ticket;
+    transition: opacity 0.26s ease;
   }
 
-  /* 右侧：中轴主栏（流体自适应） */
+  /* 右侧：中轴主栏（仪表卡 + 老师要求卡，流体填充） */
   .pk-main-col {
-    width: 100%;
+    flex: 1 1 auto;
     min-width: 0;
+    max-width: 780px;
     display: flex;
     flex-direction: column;
     gap: 14px;
+    transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* 塌单列断点下移到内容真正放不下时（≤ 940px）：1024 与 1133 横屏保持左右双栏，768 竖屏才塌单列 */
-  @media (max-width: 940px) {
+  /* ② 中屏（1024px–1199px，如 iPad 横屏 1133×744 / 1024×768）：两栏保持并排，比例收窄 */
+  @media (max-width: 1199px) and (min-width: 1024px) {
     .pk-stage-wrap {
-      grid-template-columns: 1fr;
-      justify-items: center;
+      gap: 16px;
+      padding: 0 12px;
+    }
+    .pk-left-col {
+      width: 360px;
+    }
+  }
+
+  /* ③ 窄屏（< 1024px，如 iPad 竖屏 744×1133、手机 440×956）：单列堆叠（票卡在上、仪表在下） */
+  @media (max-width: 1023px) {
+    .pk-stage-wrap {
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 0 12px;
     }
     .pk-left-col, .pk-main-col {
       width: 100%;
-      max-width: 640px;
+      max-width: 540px;
+    }
+    #practiceStage.stage-running .pk-stage-wrap {
+      flex-direction: column;
+      align-items: center;
+    }
+    #practiceStage.stage-running .pk-left-col {
+      width: 260px;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+  }
+
+  /* 手机端极窄屏（≤ 480px，如 iPhone 440×956）细节微调 */
+  @media (max-width: 480px) {
+    .pk-stage-wrap {
+      padding: 0 8px;
+      gap: 10px;
+    }
+    .pk-left-col, .pk-main-col {
+      width: 100%;
+      max-width: 100%;
+    }
+    .pk-top {
+      padding: 6px 10px;
+      gap: 6px;
+    }
+    .pk-brand {
+      font-size: 13px;
+    }
+    .pk-mid {
+      font-size: 11.5px;
+    }
+    .pk-run-stat {
+      display: none;
+    }
+    .pk-ticket {
+      padding: 10px 10px 12px;
+    }
+    .pk-ticket-hero-frame {
+      height: 108px;
+    }
+    .pk-ticket-subject-block {
+      margin-top: 10px;
+    }
+    .pk-ticket-digits-grid {
+      margin-top: 10px;
+      gap: 10px;
+    }
+    .pk-perforation-line {
+      margin: 12px -10px 12px;
+    }
+    .pk-stub-memo-block {
+      margin-top: 10px;
+      padding: 8px 10px;
+    }
+    .pk-instr-deck {
+      padding: 12px 12px 14px;
+      gap: 10px;
     }
   }
 
@@ -252,18 +330,19 @@
     user-select: none;
   }
 
-  /* 蒙版锁定层（练习态票卡变淡 + 灰蒙版） */
+  /* 蒙版锁定层（练习态票卡变淡 + 灰蒙版，支持 --practice-mask-color 变量） */
   .pk-ticket-lock-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(255, 248, 240, 0.70);
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.35));
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
+    border-radius: inherit;
     z-index: 20;
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 12px;
     opacity: 0;
     transition: opacity 0.25s ease;
     pointer-events: none;
@@ -271,9 +350,9 @@
   .pk-ticket-lock-badge {
     background: var(--surface-card);
     border: 1px solid var(--border-strong);
-    padding: 8px 18px;
+    padding: 6px 14px;
     border-radius: 9999px;
-    font-size: 13px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--text-main);
     box-shadow: var(--shadow-card);
@@ -549,7 +628,7 @@
     flex-wrap: wrap;
     gap: 4px;
     max-height: 60px;
-    min-height: 56px;
+    min-height: 0;
     overflow: hidden;
   }
   .pk-session-pill, .pk-session-tag {
@@ -672,6 +751,141 @@
     color: var(--text-muted);
     letter-spacing: 0.04em;
     white-space: nowrap;
+  }
+
+  /* ══════ 计时态收拢卡设计（宽 220px 竖向长条卡片） ══════ */
+  #practiceStage.stage-running .pk-left-col {
+    width: 220px;
+  }
+  #practiceStage.stage-running .pk-ticket {
+    padding: 10px 10px 12px;
+  }
+  #practiceStage.stage-running .pk-ticket-header-row {
+    margin-bottom: 6px;
+  }
+  #practiceStage.stage-running .pk-ticket-header-label {
+    font-size: 10px;
+  }
+  #practiceStage.stage-running .pk-ticket-hero-frame {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto;
+    border-radius: 8px;
+  }
+  #practiceStage.stage-running .pk-ticket-hero-tag {
+    display: none !important;
+  }
+  #practiceStage.stage-running .pk-ticket-subject-block {
+    margin-top: 8px;
+    padding: 0;
+  }
+  #practiceStage.stage-running .pk-ticket-subject-title {
+    font-size: 16px !important;
+    line-height: 1.25;
+  }
+  #practiceStage.stage-running .pk-ticket-subject-sub {
+    display: none !important;
+  }
+  #practiceStage.stage-running .pk-ticket-digits-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  #practiceStage.stage-running .pk-ticket-num-col {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 8px;
+    background: rgba(44, 62, 80, 0.035);
+    border-radius: 6px;
+    width: 100%;
+    min-height: 28px;
+  }
+  #practiceStage.stage-running .pk-num-stepper-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  #practiceStage.stage-running .pk-bignum-val {
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #practiceStage.stage-running .pk-perforation-line {
+    margin: 10px -10px 10px;
+  }
+  #practiceStage.stage-running .pk-stub-memo-block {
+    margin-top: 8px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  #practiceStage.stage-running .pk-memo-row {
+    min-height: 16px;
+  }
+  #practiceStage.stage-running .pk-memo-label {
+    font-size: 10px;
+  }
+  #practiceStage.stage-running .pk-memo-val,
+  #practiceStage.stage-running .pk-memo-val.mono {
+    font-size: 11px;
+  }
+  #practiceStage.stage-running .pk-ticket-lock-overlay {
+    display: flex;
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.35));
+  }
+  #practiceStage.stage-running .pk-ticket-lock-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+
+  /* 计时态单行指标标签与单位 */
+  .pk-collapsed-metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .pk-collapsed-metric-unit {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+
+  /* 计时态单行核心 Session 展示 */
+  .pk-collapsed-session-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(255, 107, 107, 0.08);
+    border: 1px solid rgba(255, 107, 107, 0.18);
+    font-size: 11.5px;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin-top: 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .pk-collapsed-session-label {
+    font-size: 10.5px;
+    color: var(--c-primary);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .pk-collapsed-session-val {
+    color: var(--text-main);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    min-width: 0;
   }
 
   /* 仪表区主 CTA（刻度尺下方核心按钮） */
@@ -1297,7 +1511,7 @@
 
         <!-- 蒙版锁定层（练习态票卡变淡 + 灰蒙版锁定） -->
         <div class="pk-ticket-lock-overlay" id="pkTicketLockOverlay">
-          <div class="pk-ticket-lock-badge">吹奏进行中 · 票卡已检票入槽</div>
+          <div class="pk-ticket-lock-badge">进行中 · 票卡锁定</div>
         </div>
 
         <!-- 顶部票头：左上打孔 + 展务铭文 + 票夹入口 -->
@@ -1307,7 +1521,7 @@
             <div class="pk-hole-punch status-focus" id="pkTicketHoleTopLeft" title="科目状态打孔"></div>
             <span class="pk-ticket-header-label">dizical practice ticket</span>
           </div>
-          <button class="pk-ticket-folio-trigger" id="pkFolioBtn">票夹 · 换曲目 ▾</button>
+          <button class="pk-ticket-folio-trigger prep-only" id="pkFolioBtn">票夹 · 换曲目 ▾</button>
         </div>
 
         <!-- 顶部大图块：沉浸名画手绘笔触竹笛（42% 高度） -->
@@ -1326,29 +1540,33 @@
         <div class="pk-ticket-digits-grid">
           <!-- 左列：BPM -->
           <div class="pk-ticket-num-col">
+            <span class="pk-collapsed-metric-label run-only">速度</span>
             <div class="pk-num-stepper-wrap">
-              <button class="pk-mini-stepper-btn" id="pkBpmDown" aria-label="减速">−</button>
+              <button class="pk-mini-stepper-btn prep-only" id="pkBpmDown" aria-label="减速">−</button>
               <div class="pk-bignum-val" id="pkBpmVal">80</div>
-              <button class="pk-mini-stepper-btn" id="pkBpmUp" aria-label="加速">+</button>
+              <button class="pk-mini-stepper-btn prep-only" id="pkBpmUp" aria-label="加速">+</button>
             </div>
             <!-- 音符档位注字（点击循环换档） -->
-            <button class="pk-annotation-btn" id="pkTicketNoteBtn">
+            <button class="pk-annotation-btn prep-only" id="pkTicketNoteBtn">
               <span id="pkTicketNoteSym">♩</span>
               <span id="pkTicketNoteCap">四分音符 ▾</span>
             </button>
+            <span class="pk-collapsed-metric-unit run-only" id="pkCollapsedSpeedSym">♩</span>
           </div>
 
           <!-- 右列：时长 -->
           <div class="pk-ticket-num-col">
+            <span class="pk-collapsed-metric-label run-only">时长</span>
             <div class="pk-num-stepper-wrap">
-              <button class="pk-mini-stepper-btn" id="pkTicketDurDown" aria-label="减少时长">−</button>
+              <button class="pk-mini-stepper-btn prep-only" id="pkTicketDurDown" aria-label="减少时长">−</button>
               <div class="pk-bignum-val" id="pkTicketDurVal">10</div>
-              <button class="pk-mini-stepper-btn" id="pkTicketDurUp" aria-label="增加时长">+</button>
+              <button class="pk-mini-stepper-btn prep-only" id="pkTicketDurUp" aria-label="增加时长">+</button>
             </div>
             <!-- 时长单位注字 -->
-            <div class="pk-annotation-btn" id="pkTicketDurBtn">
+            <div class="pk-annotation-btn prep-only" id="pkTicketDurBtn">
               <span>练习时长 (分钟)</span>
             </div>
+            <span class="pk-collapsed-metric-unit run-only">分钟</span>
           </div>
         </div>
 
@@ -1361,11 +1579,17 @@
         <!-- 票根区：Grok 输入栏 + 2排胶囊标签 + 手写批注 + 细线参数网格 + 底部印章条码打孔条 -->
         <div class="pk-ticket-stub-col">
           <!-- ① Grok 输入选择器挂载槽（无标题，直接输入） -->
-          <div class="pk-session-slot" id="pkSessionSlot"></div>
+          <div class="pk-session-slot prep-only" id="pkSessionSlot"></div>
 
           <!-- ② 输入框下方 2 排 session 胶囊标签（可视即点，双向同步） -->
-          <div class="pk-session-tags-wrap">
+          <div class="pk-session-tags-wrap prep-only">
             <div class="pk-session-tags-grid" id="pkSessionTags"></div>
+          </div>
+
+          <!-- 计时态核心单行 Session 胶囊展示 -->
+          <div class="pk-collapsed-session-row run-only" id="pkCollapsedSessionRow">
+            <span class="pk-collapsed-session-label">本次内容</span>
+            <span class="pk-collapsed-session-val" id="pkCollapsedSessionVal">未选内容</span>
           </div>
 
           <!-- ③ 科目档案信息区（按 Dad Option B：仅 档案编号 + 真实分类字段，无要求文本） -->
@@ -1380,7 +1604,7 @@
                 <span class="pk-memo-label">档案编号</span>
                 <span class="pk-memo-val mono" id="pkMemoIdVal">No.1034</span>
               </div>
-              <div class="pk-barcode-wrap" title="科目条码档案">
+              <div class="pk-barcode-wrap prep-only" title="科目条码档案">
                 <svg class="pk-barcode-svg" viewBox="0 0 56 10" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <rect x="0" y="0" width="1.5" height="10"/><rect x="3" y="0" width="1" height="10"/><rect x="6" y="0" width="2" height="10"/><rect x="10" y="0" width="1" height="10"/><rect x="13" y="0" width="2.5" height="10"/><rect x="17" y="0" width="1" height="10"/><rect x="20" y="0" width="2" height="10"/><rect x="24" y="0" width="1.5" height="10"/><rect x="27" y="0" width="2" height="10"/><rect x="31" y="0" width="1" height="10"/><rect x="34" y="0" width="2" height="10"/><rect x="38" y="0" width="1" height="10"/><rect x="41" y="0" width="2" height="10"/><rect x="45" y="0" width="1.5" height="10"/><rect x="48" y="0" width="2" height="10"/><rect x="52" y="0" width="1.5" height="10"/>
                 </svg>
@@ -1550,6 +1774,11 @@
 </script>
 
 <script src="./vendor/gsap.min.js"></script>
+<script>
+  if (typeof gsap === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');
+  }
+</script>
 <script src="./practice-skeleton-260920/real-timer-visual.js"></script>
 
 <!-- ══════════ Grok Session Selector 组件 ══════════ -->
@@ -2346,12 +2575,28 @@ function renderReq() {
   readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : '<li>无课后特别要求记录。</li>';
 }
 
+/* 页面配置接口（dad 第 3.1 条：蒙版颜色可配置） */
+window.PracticePageConfig = {
+  get maskColor() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--practice-mask-color').trim() || 'rgba(44, 62, 80, 0.35)';
+  },
+  set maskColor(val) {
+    document.documentElement.style.setProperty('--practice-mask-color', val);
+  }
+};
+
 /* 元数据与开始按钮同步 */
 function syncRunMeta() {
   document.getElementById('pkRunItemName').textContent = cur.name;
   document.getElementById('pkInsertedName').textContent = cur.name;
   document.getElementById('pkRunSessionTag').textContent = content || '未选内容';
   document.getElementById('pkRunSpeedVal').textContent = NOTES[noteIdx].sym + ' = ' + bpm;
+
+  const collapsedSession = document.getElementById('pkCollapsedSessionVal');
+  if (collapsedSession) collapsedSession.textContent = content || '未选内容';
+
+  const collapsedSpeedSym = document.getElementById('pkCollapsedSpeedSym');
+  if (collapsedSpeedSym) collapsedSpeedSym.textContent = NOTES[noteIdx].sym;
 }
 
 function syncStartState() {
@@ -2384,12 +2629,15 @@ function pkTick() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   打卡机式卡片插入展示动画（Punch-card Insert Animation）
-   1. 点击「检票 · 开始练习」→ 票卡快速淡化（opacity 1→0.35 + 灰蒙版，240ms）
-   2. 仪表卡插槽插入票卡头部（外露 60px：左上打孔 + 名画顶截 + 科目名），320ms back.out
-   3. 核心参数总线（曲目、分句、速度）显现点亮
-   4. 反向退出：卡头抽回，票卡恢复实体高亮
+   打卡动效引擎与计时态收拢卡 GSAP Timeline
+   1. 点击「检票 · 开始练习」→ 文案先赋，再行动效
+   2. 票卡纵向从右向左收窄成 220px 竖向长条卡片 (0.6s, power3.inOut)
+   3. 蒙版淡入 + 打卡机卡头滑入插槽 + 核心参数总线分项交错显现 (stagger 0.05)
+   4. 反向展开：卡头抽回，票卡展开回展开态 (0.6s, power3.inOut)，clearProps 0 残留
+   5. 兜底保护：prefers-reduced-motion (≤100ms fade) / typeof gsap === 'undefined'
 ══════════════════════════════════════════════════════════ */
+let runTimeline = null;
+
 function enterRun() {
   if (!content || !content.trim()) return;
   started = true;
@@ -2397,6 +2645,7 @@ function enterRun() {
   paused = false;
   elapsed = 0;
 
+  // 1. 文案先赋、再行动效（GSAP 硬约束：GSAP 只写 CSS，不写 DOM 文本）
   syncRunMeta();
 
   const stage = document.getElementById('practiceStage');
@@ -2404,9 +2653,6 @@ function enterRun() {
   const lockOverlay = document.getElementById('pkTicketLockOverlay');
   const insertedHead = document.getElementById('pkInsertedHead');
   const runTelemetry = document.getElementById('pkRunTelemetry');
-
-  stage.classList.remove('stage-prep');
-  stage.classList.add('stage-running');
 
   document.getElementById('pkBrand').textContent = '进行中';
   document.getElementById('pkBrand').classList.add('running');
@@ -2417,30 +2663,81 @@ function enterRun() {
   pauseBtn.textContent = '暂停';
   pauseBtn.classList.remove('paused-on');
 
-  if (typeof gsap !== 'undefined') {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      lockOverlay.style.display = 'flex';
-      lockOverlay.style.opacity = '1';
-      leftCol.style.opacity = '0.35';
-    } else {
-      // 1. 票卡变淡 + 灰蒙版
-      lockOverlay.style.display = 'flex';
-      gsap.to(lockOverlay, { opacity: 1, duration: 0.24, ease: 'power2.out' });
-      gsap.to(leftCol, { opacity: 0.35, scale: 0.985, duration: 0.24, ease: 'power2.out' });
+  if (runTimeline) {
+    runTimeline.kill();
+    runTimeline = null;
+  }
 
-      // 2. 打卡机卡头滑入插槽（320ms back.out）
-      gsap.fromTo(insertedHead,
-        { y: -24, opacity: 0, scale: 0.96 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.32, ease: 'back.out(1.5)' }
-      );
+  const isDesktop = window.innerWidth >= 1024;
+  const targetColWidth = isDesktop ? 220 : 260;
+  const startColWidth = leftCol.offsetWidth || (isDesktop ? 380 : 360);
 
-      // 3. 仪表核心参数总线显现
-      gsap.fromTo(runTelemetry,
-        { y: 8, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.24, delay: 0.1, ease: 'power2.out' }
-      );
+  // 兜底 1: 无 GSAP 环境直接切终态（0 报错）
+  if (typeof gsap === 'undefined') {
+    stage.classList.remove('stage-prep');
+    stage.classList.add('stage-running');
+    lockOverlay.style.display = 'flex';
+    lockOverlay.style.opacity = '1';
+    leftCol.style.width = targetColWidth + 'px';
+    if (typeof ttOnStart === 'function') ttOnStart();
+    pkTick();
+    return;
+  }
+
+  // 兜底 2: prefers-reduced-motion 分支（仅 ≤100ms 淡入淡出，不做位移收窄）
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) {
+    stage.classList.remove('stage-prep');
+    stage.classList.add('stage-running');
+    leftCol.style.width = targetColWidth + 'px';
+    lockOverlay.style.display = 'flex';
+    gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.1, ease: 'linear' });
+    if (typeof ttOnStart === 'function') ttOnStart();
+    pkTick();
+    return;
+  }
+
+  // GSAP 完整动画 Timeline（0.6s, power3.inOut 对称，stagger 0.05）
+  lockOverlay.style.display = 'flex';
+  stage.classList.remove('stage-prep');
+  stage.classList.add('stage-running');
+
+  runTimeline = gsap.timeline({
+    onComplete: () => {
+      // 动画完成后清除 width inline style，由 CSS 类名精准管控
+      gsap.set(leftCol, { clearProps: 'width' });
     }
+  });
+
+  // (1) 票卡宽度从初始宽度纵向从右向左收窄 (0.6s, power3.inOut)
+  runTimeline.fromTo(leftCol,
+    { width: startColWidth },
+    { width: targetColWidth, duration: 0.6, ease: 'power3.inOut' },
+    0
+  );
+
+  // (2) 蒙版锁定层淡入 (0.25s)
+  runTimeline.fromTo(lockOverlay,
+    { opacity: 0 },
+    { opacity: 1, duration: 0.25, ease: 'power2.out' },
+    0
+  );
+
+  // (3) 打卡机卡头滑入插槽 (0.32s back.out)
+  runTimeline.fromTo(insertedHead,
+    { y: -24, opacity: 0, scale: 0.96 },
+    { y: 0, opacity: 1, scale: 1, duration: 0.32, ease: 'back.out(1.5)' },
+    0.1
+  );
+
+  // (4) 仪表核心参数总线分项交错显现 (stagger 0.05s, 0.28s)
+  const teleItems = runTelemetry ? runTelemetry.querySelectorAll('.pk-tele-block') : [];
+  if (teleItems.length) {
+    runTimeline.fromTo(teleItems,
+      { y: 10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out' },
+      0.15
+    );
   }
 
   if (typeof ttOnStart === 'function') ttOnStart();
@@ -2460,25 +2757,7 @@ function exitRun() {
   const leftCol = document.getElementById('pkLeftCol');
   const lockOverlay = document.getElementById('pkTicketLockOverlay');
   const insertedHead = document.getElementById('pkInsertedHead');
-
-  if (typeof gsap !== 'undefined') {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      lockOverlay.style.display = 'none';
-      lockOverlay.style.opacity = '0';
-      leftCol.style.opacity = '1';
-    } else {
-      gsap.to(insertedHead, { y: -20, opacity: 0, duration: 0.18, ease: 'power2.in' });
-      gsap.to(lockOverlay, {
-        opacity: 0, duration: 0.22, ease: 'power2.out',
-        onComplete: () => { lockOverlay.style.display = 'none'; }
-      });
-      gsap.to(leftCol, { opacity: 1, scale: 1, duration: 0.24, ease: 'power2.out' });
-    }
-  }
-
-  stage.classList.remove('stage-running');
-  stage.classList.add('stage-prep');
+  const runTelemetry = document.getElementById('pkRunTelemetry');
 
   document.getElementById('pkBrand').textContent = '练习准备';
   document.getElementById('pkBrand').classList.remove('running');
@@ -2488,6 +2767,72 @@ function exitRun() {
   elapsed = 0;
   if (typeof ttRenderDigits === 'function') ttRenderDigits(duration * 60, true);
   if (typeof paintRulerSelect === 'function') paintRulerSelect(duration);
+
+  if (runTimeline) {
+    runTimeline.kill();
+    runTimeline = null;
+  }
+
+  const isWide = window.innerWidth >= 1200;
+  const isMed = window.innerWidth >= 1024 && window.innerWidth < 1200;
+  const targetColWidth = isWide ? 380 : (isMed ? 360 : (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 540));
+  const startColWidth = leftCol ? leftCol.offsetWidth : 220;
+
+  // 彻底复位的清理函数（0 残留保证：清除 GSAP 注入的所有 inline style）
+  const resetToPrepClean = () => {
+    stage.classList.remove('stage-running');
+    stage.classList.add('stage-prep');
+    if (lockOverlay) {
+      lockOverlay.style.display = 'none';
+      lockOverlay.style.opacity = '0';
+    }
+    if (typeof gsap !== 'undefined') {
+      gsap.set([leftCol, lockOverlay, insertedHead, runTelemetry].filter(Boolean), { clearProps: 'all' });
+      if (runTelemetry) {
+        const teleItems = runTelemetry.querySelectorAll('.pk-tele-block');
+        if (teleItems.length) gsap.set(teleItems, { clearProps: 'all' });
+      }
+    }
+  };
+
+  // 兜底 1: 无 GSAP 环境直接复位
+  if (typeof gsap === 'undefined') {
+    resetToPrepClean();
+    return;
+  }
+
+  // 兜底 2: prefers-reduced-motion 分支
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) {
+    gsap.to(lockOverlay, {
+      opacity: 0,
+      duration: 0.1,
+      ease: 'linear',
+      onComplete: resetToPrepClean
+    });
+    return;
+  }
+
+  // GSAP 展开反向动画 Timeline (0.6s, power3.inOut 对称)
+  stage.classList.remove('stage-running');
+  stage.classList.add('stage-prep');
+
+  runTimeline = gsap.timeline({
+    onComplete: resetToPrepClean
+  });
+
+  // (1) 卡头迅速抽回 (0.18s)
+  runTimeline.to(insertedHead, { y: -20, opacity: 0, duration: 0.18, ease: 'power2.in' }, 0);
+
+  // (2) 蒙版锁定层淡出 (0.25s)
+  runTimeline.to(lockOverlay, { opacity: 0, duration: 0.25, ease: 'power2.inOut' }, 0);
+
+  // (3) 票卡宽度从 220 展开回准备态宽度 (0.6s, power3.inOut)
+  runTimeline.fromTo(leftCol,
+    { width: startColWidth },
+    { width: targetColWidth, duration: 0.6, ease: 'power3.inOut' },
+    0
+  );
 }
 
 function pauseToggle() {
