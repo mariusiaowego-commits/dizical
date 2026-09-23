@@ -16,7 +16,7 @@
     --c-muted: #666666;
     --c-accent: #FF8C5A;
     --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
-    --practice-mask-color: rgba(44, 62, 80, 0.35);
+    --practice-mask-color: rgba(44, 62, 80, 0.175);
   }
   [data-theme="dizicute"] {
     --surface-page: var(--c-tertiary);
@@ -44,15 +44,26 @@
 
   *, *::before, *::after { box-sizing: border-box; }
 
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; min-height: 100vh; }
   body {
     background: var(--surface-page);
     color: var(--text-main);
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    padding: 10px 16px 20px;
+    padding: 8px 16px 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+  }
+  #practiceStage {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
   }
 
   [hidden] { display: none !important; }
@@ -60,6 +71,7 @@
   /* 状态切换作用域显隐 */
   #practiceStage.stage-prep .prep-only { display: flex; }
   #practiceStage.stage-prep .prep-only-block { display: block; }
+  #practiceStage.stage-prep .pk-session-slot.prep-only { display: block; width: 100%; }
   #practiceStage.stage-prep .run-only { display: none !important; }
   #practiceStage.stage-prep .run-only-block { display: none !important; }
 
@@ -115,7 +127,7 @@
     max-width: 1280px;
     width: 100%;
     height: 40px;
-    margin: 0 auto 10px;
+    margin: 0 auto 8px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -211,15 +223,17 @@
 
   /* ══════ 主舞台布局（多设备三档形态适配 · 与 pk-top 严格对齐左右边缘） ══════ */
   .pk-stage-wrap {
+    flex: 1 1 auto;
     display: flex;
     gap: 24px;
-    align-items: start;
+    align-items: stretch;
     justify-content: flex-start;
     max-width: 1280px;
     width: 100%;
     margin: 0 auto;
     padding: 0;
     box-sizing: border-box;
+    min-height: calc(100vh - 80px);
     transition: gap 0.55s ease;
   }
 
@@ -231,6 +245,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    align-self: stretch;
     container-type: inline-size;
     container-name: ticket;
     transform-origin: left center;
@@ -244,6 +259,7 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    align-self: stretch;
     transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
@@ -361,23 +377,27 @@
     position: relative;
     overflow: visible;
     user-select: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 520px;
   }
 
-  /* 蒙版锁定层（练习态票卡变淡 + 灰蒙版，支持 --practice-mask-color 变量） */
+  /* 蒙版锁定层（练习态票卡变淡 + 灰蒙版，纯色无模糊，支持 --practice-mask-color 变量） */
   .pk-ticket-lock-overlay {
     position: absolute;
     inset: 0;
-    background: var(--practice-mask-color, rgba(44, 62, 80, 0.35));
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.175));
     border-radius: inherit;
     z-index: 20;
     display: none;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 12px;
+    justify-content: flex-end;
+    padding: 0 14px 80px;
     opacity: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.175s ease;
     pointer-events: none;
   }
   .pk-ticket-lock-badge {
@@ -487,9 +507,7 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--c-tertiary);
-    background: rgba(44, 62, 80, 0.50);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(44, 62, 80, 0.70);
     padding: 3px 10px;
     border-radius: 9999px;
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -649,6 +667,8 @@
     gap: 6px;
     margin-top: 6px;
     position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   /* 2 排 Session 胶囊标签网格（始终可见，<= 2 排） */
@@ -725,7 +745,7 @@
     padding: 10px 12px;
     border-radius: 10px;
     background: rgba(44, 62, 80, 0.03);
-    margin-top: 16px;
+    margin-top: auto;
   }
   .pk-memo-row {
     display: flex;
@@ -791,8 +811,9 @@
     width: 220px;
   }
   #practiceStage.stage-running .pk-ticket {
-    height: 578px;
-    min-height: 578px;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 520px;
     padding: 12px 14px 14px;
     box-sizing: border-box;
     display: flex;
@@ -805,21 +826,22 @@
     font-size: 10px;
   }
   #practiceStage.stage-running .pk-ticket-hero-frame {
-    width: 72px;
-    height: 72px;
-    margin: 0 auto;
-    border-radius: 8px;
+    width: 112px;
+    height: 112px;
+    margin: 4px auto 0;
+    border-radius: 12px;
   }
   #practiceStage.stage-running .pk-ticket-hero-tag {
     display: none !important;
   }
   #practiceStage.stage-running .pk-ticket-subject-block {
-    margin-top: 8px;
+    margin-top: 10px;
     padding: 0;
   }
   #practiceStage.stage-running .pk-ticket-subject-title {
-    font-size: 16px !important;
-    line-height: 1.25;
+    font-size: 18px !important;
+    line-height: 1.3;
+    font-weight: 700;
   }
   #practiceStage.stage-running .pk-ticket-subject-sub {
     display: none !important;
@@ -827,19 +849,19 @@
   #practiceStage.stage-running .pk-ticket-digits-grid {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-top: 10px;
+    gap: 8px;
+    margin-top: 12px;
   }
   #practiceStage.stage-running .pk-ticket-num-col {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 8px;
+    padding: 8px 12px;
     background: rgba(44, 62, 80, 0.035);
-    border-radius: 6px;
+    border-radius: 8px;
     width: 100%;
-    min-height: 28px;
+    min-height: 38px;
   }
   #practiceStage.stage-running .pk-num-stepper-wrap {
     display: flex;
@@ -847,15 +869,21 @@
     gap: 2px;
   }
   #practiceStage.stage-running .pk-bignum-val {
-    font-size: 13.5px;
+    font-size: 16px;
     font-weight: 700;
     line-height: 1;
   }
   #practiceStage.stage-running .pk-perforation-line {
-    margin: 16px -14px 16px;
+    margin: 18px -14px 18px;
+  }
+  #practiceStage.stage-running .pk-ticket-stub-col {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
   #practiceStage.stage-running .pk-stub-memo-block {
-    margin-top: 8px;
+    margin-top: auto;
     padding: 6px 8px;
     gap: 4px;
   }
@@ -871,7 +899,11 @@
   }
   #practiceStage.stage-running .pk-ticket-lock-overlay {
     display: flex;
-    background: var(--practice-mask-color, rgba(44, 62, 80, 0.35));
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 14px 80px;
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.175));
   }
   #practiceStage.stage-running .pk-ticket-lock-badge {
     font-size: 11px;
@@ -881,13 +913,13 @@
 
   /* 计时态单行指标标签与单位 */
   .pk-collapsed-metric-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
     letter-spacing: 0.02em;
   }
   .pk-collapsed-metric-unit {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
     margin-left: 2px;
@@ -898,16 +930,17 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
     background: rgba(255, 107, 107, 0.08);
     border: 1px solid rgba(255, 107, 107, 0.18);
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--c-primary);
     font-weight: 600;
-    margin-top: 4px;
+    margin-top: 6px;
     width: 100%;
+    min-height: 36px;
     box-sizing: border-box;
   }
   .pk-collapsed-session-label {
@@ -960,18 +993,33 @@
   .pk-session-slot {
     position: relative;
     width: 100%;
+    display: block;
+    box-sizing: border-box;
   }
-  .pss-anchor { position: relative; width: 100%; }
+  .pss {
+    width: 100%;
+    display: block;
+    box-sizing: border-box;
+  }
+  .pss-anchor {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+  }
   .pss-bar {
     display: flex;
     align-items: center;
     gap: 4px;
-    min-height: 48px;
-    padding: 3px 4px;
-    border-radius: 14px;
+    width: 100%;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0 4px;
+    border-radius: 9999px;
     border: 1px solid rgba(44, 62, 80, 0.12);
     background: var(--surface-card);
     box-shadow: var(--shadow-ticket);
+    box-sizing: border-box;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .pss-bar:focus-within {
@@ -980,12 +1028,12 @@
   }
   .pss-plus,
   .pss-clear {
-    flex: 0 0 auto;
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    min-height: 44px;
-    border-radius: 10px;
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    border-radius: 9999px;
     border: 0;
     background: transparent;
     display: inline-flex;
@@ -995,7 +1043,16 @@
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    position: relative;
+    box-sizing: border-box;
     transition: background 0.15s ease, color 0.15s ease;
+  }
+  /* 触控热区保证 ≥ 44px */
+  .pss-plus::after,
+  .pss-clear::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
   }
   .pss-plus:hover,
   .pss-clear:hover {
@@ -1011,16 +1068,18 @@
   .pss-input {
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 44px;
+    height: 34px;
+    min-height: 34px;
+    line-height: 34px;
     border: 0;
     margin: 0;
-    padding: 0 4px;
+    padding: 0 8px;
     background: transparent;
     color: var(--text-main);
     font-size: 13.5px;
-    line-height: 1.3;
     outline: none;
     font-family: inherit;
+    box-sizing: border-box;
   }
   .pss-input::placeholder { color: var(--text-muted); opacity: 0.75; }
 
@@ -1376,6 +1435,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1 1 auto;
+    min-height: 180px;
   }
   .pk-req-list {
     margin: 4px 0;
@@ -1406,8 +1467,6 @@
     justify-content: center;
     padding: 20px;
     z-index: 100;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
   }
   .pk-folio-modal.open { display: flex; }
   .pk-folio-box {
@@ -1458,8 +1517,6 @@
     justify-content: center;
     padding: 24px;
     z-index: 100;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
   }
   .pk-overlay.open { display: flex; }
   .pk-reader {
@@ -1502,26 +1559,36 @@
   }
 
   .pk-footer-note {
-    max-width: 1060px;
-    margin: 6px auto 0;
-    font-size: 11px;
-    color: var(--text-muted);
-    line-height: 1.35;
-    padding: 0 8px;
+    display: flex;
+    justify-content: center;
+    max-width: 1280px;
+    margin: 4px auto 0;
+    padding: 0;
+    box-sizing: border-box;
   }
-  @media (max-height: 800px) {
-    body {
-      padding: 6px 16px 8px;
-    }
-    .pk-top {
-      margin: 0 auto 6px;
-    }
-    .pk-footer-note {
-      margin: 4px auto 0;
-      font-size: 10px;
-      line-height: 1.3;
-      opacity: 0.65;
-    }
+  .pk-demo-notes-fold {
+    text-align: center;
+  }
+  .pk-demo-notes-summary {
+    list-style: none;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    opacity: 0.55;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: opacity 0.15s ease;
+  }
+  .pk-demo-notes-summary::-webkit-details-marker { display: none; }
+  .pk-demo-notes-summary:hover { opacity: 0.9; }
+  .pk-demo-notes-text {
+    margin: 4px auto 0;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--text-muted);
+    opacity: 0.7;
+    max-width: 860px;
+    text-align: left;
   }
 </style>
 </head>
@@ -1643,7 +1710,7 @@
                 <span class="pk-memo-label">档案编号</span>
                 <span class="pk-memo-val mono" id="pkMemoIdVal">No.1034</span>
               </div>
-              <div class="pk-barcode-wrap prep-only" title="科目条码档案">
+              <div class="pk-barcode-wrap" title="科目条码档案">
                 <svg class="pk-barcode-svg" viewBox="0 0 56 10" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <rect x="0" y="0" width="1.5" height="10"/><rect x="3" y="0" width="1" height="10"/><rect x="6" y="0" width="2" height="10"/><rect x="10" y="0" width="1" height="10"/><rect x="13" y="0" width="2.5" height="10"/><rect x="17" y="0" width="1" height="10"/><rect x="20" y="0" width="2" height="10"/><rect x="24" y="0" width="1.5" height="10"/><rect x="27" y="0" width="2" height="10"/><rect x="31" y="0" width="1" height="10"/><rect x="34" y="0" width="2" height="10"/><rect x="38" y="0" width="1" height="10"/><rect x="41" y="0" width="2" height="10"/><rect x="45" y="0" width="1.5" height="10"/><rect x="48" y="0" width="2" height="10"/><rect x="52" y="0" width="1.5" height="10"/>
                 </svg>
@@ -1760,9 +1827,14 @@
   </main>
 
   <footer class="pk-footer-note">
-    高保真 demo v4：艺术展票务卡片形态（练习票卡）+ 顶部名画插图 + 并排大数字 + 撕裂虚线 + 票根条形码；<br>
-    点击「检票 · 开始练习」触发打卡机式插卡动效，露出的票卡头部与单字打孔成为唯一识别体；<br>
-    仪表盘核心参数总线（曲目、分句、速度）居于第一焦点；刻度尺走动与交互 100% 保持未改动真件逻辑。
+    <details class="pk-demo-notes-fold">
+      <summary class="pk-demo-notes-summary">demo 架构说明 ▾</summary>
+      <div class="pk-demo-notes-text">
+        高保真 demo v4：艺术展票务卡片形态（练习票卡）+ 顶部名画插图 + 并排大数字 + 撕裂虚线 + 票根条形码；<br>
+        点击「检票 · 开始练习」触发打卡机式插卡动效，露出的票卡头部与单字打孔成为唯一识别体；<br>
+        仪表盘核心参数总线（曲目、分句、速度）居于第一焦点；刻度尺走动与交互 100% 保持未改动真件逻辑。
+      </div>
+    </details>
   </footer>
 
 </div>
@@ -2617,7 +2689,7 @@ function renderReq() {
 /* 页面配置接口（dad 第 3.1 条：蒙版颜色可配置） */
 window.PracticePageConfig = {
   get maskColor() {
-    return getComputedStyle(document.documentElement).getPropertyValue('--practice-mask-color').trim() || 'rgba(44, 62, 80, 0.35)';
+    return getComputedStyle(document.documentElement).getPropertyValue('--practice-mask-color').trim() || 'rgba(44, 62, 80, 0.175)';
   },
   set maskColor(val) {
     document.documentElement.style.setProperty('--practice-mask-color', val);
@@ -2770,7 +2842,7 @@ function enterRun() {
     return;
   }
 
-  // GSAP 完整动画 Timeline（0.6s, power3.inOut 对称，stagger 0.05, overwrite: 'auto'）
+  // GSAP 完整动画 Timeline（0.42s = 0.6s * 0.7, power3.inOut 对称，stagger 0.035, overwrite: 'auto'）
   lockOverlay.style.display = 'flex';
   stage.classList.remove('stage-prep');
   stage.classList.add('stage-running');
@@ -2787,34 +2859,34 @@ function enterRun() {
     }
   });
 
-  // (1) 票卡以左边框为轴心，宽度从初始宽度纵向向左推进收窄 (0.6s, power3.inOut)
+  // (1) 票卡以左边框为轴心，宽度从初始宽度纵向向左推进收窄 (0.42s, power3.inOut)
   runTimeline.fromTo(leftCol,
     { width: startColWidth },
-    { width: targetColWidth, duration: 0.6, ease: 'power3.inOut' },
+    { width: targetColWidth, duration: 0.42, ease: 'power3.inOut' },
     0
   );
 
-  // (2) 蒙版锁定层淡入 (0.25s)
+  // (2) 蒙版锁定层淡入 (0.175s)
   runTimeline.fromTo(lockOverlay,
     { opacity: 0 },
-    { opacity: 1, duration: 0.25, ease: 'power2.out' },
+    { opacity: 1, duration: 0.175, ease: 'power2.out' },
     0
   );
 
-  // (3) 打卡机卡头滑入插槽 (0.32s back.out)
+  // (3) 打卡机卡头滑入插槽 (0.22s back.out)
   runTimeline.fromTo(insertedHead,
     { y: -24, opacity: 0, scale: 0.96 },
-    { y: 0, opacity: 1, scale: 1, duration: 0.32, ease: 'back.out(1.5)' },
-    0.1
+    { y: 0, opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(1.5)' },
+    0.07
   );
 
-  // (4) 仪表核心参数总线分项交错显现 (stagger 0.05s, 0.28s)
+  // (4) 仪表核心参数总线分项交错显现 (stagger 0.035s, 0.2s)
   const teleItems = runTelemetry ? runTelemetry.querySelectorAll('.pk-tele-block') : [];
   if (teleItems.length) {
     runTimeline.fromTo(teleItems,
       { y: 10, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out' },
-      0.15
+      { y: 0, opacity: 1, duration: 0.2, stagger: 0.035, ease: 'power2.out' },
+      0.1
     );
   }
 
@@ -2902,7 +2974,7 @@ function exitRun() {
     return;
   }
 
-  // GSAP 展开反向动画 Timeline (0.6s, power3.inOut 对称，overwrite: 'auto')
+  // GSAP 展开反向动画 Timeline (0.42s = 0.6s * 0.7, power3.inOut 对称，overwrite: 'auto')
   stage.classList.remove('stage-running');
   stage.classList.add('stage-prep');
 
@@ -2911,16 +2983,16 @@ function exitRun() {
     onComplete: resetToPrepClean
   });
 
-  // (1) 卡头迅速抽回 (0.18s)
-  runTimeline.to(insertedHead, { y: -20, opacity: 0, duration: 0.18, ease: 'power2.in' }, 0);
+  // (1) 卡头迅速抽回 (0.13s)
+  runTimeline.to(insertedHead, { y: -20, opacity: 0, duration: 0.13, ease: 'power2.in' }, 0);
 
-  // (2) 蒙版锁定层淡出 (0.25s)
-  runTimeline.to(lockOverlay, { opacity: 0, duration: 0.25, ease: 'power2.inOut' }, 0);
+  // (2) 蒙版锁定层淡出 (0.175s)
+  runTimeline.to(lockOverlay, { opacity: 0, duration: 0.175, ease: 'power2.inOut' }, 0);
 
-  // (3) 票卡宽度从 220 展开回准备态宽度 (0.6s, power3.inOut)
+  // (3) 票卡宽度从 220 展开回准备态宽度 (0.42s, power3.inOut)
   runTimeline.fromTo(leftCol,
     { width: startColWidth },
-    { width: targetColWidth, duration: 0.6, ease: 'power3.inOut' },
+    { width: targetColWidth, duration: 0.42, ease: 'power3.inOut' },
     0
   );
 }
