@@ -375,7 +375,7 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--c-tertiary);
-    background: rgba(44, 62, 80, 0.80);
+    background: rgba(44, 62, 80, 0.50);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     padding: 3px 10px;
@@ -396,7 +396,7 @@
   /* 艺术家姓名位（居中衬线科目名） */
   .pk-ticket-subject-block {
     text-align: center;
-    margin-top: 6px;
+    margin-top: 18px;
     padding: 0 4px;
     cursor: pointer;
   }
@@ -414,19 +414,17 @@
   .pk-ticket-subject-sub {
     font-size: 11px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 4px;
     letter-spacing: 0.02em;
   }
 
-  /* 并排大数字（左：速度BPM，右：时长分钟） */
+  /* 并排大数字（左：速度BPM，右：时长分钟） - 删去三处线条，依靠 18px 组间距与 16px 列间隙自然分组 */
   .pk-ticket-digits-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 6px;
-    padding: 4px 0;
-    border-top: 1px solid rgba(44, 62, 80, 0.08);
-    border-bottom: 1px solid rgba(44, 62, 80, 0.08);
+    gap: 16px;
+    margin-top: 18px;
+    padding: 0;
   }
   .pk-ticket-num-col {
     display: flex;
@@ -436,17 +434,14 @@
     position: relative;
     padding: 0 4px;
   }
-  .pk-ticket-num-col:first-child {
-    border-right: 1px solid rgba(44, 62, 80, 0.08);
-  }
   .pk-bignum-val {
-    font-family: var(--font-serif);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
-    font-size: 32px;
-    font-weight: 300; /* 细体衬线 */
+    font-size: 30px;
+    font-weight: 700;
     color: var(--text-main);
     line-height: 1;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
 
   /* 44px 触控命中区与注解交互 */
@@ -505,33 +500,34 @@
     color: var(--c-primary);
   }
 
-  /* 撕裂虚线（带两侧内侧半圆咬口缺角 · 外侧完全裁切无残留） */
+  /* 撕裂虚线（带两侧内凹半圆咬口缺角 · 票卡外框灰色线沿半圆绕行，外侧无直穿灰线，无外凸线） */
   .pk-perforation-line {
     position: relative;
     height: 0;
     border-top: 2px dashed rgba(44, 62, 80, 0.20);
-    margin: 8px -14px 6px;
+    margin: 18px -14px 18px;
   }
   .pk-perf-notch-left, .pk-perf-notch-right {
     position: absolute;
-    top: -9px;
-    width: 9px;
-    height: 18px;
+    top: -10px;
+    width: 11px;
+    height: 20px;
     background: var(--surface-page);
-    border: 1px solid rgba(44, 62, 80, 0.14);
+    border: 1px solid rgba(44, 62, 80, 0.12);
     box-sizing: border-box;
+    z-index: 2;
   }
   .pk-perf-notch-left {
-    left: 0;
-    border-radius: 0 9px 9px 0;
+    left: -1px;
+    border-radius: 0 10px 10px 0;
     border-left: none;
-    box-shadow: inset -2px 0 3px rgba(44, 62, 80, 0.05);
+    box-shadow: inset -1px 0 2px rgba(44, 62, 80, 0.04);
   }
   .pk-perf-notch-right {
-    right: 0;
-    border-radius: 9px 0 0 9px;
+    right: -1px;
+    border-radius: 10px 0 0 10px;
     border-right: none;
-    box-shadow: inset 2px 0 3px rgba(44, 62, 80, 0.05);
+    box-shadow: inset 1px 0 2px rgba(44, 62, 80, 0.04);
   }
 
   /* 票根区（composer + 2排胶囊标签 + 科目独立信息备注区） */
@@ -609,30 +605,53 @@
     display: inline-block;
   }
 
-  /* ══════ 科目独立信息备注区（参考图 A 重做，紧凑双行布局） ══════ */
+  /* ══════ 科目档案信息区（Dad 选项 B：仅 档案编号 + 真实分类字段，无装饰） ══════ */
   .pk-stub-memo-block {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 6px 8px;
+    gap: 8px;
+    padding: 10px 12px;
     border-radius: 10px;
     background: rgba(44, 62, 80, 0.03);
-    border: 1px solid rgba(44, 62, 80, 0.06);
-    margin-top: 2px;
+    margin-top: 16px;
   }
-  .pk-memo-kicker-row {
+  .pk-memo-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    min-height: 20px;
   }
-  .pk-memo-kicker {
-    font-size: 9.5px;
+  .pk-memo-label {
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.05em;
     color: var(--text-muted);
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
     white-space: nowrap;
+  }
+  .pk-memo-val {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    letter-spacing: 0.01em;
+  }
+  .pk-memo-val.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .pk-memo-num-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  /* 模块内仅允许的唯一一条分割细线 */
+  .pk-memo-rule {
+    height: 1px;
+    background: rgba(44, 62, 80, 0.08);
+    width: 100%;
   }
   .pk-barcode-wrap {
     display: flex;
@@ -643,93 +662,24 @@
   .pk-barcode-svg {
     width: 56px;
     height: 10px;
-    opacity: 0.75;
+    opacity: 0.65;
     flex-shrink: 0;
   }
   .pk-barcode-code {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 9px;
+    font-size: 9.5px;
     font-weight: 600;
     color: var(--text-muted);
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
-  .pk-memo-main-band {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    min-height: 32px;
-  }
-  .pk-memo-left-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-  .pk-memo-vert-bar {
-    width: 3px;
-    height: 24px;
-    background: var(--c-primary);
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-  .pk-memo-text-stack {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-  .pk-memo-subject-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .pk-memo-requirement {
-    font-size: 10.5px;
-    color: var(--text-muted);
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-  .pk-memo-right-number {
-    display: flex;
-    align-items: baseline;
-    gap: 1px;
-    flex-shrink: 0;
-    text-align: right;
-    line-height: 1.25;
-  }
-  .pk-memo-num-prefix {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-  .pk-memo-bignum {
-    font-family: var(--font-serif);
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1.35;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-    display: inline-block;
-    min-height: 32px;
-  }
 
-  /* 票卡主 CTA */
+  /* 仪表区主 CTA（刻度尺下方核心按钮） */
   .pk-ticket-cta {
     width: 100%;
-    min-height: 44px;
-    border-radius: 22px;
+    max-width: 280px;
+    min-height: 48px;
+    border-radius: 24px;
     cursor: pointer;
     font: inherit;
     font-size: 16px;
@@ -748,7 +698,7 @@
   .pk-ticket-cta:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; }
   .pk-why-hint {
     text-align: center;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-muted);
     min-height: 16px;
     margin-top: 2px;
@@ -1111,7 +1061,7 @@
 
   /* 底部按键总线 */
   .pk-slot4-box {
-    height: 52px;
+    min-height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1418,40 +1368,29 @@
             <div class="pk-session-tags-grid" id="pkSessionTags"></div>
           </div>
 
-          <!-- ③ 科目独立信息备注区（参考图 A 重做，结构化档案索引） -->
+          <!-- ③ 科目档案信息区（按 Dad Option B：仅 档案编号 + 真实分类字段，无要求文本） -->
           <div class="pk-stub-memo-block" id="pkStubMemoBlock">
-            <!-- 顶行：分类/平台小字（左对齐） + 条形码与编码（右对齐） -->
-            <div class="pk-memo-kicker-row">
-              <span class="pk-memo-kicker">DIZICAL · 竹笛练习档案</span>
-              <div class="pk-barcode-wrap">
+            <div class="pk-memo-row">
+              <span class="pk-memo-label">科目分类</span>
+              <span class="pk-memo-val" id="pkMemoCategory">基本功</span>
+            </div>
+            <div class="pk-memo-rule" aria-hidden="true"></div>
+            <div class="pk-memo-row">
+              <div class="pk-memo-num-wrap">
+                <span class="pk-memo-label">档案编号</span>
+                <span class="pk-memo-val mono" id="pkMemoIdVal">No.1034</span>
+              </div>
+              <div class="pk-barcode-wrap" title="科目条码档案">
                 <svg class="pk-barcode-svg" viewBox="0 0 56 10" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <rect x="0" y="0" width="1.5" height="10"/><rect x="3" y="0" width="1" height="10"/><rect x="6" y="0" width="2" height="10"/><rect x="10" y="0" width="1" height="10"/><rect x="13" y="0" width="2.5" height="10"/><rect x="17" y="0" width="1" height="10"/><rect x="20" y="0" width="2" height="10"/><rect x="24" y="0" width="1.5" height="10"/><rect x="27" y="0" width="2" height="10"/><rect x="31" y="0" width="1" height="10"/><rect x="34" y="0" width="2" height="10"/><rect x="38" y="0" width="1" height="10"/><rect x="41" y="0" width="2" height="10"/><rect x="45" y="0" width="1.5" height="10"/><rect x="48" y="0" width="2" height="10"/><rect x="52" y="0" width="1.5" height="10"/>
                 </svg>
                 <span class="pk-barcode-code" id="pkTicketBarcodeCode">DZ-1034-W</span>
               </div>
             </div>
-            <!-- 主带：左侧细竖条+粗体标题+短要求，右侧超大档案编号 -->
-            <div class="pk-memo-main-band">
-              <div class="pk-memo-left-group">
-                <div class="pk-memo-vert-bar"></div>
-                <div class="pk-memo-text-stack">
-                  <div class="pk-memo-subject-title" id="pkMemoSubject">吸气长音</div>
-                  <div class="pk-memo-requirement" id="pkMemoSnippet">使劲吹响，耳朵震</div>
-                </div>
-              </div>
-              <div class="pk-memo-right-number" title="科目档案索引编号">
-                <span class="pk-memo-num-prefix">No.</span>
-                <span class="pk-memo-bignum" id="pkMemoIdVal">1034</span>
-              </div>
-            </div>
           </div>
         </div>
 
       </article>
-
-      <!-- 票卡下方主 CTA -->
-      <button class="pk-ticket-cta" id="pkStartBtn">检票 · 开始练习</button>
-      <div class="pk-why-hint" id="pkWhy"></div>
 
     </aside>
 
@@ -1465,7 +1404,7 @@
         <div class="pk-punch-slot-wrap" id="pkPunchSlotWrap">
           <!-- 准备态待机插槽 -->
           <div class="pk-slot-idle prep-only" id="pkSlotIdle">
-            <span>打卡机入卡槽 · 点击左侧「检票 · 开始练习」自动插入票卡</span>
+            <span>打卡机入卡槽 · 点击下方「检票 · 开始练习」自动插入票卡</span>
             <span class="pk-slot-idle-badge">待命入槽</span>
           </div>
 
@@ -1520,14 +1459,15 @@
 
         <!-- Slot 4：底部控制按键总线 -->
         <div class="pk-slot4-box">
+          <!-- 准备态主 CTA：检票 · 开始练习 + 禁用原因提示 -->
+          <div class="prep-only" style="flex-direction:column;align-items:center;gap:6px;width:100%">
+            <button class="pk-ticket-cta" id="pkStartBtn">检票 · 开始练习</button>
+            <div class="pk-why-hint" id="pkWhy"></div>
+          </div>
           <!-- 练习态控制条 -->
           <div class="run-only" style="align-items:center;justify-content:center;gap:18px;width:100%">
             <button class="pk-cta w180 secondary" id="pkPauseBtn">暂停</button>
             <button class="pk-cta ghost" id="pkEarlyBtn">提前结束</button>
-          </div>
-          <!-- 准备态空位（主 CTA 位于票卡下方，两态高度自闭环） -->
-          <div class="prep-only" style="align-items:center;justify-content:center;color:var(--text-muted);font-size:12.5px">
-            <span>调节时间可直接滑动上方刻度尺，或点按票卡右侧时长数字</span>
           </div>
         </div>
 
@@ -1994,6 +1934,19 @@
 
 <!-- ══════════ 业务交互与打卡动效引擎 ══════════ -->
 <script>
+// 生产库科目真实分类字典（practice_categories 关联映射）
+const ITEM_CATEGORIES = {
+  1001: "基本功", 1002: "基本功", 1003: "曲子", 1004: "曲子", 1005: "基本功",
+  1006: "基本功", 1007: "基本功", 1008: "基本功", 1009: "基本功", 1010: "基本功",
+  1011: "基本功", 1012: "基本功", 1013: "基本功", 1014: "基本功", 1015: "演唱",
+  1016: "曲子", 1017: "曲子", 1018: "基本功", 1019: "基本功", 1020: "基本功",
+  1021: "基本功", 1022: "基本功", 1023: "基本功", 1024: "单音", 1025: "基本功",
+  1026: "曲子", 1027: "曲子", 1028: "演唱", 1029: "基本功", 1030: "基本功",
+  1032: "曲子", 1034: "基本功", 1035: "基本功", 1036: "曲子", 1037: "基本功",
+  1038: "基本功", 1039: "基本功", 1337: "曲子", 1338: "上课", 1339: "上课",
+  1340: "曲子", 1341: "演唱", 1343: "基本功", 1344: "演唱", 1346: "曲子"
+};
+
 const ITEMS = {
   focus: [
     {
@@ -2288,18 +2241,11 @@ function renderTicket() {
   const bc = document.getElementById('pkTicketBarcodeCode');
   if (bc) bc.textContent = 'DZ-' + cur.id + '-W';
 
-  // 票根区：科目独立信息备注区（参考图 A 重做，结构化档案索引）
-  const memoSub = document.getElementById('pkMemoSubject');
-  if (memoSub) memoSub.textContent = cur.name;
-  const memoSnip = document.getElementById('pkMemoSnippet');
-  if (memoSnip) {
-    const rawNote = (cur.reqItems && cur.reqItems[0]) || cur.reqSnippet || "按老师要求练习";
-    const cleanText = rawNote.replace(/<[^>]+>/g, '').trim();
-    memoSnip.textContent = cleanText.length > 14 ? cleanText.slice(0, 13) + '…' : cleanText;
-    memoSnip.title = cleanText;
-  }
-  const memoId = document.getElementById('pkMemoIdVal');
-  if (memoId) memoId.textContent = cur.id;
+  // 票根区：科目档案信息区（Dad 选项 B：仅 档案编号 + 真实分类字段，无要求文本）
+  const catEl = document.getElementById('pkMemoCategory');
+  if (catEl) catEl.textContent = cur.category || ITEM_CATEGORIES[cur.id] || "曲目";
+  const idEl = document.getElementById('pkMemoIdVal');
+  if (idEl) idEl.textContent = "No." + cur.id;
 
   // 渲染 2 排胶囊标签
   renderSessionPills();
