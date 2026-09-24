@@ -16,7 +16,7 @@
     --c-muted: #666666;
     --c-accent: #FF8C5A;
     --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
-    --practice-mask-color: rgba(44, 62, 80, 0.175);
+    --practice-mask-color: rgba(44, 62, 80, 0.0875);
   }
   [data-theme="dizicute"] {
     --surface-page: var(--c-tertiary);
@@ -72,6 +72,7 @@
   #practiceStage.stage-prep .prep-only { display: flex; }
   #practiceStage.stage-prep .prep-only-block { display: block; }
   #practiceStage.stage-prep .pk-session-slot.prep-only { display: block; width: 100%; }
+  #practiceStage.stage-prep .pk-subject-info-card.prep-only { display: grid; }
   #practiceStage.stage-prep .run-only { display: none !important; }
   #practiceStage.stage-prep .run-only-block { display: none !important; }
 
@@ -278,6 +279,253 @@
     }
   }
 
+  /* iPad mini / iPad 沉浸式一屏适配（1133x744 / 1024x768 零页面滚动） */
+  @media (min-width: 1024px) and (max-height: 800px) {
+    html, body {
+      height: 100vh;
+      overflow-y: hidden !important;
+    }
+    body {
+      padding: 3px 6px;
+    }
+    .pk-top {
+      height: 32px;
+      margin-bottom: 4px;
+      padding: 0 6px;
+    }
+    .pk-stage-wrap {
+      min-height: 0;
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      gap: 12px;
+    }
+    .pk-ticket {
+      padding: 8px 10px;
+    }
+    .pk-ticket .pk-ticket-hero-frame {
+      height: 84px;
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-ticket-subject-block {
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-ticket-subject-title {
+      font-size: 19px;
+    }
+    .pk-ticket .pk-ticket-subject-sub {
+      font-size: 10.5px;
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-ticket-digits-grid {
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-bignum-val {
+      font-size: 24px;
+    }
+    .pk-ticket .pk-session-slot {
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-session-tags-wrap {
+      margin-top: 4px;
+      margin-bottom: 12px;
+    }
+    .pk-ticket .pk-perforation-line {
+      margin: 6px -10px;
+    }
+    .pk-ticket .pk-subject-info-card {
+      padding: 5px 8px;
+      margin-top: 3px;
+      margin-bottom: 3px;
+    }
+    .pk-ticket .pk-stub-memo-block {
+      padding: 5px 8px;
+      gap: 3px;
+    }
+    .pk-ticket .pk-memo-row {
+      min-height: 16px;
+    }
+    .pk-main-col {
+      gap: 8px;
+    }
+    .pk-instr-deck {
+      padding: 8px 12px;
+      gap: 6px;
+    }
+    .pk-slot-idle {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+    .pk-slot2-box {
+      padding: 6px 8px;
+    }
+    .pk-slot4-box {
+      margin-top: 4px;
+    }
+    .pk-ticket-cta {
+      padding: 7px 14px;
+      font-size: 13.5px;
+    }
+    .pk-req-card {
+      padding: 8px 12px;
+      gap: 4px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .pk-req-card .pk-card-title {
+      font-size: 12px;
+    }
+    .pk-req-list {
+      max-height: 74px;
+      overflow-y: auto;
+      gap: 3px;
+      margin: 2px 0;
+    }
+    .pk-req-item {
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .pk-footer-note {
+      display: none !important;
+    }
+  }
+
+  /* PC 宽屏高度分配适配（1728x1117 / 1440x900 方案 A 竖向填充） */
+  @media (min-width: 1200px) and (min-height: 850px) {
+    html, body {
+      height: 100vh;
+      overflow-y: hidden !important;
+    }
+    body {
+      padding: 6px 16px;
+    }
+    .pk-top {
+      height: 36px;
+      margin-bottom: 6px;
+    }
+    .pk-stage-wrap {
+      min-height: 0;
+      height: calc(100vh - 68px);
+      max-height: calc(100vh - 68px);
+      gap: 16px;
+    }
+    .pk-ticket-hero-frame {
+      height: 168px;
+    }
+    #pkSubjectInfoCard, .pk-subject-info-card {
+      flex: 1 1 auto;
+      min-height: 0;
+      align-items: stretch;
+      grid-template-columns: 1fr 1fr;
+      padding: 12px 14px;
+      gap: 14px;
+      margin-top: 8px;
+      margin-bottom: 0;
+    }
+    .pk-info-left-col {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .pk-info-bignum {
+      font-size: 36px;
+    }
+    .pk-info-unit {
+      font-size: 13px;
+    }
+    .pk-cal-wrap {
+      max-width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .pk-cal-month-badge {
+      font-size: 11px;
+    }
+    .pk-cal-weekdays {
+      font-size: 9.5px;
+      gap: 3.5px;
+    }
+    .pk-cal-grid {
+      grid-auto-rows: 1fr;
+      flex: 1 1 auto;
+      min-height: 0;
+      gap: 3.5px;
+      width: 100%;
+    }
+    .pk-cal-dot {
+      border-radius: 2.5px;
+    }
+    .pk-info-right-col {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .pk-info-stat-row {
+      flex: 1 1 auto;
+      min-height: 44px;
+      max-height: 56px;
+      padding: 4px 0;
+    }
+    .pk-info-icon-disc {
+      width: 22px;
+      height: 22px;
+    }
+    .pk-info-icon-svg {
+      width: 13px;
+      height: 13px;
+    }
+    .pk-info-row-title {
+      font-size: 12.5px;
+    }
+    .pk-info-val-num {
+      font-size: 15px;
+    }
+    .pk-info-val-unit {
+      font-size: 11.5px;
+    }
+    .pk-ticket .pk-stub-memo-block, .pk-stub-memo-block {
+      margin-top: 10px;
+      padding: 12px 14px;
+      gap: 8px;
+    }
+    .pk-memo-row {
+      min-height: 24px;
+    }
+    .pk-memo-label {
+      font-size: 12px;
+    }
+    .pk-memo-val, .pk-memo-val.mono {
+      font-size: 13.5px;
+    }
+    #pkInstrCard, .pk-instr-deck {
+      flex: 1 1 auto;
+      min-height: 340px;
+      justify-content: flex-start;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+    #pkInstrCard .timer-block, .pk-instr-deck .timer-block {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #pkReqCard, .pk-req-card {
+      flex: 0 0 auto;
+      min-height: 0;
+      padding: 16px 20px;
+    }
+    .pk-footer-note {
+      display: none !important;
+    }
+  }
+
   /* ③ 窄屏（< 1024px，如 iPad 竖屏 744×1133、手机 440×956）：单列堆叠（与 pk-top 同宽对齐） */
   @media (max-width: 1023px) {
     .pk-top {
@@ -388,7 +636,7 @@
   .pk-ticket-lock-overlay {
     position: absolute;
     inset: 0;
-    background: var(--practice-mask-color, rgba(44, 62, 80, 0.175));
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.0875));
     border-radius: inherit;
     z-index: 20;
     display: none;
@@ -397,8 +645,11 @@
     justify-content: flex-end;
     padding: 0 14px 80px;
     opacity: 0;
-    transition: opacity 0.175s ease;
+    transition: opacity 0.18s ease;
     pointer-events: none;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
   }
   .pk-ticket-lock-badge {
     background: var(--surface-card);
@@ -671,40 +922,46 @@
     min-height: 0;
   }
 
-  /* 2 排 Session 胶囊标签网格（始终可见，<= 2 排） */
+  /* 2 排 Session 胶囊标签网格（统一左对齐，<= 2 排，长标签截断，better-layout） */
   .pk-session-tags-wrap {
     width: 100%;
     margin-top: 4px;
+    margin-bottom: 16px; /* 组间距 >= 2x 组内行间距(8px) */
   }
   .pk-session-tags-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    max-height: 60px;
+    column-gap: 5px; /* 行内 gap 5px */
+    row-gap: 8px;    /* 行间 gap 8px > 行内 gap */
+    max-height: 64px;
     min-height: 0;
     overflow: hidden;
+    justify-content: flex-start; /* 统一左对齐 */
+    align-items: center;
   }
   .pk-session-pill, .pk-session-tag {
-    height: 28px;
-    padding: 0 9px;
+    height: 26px;
+    padding: 0 8px;
     border-radius: 9999px;
     background: var(--surface-card);
     border: 1px solid rgba(44, 62, 80, 0.10);
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-main);
     cursor: pointer;
     white-space: nowrap;
-    max-width: 140px;
+    max-width: 145px; /* 限制长标签宽度，后续标签自然跟随 */
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    box-sizing: border-box;
+    flex: 0 0 auto;
   }
   .pk-session-pill:hover, .pk-session-tag:hover {
     border-color: rgba(44, 62, 80, 0.22);
@@ -735,6 +992,235 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     display: inline-block;
+  }
+
+  /* ══════ 科目历史信息模块（逐帧 copy 参考图 · 左右分栏 · 自然月日历打卡 + 4行真数） ══════ */
+  .pk-subject-info-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.76);
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    box-shadow: 0 1px 3px rgba(44, 62, 80, 0.03);
+    margin-top: 4px;
+    margin-bottom: 4px;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  /* 左分栏：累计练习天数 + 自然月日历网格 */
+  .pk-info-left-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+  }
+  .pk-info-metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1;
+  }
+  .pk-info-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+  .pk-info-bignum-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-top: 2px;
+    line-height: 1;
+  }
+  .pk-info-bignum {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 26px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .pk-info-unit {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  /* 自然月日历网格容器（尺寸 -10%：格子约 11.5px，圆角 2px，7 列日历，最大宽 96px） */
+  .pk-cal-wrap {
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+    max-width: 96px;
+    width: 100%;
+  }
+  .pk-cal-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1;
+    margin-bottom: 1.5px;
+  }
+  .pk-cal-month-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .pk-month-toggle-btn {
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(44, 62, 80, 0.05);
+    border: 1px solid rgba(44, 62, 80, 0.10);
+    border-radius: 3px;
+    padding: 1px 3px;
+    cursor: pointer;
+    line-height: 1.1;
+    user-select: none;
+    touch-action: manipulation;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .pk-month-toggle-btn:hover {
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+  }
+  .pk-cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2.5px;
+    text-align: center;
+    font-size: 7.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+    opacity: 0.85;
+  }
+  .pk-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2.5px;
+    width: 100%;
+  }
+  .pk-cal-dot {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 2px;
+    background: rgba(44, 62, 80, 0.08);
+    box-sizing: border-box;
+    display: block;
+    transition: background 0.15s ease;
+  }
+  .pk-cal-dot.is-active {
+    background: var(--c-primary);
+  }
+  .pk-cal-dot.is-empty {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* 右分栏：4 行科目数据，细线分隔，数值右对齐安全边距 */
+  .pk-info-right-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    border-left: 1px solid rgba(44, 62, 80, 0.06);
+    padding-left: 10px;
+    padding-right: 0;
+    margin: 0;
+  }
+  .pk-info-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 22px;
+    padding: 2.5px 0;
+    border-bottom: 1px solid rgba(44, 62, 80, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .pk-info-stat-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .pk-info-stat-row:first-child {
+    padding-top: 0;
+  }
+  .pk-info-row-lead {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+  .pk-info-icon-disc {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .pk-info-icon-disc.disc-dur {
+    background: rgba(255, 107, 107, 0.12);
+    color: var(--c-primary);
+  }
+  .pk-info-icon-disc.disc-count {
+    background: rgba(255, 140, 90, 0.14);
+    color: var(--c-accent);
+  }
+  .pk-info-icon-disc.disc-max {
+    background: rgba(255, 107, 107, 0.12);
+    color: var(--c-primary);
+  }
+  .pk-info-icon-disc.disc-cal {
+    background: rgba(44, 62, 80, 0.10);
+    color: var(--c-secondary);
+  }
+  .pk-info-icon-svg {
+    width: 10.5px;
+    height: 10.5px;
+    display: block;
+  }
+  .pk-info-row-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .pk-info-row-val {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 1.5px;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+  .pk-info-val-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-info-val-num.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: -0.01em;
+  }
+  .pk-info-val-unit {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
   }
 
   /* ══════ 科目档案信息区（Dad 选项 B：仅 档案编号 + 真实分类字段，无装饰） ══════ */
@@ -850,27 +1336,49 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
   }
   #practiceStage.stage-running .pk-ticket-num-col {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
+    display: grid;
+    grid-template-columns: 32px 1fr 30px;
+    align-items: baseline;
+    padding: 7px 12px;
     background: rgba(44, 62, 80, 0.035);
     border-radius: 8px;
     width: 100%;
-    min-height: 38px;
+    min-height: 36px;
+    box-sizing: border-box;
+  }
+  #practiceStage.stage-running .pk-collapsed-metric-label {
+    grid-column: 1;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-align: left;
   }
   #practiceStage.stage-running .pk-num-stepper-wrap {
+    grid-column: 2;
     display: flex;
-    align-items: center;
-    gap: 2px;
+    align-items: baseline;
+    justify-content: flex-start;
+    padding-left: 10px;
   }
   #practiceStage.stage-running .pk-bignum-val {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
+    line-height: 1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+  }
+  #practiceStage.stage-running .pk-collapsed-metric-unit {
+    grid-column: 3;
+    text-align: right;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
     line-height: 1;
   }
   #practiceStage.stage-running .pk-perforation-line {
@@ -882,13 +1390,91 @@
     flex-direction: column;
     min-height: 0;
   }
+
+  /* 计时态收拢卡自然月点阵图（充实下半段，保持卡片高度 0 差） */
+  .pk-collapsed-cal-block {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(44, 62, 80, 0.035);
+    border: 1px solid rgba(44, 62, 80, 0.06);
+    box-sizing: border-box;
+    width: 100%;
+  }
+  #practiceStage.stage-running .pk-collapsed-cal-block {
+    display: flex;
+  }
+  .pk-collapsed-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .pk-collapsed-cal-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .pk-collapsed-cal-stat {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--c-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-cal-weekdays.mini {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    text-align: center;
+    font-size: 7px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+    opacity: 0.8;
+    margin-bottom: 2px;
+    max-width: 82px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+  .pk-collapsed-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    max-width: 82px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+  .pk-collapsed-cal-grid .pk-cal-dot {
+    border-radius: 2px;
+  }
+
   #practiceStage.stage-running .pk-stub-memo-block {
     margin-top: auto;
-    padding: 6px 8px;
-    gap: 4px;
+    padding: 6px 10px;
+    gap: 0;
   }
-  #practiceStage.stage-running .pk-memo-row {
-    min-height: 16px;
+  #practiceStage.stage-running .pk-memo-row.memo-cat,
+  #practiceStage.stage-running .pk-memo-rule,
+  #practiceStage.stage-running .pk-barcode-wrap {
+    display: none !important;
+  }
+  #practiceStage.stage-running .pk-memo-row.memo-id {
+    min-height: 18px;
+    justify-content: center;
+    width: 100%;
+  }
+  #practiceStage.stage-running .pk-memo-num-wrap {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
   }
   #practiceStage.stage-running .pk-memo-label {
     font-size: 10px;
@@ -896,6 +1482,7 @@
   #practiceStage.stage-running .pk-memo-val,
   #practiceStage.stage-running .pk-memo-val.mono {
     font-size: 11px;
+    font-weight: 700;
   }
   #practiceStage.stage-running .pk-ticket-lock-overlay {
     display: flex;
@@ -903,7 +1490,10 @@
     align-items: center;
     justify-content: flex-end;
     padding: 0 14px 80px;
-    background: var(--practice-mask-color, rgba(44, 62, 80, 0.175));
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.0875));
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
   }
   #practiceStage.stage-running .pk-ticket-lock-badge {
     font-size: 11px;
@@ -1698,14 +2288,123 @@
             <span class="pk-collapsed-session-val" id="pkCollapsedSessionVal">未选内容</span>
           </div>
 
+          <!-- 计时态收拢卡自然月点阵图（充实下半段，保持卡片高度 0 差） -->
+          <div class="pk-collapsed-cal-block run-only" id="pkCollapsedCalBlock">
+            <div class="pk-collapsed-cal-header">
+              <span class="pk-collapsed-cal-title" id="pkCollapsedCalMonth">9月打卡</span>
+              <span class="pk-collapsed-cal-stat" id="pkCollapsedDaysVal">累计 101 天</span>
+            </div>
+            <div class="pk-cal-weekdays mini">
+              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+            </div>
+            <div class="pk-collapsed-cal-grid" id="pkCollapsedDotMatrix" aria-label="收拢态自然月练习日历"></div>
+          </div>
+
+          <!-- ═══ 科目历史信息模块（逐帧 copy 参考图 · 左右分栏 · 自然月日历打卡 + 4行真数） ═══ -->
+          <div class="pk-subject-info-card prep-only" id="pkSubjectInfoCard">
+            <!-- 左分栏：累计练习天数 + 自然月日历网格 -->
+            <div class="pk-info-left-col">
+              <div class="pk-info-metric-header">
+                <span class="pk-info-label">累计练习</span>
+              </div>
+              <div class="pk-info-bignum-wrap">
+                <span class="pk-info-bignum" id="pkSubjectDaysVal">101</span>
+              </div>
+              <div class="pk-cal-wrap">
+                <div class="pk-cal-header-row">
+                  <span class="pk-cal-month-badge" id="pkSubjectMonthIndicator">9月</span>
+                  <button type="button" class="pk-month-toggle-btn" id="pkMonthToggleBtn" onclick="toggleDemoMonth()" title="点击切换：9月(当月·云端真值) / 8月(历史数据)">切8月</button>
+                </div>
+                <div class="pk-cal-weekdays">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div class="pk-cal-grid" id="pkSubjectDotMatrix" aria-label="自然月练习日历"></div>
+              </div>
+            </div>
+
+            <!-- 右分栏：4行科目字段（时长·次数·最长·最近） -->
+            <div class="pk-info-right-col">
+              <!-- 行 1: 累计时长 -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-dur" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="8" cy="8" r="6"/>
+                      <polyline points="8 4.5 8 8 10.5 9.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">累计时长</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num" id="pkSubjectMinutesVal">1021</span>
+                  <span class="pk-info-val-unit">分</span>
+                </div>
+              </div>
+
+              <!-- 行 2: 练习次数 (打卡卡片图标) -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-count" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2.5" y="2.5" width="11" height="11" rx="2.5"/>
+                      <path d="M5.5 8l2 2 3.5-3.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">练习次数</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num" id="pkSubjectSessionsVal">200</span>
+                  <span class="pk-info-val-unit">次</span>
+                </div>
+              </div>
+
+              <!-- 行 3: 单次最长 (秒表图标) -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-max" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="8" cy="9" r="5.5"/>
+                      <line x1="8" y1="1.5" x2="8" y2="3.5"/>
+                      <line x1="6" y1="1.5" x2="10" y2="1.5"/>
+                      <line x1="8" y1="9" x2="10.5" y2="6.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">单次最长</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num mono" id="pkSubjectMaxVal">17</span>
+                  <span class="pk-info-val-unit">分</span>
+                </div>
+              </div>
+
+              <!-- 行 4: 最近练习 (日历图标) -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-cal" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2.5" y="3.5" width="11" height="10" rx="2"/>
+                      <line x1="2.5" y1="7" x2="13.5" y2="7"/>
+                      <line x1="5.5" y1="2" x2="5.5" y2="4.5"/>
+                      <line x1="10.5" y1="2" x2="10.5" y2="4.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">最近练习</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num mono" id="pkSubjectLastVal">1天前</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- ③ 科目档案信息区（按 Dad Option B：仅 档案编号 + 真实分类字段，无要求文本） -->
           <div class="pk-stub-memo-block" id="pkStubMemoBlock">
-            <div class="pk-memo-row">
+            <div class="pk-memo-row memo-cat">
               <span class="pk-memo-label">科目分类</span>
               <span class="pk-memo-val" id="pkMemoCategory">基本功</span>
             </div>
             <div class="pk-memo-rule" aria-hidden="true"></div>
-            <div class="pk-memo-row">
+            <div class="pk-memo-row memo-id">
               <div class="pk-memo-num-wrap">
                 <span class="pk-memo-label">档案编号</span>
                 <span class="pk-memo-val mono" id="pkMemoIdVal">No.1034</span>
@@ -2287,6 +2986,53 @@ const ITEM_CATEGORIES = {
   1340: "曲子", 1341: "演唱", 1343: "基本功", 1344: "演唱", 1346: "曲子"
 };
 
+// 生产库科目历史真实统计字典（CloudBase MySQL 云端真值，截止 2026-09-24）
+const ITEM_STATS = {
+  1001: { id: 1001, name: "基本功", days: 130, sessions: 130, minutes: 1245, maxMinutes: 31, lastDate: "2026-04-26", daysAgo: 151, practiceDates: ["2026-04-26"] },
+  1002: { id: 1002, name: "单吐", days: 18, sessions: 18, minutes: 66, maxMinutes: 10, lastDate: "2026-04-24", daysAgo: 153, practiceDates: ["2026-04-24"] },
+  1003: { id: 1003, name: "单吐练习", days: 34, sessions: 40, minutes: 125, maxMinutes: 7, lastDate: "2026-08-23", daysAgo: 32, practiceDates: ["2026-04-28", "2026-05-01", "2026-05-03", "2026-05-04", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-20", "2026-06-29", "2026-07-01", "2026-07-03", "2026-07-05", "2026-07-19", "2026-07-21", "2026-07-23", "2026-07-25", "2026-07-27", "2026-07-29", "2026-08-04", "2026-08-05", "2026-08-07", "2026-08-09", "2026-08-11", "2026-08-12", "2026-08-14", "2026-08-16", "2026-08-18", "2026-08-20", "2026-08-21", "2026-08-23"] },
+  1004: { id: 1004, name: "回娘家", days: 41, sessions: 44, minutes: 202, maxMinutes: 10, lastDate: "2026-09-14", daysAgo: 10, practiceDates: ["2026-04-24", "2026-04-26", "2026-04-27", "2026-05-01", "2026-05-03", "2026-05-04", "2026-05-07", "2026-05-08", "2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-21", "2026-05-22", "2026-06-08", "2026-06-29", "2026-06-30", "2026-07-02", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-25", "2026-07-29", "2026-07-30", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-07", "2026-08-08", "2026-08-10", "2026-08-12", "2026-08-14", "2026-08-16", "2026-08-18", "2026-08-20", "2026-08-22", "2026-08-24", "2026-09-14"] },
+  1005: { id: 1005, name: "右手持笛", days: 27, sessions: 27, minutes: 120, maxMinutes: 6, lastDate: "2025-11-09", daysAgo: 319, practiceDates: ["2025-11-09"] },
+  1006: { id: 1006, name: "吹 e1", days: 39, sessions: 39, minutes: 353, maxMinutes: 15, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1007: { id: 1007, name: "左手持笛", days: 23, sessions: 23, minutes: 104, maxMinutes: 5, lastDate: "2025-10-24", daysAgo: 335, practiceDates: ["2025-10-24"] },
+  1009: { id: 1009, name: "吹 c1", days: 20, sessions: 20, minutes: 95, maxMinutes: 13, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1010: { id: 1010, name: "吹 d1", days: 19, sessions: 19, minutes: 56, maxMinutes: 6, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1011: { id: 1011, name: "吹 b", days: 11, sessions: 11, minutes: 47, maxMinutes: 7, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1012: { id: 1012, name: "吹e1以上", days: 11, sessions: 11, minutes: 25, maxMinutes: 4, lastDate: "2025-12-04", daysAgo: 294, practiceDates: ["2025-12-04"] },
+  1013: { id: 1013, name: "吹 a", days: 9, sessions: 9, minutes: 35, maxMinutes: 7, lastDate: "2025-12-13", daysAgo: 285, practiceDates: ["2025-12-13"] },
+  1014: { id: 1014, name: "吹 g", days: 3, sessions: 3, minutes: 11, maxMinutes: 5, lastDate: "2025-12-13", daysAgo: 285, practiceDates: ["2025-12-13"] },
+  1018: { id: 1018, name: "右手单音", days: 6, sessions: 6, minutes: 14, maxMinutes: 3, lastDate: "2025-12-05", daysAgo: 293, practiceDates: ["2025-12-05"] },
+  1019: { id: 1019, name: "左手单音", days: 6, sessions: 6, minutes: 15, maxMinutes: 3, lastDate: "2025-12-05", daysAgo: 293, practiceDates: ["2025-12-05"] },
+  1020: { id: 1020, name: "单音练习1", days: 8, sessions: 8, minutes: 31, maxMinutes: 6, lastDate: "2025-12-22", daysAgo: 276, practiceDates: ["2025-12-22"] },
+  1021: { id: 1021, name: "单音练习2", days: 8, sessions: 8, minutes: 25, maxMinutes: 5, lastDate: "2025-12-22", daysAgo: 276, practiceDates: ["2025-12-22"] },
+  1022: { id: 1022, name: "单音练习3", days: 6, sessions: 6, minutes: 20, maxMinutes: 6, lastDate: "2025-12-12", daysAgo: 286, practiceDates: ["2025-12-12"] },
+  1023: { id: 1023, name: "双吐tuku", days: 18, sessions: 18, minutes: 51, maxMinutes: 4, lastDate: "2026-03-07", daysAgo: 201, practiceDates: ["2026-03-07"] },
+  1025: { id: 1025, name: "音阶", days: 6, sessions: 6, minutes: 23, maxMinutes: 10, lastDate: "2026-04-20", daysAgo: 157, practiceDates: ["2026-04-20"] },
+  1026: { id: 1026, name: "采茶扑蝶", days: 50, sessions: 59, minutes: 312, maxMinutes: 15, lastDate: "2026-09-15", daysAgo: 9, practiceDates: ["2026-04-24", "2026-04-26", "2026-04-30", "2026-05-01", "2026-05-03", "2026-05-04", "2026-05-07", "2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-19", "2026-05-25", "2026-05-27", "2026-05-29", "2026-06-01", "2026-06-13", "2026-06-14", "2026-06-17", "2026-06-19", "2026-06-30", "2026-07-02", "2026-07-05", "2026-07-13", "2026-07-14", "2026-07-16", "2026-07-17", "2026-07-19", "2026-07-22", "2026-07-25", "2026-07-28", "2026-07-29", "2026-08-01", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-07", "2026-08-08", "2026-08-10", "2026-08-11", "2026-08-13", "2026-08-14", "2026-08-16", "2026-08-17", "2026-08-19", "2026-08-21", "2026-08-23", "2026-09-15"] },
+  1027: { id: 1027, name: "长音多练低音", days: 1, sessions: 1, minutes: 10, maxMinutes: 10, lastDate: "2026-04-27", daysAgo: 150, practiceDates: ["2026-04-27"] },
+  1028: { id: 1028, name: "唱茉莉花（二）", days: 4, sessions: 4, minutes: 45, maxMinutes: 20, lastDate: "2026-05-01", daysAgo: 146, practiceDates: ["2026-05-01"] },
+  1029: { id: 1029, name: "长音", days: 4, sessions: 4, minutes: 27, maxMinutes: 8, lastDate: "2026-05-04", daysAgo: 143, practiceDates: ["2026-05-04"] },
+  1031: { id: 1031, name: "全按作低音re", days: 2, sessions: 2, minutes: 4, maxMinutes: 2, lastDate: "2026-05-01", daysAgo: 146, practiceDates: ["2026-05-01"] },
+  1032: { id: 1032, name: "茉莉花（二）", days: 2, sessions: 2, minutes: 8, maxMinutes: 5, lastDate: "2026-05-01", daysAgo: 146, practiceDates: ["2026-05-01"] },
+  1033: { id: 1033, name: "全按作低音re-音阶", days: 6, sessions: 6, minutes: 18, maxMinutes: 4, lastDate: "2026-08-14", daysAgo: 41, practiceDates: ["2026-08-02", "2026-08-05", "2026-08-08", "2026-08-11", "2026-08-14"] },
+  1034: { id: 1034, name: "吸气长音", days: 101, sessions: 200, minutes: 1021, maxMinutes: 17, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-05-03", "2026-05-08", "2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-17", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-24", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-29", "2026-05-31", "2026-06-01", "2026-06-02", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-13", "2026-06-14", "2026-06-15", "2026-06-17", "2026-06-19", "2026-06-20", "2026-06-21", "2026-06-22", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-05", "2026-07-10", "2026-07-14", "2026-07-15", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-08", "2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-16", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-05", "2026-09-06", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1035: { id: 1035, name: "颤音", days: 4, sessions: 4, minutes: 17, maxMinutes: 13, lastDate: "2026-05-19", daysAgo: 128, practiceDates: ["2026-05-19"] },
+  1337: { id: 1337, name: "颤音练习", days: 33, sessions: 41, minutes: 180, maxMinutes: 12, lastDate: "2026-08-22", daysAgo: 33, practiceDates: ["2026-05-10", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-24", "2026-05-27", "2026-05-29", "2026-06-30", "2026-07-10", "2026-07-14", "2026-07-17", "2026-07-19", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-25", "2026-07-27", "2026-07-28", "2026-07-30", "2026-08-03", "2026-08-04", "2026-08-06", "2026-08-08", "2026-08-10", "2026-08-12", "2026-08-14", "2026-08-15", "2026-08-17", "2026-08-19", "2026-08-20", "2026-08-22"] },
+  1338: { id: 1338, name: "回课", days: 9, sessions: 9, minutes: 420, maxMinutes: 60, lastDate: "2026-09-19", daysAgo: 5, practiceDates: ["2026-05-09", "2026-05-16", "2026-05-23", "2026-05-30", "2026-07-26", "2026-08-01", "2026-08-15", "2026-08-29", "2026-09-19"] },
+  1339: { id: 1339, name: "考试", days: 7, sessions: 11, minutes: 163, maxMinutes: 50, lastDate: "2026-08-24", daysAgo: 31, practiceDates: ["2026-08-05", "2026-08-08", "2026-08-12", "2026-08-15", "2026-08-18", "2026-08-21", "2026-08-24"] },
+  1340: { id: 1340, name: "萨丽哈", days: 38, sessions: 56, minutes: 325, maxMinutes: 18, lastDate: "2026-09-09", daysAgo: 15, practiceDates: ["2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-24", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-09", "2026-06-13", "2026-06-17", "2026-06-19", "2026-06-30", "2026-07-03", "2026-07-10", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-22", "2026-07-27", "2026-07-28", "2026-07-29", "2026-08-03", "2026-08-04", "2026-08-06", "2026-08-08", "2026-08-10", "2026-08-11", "2026-08-13", "2026-08-15", "2026-08-17", "2026-08-19", "2026-08-21", "2026-08-23", "2026-09-09"] },
+  1341: { id: 1341, name: "唱萨利哈", days: 2, sessions: 2, minutes: 25, maxMinutes: 15, lastDate: "2026-05-18", daysAgo: 129, practiceDates: ["2026-05-18"] },
+  1343: { id: 1343, name: "单吐tuku", days: 64, sessions: 105, minutes: 244, maxMinutes: 5, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-05-31", "2026-06-01", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-13", "2026-06-14", "2026-06-15", "2026-06-17", "2026-06-19", "2026-06-21", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-05", "2026-07-10", "2026-07-16", "2026-07-17", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-08", "2026-08-09", "2026-08-10", "2026-08-11", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-17", "2026-08-18", "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-06", "2026-09-07", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1344: { id: 1344, name: "唱西藏舞曲", days: 5, sessions: 6, minutes: 44, maxMinutes: 15, lastDate: "2026-06-12", daysAgo: 104, practiceDates: ["2026-06-12"] },
+  1346: { id: 1346, name: "西藏舞曲", days: 40, sessions: 115, minutes: 499, maxMinutes: 14, lastDate: "2026-08-22", daysAgo: 33, practiceDates: ["2026-06-11", "2026-06-13", "2026-06-14", "2026-06-15", "2026-06-17", "2026-06-19", "2026-06-21", "2026-06-29", "2026-07-01", "2026-07-02", "2026-07-05", "2026-07-10", "2026-07-11", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-02", "2026-08-04", "2026-08-06", "2026-08-07", "2026-08-09", "2026-08-11", "2026-08-12", "2026-08-14", "2026-08-15", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22"] },
+  1347: { id: 1347, name: "双手无名指颤音", days: 7, sessions: 7, minutes: 19, maxMinutes: 3, lastDate: "2026-08-28", daysAgo: 27, practiceDates: ["2026-08-08", "2026-08-11", "2026-08-14", "2026-08-17", "2026-08-20", "2026-08-24", "2026-08-28"] },
+  1348: { id: 1348, name: "紫竹调", days: 16, sessions: 24, minutes: 112, maxMinutes: 10, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-08-11", "2026-08-14", "2026-08-17", "2026-08-20", "2026-08-23", "2026-08-26", "2026-08-29", "2026-09-01", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-10", "2026-09-13", "2026-09-16", "2026-09-23"] },
+  1349: { id: 1349, name: "单吐基本练习（四级）", days: 20, sessions: 40, minutes: 148, maxMinutes: 9, lastDate: "2026-09-22", daysAgo: 2, practiceDates: ["2026-08-10", "2026-08-13", "2026-08-16", "2026-08-19", "2026-08-22", "2026-08-25", "2026-08-28", "2026-09-01", "2026-09-03", "2026-09-04", "2026-09-05", "2026-09-07", "2026-09-09", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-15", "2026-09-17", "2026-09-19", "2026-09-22"] },
+  1350: { id: 1350, name: "双吐", days: 21, sessions: 36, minutes: 43, maxMinutes: 3, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-08-25", "2026-08-27", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-06", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1351: { id: 1351, name: "小看戏", days: 16, sessions: 33, minutes: 128, maxMinutes: 10, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-09-06", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1352: { id: 1352, name: "春耕曲", days: 3, sessions: 5, minutes: 21, maxMinutes: 5, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-09-20", "2026-09-21", "2026-09-23"] },
+};
+
 const ITEMS = {
   focus: [
     {
@@ -2587,6 +3333,9 @@ function renderTicket() {
   const idEl = document.getElementById('pkMemoIdVal');
   if (idEl) idEl.textContent = "No." + cur.id;
 
+  // 票根区：科目历史信息模块（逐帧 copy 参考图 · 点阵 + 4行真数）
+  renderSubjectStats();
+
   // 渲染 2 排胶囊标签
   renderSessionPills();
 
@@ -2597,6 +3346,142 @@ function renderTicket() {
   syncRunMeta();
   syncStartState();
 }
+
+let currentDemoMonth = new URLSearchParams(window.location.search).get('month') || '2026-09';
+
+/* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
+function renderSubjectStats() {
+  const stats = ITEM_STATS[cur.id] || {
+    id: cur.id,
+    name: cur.name,
+    days: 0,
+    sessions: 0,
+    minutes: 0,
+    maxMinutes: 0,
+    lastDate: "暂无记录",
+    daysAgo: "-",
+    practiceDates: []
+  };
+
+  const daysEl = document.getElementById('pkSubjectDaysVal');
+  if (daysEl) daysEl.textContent = stats.days;
+
+  const collapsedDaysEl = document.getElementById('pkCollapsedDaysVal');
+  if (collapsedDaysEl) collapsedDaysEl.textContent = '累计 ' + (stats.days || 0) + ' 天';
+
+  const minEl = document.getElementById('pkSubjectMinutesVal');
+  if (minEl) minEl.textContent = stats.minutes;
+
+  const sessEl = document.getElementById('pkSubjectSessionsVal');
+  if (sessEl) sessEl.textContent = stats.sessions;
+
+  const maxEl = document.getElementById('pkSubjectMaxVal');
+  if (maxEl) maxEl.textContent = stats.maxMinutes || 0;
+
+  const lastEl = document.getElementById('pkSubjectLastVal');
+  if (lastEl) {
+    if (stats.daysAgo === '-' || stats.daysAgo === undefined) {
+      lastEl.textContent = '暂无记录';
+    } else {
+      lastEl.textContent = stats.daysAgo + '天前';
+      lastEl.title = '最近练习日期: ' + stats.lastDate;
+    }
+  }
+
+  // 渲染自然月7列日历点阵（当前自然月 2026-09 或切 2026-08 历史自然月）
+  renderMonthDotMatrix(stats);
+}
+
+function renderMonthDotMatrix(stats) {
+  const matrixEl = document.getElementById('pkSubjectDotMatrix');
+  const collapsedMatrixEl = document.getElementById('pkCollapsedDotMatrix');
+  const monthBadge = document.getElementById('pkSubjectMonthIndicator');
+  const collapsedCalMonth = document.getElementById('pkCollapsedCalMonth');
+  const toggleBtn = document.getElementById('pkMonthToggleBtn');
+  if (!matrixEl) return;
+
+  const datesSet = new Set(stats.practiceDates || []);
+
+  const [yearStr, monthNumStr] = currentDemoMonth.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthNumStr, 10);
+
+  // 自然月计算: 周一起算 (0=周一 .. 6=周日)
+  const firstDay = new Date(year, month - 1, 1);
+  const startWeekday = (firstDay.getDay() + 6) % 7;
+  const totalDays = new Date(year, month, 0).getDate();
+
+  if (monthBadge) {
+    monthBadge.textContent = month + '月';
+  }
+  if (collapsedCalMonth) {
+    collapsedCalMonth.textContent = month + '月打卡';
+  }
+
+  if (toggleBtn) {
+    if (currentDemoMonth === '2026-09') {
+      toggleBtn.textContent = '切8月';
+      toggleBtn.title = '当前为9月(最新云端真值)，点击切换至8月查看历史打卡数据';
+    } else {
+      toggleBtn.textContent = '切9月';
+      toggleBtn.title = '当前为8月(历史云端真值)，点击切回9月(当月)';
+    }
+  }
+
+  function fillGrid(targetEl, dotClassPrefix) {
+    if (!targetEl) return;
+    targetEl.innerHTML = '';
+    // 1. 填充月初空白格 (首日不对齐部分留空不画点)
+    for (let e = 0; e < startWeekday; e++) {
+      const emptyDot = document.createElement('span');
+      emptyDot.className = dotClassPrefix + ' is-empty';
+      emptyDot.setAttribute('aria-hidden', 'true');
+      targetEl.appendChild(emptyDot);
+    }
+
+    // 2. 填充当月日期格子 (1..totalDays)
+    for (let d = 1; d <= totalDays; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const dateKey = `${yearStr}-${monthNumStr}-${dayStr}`;
+      const isActive = datesSet.has(dateKey);
+
+      const dot = document.createElement('span');
+      dot.className = dotClassPrefix + (isActive ? ' is-active' : '');
+      dot.dataset.date = dateKey;
+      dot.title = `${month}月${d}日: ` + (isActive ? '已练习' : '未打卡');
+      targetEl.appendChild(dot);
+    }
+
+    // 3. 填充月末尾空白格 (补齐为整行)
+    const trailingEmpty = (7 - ((startWeekday + totalDays) % 7)) % 7;
+    for (let t = 0; t < trailingEmpty; t++) {
+      const emptyDot = document.createElement('span');
+      emptyDot.className = dotClassPrefix + ' is-empty';
+      emptyDot.setAttribute('aria-hidden', 'true');
+      targetEl.appendChild(emptyDot);
+    }
+  }
+
+  fillGrid(matrixEl, 'pk-cal-dot');
+  fillGrid(collapsedMatrixEl, 'pk-cal-dot');
+}
+
+function toggleDemoMonth(targetMonth) {
+  if (targetMonth) {
+    currentDemoMonth = targetMonth;
+  } else {
+    currentDemoMonth = (currentDemoMonth === '2026-09') ? '2026-08' : '2026-09';
+  }
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('month', currentDemoMonth);
+    window.history.replaceState({}, '', url.toString());
+  } catch (e) {}
+  renderSubjectStats();
+}
+
+window.toggleDemoMonth = toggleDemoMonth;
+window.renderSubjectStats = renderSubjectStats;
 
 /* 票夹 Modal 渲染 */
 function renderFolioModal() {
@@ -2689,7 +3574,7 @@ function renderReq() {
 /* 页面配置接口（dad 第 3.1 条：蒙版颜色可配置） */
 window.PracticePageConfig = {
   get maskColor() {
-    return getComputedStyle(document.documentElement).getPropertyValue('--practice-mask-color').trim() || 'rgba(44, 62, 80, 0.175)';
+    return getComputedStyle(document.documentElement).getPropertyValue('--practice-mask-color').trim() || 'rgba(44, 62, 80, 0.0875)';
   },
   set maskColor(val) {
     document.documentElement.style.setProperty('--practice-mask-color', val);
@@ -2759,10 +3644,10 @@ updateServerClock();
 /* ══════════════════════════════════════════════════════════
    打卡动效引擎与计时态收拢卡 GSAP Timeline
    1. 点击「检票 · 开始练习」→ 文案先赋，再行动效
-   2. 票卡以左边框为轴心，纵向从右向左收窄成 220px 竖向长条卡片 (0.6s, power3.inOut)
+   2. 票卡以左边框为轴心，纵向从右向左收窄成 220px 竖向长条卡片 (0.42s, power3.inOut)
    3. 高度完全不变（逐像素一致，禁止 scale，禁止高度变矮）
-   4. 蒙版淡入 + 打卡机卡头滑入插槽 + 核心参数总线分项交错显现 (stagger 0.05)
-   5. 反向展开：卡头抽回，票卡展开回展开态 (0.6s, power3.inOut)，clearProps 0 残留
+   4. 展开态元素随宽度收窄先退场（0.00-0.14s），宽度收缩至 ~260px 时（0.22s）切换 class，收拢态元素随后进场（0.22-0.42s）
+   5. 反向展开：收拢态元素先退场，展开态元素随宽度展开按节奏进场 (0.42s, power3.inOut)，clearProps 0 残留
    6. 兜底保护：prefers-reduced-motion (≤100ms fade) / typeof gsap === 'undefined'
 ══════════════════════════════════════════════════════════ */
 let runTimeline = null;
@@ -2774,7 +3659,7 @@ function enterRun() {
   paused = false;
   elapsed = 0;
 
-  // 1. 文案先赋、再行动效（GSAP 硬约束：GSAP 只写 CSS，不写 DOM 文本）
+  // 1. 文案先赋、再行动效（GSAP 只写 CSS，不写 DOM 文本）
   syncRunMeta();
 
   const stage = document.getElementById('practiceStage');
@@ -2806,8 +3691,8 @@ function enterRun() {
   }
 
   const isDesktop = window.innerWidth >= 1024;
-  const targetColWidth = isDesktop ? 220 : leftCol.parentElement.offsetWidth;
-  const startColWidth = leftCol.offsetWidth || (isDesktop ? 380 : 360);
+  const targetColWidth = isDesktop ? 220 : (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 220);
+  const startColWidth = leftCol ? leftCol.offsetWidth : (isDesktop ? 380 : 360);
 
   // 兜底 1: 无 GSAP 环境直接切终态（0 报错，终态高度仍不变）
   if (typeof gsap === 'undefined') {
@@ -2842,16 +3727,19 @@ function enterRun() {
     return;
   }
 
-  // GSAP 完整动画 Timeline（0.42s = 0.6s * 0.7, power3.inOut 对称，stagger 0.035, overwrite: 'auto'）
+  // GSAP 完整动画 Timeline（总时长 0.42s，收拢节奏精细编排）
+  // 展开态元素随宽度收窄先退场（0.00-0.14s），宽度收缩至 ~260px 时（0.22s）切换 class，收拢态元素随后进场（0.22-0.42s）
   lockOverlay.style.display = 'flex';
-  stage.classList.remove('stage-prep');
-  stage.classList.add('stage-running');
+  gsap.set(lockOverlay, { opacity: 0 });
+
+  const prepItems = ticketCard.querySelectorAll('.prep-only, .prep-only-block');
+  const runItems = ticketCard.querySelectorAll('.run-only, .run-only-block');
 
   runTimeline = gsap.timeline({
     overwrite: 'auto',
     onComplete: () => {
-      // 动画完成后清除 width inline style，由 CSS 类名精准管控
       gsap.set(leftCol, { clearProps: 'width' });
+      gsap.set([prepItems, runItems, lockOverlay].filter(Boolean), { clearProps: 'opacity,transform' });
       if (ticketCard) {
         ticketCard.style.height = prepHeight + 'px';
         ticketCard.style.minHeight = prepHeight + 'px';
@@ -2859,34 +3747,57 @@ function enterRun() {
     }
   });
 
-  // (1) 票卡以左边框为轴心，宽度从初始宽度纵向向左推进收窄 (0.42s, power3.inOut)
+  // (1) 展开态专属元素迅速淡出让位 (0.00s - 0.14s, power2.in)
+  if (prepItems.length) {
+    runTimeline.to(prepItems, {
+      opacity: 0,
+      y: -4,
+      duration: 0.14,
+      ease: 'power2.in'
+    }, 0);
+  }
+
+  // (2) 票卡以左边框为轴心，宽度收窄 (0.00s - 0.42s, power3.inOut)
   runTimeline.fromTo(leftCol,
     { width: startColWidth },
     { width: targetColWidth, duration: 0.42, ease: 'power3.inOut' },
     0
   );
 
-  // (2) 蒙版锁定层淡入 (0.175s)
-  runTimeline.fromTo(lockOverlay,
-    { opacity: 0 },
-    { opacity: 1, duration: 0.175, ease: 'power2.out' },
-    0
-  );
+  // (3) 蒙版锁定层淡入 (0.00s - 0.20s, power2.out)
+  runTimeline.to(lockOverlay, {
+    opacity: 1,
+    duration: 0.20,
+    ease: 'power2.out'
+  }, 0);
 
-  // (3) 打卡机卡头滑入插槽 (0.22s back.out)
+  // (4) 关键转折点：0.22s 切换舞台状态类名（此时宽度已收缩过半，展开态已彻底淡出）
+  runTimeline.add(() => {
+    stage.classList.remove('stage-prep');
+    stage.classList.add('stage-running');
+  }, 0.22);
+
+  // (5) 打卡机卡头滑入插槽 (0.16s - 0.38s, back.out)
   runTimeline.fromTo(insertedHead,
     { y: -24, opacity: 0, scale: 0.96 },
-    { y: 0, opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(1.5)' },
-    0.07
+    { y: 0, opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(1.4)' },
+    0.16
   );
 
-  // (4) 仪表核心参数总线分项交错显现 (stagger 0.035s, 0.2s)
+  // (6) 收拢态元素淡入就位 (0.22s - 0.42s, power2.out)
+  runTimeline.fromTo(runItems,
+    { opacity: 0, y: 6 },
+    { opacity: 1, y: 0, duration: 0.20, ease: 'power2.out' },
+    0.22
+  );
+
+  // (7) 仪表核心参数总线分项交错显现 (0.20s - 0.40s, stagger 0.035s)
   const teleItems = runTelemetry ? runTelemetry.querySelectorAll('.pk-tele-block') : [];
   if (teleItems.length) {
     runTimeline.fromTo(teleItems,
       { y: 10, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.2, stagger: 0.035, ease: 'power2.out' },
-      0.1
+      { y: 0, opacity: 1, duration: 0.20, stagger: 0.035, ease: 'power2.out' },
+      0.20
     );
   }
 
@@ -2935,6 +3846,9 @@ function exitRun() {
     ticketCard.style.minHeight = prepHeight + 'px';
   }
 
+  const prepItems = ticketCard.querySelectorAll('.prep-only, .prep-only-block');
+  const runItems = ticketCard.querySelectorAll('.run-only, .run-only-block');
+
   // 彻底复位的清理函数（0 残留保证：清除 GSAP 注入的所有 inline style，高度复位）
   const resetToPrepClean = () => {
     stage.classList.remove('stage-running');
@@ -2948,7 +3862,7 @@ function exitRun() {
       ticketCard.style.minHeight = '';
     }
     if (typeof gsap !== 'undefined') {
-      gsap.set([leftCol, ticketCard, lockOverlay, insertedHead, runTelemetry].filter(Boolean), { clearProps: 'all' });
+      gsap.set([leftCol, ticketCard, lockOverlay, insertedHead, runTelemetry, prepItems, runItems].filter(Boolean), { clearProps: 'all' });
       if (runTelemetry) {
         const teleItems = runTelemetry.querySelectorAll('.pk-tele-block');
         if (teleItems.length) gsap.set(teleItems, { clearProps: 'all' });
@@ -2974,28 +3888,60 @@ function exitRun() {
     return;
   }
 
-  // GSAP 展开反向动画 Timeline (0.42s = 0.6s * 0.7, power3.inOut 对称，overwrite: 'auto')
-  stage.classList.remove('stage-running');
-  stage.classList.add('stage-prep');
-
+  // GSAP 展开反向动画 Timeline (总时长 0.42s，对称反向编排)
   runTimeline = gsap.timeline({
     overwrite: 'auto',
     onComplete: resetToPrepClean
   });
 
-  // (1) 卡头迅速抽回 (0.13s)
-  runTimeline.to(insertedHead, { y: -20, opacity: 0, duration: 0.13, ease: 'power2.in' }, 0);
+  // (1) 收拢态元素迅速退场 (0.00s - 0.14s, power2.in)
+  if (runItems.length) {
+    runTimeline.to(runItems, {
+      opacity: 0,
+      y: 6,
+      duration: 0.14,
+      ease: 'power2.in'
+    }, 0);
+  }
 
-  // (2) 蒙版锁定层淡出 (0.175s)
-  runTimeline.to(lockOverlay, { opacity: 0, duration: 0.175, ease: 'power2.inOut' }, 0);
+  // (2) 卡头迅速抽回插槽 (0.00s - 0.14s, power2.in)
+  runTimeline.to(insertedHead, {
+    y: -20,
+    opacity: 0,
+    duration: 0.14,
+    ease: 'power2.in'
+  }, 0);
 
-  // (3) 票卡宽度从 220 展开回准备态宽度 (0.42s, power3.inOut)
+  // (3) 蒙版锁定层淡出 (0.00s - 0.18s, power2.inOut)
+  runTimeline.to(lockOverlay, {
+    opacity: 0,
+    duration: 0.18,
+    ease: 'power2.inOut'
+  }, 0);
+
+  // (4) 票卡宽度从 220 展开回准备态宽度 (0.00s - 0.42s, power3.inOut)
   runTimeline.fromTo(leftCol,
     { width: startColWidth },
     { width: targetColWidth, duration: 0.42, ease: 'power3.inOut' },
     0
   );
+
+  // (5) 关键转折点：0.20s 切换舞台状态类名（此时宽度已展开大半）
+  runTimeline.add(() => {
+    stage.classList.remove('stage-running');
+    stage.classList.add('stage-prep');
+  }, 0.20);
+
+  // (6) 展开态专属元素淡入就位 (0.20s - 0.42s, power2.out)
+  if (prepItems.length) {
+    runTimeline.fromTo(prepItems,
+      { opacity: 0, y: -4 },
+      { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' },
+      0.20
+    );
+  }
 }
+
 
 function pauseToggle() {
   if (!started) return;
