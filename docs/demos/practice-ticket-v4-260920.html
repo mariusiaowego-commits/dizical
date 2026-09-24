@@ -338,6 +338,26 @@
       margin-top: 3px;
       margin-bottom: 3px;
     }
+    .pk-ticket .pk-info-bignum-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 44px;
+      margin-bottom: 9px;
+    }
+    .pk-ticket .pk-month-toggle-btn {
+      min-width: 44px;
+      min-height: 44px;
+      font-size: 12px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pk-ticket .pk-cal-header-row {
+      display: none !important;
+      min-height: 0;
+    }
     .pk-ticket .pk-stub-memo-block {
       padding: 5px 8px;
       gap: 3px;
@@ -409,7 +429,7 @@
       max-height: calc(100vh - 68px);
       gap: 16px;
     }
-    .pk-ticket-hero-frame {
+    .pk-ticket .pk-ticket-hero-frame {
       height: 168px;
     }
     #pkSubjectInfoCard, .pk-subject-info-card {
@@ -422,70 +442,89 @@
       margin-top: 8px;
       margin-bottom: 0;
     }
-    .pk-info-left-col {
-      height: 100%;
+    #pkSubjectInfoCard .pk-info-left-col {
+      height: auto;
+      align-self: start;
       display: flex;
       flex-direction: column;
+      justify-content: flex-start;
+      gap: 0;
+    }
+    #pkSubjectInfoCard .pk-info-metric-header {
+      margin-bottom: 10px;
+    }
+    #pkSubjectInfoCard .pk-info-label {
+      font-size: 12px;
+    }
+    #pkSubjectInfoCard .pk-info-bignum-wrap {
+      display: flex;
       justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
     }
-    .pk-info-bignum {
-      font-size: 36px;
+    #pkSubjectInfoCard .pk-info-bignum {
+      font-size: 38px;
     }
-    .pk-info-unit {
-      font-size: 13px;
-    }
-    .pk-cal-wrap {
+    #pkSubjectInfoCard .pk-cal-wrap {
+      width: 100%;
       max-width: 100%;
-      flex: 1 1 auto;
-      min-height: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      gap: 8px;
     }
-    .pk-cal-month-badge {
-      font-size: 11px;
+    #pkSubjectInfoCard .pk-cal-month-badge {
+      font-size: 12px;
     }
-    .pk-cal-weekdays {
-      font-size: 9.5px;
+    #pkSubjectInfoCard .pk-cal-weekdays {
+      font-size: 10px;
       gap: 3.5px;
     }
-    .pk-cal-grid {
-      grid-auto-rows: 1fr;
-      flex: 1 1 auto;
-      min-height: 0;
+    #pkSubjectInfoCard .pk-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-auto-rows: auto;
+      align-content: start;
       gap: 3.5px;
       width: 100%;
+      height: auto;
     }
-    .pk-cal-dot {
-      border-radius: 2.5px;
+    #pkSubjectInfoCard .pk-cal-dot {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      min-width: 0;
+      min-height: 0;
+      align-self: start;
+      justify-self: stretch;
+      border-radius: 3px;
     }
-    .pk-info-right-col {
+    #pkSubjectInfoCard .pk-info-right-col {
       height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
-    .pk-info-stat-row {
+    #pkSubjectInfoCard .pk-info-stat-row {
       flex: 1 1 auto;
       min-height: 44px;
       max-height: 56px;
       padding: 4px 0;
     }
-    .pk-info-icon-disc {
+    #pkSubjectInfoCard .pk-info-icon-disc {
       width: 22px;
       height: 22px;
     }
-    .pk-info-icon-svg {
+    #pkSubjectInfoCard .pk-info-icon-svg {
       width: 13px;
       height: 13px;
     }
-    .pk-info-row-title {
+    #pkSubjectInfoCard .pk-info-row-title {
       font-size: 12.5px;
     }
-    .pk-info-val-num {
+    #pkSubjectInfoCard .pk-info-val-num {
       font-size: 15px;
     }
-    .pk-info-val-unit {
+    #pkSubjectInfoCard .pk-info-val-unit {
       font-size: 11.5px;
     }
     .pk-ticket .pk-stub-memo-block, .pk-stub-memo-block {
@@ -493,13 +532,13 @@
       padding: 12px 14px;
       gap: 8px;
     }
-    .pk-memo-row {
+    .pk-ticket .pk-memo-row, .pk-memo-row {
       min-height: 24px;
     }
-    .pk-memo-label {
+    .pk-ticket .pk-memo-label, .pk-memo-label {
       font-size: 12px;
     }
-    .pk-memo-val, .pk-memo-val.mono {
+    .pk-ticket .pk-memo-val, .pk-ticket .pk-memo-val.mono, .pk-memo-val, .pk-memo-val.mono {
       font-size: 13.5px;
     }
     #pkInstrCard, .pk-instr-deck {
@@ -519,10 +558,38 @@
     #pkReqCard, .pk-req-card {
       flex: 0 0 auto;
       min-height: 0;
-      padding: 16px 20px;
+      padding: 14px 20px;
+      gap: 6px;
     }
     .pk-footer-note {
       display: none !important;
+    }
+  }
+
+  /* PC 超高屏适配（1728x1117）：卡片按内容收缩，票根 hero 承接剩余高度，大数字 64px */
+  @media (min-width: 1200px) and (min-height: 1000px) {
+    .pk-ticket .pk-ticket-hero-frame {
+      height: 338px;
+    }
+    #pkSubjectInfoCard {
+      flex: 0 1 auto;
+      align-self: start;
+    }
+    #pkSubjectInfoCard .pk-info-bignum {
+      font-size: 64px;
+    }
+    #pkSubjectInfoCard .pk-info-metric-header {
+      margin-bottom: 8px;
+    }
+    #pkSubjectInfoCard .pk-info-bignum-wrap {
+      margin-bottom: 16px;
+    }
+    #pkSubjectInfoCard .pk-cal-header-row {
+      min-height: 24px;
+    }
+    #pkSubjectInfoCard .pk-cal-weekdays {
+      min-height: 12px;
+      font-size: 12px;
     }
   }
 
@@ -1010,11 +1077,12 @@
     box-sizing: border-box;
   }
 
-  /* 左分栏：累计练习天数 + 自然月日历网格 */
+  /* 左分栏：累计练习天数 + 自然月日历网格（better-layout 重排：随 50% 宽自适应伸展） */
   .pk-info-left-col {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 0;
     min-width: 0;
     padding: 0;
     margin: 0;
@@ -1024,9 +1092,10 @@
     align-items: center;
     justify-content: space-between;
     line-height: 1;
+    margin-bottom: 8px;
   }
   .pk-info-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-muted);
     letter-spacing: 0.04em;
@@ -1035,12 +1104,12 @@
     display: flex;
     align-items: baseline;
     gap: 2px;
-    margin-top: 2px;
     line-height: 1;
+    margin-bottom: 16px;
   }
   .pk-info-bignum {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 26px;
+    font-size: 30px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: var(--text-main);
@@ -1053,36 +1122,36 @@
     color: var(--text-muted);
   }
 
-  /* 自然月日历网格容器（尺寸 -10%：格子约 11.5px，圆角 2px，7 列日历，最大宽 96px） */
+  /* 自然月日历网格容器（移除 96px 锁宽，随左半栏自适应 100% 宽度） */
   .pk-cal-wrap {
-    margin-top: 5px;
+    margin-top: 0;
     display: flex;
     flex-direction: column;
-    gap: 2.5px;
-    max-width: 96px;
+    gap: 6px;
     width: 100%;
+    max-width: 100%;
   }
   .pk-cal-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     line-height: 1;
-    margin-bottom: 1.5px;
+    margin-bottom: 2px;
   }
   .pk-cal-month-badge {
-    font-size: 9px;
+    font-size: 10.5px;
     font-weight: 700;
     color: var(--text-muted);
     letter-spacing: 0.02em;
   }
   .pk-month-toggle-btn {
-    font-size: 8px;
+    font-size: 8.5px;
     font-weight: 600;
     color: var(--text-muted);
     background: rgba(44, 62, 80, 0.05);
     border: 1px solid rgba(44, 62, 80, 0.10);
     border-radius: 3px;
-    padding: 1px 3px;
+    padding: 2px 5px;
     cursor: pointer;
     line-height: 1.1;
     user-select: none;
@@ -1097,9 +1166,9 @@
   .pk-cal-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 2.5px;
+    gap: 3px;
     text-align: center;
-    font-size: 7.5px;
+    font-size: 9px;
     font-weight: 600;
     color: var(--text-muted);
     line-height: 1;
@@ -1107,14 +1176,22 @@
   }
   .pk-cal-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2.5px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    align-content: start;
+    gap: 3px;
     width: 100%;
+    height: auto;
   }
   .pk-cal-dot {
     width: 100%;
+    height: auto;
     aspect-ratio: 1 / 1;
-    border-radius: 2px;
+    min-width: 0;
+    min-height: 0;
+    align-self: start;
+    justify-self: stretch;
+    border-radius: 2.5px;
     background: rgba(44, 62, 80, 0.08);
     box-sizing: border-box;
     display: block;
@@ -2309,11 +2386,11 @@
               </div>
               <div class="pk-info-bignum-wrap">
                 <span class="pk-info-bignum" id="pkSubjectDaysVal">101</span>
+                <button type="button" class="pk-month-toggle-btn" id="pkMonthToggleBtn" onclick="toggleDemoMonth()" title="点击切换：9月(当月·云端真值) / 8月(历史数据)">切8月</button>
               </div>
               <div class="pk-cal-wrap">
                 <div class="pk-cal-header-row">
                   <span class="pk-cal-month-badge" id="pkSubjectMonthIndicator">9月</span>
-                  <button type="button" class="pk-month-toggle-btn" id="pkMonthToggleBtn" onclick="toggleDemoMonth()" title="点击切换：9月(当月·云端真值) / 8月(历史数据)">切8月</button>
                 </div>
                 <div class="pk-cal-weekdays">
                   <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
