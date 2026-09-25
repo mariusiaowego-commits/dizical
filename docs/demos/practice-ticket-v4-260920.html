@@ -40,6 +40,58 @@
     --shadow-ticket: 0 4px 16px rgba(44, 62, 80, 0.06), 0 1px 3px rgba(44, 62, 80, 0.04),
                      inset 0 1px 0 rgba(255, 255, 255, 0.95);
     --shadow-inserted: 0 6px 18px rgba(44, 62, 80, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+    /* ══════ v26 右栏可替换视觉层变量（结构/行为已定，待参考图确认后在此集中修改） ══════ */
+    /* 1. 老师要求卡 */
+    --pk-req-bg: var(--surface-card);
+    --pk-req-border: 1px solid var(--border-card);
+    --pk-req-border-left: 4px solid var(--c-primary);
+    --pk-req-radius: 16px;
+    --pk-req-padding: 14px 18px;
+    --pk-req-gap: 8px;
+    --pk-req-title-size: 15px;
+    --pk-req-sub-size: 13px;
+    --pk-req-font-size: 13px;
+    --pk-req-line-height: 1.55;
+    --pk-req-item-color: var(--text-main);
+
+    /* 2. 仪表卡顶部信息带（科目 / 速度 / session） */
+    --pk-tele-bg: var(--surface-card);
+    --pk-tele-border: 1px solid var(--border-card);
+    --pk-tele-radius: 14px;
+    --pk-tele-padding: 10px 16px;
+    --pk-tele-margin-top: 6px;
+    --pk-tele-shadow: var(--shadow-card);
+    --pk-tele-label-size: 11px;
+    --pk-tele-label-color: var(--text-muted);
+    --pk-tele-subject-size: 20px;
+    --pk-tele-subject-weight: 800;
+    --pk-tele-subject-color: var(--text-main);
+    --pk-tele-session-bg: var(--c-secondary);
+    --pk-tele-session-color: var(--c-tertiary);
+    --pk-tele-session-border: 1px solid rgba(44, 62, 80, 0.20);
+    --pk-tele-session-size: 12.5px;
+    --pk-tele-session-weight: 700;
+    --pk-tele-session-radius: 9999px;
+    --pk-tele-speed-size: 19px;
+    --pk-tele-speed-weight: 800;
+    --pk-tele-speed-color: var(--text-main);
+
+    /* 3. 今日练习记录抽屉 */
+    --pk-drawer-width: 340px;
+    --pk-drawer-bg: var(--surface-page);
+    --pk-drawer-card-bg: var(--surface-card);
+    --pk-drawer-border: 1px solid var(--border-card);
+    --pk-drawer-radius: 18px 0 0 18px;
+    --pk-drawer-padding: 16px 18px;
+    --pk-drawer-gap: 12px;
+    --pk-drawer-title-size: 16px;
+    --pk-drawer-summary-bg: var(--surface-subtle);
+    --pk-drawer-summary-border: 1px solid rgba(255, 107, 107, 0.20);
+    --pk-drawer-summary-radius: 12px;
+    --pk-drawer-item-bg: var(--surface-card);
+    --pk-drawer-item-border: 1px solid var(--border-card);
+    --pk-drawer-item-radius: 10px;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -81,11 +133,11 @@
   #practiceStage.stage-running .run-only { display: flex; }
   #practiceStage.stage-running .run-only-block { display: block; }
 
-  /* 顶栏右侧记录与统计硬互斥 */
-  #practiceStage.stage-prep #pkRecords { display: inline-flex; }
-  #practiceStage.stage-prep #pkRunStat { display: none !important; }
-  #practiceStage.stage-running #pkRecords { display: none !important; }
-  #practiceStage.stage-running #pkRunStat { display: inline-flex; }
+  /* 顶栏右侧今日记录入口（准备态与计时态均常驻开放抽屉） */
+  #practiceStage.stage-prep #pkRecords,
+  #practiceStage.stage-running #pkRecords { display: inline-flex !important; }
+  #practiceStage.stage-prep #pkRunStat,
+  #practiceStage.stage-running #pkRunStat { display: none !important; }
 
   /* 工具类 */
   .pk-nowrap { white-space: nowrap; }
@@ -381,21 +433,43 @@
     .pk-req-card {
       padding: 8px 12px;
       gap: 4px;
-      flex: 1 1 auto;
+      flex: 0 0 auto;
       min-height: 0;
     }
-    .pk-req-card .pk-card-title {
-      font-size: 12px;
+    .pk-req-card .pk-card-title,
+    .pk-req-card .pk-req-title {
+      font-size: 13.5px;
+    }
+    .pk-req-card .pk-req-item-name {
+      font-size: 12.5px;
     }
     .pk-req-list {
-      max-height: 74px;
-      overflow-y: auto;
+      max-height: none;
+      overflow: hidden;
       gap: 3px;
       margin: 2px 0;
+      padding-left: 20px;
     }
-    .pk-req-item {
-      font-size: 11px;
-      line-height: 1.3;
+    .pk-req-list li {
+      font-size: 12.5px !important;
+      line-height: 1.5 !important;
+    }
+    .pk-req-list li:nth-child(n+4) {
+      display: none !important;
+    }
+    .pk-running-telemetry {
+      padding: 6px 12px;
+      margin-top: 4px;
+    }
+    .pk-tele-val-subject {
+      font-size: 18px;
+    }
+    .pk-tele-val-speed {
+      font-size: 17px;
+    }
+    .pk-tele-pill-session {
+      font-size: 11.5px;
+      padding: 2px 10px;
     }
     .pk-footer-note {
       display: none !important;
@@ -468,9 +542,43 @@
     .pk-req-card {
       padding: 6px 10px;
       gap: 3px;
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+    .pk-req-card .pk-card-title,
+    .pk-req-card .pk-req-title {
+      font-size: 12.5px;
+    }
+    .pk-req-card .pk-req-item-name {
+      font-size: 11.5px;
     }
     .pk-req-list {
-      max-height: 58px;
+      max-height: none;
+      overflow: hidden;
+      margin: 2px 0;
+      padding-left: 18px;
+      gap: 2px;
+    }
+    .pk-req-list li {
+      font-size: 12.5px !important;
+      line-height: 1.5 !important;
+    }
+    .pk-req-list li:nth-child(n+2) {
+      display: none !important;
+    }
+    .pk-running-telemetry {
+      padding: 4px 10px;
+      margin-top: 2px;
+    }
+    .pk-tele-val-subject {
+      font-size: 16px;
+    }
+    .pk-tele-val-speed {
+      font-size: 15px;
+    }
+    .pk-tele-pill-session {
+      font-size: 11px;
+      padding: 2px 8px;
     }
   }
 
@@ -2318,16 +2426,18 @@
     background: var(--c-primary);
   }
 
-  /* 核心参数总线（曲目、分句、速度居于第一视觉焦点） */
+  /* 核心参数总线（曲目、分句、速度居于第一视觉焦点 · 重点信息带） */
   .pk-running-telemetry {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--surface-well);
-    border: 1px solid rgba(44, 62, 80, 0.08);
-    border-radius: 14px;
-    padding: 8px 14px;
-    margin-top: 6px;
+    background: var(--pk-tele-bg, var(--surface-card));
+    border: var(--pk-tele-border, 1px solid var(--border-card));
+    border-radius: var(--pk-tele-radius, 14px);
+    padding: var(--pk-tele-padding, 10px 16px);
+    margin-top: var(--pk-tele-margin-top, 6px);
+    box-shadow: var(--pk-tele-shadow, var(--shadow-card));
+    box-sizing: border-box;
   }
   .pk-tele-block {
     display: flex;
@@ -2335,34 +2445,42 @@
     gap: 2px;
   }
   .pk-tele-label {
-    font-size: 11px;
+    font-size: var(--pk-tele-label-size, 11px);
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--pk-tele-label-color, var(--text-muted));
     letter-spacing: 0.03em;
   }
   .pk-tele-val-subject {
-    font-family: "Songti SC", "Source Han Serif CN", Georgia, serif;
-    font-size: 19px;
-    font-weight: 800;
-    color: var(--text-main);
+    font-family: var(--font-serif);
+    font-size: var(--pk-tele-subject-size, 20px);
+    font-weight: var(--pk-tele-subject-weight, 800);
+    color: var(--pk-tele-subject-color, var(--text-main));
+    line-height: 1.2;
   }
   .pk-tele-pill-session {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--c-primary);
-    background: var(--surface-subtle);
-    border: 1px solid rgba(255, 107, 107, 0.3);
-    padding: 3px 10px;
-    border-radius: 9999px;
+    font-size: var(--pk-tele-session-size, 12.5px);
+    font-weight: var(--pk-tele-session-weight, 700);
+    color: var(--pk-tele-session-color, var(--c-tertiary));
+    background: var(--pk-tele-session-bg, var(--c-secondary));
+    border: var(--pk-tele-session-border, 1px solid rgba(44, 62, 80, 0.20));
+    padding: 3px 12px;
+    border-radius: var(--pk-tele-session-radius, 9999px);
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(44, 62, 80, 0.12);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .pk-tele-val-speed {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--text-main);
+    font-size: var(--pk-tele-speed-size, 19px);
+    font-weight: var(--pk-tele-speed-weight, 800);
+    color: var(--pk-tele-speed-color, var(--text-main));
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
+    line-height: 1.2;
   }
 
   /* 真件 DOM 宿主 */
@@ -2482,37 +2600,47 @@
     border-radius: 22px;
   }
 
-  /* ══════ 模块 4：老师要求卡 ══════ */
+  /* ══════ 模块 4：老师要求卡（常驻可见 · 字级下限 ≥12.5px · 结构稳定） ══════ */
   .pk-req-card {
-    background: var(--surface-card);
-    border: 1px solid var(--border-card);
-    border-left: 4px solid var(--c-primary);
-    border-radius: 16px;
+    background: var(--pk-req-bg, var(--surface-card));
+    border: var(--pk-req-border, 1px solid var(--border-card));
+    border-left: var(--pk-req-border-left, 4px solid var(--c-primary));
+    border-radius: var(--pk-req-radius, 16px);
     box-shadow: var(--shadow-card);
-    padding: 16px 20px;
+    padding: var(--pk-req-padding, 14px 18px);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    flex: 1 1 auto;
-    min-height: 180px;
+    gap: var(--pk-req-gap, 8px);
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  .pk-req-title {
+    font-size: var(--pk-req-title-size, 15px);
+  }
+  .pk-req-item-name {
+    font-size: var(--pk-req-sub-size, 13px);
   }
   .pk-req-list {
     margin: 4px 0;
-    padding-left: 22px;
+    padding-left: 20px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
+    overflow: hidden;
   }
   .pk-req-list li {
-    font-size: 16px;
-    line-height: 1.6;
-    color: var(--text-main);
+    font-size: var(--pk-req-font-size, 13px);
+    line-height: var(--pk-req-line-height, 1.55);
+    color: var(--pk-req-item-color, var(--text-main));
+  }
+  .pk-req-list li:nth-child(n+4) {
+    display: none;
   }
   .pk-sep {
     height: 1px;
     border: 0;
-    margin: 8px 0;
+    margin: 6px 0;
     background: linear-gradient(90deg, transparent, rgba(44, 62, 80, 0.08) 20%, rgba(44, 62, 80, 0.08) 80%, transparent);
   }
 
@@ -2596,6 +2724,166 @@
     padding-left: 24px;
   }
   .pk-reader-text li { margin-bottom: 10px; }
+
+  /* ══════ 今日练习记录抽屉 ══════ */
+  .pk-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(44, 62, 80, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+    z-index: 110;
+  }
+  .pk-drawer-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .pk-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(var(--pk-drawer-width, 340px), 100vw);
+    background: var(--pk-drawer-bg, var(--surface-page));
+    border-left: var(--pk-drawer-border, 1px solid var(--border-card));
+    box-shadow: -4px 0 24px rgba(44, 62, 80, 0.12);
+    z-index: 120;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .pk-drawer.open {
+    transform: translateX(0);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pk-drawer {
+      transform: none !important;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease !important;
+    }
+    .pk-drawer.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  .pk-drawer-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--pk-drawer-padding, 16px 18px);
+    gap: var(--pk-drawer-gap, 12px);
+    box-sizing: border-box;
+  }
+  .pk-drawer-header {
+    min-height: 36px;
+  }
+  .pk-drawer-title {
+    font-size: var(--pk-drawer-title-size, 16px);
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .pk-drawer-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--c-primary);
+    background: rgba(255, 107, 107, 0.10);
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  #pkDrawerClose {
+    position: relative;
+  }
+  #pkDrawerClose::after {
+    content: "";
+    position: absolute;
+    inset: -8px -12px;
+  }
+  .pk-drawer-summary {
+    background: var(--pk-drawer-summary-bg, var(--surface-subtle));
+    border: var(--pk-drawer-summary-border, 1px solid rgba(255, 107, 107, 0.20));
+    border-radius: var(--pk-drawer-summary-radius, 12px);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pk-drawer-summary-lead {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .pk-drawer-summary-val {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--c-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-drawer-list-wrap {
+    overflow-y: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-right: 2px;
+  }
+  .pk-drawer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pk-drawer-item {
+    background: var(--pk-drawer-item-bg, var(--surface-card));
+    border: var(--pk-drawer-item-border, 1px solid var(--border-card));
+    border-radius: var(--pk-drawer-item-radius, 10px);
+    padding: 10px 12px;
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pk-drawer-item-head {
+    font-size: 12px;
+  }
+  .pk-drawer-item-time {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .pk-drawer-item-dur {
+    font-weight: 700;
+    color: var(--c-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-drawer-item-subject {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .pk-drawer-item-session {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .pk-drawer-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .pk-drawer-foot {
+    padding-top: 8px;
+    border-top: 1px solid rgba(44, 62, 80, 0.06);
+    text-align: center;
+  }
+  .pk-drawer-foot-text {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
 
   /* 提示条 */
   .pk-toast {
@@ -3031,9 +3319,9 @@
       <!-- ④ 老师要求卡 -->
       <section class="pk-req-card" id="pkReqCard" aria-label="老师要求">
         <div class="pk-row pk-between">
-          <div class="pk-row" style="gap:8px">
-            <span class="key" style="font-size:15px">老师要求</span>
-            <span class="pk-sub" id="pkReqItemName" style="color:var(--text-main);font-weight:600">吸气长音</span>
+          <div class="pk-row" style="gap:8px;align-items:center">
+            <span class="key pk-req-title">老师要求</span>
+            <span class="pk-sub pk-req-item-name" id="pkReqItemName" style="color:var(--text-main);font-weight:600">吸气长音</span>
           </div>
           <button class="pk-pill mini ok" id="pkVideoBtn">示范视频</button>
         </div>
@@ -3102,6 +3390,67 @@
     <ol class="pk-reader-text" id="pkReaderList"></ol>
   </div>
 </div>
+
+<!-- ══════════ 今日练习记录抽屉 ══════════ -->
+<div class="pk-drawer-overlay" id="pkDrawerOverlay" aria-hidden="true"></div>
+<aside class="pk-drawer" id="pkRecordsDrawer" role="dialog" aria-modal="true" aria-label="今日练习记录">
+  <div class="pk-drawer-inner">
+    <!-- 抽屉顶部标题行 -->
+    <div class="pk-row pk-between pk-shrink0 pk-drawer-header">
+      <div class="pk-row" style="gap:8px;align-items:center">
+        <span class="key pk-drawer-title">今日练习记录</span>
+        <span class="pk-drawer-badge">今日</span>
+      </div>
+      <button class="pk-pill mini" id="pkDrawerClose" aria-label="关闭今日练习记录抽屉">关闭</button>
+    </div>
+
+    <!-- 顶部合计块 -->
+    <div class="pk-drawer-summary pk-shrink0">
+      <div class="pk-drawer-summary-lead">今日累计练习</div>
+      <div class="pk-drawer-summary-val" id="pkDrawerTotalVal">今日 15 分 · 3 次</div>
+    </div>
+
+    <!-- 明细列表（按时间倒序） -->
+    <div class="pk-drawer-list-wrap pk-grow" id="pkDrawerListWrap">
+      <div class="pk-drawer-list" id="pkDrawerList">
+        <!-- 静态真值口径明细记录 -->
+        <article class="pk-drawer-item">
+          <div class="pk-row pk-between pk-drawer-item-head">
+            <span class="pk-drawer-item-time mono">20:45</span>
+            <span class="pk-drawer-item-dur">10 分钟</span>
+          </div>
+          <div class="pk-drawer-item-subject">吸气长音</div>
+          <div class="pk-drawer-item-session">慢板分句练习 · 正常长音保持</div>
+        </article>
+        <article class="pk-drawer-item">
+          <div class="pk-row pk-between pk-drawer-item-head">
+            <span class="pk-drawer-item-time mono">17:15</span>
+            <span class="pk-drawer-item-dur">3 分钟</span>
+          </div>
+          <div class="pk-drawer-item-subject">单吐tuku</div>
+          <div class="pk-drawer-item-session">tu（♩=80）音头颗粒感</div>
+        </article>
+        <article class="pk-drawer-item">
+          <div class="pk-row pk-between pk-drawer-item-head">
+            <span class="pk-drawer-item-time mono">14:02</span>
+            <span class="pk-drawer-item-dur">2 分钟</span>
+          </div>
+          <div class="pk-drawer-item-subject">采茶扑蝶</div>
+          <div class="pk-drawer-item-session">全曲连贯音准练习</div>
+        </article>
+      </div>
+      <!-- 空态行（静态默认隐藏，供数据为空时展示） -->
+      <div class="pk-drawer-empty" id="pkDrawerEmpty" style="display:none">
+        今天还没有记录
+      </div>
+    </div>
+
+    <!-- 底部数据来源说明 -->
+    <div class="pk-drawer-foot pk-shrink0">
+      <span class="pk-drawer-foot-text">数据来源：云端练习记录实时同步</span>
+    </div>
+  </div>
+</aside>
 
 <!-- ══════════ 生产真件依赖全局变量 ══════════ -->
 <script>
@@ -4576,6 +4925,23 @@ function closeReader() {
   document.getElementById('pkOverlay').classList.remove('open');
 }
 
+function openRecordsDrawer() {
+  const drawer = document.getElementById('pkRecordsDrawer');
+  const overlay = document.getElementById('pkDrawerOverlay');
+  if (drawer && overlay) {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+}
+function closeRecordsDrawer() {
+  const drawer = document.getElementById('pkRecordsDrawer');
+  const overlay = document.getElementById('pkDrawerOverlay');
+  if (drawer && overlay) {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+}
+
 /* 初始化与事件绑定 */
 (function initV4() {
   // 挂载 Grok Session Selector 组件
@@ -4743,12 +5109,16 @@ function closeReader() {
     if (e.target.id === 'pkOverlay') closeReader();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeReader(); closeFolio(); }
+    if (e.key === 'Escape') { closeReader(); closeFolio(); closeRecordsDrawer(); }
   });
 
-  document.getElementById('pkRecords').addEventListener('click', () => {
-    showToast('今日记录抽屉：demo 未接线（模块 7 单独过）');
-  });
+  // 今日练习记录抽屉绑定（准备态与计时态均常驻可调出）
+  document.getElementById('pkRecords').addEventListener('click', openRecordsDrawer);
+  const drawerCloseBtn = document.getElementById('pkDrawerClose');
+  if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeRecordsDrawer);
+  const drawerOverlay = document.getElementById('pkDrawerOverlay');
+  if (drawerOverlay) drawerOverlay.addEventListener('click', closeRecordsDrawer);
+
   document.getElementById('pkVideoBtn').addEventListener('click', () => {
     showToast('示范视频：demo 静态演示');
   });
