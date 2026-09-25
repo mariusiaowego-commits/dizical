@@ -472,6 +472,70 @@
     }
   }
 
+  /* 矮视口短档 (max-height: 700px) 计时态收拢卡自适应可压缩机制 */
+  @media (max-height: 700px) {
+    #practiceStage.stage-running .pk-ticket-hero-frame {
+      width: clamp(68px, 11vh, 92px);
+      height: clamp(68px, 11vh, 92px);
+      margin: 2px auto 0;
+    }
+    #practiceStage.stage-running .pk-ticket-subject-block {
+      margin-top: clamp(3px, 0.7vh, 6px);
+    }
+    #practiceStage.stage-running .pk-ticket-digits-grid {
+      gap: clamp(4px, 0.7vh, 6px);
+      margin-top: clamp(3px, 0.7vh, 6px);
+    }
+    #practiceStage.stage-running .pk-ticket-num-col {
+      padding: 4px 10px;
+      min-height: 28px;
+    }
+    #practiceStage.stage-running .pk-perforation-line {
+      margin: clamp(6px, 1vh, 10px) calc(-1 * var(--pk-ticket-pad-x, 12px));
+    }
+
+    /* Level 1: 日历块收缩（7列铺满，格子高度随可用高度收缩，隐藏星期行） */
+    .pk-collapsed-cal-block {
+      padding: clamp(4px, 0.8vh, 6px) clamp(6px, 1vw, 8px);
+      gap: 2px;
+      margin-top: clamp(4px, 0.8vh, 6px);
+    }
+    .pk-cal-weekdays.mini {
+      display: none !important;
+    }
+    .pk-collapsed-cal-grid {
+      gap: clamp(1px, 0.25vh, 2px);
+    }
+    .pk-collapsed-cal-grid .pk-cal-dot {
+      aspect-ratio: unset;
+      height: clamp(9px, 1.8vh, 14px);
+      border-radius: 2px;
+    }
+
+    /* Level 2: 次要信息行降级合并（今日累计与连续打卡合并为单行） */
+    #practiceStage.stage-running #pkCollapsedTodayRow {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedStreakRow {
+      display: none !important;
+    }
+    #practiceStage.stage-running .pk-collapsed-merged-row {
+      display: flex !important;
+    }
+
+    /* 行间距弹性压缩 */
+    .pk-collapsed-stat-row {
+      margin-top: clamp(10px, 1.8vh, 14px);
+    }
+    .pk-collapsed-progress-block {
+      margin-top: clamp(10px, 1.8vh, 14px);
+      gap: 4px;
+    }
+    #practiceStage.stage-running .pk-stub-memo-block {
+      padding: 4px 8px;
+    }
+  }
+
   /* PC 宽屏高度分配适配（1728x1117 / 1440x900 方案 A 竖向填充） */
   @media (min-width: 1200px) and (min-height: 850px) {
     html, body {
@@ -1669,6 +1733,9 @@
     color: var(--text-muted);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
+  .pk-collapsed-merged-row {
+    display: none !important;
+  }
 
   .pk-collapsed-progress-block {
     display: none;
@@ -2592,6 +2659,12 @@
           <div class="pk-collapsed-stat-row run-only" id="pkCollapsedStreakRow">
             <span class="pk-collapsed-stat-label">连续打卡</span>
             <span class="pk-collapsed-stat-val" id="pkCollapsedStreakVal">连续 61 天 <span class="pk-collapsed-stat-hint">· 最近 9-23</span></span>
+          </div>
+
+          <!-- (A+C 矮档合并行) 今日与连续合并：今日 0 分 · 连续 61 天 -->
+          <div class="pk-collapsed-stat-row pk-collapsed-merged-row run-only" id="pkCollapsedMergedRow">
+            <span class="pk-collapsed-stat-label">今日/连续</span>
+            <span class="pk-collapsed-stat-val" id="pkCollapsedMergedVal">今日 0 分 · 连续 61 天</span>
           </div>
 
           <!-- ═══ 科目历史信息模块（逐帧 copy 参考图 · 左右分栏 · 自然月日历打卡 + 4行真数） ═══ -->
