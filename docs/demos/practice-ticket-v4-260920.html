@@ -300,7 +300,8 @@
       gap: 12px;
     }
     .pk-ticket {
-      padding: 8px 10px;
+      --pk-ticket-pad-x: 14px;
+      padding: 8px var(--pk-ticket-pad-x);
     }
     .pk-ticket .pk-ticket-hero-frame {
       height: 84px;
@@ -331,7 +332,7 @@
       margin-bottom: 12px;
     }
     .pk-ticket .pk-perforation-line {
-      margin: 6px -10px;
+      margin: 6px calc(-1 * var(--pk-ticket-pad-x, 14px));
     }
     .pk-ticket .pk-subject-info-card {
       padding: 5px 8px;
@@ -342,17 +343,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      min-height: 44px;
       margin-bottom: 9px;
-    }
-    .pk-ticket .pk-month-toggle-btn {
-      min-width: 44px;
-      min-height: 44px;
-      font-size: 12px;
-      padding: 0 8px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
     }
     .pk-ticket .pk-cal-header-row {
       display: none !important;
@@ -407,6 +398,77 @@
     }
     .pk-footer-note {
       display: none !important;
+    }
+  }
+
+  /* 矮视口紧凑适配（如 1080x657 / 1199x700 / 1280x700 零页面滚动） */
+  @media (min-width: 1024px) and (max-height: 700px) {
+    body {
+      padding: 2px 6px;
+    }
+    .pk-top {
+      height: 28px;
+      margin-bottom: 2px;
+      padding: 0 6px;
+    }
+    .pk-stage-wrap {
+      height: calc(100vh - 34px);
+      max-height: calc(100vh - 34px);
+      gap: 10px;
+    }
+    .pk-ticket {
+      --pk-ticket-pad-x: 12px;
+      padding: 6px var(--pk-ticket-pad-x);
+    }
+    .pk-ticket .pk-ticket-hero-frame {
+      height: 56px;
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-ticket-subject-block {
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-ticket-subject-title {
+      font-size: 17px;
+    }
+    .pk-ticket .pk-ticket-digits-grid {
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-bignum-val {
+      font-size: 22px;
+    }
+    .pk-ticket .pk-session-slot {
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-session-tags-wrap {
+      margin-top: 2px;
+      margin-bottom: 6px;
+    }
+    .pk-ticket .pk-perforation-line {
+      margin: 4px calc(-1 * var(--pk-ticket-pad-x, 12px));
+    }
+    .pk-ticket .pk-subject-info-card {
+      padding: 4px 8px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    .pk-ticket .pk-stub-memo-block {
+      padding: 4px 8px;
+      gap: 2px;
+    }
+    .pk-ticket .pk-memo-row {
+      min-height: 14px;
+    }
+    .pk-instr-deck {
+      padding: 6px 10px;
+      gap: 4px;
+    }
+    .pk-req-card {
+      padding: 6px 10px;
+      gap: 3px;
+    }
+    .pk-req-list {
+      max-height: 58px;
     }
   }
 
@@ -502,12 +564,15 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 0 12px 14px;
+      box-sizing: border-box;
     }
     #pkSubjectInfoCard .pk-info-stat-row {
-      flex: 1 1 auto;
-      min-height: 44px;
-      max-height: 56px;
+      flex: 0 0 auto;
+      min-height: 0;
+      max-height: none;
       padding: 4px 0;
     }
     #pkSubjectInfoCard .pk-info-icon-disc {
@@ -683,11 +748,12 @@
      - 包含两个打孔、沉浸名画、并排大数字、艺术家姓名位、撕裂虚线、票根条形码
   ═══════════════════════════════════════════════════════════ */
   .pk-ticket {
+    --pk-ticket-pad-x: 14px;
     background: linear-gradient(180deg, rgba(255, 107, 107, 0.07) 0%, rgba(255, 107, 107, 0.02) 100%), var(--surface-page);
     border: 1px solid rgba(44, 62, 80, 0.12);
     border-radius: 18px;
     box-shadow: var(--shadow-ticket);
-    padding: 12px 14px 14px;
+    padding: 12px var(--pk-ticket-pad-x) 14px;
     box-sizing: border-box;
     position: relative;
     overflow: visible;
@@ -712,7 +778,6 @@
     justify-content: flex-end;
     padding: 0 14px 80px;
     opacity: 0;
-    transition: opacity 0.18s ease;
     pointer-events: none;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -953,7 +1018,7 @@
     position: relative;
     height: 0;
     border-top: 2px dashed rgba(44, 62, 80, 0.20);
-    margin: 18px -14px 18px;
+    margin: 18px calc(-1 * var(--pk-ticket-pad-x, 14px));
   }
   .pk-perf-notch-left, .pk-perf-notch-right {
     position: absolute;
@@ -1145,6 +1210,10 @@
     letter-spacing: 0.02em;
   }
   .pk-month-toggle-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 8.5px;
     font-weight: 600;
     color: var(--text-muted);
@@ -1158,6 +1227,18 @@
     touch-action: manipulation;
     white-space: nowrap;
     transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .pk-month-toggle-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    pointer-events: auto;
   }
   .pk-month-toggle-btn:hover {
     color: var(--c-primary);
@@ -1209,30 +1290,27 @@
   .pk-info-right-col {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 8px;
     min-width: 0;
     border-left: 1px solid rgba(44, 62, 80, 0.06);
-    padding-left: 10px;
-    padding-right: 0;
+    padding: 10px 0 10px 10px;
     margin: 0;
+    box-sizing: border-box;
   }
   .pk-info-stat-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    min-height: 22px;
-    padding: 2.5px 0;
+    min-height: 0;
+    padding: 3px 0;
     border-bottom: 1px solid rgba(44, 62, 80, 0.05);
     width: 100%;
     box-sizing: border-box;
   }
   .pk-info-stat-row:last-child {
     border-bottom: none;
-    padding-bottom: 0;
-  }
-  .pk-info-stat-row:first-child {
-    padding-top: 0;
   }
   .pk-info-row-lead {
     display: flex;
@@ -1400,6 +1478,8 @@
   #practiceStage.stage-running .pk-ticket-subject-block {
     margin-top: 10px;
     padding: 0;
+    pointer-events: none !important;
+    cursor: default !important;
   }
   #practiceStage.stage-running .pk-ticket-subject-title {
     font-size: 18px !important;
@@ -1562,12 +1642,14 @@
     font-weight: 700;
   }
   #practiceStage.stage-running .pk-ticket-lock-overlay {
-    display: flex;
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
     padding: 0 14px 80px;
-    background: var(--practice-mask-color, rgba(44, 62, 80, 0.0875));
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.0875)) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     filter: none !important;
@@ -3627,6 +3709,8 @@ function selectItem(id, isArchived) {
 }
 
 function openFolio() {
+  const stage = document.getElementById('practiceStage');
+  if ((stage && stage.classList.contains('stage-running')) || started || timerRunning) return;
   renderFolioModal();
   document.getElementById('pkFolioModal').classList.add('open');
 }
@@ -3746,6 +3830,21 @@ function enterRun() {
   const insertedHead = document.getElementById('pkInsertedHead');
   const runTelemetry = document.getElementById('pkRunTelemetry');
 
+  // 进入计时态：主动关闭已打开的票夹弹层并禁用换科目
+  closeFolio();
+  const subjectBlock = document.getElementById('pkTicketSubjectBlock');
+  if (subjectBlock) {
+    subjectBlock.setAttribute('aria-disabled', 'true');
+    subjectBlock.removeAttribute('title');
+    subjectBlock.setAttribute('tabindex', '-1');
+    subjectBlock.style.pointerEvents = 'none';
+  }
+  const folioBtn = document.getElementById('pkFolioBtn');
+  if (folioBtn) {
+    folioBtn.setAttribute('aria-disabled', 'true');
+    folioBtn.style.pointerEvents = 'none';
+  }
+
   // 保证高度完全一致：测定准备态卡片高度，收拢态逐像素对齐（禁止变矮，禁止高度漂移）
   const prepHeight = ticketCard ? ticketCard.offsetHeight : 578;
   if (ticketCard) {
@@ -3816,7 +3915,8 @@ function enterRun() {
     overwrite: 'auto',
     onComplete: () => {
       gsap.set(leftCol, { clearProps: 'width' });
-      gsap.set([prepItems, runItems, lockOverlay].filter(Boolean), { clearProps: 'opacity,transform' });
+      gsap.set([prepItems, runItems].filter(Boolean), { clearProps: 'opacity,transform' });
+      gsap.set(lockOverlay, { opacity: 1 });
       if (ticketCard) {
         ticketCard.style.height = prepHeight + 'px';
         ticketCard.style.minHeight = prepHeight + 'px';
@@ -3930,9 +4030,17 @@ function exitRun() {
   const resetToPrepClean = () => {
     stage.classList.remove('stage-running');
     stage.classList.add('stage-prep');
-    if (lockOverlay) {
-      lockOverlay.style.display = 'none';
-      lockOverlay.style.opacity = '0';
+    const subjectBlock = document.getElementById('pkTicketSubjectBlock');
+    if (subjectBlock) {
+      subjectBlock.removeAttribute('aria-disabled');
+      subjectBlock.setAttribute('title', '点击打开票夹换曲目');
+      subjectBlock.setAttribute('tabindex', '0');
+      subjectBlock.style.pointerEvents = '';
+    }
+    const folioBtn = document.getElementById('pkFolioBtn');
+    if (folioBtn) {
+      folioBtn.removeAttribute('aria-disabled');
+      folioBtn.style.pointerEvents = '';
     }
     if (ticketCard) {
       ticketCard.style.height = '';
@@ -3944,6 +4052,10 @@ function exitRun() {
         const teleItems = runTelemetry.querySelectorAll('.pk-tele-block');
         if (teleItems.length) gsap.set(teleItems, { clearProps: 'all' });
       }
+    }
+    if (lockOverlay) {
+      lockOverlay.style.display = 'none';
+      lockOverlay.style.opacity = '0';
     }
   };
 
@@ -4070,8 +4182,23 @@ function closeReader() {
   renderTicket();
 
   // 换科目入口
-  document.getElementById('pkFolioBtn').addEventListener('click', openFolio);
-  document.getElementById('pkTicketSubjectBlock').addEventListener('click', openFolio);
+  document.getElementById('pkFolioBtn').addEventListener('click', () => {
+    if (document.getElementById('practiceStage')?.classList.contains('stage-running')) return;
+    openFolio();
+  });
+  const subjectBlockEl = document.getElementById('pkTicketSubjectBlock');
+  if (subjectBlockEl) {
+    subjectBlockEl.addEventListener('click', () => {
+      if (document.getElementById('practiceStage')?.classList.contains('stage-running') || subjectBlockEl.getAttribute('aria-disabled') === 'true') return;
+      openFolio();
+    });
+    subjectBlockEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        if (document.getElementById('practiceStage')?.classList.contains('stage-running') || subjectBlockEl.getAttribute('aria-disabled') === 'true') return;
+        openFolio();
+      }
+    });
+  }
   document.getElementById('pkCloseFolioBtn').addEventListener('click', closeFolio);
   document.getElementById('pkFolioModal').addEventListener('click', e => {
     if (e.target.id === 'pkFolioModal') closeFolio();
