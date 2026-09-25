@@ -1,6 +1,7 @@
 """配置管理台路由 - 练习科目配置"""
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -1826,4 +1827,143 @@ async def api_design_stop():
     return JSONResponse({
         "ok": result["ok"],
         "message": result["stdout"] if result["ok"] else result["stderr"],
+    })
+
+
+# ─── 练习页配置 ─────────────────────────────────────────────────────────────
+# 视觉参数进 settings 表（key-value），不新增表或列。
+# 本轮：计时开始时票卡蒙版颜色。以后的 practice 页参数沿同一组接口加字段。
+
+PRACTICE_MASK_COLOR_KEY = "practice_mask_color"
+PRACTICE_MASK_OPACITY_KEY = "practice_mask_opacity"
+DEFAULT_PRACTICE_MASK_COLOR = "rgba(44, 62, 80, 0.35)"
+DEFAULT_PRACTICE_MASK_OPACITY = "0.35"
+
+_MASK_HEX_RE = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})")
+_MASK_RGB_RE = re.compile(
+    r"rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*([0-9]*\.?[0-9]+)\s*)?\)",
+    re.IGNORECASE,
+)
+
+
+def _format_mask_opacity(value: float) -> str:
+    text = f"{value:.4f}".rstrip("0").rstrip(".")
+    return text if text else "0"
+
+
+def _parse_mask_rgb(raw) -> Optional[tuple]:
+    """合法 #hex / rgb() / rgba() → (r, g, b)。alpha 只检查范围，不作为结果。"""
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    hex_match = _MASK_HEX_RE.fullmatch(text)
+    if hex_match:
+        digits = hex_match.group(1)
+        if len(digits) in (3, 4):
+            digits = "".join(ch * 2 for ch in digits)
+        return tuple(int(digits[i:i + 2], 16) for i in (0, 2, 4))
+    rgb_match = _MASK_RGB_RE.fullmatch(text)
+    if not rgb_match:
+        return None
+    channels = tuple(int(rgb_match.group(i)) for i in (1, 2, 3))
+    if any(channel > 255 for channel in channels):
+        return None
+    if rgb_match.group(4) is not None:
+        alpha = float(rgb_match.group(4))
+        if alpha < 0 or alpha > 1:
+            return None
+    return channels
+
+
+def _parse_mask_opacity(raw) -> Optional[float]:
+    if isinstance(raw, bool) or raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        value = float(raw)
+    elif isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            return None
+        try:
+            value = float(text)
+        except ValueError:
+            return None
+    else:
+        return None
+    if value < 0 or value > 1:
+        return None
+    return round(value, 4)
+
+
+def _read_practice_page_settings() -> Dict[str, str]:
+    from src.kid_app.app import get_setting
+    color = get_setting(PRACTICE_MASK_COLOR_KEY, DEFAULT_PRACTICE_MASK_COLOR)
+    opacity = get_setting(PRACTICE_MASK_OPACITY_KEY, DEFAULT_PRACTICE_MASK_OPACITY)
+    return {"mask_color": color, "mask_opacity": opacity}
+
+
+@router.get("/practice-page", response_class=HTMLResponse)
+def config_practice_page():
+    """练习页配置：practice 页视觉参数。"""
+    from src.kid_app.app import render, get_setting
+    current = _read_practice_page_settings()
+    return render(
+        "config-practice-page",
+        active_nav="portal",
+        pin_locked="true" if get_setting("dad_pin") else "false",
+        mask_color=current["mask_color"],
+        mask_opacity=current["mask_opacity"],
+    )
+
+
+@router.get("/api/practice-page/settings")
+def api_get_practice_page_settings():
+    """读练习页视觉参数。未设置时返回默认蒙版，不写库。"""
+    current = _read_practice_page_settings()
+    return JSONResponse({"ok": True, **current})
+
+
+@router.post("/api/practice-page/settings")
+async def api_set_practice_page_settings(request: Request):
+    """写计时蒙版颜色。只落 practice_mask_color 与 practice_mask_opacity。"""
+    from src.kid_app.app import get_setting, set_setting
+    try:
+        body = json.loads(await request.body() or b"")
+    except json.JSONDecodeError:
+        return JSONResponse({"ok": False, "error": "请求不是合法的 JSON"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "error": "请求不是合法的 JSON"}, status_code=400)
+
+    if "mask_color" not in body or "mask_opacity" not in body:
+        return JSONResponse(
+            {"ok": False, "error": "请提供蒙版颜色和透明度"},
+            status_code=400,
+        )
+
+    rgb = _parse_mask_rgb(body.get("mask_color"))
+    if rgb is None:
+        return JSONResponse(
+            {"ok": False, "error": "颜色格式不对，请用 #十六进制、rgb() 或 rgba()"},
+            status_code=400,
+        )
+    opacity = _parse_mask_opacity(body.get("mask_opacity"))
+    if opacity is None:
+        return JSONResponse(
+            {"ok": False, "error": "透明度要在 0 到 1 之间"},
+            status_code=400,
+        )
+
+    stored_pin = get_setting("dad_pin")
+    pin = body.get("pin", "")
+    if stored_pin and pin != stored_pin:
+        return JSONResponse({"ok": False, "error": "PIN 不对"}, status_code=401)
+
+    opacity_text = _format_mask_opacity(opacity)
+    color_text = f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {opacity_text})"
+    set_setting(PRACTICE_MASK_COLOR_KEY, color_text)
+    set_setting(PRACTICE_MASK_OPACITY_KEY, opacity_text)
+    return JSONResponse({
+        "ok": True,
+        "mask_color": color_text,
+        "mask_opacity": opacity_text,
     })

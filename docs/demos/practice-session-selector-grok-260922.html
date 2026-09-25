@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本次练什么 — 票卡 session 选择模块</title>
+<style>
+  :root {
+    --c-primary: #FF6B6B;
+    --c-secondary: #2C3E50;
+    --c-tertiary: #FFF8F0;
+    --c-neutral: #FFFFFF;
+    --c-muted: #666666;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    --serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html, body { margin: 0; }
+  body {
+    background: var(--c-tertiary);
+    color: var(--c-secondary);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 24px 16px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 390px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .stage-col { width: 390px; }
+  .demo-kicker {
+    font-family: var(--serif);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--c-muted);
+    margin: 0 0 8px;
+    white-space: nowrap;
+  }
+  .switcher { display: flex; gap: 8px; margin: 0 0 16px; }
+  .switcher button {
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 9999px;
+    background: var(--c-neutral);
+    border: 1px solid rgba(44, 62, 80, 0.14);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .switcher button[aria-pressed="true"] {
+    border-color: var(--c-primary);
+    background: rgba(255, 107, 107, 0.08);
+  }
+  .switcher button:focus-visible,
+  .pss-option:focus-visible,
+  .pss-custom-btn:focus-visible,
+  .pss-custom-ok:focus-visible,
+  .pss-custom-input:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: -2px;
+  }
+
+  /* 票卡底部切片。宽 390 = v4 .pk-left-col。overflow 与真票卡一样裁切，菜单因此不能留在切片里。 */
+  .ticket-slice {
+    width: 390px;
+    padding: 16px 18px;
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    border-radius: 0 0 20px 20px;
+    background:
+      linear-gradient(180deg, rgba(255, 107, 107, 0.07) 0%, rgba(255, 107, 107, 0.02) 100%),
+      var(--c-tertiary);
+    box-shadow:
+      0 4px 16px rgba(44, 62, 80, 0.06),
+      0 1px 3px rgba(44, 62, 80, 0.04);
+    overflow: hidden;
+  }
+  .tear {
+    border-top: 2px dashed rgba(44, 62, 80, 0.22);
+    margin: 0 -18px 16px;
+  }
+  .context-stub {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .context-stub span {
+    font-family: var(--serif);
+    font-size: 12px;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+  .context-stub svg { display: block; color: var(--c-secondary); }
+  .context-cta {
+    margin-top: 16px;
+    min-height: 48px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--c-neutral);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent),
+      var(--c-primary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  }
+
+  .meter {
+    margin: 12px 0 0;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+
+  /* ===== component ===== */
+  .pss { position: relative; }
+  .pss-trigger {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 0 10px;
+    text-align: left;
+    border-radius: 8px;
+    display: block;
+  }
+  .pss-trigger:hover { background: rgba(44, 62, 80, 0.04); }
+  .pss.is-open .pss-trigger {
+    background: transparent;
+    box-shadow: inset 0 -2px 0 var(--c-primary);
+  }
+  .pss-trigger:active { transform: scale(0.985); }
+  .pss-kicker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pss-kicker {
+    font-family: var(--serif);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+  .pss-meta {
+    font-family: var(--serif);
+    font-size: 12px;
+    color: var(--c-primary);
+    white-space: nowrap;
+  }
+  .pss-chevron {
+    margin-left: auto;
+    width: 0.5em;
+    height: 0.5em;
+    border-right: 1.5px solid var(--c-muted);
+    border-bottom: 1.5px solid var(--c-muted);
+    transform: rotate(45deg) translateY(-0.1em);
+    transition: transform 180ms var(--ease);
+  }
+  .pss.is-open .pss-chevron {
+    border-color: var(--c-primary);
+    transform: rotate(225deg) translateY(-0.1em);
+  }
+  .pss-value {
+    display: block;
+    max-width: 100%;
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    color: var(--c-secondary);
+  }
+  .pss-value.is-placeholder {
+    font-weight: 600;
+    color: var(--c-muted);
+  }
+
+  .pss-menu {
+    position: fixed;
+    z-index: 40;
+    margin: 0;
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--c-neutral);
+    border: 1px solid rgba(44, 62, 80, 0.14);
+    border-radius: 12px;
+    box-shadow: 0 16px 36px -18px rgba(44, 62, 80, 0.28), 0 1px 2px rgba(44, 62, 80, 0.06);
+    opacity: 0;
+    pointer-events: none;
+    min-width: 0;
+    border-radius: 0 0 12px 12px;
+    transform: translateY(-6px) scale(0.96);
+    transform-origin: top center;
+    transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .pss-menu[data-side="above"] {
+    border-radius: 12px 12px 0 0;
+    transform: translateY(6px) scale(0.96);
+    transform-origin: bottom center;
+  }
+  .pss-menu.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+  .pss-note {
+    margin: 0;
+    padding: 4px 8px 8px;
+    font-family: var(--serif);
+    font-size: 12px;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+  .pss-list {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .pss-option {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    border-radius: 8px;
+    color: var(--c-secondary);
+  }
+  .pss-option:hover { background: rgba(44, 62, 80, 0.04); }
+  .pss-option.is-current {
+    font-weight: 700;
+    background: rgba(255, 107, 107, 0.1);
+    box-shadow: inset 3px 0 0 var(--c-primary);
+  }
+  .pss-custom { margin-top: 16px; padding: 0 8px; }
+  .pss-custom-btn {
+    width: 100%;
+    min-height: 44px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--c-secondary);
+  }
+  .pss-custom-form { display: flex; gap: 8px; align-items: stretch; }
+  .pss-custom-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(44, 62, 80, 0.14);
+    background: var(--c-neutral);
+    color: var(--c-secondary);
+    font: inherit;
+    font-size: 14px;
+  }
+  .pss-custom-input:focus {
+    border-color: var(--c-primary);
+    outline: none;
+  }
+  .pss-custom-ok {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 8px;
+    background: var(--c-primary);
+    color: var(--c-neutral);
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .pss-custom-ok:disabled { opacity: 0.42; cursor: default; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pss-menu,
+    .pss-chevron,
+    .pss-trigger { transition: none; }
+    .pss-trigger:active { transform: none; }
+  }
+
+  .docs h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .docs h2 {
+    margin: 24px 0 8px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .docs p, .docs li { margin: 0 0 8px; }
+  .docs ul { margin: 0 0 8px; padding-left: 1.2em; }
+  .docs code, .docs pre {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .docs pre {
+    margin: 0 0 12px;
+    padding: 12px;
+    background: var(--c-neutral);
+    border-radius: 12px;
+    white-space: pre-wrap;
+    line-height: 1.45;
+  }
+  .readout {
+    margin: 0 0 8px;
+    padding: 12px;
+    background: var(--c-neutral);
+    border-radius: 12px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 860px) {
+    .wrap { grid-template-columns: 390px; justify-content: center; }
+  }
+  @media (max-width: 420px) {
+    body { padding: 12px 0 48px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage-col">
+      <p class="demo-kicker">演示科目</p>
+      <div class="switcher" id="switcher" role="group" aria-label="演示科目"></div>
+
+      <article class="ticket-slice" id="ticketSlice" aria-label="票卡底部切片">
+        <div class="tear" aria-hidden="true"></div>
+        <div id="mount"></div>
+        <div class="context-stub" aria-hidden="true">
+          <span>票根</span>
+          <svg viewBox="0 0 54 42" width="54" fill="currentColor">
+            <rect x="1" y="0" width="2" height="42"/>
+            <rect x="5" y="0" width="1" height="42"/>
+            <rect x="8" y="0" width="3" height="42"/>
+            <rect x="13" y="0" width="1" height="42"/>
+            <rect x="16" y="0" width="2" height="42"/>
+            <rect x="20" y="0" width="4" height="42"/>
+            <rect x="26" y="0" width="1" height="42"/>
+            <rect x="29" y="0" width="2" height="42"/>
+            <rect x="33" y="0" width="3" height="42"/>
+            <rect x="38" y="0" width="1" height="42"/>
+            <rect x="41" y="0" width="2" height="42"/>
+            <rect x="45" y="0" width="4" height="42"/>
+            <rect x="51" y="0" width="1" height="42"/>
+          </svg>
+        </div>
+        <div class="context-cta" aria-hidden="true">检票 · 开始练习</div>
+      </article>
+      <p class="meter" id="meter">票面测量中</p>
+    </div>
+
+    <div class="docs">
+      <h1>本次练什么</h1>
+      <p>这是给练习票卡用的独立组件 demo。舞台宽 390px，等于票卡列的实际列宽；组件铺在票面内容区里（列宽减去边框和左右 18px 内边距，约 352px）。打开选择时票面高度应保持不变。老师要求不在这里，仍放名师指引卡。</p>
+      <p id="subjectLine"></p>
+      <div class="readout" id="readout">还没有选择</div>
+
+      <h2>形态</h2>
+      <p>收起时只是票根上的一行字：衬线小标「本次练什么」，下面是选中的那一句。没有边框，也不摆输入框。点这一行，菜单从这一行的下沿以浮层打开，盖住下面的票根和检票按钮，不把票卡撑高。</p>
+      <p>标签每条占满一行，最少 44px，不换行。配了标签就用那一组；一条都没有，就用生产页同一套兜底：长音练习、吐音练习、连吐练习、换气练习。自己写一句收在菜单底部，写完才进入票面。</p>
+
+      <h2>集成契约</h2>
+      <p>把 <code>PracticeSessionSelector</code> 整段拷进票卡脚本。菜单节点会被挂到 <code>document.body</code>，因为 <code>.pk-ticket</code> 有 <code>overflow: hidden</code>，留在票卡里的浮层会被裁掉。不要把 <code>body</code> 做成 <code>transform</code> 或 <code>filter</code> 容器。</p>
+      <pre>const ui = PracticeSessionSelector.mount(host, {
+  options: PracticeSessionSelector.parse(item.content_options),
+  value: '',
+  onChange: function (value, meta) {
+    // value: string（空字符串表示还没选）
+    // meta.source: 'option' | 'custom'
+    // meta.fallback: 这科没有 content_options 时为 true
+    // meta.optionCount: 当前列表条数
+  }
+});
+
+ui.setOptions(rawOrArray); // 不发 onChange，也不清空已选
+ui.setValue('');           // 切科目时由票卡清空。不发 onChange
+ui.getValue();
+ui.close();
+ui.destroy();</pre>
+      <ul>
+        <li>根节点 <code>.pss</code>。状态类：<code>is-empty</code> <code>is-selected</code> <code>is-open</code> <code>is-custom</code> <code>is-fallback</code>。</li>
+        <li>触发器 <code>.pss-trigger</code>，小标 <code>.pss-kicker</code>，句子 <code>.pss-value</code>（未选时再加 <code>is-placeholder</code>），自填标记 <code>.pss-meta</code>，箭头 <code>.pss-chevron</code>。</li>
+        <li>菜单 <code>.pss-menu</code>（<code>data-side="below|above"</code>，打开时加 <code>is-open</code>），说明 <code>.pss-note</code>，列表 <code>.pss-list</code>，选项 <code>.pss-option</code>（当前项 <code>is-current</code>）。</li>
+        <li>自填：<code>.pss-custom</code> <code>.pss-custom-btn</code> <code>.pss-custom-form</code> <code>.pss-custom-input</code> <code>.pss-custom-ok</code>。输入上限 200，与现在的练习内容输入一致。</li>
+        <li>切科目沿用生产行为：<code>setOptions</code> 之后再 <code>setValue('')</code>。内容是否够格按「开始」，由票卡决定，这个组件不代管。</li>
+        <li>Esc、点菜单外、再点触发器，都会关上。上下键在标签之间移动。</li>
+        <li>打开 180ms、关上 120ms，缓动 <code>cubic-bezier(0.16, 1, 0.3, 1)</code>，从下沿 <code>translateY(-6px) scale(0.96)</code> 收到原位。没有遮罩，也不做高度动画。<code>prefers-reduced-motion</code> 时取消位移。</li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+/* ===== component: copy from here through PracticeSessionSelector ===== */
+(function () {
+  var FALLBACK = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
+  var seq = 0;
+  var reduceQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function parseContentOptions(raw) {
+    var list = Array.isArray(raw)
+      ? raw
+      : String(raw == null ? '' : raw).split(/[,，]/);
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var text = String(list[i]).trim();
+      if (!text || seen[text]) continue;
+      seen[text] = true;
+      out.push(text);
+    }
+    return out;
+  }
+
+  function mount(host, opts) {
+    opts = opts || {};
+    var id = 'pss' + (++seq);
+    var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
+    var options = [];
+    var usingFallback = false;
+    var current = '';
+    var open = false;
+    var closeTimer = 0;
+    var viaKeyboard = false;
+
+    var root = document.createElement('div');
+    root.className = 'pss is-empty';
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'pss-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+
+    var kickerRow = document.createElement('span');
+    kickerRow.className = 'pss-kicker-row';
+    var kicker = document.createElement('span');
+    kicker.className = 'pss-kicker';
+    kicker.id = id + '-kicker';
+    kicker.textContent = '本次练什么';
+    var meta = document.createElement('span');
+    meta.className = 'pss-meta';
+    meta.hidden = true;
+    meta.textContent = '自填';
+    var chevron = document.createElement('span');
+    chevron.className = 'pss-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    kickerRow.append(kicker, meta, chevron);
+
+    var valueEl = document.createElement('span');
+    valueEl.className = 'pss-value is-placeholder';
+    valueEl.textContent = '选择本次练什么';
+    trigger.append(kickerRow, valueEl);
+
+    var menu = document.createElement('div');
+    menu.className = 'pss-menu';
+    menu.id = id + '-menu';
+    menu.dataset.side = 'below';
+    menu.hidden = true;
+
+    var note = document.createElement('p');
+    note.className = 'pss-note';
+
+    var list = document.createElement('div');
+    list.className = 'pss-list';
+    list.id = id + '-list';
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-labelledby', kicker.id);
+    trigger.setAttribute('aria-controls', list.id);
+
+    var custom = document.createElement('div');
+    custom.className = 'pss-custom';
+    var customBtn = document.createElement('button');
+    customBtn.type = 'button';
+    customBtn.className = 'pss-custom-btn';
+    customBtn.textContent = '自己写一句';
+    var form = document.createElement('div');
+    form.className = 'pss-custom-form';
+    form.hidden = true;
+    var input = document.createElement('input');
+    input.className = 'pss-custom-input';
+    input.type = 'text';
+    input.maxLength = 200;
+    input.placeholder = '写下这次练什么';
+    input.setAttribute('aria-label', '自己写本次练什么');
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.enterKeyHint = 'done';
+    var ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'pss-custom-ok';
+    ok.textContent = '用这句';
+    ok.disabled = true;
+    form.append(input, ok);
+    custom.append(customBtn, form);
+    menu.append(note, list, custom);
+
+    host.replaceChildren(root);
+    root.append(trigger);
+    document.body.append(menu);
+
+    function emit(source) {
+      onChange(current, {
+        source: source,
+        fallback: usingFallback,
+        optionCount: options.length
+      });
+    }
+
+    function paint() {
+      var has = current.length > 0;
+      var customValue = has && options.indexOf(current) === -1;
+      root.classList.toggle('is-empty', !has);
+      root.classList.toggle('is-selected', has);
+      root.classList.toggle('is-custom', customValue);
+      root.classList.toggle('is-fallback', usingFallback);
+      root.dataset.value = current;
+      valueEl.textContent = has ? current : '选择本次练什么';
+      valueEl.classList.toggle('is-placeholder', !has);
+      meta.hidden = !customValue;
+      note.textContent = usingFallback
+        ? '这科还没配标签，先从下面四项里挑'
+        : '从这科已配的标签里选一句';
+      var buttons = list.querySelectorAll('.pss-option');
+      for (var i = 0; i < buttons.length; i++) {
+        var on = buttons[i].textContent === current;
+        buttons[i].classList.toggle('is-current', on);
+        buttons[i].setAttribute('aria-selected', on ? 'true' : 'false');
+      }
+    }
+
+    function renderList() {
+      list.replaceChildren();
+      options.forEach(function (text) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pss-option';
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', 'false');
+        button.textContent = text;
+        button.addEventListener('click', function () { choose(text, 'option'); });
+        list.appendChild(button);
+      });
+      paint();
+    }
+
+    function setOptions(raw) {
+      var parsed = parseContentOptions(raw);
+      usingFallback = parsed.length === 0;
+      options = usingFallback ? FALLBACK.slice() : parsed;
+      showForm(false);
+      renderList();
+    }
+
+    function setValue(next) {
+      current = String(next == null ? '' : next).trim().slice(0, 200);
+      paint();
+    }
+
+    function showForm(show) {
+      customBtn.hidden = show;
+      form.hidden = !show;
+      if (show) {
+        input.value = (current && options.indexOf(current) === -1) ? current : '';
+        ok.disabled = input.value.trim().length === 0;
+      }
+    }
+
+    function place() {
+      var rect = trigger.getBoundingClientRect();
+      var gap = 0;
+      menu.style.left = Math.round(rect.left) + 'px';
+      menu.style.width = Math.round(rect.width) + 'px';
+      list.style.maxHeight = 'none';
+      menu.dataset.side = 'below';
+      menu.style.top = Math.round(rect.bottom + gap) + 'px';
+      var natural = menu.getBoundingClientRect().height;
+      var below = window.innerHeight - rect.bottom - gap - 8;
+      var above = rect.top - gap - 8;
+      var side = (natural > below && above > below) ? 'above' : 'below';
+      var avail = side === 'above' ? above : below;
+      if (natural > avail) {
+        var chrome = natural - list.getBoundingClientRect().height;
+        list.style.maxHeight = Math.max(44, Math.floor(avail - chrome)) + 'px';
+      }
+      var height = menu.getBoundingClientRect().height;
+      menu.dataset.side = side;
+      var top = side === 'above' ? rect.top - gap - height : rect.bottom + gap;
+      menu.style.top = Math.round(top) + 'px';
+    }
+
+    function focusCurrent() {
+      var currentBtn = list.querySelector('.pss-option.is-current');
+      var target = currentBtn || list.querySelector('.pss-option');
+      if (target) {
+        target.focus();
+        if (target.scrollIntoView) target.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function openMenu() {
+      if (open) return;
+      open = true;
+      window.clearTimeout(closeTimer);
+      showForm(false);
+      menu.hidden = false;
+      root.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      place();
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          if (!open) return;
+          menu.classList.add('is-open');
+          if (viaKeyboard) focusCurrent();
+          viaKeyboard = false;
+        });
+      });
+    }
+
+    function closeMenu() {
+      if (!open) return;
+      open = false;
+      root.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      menu.classList.remove('is-open');
+      var wait = reduceQuery.matches ? 0 : 130;
+      closeTimer = window.setTimeout(function () {
+        if (!open) {
+          menu.hidden = true;
+          showForm(false);
+        }
+      }, wait);
+    }
+
+    function choose(text, source) {
+      var next = String(text || '').trim().slice(0, 200);
+      if (!next) return;
+      var changed = next !== current;
+      var resolved = options.indexOf(next) === -1 ? 'custom' : 'option';
+      current = next;
+      paint();
+      closeMenu();
+      trigger.focus();
+      if (changed) emit(source === 'custom' ? resolved : 'option');
+    }
+
+    trigger.addEventListener('pointerdown', function () { viaKeyboard = false; });
+    trigger.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') viaKeyboard = true;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        openMenu();
+      }
+    });
+    trigger.addEventListener('click', function () {
+      if (open) closeMenu();
+      else openMenu();
+    });
+
+    customBtn.addEventListener('click', function () {
+      showForm(true);
+      place();
+      input.focus();
+    });
+
+    input.addEventListener('input', function () {
+      ok.disabled = input.value.trim().length === 0;
+    });
+
+    function commitCustom() {
+      choose(input.value, 'custom');
+    }
+    ok.addEventListener('click', commitCustom);
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commitCustom();
+      }
+    });
+
+    list.addEventListener('keydown', function (event) {
+      var buttons = Array.prototype.slice.call(list.querySelectorAll('.pss-option'));
+      var index = buttons.indexOf(document.activeElement);
+      var next = -1;
+      if (event.key === 'ArrowDown') next = Math.min(buttons.length - 1, Math.max(0, index) + 1);
+      else if (event.key === 'ArrowUp') next = Math.max(0, (index < 0 ? 0 : index) - 1);
+      else if (event.key === 'Home') next = 0;
+      else if (event.key === 'End') next = buttons.length - 1;
+      if (next >= 0 && buttons[next]) {
+        event.preventDefault();
+        buttons[next].focus();
+      }
+    });
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape' && open) {
+        event.preventDefault();
+        closeMenu();
+        trigger.focus();
+      }
+    }
+    function onPointerDown(event) {
+      if (!open) return;
+      if (root.contains(event.target) || menu.contains(event.target)) return;
+      closeMenu();
+    }
+    function onReflow(event) {
+      if (!open) return;
+      if (event && menu.contains(event.target)) return;
+      place();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('resize', onReflow);
+    window.addEventListener('scroll', onReflow, true);
+
+    setOptions(opts.options || []);
+    setValue(opts.value || '');
+
+    return {
+      element: root,
+      trigger: trigger,
+      menu: menu,
+      valueEl: valueEl,
+      setOptions: setOptions,
+      setValue: setValue,
+      getValue: function () { return current; },
+      open: openMenu,
+      close: closeMenu,
+      isOpen: function () { return open; },
+      destroy: function () {
+        window.clearTimeout(closeTimer);
+        document.removeEventListener('keydown', onKeyDown);
+        document.removeEventListener('pointerdown', onPointerDown);
+        window.removeEventListener('resize', onReflow);
+        window.removeEventListener('scroll', onReflow, true);
+        menu.remove();
+        root.remove();
+      }
+    };
+  }
+
+  window.PracticeSessionSelector = {
+    mount: mount,
+    parse: parseContentOptions,
+    fallback: FALLBACK.slice()
+  };
+})();
+/* ===== component end ===== */
+
+/* ===== demo only ===== */
+(function () {
+  var ITEMS = [
+    {
+      id: 1340,
+      name: '萨丽哈',
+      content_options: '单独练习：低音34；低音54；中音34；中音54,背全曲,第1句,第2句,第3句,第4句,第5句,第6句,第7句'
+    },
+    {
+      id: 1343,
+      name: '单吐tuku',
+      content_options: 'tu （♩=80）,ku （♩=70）'
+    },
+    {
+      id: 1001,
+      name: '基本功',
+      content_options: ''
+    }
+  ];
+
+  var switcher = document.getElementById('switcher');
+  var subjectLine = document.getElementById('subjectLine');
+  var readout = document.getElementById('readout');
+  var meter = document.getElementById('meter');
+  var slice = document.getElementById('ticketSlice');
+  var closedHeight = 0;
+  var activeId = ITEMS[0].id;
+
+  function itemById(id) {
+    for (var i = 0; i < ITEMS.length; i++) {
+      if (ITEMS[i].id === id) return ITEMS[i];
+    }
+    return ITEMS[0];
+  }
+
+  function writeReadout(value, meta, via) {
+    var lines = [
+      'value: ' + (value ? value : '（空）'),
+      'source: ' + (meta && meta.source ? meta.source : '—'),
+      'fallback: ' + (meta ? String(meta.fallback) : '—'),
+      'optionCount: ' + (meta ? String(meta.optionCount) : '—'),
+      'via: ' + via
+    ];
+    readout.textContent = lines.join('\n');
+  }
+
+  function refreshMeter() {
+    var height = Math.round(slice.getBoundingClientRect().height);
+    if (!ui.isOpen()) closedHeight = height;
+    var delta = height - closedHeight;
+    var overflow = 0;
+    var nodes = document.querySelectorAll('.pss-value, .pss-option, .pss-custom-btn, .pss-note, .pss-kicker');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].scrollWidth > nodes[i].clientWidth + 1) overflow += 1;
+    }
+    var sign = delta > 0 ? '+' : '';
+    meter.textContent = '票面 ' + height + 'px · 相比收起 ' + sign + delta + 'px · 文字溢出 ' + overflow;
+  }
+
+  function describe(item) {
+    var parsed = PracticeSessionSelector.parse(item.content_options);
+    var count = parsed.length ? ('已配 ' + parsed.length + ' 条') : '未配标签，用兜底 4 条';
+    subjectLine.textContent = item.name + ' · item_id ' + item.id + ' · ' + count + '。标签原文来自 dizi.db，2026-09-22 只读。';
+  }
+
+  var ui = PracticeSessionSelector.mount(document.getElementById('mount'), {
+    options: ITEMS[0].content_options,
+    value: '',
+    onChange: function (value, meta) {
+      writeReadout(value, meta, 'onChange');
+      refreshMeter();
+    }
+  });
+
+  ITEMS.forEach(function (item) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = item.name;
+    button.dataset.item = String(item.id);
+    button.setAttribute('aria-pressed', item.id === activeId ? 'true' : 'false');
+    button.addEventListener('click', function () {
+      activeId = item.id;
+      var pressed = switcher.querySelectorAll('button');
+      for (var i = 0; i < pressed.length; i++) {
+        pressed[i].setAttribute('aria-pressed', pressed[i] === button ? 'true' : 'false');
+      }
+      ui.close();
+      ui.setOptions(item.content_options);
+      ui.setValue('');
+      describe(item);
+      writeReadout('', { source: 'setValue', fallback: PracticeSessionSelector.parse(item.content_options).length === 0, optionCount: ui.menu.querySelectorAll('.pss-option').length }, '切科目，未发 onChange');
+      refreshMeter();
+    });
+    switcher.appendChild(button);
+  });
+
+  describe(ITEMS[0]);
+  refreshMeter();
+  window.addEventListener('resize', refreshMeter);
+  if (window.ResizeObserver) {
+    var observer = new ResizeObserver(refreshMeter);
+    observer.observe(slice);
+  }
+
+  var trigger = ui.trigger;
+  var menu = ui.menu;
+  var originalOpen = ui.open;
+  ui.open = function () {
+    originalOpen();
+    window.setTimeout(refreshMeter, reduceWait());
+  };
+  trigger.addEventListener('click', function () {
+    window.setTimeout(refreshMeter, reduceWait());
+  });
+
+  function reduceWait() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
+  }
+
+  if (location.hash === '#open' || location.hash === '#fallback' || location.hash === '#custom') {
+    if (location.hash === '#fallback') document.querySelector('[data-item="1001"]').click();
+    ui.open();
+    if (location.hash === '#custom') menu.querySelector('.pss-custom-btn').click();
+  }
+  if (location.hash === '#selected') {
+    ui.setValue('单独练习：低音34；低音54；中音34；中音54');
+    refreshMeter();
+  }
+
+  if (location.hash === '#selftest') {
+    runSelfTest();
+  }
+
+  function runSelfTest() {
+    var fails = [];
+    function fail(code) { fails.push(code); }
+    var longText = '单独练习：低音34；低音54；中音34；中音54';
+    var h0 = Math.round(slice.getBoundingClientRect().height);
+    trigger.click();
+    if (!ui.isOpen()) fail('not-open');
+    if (menu.parentElement !== document.body) fail('menu-not-ported');
+    if (getComputedStyle(menu).position !== 'fixed') fail('menu-not-fixed');
+    if (menu.hidden) fail('menu-hidden');
+    var h1 = Math.round(slice.getBoundingClientRect().height);
+    if (h1 !== h0) fail('grew-' + h0 + '-' + h1);
+    var sliceBox = slice.getBoundingClientRect();
+    var menuBox = menu.getBoundingClientRect();
+    if (menuBox.left < sliceBox.left - 1 || menuBox.right > sliceBox.right + 1) {
+      fail('menu-outside-' + Math.round(menuBox.left) + '-' + Math.round(menuBox.right) + '-' + Math.round(sliceBox.left) + '-' + Math.round(sliceBox.right));
+    }
+    var optionNodes = menu.querySelectorAll('.pss-option');
+    if (optionNodes.length !== 9) fail('count-' + optionNodes.length);
+    if (!optionNodes[0] || optionNodes[0].textContent !== longText) fail('long-label');
+    for (var i = 0; i < optionNodes.length; i++) {
+      var node = optionNodes[i];
+      var box = node.getBoundingClientRect();
+      if (node.offsetHeight < 44) fail('opt-h-' + i + '-' + node.offsetHeight);
+      if (node.scrollWidth > node.clientWidth + 1) fail('ov-' + i + '-' + node.scrollWidth + '-' + node.clientWidth);
+      if (box.right > menuBox.right + 1 || box.left < menuBox.left - 1) fail('opt-outside-' + i);
+    }
+    if (trigger.offsetHeight < 44) fail('trigger-h-' + trigger.offsetHeight);
+    var customBtn = menu.querySelector('.pss-custom-btn');
+    if (customBtn.offsetHeight < 44) fail('custom-h-' + customBtn.offsetHeight);
+    optionNodes[0].click();
+    if (ui.getValue() !== longText) fail('value');
+    if (ui.isOpen()) fail('stayed-open');
+    if (ui.valueEl.scrollWidth > ui.valueEl.clientWidth + 1) {
+      fail('value-ov-' + ui.valueEl.scrollWidth + '-' + ui.valueEl.clientWidth);
+    }
+    var h2 = Math.round(slice.getBoundingClientRect().height);
+    if (h2 !== h0) fail('grew-after-' + h2);
+    if (!ui.element.classList.contains('is-selected')) fail('selected-class');
+    document.querySelector('[data-item="1001"]').click();
+    if (ui.getValue() !== '') fail('not-cleared');
+    trigger.click();
+    var fallbackNodes = menu.querySelectorAll('.pss-option');
+    var fallbackText = Array.prototype.map.call(fallbackNodes, function (n) { return n.textContent; }).join('|');
+    if (fallbackText !== '长音练习|吐音练习|连吐练习|换气练习') fail('fallback-' + fallbackText);
+    if (!ui.element.classList.contains('is-fallback')) fail('fallback-class');
+    var hOpen = Math.round(slice.getBoundingClientRect().height);
+    if (hOpen !== h0) fail('grew-fallback-' + hOpen);
+    menu.querySelector('.pss-custom-btn').click();
+    var input = menu.querySelector('.pss-custom-input');
+    if (input.offsetHeight < 44) fail('input-h-' + input.offsetHeight);
+    input.value = '自己写的一句';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    var ok = menu.querySelector('.pss-custom-ok');
+    if (ok.disabled) fail('ok-disabled');
+    if (ok.offsetHeight < 44) fail('ok-h-' + ok.offsetHeight);
+    ok.click();
+    if (ui.getValue() !== '自己写的一句') fail('custom-value');
+    if (!ui.element.classList.contains('is-custom')) fail('custom-class');
+    if (ui.isOpen()) fail('custom-stayed-open');
+    var h3 = Math.round(slice.getBoundingClientRect().height);
+    if (h3 !== h0) fail('grew-custom-' + h3);
+    trigger.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    if (ui.isOpen()) fail('esc');
+    var result = fails.length ? ('FAIL ' + fails.join(',')) : 'PASS';
+    document.documentElement.dataset.selftest = result;
+    document.title = result;
+  }
+})();
+</script>
+</body>
+</html>

@@ -40,6 +40,16 @@ PingFang SC (苹方, iOS/macOS 系统自带). Web fallback: `system-ui, -apple-s
 | body | 14px | 400 | 默认正文 |
 | label | 12px | 500 | nav label / button text / tag |
 
+### 衬线字族 (1) — 2026-09-22 新增（同步自 dizicute）
+
+`font.family.serif` = `"Songti SC", "STSong", Georgia, "Times New Roman", serif`
+
+| 用途 | 允许 | 禁止 |
+|---|---|---|
+| 票务 / 档案气质的文字 | 票头小字、票号、档案编号、`● TICKET` 类小标、票面主标题（科目名，**粗体衬线**） | 正文、控件文字、数字 |
+
+**数字一律走 monospace + `tabular-nums`**（2026-09-23 dad 试过细体衬线后否掉，改回）；正文走 PingFang SC 栈。
+
 ### 圆角 (4)
 
 `sm=8 / md=12 / lg=16 / full=9999`

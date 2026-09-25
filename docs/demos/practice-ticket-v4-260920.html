@@ -1,0 +1,4776 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dizicute">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>practice 练习票卡 demo v4 — 艺术展门票形态与打卡机动效（2026-09-22）</title>
+<!-- 生产页真样式（逐字抽取自 main 44fe6c1，包含 60 格刻度尺、三档 tick、红针、卷草纹、气泡等完整定义） -->
+<link rel="stylesheet" href="./practice-skeleton-260920/real-practice.css">
+<style>
+  /* ══════ Token（严格限定 dizicute 6 色及 alpha 派生，无任何新增 hex）══════ */
+  :root {
+    --c-primary: #FF6B6B;
+    --c-secondary: #2C3E50;
+    --c-tertiary: #FFF8F0;
+    --c-neutral: #FFFFFF;
+    --c-muted: #666666;
+    --c-accent: #FF8C5A;
+    --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --practice-mask-color: rgba(44, 62, 80, 0.0875);
+  }
+  [data-theme="dizicute"] {
+    --surface-page: var(--c-tertiary);
+    --surface-card: var(--c-neutral);
+    --surface-subtle: rgba(255, 107, 107, 0.04);
+    --surface-well: rgba(44, 62, 80, 0.04);
+    --surface-archived: rgba(44, 62, 80, 0.05);
+    --border-card: rgba(44, 62, 80, 0.08);
+    --border-strong: rgba(44, 62, 80, 0.14);
+    --border-active: var(--c-primary);
+    --text-main: var(--c-secondary);
+    --text-muted: var(--c-muted);
+    --text-on-cta: var(--c-neutral);
+    --cta-bg: var(--c-primary);
+
+    /* R1 双层物理漫反射 + R2 1px 顶边内高光 */
+    --shadow-card: 0 1px 3px rgba(44, 62, 80, 0.03), 0 8px 24px -4px rgba(44, 62, 80, 0.05),
+                   inset 0 1px 0 0 rgba(255, 255, 255, 0.90);
+    --shadow-raised: 0 2px 6px rgba(44, 62, 80, 0.04), 0 14px 34px -6px rgba(44, 62, 80, 0.09),
+                     inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+    --shadow-ticket: 0 4px 16px rgba(44, 62, 80, 0.06), 0 1px 3px rgba(44, 62, 80, 0.04),
+                     inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    --shadow-inserted: 0 6px 18px rgba(44, 62, 80, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; min-height: 100vh; }
+  body {
+    background: var(--surface-page);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 8px 16px 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  #practiceStage {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* 状态切换作用域显隐 */
+  #practiceStage.stage-prep .prep-only { display: flex; }
+  #practiceStage.stage-prep .prep-only-block { display: block; }
+  #practiceStage.stage-prep .pk-session-slot.prep-only { display: block; width: 100%; }
+  #practiceStage.stage-prep .pk-subject-info-card.prep-only { display: grid; }
+  #practiceStage.stage-prep .run-only { display: none !important; }
+  #practiceStage.stage-prep .run-only-block { display: none !important; }
+
+  #practiceStage.stage-running .prep-only { display: none !important; }
+  #practiceStage.stage-running .prep-only-block { display: none !important; }
+  #practiceStage.stage-running .run-only { display: flex; }
+  #practiceStage.stage-running .run-only-block { display: block; }
+
+  /* 顶栏右侧记录与统计硬互斥 */
+  #practiceStage.stage-prep #pkRecords { display: inline-flex; }
+  #practiceStage.stage-prep #pkRunStat { display: none !important; }
+  #practiceStage.stage-running #pkRecords { display: none !important; }
+  #practiceStage.stage-running #pkRunStat { display: inline-flex; }
+
+  /* 工具类 */
+  .pk-nowrap { white-space: nowrap; }
+  .pk-shrink0 { flex: 0 0 auto; }
+  .pk-ellip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pk-row { display: flex; align-items: center; }
+  .pk-between { justify-content: space-between; }
+  .pk-grow { flex: 1 1 auto; }
+  .pk-sub { font-size: 12px; color: var(--text-muted); }
+  .key { font-weight: 700; color: var(--text-main); }
+
+  /* R8 90ms 弹簧按压反馈 */
+  .pk-press {
+    transition: transform 90ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+  }
+  .pk-press:active:not(:disabled) { transform: scale(0.985); }
+
+  /* ══════ 自定义滚动条（符合 dizicute 规范） ══════ */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(44, 62, 80, 0.18);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(44, 62, 80, 0.35);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(44, 62, 80, 0.18) transparent;
+  }
+
+  /* ══════ 顶栏 40px（与下方舞台 max-width 1280 居中左右边缘对齐） ══════ */
+  .pk-top {
+    max-width: 1280px;
+    width: 100%;
+    height: 40px;
+    margin: 0 auto 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    box-sizing: border-box;
+  }
+  .pk-brand {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .pk-brand.running {
+    color: var(--c-primary);
+  }
+  .pk-mid {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .pk-mid b {
+    color: var(--text-main);
+  }
+  .pk-run-stat {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-well);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-server-clock {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-well);
+    border: 1px solid var(--border-card);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    box-sizing: border-box;
+  }
+
+  .pk-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 9999px;
+    padding: 6px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-card);
+    background: var(--surface-card);
+    color: var(--text-main);
+    min-height: 36px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  .pk-pill.mini {
+    min-height: 28px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+  }
+  .pk-pill.mark {
+    background: var(--surface-subtle);
+    border-color: var(--border-active);
+    color: var(--c-primary);
+    font-weight: 600;
+  }
+  .pk-pill.ok {
+    font-weight: 600;
+    color: var(--text-main);
+  }
+  .pk-pill.arch {
+    background: var(--surface-archived);
+    border-color: rgba(44, 62, 80, 0.08);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* ══════ 主舞台布局（多设备三档形态适配 · 与 pk-top 严格对齐左右边缘） ══════ */
+  .pk-stage-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 24px;
+    align-items: stretch;
+    justify-content: flex-start;
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    box-sizing: border-box;
+    min-height: calc(100vh - 80px);
+    transition: gap 0.55s ease;
+  }
+
+  /* 左侧：练习票卡列（准备态 380px，计时态收拢至 220px，以左边框为轴心） */
+  .pk-left-col {
+    width: 380px;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-self: stretch;
+    container-type: inline-size;
+    container-name: ticket;
+    transform-origin: left center;
+    transition: opacity 0.26s ease;
+  }
+
+  /* 右侧：中轴主栏（仪表卡 + 老师要求卡，流体填充并右侧 flush 对齐 pk-top） */
+  .pk-main-col {
+    flex: 1 1 0%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-self: stretch;
+    transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ② 中屏（1024px–1199px，如 iPad 横屏 1133×744 / 1024×768）：两栏保持并排，比例收窄，左右边缘依然与 pk-top 对齐 */
+  @media (max-width: 1199px) and (min-width: 1024px) {
+    .pk-top {
+      max-width: 100%;
+    }
+    .pk-stage-wrap {
+      max-width: 100%;
+      gap: 16px;
+      padding: 0;
+    }
+    .pk-left-col {
+      width: 360px;
+    }
+  }
+
+  /* iPad mini / iPad 沉浸式一屏适配（1133x744 / 1024x768 零页面滚动） */
+  @media (min-width: 1024px) and (max-height: 800px) {
+    html, body {
+      height: 100vh;
+      overflow-y: hidden !important;
+    }
+    body {
+      padding: 3px 6px;
+    }
+    .pk-top {
+      height: 32px;
+      margin-bottom: 4px;
+      padding: 0 6px;
+    }
+    .pk-stage-wrap {
+      min-height: 0;
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      gap: 12px;
+    }
+    .pk-ticket {
+      --pk-ticket-pad-x: 14px;
+      padding: 8px var(--pk-ticket-pad-x);
+    }
+    .pk-ticket .pk-ticket-hero-frame {
+      height: 84px;
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-ticket-subject-block {
+      padding: 4px 12px;
+      border-radius: 10px;
+    }
+    .pk-ticket .pk-ticket-subject-title {
+      font-size: 18px;
+    }
+    .pk-ticket .pk-ticket-subject-sub {
+      font-size: 10px;
+      margin-top: 1px;
+    }
+    .pk-ticket .pk-ticket-digits-grid {
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-bignum-val {
+      font-size: 24px;
+    }
+    .pk-ticket .pk-session-slot {
+      margin-top: 4px;
+    }
+    .pk-ticket .pk-session-tags-wrap {
+      margin-top: 4px;
+      margin-bottom: 12px;
+    }
+    .pk-ticket .pk-perforation-line {
+      margin: 6px calc(-1 * var(--pk-ticket-pad-x, 14px));
+    }
+    .pk-ticket .pk-subject-info-card {
+      padding: 5px 8px;
+      margin-top: 3px;
+      margin-bottom: 3px;
+    }
+    .pk-ticket .pk-info-bignum-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 9px;
+    }
+    .pk-ticket .pk-cal-header-row {
+      display: none !important;
+      min-height: 0;
+    }
+    .pk-ticket .pk-stub-memo-block {
+      padding: 5px 8px;
+      gap: 3px;
+    }
+    .pk-ticket .pk-memo-row {
+      min-height: 16px;
+    }
+    .pk-main-col {
+      gap: 8px;
+    }
+    .pk-instr-deck {
+      padding: 8px 12px;
+      gap: 6px;
+    }
+    .pk-slot-idle {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+    .pk-slot2-box {
+      padding: 6px 8px;
+    }
+    .pk-slot4-box {
+      margin-top: 4px;
+    }
+    .pk-ticket-cta {
+      padding: 7px 14px;
+      font-size: 13.5px;
+    }
+    .pk-req-card {
+      padding: 8px 12px;
+      gap: 4px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .pk-req-card .pk-card-title {
+      font-size: 12px;
+    }
+    .pk-req-list {
+      max-height: 74px;
+      overflow-y: auto;
+      gap: 3px;
+      margin: 2px 0;
+    }
+    .pk-req-item {
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .pk-footer-note {
+      display: none !important;
+    }
+  }
+
+  /* 矮视口紧凑适配（如 1080x657 / 1199x700 / 1280x700 零页面滚动） */
+  @media (min-width: 1024px) and (max-height: 700px) {
+    body {
+      padding: 2px 6px;
+    }
+    .pk-top {
+      height: 28px;
+      margin-bottom: 2px;
+      padding: 0 6px;
+    }
+    .pk-stage-wrap {
+      height: calc(100vh - 34px);
+      max-height: calc(100vh - 34px);
+      gap: 10px;
+    }
+    .pk-ticket {
+      --pk-ticket-pad-x: 12px;
+      padding: 6px var(--pk-ticket-pad-x);
+    }
+    .pk-ticket .pk-ticket-hero-frame {
+      height: 56px;
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-ticket-subject-block {
+      padding: 2px 8px;
+      border-radius: 8px;
+    }
+    .pk-ticket .pk-ticket-subject-title {
+      font-size: 15px;
+    }
+    .pk-ticket .pk-ticket-digits-grid {
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-bignum-val {
+      font-size: 22px;
+    }
+    .pk-ticket .pk-session-slot {
+      margin-top: 2px;
+    }
+    .pk-ticket .pk-session-tags-wrap {
+      margin-top: 2px;
+      margin-bottom: 6px;
+    }
+    .pk-ticket .pk-perforation-line {
+      margin: 4px calc(-1 * var(--pk-ticket-pad-x, 12px));
+    }
+    .pk-ticket .pk-subject-info-card {
+      padding: 4px 8px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    .pk-ticket .pk-stub-memo-block {
+      padding: 4px 8px;
+      gap: 2px;
+    }
+    .pk-ticket .pk-memo-row {
+      min-height: 14px;
+    }
+    .pk-instr-deck {
+      padding: 6px 10px;
+      gap: 4px;
+    }
+    .pk-req-card {
+      padding: 6px 10px;
+      gap: 3px;
+    }
+    .pk-req-list {
+      max-height: 58px;
+    }
+  }
+
+  /* 矮视口短档 (max-height: 700px) 计时态收拢卡自适应可压缩机制 */
+  @media (max-height: 700px) {
+    #practiceStage.stage-running .pk-ticket-hero-frame {
+      width: clamp(68px, 11vh, 92px) !important;
+      height: clamp(68px, 11vh, 92px) !important;
+      margin: 2px auto 0 !important;
+    }
+    #practiceStage.stage-running .pk-ticket-subject-block {
+      margin-top: clamp(3px, 0.7vh, 6px) !important;
+    }
+    #practiceStage.stage-running .pk-ticket-digits-grid {
+      gap: clamp(4px, 0.7vh, 6px) !important;
+      margin-top: clamp(3px, 0.7vh, 6px) !important;
+    }
+    #practiceStage.stage-running .pk-ticket-num-col {
+      padding: 4px 10px !important;
+      min-height: 28px !important;
+    }
+    #practiceStage.stage-running .pk-perforation-line {
+      margin: clamp(6px, 1vh, 10px) calc(-1 * var(--pk-ticket-pad-x, 12px)) !important;
+    }
+
+    /* Level 1: 日历块收缩（7列铺满，格子高度随可用高度收缩，隐藏星期行） */
+    .pk-collapsed-cal-block {
+      padding: clamp(3px, 0.6vh, 5px) clamp(6px, 1vw, 8px);
+      gap: 2px;
+      margin-top: clamp(3px, 0.6vh, 5px);
+    }
+    .pk-cal-weekdays.mini {
+      display: none !important;
+    }
+    .pk-collapsed-cal-grid {
+      gap: clamp(1px, 0.25vh, 2px);
+    }
+    .pk-collapsed-cal-grid .pk-cal-dot {
+      height: clamp(8px, 1.45vh, 12px);
+      padding-bottom: 0;
+      border-radius: 2px;
+    }
+
+    /* Level 2: 次要信息行降级合并（今日累计与连续打卡合并为单微卡片） */
+    #practiceStage.stage-running #pkCollapsedTodayRow {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedStreakRow {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedDivider1 {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedDivider2 {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedMergedRow,
+    #practiceStage.stage-running .pk-collapsed-merged-row,
+    #practiceStage.stage-running .pk-collapsed-merged-card {
+      display: flex !important;
+    }
+
+    /* 微卡片间距弹性压缩 */
+    .pk-collapsed-stat-card,
+    .pk-collapsed-stat-row,
+    .pk-collapsed-progress-card,
+    .pk-collapsed-progress-block {
+      margin-top: clamp(2px, 0.4vh, 3px);
+      padding: clamp(2px, 0.4vh, 3px) 8px;
+      gap: 1px;
+    }
+    .pk-collapsed-card-head .pk-info-icon-disc.mini {
+      width: 13px;
+      height: 13px;
+    }
+    .pk-collapsed-card-head .pk-info-icon-disc.mini .pk-info-icon-svg {
+      width: 8px;
+      height: 8px;
+    }
+    .pk-collapsed-stat-val {
+      font-size: 11.5px;
+      line-height: 1;
+    }
+    .pk-collapsed-progress-val {
+      font-size: 10px;
+      line-height: 1;
+    }
+    .pk-collapsed-progress-bar-track {
+      height: 3px;
+      margin-top: 1.5px;
+    }
+    .pk-collapsed-divider {
+      display: none !important;
+    }
+    #practiceStage.stage-running .pk-stub-memo-block {
+      padding: 3px 8px;
+    }
+  }
+
+  /* Level 3: 极矮视口二次降级（若合并卡仍过紧，则丢弃连续打卡保留今日与本次进度） */
+  @media (max-height: 590px) {
+    #practiceStage.stage-running #pkCollapsedMergedRow {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedTodayRow {
+      display: flex !important;
+    }
+    #practiceStage.stage-running #pkCollapsedStreakRow {
+      display: none !important;
+    }
+  }
+
+  /* PC 宽屏高度分配适配（1728x1117 / 1440x900 方案 A 竖向填充） */
+  @media (min-width: 1200px) and (min-height: 850px) {
+    html, body {
+      height: 100vh;
+      overflow-y: hidden !important;
+    }
+    body {
+      padding: 6px 16px;
+    }
+    .pk-top {
+      height: 36px;
+      margin-bottom: 6px;
+    }
+    .pk-stage-wrap {
+      min-height: 0;
+      height: calc(100vh - 68px);
+      max-height: calc(100vh - 68px);
+      gap: 16px;
+    }
+    .pk-ticket .pk-ticket-hero-frame {
+      height: clamp(128px, 16vh, 148px);
+    }
+    .pk-ticket .pk-perforation-line {
+      margin: 10px calc(-1 * var(--pk-ticket-pad-x, 14px));
+    }
+    .pk-ticket .pk-session-tags-wrap {
+      margin-bottom: 8px;
+    }
+    #pkSubjectInfoCard, .pk-subject-info-card {
+      flex: 1 1 auto;
+      min-height: 0;
+      align-items: stretch;
+      grid-template-columns: 1fr 1fr;
+      padding: 8px 10px;
+      gap: 12px;
+      margin-top: 6px;
+      margin-bottom: 0;
+    }
+    #pkSubjectInfoCard .pk-info-left-col {
+      height: auto;
+      align-self: start;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 0;
+    }
+    #pkSubjectInfoCard .pk-info-metric-header {
+      margin-bottom: 4px;
+    }
+    #pkSubjectInfoCard .pk-info-label {
+      font-size: 12px;
+    }
+    #pkSubjectInfoCard .pk-info-bignum-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    #pkSubjectInfoCard .pk-info-bignum {
+      font-size: 38px;
+    }
+    #pkSubjectInfoCard .pk-cal-wrap {
+      width: 100%;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #pkSubjectInfoCard .pk-cal-month-badge {
+      font-size: 12px;
+    }
+    #pkSubjectInfoCard .pk-cal-weekdays {
+      font-size: 10px;
+      gap: 3.5px;
+    }
+    #pkSubjectInfoCard .pk-cal-grid {
+      container-type: inline-size;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-auto-rows: var(--cal-dot-size, calc((100cqw - 21px) / 7));
+      align-content: start;
+      gap: 3.5px;
+      width: 100%;
+      height: auto;
+    }
+    #pkSubjectInfoCard .pk-cal-dot {
+      width: 100%;
+      height: var(--cal-dot-size, calc((100cqw - 21px) / 7));
+      padding-bottom: 0;
+      min-width: 0;
+      min-height: 0;
+      align-self: start;
+      justify-self: stretch;
+      border-radius: 3px;
+      box-sizing: border-box;
+    }
+    #pkSubjectInfoCard .pk-info-right-col {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 0 12px 14px;
+      box-sizing: border-box;
+    }
+    #pkSubjectInfoCard .pk-info-stat-row {
+      flex: 0 0 auto;
+      min-height: 0;
+      max-height: none;
+      padding: 4px 0;
+    }
+    #pkSubjectInfoCard .pk-info-icon-disc {
+      width: 22px;
+      height: 22px;
+    }
+    #pkSubjectInfoCard .pk-info-icon-svg {
+      width: 13px;
+      height: 13px;
+    }
+    #pkSubjectInfoCard .pk-info-row-title {
+      font-size: 12.5px;
+    }
+    #pkSubjectInfoCard .pk-info-val-num {
+      font-size: 15px;
+    }
+    #pkSubjectInfoCard .pk-info-val-unit {
+      font-size: 11.5px;
+    }
+    .pk-ticket .pk-stub-memo-block, .pk-stub-memo-block {
+      margin-top: 10px;
+      padding: 12px 14px;
+      gap: 8px;
+    }
+    .pk-ticket .pk-memo-row, .pk-memo-row {
+      min-height: 24px;
+    }
+    .pk-ticket .pk-memo-label, .pk-memo-label {
+      font-size: 12px;
+    }
+    .pk-ticket .pk-memo-val, .pk-ticket .pk-memo-val.mono, .pk-memo-val, .pk-memo-val.mono {
+      font-size: 13.5px;
+    }
+    #pkInstrCard, .pk-instr-deck {
+      flex: 1 1 auto;
+      min-height: 340px;
+      justify-content: flex-start;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+    #pkInstrCard .timer-block, .pk-instr-deck .timer-block {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #pkReqCard, .pk-req-card {
+      flex: 0 0 auto;
+      min-height: 0;
+      padding: 14px 20px;
+      gap: 6px;
+    }
+    .pk-footer-note {
+      display: none !important;
+    }
+  }
+
+  /* PC 超高屏适配（1728x1117）：卡片按内容收缩，票根 hero 承接剩余高度，大数字 64px */
+  @media (min-width: 1200px) and (min-height: 1000px) {
+    .pk-ticket .pk-ticket-hero-frame {
+      height: 338px;
+    }
+    #pkSubjectInfoCard {
+      flex: 0 1 auto;
+      align-self: start;
+    }
+    #pkSubjectInfoCard .pk-info-bignum {
+      font-size: 64px;
+    }
+    #pkSubjectInfoCard .pk-info-metric-header {
+      margin-bottom: 8px;
+    }
+    #pkSubjectInfoCard .pk-info-bignum-wrap {
+      margin-bottom: 16px;
+    }
+    #pkSubjectInfoCard .pk-cal-header-row {
+      min-height: 24px;
+    }
+    #pkSubjectInfoCard .pk-cal-weekdays {
+      min-height: 12px;
+      font-size: 12px;
+    }
+  }
+
+  /* ③ 窄屏（< 1024px，如 iPad 竖屏 744×1133、手机 440×956）：单列堆叠（与 pk-top 同宽对齐） */
+  @media (max-width: 1023px) {
+    .pk-top {
+      max-width: 580px;
+      width: 100%;
+      margin: 0 auto 10px;
+      padding: 0 10px;
+      gap: 8px;
+    }
+    .pk-stage-wrap {
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      max-width: 580px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0;
+    }
+    .pk-left-col, .pk-main-col {
+      width: 100%;
+      max-width: 100%;
+    }
+    #practiceStage.stage-running .pk-stage-wrap {
+      flex-direction: column;
+      align-items: center;
+    }
+    #practiceStage.stage-running .pk-left-col {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+  }
+
+  /* 手机端极窄屏（≤ 480px，如 iPhone 440×956）细节微调 */
+  @media (max-width: 480px) {
+    .pk-stage-wrap {
+      padding: 0;
+      gap: 10px;
+    }
+    .pk-left-col, .pk-main-col {
+      width: 100%;
+      max-width: 100%;
+    }
+    .pk-top {
+      max-width: 100%;
+      padding: 0 8px;
+      gap: 6px;
+    }
+    .pk-brand {
+      font-size: 13px;
+    }
+    .pk-mid {
+      font-size: 11.5px;
+    }
+    .pk-run-stat {
+      display: none;
+    }
+    .pk-ticket {
+      padding: 10px 10px 12px;
+    }
+    .pk-ticket-hero-frame {
+      height: 108px;
+    }
+    .pk-ticket-subject-block {
+      margin-top: 10px;
+    }
+    .pk-ticket-digits-grid {
+      margin-top: 10px;
+      gap: 10px;
+    }
+    .pk-perforation-line {
+      margin: 12px -10px 12px;
+    }
+    .pk-stub-memo-block {
+      margin-top: 10px;
+      padding: 8px 10px;
+    }
+    .pk-instr-deck {
+      padding: 12px 12px 14px;
+      gap: 10px;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     练习票卡（Museum Ticket Style）
+     - 底色：暖白 #FFF8F0 叠 12% 珊瑚粉
+     - 竖长比例（1 : 2.2）
+     - 包含两个打孔、沉浸名画、并排大数字、艺术家姓名位、撕裂虚线、票根条形码
+  ═══════════════════════════════════════════════════════════ */
+  .pk-ticket {
+    --pk-ticket-pad-x: 14px;
+    background: linear-gradient(180deg, rgba(255, 107, 107, 0.07) 0%, rgba(255, 107, 107, 0.02) 100%), var(--surface-page);
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    border-radius: 18px;
+    box-shadow: var(--shadow-ticket);
+    padding: 12px var(--pk-ticket-pad-x) 14px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: visible;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 520px;
+  }
+
+  /* 蒙版锁定层（练习态票卡变淡 + 灰蒙版，纯色无模糊，支持 --practice-mask-color 变量） */
+  .pk-ticket-lock-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.0875));
+    border-radius: inherit;
+    z-index: 20;
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+  }
+
+  /* 顶部票头行：左上打孔 + 展务铭文 + 换科目入口 */
+  .pk-ticket-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  /* 打孔设计（正圆保障：aspect-ratio 1/1 + flex-shrink 0，抗压扁） */
+  .pk-hole-punch {
+    width: 16px;
+    height: 16px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    box-sizing: border-box;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 16px;
+    flex-shrink: 0;
+  }
+  .pk-hole-punch.mini {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    flex-shrink: 0;
+  }
+  .pk-hole-punch.status-focus {
+    background: var(--c-primary);
+    border: none;
+    box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.22);
+  }
+  .pk-hole-punch.status-focus::after {
+    content: "";
+    width: 5px;
+    height: 5px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    background: var(--surface-card);
+  }
+  .pk-hole-punch.status-other {
+    background: transparent;
+    border: 2px solid rgba(44, 62, 80, 0.30);
+  }
+  .pk-hole-punch.status-arch {
+    background: rgba(44, 62, 80, 0.22);
+    border: none;
+  }
+
+  .pk-ticket-folio-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-card);
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.04);
+  }
+  .pk-ticket-folio-trigger:hover {
+    background: var(--surface-subtle);
+    border-color: var(--border-active);
+  }
+
+  /* 顶部大图块（压缩至 140px，保持票面主视觉） */
+  .pk-ticket-hero-frame {
+    width: 100%;
+    height: 140px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(44, 62, 80, 0.10);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 8px rgba(44, 62, 80, 0.06);
+    background: var(--surface-card);
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .pk-ticket-hero-frame:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 2px;
+  }
+  .pk-ticket-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+  .pk-ticket-hero-frame:hover .pk-ticket-hero-img {
+    transform: scale(1.02);
+  }
+
+  .pk-ticket-header-label {
+    font-family: var(--font-serif);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  /* 艺术家姓名位浮层：叠压在 hero 上（半透明浅底 + 档案编号小字） */
+  .pk-ticket-subject-block {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 7px 18px;
+    background: rgba(255, 255, 255, 0.76);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    max-width: 86%;
+    box-sizing: border-box;
+    cursor: pointer;
+    z-index: 2;
+    pointer-events: auto;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+  }
+  .pk-ticket-subject-title {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    margin: 0 auto;
+    max-width: 100%;
+    word-break: break-word;
+    white-space: nowrap;
+  }
+  .pk-ticket-subject-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  /* 并排大数字（左：速度BPM，右：时长分钟） - 删去三处线条，依靠 18px 组间距与 16px 列间隙自然分组 */
+  .pk-ticket-digits-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 18px;
+    padding: 0;
+  }
+  .pk-ticket-num-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 4px;
+    text-align: center;
+  }
+  .pk-bignum-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1;
+    letter-spacing: 0;
+    min-width: 2.2ch;
+    text-align: center;
+    display: inline-block;
+  }
+
+  /* 44px 触控命中区与注解交互 */
+  .pk-num-stepper-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+  }
+  .pk-mini-stepper-btn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px; /* 触控命中区保障 */
+    min-width: 40px;
+    box-sizing: border-box;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .pk-mini-stepper-btn:hover {
+    background: var(--surface-subtle);
+    color: var(--c-primary);
+  }
+  .pk-mini-stepper-btn:active {
+    transform: scale(0.92);
+  }
+
+  .pk-annotation-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    padding: 2px 8px;
+    min-height: 24px;
+    border-radius: 9999px;
+    background: var(--surface-card);
+    border: 1px solid rgba(44, 62, 80, 0.10);
+    font-family: var(--font-serif);
+    font-size: 11px;
+    font-weight: 400; /* 细体注字 */
+    color: var(--text-muted);
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.03);
+    white-space: nowrap;
+  }
+  .pk-annotation-btn:hover {
+    border-color: var(--border-active);
+    color: var(--c-primary);
+  }
+
+  /* 撕裂虚线（带两侧内凹半圆咬口缺角 · 票卡外框灰色线沿半圆绕行，外侧无直穿灰线，无外凸线） */
+  .pk-perforation-line {
+    position: relative;
+    height: 0;
+    border-top: 2px dashed rgba(44, 62, 80, 0.20);
+    margin: 18px calc(-1 * var(--pk-ticket-pad-x, 14px));
+  }
+  .pk-perf-notch-left, .pk-perf-notch-right {
+    position: absolute;
+    top: -10px;
+    width: 11px;
+    height: 20px;
+    background: var(--surface-page);
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    box-sizing: border-box;
+    z-index: 2;
+  }
+  .pk-perf-notch-left {
+    left: -1px;
+    border-radius: 0 10px 10px 0;
+    border-left: none;
+    box-shadow: inset -1px 0 2px rgba(44, 62, 80, 0.04);
+  }
+  .pk-perf-notch-right {
+    right: -1px;
+    border-radius: 10px 0 0 10px;
+    border-right: none;
+    box-shadow: inset 1px 0 2px rgba(44, 62, 80, 0.04);
+  }
+
+  /* 票根区（composer + 2排胶囊标签 + 科目独立信息备注区） */
+  .pk-ticket-stub-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* 2 排 Session 胶囊标签网格（统一左对齐，固定 2 排高度盒 60px，标签增减绝不影响后方排版） */
+  .pk-session-tags-wrap {
+    width: 100%;
+    height: 60px;
+    min-height: 60px;
+    max-height: 60px;
+    flex: 0 0 60px;
+    box-sizing: border-box;
+    overflow: hidden;
+    margin-top: 4px;
+    margin-bottom: 12px;
+  }
+  .pk-session-tags-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    column-gap: 5px; /* 行内 gap 5px */
+    row-gap: 8px;    /* 行间 gap 8px > 行内 gap */
+    height: 100%;
+    max-height: 60px;
+    min-height: 60px;
+    overflow: hidden;
+    justify-content: flex-start; /* 统一左对齐 */
+    align-items: center;
+  }
+  .pk-session-pill, .pk-session-tag {
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 9999px;
+    background: var(--surface-card);
+    border: 1px solid rgba(44, 62, 80, 0.10);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    white-space: nowrap;
+    max-width: 145px; /* 限制长标签宽度，后续标签自然跟随 */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+  }
+  .pk-session-pill:hover, .pk-session-tag:hover {
+    border-color: rgba(44, 62, 80, 0.22);
+    color: var(--c-primary);
+  }
+  /* 选中态：淡底色 + 珊瑚字色，严格无第二道红框，瞬时生效无过渡延迟 */
+  .pk-session-pill.is-active, .pk-session-tag.is-active {
+    background: rgba(255, 107, 107, 0.08);
+    border-color: transparent !important;
+    color: var(--c-primary);
+    font-weight: 700;
+    transition: none !important;
+  }
+  .pk-session-pill.more-pill, .pk-session-tag.more-pill {
+    color: var(--text-muted);
+    font-weight: 500;
+    border-style: dashed;
+    border-color: rgba(44, 62, 80, 0.18);
+  }
+  .pk-session-pill.more-pill:hover, .pk-session-tag.more-pill:hover {
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+  }
+  .pk-pill-text {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+  }
+
+  /* ══════ 科目历史信息模块（逐帧 copy 参考图 · 左右分栏 · 自然月日历打卡 + 4行真数） ══════ */
+  .pk-subject-info-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.76);
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    box-shadow: 0 1px 3px rgba(44, 62, 80, 0.03);
+    margin-top: 4px;
+    margin-bottom: 4px;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  /* 左分栏：累计练习天数 + 自然月日历网格（better-layout 重排：随 50% 宽自适应伸展） */
+  .pk-info-left-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+  }
+  .pk-info-metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .pk-info-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+  .pk-info-bignum-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+  .pk-info-bignum {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 30px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .pk-info-unit {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  /* 自然月日历网格容器（移除 96px 锁宽，随左半栏自适应 100% 宽度） */
+  .pk-cal-wrap {
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    max-width: 100%;
+  }
+  .pk-cal-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .pk-cal-month-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .pk-month-toggle-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(44, 62, 80, 0.05);
+    border: 1px solid rgba(44, 62, 80, 0.10);
+    border-radius: 3px;
+    padding: 2px 5px;
+    cursor: pointer;
+    line-height: 1.1;
+    user-select: none;
+    touch-action: manipulation;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .pk-month-toggle-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    pointer-events: auto;
+  }
+  .pk-month-toggle-btn:hover {
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+  }
+  .pk-cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+    opacity: 0.85;
+  }
+  .pk-cal-grid {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: var(--cal-dot-size, calc((100cqw - 18px) / 7));
+    align-content: start;
+    gap: 3px;
+    width: 100%;
+    height: auto;
+  }
+  .pk-cal-dot {
+    width: 100%;
+    height: var(--cal-dot-size, calc((100cqw - 18px) / 7));
+    padding-bottom: 0;
+    min-width: 0;
+    min-height: 0;
+    align-self: start;
+    justify-self: stretch;
+    border-radius: 2.5px;
+    background: rgba(44, 62, 80, 0.08);
+    box-sizing: border-box;
+    display: block;
+    transition: background 0.15s ease;
+  }
+  .pk-cal-dot.is-active {
+    background: var(--c-primary);
+  }
+  .pk-cal-dot.is-empty {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* 右分栏：4 行科目数据，细线分隔，数值右对齐安全边距 */
+  .pk-info-right-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    border-left: 1px solid rgba(44, 62, 80, 0.06);
+    padding: 10px 0 10px 10px;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .pk-info-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 0;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(44, 62, 80, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .pk-info-stat-row:last-child {
+    border-bottom: none;
+  }
+  .pk-info-row-lead {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+  .pk-info-icon-disc {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .pk-info-icon-disc.disc-dur {
+    background: rgba(255, 107, 107, 0.12);
+    color: var(--c-primary);
+  }
+  .pk-info-icon-disc.disc-count {
+    background: rgba(255, 140, 90, 0.14);
+    color: var(--c-accent);
+  }
+  .pk-info-icon-disc.disc-max {
+    background: rgba(255, 107, 107, 0.12);
+    color: var(--c-primary);
+  }
+  .pk-info-icon-disc.disc-cal {
+    background: rgba(44, 62, 80, 0.10);
+    color: var(--c-secondary);
+  }
+  .pk-info-icon-svg {
+    width: 10.5px;
+    height: 10.5px;
+    display: block;
+  }
+  .pk-info-row-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .pk-info-row-val {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 1.5px;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+  .pk-info-val-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-info-val-num.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: -0.01em;
+  }
+  .pk-info-val-unit {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  /* ══════ 科目档案信息区（Dad 选项 B：仅 档案编号 + 真实分类字段，无装饰） ══════ */
+  .pk-stub-memo-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(44, 62, 80, 0.03);
+    margin-top: auto;
+  }
+  .pk-memo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 20px;
+  }
+  .pk-memo-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .pk-memo-val {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    letter-spacing: 0.01em;
+  }
+  .pk-memo-val.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .pk-memo-num-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  /* 模块内仅允许的唯一一条分割细线 */
+  .pk-memo-rule {
+    height: 1px;
+    background: rgba(44, 62, 80, 0.08);
+    width: 100%;
+  }
+  .pk-barcode-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .pk-barcode-svg {
+    width: 56px;
+    height: 10px;
+    opacity: 0.65;
+    flex-shrink: 0;
+  }
+  .pk-barcode-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* ══════ 计时态收拢卡设计（宽 220px 竖向长条卡片） ══════ */
+  #practiceStage.stage-running .pk-left-col {
+    width: 220px;
+  }
+  #practiceStage.stage-running .pk-ticket {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 520px;
+    padding: 12px 14px 14px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  #practiceStage.stage-running .pk-ticket-header-row {
+    margin-bottom: 6px;
+  }
+  #practiceStage.stage-running .pk-ticket-header-label {
+    font-size: 10px;
+  }
+  #practiceStage.stage-running .pk-ticket-hero-frame {
+    width: 112px;
+    height: 112px;
+    margin: 4px auto 0;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    pointer-events: none !important;
+    cursor: default !important;
+  }
+  #practiceStage.stage-running .pk-ticket-subject-block {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    transform: none;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 0 0 11px 11px;
+    padding: 3px 4px;
+    box-shadow: none;
+    border: none;
+    border-top: 1px solid rgba(44, 62, 80, 0.08);
+    max-width: 100%;
+    pointer-events: none !important;
+    cursor: default !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+  }
+  #practiceStage.stage-running .pk-ticket-subject-title {
+    font-size: 13.5px !important;
+    line-height: 1.25;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+  #practiceStage.stage-running .pk-ticket-subject-sub {
+    display: none !important;
+  }
+  #practiceStage.stage-running .pk-ticket-digits-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  #practiceStage.stage-running .pk-ticket-num-col {
+    display: grid;
+    grid-template-columns: 1fr auto 28px;
+    column-gap: 3px;
+    align-items: baseline;
+    padding: 7px 12px;
+    background: rgba(44, 62, 80, 0.035);
+    border-radius: 8px;
+    width: 100%;
+    min-height: 36px;
+    box-sizing: border-box;
+  }
+  #practiceStage.stage-running .pk-collapsed-metric-label {
+    grid-column: 1;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-align: left;
+    justify-self: start;
+  }
+  #practiceStage.stage-running .pk-num-stepper-wrap {
+    grid-column: 2;
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    justify-self: end;
+    width: auto;
+    padding: 0;
+    margin: 0;
+    gap: 0;
+  }
+  #practiceStage.stage-running .pk-mini-stepper-btn {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #practiceStage.stage-running .pk-bignum-val {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    min-width: auto;
+    text-align: right;
+  }
+  #practiceStage.stage-running .pk-collapsed-metric-unit {
+    grid-column: 3;
+    text-align: left;
+    justify-self: start;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+    width: 28px;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0;
+  }
+  #practiceStage.stage-running .pk-perforation-line {
+    margin: 18px -14px 18px;
+  }
+  #practiceStage.stage-running .pk-ticket-stub-col {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
+  }
+
+  /* 计时态收拢卡自然月点阵图（充实下半段，保持卡片高度 0 差） */
+  .pk-collapsed-cal-block {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(44, 62, 80, 0.035);
+    border: 1px solid rgba(44, 62, 80, 0.06);
+    box-sizing: border-box;
+    width: 100%;
+  }
+  #practiceStage.stage-running .pk-collapsed-cal-block {
+    display: flex;
+  }
+  .pk-collapsed-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .pk-collapsed-cal-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .pk-collapsed-cal-stat {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--c-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .pk-cal-weekdays.mini {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2.5px;
+    text-align: center;
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+    opacity: 0.8;
+    margin-bottom: 3px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .pk-collapsed-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2.5px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .pk-collapsed-cal-grid .pk-cal-dot {
+    border-radius: 3px;
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 计时态收拢卡三大信息块（按 ref02 结构化：icon 圆底 + 标签 …… 粗体数值 + 单位紧贴，1px 细线分隔） */
+  .pk-info-icon-disc.mini {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .pk-info-icon-disc.mini .pk-info-icon-svg {
+    width: 9px;
+    height: 9px;
+  }
+  .pk-collapsed-row-lead {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .pk-collapsed-row-val {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 2px;
+    white-space: nowrap;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  /* ═══ 计时态收拢卡三大指标块 (Variant B: 微卡片堆叠，Dad 拍板) ═══ */
+  .pk-collapsed-stat-card,
+  .pk-collapsed-stat-row,
+  .pk-collapsed-progress-card,
+  .pk-collapsed-progress-block {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: rgba(44, 62, 80, 0.035);
+    border: 1px solid rgba(44, 62, 80, 0.05);
+    border-radius: 8px;
+    padding: 4px 8px;
+    gap: 2px;
+    margin-top: 4px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  #practiceStage.stage-running .pk-collapsed-stat-card,
+  #practiceStage.stage-running .pk-collapsed-stat-row,
+  #practiceStage.stage-running .pk-collapsed-progress-card,
+  #practiceStage.stage-running .pk-collapsed-progress-block {
+    display: flex;
+  }
+  #practiceStage.stage-running #pkCollapsedMergedRow,
+  .pk-collapsed-merged-card,
+  .pk-collapsed-merged-row {
+    display: none;
+  }
+
+  .pk-collapsed-card-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    line-height: 1;
+  }
+  .pk-collapsed-stat-label,
+  .pk-collapsed-progress-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .pk-collapsed-card-body {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    width: 100%;
+    line-height: 1.1;
+  }
+  .pk-collapsed-stat-val {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--text-main);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    text-align: left;
+  }
+  .pk-collapsed-stat-unit {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+  }
+  .pk-collapsed-stat-hint {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .pk-collapsed-merged-card .pk-collapsed-stat-val,
+  .pk-collapsed-merged-row .pk-collapsed-stat-val {
+    font-size: 11px;
+    letter-spacing: -0.01em;
+  }
+  .pk-collapsed-divider {
+    display: none !important;
+  }
+
+
+  .pk-collapsed-progress-val {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-main);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    white-space: nowrap;
+    text-align: left;
+  }
+  .pk-collapsed-progress-bar-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(44, 62, 80, 0.08);
+    border-radius: 9999px;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: block;
+  }
+  .pk-collapsed-progress-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: var(--c-primary);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  #practiceStage.stage-running .pk-stub-memo-block {
+    margin-top: auto;
+    padding: 6px 10px;
+    gap: 0;
+  }
+  #practiceStage.stage-running .pk-memo-row.memo-cat,
+  #practiceStage.stage-running .pk-memo-rule,
+  #practiceStage.stage-running .pk-barcode-wrap {
+    display: none !important;
+  }
+  #practiceStage.stage-running .pk-memo-row.memo-id {
+    min-height: 18px;
+    justify-content: center;
+    width: 100%;
+  }
+  #practiceStage.stage-running .pk-memo-num-wrap {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+  }
+  #practiceStage.stage-running .pk-memo-label {
+    font-size: 10px;
+  }
+  #practiceStage.stage-running .pk-memo-val,
+  #practiceStage.stage-running .pk-memo-val.mono {
+    font-size: 11px;
+    font-weight: 700;
+  }
+  #practiceStage.stage-running .pk-ticket-lock-overlay {
+    display: block !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background: var(--practice-mask-color, rgba(44, 62, 80, 0.0875)) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+  }
+
+  /* 计时态单行指标标签与单位 */
+  .pk-collapsed-metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .pk-collapsed-metric-unit {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+
+  /* 计时态单行核心 Session 展示 */
+  .pk-collapsed-session-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255, 107, 107, 0.08);
+    border: 1px solid rgba(255, 107, 107, 0.18);
+    font-size: 12.5px;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin-top: 6px;
+    width: 100%;
+    min-height: 36px;
+    box-sizing: border-box;
+  }
+  .pk-collapsed-session-label {
+    font-size: 10.5px;
+    color: var(--c-primary);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .pk-collapsed-session-val {
+    color: var(--text-main);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    min-width: 0;
+  }
+
+  /* 仪表区主 CTA（刻度尺下方核心按钮） */
+  .pk-ticket-cta {
+    width: 100%;
+    max-width: 280px;
+    min-height: 48px;
+    border-radius: 24px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    border: 1px solid rgba(255, 107, 107, 0.6);
+    color: var(--text-on-cta);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0.06) 100%), var(--cta-bg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 4px 14px -2px rgba(255, 107, 107, 0.45);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 90ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+  }
+  .pk-ticket-cta:active:not(:disabled) { transform: scale(0.985); }
+  .pk-ticket-cta:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; }
+  .pk-why-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    min-height: 16px;
+    margin-top: 2px;
+  }
+
+  /* ══════ Grok Session Selector（上浮面板 · 不撑高票卡 · 实时过滤） ══════ */
+  .pk-session-slot {
+    position: relative;
+    width: 100%;
+    display: block;
+    box-sizing: border-box;
+  }
+  .pss {
+    width: 100%;
+    display: block;
+    box-sizing: border-box;
+  }
+  .pss-anchor {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .pss-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0 4px;
+    border-radius: 9999px;
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-ticket);
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .pss-bar:focus-within {
+    border-color: rgba(44, 62, 80, 0.22);
+    box-shadow: var(--shadow-ticket);
+  }
+  .pss-plus,
+  .pss-clear {
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    border-radius: 9999px;
+    border: 0;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    box-sizing: border-box;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  /* 触控热区保证 ≥ 44px */
+  .pss-plus::after,
+  .pss-clear::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+  }
+  .pss-plus:hover,
+  .pss-clear:hover {
+    background: rgba(44, 62, 80, 0.05);
+    color: var(--text-main);
+  }
+  .pss.is-open .pss-plus {
+    background: rgba(255, 107, 107, 0.10);
+    color: var(--c-primary);
+  }
+  .pss-plus svg,
+  .pss-clear svg { display: block; }
+  .pss-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 34px;
+    min-height: 34px;
+    line-height: 34px;
+    border: 0;
+    margin: 0;
+    padding: 0 8px;
+    background: transparent;
+    color: var(--text-main);
+    font-size: 13.5px;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  .pss-input::placeholder { color: var(--text-muted); opacity: 0.75; }
+
+  .pss-panel {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    padding: 4px 4px 0;
+    border-radius: 14px;
+    border: 1px solid rgba(44, 62, 80, 0.14);
+    background: var(--surface-card);
+    box-shadow:
+      0 1px 2px rgba(44, 62, 80, 0.06),
+      0 16px 36px -18px rgba(44, 62, 80, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    transform-origin: bottom center;
+    animation: pss-pop 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  @keyframes pss-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pss-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .pss-list {
+    position: relative;
+    max-height: 280px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .pss-hl {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 8px;
+    background: rgba(255, 107, 107, 0.10);
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      top 220ms cubic-bezier(0.23, 1, 0.32, 1),
+      height 220ms cubic-bezier(0.23, 1, 0.32, 1),
+      opacity 150ms ease;
+  }
+  .pss-row,
+  .pss-none {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-main);
+    background: transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .pss-none {
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: default;
+  }
+  .pss-row.is-current {
+    background: rgba(255, 107, 107, 0.08);
+    color: var(--c-primary);
+    font-weight: 700;
+  }
+  .pss-row.pss-row-custom { font-style: italic; color: var(--c-primary); }
+  .pss-foot {
+    margin: 0;
+    padding: 6px 8px 8px;
+    font-family: var(--font-serif);
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    border-top: 1px solid rgba(44, 62, 80, 0.06);
+    margin-top: 2px;
+  }
+
+  .pss-plus:focus-visible,
+  .pss-clear:focus-visible {
+    outline: 2px solid rgba(44, 62, 80, 0.25);
+    outline-offset: -2px;
+  }
+  .pss-input:focus-visible,
+  .pss-row:focus-visible {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pss-panel { animation-name: pss-fade; }
+    .pss-hl { transition: opacity 150ms ease; }
+    .pss-plus { transition: none; }
+  }
+
+  /* ══════ 模块 3：仪表卡（带打卡机插槽 + 插入卡头） ══════ */
+  .pk-instr-deck {
+    min-height: 340px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-card);
+    border-radius: 20px;
+    box-shadow: var(--shadow-raised);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 打卡插槽外框 */
+  .pk-punch-slot-wrap {
+    height: 72px;
+    position: relative;
+    margin-bottom: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .pk-slot-idle {
+    height: 56px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 14px;
+    background: var(--surface-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    box-sizing: border-box;
+  }
+  .pk-slot-idle-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--c-primary);
+    background: rgba(255, 107, 107, 0.10);
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+
+  /* 练习态：插入的票卡头（只露出约 60px：左上打孔 + 名画顶截 + 科目名） */
+  .pk-inserted-ticket-head {
+    height: 62px;
+    border-radius: 14px 14px 4px 4px;
+    background: linear-gradient(180deg, rgba(255, 248, 240, 0.95) 0%, rgba(255, 248, 240, 0.85) 100%);
+    border: 1.5px solid var(--border-active);
+    box-shadow: var(--shadow-inserted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pk-inserted-ticket-head::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--c-primary);
+  }
+
+  /* 核心参数总线（曲目、分句、速度居于第一视觉焦点） */
+  .pk-running-telemetry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-well);
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    border-radius: 14px;
+    padding: 8px 14px;
+    margin-top: 6px;
+  }
+  .pk-tele-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .pk-tele-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+  }
+  .pk-tele-val-subject {
+    font-family: "Songti SC", "Source Han Serif CN", Georgia, serif;
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--text-main);
+  }
+  .pk-tele-pill-session {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--c-primary);
+    background: var(--surface-subtle);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .pk-tele-val-speed {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-main);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 真件 DOM 宿主 */
+  .pk-instr-deck .timer-block {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 4px 0 0 !important;
+    box-shadow: none !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .pk-instr-deck #timerCard {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  /* 真实计时器滚轮数字容器（防止 ac-stack 未遮罩下垂产生隐式溢出） */
+  .ac-root { display: inline-flex; align-items: center; justify-content: center; }
+  .ac-digit { position: relative; display: inline-grid; overflow: hidden; height: 1.5em; line-height: 1.5;
+              -webkit-mask-image: var(--ac-fade); mask-image: var(--ac-fade); }
+  .ac-sizer { visibility: hidden; grid-area: 1/1; display: grid; }
+  .ac-stack { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; }
+  .ac-face { height: 1.5em; display: flex; align-items: center; justify-content: center; }
+  .ac-mark { display: inline-block; margin: 0 -0.1em; }
+  .pk-instr-deck .ruler-wrap {
+    max-width: 480px;
+    width: 480px;
+    margin: 8px auto 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .pk-instr-deck .step-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-card);
+    color: var(--text-main);
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    font-size: 20px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 90ms cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s, border-color 0.15s;
+  }
+  .pk-instr-deck .step-btn:hover:not(:disabled) {
+    background: var(--surface-subtle);
+    border-color: var(--border-active);
+  }
+  .pk-instr-deck .step-btn:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  .pk-instr-deck .step-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: var(--surface-well);
+    border-color: var(--border-card);
+    color: var(--text-muted);
+  }
+
+  /* 底部按键总线 */
+  .pk-slot4-box {
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .pk-cta {
+    min-height: 48px;
+    border-radius: 24px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    border: 1px solid rgba(255, 107, 107, 0.6);
+    color: var(--text-on-cta);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0.06) 100%), var(--cta-bg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 4px 14px -2px rgba(255, 107, 107, 0.45);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+    transition: transform 90ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+  }
+  .pk-cta:active:not(:disabled) { transform: scale(0.985); }
+  .pk-cta:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; }
+  .pk-cta.w240 { width: 240px; }
+  .pk-cta.w180 { width: 180px; min-height: 44px; font-size: 16px; }
+  .pk-cta.secondary {
+    background: var(--surface-card);
+    color: var(--text-main);
+    border: 1.5px solid var(--border-strong);
+    box-shadow: 0 1px 3px rgba(44, 62, 80, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  .pk-cta.secondary.paused-on {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0.06) 100%), var(--cta-bg);
+    color: var(--text-on-cta);
+    border-color: rgba(255, 107, 107, 0.6);
+  }
+  .pk-cta.ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-strong);
+    font-weight: 600;
+    font-size: 14px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 22px;
+  }
+
+  /* ══════ 模块 4：老师要求卡 ══════ */
+  .pk-req-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-card);
+    border-left: 4px solid var(--c-primary);
+    border-radius: 16px;
+    box-shadow: var(--shadow-card);
+    padding: 16px 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-height: 180px;
+  }
+  .pk-req-list {
+    margin: 4px 0;
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .pk-req-list li {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-main);
+  }
+  .pk-sep {
+    height: 1px;
+    border: 0;
+    margin: 8px 0;
+    background: linear-gradient(90deg, transparent, rgba(44, 62, 80, 0.08) 20%, rgba(44, 62, 80, 0.08) 80%, transparent);
+  }
+
+  /* ══════ 票夹（Folio）弹出层（尺寸固定，切换不跳动） ══════ */
+  .pk-folio-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(44, 62, 80, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .pk-folio-modal.open { display: flex; }
+  .pk-folio-box {
+    background: var(--surface-card);
+    border-radius: 20px;
+    box-shadow: var(--shadow-raised);
+    width: min(540px, 92vw);
+    height: min(620px, 85vh); /* 固定尺寸，切换分组与展开不许跳动外框尺寸 */
+    padding: 22px 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .pk-folio-scroll-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding-right: 4px;
+  }
+  .pk-folio-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: var(--surface-well);
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .pk-folio-item.active {
+    background: var(--surface-subtle);
+    border-color: var(--border-active);
+  }
+
+  /* ══════ R11 全屏阅读层 ══════ */
+  .pk-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(44, 62, 80, 0.42);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 100;
+  }
+  .pk-overlay.open { display: flex; }
+  .pk-reader {
+    background: var(--surface-card);
+    border-radius: 20px;
+    box-shadow: var(--shadow-raised);
+    width: min(860px, 94vw);
+    max-height: 84vh;
+    overflow-y: auto;
+    padding: 28px 32px;
+    box-sizing: border-box;
+  }
+  .pk-reader-text {
+    font-size: 17.5px;
+    line-height: 1.8;
+    color: var(--text-main);
+    margin: 16px 0 0;
+    padding-left: 24px;
+  }
+  .pk-reader-text li { margin-bottom: 10px; }
+
+  /* 提示条 */
+  .pk-toast {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 28px;
+    z-index: 200;
+    background: var(--surface-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-strong);
+    border-radius: 9999px;
+    padding: 8px 20px;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: var(--shadow-raised);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .pk-footer-note {
+    display: flex;
+    justify-content: center;
+    max-width: 1280px;
+    margin: 4px auto 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  .pk-demo-notes-fold {
+    text-align: center;
+  }
+  .pk-demo-notes-summary {
+    list-style: none;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    opacity: 0.55;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: opacity 0.15s ease;
+  }
+  .pk-demo-notes-summary::-webkit-details-marker { display: none; }
+  .pk-demo-notes-summary:hover { opacity: 0.9; }
+  .pk-demo-notes-text {
+    margin: 4px auto 0;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--text-muted);
+    opacity: 0.7;
+    max-width: 860px;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<div id="practiceStage" class="stage-prep">
+
+  <!-- ══════════ 顶栏 40px ══════════ -->
+  <header class="pk-top" id="pkTop">
+    <span class="pk-brand" id="pkBrand">练习准备</span>
+    <span class="pk-mid" id="pkMid">女儿竹笛早课</span>
+    <span class="pk-grow"></span>
+    <button class="pk-pill mini" id="pkStateToggle">切到练习态</button>
+    <button class="pk-pill mini ok" id="pkRecords">今日记录 15分 · 3次 ▾</button>
+    <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
+    <div class="pk-server-clock" id="serverClock" title="当前时间 (CST)"></div>
+  </header>
+
+  <!-- ══════════ 主舞台 ══════════ -->
+  <main class="pk-stage-wrap" id="stageWrap">
+
+    <!-- ─── 左侧：练习票卡（Museum Ticket 390px） ─── -->
+    <aside class="pk-left-col" id="pkLeftCol">
+
+      <article class="pk-ticket" id="pkTicketCard" aria-label="练习准备票卡">
+
+        <!-- 蒙版锁定层（练习态票卡变淡 + 灰蒙版锁定） -->
+        <div class="pk-ticket-lock-overlay" id="pkTicketLockOverlay"></div>
+
+        <!-- 顶部票头：左上打孔 + 展务铭文 + 票夹入口 -->
+        <div class="pk-ticket-header-row">
+          <div class="pk-row" style="gap:8px">
+            <!-- 左上打孔：反映科目状态（实心珊瑚红＝本周作业） -->
+            <div class="pk-hole-punch status-focus" id="pkTicketHoleTopLeft" title="科目状态打孔"></div>
+            <span class="pk-ticket-header-label">dizical practice ticket</span>
+          </div>
+          <button class="pk-ticket-folio-trigger prep-only" id="pkFolioBtn">票夹 · 换曲目 ▾</button>
+        </div>
+
+        <!-- 顶部大图块：沉浸名画手绘笔触竹笛（42% 高度） -->
+        <div class="pk-ticket-hero-frame" id="pkTicketHeroFrame" tabindex="0" role="button" aria-label="打开票夹换曲目">
+          <img src="./assets/practice-hero-ticket-260922.png" alt="竹笛名画手绘" class="pk-ticket-hero-img" id="pkTicketHeroImg">
+          <!-- 艺术家姓名位浮层：叠压在 hero 上（半透明浅底 + 档案编号小字） -->
+          <div class="pk-ticket-subject-block" id="pkTicketSubjectBlock" title="点击打开票夹换曲目">
+            <div class="pk-ticket-subject-title" id="pkTicketSubjectName">吸气长音</div>
+            <div class="pk-ticket-subject-sub" id="pkTicketSubjectSub">档案编号 No.1034</div>
+          </div>
+        </div>
+
+        <!-- 并排大数字：左=速度BPM + 下方注字；右=时长分钟 + 下方注字 -->
+        <div class="pk-ticket-digits-grid">
+          <!-- 左列：BPM -->
+          <div class="pk-ticket-num-col">
+            <span class="pk-collapsed-metric-label run-only">速度</span>
+            <div class="pk-num-stepper-wrap">
+              <button class="pk-mini-stepper-btn prep-only" id="pkBpmDown" aria-label="减速">−</button>
+              <div class="pk-bignum-val" id="pkBpmVal">80</div>
+              <button class="pk-mini-stepper-btn prep-only" id="pkBpmUp" aria-label="加速">+</button>
+            </div>
+            <!-- 音符档位注字（点击循环换档） -->
+            <button class="pk-annotation-btn prep-only" id="pkTicketNoteBtn">
+              <span id="pkTicketNoteSym">♩</span>
+              <span id="pkTicketNoteCap">四分音符 ▾</span>
+            </button>
+            <span class="pk-collapsed-metric-unit run-only" id="pkCollapsedSpeedSym">♩</span>
+          </div>
+
+          <!-- 右列：时长 -->
+          <div class="pk-ticket-num-col">
+            <span class="pk-collapsed-metric-label run-only">时长</span>
+            <div class="pk-num-stepper-wrap">
+              <button class="pk-mini-stepper-btn prep-only" id="pkTicketDurDown" aria-label="减少时长">−</button>
+              <div class="pk-bignum-val" id="pkTicketDurVal">10</div>
+              <button class="pk-mini-stepper-btn prep-only" id="pkTicketDurUp" aria-label="增加时长">+</button>
+            </div>
+            <!-- 时长单位注字 -->
+            <div class="pk-annotation-btn prep-only" id="pkTicketDurBtn">
+              <span>练习时长 (分钟)</span>
+            </div>
+            <span class="pk-collapsed-metric-unit run-only">分钟</span>
+          </div>
+        </div>
+
+        <!-- 撕裂虚线（带两侧半圆切口） -->
+        <div class="pk-perforation-line">
+          <div class="pk-perf-notch-left"></div>
+          <div class="pk-perf-notch-right"></div>
+        </div>
+
+        <!-- 票根区：Grok 输入栏 + 2排胶囊标签 + 手写批注 + 细线参数网格 + 底部印章条码打孔条 -->
+        <div class="pk-ticket-stub-col">
+          <!-- ① Grok 输入选择器挂载槽（无标题，直接输入） -->
+          <div class="pk-session-slot prep-only" id="pkSessionSlot"></div>
+
+          <!-- ② 输入框下方 2 排 session 胶囊标签（可视即点，双向同步） -->
+          <div class="pk-session-tags-wrap prep-only">
+            <div class="pk-session-tags-grid" id="pkSessionTags"></div>
+          </div>
+
+          <!-- 计时态核心单行 Session 胶囊展示 -->
+          <div class="pk-collapsed-session-row run-only" id="pkCollapsedSessionRow">
+            <span class="pk-collapsed-session-label">本次内容</span>
+            <span class="pk-collapsed-session-val" id="pkCollapsedSessionVal">未选内容</span>
+          </div>
+
+          <!-- 计时态收拢卡自然月点阵图（充实下半段，保持卡片高度 0 差） -->
+          <div class="pk-collapsed-cal-block run-only" id="pkCollapsedCalBlock">
+            <div class="pk-collapsed-cal-header">
+              <span class="pk-collapsed-cal-title" id="pkCollapsedCalMonth">9月打卡</span>
+              <span class="pk-collapsed-cal-stat" id="pkCollapsedDaysVal">累计 101 天</span>
+            </div>
+            <div class="pk-cal-weekdays mini">
+              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+            </div>
+            <div class="pk-collapsed-cal-grid" id="pkCollapsedDotMatrix" aria-label="收拢态自然月练习日历"></div>
+          </div>
+
+          <!-- (A) 今日累计块 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-stat-card pk-collapsed-stat-row run-only" id="pkCollapsedTodayRow">
+            <div class="pk-collapsed-card-head">
+              <span class="pk-info-icon-disc mini disc-dur">
+                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
+              </span>
+              <span class="pk-collapsed-stat-label">今日已练</span>
+            </div>
+            <div class="pk-collapsed-card-body">
+              <span class="pk-collapsed-stat-val" id="pkCollapsedTodayVal">0</span>
+              <span class="pk-collapsed-stat-unit">分 · 0 次</span>
+            </div>
+          </div>
+
+          <div class="pk-collapsed-divider run-only" id="pkCollapsedDivider1"></div>
+
+          <!-- (B) 本次进度块 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-progress-card pk-collapsed-progress-block run-only" id="pkCollapsedProgressBlock">
+            <div class="pk-collapsed-card-head">
+              <span class="pk-info-icon-disc mini disc-max">
+                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 0a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3zM8 3a6 6 0 1 0 0 12A6 6 0 0 0 8 3zm-4.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zm4.25-2.75a.75.75 0 0 1 1.5 0v2.44l1.28.77a.75.75 0 1 1-.76 1.3l-1.75-1.05A.75.75 0 0 1 7.75 9V6.25z"/></svg>
+              </span>
+              <span class="pk-collapsed-progress-label">本次进度</span>
+            </div>
+            <div class="pk-collapsed-card-body">
+              <span class="pk-collapsed-progress-val" id="pkCollapsedProgressVal">已练 00:00 / 目标 10 分</span>
+            </div>
+            <div class="pk-collapsed-progress-bar-track">
+              <div class="pk-collapsed-progress-bar-fill" id="pkCollapsedProgressBarFill"></div>
+            </div>
+          </div>
+
+          <div class="pk-collapsed-divider run-only" id="pkCollapsedDivider2"></div>
+
+          <!-- (C) 连续打卡块 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-stat-card pk-collapsed-stat-row run-only" id="pkCollapsedStreakRow">
+            <div class="pk-collapsed-card-head">
+              <span class="pk-info-icon-disc mini disc-count">
+                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm10.854 3.646a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 10.293l3.646-3.647a.5.5 0 0 1 .708 0z"/></svg>
+              </span>
+              <span class="pk-collapsed-stat-label">连续打卡</span>
+            </div>
+            <div class="pk-collapsed-card-body">
+              <span class="pk-collapsed-stat-val" id="pkCollapsedStreakVal">61</span>
+              <span class="pk-collapsed-stat-unit">天 <span class="pk-collapsed-stat-hint">· 最近 9-23</span></span>
+            </div>
+          </div>
+
+          <!-- (A+C 矮档合并块) 今日与连续合并 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-stat-card pk-collapsed-stat-row pk-collapsed-merged-card pk-collapsed-merged-row run-only" id="pkCollapsedMergedRow">
+            <div class="pk-collapsed-card-head">
+              <span class="pk-info-icon-disc mini disc-dur">
+                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
+              </span>
+              <span class="pk-collapsed-stat-label">今日/连续</span>
+            </div>
+            <div class="pk-collapsed-card-body">
+              <span class="pk-collapsed-stat-val" id="pkCollapsedMergedVal">今日 0 分 · 连续 61 天</span>
+            </div>
+          </div>
+
+          <!-- ═══ 科目历史信息模块（逐帧 copy 参考图 · 左右分栏 · 自然月日历打卡 + 4行真数） ═══ -->
+          <div class="pk-subject-info-card prep-only" id="pkSubjectInfoCard">
+            <!-- 左分栏：累计练习天数 + 自然月日历网格 -->
+            <div class="pk-info-left-col">
+              <div class="pk-info-metric-header">
+                <span class="pk-info-label">累计练习</span>
+              </div>
+              <div class="pk-info-bignum-wrap">
+                <span class="pk-info-bignum" id="pkSubjectDaysVal">101</span>
+                <button type="button" class="pk-month-toggle-btn" id="pkMonthToggleBtn" onclick="toggleDemoMonth()" title="点击切换：9月(当月·云端真值) / 8月(历史数据)">切8月</button>
+              </div>
+              <div class="pk-cal-wrap">
+                <div class="pk-cal-header-row">
+                  <span class="pk-cal-month-badge" id="pkSubjectMonthIndicator">9月</span>
+                </div>
+                <div class="pk-cal-weekdays">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div class="pk-cal-grid" id="pkSubjectDotMatrix" aria-label="自然月练习日历"></div>
+              </div>
+            </div>
+
+            <!-- 右分栏：4行科目字段（时长·次数·最长·最近） -->
+            <div class="pk-info-right-col">
+              <!-- 行 1: 累计时长 -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-dur" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="8" cy="8" r="6"/>
+                      <polyline points="8 4.5 8 8 10.5 9.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">累计时长</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num" id="pkSubjectMinutesVal">1021</span>
+                  <span class="pk-info-val-unit">分</span>
+                </div>
+              </div>
+
+              <!-- 行 2: 练习次数 (打卡卡片图标) -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-count" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2.5" y="2.5" width="11" height="11" rx="2.5"/>
+                      <path d="M5.5 8l2 2 3.5-3.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">练习次数</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num" id="pkSubjectSessionsVal">200</span>
+                  <span class="pk-info-val-unit">次</span>
+                </div>
+              </div>
+
+              <!-- 行 3: 单次最长 (秒表图标) -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-max" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="8" cy="9" r="5.5"/>
+                      <line x1="8" y1="1.5" x2="8" y2="3.5"/>
+                      <line x1="6" y1="1.5" x2="10" y2="1.5"/>
+                      <line x1="8" y1="9" x2="10.5" y2="6.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">单次最长</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num mono" id="pkSubjectMaxVal">17</span>
+                  <span class="pk-info-val-unit">分</span>
+                </div>
+              </div>
+
+              <!-- 行 4: 最近练习 (日历图标) -->
+              <div class="pk-info-stat-row">
+                <div class="pk-info-row-lead">
+                  <div class="pk-info-icon-disc disc-cal" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" class="pk-info-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2.5" y="3.5" width="11" height="10" rx="2"/>
+                      <line x1="2.5" y1="7" x2="13.5" y2="7"/>
+                      <line x1="5.5" y1="2" x2="5.5" y2="4.5"/>
+                      <line x1="10.5" y1="2" x2="10.5" y2="4.5"/>
+                    </svg>
+                  </div>
+                  <span class="pk-info-row-title">最近练习</span>
+                </div>
+                <div class="pk-info-row-val">
+                  <span class="pk-info-val-num mono" id="pkSubjectLastVal">1天前</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ③ 科目档案信息区（按 Dad Option B：仅 档案编号 + 真实分类字段，无要求文本） -->
+          <div class="pk-stub-memo-block" id="pkStubMemoBlock">
+            <div class="pk-memo-row memo-cat">
+              <span class="pk-memo-label">科目分类</span>
+              <span class="pk-memo-val" id="pkMemoCategory">基本功</span>
+            </div>
+            <div class="pk-memo-rule" aria-hidden="true"></div>
+            <div class="pk-memo-row memo-id">
+              <div class="pk-memo-num-wrap">
+                <span class="pk-memo-label">档案编号</span>
+                <span class="pk-memo-val mono" id="pkMemoIdVal">No.1034</span>
+              </div>
+              <div class="pk-barcode-wrap" title="科目条码档案">
+                <svg class="pk-barcode-svg" viewBox="0 0 56 10" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="0" y="0" width="1.5" height="10"/><rect x="3" y="0" width="1" height="10"/><rect x="6" y="0" width="2" height="10"/><rect x="10" y="0" width="1" height="10"/><rect x="13" y="0" width="2.5" height="10"/><rect x="17" y="0" width="1" height="10"/><rect x="20" y="0" width="2" height="10"/><rect x="24" y="0" width="1.5" height="10"/><rect x="27" y="0" width="2" height="10"/><rect x="31" y="0" width="1" height="10"/><rect x="34" y="0" width="2" height="10"/><rect x="38" y="0" width="1" height="10"/><rect x="41" y="0" width="2" height="10"/><rect x="45" y="0" width="1.5" height="10"/><rect x="48" y="0" width="2" height="10"/><rect x="52" y="0" width="1.5" height="10"/>
+                </svg>
+                <span class="pk-barcode-code" id="pkTicketBarcodeCode">DZ-1034-W</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </article>
+
+    </aside>
+
+    <!-- ─── 右侧：中轴主栏（654px） ─── -->
+    <div class="pk-main-col" id="pkMainCol">
+
+      <!-- ③ 仪表卡（带打卡机插槽 + 核心参数总线） -->
+      <section class="pk-instr-deck" id="pkInstrCard" aria-label="练习仪表盘">
+
+        <!-- 顶部打卡机插槽（Punch-card Slot） -->
+        <div class="pk-punch-slot-wrap" id="pkPunchSlotWrap">
+          <!-- 准备态待机插槽 -->
+          <div class="pk-slot-idle prep-only" id="pkSlotIdle">
+            <span>打卡机入卡槽 · 点击下方「检票 · 开始练习」自动插入票卡</span>
+            <span class="pk-slot-idle-badge">待命入槽</span>
+          </div>
+
+          <!-- 练习态插入的票卡头（只露出约 60px：左上打孔 + 名画顶截 + 科目名） -->
+          <div class="pk-inserted-ticket-head run-only" id="pkInsertedHead">
+            <div class="pk-row" style="gap:10px">
+              <div class="pk-hole-punch status-focus" style="width:14px;height:14px"></div>
+              <div>
+                <span class="key" style="font-size:15px;font-family:'Songti SC',Georgia,serif" id="pkInsertedName">吸气长音</span>
+                <span class="pk-sub" style="margin-left:8px">票卡已检票打卡入槽</span>
+              </div>
+            </div>
+            <span class="pk-pill mini ok">检票就绪</span>
+          </div>
+        </div>
+
+        <!-- 练习态核心参数总线（曲目、分句、速度居于第一视觉焦点） -->
+        <div class="pk-running-telemetry run-only" id="pkRunTelemetry">
+          <div class="pk-tele-block">
+            <span class="pk-tele-label">练习曲目</span>
+            <span class="pk-tele-val-subject" id="pkRunItemName">吸气长音</span>
+          </div>
+          <div class="pk-tele-block">
+            <span class="pk-tele-label">本次练习</span>
+            <span class="pk-tele-pill-session" id="pkRunSessionTag"></span>
+          </div>
+          <div class="pk-tele-block" style="text-align:right">
+            <span class="pk-tele-label">执行速度</span>
+            <span class="pk-tele-val-speed" id="pkRunSpeedVal">♩ = 80</span>
+          </div>
+        </div>
+
+        <!-- Slot 2 & 3：滚轮大数字 + 状态胶囊 + 60格刻度尺（真件 DOM 树，零位移） -->
+        <div class="timer-block">
+          <div id="timerCard">
+            <div class="readout">
+              <div class="ac-root" id="ttCounter"></div>
+              <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+            </div>
+            <div class="ruler-wrap">
+              <button class="step-btn minus" id="ttStepMinus" onclick="ttStepMin(-1)" aria-label="减少一分钟">−</button>
+              <div class="ruler" id="ruler">
+                <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+                <div class="notes-bubbles" aria-hidden="true"></div>
+                <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10"
+                       tabindex="-1" aria-label="练习时长（分钟）">
+              </div>
+              <button class="step-btn plus" id="ttStepPlus" onclick="ttStepMin(1)" aria-label="增加一分钟">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slot 4：底部控制按键总线 -->
+        <div class="pk-slot4-box">
+          <!-- 准备态主 CTA：检票 · 开始练习 + 禁用原因提示 -->
+          <div class="prep-only" style="flex-direction:column;align-items:center;gap:6px;width:100%">
+            <button class="pk-ticket-cta" id="pkStartBtn">检票 · 开始练习</button>
+            <div class="pk-why-hint" id="pkWhy"></div>
+          </div>
+          <!-- 练习态控制条 -->
+          <div class="run-only" style="align-items:center;justify-content:center;gap:18px;width:100%">
+            <button class="pk-cta w180 secondary" id="pkPauseBtn">暂停</button>
+            <button class="pk-cta ghost" id="pkEarlyBtn">提前结束</button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ④ 老师要求卡 -->
+      <section class="pk-req-card" id="pkReqCard" aria-label="老师要求">
+        <div class="pk-row pk-between">
+          <div class="pk-row" style="gap:8px">
+            <span class="key" style="font-size:15px">老师要求</span>
+            <span class="pk-sub" id="pkReqItemName" style="color:var(--text-main);font-weight:600">吸气长音</span>
+          </div>
+          <button class="pk-pill mini ok" id="pkVideoBtn">示范视频</button>
+        </div>
+
+        <ol class="pk-req-list" id="pkReqList"></ol>
+
+        <div class="pk-sep"></div>
+
+        <div class="pk-row" style="justify-content:flex-end">
+          <button class="pk-pill mini" id="pkExpandReqBtn">展开全文</button>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <footer class="pk-footer-note">
+    <details class="pk-demo-notes-fold">
+      <summary class="pk-demo-notes-summary">demo 架构说明 ▾</summary>
+      <div class="pk-demo-notes-text">
+        高保真 demo v4：艺术展票务卡片形态（练习票卡）+ 顶部名画插图 + 并排大数字 + 撕裂虚线 + 票根条形码；<br>
+        点击「检票 · 开始练习」触发打卡机式插卡动效，露出的票卡头部与单字打孔成为唯一识别体；<br>
+        仪表盘核心参数总线（曲目、分句、速度）居于第一焦点；刻度尺走动与交互 100% 保持未改动真件逻辑。
+      </div>
+    </details>
+  </footer>
+
+</div>
+
+<!-- ══════════ 票夹（Folio）弹出层 ══════════ -->
+<div class="pk-folio-modal" id="pkFolioModal" role="dialog" aria-modal="true" aria-label="选择练习曲目票夹">
+  <div class="pk-folio-box">
+    <div class="pk-row pk-between pk-shrink0">
+      <span class="key" style="font-size:16px">曲目票夹 · 选择练习曲目</span>
+      <button class="pk-pill mini" id="pkCloseFolioBtn">关闭</button>
+    </div>
+    <div class="pk-row pk-shrink0" style="gap:6px">
+      <button class="pk-pill mini mark" data-cat="all">全部 (10)</button>
+      <button class="pk-pill mini" data-cat="focus">本周重点 (2)</button>
+      <button class="pk-pill mini" data-cat="other">日常在用 (8)</button>
+    </div>
+    <div class="pk-folio-scroll-body" id="pkFolioScrollBody">
+      <div id="pkFolioList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="border-top:1px solid var(--border-card);padding-top:10px;margin-top:4px">
+        <button class="pk-stub-more-btn" id="pkToggleArchFolio">展开已归档曲目 (37) ▾</button>
+        <div id="pkFolioArchList" hidden style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ R11 全屏阅读层 ══════════ -->
+<div class="pk-overlay" id="pkOverlay" role="dialog" aria-modal="true" aria-label="老师要求全文">
+  <div class="pk-reader">
+    <div class="pk-row pk-between">
+      <div>
+        <div class="key" style="font-size:16px">老师要求全文 · <span id="pkReaderItem">吸气长音</span></div>
+        <div class="pk-row" style="gap:8px;margin-top:6px">
+          <span class="pk-pill mini ok" id="pkReaderTempo">♩ = 80</span>
+          <span class="pk-pill mini ok">练习中可随时调出 · 不停表</span>
+        </div>
+      </div>
+      <button class="pk-pill" id="pkReaderClose">关闭</button>
+    </div>
+    <ol class="pk-reader-text" id="pkReaderList"></ol>
+  </div>
+</div>
+
+<!-- ══════════ 生产真件依赖全局变量 ══════════ -->
+<script>
+  let duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
+  let tickIv = null;
+</script>
+
+<script src="./vendor/gsap.min.js"></script>
+<script>
+  if (typeof gsap === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');
+  }
+</script>
+<script src="./practice-skeleton-260920/real-timer-visual.js"></script>
+
+<!-- ══════════ Grok Session Selector 组件 ══════════ -->
+<script>
+/* ===== component: PracticeSessionSelector ===== */
+(function () {
+  var FALLBACK = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
+  var seq = 0;
+
+  function parseContentOptions(raw) {
+    var list = Array.isArray(raw) ? raw : String(raw == null ? '' : raw).split(/[,，]/);
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var text = String(list[i]).trim();
+      if (!text || seen[text]) continue;
+      seen[text] = true;
+      out.push(text);
+    }
+    return out;
+  }
+
+  function iconPlus() {
+    var wrap = document.createElement('span');
+    wrap.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
+    return wrap.firstChild;
+  }
+
+  function iconClear() {
+    var wrap = document.createElement('span');
+    wrap.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
+    return wrap.firstChild;
+  }
+
+  function mount(host, opts) {
+    opts = opts || {};
+    var id = 'pss' + (++seq);
+    var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
+    var options = [];
+    var usingFallback = false;
+    var value = '';
+    var open = false;
+    var browseAll = true;
+    var active = 0;
+    var engaged = false;
+    var items = [];
+
+    var root = document.createElement('div');
+    root.className = 'pss is-empty';
+
+    var anchor = document.createElement('div');
+    anchor.className = 'pss-anchor';
+
+    var panel = document.createElement('div');
+    panel.className = 'pss-panel';
+    panel.id = id + '-panel';
+    panel.hidden = true;
+    var list = document.createElement('div');
+    list.className = 'pss-list';
+    list.id = id + '-list';
+    list.setAttribute('role', 'listbox');
+    var hl = document.createElement('span');
+    hl.className = 'pss-hl';
+    hl.setAttribute('aria-hidden', 'true');
+    list.appendChild(hl);
+    var foot = document.createElement('p');
+    foot.className = 'pss-foot';
+    foot.textContent = '上下键选择，回车确认';
+    panel.append(list, foot);
+
+    var bar = document.createElement('div');
+    bar.className = 'pss-bar';
+    var plus = document.createElement('button');
+    plus.type = 'button';
+    plus.className = 'pss-plus';
+    plus.setAttribute('aria-label', '展开练习内容');
+    plus.setAttribute('aria-expanded', 'false');
+    plus.setAttribute('aria-controls', list.id);
+    plus.appendChild(iconPlus());
+    var input = document.createElement('input');
+    input.className = 'pss-input';
+    input.type = 'text';
+    input.maxLength = 200;
+    input.placeholder = '选一个或输入本次练习内容';
+    input.setAttribute('aria-label', '本次练习内容');
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', list.id);
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.enterKeyHint = 'done';
+    var clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'pss-clear';
+    clearBtn.setAttribute('aria-label', '清空本次练习内容');
+    clearBtn.hidden = true;
+    clearBtn.appendChild(iconClear());
+    bar.append(plus, input, clearBtn);
+    anchor.append(panel, bar);
+    root.append(anchor);
+    host.replaceChildren(root);
+
+    function queryText() {
+      return browseAll ? '' : input.value.trim();
+    }
+
+    function emit(source) {
+      onChange(value, {
+        source: source,
+        fallback: usingFallback,
+        optionCount: options.length
+      });
+    }
+
+    function paint() {
+      var has = value.length > 0;
+      root.classList.toggle('is-empty', !has);
+      root.classList.toggle('is-selected', has);
+      root.classList.toggle('is-custom', has && options.indexOf(value) === -1);
+      root.classList.toggle('is-fallback', usingFallback);
+      root.classList.toggle('is-open', open);
+      root.dataset.value = value;
+      plus.setAttribute('aria-expanded', open ? 'true' : 'false');
+      input.setAttribute('aria-expanded', open ? 'true' : 'false');
+      clearBtn.hidden = input.value.trim().length === 0 && !has;
+    }
+
+    function selectable() {
+      var q = queryText().toLowerCase();
+      var shown = options.filter(function (text) {
+        return !q || text.toLowerCase().indexOf(q) !== -1;
+      });
+      var typed = input.value.trim();
+      var rows = shown.map(function (text) { return { kind: 'option', text: text }; });
+      if (typed && options.indexOf(typed) === -1) rows.push({ kind: 'custom', text: typed });
+      return { shown: shown, rows: rows, empty: q && shown.length === 0 };
+    }
+
+    function placeHighlight() {
+      var buttons = list.querySelectorAll('.pss-row');
+      var target = buttons[active];
+      if (!target || !engaged) {
+        hl.style.opacity = '0';
+        input.removeAttribute('aria-activedescendant');
+        return;
+      }
+      hl.style.top = target.offsetTop + 'px';
+      hl.style.height = target.offsetHeight + 'px';
+      hl.style.opacity = '1';
+      input.setAttribute('aria-activedescendant', target.id);
+      if (target.scrollIntoView) target.scrollIntoView({ block: 'nearest' });
+    }
+
+    function render() {
+      var pack = selectable();
+      items = pack.rows;
+      if (active > items.length - 1) active = 0;
+      var empty = list.querySelector('.pss-none');
+      if (empty) empty.remove();
+      var old = list.querySelectorAll('.pss-row');
+      for (var i = 0; i < old.length; i++) old[i].remove();
+      if (pack.empty) {
+        var none = document.createElement('div');
+        none.className = 'pss-none';
+        none.textContent = '没有符合的标签';
+        list.appendChild(none);
+      }
+      items.forEach(function (item, index) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pss-row' + (item.kind === 'custom' ? ' pss-row-custom' : '');
+        button.id = id + '-opt-' + index;
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', item.text === value ? 'true' : 'false');
+        if (item.text === value) button.classList.add('is-current');
+        button.textContent = item.kind === 'custom' ? '使用我输入的内容' : item.text;
+        button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+        button.addEventListener('mouseenter', function () {
+          active = index;
+          engaged = true;
+          placeHighlight();
+        });
+        button.addEventListener('click', function () { pick(index); });
+        list.appendChild(button);
+      });
+      placeHighlight();
+      paint();
+    }
+
+    function clampList() {
+      list.style.maxHeight = '280px';
+      var ticket = host.closest ? host.closest('.pk-ticket') : null;
+      var topBound = 8;
+      if (ticket) {
+        var ticketRect = ticket.getBoundingClientRect();
+        topBound = Math.max(8, ticketRect.top + 8);
+      }
+      var rect = panel.getBoundingClientRect();
+      if (rect.top < topBound) {
+        var listRect = list.getBoundingClientRect();
+        list.style.maxHeight = Math.max(44, Math.floor(listRect.height - (topBound - rect.top))) + 'px';
+      }
+    }
+
+    function openPanel() {
+      if (open) {
+        render();
+        clampList();
+        return;
+      }
+      open = true;
+      panel.hidden = false;
+      render();
+      clampList();
+      paint();
+    }
+
+    function closePanel() {
+      if (!open) return;
+      open = false;
+      engaged = false;
+      panel.hidden = true;
+      input.removeAttribute('aria-activedescendant');
+      paint();
+    }
+
+    function pick(index) {
+      var item = items[index];
+      if (!item) return;
+      var next = item.text.trim().slice(0, 200);
+      if (!next) return;
+      var changed = next !== value;
+      value = next;
+      input.value = next;
+      browseAll = false;
+      closePanel();
+      input.focus({ preventScroll: true });
+      if (changed) emit(item.kind === 'custom' ? 'custom' : 'option');
+      else paint();
+    }
+
+    function commitTyped() {
+      var next = input.value.trim().slice(0, 200);
+      if (!next) return;
+      var kind = options.indexOf(next) === -1 ? 'custom' : 'option';
+      var changed = next !== value;
+      value = next;
+      input.value = next;
+      closePanel();
+      if (changed) emit(kind);
+      else paint();
+    }
+
+    function clearAll() {
+      var had = value.length > 0;
+      value = '';
+      input.value = '';
+      browseAll = true;
+      closePanel();
+      paint();
+      render();
+      if (had) emit('clear');
+      input.focus({ preventScroll: true });
+    }
+
+    function setOptions(raw) {
+      var parsed = parseContentOptions(raw);
+      usingFallback = parsed.length === 0;
+      options = usingFallback ? FALLBACK.slice() : parsed;
+      render();
+    }
+
+    function setValue(next) {
+      value = String(next == null ? '' : next).trim().slice(0, 200);
+      input.value = value;
+      browseAll = true;
+      paint();
+      if (open) render();
+    }
+
+    plus.addEventListener('click', function () {
+      if (open && browseAll) {
+        closePanel();
+        return;
+      }
+      browseAll = true;
+      active = 0;
+      engaged = false;
+      openPanel();
+      input.focus({ preventScroll: true });
+    });
+
+    input.addEventListener('input', function () {
+      browseAll = false;
+      active = 0;
+      engaged = false;
+      openPanel();
+    });
+
+    input.addEventListener('keydown', function (event) {
+      var composing = event.isComposing || event.keyCode === 229;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        if (!open) {
+          browseAll = input.value.trim().length === 0;
+          openPanel();
+        }
+        if (!items.length) return;
+        event.preventDefault();
+        engaged = true;
+        active = event.key === 'ArrowDown'
+          ? (active + 1) % items.length
+          : (active - 1 + items.length) % items.length;
+        placeHighlight();
+        return;
+      }
+      if (event.key === 'Enter') {
+        if (composing) return;
+        event.preventDefault();
+        if (open && items.length) pick(active);
+        else commitTyped();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePanel();
+      }
+    });
+
+    clearBtn.addEventListener('click', clearAll);
+    panel.addEventListener('mouseleave', function () {
+      engaged = false;
+      placeHighlight();
+    });
+
+    function onPointerDown(event) {
+      if (!open) return;
+      if (root.contains(event.target)) return;
+      closePanel();
+    }
+    function onKeyDown(event) {
+      if (event.key === 'Escape' && open) {
+        event.preventDefault();
+        closePanel();
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    setOptions(opts.options || []);
+    setValue(opts.value || '');
+
+    return {
+      element: root,
+      anchor: anchor,
+      panel: panel,
+      list: list,
+      input: input,
+      plus: plus,
+      clearBtn: clearBtn,
+      setOptions: setOptions,
+      setValue: setValue,
+      getValue: function () { return value; },
+      open: function () { browseAll = true; active = 0; engaged = false; openPanel(); },
+      close: closePanel,
+      isOpen: function () { return open; },
+      destroy: function () {
+        document.removeEventListener('pointerdown', onPointerDown);
+        document.removeEventListener('keydown', onKeyDown);
+        root.remove();
+      }
+    };
+  }
+
+  window.PracticeSessionSelector = {
+    mount: mount,
+    parse: parseContentOptions,
+    fallback: FALLBACK.slice()
+  };
+})();
+</script>
+
+<!-- ══════════ 业务交互与打卡动效引擎 ══════════ -->
+<script>
+// 生产库科目真实分类字典（practice_categories 关联映射）
+const ITEM_CATEGORIES = {
+  1001: "基本功", 1002: "基本功", 1003: "曲子", 1004: "曲子", 1005: "基本功",
+  1006: "基本功", 1007: "基本功", 1008: "基本功", 1009: "基本功", 1010: "基本功",
+  1011: "基本功", 1012: "基本功", 1013: "基本功", 1014: "基本功", 1015: "演唱",
+  1016: "曲子", 1017: "曲子", 1018: "基本功", 1019: "基本功", 1020: "基本功",
+  1021: "基本功", 1022: "基本功", 1023: "基本功", 1024: "单音", 1025: "基本功",
+  1026: "曲子", 1027: "曲子", 1028: "演唱", 1029: "基本功", 1030: "基本功",
+  1032: "曲子", 1034: "基本功", 1035: "基本功", 1036: "曲子", 1037: "基本功",
+  1038: "基本功", 1039: "基本功", 1337: "曲子", 1338: "上课", 1339: "上课",
+  1340: "曲子", 1341: "演唱", 1343: "基本功", 1344: "演唱", 1346: "曲子"
+};
+
+// 生产库科目历史真实统计字典（CloudBase MySQL 云端真值，截止 2026-09-24）
+const ITEM_STATS = {
+  1001: { id: 1001, name: "基本功", days: 130, sessions: 130, minutes: 1245, maxMinutes: 31, lastDate: "2026-04-26", daysAgo: 151, practiceDates: ["2026-04-26"] },
+  1002: { id: 1002, name: "单吐", days: 18, sessions: 18, minutes: 66, maxMinutes: 10, lastDate: "2026-04-24", daysAgo: 153, practiceDates: ["2026-04-24"] },
+  1003: { id: 1003, name: "单吐练习", days: 34, sessions: 40, minutes: 125, maxMinutes: 7, lastDate: "2026-08-23", daysAgo: 32, practiceDates: ["2026-04-28", "2026-05-01", "2026-05-03", "2026-05-04", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-20", "2026-06-29", "2026-07-01", "2026-07-03", "2026-07-05", "2026-07-19", "2026-07-21", "2026-07-23", "2026-07-25", "2026-07-27", "2026-07-29", "2026-08-04", "2026-08-05", "2026-08-07", "2026-08-09", "2026-08-11", "2026-08-12", "2026-08-14", "2026-08-16", "2026-08-18", "2026-08-20", "2026-08-21", "2026-08-23"] },
+  1004: { id: 1004, name: "回娘家", days: 41, sessions: 44, minutes: 202, maxMinutes: 10, lastDate: "2026-09-14", daysAgo: 10, practiceDates: ["2026-04-24", "2026-04-26", "2026-04-27", "2026-05-01", "2026-05-03", "2026-05-04", "2026-05-07", "2026-05-08", "2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-21", "2026-05-22", "2026-06-08", "2026-06-29", "2026-06-30", "2026-07-02", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-25", "2026-07-29", "2026-07-30", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-07", "2026-08-08", "2026-08-10", "2026-08-12", "2026-08-14", "2026-08-16", "2026-08-18", "2026-08-20", "2026-08-22", "2026-08-24", "2026-09-14"] },
+  1005: { id: 1005, name: "右手持笛", days: 27, sessions: 27, minutes: 120, maxMinutes: 6, lastDate: "2025-11-09", daysAgo: 319, practiceDates: ["2025-11-09"] },
+  1006: { id: 1006, name: "吹 e1", days: 39, sessions: 39, minutes: 353, maxMinutes: 15, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1007: { id: 1007, name: "左手持笛", days: 23, sessions: 23, minutes: 104, maxMinutes: 5, lastDate: "2025-10-24", daysAgo: 335, practiceDates: ["2025-10-24"] },
+  1009: { id: 1009, name: "吹 c1", days: 20, sessions: 20, minutes: 95, maxMinutes: 13, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1010: { id: 1010, name: "吹 d1", days: 19, sessions: 19, minutes: 56, maxMinutes: 6, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1011: { id: 1011, name: "吹 b", days: 11, sessions: 11, minutes: 47, maxMinutes: 7, lastDate: "2025-11-10", daysAgo: 318, practiceDates: ["2025-11-10"] },
+  1012: { id: 1012, name: "吹e1以上", days: 11, sessions: 11, minutes: 25, maxMinutes: 4, lastDate: "2025-12-04", daysAgo: 294, practiceDates: ["2025-12-04"] },
+  1013: { id: 1013, name: "吹 a", days: 9, sessions: 9, minutes: 35, maxMinutes: 7, lastDate: "2025-12-13", daysAgo: 285, practiceDates: ["2025-12-13"] },
+  1014: { id: 1014, name: "吹 g", days: 3, sessions: 3, minutes: 11, maxMinutes: 5, lastDate: "2025-12-13", daysAgo: 285, practiceDates: ["2025-12-13"] },
+  1018: { id: 1018, name: "右手单音", days: 6, sessions: 6, minutes: 14, maxMinutes: 3, lastDate: "2025-12-05", daysAgo: 293, practiceDates: ["2025-12-05"] },
+  1019: { id: 1019, name: "左手单音", days: 6, sessions: 6, minutes: 15, maxMinutes: 3, lastDate: "2025-12-05", daysAgo: 293, practiceDates: ["2025-12-05"] },
+  1020: { id: 1020, name: "单音练习1", days: 8, sessions: 8, minutes: 31, maxMinutes: 6, lastDate: "2025-12-22", daysAgo: 276, practiceDates: ["2025-12-22"] },
+  1021: { id: 1021, name: "单音练习2", days: 8, sessions: 8, minutes: 25, maxMinutes: 5, lastDate: "2025-12-22", daysAgo: 276, practiceDates: ["2025-12-22"] },
+  1022: { id: 1022, name: "单音练习3", days: 6, sessions: 6, minutes: 20, maxMinutes: 6, lastDate: "2025-12-12", daysAgo: 286, practiceDates: ["2025-12-12"] },
+  1023: { id: 1023, name: "双吐tuku", days: 18, sessions: 18, minutes: 51, maxMinutes: 4, lastDate: "2026-03-07", daysAgo: 201, practiceDates: ["2026-03-07"] },
+  1025: { id: 1025, name: "音阶", days: 6, sessions: 6, minutes: 23, maxMinutes: 10, lastDate: "2026-04-20", daysAgo: 157, practiceDates: ["2026-04-20"] },
+  1026: { id: 1026, name: "采茶扑蝶", days: 50, sessions: 59, minutes: 312, maxMinutes: 15, lastDate: "2026-09-15", daysAgo: 9, practiceDates: ["2026-04-24", "2026-04-26", "2026-04-30", "2026-05-01", "2026-05-03", "2026-05-04", "2026-05-07", "2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-19", "2026-05-25", "2026-05-27", "2026-05-29", "2026-06-01", "2026-06-13", "2026-06-14", "2026-06-17", "2026-06-19", "2026-06-30", "2026-07-02", "2026-07-05", "2026-07-13", "2026-07-14", "2026-07-16", "2026-07-17", "2026-07-19", "2026-07-22", "2026-07-25", "2026-07-28", "2026-07-29", "2026-08-01", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-07", "2026-08-08", "2026-08-10", "2026-08-11", "2026-08-13", "2026-08-14", "2026-08-16", "2026-08-17", "2026-08-19", "2026-08-21", "2026-08-23", "2026-09-15"] },
+  1027: { id: 1027, name: "长音多练低音", days: 1, sessions: 1, minutes: 10, maxMinutes: 10, lastDate: "2026-04-27", daysAgo: 150, practiceDates: ["2026-04-27"] },
+  1028: { id: 1028, name: "唱茉莉花（二）", days: 4, sessions: 4, minutes: 45, maxMinutes: 20, lastDate: "2026-05-01", daysAgo: 146, practiceDates: ["2026-05-01"] },
+  1029: { id: 1029, name: "长音", days: 4, sessions: 4, minutes: 27, maxMinutes: 8, lastDate: "2026-05-04", daysAgo: 143, practiceDates: ["2026-05-04"] },
+  1031: { id: 1031, name: "全按作低音re", days: 2, sessions: 2, minutes: 4, maxMinutes: 2, lastDate: "2026-05-01", daysAgo: 146, practiceDates: ["2026-05-01"] },
+  1032: { id: 1032, name: "茉莉花（二）", days: 2, sessions: 2, minutes: 8, maxMinutes: 5, lastDate: "2026-05-01", daysAgo: 146, practiceDates: ["2026-05-01"] },
+  1033: { id: 1033, name: "全按作低音re-音阶", days: 6, sessions: 6, minutes: 18, maxMinutes: 4, lastDate: "2026-08-14", daysAgo: 41, practiceDates: ["2026-08-02", "2026-08-05", "2026-08-08", "2026-08-11", "2026-08-14"] },
+  1034: { id: 1034, name: "吸气长音", days: 101, sessions: 200, minutes: 1021, maxMinutes: 17, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-05-03", "2026-05-08", "2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-17", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-24", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-29", "2026-05-31", "2026-06-01", "2026-06-02", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-13", "2026-06-14", "2026-06-15", "2026-06-17", "2026-06-19", "2026-06-20", "2026-06-21", "2026-06-22", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-05", "2026-07-10", "2026-07-14", "2026-07-15", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-08", "2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-16", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-05", "2026-09-06", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1035: { id: 1035, name: "颤音", days: 4, sessions: 4, minutes: 17, maxMinutes: 13, lastDate: "2026-05-19", daysAgo: 128, practiceDates: ["2026-05-19"] },
+  1337: { id: 1337, name: "颤音练习", days: 33, sessions: 41, minutes: 180, maxMinutes: 12, lastDate: "2026-08-22", daysAgo: 33, practiceDates: ["2026-05-10", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-24", "2026-05-27", "2026-05-29", "2026-06-30", "2026-07-10", "2026-07-14", "2026-07-17", "2026-07-19", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-25", "2026-07-27", "2026-07-28", "2026-07-30", "2026-08-03", "2026-08-04", "2026-08-06", "2026-08-08", "2026-08-10", "2026-08-12", "2026-08-14", "2026-08-15", "2026-08-17", "2026-08-19", "2026-08-20", "2026-08-22"] },
+  1338: { id: 1338, name: "回课", days: 9, sessions: 9, minutes: 420, maxMinutes: 60, lastDate: "2026-09-19", daysAgo: 5, practiceDates: ["2026-05-09", "2026-05-16", "2026-05-23", "2026-05-30", "2026-07-26", "2026-08-01", "2026-08-15", "2026-08-29", "2026-09-19"] },
+  1339: { id: 1339, name: "考试", days: 7, sessions: 11, minutes: 163, maxMinutes: 50, lastDate: "2026-08-24", daysAgo: 31, practiceDates: ["2026-08-05", "2026-08-08", "2026-08-12", "2026-08-15", "2026-08-18", "2026-08-21", "2026-08-24"] },
+  1340: { id: 1340, name: "萨丽哈", days: 38, sessions: 56, minutes: 325, maxMinutes: 18, lastDate: "2026-09-09", daysAgo: 15, practiceDates: ["2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-24", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-09", "2026-06-13", "2026-06-17", "2026-06-19", "2026-06-30", "2026-07-03", "2026-07-10", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-22", "2026-07-27", "2026-07-28", "2026-07-29", "2026-08-03", "2026-08-04", "2026-08-06", "2026-08-08", "2026-08-10", "2026-08-11", "2026-08-13", "2026-08-15", "2026-08-17", "2026-08-19", "2026-08-21", "2026-08-23", "2026-09-09"] },
+  1341: { id: 1341, name: "唱萨利哈", days: 2, sessions: 2, minutes: 25, maxMinutes: 15, lastDate: "2026-05-18", daysAgo: 129, practiceDates: ["2026-05-18"] },
+  1343: { id: 1343, name: "单吐tuku", days: 64, sessions: 105, minutes: 244, maxMinutes: 5, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-05-31", "2026-06-01", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-13", "2026-06-14", "2026-06-15", "2026-06-17", "2026-06-19", "2026-06-21", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-05", "2026-07-10", "2026-07-16", "2026-07-17", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-08", "2026-08-09", "2026-08-10", "2026-08-11", "2026-08-13", "2026-08-14", "2026-08-15", "2026-08-17", "2026-08-18", "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-06", "2026-09-07", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1344: { id: 1344, name: "唱西藏舞曲", days: 5, sessions: 6, minutes: 44, maxMinutes: 15, lastDate: "2026-06-12", daysAgo: 104, practiceDates: ["2026-06-12"] },
+  1346: { id: 1346, name: "西藏舞曲", days: 40, sessions: 115, minutes: 499, maxMinutes: 14, lastDate: "2026-08-22", daysAgo: 33, practiceDates: ["2026-06-11", "2026-06-13", "2026-06-14", "2026-06-15", "2026-06-17", "2026-06-19", "2026-06-21", "2026-06-29", "2026-07-01", "2026-07-02", "2026-07-05", "2026-07-10", "2026-07-11", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-02", "2026-08-04", "2026-08-06", "2026-08-07", "2026-08-09", "2026-08-11", "2026-08-12", "2026-08-14", "2026-08-15", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22"] },
+  1347: { id: 1347, name: "双手无名指颤音", days: 7, sessions: 7, minutes: 19, maxMinutes: 3, lastDate: "2026-08-28", daysAgo: 27, practiceDates: ["2026-08-08", "2026-08-11", "2026-08-14", "2026-08-17", "2026-08-20", "2026-08-24", "2026-08-28"] },
+  1348: { id: 1348, name: "紫竹调", days: 16, sessions: 24, minutes: 112, maxMinutes: 10, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-08-11", "2026-08-14", "2026-08-17", "2026-08-20", "2026-08-23", "2026-08-26", "2026-08-29", "2026-09-01", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-10", "2026-09-13", "2026-09-16", "2026-09-23"] },
+  1349: { id: 1349, name: "单吐基本练习（四级）", days: 20, sessions: 40, minutes: 148, maxMinutes: 9, lastDate: "2026-09-22", daysAgo: 2, practiceDates: ["2026-08-10", "2026-08-13", "2026-08-16", "2026-08-19", "2026-08-22", "2026-08-25", "2026-08-28", "2026-09-01", "2026-09-03", "2026-09-04", "2026-09-05", "2026-09-07", "2026-09-09", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-15", "2026-09-17", "2026-09-19", "2026-09-22"] },
+  1350: { id: 1350, name: "双吐", days: 21, sessions: 36, minutes: 43, maxMinutes: 3, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-08-25", "2026-08-27", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-06", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1351: { id: 1351, name: "小看戏", days: 16, sessions: 33, minutes: 128, maxMinutes: 10, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-09-06", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23"] },
+  1352: { id: 1352, name: "春耕曲", days: 3, sessions: 5, minutes: 21, maxMinutes: 5, lastDate: "2026-09-23", daysAgo: 1, practiceDates: ["2026-09-20", "2026-09-21", "2026-09-23"] },
+};
+
+const ITEMS = {
+  focus: [
+    {
+      id: 1034,
+      name: "吸气长音",
+      sub: "档案编号 No.1034",
+      reqSnippet: "两个练习项目：基本练习和高音6（高音 2-4指都可以 要求使劲吹响，耳朵震）用力已经掌握，很棒",
+      reqItems: [
+        "两个练习项目：基本练习和 <b class='key'>高音6</b>（高音 <b class='key'>2-4指</b> 都可以，要求 <b class='key'>使劲吹响</b>，耳朵震）。",
+        "用力已经掌握，很棒。"
+      ],
+      content_options: "正常长音练习,吹高音“6”",
+      metro: "♩=60"
+    },
+    {
+      id: 1343,
+      name: "单吐tuku",
+      sub: "档案编号 No.1343",
+      reqSnippet: "T 隔天练习\"i\" 2分钟；K 每天练两次\"i\" 2分钟（练笛子开始和曲子练完）",
+      reqItems: [
+        "<b class='key'>T</b> 隔天练习「i」<b class='key'>2 分钟</b>；",
+        "<b class='key'>K</b> 每天练两次「i」<b class='key'>2 分钟</b>（练笛子开始和曲子练完）。"
+      ],
+      content_options: "tu （♩=80）,ku （♩=70）",
+      metro: "tu ♩=80 / ku ♩=70"
+    }
+  ],
+  other: [
+    {
+      id: 1026,
+      name: "采茶扑蝶",
+      sub: "档案编号 No.1026",
+      reqSnippet: "加速、背谱（同上周）",
+      reqItems: [
+        "加速、背谱（同上周）。"
+      ],
+      content_options: "全曲,第1句,第2句,第3句,第4句,第5句,第6句,第7句,2/4拍一整句",
+      metro: "♩=60"
+    },
+    {
+      id: 1340,
+      name: "萨丽哈",
+      sub: "档案编号 No.1340",
+      reqSnippet: "继续背谱♪=88 和 ♪=98交替练习 可以每天用两种速度联系，也可以一天练一种速度单独练习：低音34；低音54；中音34；中音54，这次是偏低了，继续调整，重点是54 找不到",
+      reqItems: [
+        "继续背谱 <b class='key'>♪=88</b> 和 <b class='key'>♪=98</b> 交替练习；",
+        "可以每天用两种速度练习，也可以一天练一种速度；",
+        "单独练习：低音34；低音54；中音34；中音54，这次是偏低了，继续调整，重点是 <b class='key'>54</b> 找不到。"
+      ],
+      content_options: "单独练习：低音34；低音54；中音34；中音54,背全曲,第1句,第2句,第3句,第4句,第5句,第6句,第7句",
+      metro: "♪=88"
+    },
+    {
+      id: 1346,
+      name: "西藏舞曲",
+      sub: "档案编号 No.1346",
+      reqSnippet: "♪=85练3天♪=90练3天。分句、分段练习（4/4 和 2/4段）背2/4段",
+      reqItems: [
+        "<b class='key'>♪=85</b> 练 3 天，<b class='key'>♪=90</b> 练 3 天；",
+        "分句、分段练习（<b class='key'>4/4</b> 和 <b class='key'>2/4</b> 段），背 <b class='key'>2/4</b> 段。"
+      ],
+      content_options: "第1句,第2句,第3句,第4句,第5句,2/4拍 第1句,2/4拍 第2句,2/4拍 第3句,全曲",
+      metro: "♪=85"
+    },
+    {
+      id: 1337,
+      name: "颤音练习",
+      sub: "档案编号 No.1337",
+      reqSnippet: "加速 ♩=66 注意双数小节长音都是三指",
+      reqItems: [
+        "加速 <b class='key'>♩=66</b> 注意双数小节长音都是 <b class='key'>三指</b>。"
+      ],
+      content_options: "背谱,看谱结合背谱",
+      metro: "♩=66"
+    },
+    {
+      id: 1004,
+      name: "回娘家",
+      sub: "档案编号 No.1004",
+      reqSnippet: "加速，背谱（同上周）",
+      reqItems: [
+        "加速，背谱（同上周）。"
+      ],
+      content_options: "加速、背谱",
+      metro: "♪=88"
+    },
+    {
+      id: 1003,
+      name: "单吐练习",
+      sub: "档案编号 No.1003",
+      reqSnippet: "背谱（同上周）",
+      reqItems: [
+        "背谱（同上周）。"
+      ],
+      content_options: "吐音清晰,节奏稳定,速度80,速度90,速度100,速度120",
+      metro: "♩=92"
+    },
+    {
+      id: 1338,
+      name: "回课",
+      sub: "档案编号 No.1338",
+      reqSnippet: "完整,无错,节奏准,情感到位",
+      reqItems: [
+        "完整，无错，节奏准，情感到位。"
+      ],
+      content_options: "完整,无错,节奏准,情感到位",
+      metro: "♪=80"
+    },
+    {
+      id: 1339,
+      name: "考试",
+      sub: "档案编号 No.1339",
+      reqSnippet: "完整,无错,节奏准,情感到位,状态好",
+      reqItems: [
+        "完整，无错，节奏准，情感到位，状态好。"
+      ],
+      content_options: "完整,无错,节奏准,情感到位,状态好",
+      metro: "♪=80"
+    }
+  ],
+  archived: [
+    { id: 1001, name: "基本功", sub: "档案编号 No.1001", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1002, name: "单吐", sub: "档案编号 No.1002", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1005, name: "右手持笛", sub: "档案编号 No.1005", content_options: "", reqSnippet: "", reqItems: [], metro: "♪=85" },
+    { id: 1006, name: "吹 e1", sub: "档案编号 No.1006", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1007, name: "左手持笛", sub: "档案编号 No.1007", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1008, name: "深呼吸", sub: "档案编号 No.1008", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1009, name: "吹 c1", sub: "档案编号 No.1009", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1010, name: "吹 d1", sub: "档案编号 No.1010", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1011, name: "吹 b", sub: "档案编号 No.1011", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1012, name: "吹e1以上", sub: "档案编号 No.1012", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1013, name: "吹 a", sub: "档案编号 No.1013", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1014, name: "吹 g", sub: "档案编号 No.1014", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1015, name: "歌曲-唱", sub: "档案编号 No.1015", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1016, name: "歌曲-吹", sub: "档案编号 No.1016", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1017, name: "歌曲-小节", sub: "档案编号 No.1017", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1018, name: "右手单音", sub: "档案编号 No.1018", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1019, name: "左手单音", sub: "档案编号 No.1019", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1020, name: "单音练习1", sub: "档案编号 No.1020", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1021, name: "单音练习2", sub: "档案编号 No.1021", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1022, name: "单音练习3", sub: "档案编号 No.1022", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1023, name: "双吐tuku", sub: "档案编号 No.1023", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1024, name: "曲-单音", sub: "档案编号 No.1024", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1025, name: "音阶", sub: "档案编号 No.1025", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1027, name: "长音多练低音", sub: "档案编号 No.1027", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1028, name: "唱茉莉花（二）", sub: "档案编号 No.1028", content_options: "音准,节奏,气息,情感,速度60,速度70", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1029, name: "长音", sub: "档案编号 No.1029", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1030, name: "全按关", sub: "档案编号 No.1030", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1031, name: "全按作低音re", sub: "档案编号 No.1031", content_options: "指法,音准,长音,气息", reqSnippet: "", reqItems: [], metro: "♩=92" },
+    { id: 1032, name: "茉莉花（二）", sub: "档案编号 No.1032", content_options: "吐音,连音,节奏,情感,速度60,速度70", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1033, name: "全按作低音re-音阶", sub: "档案编号 No.1033", content_options: "指法,音准,节奏,速度80,速度90", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1035, name: "颤音", sub: "档案编号 No.1035", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1036, name: "全按开", sub: "档案编号 No.1036", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1037, name: "基本功长音", sub: "档案编号 No.1037", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1038, name: "站姿1", sub: "档案编号 No.1038", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1039, name: "站姿2", sub: "档案编号 No.1039", content_options: "", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1341, name: "唱萨利哈", sub: "档案编号 No.1341", content_options: "音准,节奏,气息,情感,速度90", reqSnippet: "", reqItems: [], metro: "♩=60" },
+    { id: 1344, name: "唱西藏舞曲", sub: "档案编号 No.1344", content_options: "音准,节奏,气息,情感,速度80", reqSnippet: "", reqItems: [], metro: "♩=60" }
+  ]
+};
+
+const NOTES = [
+  { sym: "♩", cap: "四分音符" },
+  { sym: "♪", cap: "八分音符" },
+  { sym: "♬", cap: "十六分音符" }
+];
+
+let cur = ITEMS.focus[0];
+let bpm = 60;
+let noteIdx = 0;
+let content = "";
+let cat = "all";
+let sessionUI = null;
+
+function showToast(msg) {
+  const old = document.querySelector('.pk-toast');
+  if (old) old.remove();
+  const t = document.createElement('div');
+  t.className = 'pk-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(8px)';
+    setTimeout(() => t.remove(), 250);
+  }, 2400);
+}
+
+/* 渲染 2 排 Session 胶囊标签（可视即点，双向同步） */
+function renderSessionPills() {
+  const container = document.getElementById('pkSessionTags');
+  if (!container) return;
+  const rawList = window.PracticeSessionSelector ? PracticeSessionSelector.parse(cur.content_options || '') : [];
+  const list = rawList.length ? rawList : (window.PracticeSessionSelector ? PracticeSessionSelector.fallback : ['长音练习', '吐音练习', '连吐练习', '换气练习']);
+
+  const maxDirect = 12;
+  const showMore = list.length > maxDirect;
+  let displayList;
+  if (showMore) {
+    displayList = list.slice(0, 5);
+    if (content && list.includes(content) && !displayList.includes(content)) {
+      displayList[4] = content;
+    }
+  } else {
+    displayList = list.slice();
+  }
+
+  container.innerHTML = '';
+
+  displayList.forEach(tag => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pk-session-pill pk-session-tag' + (content === tag ? ' is-active' : '');
+    btn.dataset.tag = tag;
+    btn.title = tag;
+    const txt = document.createElement('span');
+    txt.className = 'pk-pill-text';
+    txt.textContent = tag;
+    btn.appendChild(txt);
+    btn.addEventListener('click', () => {
+      content = tag;
+      if (sessionUI) sessionUI.setValue(tag);
+      syncRunMeta();
+      syncStartState();
+      updatePillSelection();
+    });
+    container.appendChild(btn);
+  });
+
+  if (showMore) {
+    const moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'pk-session-pill pk-session-tag more-pill';
+    moreBtn.id = 'pkPillMoreBtn';
+    moreBtn.setAttribute('aria-label', '查看更多练习内容选项');
+    const txt = document.createElement('span');
+    txt.className = 'pk-pill-text';
+    txt.textContent = '更多 ▾';
+    moreBtn.appendChild(txt);
+    moreBtn.addEventListener('click', () => {
+      if (sessionUI) sessionUI.open();
+    });
+    container.appendChild(moreBtn);
+  }
+}
+
+function updatePillSelection() {
+  const container = document.getElementById('pkSessionTags');
+  if (!container) return;
+  const currentTags = Array.from(container.querySelectorAll('[data-tag]')).map(b => b.dataset.tag);
+  if (content && !currentTags.includes(content)) {
+    renderSessionPills();
+    return;
+  }
+  container.querySelectorAll('.pk-session-pill[data-tag]').forEach(btn => {
+    if (btn.dataset.tag === content) {
+      btn.classList.add('is-active');
+    } else {
+      btn.classList.remove('is-active');
+    }
+  });
+}
+window.renderSessionPills = renderSessionPills;
+
+/* 渲染票卡各部 */
+function renderTicket() {
+  const isFocus = (cur.id === 1034 || cur.id === 1343);
+  const isArch = ITEMS.archived.some(x => x.id === cur.id);
+
+  // 左上打孔状态更新
+  const hole = document.getElementById('pkTicketHoleTopLeft');
+  hole.className = 'pk-hole-punch ' + (isFocus ? 'status-focus' : isArch ? 'status-arch' : 'status-other');
+
+  // 顶部 Hero Tag（若存在则更新语义，v23 已移除 DOM）
+  const heroTag = document.getElementById('pkTicketHeroTag');
+  if (heroTag) heroTag.textContent = isFocus ? "本周重点" : isArch ? "已归档" : "日常在用";
+
+  // 艺术家姓名位（科目名放大与长名自适应兜底）
+  const nameEl = document.getElementById('pkTicketSubjectName');
+  nameEl.textContent = cur.name;
+  if (cur.name.length > 7) {
+    nameEl.style.fontSize = '22px';
+  } else {
+    nameEl.style.fontSize = '';
+  }
+  document.getElementById('pkTicketSubjectSub').textContent = cur.sub || ("档案编号 No." + cur.id);
+
+  // 并排大数字
+  document.getElementById('pkBpmVal').textContent = bpm;
+  document.getElementById('pkTicketDurVal').textContent = duration;
+
+  // 票根区：条形码代码
+  const bc = document.getElementById('pkTicketBarcodeCode');
+  if (bc) bc.textContent = 'DZ-' + cur.id + '-W';
+
+  // 票根区：科目档案信息区（Dad 选项 B：仅 档案编号 + 真实分类字段，无要求文本）
+  const catEl = document.getElementById('pkMemoCategory');
+  if (catEl) catEl.textContent = cur.category || ITEM_CATEGORIES[cur.id] || "曲目";
+  const idEl = document.getElementById('pkMemoIdVal');
+  if (idEl) idEl.textContent = "No." + cur.id;
+
+  // 票根区：科目历史信息模块（逐帧 copy 参考图 · 点阵 + 4行真数）
+  renderSubjectStats();
+
+  // 渲染 2 排胶囊标签
+  renderSessionPills();
+
+  // 渲染老师要求
+  renderReq();
+
+  // 同步到仪表卡
+  syncRunMeta();
+  syncStartState();
+}
+
+let currentDemoMonth = new URLSearchParams(window.location.search).get('month') || '2026-09';
+
+/* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
+function renderSubjectStats() {
+  const stats = ITEM_STATS[cur.id] || {
+    id: cur.id,
+    name: cur.name,
+    days: 0,
+    sessions: 0,
+    minutes: 0,
+    maxMinutes: 0,
+    lastDate: "暂无记录",
+    daysAgo: "-",
+    practiceDates: []
+  };
+
+  const daysEl = document.getElementById('pkSubjectDaysVal');
+  if (daysEl) daysEl.textContent = stats.days;
+
+  const collapsedDaysEl = document.getElementById('pkCollapsedDaysVal');
+  if (collapsedDaysEl) collapsedDaysEl.textContent = '累计 ' + (stats.days || 0) + ' 天';
+
+  const minEl = document.getElementById('pkSubjectMinutesVal');
+  if (minEl) minEl.textContent = stats.minutes;
+
+  const sessEl = document.getElementById('pkSubjectSessionsVal');
+  if (sessEl) sessEl.textContent = stats.sessions;
+
+  const maxEl = document.getElementById('pkSubjectMaxVal');
+  if (maxEl) maxEl.textContent = stats.maxMinutes || 0;
+
+  const lastEl = document.getElementById('pkSubjectLastVal');
+  if (lastEl) {
+    if (stats.daysAgo === '-' || stats.daysAgo === undefined) {
+      lastEl.textContent = '暂无记录';
+    } else {
+      lastEl.textContent = stats.daysAgo + '天前';
+      lastEl.title = '最近练习日期: ' + stats.lastDate;
+    }
+  }
+
+  // 渲染自然月7列日历点阵（当前自然月 2026-09 或切 2026-08 历史自然月）
+  renderMonthDotMatrix(stats);
+}
+
+function renderMonthDotMatrix(stats) {
+  const matrixEl = document.getElementById('pkSubjectDotMatrix');
+  const collapsedMatrixEl = document.getElementById('pkCollapsedDotMatrix');
+  const monthBadge = document.getElementById('pkSubjectMonthIndicator');
+  const collapsedCalMonth = document.getElementById('pkCollapsedCalMonth');
+  const toggleBtn = document.getElementById('pkMonthToggleBtn');
+  if (!matrixEl) return;
+
+  const datesSet = new Set(stats.practiceDates || []);
+
+  const [yearStr, monthNumStr] = currentDemoMonth.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthNumStr, 10);
+
+  // 自然月计算: 周一起算 (0=周一 .. 6=周日)
+  const firstDay = new Date(year, month - 1, 1);
+  const startWeekday = (firstDay.getDay() + 6) % 7;
+  const totalDays = new Date(year, month, 0).getDate();
+
+  if (monthBadge) {
+    monthBadge.textContent = month + '月';
+  }
+  if (collapsedCalMonth) {
+    collapsedCalMonth.textContent = month + '月打卡';
+  }
+
+  if (toggleBtn) {
+    if (currentDemoMonth === '2026-09') {
+      toggleBtn.textContent = '切8月';
+      toggleBtn.title = '当前为9月(最新云端真值)，点击切换至8月查看历史打卡数据';
+    } else {
+      toggleBtn.textContent = '切9月';
+      toggleBtn.title = '当前为8月(历史云端真值)，点击切回9月(当月)';
+    }
+  }
+
+  function fillGrid(targetEl, dotClassPrefix) {
+    if (!targetEl) return;
+    targetEl.innerHTML = '';
+    // 1. 填充月初空白格 (首日不对齐部分留空不画点)
+    for (let e = 0; e < startWeekday; e++) {
+      const emptyDot = document.createElement('span');
+      emptyDot.className = dotClassPrefix + ' is-empty';
+      emptyDot.setAttribute('aria-hidden', 'true');
+      targetEl.appendChild(emptyDot);
+    }
+
+    // 2. 填充当月日期格子 (1..totalDays)
+    for (let d = 1; d <= totalDays; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const dateKey = `${yearStr}-${monthNumStr}-${dayStr}`;
+      const isActive = datesSet.has(dateKey);
+
+      const dot = document.createElement('span');
+      dot.className = dotClassPrefix + (isActive ? ' is-active' : '');
+      dot.dataset.date = dateKey;
+      dot.title = `${month}月${d}日: ` + (isActive ? '已练习' : '未打卡');
+      targetEl.appendChild(dot);
+    }
+
+    // 3. 填充月末尾空白格 (补齐为整行)
+    const trailingEmpty = (7 - ((startWeekday + totalDays) % 7)) % 7;
+    for (let t = 0; t < trailingEmpty; t++) {
+      const emptyDot = document.createElement('span');
+      emptyDot.className = dotClassPrefix + ' is-empty';
+      emptyDot.setAttribute('aria-hidden', 'true');
+      targetEl.appendChild(emptyDot);
+    }
+  }
+
+  fillGrid(matrixEl, 'pk-cal-dot');
+  fillGrid(collapsedMatrixEl, 'pk-cal-dot');
+
+  if (matrixEl) {
+    const gridW = matrixEl.clientWidth || matrixEl.getBoundingClientRect().width;
+    if (gridW > 0) {
+      const isWidescreen = window.innerWidth >= 1200 && window.innerHeight >= 850;
+      const gap = isWidescreen ? 3.5 : 3;
+      const dotSize = Math.floor((gridW - 6 * gap) / 7 * 100) / 100;
+      matrixEl.style.setProperty('--cal-dot-size', dotSize + 'px');
+    }
+  }
+}
+
+function toggleDemoMonth(targetMonth) {
+  if (targetMonth) {
+    currentDemoMonth = targetMonth;
+  } else {
+    currentDemoMonth = (currentDemoMonth === '2026-09') ? '2026-08' : '2026-09';
+  }
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('month', currentDemoMonth);
+    window.history.replaceState({}, '', url.toString());
+  } catch (e) {}
+  renderSubjectStats();
+}
+
+window.toggleDemoMonth = toggleDemoMonth;
+window.renderSubjectStats = renderSubjectStats;
+
+/* 票夹 Modal 渲染 */
+function renderFolioModal() {
+  const list = (cat === 'all') ? ITEMS.focus.concat(ITEMS.other)
+             : (cat === 'focus') ? ITEMS.focus
+             : ITEMS.other;
+
+  const box = document.getElementById('pkFolioList');
+  box.innerHTML = list.map(item => {
+    const isSel = (item.id === cur.id);
+    const isFoc = (item.id === 1034 || item.id === 1343);
+    return '<div class="pk-folio-item' + (isSel ? ' active' : '') + '" data-id="' + item.id + '">' +
+      '<div class="pk-row" style="gap:10px">' +
+        '<div class="pk-hole-punch mini ' + (isFoc ? 'status-focus' : 'status-other') + '"></div>' +
+        '<div>' +
+          '<div class="key" style="font-size:14px">' + item.name + '</div>' +
+          '<div class="pk-sub" style="margin-top:2px">' + (item.sub || '') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<span class="pk-pill mini ' + (isFoc ? 'mark' : 'ok') + '">' + item.metro + '</span>' +
+    '</div>';
+  }).join('');
+
+  box.querySelectorAll('[data-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      selectItem(parseInt(el.dataset.id, 10), false);
+      closeFolio();
+    });
+  });
+
+  // 归档列表（完整 37 条真实曲目，支持内部滚动）
+  const archBox = document.getElementById('pkFolioArchList');
+  archBox.innerHTML = ITEMS.archived.map(item => {
+    const isSel = (item.id === cur.id);
+    return '<div class="pk-row pk-between pk-folio-item' + (isSel ? ' active' : '') + '" data-id="' + item.id + '" style="padding:8px 12px;border-radius:10px;cursor:pointer">' +
+      '<div class="pk-row" style="gap:8px;min-width:0">' +
+        '<div class="pk-hole-punch mini status-arch"></div>' +
+        '<div class="pk-ellip">' +
+          '<div class="key" style="font-size:13px">' + item.name + '</div>' +
+          '<div class="pk-sub" style="font-size:11px;color:var(--text-muted)">' + item.sub + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<span class="pk-pill mini arch" style="margin-left:8px;flex-shrink:0">' + item.metro + '</span>' +
+    '</div>';
+  }).join('');
+
+  archBox.querySelectorAll('[data-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      selectItem(parseInt(el.dataset.id, 10), true);
+      closeFolio();
+    });
+  });
+}
+
+function selectItem(id, isArchived) {
+  const all = ITEMS.focus.concat(ITEMS.other, ITEMS.archived);
+  cur = all.find(i => i.id === id) || cur;
+  const matchBpm = (cur.metro.match(/=(\d+)/) || [0, '80'])[1];
+  bpm = parseInt(matchBpm, 10) || 80;
+  content = '';
+  if (sessionUI) {
+    sessionUI.setOptions(cur.content_options || '');
+    sessionUI.setValue('');
+  }
+  renderTicket();
+}
+
+function openFolio() {
+  const stage = document.getElementById('practiceStage');
+  if ((stage && stage.classList.contains('stage-running')) || started || timerRunning) return;
+  renderFolioModal();
+  document.getElementById('pkFolioModal').classList.add('open');
+}
+function closeFolio() {
+  document.getElementById('pkFolioModal').classList.remove('open');
+}
+
+/* 老师要求渲染 */
+function renderReq() {
+  document.getElementById('pkReqItemName').textContent = cur.name;
+  const listEl = document.getElementById('pkReqList');
+  const items = cur.reqItems || [];
+  listEl.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : '<li>无课后特别要求记录。</li>';
+
+  document.getElementById('pkReaderItem').textContent = cur.name;
+  document.getElementById('pkReaderTempo').textContent = NOTES[noteIdx].sym + ' = ' + bpm;
+
+  const readerList = document.getElementById('pkReaderList');
+  readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : '<li>无课后特别要求记录。</li>';
+}
+
+/* 页面配置接口（dad 第 3.1 条：蒙版颜色可配置） */
+window.PracticePageConfig = {
+  get maskColor() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--practice-mask-color').trim() || 'rgba(44, 62, 80, 0.0875)';
+  },
+  set maskColor(val) {
+    document.documentElement.style.setProperty('--practice-mask-color', val);
+  }
+};
+
+/* 元数据与开始按钮同步 */
+function syncRunMeta() {
+  document.getElementById('pkRunItemName').textContent = cur.name;
+  document.getElementById('pkInsertedName').textContent = cur.name;
+  document.getElementById('pkRunSessionTag').textContent = content || '未选内容';
+  document.getElementById('pkRunSpeedVal').textContent = NOTES[noteIdx].sym + ' = ' + bpm;
+
+  const collapsedSession = document.getElementById('pkCollapsedSessionVal');
+  if (collapsedSession) collapsedSession.textContent = content || '未选内容';
+
+  const collapsedSpeedSym = document.getElementById('pkCollapsedSpeedSym');
+  if (collapsedSpeedSym) collapsedSpeedSym.textContent = NOTES[noteIdx].sym;
+
+  updateCollapsedProgress();
+}
+
+/* 计时态收拢卡本次进度实时更新 */
+function updateCollapsedProgress() {
+  const fill = document.getElementById('pkCollapsedProgressBarFill');
+  const val = document.getElementById('pkCollapsedProgressVal');
+  if (!fill && !val) return;
+  const currentElapsed = (typeof elapsed === 'number') ? elapsed : 0;
+  const currentDuration = (typeof duration === 'number' && duration > 0) ? duration : 10;
+  const mm = String(Math.floor(currentElapsed / 60)).padStart(2, '0');
+  const ss = String(currentElapsed % 60).padStart(2, '0');
+  const pct = Math.min(100, Math.max(0, (currentElapsed / (currentDuration * 60)) * 100)).toFixed(1);
+  if (val) {
+    val.textContent = `已练 ${mm}:${ss} / 目标 ${currentDuration} 分`;
+  }
+  if (fill) {
+    fill.style.width = pct + '%';
+  }
+}
+
+function syncStartState() {
+  const btn = document.getElementById('pkStartBtn');
+  const ok = !!content && content.trim().length > 0;
+  if (btn) btn.disabled = !ok;
+  const why = document.getElementById('pkWhy');
+  if (why) why.textContent = ok ? '' : '请选定或输入本次练习内容';
+}
+
+/* 计时走字主循环 */
+function pkTick() {
+  clearInterval(tickIv);
+  tickIv = setInterval(() => {
+    if (!timerRunning) return;
+    elapsed++;
+    if (typeof ttRenderDigits === 'function') ttRenderDigits(elapsed);
+    const progress = Math.min(1, elapsed / (duration * 60));
+    if (typeof paintRulerRunning === 'function') paintRulerRunning(progress);
+    if (typeof revealVine === 'function') revealVine(progress, true);
+    if (typeof emitBubbles === 'function') emitBubbles();
+    updateCollapsedProgress();
+
+    const left = Math.max(0, duration * 60 - elapsed);
+    const leftStr = String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+    const meta = document.getElementById('metaVal');
+    if (meta) meta.innerHTML = '总计 ' + duration + '<small>分钟</small> · 剩余 ' + leftStr;
+
+    if (elapsed >= duration * 60) finish(true);
+  }, 1000);
+}
+
+/* 当前时间每秒刷新（与生产 serverClock 语义与格式保持严格一致） */
+function updateServerClock() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const pad = document.getElementById('serverClock');
+  if (pad) {
+    pad.textContent = `${y}-${mo}-${d} ${h}:${mi}:${s}`;
+  }
+}
+setInterval(updateServerClock, 1000);
+updateServerClock();
+
+/* ══════════════════════════════════════════════════════════
+   打卡动效引擎与计时态收拢卡 GSAP Timeline
+   1. 点击「检票 · 开始练习」→ 文案先赋，再行动效
+   2. 票卡以左边框为轴心，纵向从右向左收窄成 220px 竖向长条卡片 (0.42s, power3.inOut)
+   3. 高度完全不变（逐像素一致，禁止 scale，禁止高度变矮）
+   4. 展开态元素随宽度收窄先退场（0.00-0.14s），宽度收缩至 ~260px 时（0.22s）切换 class，收拢态元素随后进场（0.22-0.42s）
+   5. 反向展开：收拢态元素先退场，展开态元素随宽度展开按节奏进场 (0.42s, power3.inOut)，clearProps 0 残留
+   6. 兜底保护：prefers-reduced-motion (≤100ms fade) / typeof gsap === 'undefined'
+══════════════════════════════════════════════════════════ */
+let runTimeline = null;
+
+function enterRun() {
+  if (!content || !content.trim()) return;
+  started = true;
+  timerRunning = true;
+  paused = false;
+  elapsed = 0;
+
+  // 1. 文案先赋、再行动效（GSAP 只写 CSS，不写 DOM 文本）
+  syncRunMeta();
+
+  const stage = document.getElementById('practiceStage');
+  const leftCol = document.getElementById('pkLeftCol');
+  const ticketCard = document.getElementById('pkTicketCard');
+  const lockOverlay = document.getElementById('pkTicketLockOverlay');
+  const insertedHead = document.getElementById('pkInsertedHead');
+  const runTelemetry = document.getElementById('pkRunTelemetry');
+
+  // 进入计时态：主动关闭已打开的票夹弹层并禁用换科目
+  closeFolio();
+  const heroFrame = document.getElementById('pkTicketHeroFrame');
+  if (heroFrame) {
+    heroFrame.setAttribute('aria-disabled', 'true');
+    heroFrame.removeAttribute('title');
+    heroFrame.setAttribute('tabindex', '-1');
+    heroFrame.style.pointerEvents = 'none';
+  }
+  const subjectBlock = document.getElementById('pkTicketSubjectBlock');
+  if (subjectBlock) {
+    subjectBlock.setAttribute('aria-disabled', 'true');
+    subjectBlock.removeAttribute('title');
+    subjectBlock.setAttribute('tabindex', '-1');
+    subjectBlock.style.pointerEvents = 'none';
+  }
+  const folioBtn = document.getElementById('pkFolioBtn');
+  if (folioBtn) {
+    folioBtn.setAttribute('aria-disabled', 'true');
+    folioBtn.style.pointerEvents = 'none';
+  }
+
+  // 保证高度完全一致：测定准备态卡片高度，收拢态逐像素对齐（禁止变矮，禁止高度漂移）
+  const prepHeight = ticketCard ? ticketCard.offsetHeight : 578;
+  if (ticketCard) {
+    ticketCard.style.height = prepHeight + 'px';
+    ticketCard.style.minHeight = prepHeight + 'px';
+  }
+
+  document.getElementById('pkBrand').textContent = '进行中';
+  document.getElementById('pkBrand').classList.add('running');
+  document.getElementById('pkMid').innerHTML = '<b>' + cur.name + '</b>';
+  document.getElementById('pkStateToggle').textContent = '切回准备态';
+
+  const pauseBtn = document.getElementById('pkPauseBtn');
+  pauseBtn.textContent = '暂停';
+  pauseBtn.classList.remove('paused-on');
+
+  if (runTimeline) {
+    runTimeline.kill();
+    runTimeline = null;
+  }
+
+  const isDesktop = window.innerWidth >= 1024;
+  const targetColWidth = isDesktop ? 220 : (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 220);
+  const startColWidth = leftCol ? leftCol.offsetWidth : (isDesktop ? 380 : 360);
+
+  // 兜底 1: 无 GSAP 环境直接切终态（0 报错，终态高度仍不变）
+  if (typeof gsap === 'undefined') {
+    stage.classList.remove('stage-prep');
+    stage.classList.add('stage-running');
+    lockOverlay.style.display = 'flex';
+    lockOverlay.style.opacity = '1';
+    leftCol.style.width = targetColWidth + 'px';
+    if (ticketCard) {
+      ticketCard.style.height = prepHeight + 'px';
+      ticketCard.style.minHeight = prepHeight + 'px';
+    }
+    if (typeof ttOnStart === 'function') ttOnStart();
+    pkTick();
+    return;
+  }
+
+  // 兜底 2: prefers-reduced-motion 分支（仅 ≤100ms 淡入淡出，不做位移收窄，终态高度仍不变）
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) {
+    stage.classList.remove('stage-prep');
+    stage.classList.add('stage-running');
+    leftCol.style.width = targetColWidth + 'px';
+    if (ticketCard) {
+      ticketCard.style.height = prepHeight + 'px';
+      ticketCard.style.minHeight = prepHeight + 'px';
+    }
+    lockOverlay.style.display = 'flex';
+    gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.1, ease: 'linear' });
+    if (typeof ttOnStart === 'function') ttOnStart();
+    pkTick();
+    return;
+  }
+
+  // GSAP 完整动画 Timeline（总时长 0.42s，收拢节奏精细编排）
+  // 展开态元素随宽度收窄先退场（0.00-0.14s），宽度收缩至 ~260px 时（0.22s）切换 class，收拢态元素随后进场（0.22-0.42s）
+  lockOverlay.style.display = 'flex';
+  gsap.set(lockOverlay, { opacity: 0 });
+
+  const prepItems = ticketCard.querySelectorAll('.prep-only, .prep-only-block');
+  const runItems = ticketCard.querySelectorAll('.run-only, .run-only-block');
+
+  runTimeline = gsap.timeline({
+    overwrite: 'auto',
+    onComplete: () => {
+      gsap.set(leftCol, { clearProps: 'width' });
+      gsap.set([prepItems, runItems].filter(Boolean), { clearProps: 'opacity,transform' });
+      gsap.set(lockOverlay, { opacity: 1 });
+      if (ticketCard) {
+        ticketCard.style.height = prepHeight + 'px';
+        ticketCard.style.minHeight = prepHeight + 'px';
+      }
+    }
+  });
+
+  // (1) 展开态专属元素迅速淡出让位 (0.00s - 0.14s, power2.in)
+  if (prepItems.length) {
+    runTimeline.to(prepItems, {
+      opacity: 0,
+      y: -4,
+      duration: 0.14,
+      ease: 'power2.in'
+    }, 0);
+  }
+
+  // (2) 票卡以左边框为轴心，宽度收窄 (0.00s - 0.42s, power3.inOut)
+  runTimeline.fromTo(leftCol,
+    { width: startColWidth },
+    { width: targetColWidth, duration: 0.42, ease: 'power3.inOut' },
+    0
+  );
+
+  // (3) 蒙版锁定层淡入 (0.00s - 0.20s, power2.out)
+  runTimeline.to(lockOverlay, {
+    opacity: 1,
+    duration: 0.20,
+    ease: 'power2.out'
+  }, 0);
+
+  // (4) 关键转折点：0.22s 切换舞台状态类名（此时宽度已收缩过半，展开态已彻底淡出）
+  runTimeline.add(() => {
+    stage.classList.remove('stage-prep');
+    stage.classList.add('stage-running');
+  }, 0.22);
+
+  // (5) 打卡机卡头滑入插槽 (0.16s - 0.38s, back.out)
+  runTimeline.fromTo(insertedHead,
+    { y: -24, opacity: 0, scale: 0.96 },
+    { y: 0, opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(1.4)' },
+    0.16
+  );
+
+  // (6) 收拢态元素淡入就位 (0.22s - 0.42s, power2.out)
+  runTimeline.fromTo(runItems,
+    { opacity: 0, y: 6 },
+    { opacity: 1, y: 0, duration: 0.20, ease: 'power2.out' },
+    0.22
+  );
+
+  // (7) 仪表核心参数总线分项交错显现 (0.20s - 0.40s, stagger 0.035s)
+  const teleItems = runTelemetry ? runTelemetry.querySelectorAll('.pk-tele-block') : [];
+  if (teleItems.length) {
+    runTimeline.fromTo(teleItems,
+      { y: 10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.20, stagger: 0.035, ease: 'power2.out' },
+      0.20
+    );
+  }
+
+  if (typeof ttOnStart === 'function') ttOnStart();
+  pkTick();
+}
+
+function exitRun() {
+  started = false;
+  timerRunning = false;
+  paused = false;
+  clearInterval(tickIv);
+  tickIv = null;
+
+  if (typeof ttOnExit === 'function') ttOnExit();
+
+  const stage = document.getElementById('practiceStage');
+  const leftCol = document.getElementById('pkLeftCol');
+  const ticketCard = document.getElementById('pkTicketCard');
+  const lockOverlay = document.getElementById('pkTicketLockOverlay');
+  const insertedHead = document.getElementById('pkInsertedHead');
+  const runTelemetry = document.getElementById('pkRunTelemetry');
+
+  document.getElementById('pkBrand').textContent = '练习准备';
+  document.getElementById('pkBrand').classList.remove('running');
+  document.getElementById('pkMid').textContent = '女儿竹笛早课';
+  document.getElementById('pkStateToggle').textContent = '切到练习态';
+
+  elapsed = 0;
+  if (typeof ttRenderDigits === 'function') ttRenderDigits(duration * 60, true);
+  if (typeof paintRulerSelect === 'function') paintRulerSelect(duration);
+
+  if (runTimeline) {
+    runTimeline.kill();
+    runTimeline = null;
+  }
+
+  const isWide = window.innerWidth >= 1200;
+  const isMed = window.innerWidth >= 1024 && window.innerWidth < 1200;
+  const targetColWidth = isWide ? 380 : (isMed ? 360 : (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 540));
+  const startColWidth = leftCol ? leftCol.offsetWidth : 220;
+
+  const prepHeight = ticketCard ? ticketCard.offsetHeight : 578;
+  if (ticketCard) {
+    ticketCard.style.height = prepHeight + 'px';
+    ticketCard.style.minHeight = prepHeight + 'px';
+  }
+
+  const prepItems = ticketCard.querySelectorAll('.prep-only, .prep-only-block');
+  const runItems = ticketCard.querySelectorAll('.run-only, .run-only-block');
+
+  // 彻底复位的清理函数（0 残留保证：清除 GSAP 注入的所有 inline style，高度复位）
+  const resetToPrepClean = () => {
+    stage.classList.remove('stage-running');
+    stage.classList.add('stage-prep');
+    const heroFrame = document.getElementById('pkTicketHeroFrame');
+    if (heroFrame) {
+      heroFrame.removeAttribute('aria-disabled');
+      heroFrame.setAttribute('title', '点击打开票夹换曲目');
+      heroFrame.setAttribute('tabindex', '0');
+      heroFrame.style.pointerEvents = '';
+    }
+    const subjectBlock = document.getElementById('pkTicketSubjectBlock');
+    if (subjectBlock) {
+      subjectBlock.removeAttribute('aria-disabled');
+      subjectBlock.setAttribute('title', '点击打开票夹换曲目');
+      subjectBlock.setAttribute('tabindex', '0');
+      subjectBlock.style.pointerEvents = '';
+    }
+    const folioBtn = document.getElementById('pkFolioBtn');
+    if (folioBtn) {
+      folioBtn.removeAttribute('aria-disabled');
+      folioBtn.style.pointerEvents = '';
+    }
+    if (ticketCard) {
+      ticketCard.style.height = '';
+      ticketCard.style.minHeight = '';
+    }
+    if (typeof gsap !== 'undefined') {
+      gsap.set([leftCol, ticketCard, lockOverlay, insertedHead, runTelemetry, prepItems, runItems].filter(Boolean), { clearProps: 'all' });
+      if (runTelemetry) {
+        const teleItems = runTelemetry.querySelectorAll('.pk-tele-block');
+        if (teleItems.length) gsap.set(teleItems, { clearProps: 'all' });
+      }
+    }
+    if (lockOverlay) {
+      lockOverlay.style.display = 'none';
+      lockOverlay.style.opacity = '0';
+    }
+    updateCollapsedProgress();
+  };
+
+  // 兜底 1: 无 GSAP 环境直接复位
+  if (typeof gsap === 'undefined') {
+    resetToPrepClean();
+    return;
+  }
+
+  // 兜底 2: prefers-reduced-motion 分支
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) {
+    gsap.to(lockOverlay, {
+      opacity: 0,
+      duration: 0.1,
+      ease: 'linear',
+      onComplete: resetToPrepClean
+    });
+    return;
+  }
+
+  // GSAP 展开反向动画 Timeline (总时长 0.42s，对称反向编排)
+  runTimeline = gsap.timeline({
+    overwrite: 'auto',
+    onComplete: resetToPrepClean
+  });
+
+  // (1) 收拢态元素迅速退场 (0.00s - 0.14s, power2.in)
+  if (runItems.length) {
+    runTimeline.to(runItems, {
+      opacity: 0,
+      y: 6,
+      duration: 0.14,
+      ease: 'power2.in'
+    }, 0);
+  }
+
+  // (2) 卡头迅速抽回插槽 (0.00s - 0.14s, power2.in)
+  runTimeline.to(insertedHead, {
+    y: -20,
+    opacity: 0,
+    duration: 0.14,
+    ease: 'power2.in'
+  }, 0);
+
+  // (3) 蒙版锁定层淡出 (0.00s - 0.18s, power2.inOut)
+  runTimeline.to(lockOverlay, {
+    opacity: 0,
+    duration: 0.18,
+    ease: 'power2.inOut'
+  }, 0);
+
+  // (4) 票卡宽度从 220 展开回准备态宽度 (0.00s - 0.42s, power3.inOut)
+  runTimeline.fromTo(leftCol,
+    { width: startColWidth },
+    { width: targetColWidth, duration: 0.42, ease: 'power3.inOut' },
+    0
+  );
+
+  // (5) 关键转折点：0.20s 切换舞台状态类名（此时宽度已展开大半）
+  runTimeline.add(() => {
+    stage.classList.remove('stage-running');
+    stage.classList.add('stage-prep');
+  }, 0.20);
+
+  // (6) 展开态专属元素淡入就位 (0.20s - 0.42s, power2.out)
+  if (prepItems.length) {
+    runTimeline.fromTo(prepItems,
+      { opacity: 0, y: -4 },
+      { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' },
+      0.20
+    );
+  }
+}
+
+
+function pauseToggle() {
+  if (!started) return;
+  const pauseBtn = document.getElementById('pkPauseBtn');
+  if (timerRunning) {
+    timerRunning = false;
+    paused = true;
+    pauseBtn.textContent = '继续练习';
+    pauseBtn.classList.add('paused-on');
+    if (typeof ttPauseLabel === 'function') ttPauseLabel(true);
+  } else {
+    timerRunning = true;
+    paused = false;
+    pauseBtn.textContent = '暂停';
+    pauseBtn.classList.remove('paused-on');
+    if (typeof ttPauseLabel === 'function') ttPauseLabel(false);
+  }
+}
+
+function finish(done) {
+  exitRun();
+  showToast(done ? '打卡完成 · 练习已结束' : '已提前结束 · 票卡已归位');
+}
+
+function openReader() {
+  document.getElementById('pkOverlay').classList.add('open');
+}
+function closeReader() {
+  document.getElementById('pkOverlay').classList.remove('open');
+}
+
+/* 初始化与事件绑定 */
+(function initV4() {
+  // 挂载 Grok Session Selector 组件
+  const sessionHost = document.getElementById('pkSessionSlot');
+  if (sessionHost && window.PracticeSessionSelector) {
+    sessionUI = PracticeSessionSelector.mount(sessionHost, {
+      options: PracticeSessionSelector.parse(cur.content_options || ''),
+      value: content,
+      onChange: function(val, meta) {
+        content = val;
+        syncRunMeta();
+        syncStartState();
+        updatePillSelection();
+      }
+    });
+  }
+
+  renderTicket();
+
+  // 换科目入口：票夹按钮与 hero 块
+  document.getElementById('pkFolioBtn').addEventListener('click', () => {
+    if (document.getElementById('practiceStage')?.classList.contains('stage-running')) return;
+    openFolio();
+  });
+  const heroFrameEl = document.getElementById('pkTicketHeroFrame');
+  if (heroFrameEl) {
+    heroFrameEl.addEventListener('click', () => {
+      if (document.getElementById('practiceStage')?.classList.contains('stage-running') || heroFrameEl.getAttribute('aria-disabled') === 'true') return;
+      openFolio();
+    });
+    heroFrameEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
+        if (document.getElementById('practiceStage')?.classList.contains('stage-running') || heroFrameEl.getAttribute('aria-disabled') === 'true') return;
+        e.preventDefault();
+        openFolio();
+      }
+    });
+  }
+  const subjectBlockEl = document.getElementById('pkTicketSubjectBlock');
+  if (subjectBlockEl) {
+    subjectBlockEl.addEventListener('click', (e) => {
+      if (document.getElementById('practiceStage')?.classList.contains('stage-running') || subjectBlockEl.getAttribute('aria-disabled') === 'true') return;
+      e.stopPropagation();
+      openFolio();
+    });
+    subjectBlockEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
+        if (document.getElementById('practiceStage')?.classList.contains('stage-running') || subjectBlockEl.getAttribute('aria-disabled') === 'true') return;
+        e.stopPropagation();
+        e.preventDefault();
+        openFolio();
+      }
+    });
+  }
+  document.getElementById('pkCloseFolioBtn').addEventListener('click', closeFolio);
+  document.getElementById('pkFolioModal').addEventListener('click', e => {
+    if (e.target.id === 'pkFolioModal') closeFolio();
+  });
+
+  // 票夹分类
+  document.querySelectorAll('#pkFolioModal [data-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#pkFolioModal [data-cat]').forEach(x => x.classList.remove('mark'));
+      btn.classList.add('mark');
+      cat = btn.dataset.cat;
+      renderFolioModal();
+    });
+  });
+
+  // 归档折叠
+  const archToggle = document.getElementById('pkToggleArchFolio');
+  archToggle.addEventListener('click', () => {
+    const list = document.getElementById('pkFolioArchList');
+    const open = !list.hidden;
+    list.hidden = open;
+    archToggle.textContent = open ? '展开已归档曲目 (37) ▾' : '收起已归档曲目 (37) ▴';
+  });
+
+  // 音符切换
+  document.getElementById('pkTicketNoteBtn').addEventListener('click', () => {
+    noteIdx = (noteIdx + 1) % NOTES.length;
+    document.getElementById('pkTicketNoteSym').textContent = NOTES[noteIdx].sym;
+    document.getElementById('pkTicketNoteCap').textContent = NOTES[noteIdx].cap + ' ▾';
+    syncRunMeta();
+  });
+
+  // 3.7 长按加速步进引擎（400ms 后起连发，间隔 120ms，每 300ms 递减至 40ms）
+  function attachLongPressStepper(btn, onStep) {
+    if (!btn) return;
+    let holdTimer = null;
+    let repeatTimer = null;
+    let holdStart = 0;
+
+    function stop() {
+      clearTimeout(holdTimer);
+      clearTimeout(repeatTimer);
+      holdTimer = null;
+      repeatTimer = null;
+    }
+
+    function scheduleNext() {
+      const elapsed = Date.now() - holdStart;
+      const decSteps = Math.floor(elapsed / 300);
+      const interval = Math.max(40, 120 - decSteps * 25);
+      repeatTimer = setTimeout(() => {
+        onStep();
+        scheduleNext();
+      }, interval);
+    }
+
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      stop();
+      onStep();
+      holdStart = Date.now();
+      holdTimer = setTimeout(() => {
+        scheduleNext();
+      }, 400);
+    });
+
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // BPM 增减（长按加速）
+  attachLongPressStepper(document.getElementById('pkBpmUp'), () => {
+    bpm = Math.min(160, bpm + 1);
+    document.getElementById('pkBpmVal').textContent = bpm;
+    syncRunMeta();
+  });
+  attachLongPressStepper(document.getElementById('pkBpmDown'), () => {
+    bpm = Math.max(40, bpm - 1);
+    document.getElementById('pkBpmVal').textContent = bpm;
+    syncRunMeta();
+  });
+
+  // 时长增减（长按加速）
+  attachLongPressStepper(document.getElementById('pkTicketDurUp'), () => {
+    if (typeof ttStepMin === 'function') ttStepMin(1);
+  });
+  attachLongPressStepper(document.getElementById('pkTicketDurDown'), () => {
+    if (typeof ttStepMin === 'function') ttStepMin(-1);
+  });
+  const durBtn = document.getElementById('pkTicketDurBtn');
+  if (durBtn) {
+    durBtn.addEventListener('click', () => {
+      if (typeof ttStepMin === 'function') ttStepMin(1);
+    });
+  }
+
+  // 按键绑定
+  document.getElementById('pkStartBtn').addEventListener('click', enterRun);
+  document.getElementById('pkPauseBtn').addEventListener('click', pauseToggle);
+  document.getElementById('pkEarlyBtn').addEventListener('click', () => finish(false));
+  document.getElementById('pkStateToggle').addEventListener('click', () => {
+    if (started) finish(false); else enterRun();
+  });
+
+  // 阅读层
+  document.getElementById('pkExpandReqBtn').addEventListener('click', openReader);
+  document.getElementById('pkReaderClose').addEventListener('click', closeReader);
+  document.getElementById('pkOverlay').addEventListener('click', e => {
+    if (e.target.id === 'pkOverlay') closeReader();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeReader(); closeFolio(); }
+  });
+
+  document.getElementById('pkRecords').addEventListener('click', () => {
+    showToast('今日记录抽屉：demo 未接线（模块 7 单独过）');
+  });
+  document.getElementById('pkVideoBtn').addEventListener('click', () => {
+    showToast('示范视频：demo 静态演示');
+  });
+
+  // 监听刻度尺时长变动同步到票面数字与参数网格
+  const origSetDuration = window.ttSetDuration;
+  if (typeof origSetDuration === 'function') {
+    window.ttSetDuration = function(v, skip) {
+      origSetDuration(v, skip);
+      const durEl = document.getElementById('pkTicketDurVal');
+      if (durEl) durEl.textContent = duration;
+    };
+  }
+
+  // 初始化真件计时器
+  try {
+    if (typeof ttInitTimer === 'function') ttInitTimer();
+  } catch (err) {
+    console.warn('[timer] 视觉层初始化提示:', err);
+  }
+})();
+</script>
+
+</body>
+</html>
