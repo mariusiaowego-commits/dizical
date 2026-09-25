@@ -569,16 +569,22 @@
       gap: 16px;
     }
     .pk-ticket .pk-ticket-hero-frame {
-      height: 168px;
+      height: clamp(128px, 16vh, 148px);
+    }
+    .pk-ticket .pk-perforation-line {
+      margin: 10px calc(-1 * var(--pk-ticket-pad-x, 14px));
+    }
+    .pk-ticket .pk-session-tags-wrap {
+      margin-bottom: 8px;
     }
     #pkSubjectInfoCard, .pk-subject-info-card {
       flex: 1 1 auto;
       min-height: 0;
       align-items: stretch;
       grid-template-columns: 1fr 1fr;
-      padding: 12px 14px;
-      gap: 14px;
-      margin-top: 8px;
+      padding: 8px 10px;
+      gap: 12px;
+      margin-top: 6px;
       margin-bottom: 0;
     }
     #pkSubjectInfoCard .pk-info-left-col {
@@ -590,7 +596,7 @@
       gap: 0;
     }
     #pkSubjectInfoCard .pk-info-metric-header {
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
     #pkSubjectInfoCard .pk-info-label {
       font-size: 12px;
@@ -599,7 +605,7 @@
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
     }
     #pkSubjectInfoCard .pk-info-bignum {
       font-size: 38px;
@@ -609,7 +615,7 @@
       max-width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
     #pkSubjectInfoCard .pk-cal-month-badge {
       font-size: 12px;
@@ -619,9 +625,10 @@
       gap: 3.5px;
     }
     #pkSubjectInfoCard .pk-cal-grid {
+      container-type: inline-size;
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
-      grid-auto-rows: auto;
+      grid-auto-rows: var(--cal-dot-size, calc((100cqw - 21px) / 7));
       align-content: start;
       gap: 3.5px;
       width: 100%;
@@ -629,8 +636,8 @@
     }
     #pkSubjectInfoCard .pk-cal-dot {
       width: 100%;
-      height: 0;
-      padding-bottom: 100%;
+      height: var(--cal-dot-size, calc((100cqw - 21px) / 7));
+      padding-bottom: 0;
       min-width: 0;
       min-height: 0;
       align-self: start;
@@ -1136,19 +1143,27 @@
     min-height: 0;
   }
 
-  /* 2 排 Session 胶囊标签网格（统一左对齐，<= 2 排，长标签截断，better-layout） */
+  /* 2 排 Session 胶囊标签网格（统一左对齐，固定 2 排高度盒 60px，标签增减绝不影响后方排版） */
   .pk-session-tags-wrap {
     width: 100%;
+    height: 60px;
+    min-height: 60px;
+    max-height: 60px;
+    flex: 0 0 60px;
+    box-sizing: border-box;
+    overflow: hidden;
     margin-top: 4px;
-    margin-bottom: 16px; /* 组间距 >= 2x 组内行间距(8px) */
+    margin-bottom: 12px;
   }
   .pk-session-tags-grid {
     display: flex;
     flex-wrap: wrap;
+    align-content: flex-start;
     column-gap: 5px; /* 行内 gap 5px */
     row-gap: 8px;    /* 行间 gap 8px > 行内 gap */
-    max-height: 64px;
-    min-height: 0;
+    height: 100%;
+    max-height: 60px;
+    min-height: 60px;
     overflow: hidden;
     justify-content: flex-start; /* 统一左对齐 */
     align-items: center;
@@ -1338,9 +1353,10 @@
     opacity: 0.85;
   }
   .pk-cal-grid {
+    container-type: inline-size;
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-auto-rows: auto;
+    grid-auto-rows: var(--cal-dot-size, calc((100cqw - 18px) / 7));
     align-content: start;
     gap: 3px;
     width: 100%;
@@ -1348,8 +1364,8 @@
   }
   .pk-cal-dot {
     width: 100%;
-    height: 0;
-    padding-bottom: 100%;
+    height: var(--cal-dot-size, calc((100cqw - 18px) / 7));
+    padding-bottom: 0;
     min-width: 0;
     min-height: 0;
     align-self: start;
@@ -3703,7 +3719,7 @@ function renderSessionPills() {
   const rawList = window.PracticeSessionSelector ? PracticeSessionSelector.parse(cur.content_options || '') : [];
   const list = rawList.length ? rawList : (window.PracticeSessionSelector ? PracticeSessionSelector.fallback : ['长音练习', '吐音练习', '连吐练习', '换气练习']);
 
-  const maxDirect = 6;
+  const maxDirect = 12;
   const showMore = list.length > maxDirect;
   let displayList;
   if (showMore) {
@@ -3940,6 +3956,16 @@ function renderMonthDotMatrix(stats) {
 
   fillGrid(matrixEl, 'pk-cal-dot');
   fillGrid(collapsedMatrixEl, 'pk-cal-dot');
+
+  if (matrixEl) {
+    const gridW = matrixEl.clientWidth || matrixEl.getBoundingClientRect().width;
+    if (gridW > 0) {
+      const isWidescreen = window.innerWidth >= 1200 && window.innerHeight >= 850;
+      const gap = isWidescreen ? 3.5 : 3;
+      const dotSize = Math.floor((gridW - 6 * gap) / 7 * 100) / 100;
+      matrixEl.style.setProperty('--cal-dot-size', dotSize + 'px');
+    }
+  }
 }
 
 function toggleDemoMonth(targetMonth) {
