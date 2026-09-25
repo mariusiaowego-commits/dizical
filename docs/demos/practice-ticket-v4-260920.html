@@ -477,30 +477,30 @@
   /* 矮视口短档 (max-height: 700px) 计时态收拢卡自适应可压缩机制 */
   @media (max-height: 700px) {
     #practiceStage.stage-running .pk-ticket-hero-frame {
-      width: clamp(68px, 11vh, 92px);
-      height: clamp(68px, 11vh, 92px);
-      margin: 2px auto 0;
+      width: clamp(68px, 11vh, 92px) !important;
+      height: clamp(68px, 11vh, 92px) !important;
+      margin: 2px auto 0 !important;
     }
     #practiceStage.stage-running .pk-ticket-subject-block {
-      margin-top: clamp(3px, 0.7vh, 6px);
+      margin-top: clamp(3px, 0.7vh, 6px) !important;
     }
     #practiceStage.stage-running .pk-ticket-digits-grid {
-      gap: clamp(4px, 0.7vh, 6px);
-      margin-top: clamp(3px, 0.7vh, 6px);
+      gap: clamp(4px, 0.7vh, 6px) !important;
+      margin-top: clamp(3px, 0.7vh, 6px) !important;
     }
     #practiceStage.stage-running .pk-ticket-num-col {
-      padding: 4px 10px;
-      min-height: 28px;
+      padding: 4px 10px !important;
+      min-height: 28px !important;
     }
     #practiceStage.stage-running .pk-perforation-line {
-      margin: clamp(6px, 1vh, 10px) calc(-1 * var(--pk-ticket-pad-x, 12px));
+      margin: clamp(6px, 1vh, 10px) calc(-1 * var(--pk-ticket-pad-x, 12px)) !important;
     }
 
     /* Level 1: 日历块收缩（7列铺满，格子高度随可用高度收缩，隐藏星期行） */
     .pk-collapsed-cal-block {
-      padding: clamp(4px, 0.8vh, 6px) clamp(6px, 1vw, 8px);
+      padding: clamp(3px, 0.6vh, 5px) clamp(6px, 1vw, 8px);
       gap: 2px;
-      margin-top: clamp(4px, 0.8vh, 6px);
+      margin-top: clamp(3px, 0.6vh, 5px);
     }
     .pk-cal-weekdays.mini {
       display: none !important;
@@ -509,12 +509,12 @@
       gap: clamp(1px, 0.25vh, 2px);
     }
     .pk-collapsed-cal-grid .pk-cal-dot {
-      height: clamp(9px, 1.8vh, 14px);
+      height: clamp(8px, 1.45vh, 12px);
       padding-bottom: 0;
       border-radius: 2px;
     }
 
-    /* Level 2: 次要信息行降级合并（今日累计与连续打卡合并为单行） */
+    /* Level 2: 次要信息行降级合并（今日累计与连续打卡合并为单微卡片） */
     #practiceStage.stage-running #pkCollapsedTodayRow {
       display: none !important;
     }
@@ -527,25 +527,59 @@
     #practiceStage.stage-running #pkCollapsedDivider2 {
       display: none !important;
     }
-    #practiceStage.stage-running .pk-collapsed-merged-row {
+    #practiceStage.stage-running #pkCollapsedMergedRow,
+    #practiceStage.stage-running .pk-collapsed-merged-row,
+    #practiceStage.stage-running .pk-collapsed-merged-card {
       display: flex !important;
     }
 
-    /* 行间距弹性压缩 */
-    .pk-collapsed-stat-row {
-      margin-top: clamp(6px, 1vh, 8px);
-      padding-bottom: clamp(6px, 1vh, 8px);
-    }
+    /* 微卡片间距弹性压缩 */
+    .pk-collapsed-stat-card,
+    .pk-collapsed-stat-row,
+    .pk-collapsed-progress-card,
     .pk-collapsed-progress-block {
-      margin-top: clamp(6px, 1vh, 8px);
-      padding-bottom: clamp(6px, 1vh, 8px);
-      gap: 4px;
+      margin-top: clamp(2px, 0.4vh, 3px);
+      padding: clamp(2px, 0.4vh, 3px) 8px;
+      gap: 1px;
+    }
+    .pk-collapsed-card-head .pk-info-icon-disc.mini {
+      width: 13px;
+      height: 13px;
+    }
+    .pk-collapsed-card-head .pk-info-icon-disc.mini .pk-info-icon-svg {
+      width: 8px;
+      height: 8px;
+    }
+    .pk-collapsed-stat-val {
+      font-size: 11.5px;
+      line-height: 1;
+    }
+    .pk-collapsed-progress-val {
+      font-size: 10px;
+      line-height: 1;
+    }
+    .pk-collapsed-progress-bar-track {
+      height: 3px;
+      margin-top: 1.5px;
     }
     .pk-collapsed-divider {
       display: none !important;
     }
     #practiceStage.stage-running .pk-stub-memo-block {
-      padding: 4px 8px;
+      padding: 3px 8px;
+    }
+  }
+
+  /* Level 3: 极矮视口二次降级（若合并卡仍过紧，则丢弃连续打卡保留今日与本次进度） */
+  @media (max-height: 590px) {
+    #practiceStage.stage-running #pkCollapsedMergedRow {
+      display: none !important;
+    }
+    #practiceStage.stage-running #pkCollapsedTodayRow {
+      display: flex !important;
+    }
+    #practiceStage.stage-running #pkCollapsedStreakRow {
+      display: none !important;
     }
   }
 
@@ -1784,39 +1818,73 @@
     margin-left: auto;
     flex-shrink: 0;
   }
-  .pk-collapsed-stat-row {
+  /* ═══ 计时态收拢卡三大指标块 (Variant B: 微卡片堆叠，Dad 拍板) ═══ */
+  .pk-collapsed-stat-card,
+  .pk-collapsed-stat-row,
+  .pk-collapsed-progress-card,
+  .pk-collapsed-progress-block {
     display: none;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
-    padding: 0 4px 10px;
-    margin-top: 10px;
-    border-bottom: 1px solid rgba(44, 62, 80, 0.06);
+    background: rgba(44, 62, 80, 0.035);
+    border: 1px solid rgba(44, 62, 80, 0.05);
+    border-radius: 8px;
+    padding: 4px 8px;
+    gap: 2px;
+    margin-top: 4px;
+    margin-left: 0;
+    margin-right: 0;
   }
-  #practiceStage.stage-running .pk-collapsed-stat-row {
+  #practiceStage.stage-running .pk-collapsed-stat-card,
+  #practiceStage.stage-running .pk-collapsed-stat-row,
+  #practiceStage.stage-running .pk-collapsed-progress-card,
+  #practiceStage.stage-running .pk-collapsed-progress-block {
     display: flex;
   }
-  .pk-collapsed-stat-label {
+  #practiceStage.stage-running #pkCollapsedMergedRow,
+  .pk-collapsed-merged-card,
+  .pk-collapsed-merged-row {
+    display: none;
+  }
+
+  .pk-collapsed-card-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    line-height: 1;
+  }
+  .pk-collapsed-stat-label,
+  .pk-collapsed-progress-label {
     font-size: 10px;
     font-weight: 600;
     color: var(--text-muted);
     letter-spacing: 0.02em;
     line-height: 1;
+    text-transform: uppercase;
     flex-shrink: 0;
   }
+  .pk-collapsed-card-body {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    width: 100%;
+    line-height: 1.1;
+  }
   .pk-collapsed-stat-val {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 13.5px;
+    font-weight: 800;
     color: var(--text-main);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
-    line-height: 1;
-    text-align: right;
+    line-height: 1.1;
+    text-align: left;
   }
   .pk-collapsed-stat-unit {
-    font-size: 10px;
-    font-weight: 500;
+    font-size: 10.5px;
+    font-weight: 600;
     color: var(--text-muted);
     line-height: 1;
   }
@@ -1826,57 +1894,26 @@
     color: var(--text-muted);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-  .pk-collapsed-merged-row {
-    display: none !important;
-  }
+  .pk-collapsed-merged-card .pk-collapsed-stat-val,
   .pk-collapsed-merged-row .pk-collapsed-stat-val {
-    font-size: 9.5px;
-    letter-spacing: -0.02em;
+    font-size: 11px;
+    letter-spacing: -0.01em;
   }
   .pk-collapsed-divider {
     display: none !important;
   }
 
-  .pk-collapsed-progress-block {
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0 4px 10px;
-    margin-top: 10px;
-    border-bottom: 1px solid rgba(44, 62, 80, 0.06);
-  }
-  #practiceStage.stage-running .pk-collapsed-progress-block {
-    display: flex;
-  }
-  .pk-collapsed-progress-head,
-  .pk-collapsed-progress-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    line-height: 1;
-    box-sizing: border-box;
-  }
-  .pk-collapsed-progress-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-muted);
-    letter-spacing: 0.02em;
-    line-height: 1;
-    flex-shrink: 0;
-  }
+
   .pk-collapsed-progress-val {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-main);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-    line-height: 1;
-    text-align: right;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
     white-space: nowrap;
+    text-align: left;
   }
   .pk-collapsed-progress-bar-track {
     width: 100%;
@@ -2728,15 +2765,15 @@
             <div class="pk-collapsed-cal-grid" id="pkCollapsedDotMatrix" aria-label="收拢态自然月练习日历"></div>
           </div>
 
-          <!-- (A) 今日累计行：今日已练 0 分 · 0 次 -->
-          <div class="pk-collapsed-stat-row run-only" id="pkCollapsedTodayRow">
-            <div class="pk-collapsed-row-lead">
+          <!-- (A) 今日累计块 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-stat-card pk-collapsed-stat-row run-only" id="pkCollapsedTodayRow">
+            <div class="pk-collapsed-card-head">
               <span class="pk-info-icon-disc mini disc-dur">
                 <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
               </span>
               <span class="pk-collapsed-stat-label">今日已练</span>
             </div>
-            <div class="pk-collapsed-row-val">
+            <div class="pk-collapsed-card-body">
               <span class="pk-collapsed-stat-val" id="pkCollapsedTodayVal">0</span>
               <span class="pk-collapsed-stat-unit">分 · 0 次</span>
             </div>
@@ -2744,18 +2781,16 @@
 
           <div class="pk-collapsed-divider run-only" id="pkCollapsedDivider1"></div>
 
-          <!-- (B) 本次进度块：已练 mm:ss / 目标 N 分 + 4px 进度条 -->
-          <div class="pk-collapsed-progress-block run-only" id="pkCollapsedProgressBlock">
-            <div class="pk-collapsed-progress-head pk-collapsed-progress-header">
-              <div class="pk-collapsed-row-lead">
-                <span class="pk-info-icon-disc mini disc-max">
-                  <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 0a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3zM8 3a6 6 0 1 0 0 12A6 6 0 0 0 8 3zm-4.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zm4.25-2.75a.75.75 0 0 1 1.5 0v2.44l1.28.77a.75.75 0 1 1-.76 1.3l-1.75-1.05A.75.75 0 0 1 7.75 9V6.25z"/></svg>
-                </span>
-                <span class="pk-collapsed-progress-label">本次进度</span>
-              </div>
-              <div class="pk-collapsed-row-val">
-                <span class="pk-collapsed-progress-val" id="pkCollapsedProgressVal">已练 00:00 / 目标 10 分</span>
-              </div>
+          <!-- (B) 本次进度块 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-progress-card pk-collapsed-progress-block run-only" id="pkCollapsedProgressBlock">
+            <div class="pk-collapsed-card-head">
+              <span class="pk-info-icon-disc mini disc-max">
+                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 0a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3zM8 3a6 6 0 1 0 0 12A6 6 0 0 0 8 3zm-4.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zm4.25-2.75a.75.75 0 0 1 1.5 0v2.44l1.28.77a.75.75 0 1 1-.76 1.3l-1.75-1.05A.75.75 0 0 1 7.75 9V6.25z"/></svg>
+              </span>
+              <span class="pk-collapsed-progress-label">本次进度</span>
+            </div>
+            <div class="pk-collapsed-card-body">
+              <span class="pk-collapsed-progress-val" id="pkCollapsedProgressVal">已练 00:00 / 目标 10 分</span>
             </div>
             <div class="pk-collapsed-progress-bar-track">
               <div class="pk-collapsed-progress-bar-fill" id="pkCollapsedProgressBarFill"></div>
@@ -2764,29 +2799,29 @@
 
           <div class="pk-collapsed-divider run-only" id="pkCollapsedDivider2"></div>
 
-          <!-- (C) 连续打卡行：连续 61 天 · 最近 9-23 -->
-          <div class="pk-collapsed-stat-row run-only" id="pkCollapsedStreakRow">
-            <div class="pk-collapsed-row-lead">
+          <!-- (C) 连续打卡块 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-stat-card pk-collapsed-stat-row run-only" id="pkCollapsedStreakRow">
+            <div class="pk-collapsed-card-head">
               <span class="pk-info-icon-disc mini disc-count">
                 <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm10.854 3.646a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 10.293l3.646-3.647a.5.5 0 0 1 .708 0z"/></svg>
               </span>
               <span class="pk-collapsed-stat-label">连续打卡</span>
             </div>
-            <div class="pk-collapsed-row-val">
+            <div class="pk-collapsed-card-body">
               <span class="pk-collapsed-stat-val" id="pkCollapsedStreakVal">61</span>
               <span class="pk-collapsed-stat-unit">天 <span class="pk-collapsed-stat-hint">· 最近 9-23</span></span>
             </div>
           </div>
 
-          <!-- (A+C 矮档合并行) 今日与连续合并：今日 0 分 · 连续 61 天 -->
-          <div class="pk-collapsed-stat-row pk-collapsed-merged-row run-only" id="pkCollapsedMergedRow">
-            <div class="pk-collapsed-row-lead">
+          <!-- (A+C 矮档合并块) 今日与连续合并 (Variant B: 微卡片) -->
+          <div class="pk-collapsed-stat-card pk-collapsed-stat-row pk-collapsed-merged-card pk-collapsed-merged-row run-only" id="pkCollapsedMergedRow">
+            <div class="pk-collapsed-card-head">
               <span class="pk-info-icon-disc mini disc-dur">
                 <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
               </span>
               <span class="pk-collapsed-stat-label">今日/连续</span>
             </div>
-            <div class="pk-collapsed-row-val">
+            <div class="pk-collapsed-card-body">
               <span class="pk-collapsed-stat-val" id="pkCollapsedMergedVal">今日 0 分 · 连续 61 天</span>
             </div>
           </div>
