@@ -54,6 +54,17 @@ source: ai-agent
 
 - [x] dad 澄清 13 问 + 4 决策点（决策记录已落库）
 - [x] 旧 260904 方案归档（`sprints/_archived-2026-09/`）
-- [ ] 第一批模块 demo（卡片基础规范 + 选科目）
-- [ ] 移植到生产 `practice.html` + 契约测试不回退
-- [ ] 真机验收（iPad 横屏为主）
+- [x] 第一批模块 demo（卡片基础规范 + 选科目）
+- [x] **左栏定稿（2026-09-25）**: 练习票卡准备态/计时态 + 科目信息卡 + 顶栏 + session 选择器样式 —— `docs/demos/practice-ticket-v4-260920.html`（v4→v25，41 commit，未 push）；收拢态排版三方案对照页 `docs/demos/practice-runstate-rows-variants.html`（dad 选 Variant B）
+- [x] 生产侧「练习页配置」模块（commit `532961a`，`/config/practice-page`，settings 键值存储无需 DDL，pytest 4 passed）
+- [ ] **右栏重构（下一轮主战场）**：计时器卡（打卡机入卡槽/主计时/刻度尺/控制总线）+ 老师要求卡（现 2 行 + 展开全文）
+- [ ] 计时结束时把本次记录回填「今日累计」（demo 目前是静态云库真值）
+- [ ] 移植到生产 `practice.html` + 契约测试不回退（`tests/test_practice_timer_frontend.py` 29 条）
+- [ ] 真机验收（iPad 横屏为主）—— 左栏已过，右栏待过
+
+## 左栏定稿摘要（2026-09-25 回填）
+
+- **实测口径**: 十档视口零越界零页面滚动（1133×744 / 1024×768 doc 与 body 都 ≤ innerHeight）；PC 1728 票内空洞 209px→0；信息卡点阵方块宽高相等、相邻行列 −3~−3.5px；数字字形盒居中 0px；缺口几何 PC/iPad 0px 差
+- **不许破的约束**: 真件 7 id 不改名 / 刻度尺动画交互不动 / 只 6 色 + alpha / 触控 ≥44px（`::after` 撑）/ 收拢以左边框为轴心且 prep=run 高度逐像素一致 / 蒙版 0.0875 且 `blur(`=0 / 计时态禁换科目 / `dizical` 全文 1 次
+- **数据源**: 云库 CloudBase MySQL（MCP 只读）才是权威；本地 `data/dizi.db` 是旧快照（止于 2026-08-06）
+- **详见**: `handoff-2026-09-25-practice-ui-left-col-closeout-right-col-next.md`
