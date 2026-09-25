@@ -56,11 +56,11 @@ source: ai-agent
 - [x] 旧 260904 方案归档（`sprints/_archived-2026-09/`）
 - [x] 第一批模块 demo（卡片基础规范 + 选科目）
 - [x] **左栏定稿（2026-09-25）**: 练习票卡准备态/计时态 + 科目信息卡 + 顶栏 + session 选择器样式 —— `docs/demos/practice-ticket-v4-260920.html`（v4→v25，41 commit，未 push）；收拢态排版三方案对照页 `docs/demos/practice-runstate-rows-variants.html`（dad 选 Variant B）
+- [x] **右栏首版（2026-09-25 晚，commit `ec24cb2`）**: 老师要求卡两态常驻（计时态 display=flex、正文 12.5px/行高 1.5、默认 2 条、展开全文层不停表）+ 仪表卡信息带（科目 20px/800 · session 胶囊 12.5px/700 · 速度 ♩=N 19px/800）+ 新增**今日记录抽屉**（顶栏 pill 两态可点、Esc/关闭钮、练习中不停表）
+- [ ] **右栏视觉定稿（下个 session）**：等 dad 右栏参考图 → 逐项替换视觉层（新块样式已全部走变量，替换只改一处）；再补"计时结束回填今日累计"联动
 - [x] 生产侧「练习页配置」模块（commit `532961a`，`/config/practice-page`，settings 键值存储无需 DDL，pytest 4 passed）
-- [ ] **右栏重构（下一轮主战场）**：计时器卡（打卡机入卡槽/主计时/刻度尺/控制总线）+ 老师要求卡（现 2 行 + 展开全文）
-- [ ] 计时结束时把本次记录回填「今日累计」（demo 目前是静态云库真值）
 - [ ] 移植到生产 `practice.html` + 契约测试不回退（`tests/test_practice_timer_frontend.py` 29 条）
-- [ ] 真机验收（iPad 横屏为主）—— 左栏已过，右栏待过
+- [ ] 真机验收（iPad 横屏为主）—— 左栏已过，右栏首版待过（等参考图后再验一次）
 
 ## 左栏定稿摘要（2026-09-25 回填）
 
