@@ -344,3 +344,17 @@ def test_reps_records_and_edit_binding(html):
     assert "subjectHasReps" in html
     assert "reps: reps" in html
 
+
+def test_reps_zero_confirm_screens_use_inline_svg_not_emoji(html):
+    """FIX-5 (审计 P2-4): 二屏「不记遍数」确认图标禁用 emoji, 必须 inline SVG.
+
+    dad 偏好: 不用 emoji. 同 modal 内其它 finish-icon 都是内联 SVG.
+    原来两处用 🤔 (本 PR 新引入, main 上 count == 0).
+    """
+    assert "🤔" not in html, "二屏确认图标不许用 emoji (dad 明确禁)"
+    for screen in ("feScreen2", "fnScreen2"):
+        i = html.index(f'id="{screen}"')
+        seg = html[i:i + 1200]
+        assert "icon-inline" in seg, f"{screen} 缺 inline SVG 图标"
+        assert "<svg" in seg, f"{screen} 的图标必须是 inline <svg>"
+

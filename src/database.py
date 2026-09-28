@@ -1427,9 +1427,19 @@ class Database(BaseBackend):
             return None
 
     def _rewrite_behavior_log_reps(self, cursor, practice_date, session_id: int,
-                                   started_at: Optional[str], reps: Optional[int],
-                                   remove: bool = False) -> None:
-        """整段替换 behavior_log. 按 session_id 匹配, 没有 id 时再用 enter_time.
+                                   reps: Optional[int], remove: bool = False) -> None:
+        """整段替换 behavior_log. 只按 session_id 精确匹配.
+
+        2026-09-28 FIX-1 (审计 P0-1): 删掉了原来的 enter_time 兜底匹配.
+        真库里 900 条老 entry 没有 session_id, 其中 883 条的 enter_time 与某
+        session.started_at 完全相同 (批量补录/同日多科目共享同一 started_at).
+        旧兜底会让 PUT reps 把遍数写进所有同 enter_time 的老 entry, 更会让
+        delete session 把那些老 entry 整段删掉 (不可逆历史数据损坏).
+        老 entry 本来就没有遍数概念 (NULL = 未记录), 没有 session_id 就跳过.
+
+        2026-09-28 FIX-2 (审计 P0-2): 解析失败 / 非 list 时直接 return, 不写库.
+        旧代码 except 里塞 entries = [] 后继续走, 最后无条件 UPDATE ... = '[]',
+        把非 JSON 文本形态的历史日志整段清空.
 
         remove=True 时删掉对应条目, 避免删 session 后镜像还留着遍数.
         """
@@ -1439,10 +1449,12 @@ class Database(BaseBackend):
         if not row:
             return
         raw = row["behavior_log"]
+        if not raw:
+            return
         try:
-            entries = json.loads(raw) if raw else []
+            entries = json.loads(raw)
         except (TypeError, ValueError):
-            entries = []
+            return
         if not isinstance(entries, list):
             return
         kept = []
@@ -1451,14 +1463,14 @@ class Database(BaseBackend):
                 kept.append(entry)
                 continue
             sid = entry.get("session_id")
-            same = False
-            if sid is not None:
-                try:
-                    same = int(sid) == int(session_id)
-                except (TypeError, ValueError):
-                    same = False
-            elif started_at and entry.get("enter_time") == started_at:
-                same = True
+            if sid is None:
+                # 老 entry: 无 session_id, 认不出来就不碰 (不写 reps, 也不删)
+                kept.append(entry)
+                continue
+            try:
+                same = int(sid) == int(session_id)
+            except (TypeError, ValueError):
+                same = False
             if not same:
                 kept.append(entry)
                 continue
@@ -1482,7 +1494,7 @@ class Database(BaseBackend):
             cursor.execute("BEGIN IMMEDIATE")
             try:
                 cursor.execute(
-                    "SELECT version, practice_date, item_id, item_name, duration_minutes, started_at "
+                    "SELECT version, practice_date, item_id, item_name, duration_minutes "
                     "FROM practice_sessions WHERE id = ?",
                     (session_id,),
                 )
@@ -1494,7 +1506,6 @@ class Database(BaseBackend):
                 item_id = row["item_id"]
                 item_name = row["item_name"]
                 removed_minutes = row["duration_minutes"]
-                started_at = row["started_at"]
 
                 # Sprint 09 P0-12: 乐观锁校验
                 if expected_version is not None:
@@ -1509,7 +1520,7 @@ class Database(BaseBackend):
                 # 1. 删 session, 并拿掉 behavior_log 里对应那条 (遍数镜像不再残留)
                 cursor.execute("DELETE FROM practice_sessions WHERE id = ?", (session_id,))
                 self._rewrite_behavior_log_reps(
-                    cursor, practice_date, session_id, started_at, None, remove=True,
+                    cursor, practice_date, session_id, None, remove=True,
                 )
                 # 2. 重算 daily 汇总 (只动 minutes; 不在 items 上记 reps)
                 cursor.execute("SELECT items, log FROM daily_practices WHERE date = ?", (practice_date,))
@@ -1661,7 +1672,7 @@ class Database(BaseBackend):
 
             if apply_reps:
                 self._rewrite_behavior_log_reps(
-                    cursor, row["practice_date"], session_id, row["started_at"], reps, remove=False,
+                    cursor, row["practice_date"], session_id, reps, remove=False,
                 )
 
             # 3. 同步冗余列

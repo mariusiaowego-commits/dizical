@@ -150,6 +150,11 @@ CREATE TABLE practice_sessions (
     started_at TEXT,
     reps BIGINT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Sprint 09 P0-12 (PR-D): 乐观锁版本列 + 最后更新时间.
+    -- 2026-09-28 FIX-6 (审计 P2-5): 补上这两列, 跟 src/database_mysql.py:1030-1031
+    -- 的 lazy ALTER 对齐 —— 否则按本文件建的全新库要等第一次访问才补列.
+    version BIGINT NOT NULL DEFAULT 1,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (item_id) REFERENCES practice_items(item_id)
 );
 

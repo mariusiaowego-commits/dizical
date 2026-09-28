@@ -1096,19 +1096,25 @@ class MySQLBackend(BaseBackend):
             raise ValueError(f"reps 必须在 {self._REPS_MIN}-{self._REPS_MAX} 之间或为空, 收到 {reps!r}")
 
     def _rewrite_behavior_log_reps(self, cur, practice_date, session_id: int,
-                                   started_at: Optional[str], reps: Optional[int],
-                                   remove: bool = False) -> None:
-        """整段替换 behavior_log. 按 session_id 匹配, 没有 id 时再用 enter_time."""
+                                   reps: Optional[int], remove: bool = False) -> None:
+        """整段替换 behavior_log. 只按 session_id 精确匹配.
+
+        2026-09-28 FIX-1/FIX-2 (审计 P0-1/P0-2, 与 SQLite 侧同款修):
+        - 删掉 enter_time 兜底匹配 (真库 883 条老 entry 会同 enter_time 被误伤)
+        - 解析失败 / 非 list 直接 return, 不写库 (旧代码用 [] 覆盖原文本)
+        """
         date_s = practice_date.isoformat() if hasattr(practice_date, "isoformat") else str(practice_date)[:10]
         cur.execute("SELECT behavior_log FROM daily_practices WHERE date = %s", (date_s,))
         row = cur.fetchone()
         if not row:
             return
         raw = row.get("behavior_log") if isinstance(row, dict) else row[0]
+        if not raw:
+            return
         try:
-            entries = json.loads(raw) if raw else []
+            entries = json.loads(raw)
         except (TypeError, ValueError):
-            entries = []
+            return
         if not isinstance(entries, list):
             return
         kept = []
@@ -1117,14 +1123,14 @@ class MySQLBackend(BaseBackend):
                 kept.append(entry)
                 continue
             sid = entry.get("session_id")
-            same = False
-            if sid is not None:
-                try:
-                    same = int(sid) == int(session_id)
-                except (TypeError, ValueError):
-                    same = False
-            elif started_at and entry.get("enter_time") == started_at:
-                same = True
+            if sid is None:
+                # 老 entry: 无 session_id, 认不出来就不碰 (不写 reps, 也不删)
+                kept.append(entry)
+                continue
+            try:
+                same = int(sid) == int(session_id)
+            except (TypeError, ValueError):
+                same = False
             if not same:
                 kept.append(entry)
                 continue
@@ -1526,7 +1532,7 @@ class MySQLBackend(BaseBackend):
                     ))
                 if apply_reps:
                     self._rewrite_behavior_log_reps(
-                        cur, row['practice_date'], int(session_id), row.get('started_at'), reps, remove=False,
+                        cur, row['practice_date'], int(session_id), reps, remove=False,
                     )
                 # 4. 同步冗余列 (任意字段 update 都同步, 跟 save 行为一致)
                 if updates:
@@ -1550,7 +1556,7 @@ class MySQLBackend(BaseBackend):
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(
-                    'SELECT version, practice_date, item_id, item_name, duration_minutes, started_at '
+                    'SELECT version, practice_date, item_id, item_name, duration_minutes '
                     'FROM practice_sessions WHERE id = %s',
                     (int(session_id),),
                 )
@@ -1562,7 +1568,6 @@ class MySQLBackend(BaseBackend):
                 item_id = int(row['item_id'])
                 item_name = str(row['item_name'])
                 removed_minutes = int(row['duration_minutes'])
-                started_at = row.get('started_at')
 
                 # Sprint 09 P0-12: 乐观锁校验
                 if expected_version is not None and int(expected_version) != current_version:
@@ -1575,7 +1580,7 @@ class MySQLBackend(BaseBackend):
                 # 1. 删 session, 并拿掉 behavior_log 里对应那条
                 cur.execute('DELETE FROM practice_sessions WHERE id = %s', (int(session_id),))
                 self._rewrite_behavior_log_reps(
-                    cur, practice_date, int(session_id), started_at, None, remove=True,
+                    cur, practice_date, int(session_id), None, remove=True,
                 )
                 # 2. 重算 daily (只动 minutes; 不在 items 上记 reps)
                 cur.execute('SELECT items FROM daily_practices WHERE date = %s', (practice_date,))

@@ -717,14 +717,15 @@
         var id = g.item_id;
         if (id == null) return;
         if (!itemMap[id]) {
-          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0, total_reps: null };
+          // 2026-09-28 FIX-4: 字段名跟后端 payload 统一为 reps
+          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0, reps: null };
         }
         itemMap[id].minutes += g.minutes || 0;
         itemMap[id].session_count += (g.sessions || []).length;
         if (g.item_name) itemMap[id].item_name = g.item_name;
         (g.sessions || []).forEach(function (s) {
           if (s.reps != null) {
-            itemMap[id].total_reps = (itemMap[id].total_reps == null ? 0 : itemMap[id].total_reps) + s.reps;
+            itemMap[id].reps = (itemMap[id].reps == null ? 0 : itemMap[id].reps) + s.reps;
           }
         });
       });
@@ -927,20 +928,10 @@
       html += '<div class="overview">';
       byItem.forEach(function (it) {
         var pct = sum.total_minutes ? Math.round(it.minutes / sum.total_minutes * 100) : 0;
-        var rSum = it.total_reps;
-        if (rSum === undefined) {
-          var hasR = false;
-          (data.days || []).forEach(function (d) {
-            (d.groups || []).forEach(function (g) {
-              if (g.item_id === it.item_id) {
-                (g.sessions || []).forEach(function (s) {
-                  if (s.reps != null) { hasR = true; rSum = (rSum || 0) + s.reps; }
-                });
-              }
-            });
-          });
-          if (!hasR) rSum = null;
-        }
+        // 2026-09-28 FIX-4: 字段名统一成 reps (跟后端 _filter_payload_by_days 一致).
+        // 原来读 it.total_reps, 后端 payload 里根本没有这个 key, 靠 undefined 兜底
+        // 重算才能出数 —— 兜底一删就会静默显「—」.
+        var rSum = it.reps;
         var repsPart = rSum != null ? (rSum + '遍') : '—';
         html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次/' + repsPart + ' ' + pct + '%</span>';
       });
