@@ -309,3 +309,38 @@ def test_ruler_drag_buildvine_debounced(html):
     """buildVineDebounced 必须存在, 拖拽期间防抖重建花纹, 避免每帧重画"""
     assert "function buildVineDebounced" in html, "缺 buildVineDebounced 防抖函数"
     assert "buildVineDebounced(150)" in html, "松手后必须触发 buildVineDebounced(150)"
+
+
+# ── 8. sprint 26092601: 练习遍数 (Reps Wheel) 前端契约 ─────────────
+@pytest.mark.parametrize("reps_el", [
+    "stageNormal", "casingNormal", "drumValNormal", "topValNormal", "bottomValNormal",
+    "btnUpNormal", "btnDownNormal", "fnScreen1", "fnScreen2",
+    "stageEarly", "casingEarly", "drumValEarly", "topValEarly", "bottomValEarly",
+    "btnUpEarly", "btnDownEarly", "feScreen1", "feScreen2",
+    "extraRepsInput", "emReps"
+])
+def test_reps_wheel_elements_present(html, reps_el):
+    """遍数滚轮各元素必须在位"""
+    assert f'id="{reps_el}"' in html, f"遍数滚轮缺少元素 #{reps_el}"
+
+
+def test_reps_wheel_script_contracts(html):
+    """遍数滚轮类与音频、二屏确认契约"""
+    assert "class RepsWheelWidget" in html
+    assert "function playMechanicalClick" in html
+    assert "function showScreenNormal" in html
+    assert "function showScreenEarly" in html
+    assert "function confirmZeroFinishNormal" in html
+    assert "function confirmZeroFinishEarly" in html
+    assert "body.reps = window._currentPracticeReps;" in html
+    assert "window.repsWheelNormal = new RepsWheelWidget" in html
+    assert "window.repsWheelEarly = new RepsWheelWidget" in html
+
+
+def test_reps_records_and_edit_binding(html):
+    """今日记录与编辑弹窗遍数绑定"""
+    assert ".rs-reps" in html
+    assert "data-reps" in html
+    assert "subjectHasReps" in html
+    assert "reps: reps" in html
+
