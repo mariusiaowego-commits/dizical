@@ -174,10 +174,19 @@ _DEDUP_WINDOW_SECONDS = 10
 _dedup_cache: Dict[tuple, tuple] = {}
 
 
+def _dedup_key(date: str, item_id: int, minutes: int,
+               tempo_bpm: int = 0, content: str = "",
+               practice_at: str = "", reps: Optional[int] = None) -> tuple:
+    """reps 纳入 key: None 与漏传相同, 数字不同则不算同一次打卡."""
+    reps_key = None if reps is None else int(reps)
+    return (date, int(item_id), int(minutes), int(tempo_bpm or 0),
+            content or "", practice_at or "", reps_key)
+
+
 def _check_dedup(date: str, item_id: int, minutes: int,
                  tempo_bpm: int = 0, content: str = "",
-                 practice_at: str = "") -> Optional[dict]:
-    """5s 内 (date, item_id, minutes, tempo_bpm, content, practice_at) 重复 → 返回缓存 response JSON.
+                 practice_at: str = "", reps: Optional[int] = None) -> Optional[dict]:
+    """5s 内 (date, item_id, minutes, tempo_bpm, content, practice_at, reps) 重复 → 返回缓存 response JSON.
 
     2026-08-01 fix: 把 tempo_bpm / content / practice_at 加进 dedup key,
     解决 1 科目录 8 条 session 都被屏蔽的 bug (原 key 只看 minutes, 8 条同 5min 全算重复).
@@ -185,8 +194,7 @@ def _check_dedup(date: str, item_id: int, minutes: int,
     """
     if not date or not (item_id and minutes):
         return None
-    key = (date, int(item_id), int(minutes), int(tempo_bpm or 0),
-           content or "", practice_at or "")
+    key = _dedup_key(date, item_id, minutes, tempo_bpm, content, practice_at, reps)
     cached = _dedup_cache.get(key)
     if cached and (time.time() - cached[0]) < _DEDUP_WINDOW_SECONDS:
         return cached[1]
@@ -195,13 +203,12 @@ def _check_dedup(date: str, item_id: int, minutes: int,
 
 def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict,
                    tempo_bpm: int = 0, content: str = "",
-                   practice_at: str = "") -> None:
-    """记录 (date, item_id, minutes, tempo_bpm, content, practice_at) → response JSON.
+                   practice_at: str = "", reps: Optional[int] = None) -> None:
+    """记录 (date, item_id, minutes, tempo_bpm, content, practice_at, reps) → response JSON.
     2026-08-01 fix: key 扩展 (见 _check_dedup docstring)."""
     if not date or not (item_id and minutes):
         return
-    key = (date, int(item_id), int(minutes), int(tempo_bpm or 0),
-           content or "", practice_at or "")
+    key = _dedup_key(date, item_id, minutes, tempo_bpm, content, practice_at, reps)
     _dedup_cache[key] = (time.time(), body_json)
     if len(_dedup_cache) > 100:
         cutoff = time.time() - _DEDUP_WINDOW_SECONDS
@@ -1337,6 +1344,17 @@ def api_practices_monthly(month: str):
 # ─── API: stage 列表 + stage 维 session 明细 (feat/stage-session-print) ─────
 # 必须注册在 /api/practices/{date_str} 之前, 避免 "stages"/"stage-detail" 被当日期
 
+def _add_reps(bucket: dict, value) -> None:
+    """累计遍数. 全是 NULL 时保持 None, 不要变成 0."""
+    if value is None:
+        bucket.setdefault("reps", None)
+        return
+    if bucket.get("reps") is None:
+        bucket["reps"] = int(value)
+    else:
+        bucket["reps"] = int(bucket["reps"]) + int(value)
+
+
 def _iso_date_field(v) -> Optional[str]:
     """date/str/None → ISO 字符串 (JSON 安全)."""
     if v is None or v == "":
@@ -1375,9 +1393,11 @@ def _build_stage_detail_payload(stage: dict) -> dict:
                 "item_name": s.get("item_name") or "未知科目",
                 "minutes": 0,
                 "session_count": 0,
+                "reps": None,
             }
         by_item_map[iid]["minutes"] += int(s.get("duration_minutes") or 0)
         by_item_map[iid]["session_count"] += 1
+        _add_reps(by_item_map[iid], s.get("reps"))
         if s.get("item_name"):
             by_item_map[iid]["item_name"] = s["item_name"]
 
@@ -1417,6 +1437,7 @@ def _build_stage_detail_payload(stage: dict) -> dict:
             "content": s.get("content") or "",
             "content_source": s.get("content_source") or "",
             "is_extra": bool(s.get("is_extra")),
+            "reps": s.get("reps"),
         }
         days_map[d][iid]["sessions"].append(row)
         days_map[d][iid]["minutes"] += row["duration_minutes"]
@@ -1562,9 +1583,12 @@ def _filter_payload_by_days(payload: dict, days_csv: Optional[str]) -> dict:
                     "item_name": g.get("item_name") or "未知科目",
                     "minutes": 0,
                     "session_count": 0,
+                    "reps": None,
                 }
             item_map[gid]["minutes"] += int(g.get("minutes") or 0)
             item_map[gid]["session_count"] += len(g.get("sessions") or [])
+            for sess in g.get("sessions") or []:
+                _add_reps(item_map[gid], sess.get("reps") if isinstance(sess, dict) else None)
             if g.get("item_name"):
                 item_map[gid]["item_name"] = g["item_name"]
     by_item = sorted(item_map.values(), key=lambda x: (-x["minutes"], x["item_id"]))
@@ -1948,12 +1972,19 @@ async def api_update_practice_session(session_id: int, request: Request):
         tempo_bpm = body.get("tempo_bpm")
         content = body.get("content")
         duration_minutes = body.get("duration_minutes")
-        if not any([tempo_note, tempo_bpm is not None, content, duration_minutes is not None]):
+        apply_reps = "reps" in body
+        reps = body.get("reps") if apply_reps else None
+        if apply_reps and reps is not None and (
+            isinstance(reps, bool) or not isinstance(reps, int) or not (1 <= reps <= 99)
+        ):
+            return JSONResponse({"ok": False, "error": "reps 必须在 1-99 之间或为空"}, status_code=400)
+        if not any([tempo_note, tempo_bpm is not None, content, duration_minutes is not None, apply_reps]):
             return JSONResponse({"ok": False, "error": "至少传一个字段"}, status_code=400)
         updated = db.update_practice_session(
             int(session_id),
             tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content,
             duration_minutes=duration_minutes, expected_version=expected_version,
+            reps=reps, apply_reps=apply_reps,
         )
         return JSONResponse({"ok": True, "session": updated})
     except ConflictError as e:
@@ -2161,7 +2192,7 @@ async def api_log(request: Request):
 
     # PR-D: 5s dedup — 同 (date, item_id, minutes) 5s 内重复 → 返缓存, 不再写 session/daily.
     dedup_cached = _check_dedup(date_key, int(item_id), int(minutes),
-                                  tempo_bpm, content, practice_at)
+                                  tempo_bpm, content, practice_at, req.reps)
     if dedup_cached is not None:
         return JSONResponse(dedup_cached)
 
@@ -2173,12 +2204,12 @@ async def api_log(request: Request):
                 s = db.save_practice_session_and_daily_summary(
                     date, item_name, int(item_id), minutes,
                     tempo_note, tempo_bpm, content, content_source,
-                    practice_at=practice_at, is_extra=True,
+                    practice_at=practice_at, is_extra=True, reps=req.reps,
                 )
                 # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
                 resp = {"ok": True, "total": minutes, "session": s}
                 _record_dedup(date_key, int(item_id), int(minutes), resp,
-                       tempo_bpm, content, practice_at)
+                       tempo_bpm, content, practice_at, req.reps)
                 return JSONResponse(resp)
             # 旧路径: 无 session detail, 只走 save_daily_practice
             items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
@@ -2189,7 +2220,7 @@ async def api_log(request: Request):
                 db.append_behavior_log(date, entry)
             resp_legacy = {"ok": True, "total": minutes}
             _record_dedup(date_key, int(item_id), int(minutes), resp_legacy,
-                       tempo_bpm, content, practice_at)
+                       tempo_bpm, content, practice_at, req.reps)
             return JSONResponse(resp_legacy)
 
         # 正常打卡路径
@@ -2198,7 +2229,7 @@ async def api_log(request: Request):
             s = db.save_practice_session_and_daily_summary(
                 date, item_name, int(item_id), minutes,
                 tempo_note, tempo_bpm, content, content_source,
-                practice_at=practice_at, is_extra=False,
+                practice_at=practice_at, is_extra=False, reps=req.reps,
             )
             # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
             daily = db.get_daily_practice(date)
@@ -2208,7 +2239,7 @@ async def api_log(request: Request):
                 "session": s,
             }
             _record_dedup(date_key, int(item_id), int(minutes), resp_normal,
-                       tempo_bpm, content, practice_at)
+                       tempo_bpm, content, practice_at, req.reps)
             return JSONResponse(resp_normal)
 
         # 旧路径: 走 save_daily_practice 兼容逻辑 (不创建空 session, 避免污染 sessions 表)
@@ -2225,7 +2256,7 @@ async def api_log(request: Request):
 
         resp_legacy_normal = {"ok": True, "total": total}
         _record_dedup(date_key, int(item_id), int(minutes), resp_legacy_normal,
-                       tempo_bpm, content, practice_at)
+                       tempo_bpm, content, practice_at, req.reps)
         return JSONResponse(resp_legacy_normal)
 
     except ValueError as e:

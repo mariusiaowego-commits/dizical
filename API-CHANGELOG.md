@@ -1,5 +1,23 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-09-28 (未上线) — sprint 26092601 练习 session 遍数
+**类型**: 🟡 部分兼容（新增可选入参 `reps` + 返回体新增字段；不传也能跑。dizical-minip 本次不动，建议择期同步展示）
+
+## 变更
+
+### practice_sessions.reps（session 级遍数）
+
+- 列: `reps INTEGER NULL`（MySQL `BIGINT NULL`）。`NULL` = 未记录，**不是 0**。合法值 1-99。不回填历史行。
+- 写入: `POST /api/log`、`POST /config/api/records` 可选 `reps`（顶层或 `session_detail.reps`）。`PUT /api/practice-sessions/{id}` 可改 `reps`（传 `null` 清空）。
+- 读出: session 对象、stage 明细每条 session、`by_item.reps`（该科目下非空遍数之和；全是 NULL 则字段为 `null`）。`GET /config/api/records/{date}` 额外返回 `sessions`（含 `reps`）。
+- `behavior_log[]` 同步写入 `reps`。删除 session 时去掉对应日志条目。不在 `daily_practices.items` 上存遍数。
+- 三源同步: `schema_mysql.sql` / `.cloudrun-deploy/schema_mysql.sql` / 本地 SQLite `_init_tables` 幂等加列 + `src/migrate_add_session_reps.py`。
+- **云端**: 尚未上线。DDL 待 dad 拍板后走 MCP。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-09-13 (待 PR) — sprint 26091301 B1 徽章卡编号 / B2 卡片主题设计期入口
 **类型**: 🟡 部分兼容（新增可选返回字段 `card_no` + 新增 DB 列 + 新增 2 个 `/config` 内部端点 + 设计期主题目录 5 → 8 套；dizical-minip 不改也能跑，建议择期同步 `card_no` 展示）
 

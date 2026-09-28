@@ -148,6 +148,7 @@ CREATE TABLE practice_sessions (
     content_source TEXT NOT NULL ,
     is_extra TINYINT(1) NOT NULL DEFAULT 0,
     started_at TEXT,
+    reps BIGINT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (item_id) REFERENCES practice_items(item_id)
 );

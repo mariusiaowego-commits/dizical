@@ -1024,6 +1024,7 @@ class MySQLBackend(BaseBackend):
             content_source VARCHAR(32) NOT NULL DEFAULT 'manual',
             is_extra TINYINT(1) NOT NULL DEFAULT 0,
             started_at VARCHAR(64),
+            reps BIGINT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             -- Sprint 09 P0-12 (PR-D): 乐观锁版本列 + 最后更新时间
             version BIGINT NOT NULL DEFAULT 1,
@@ -1047,6 +1048,8 @@ class MySQLBackend(BaseBackend):
     _BPM_MIN = 40
     _BPM_MAX = 150
     _CONTENT_MAX_LEN = 200
+    _REPS_MIN = 1
+    _REPS_MAX = 99
 
     def _ensure_practice_sessions_schema(self) -> None:
         """Lazy DDL. 第一次访问 MySQLBackend 时拉起 practice_sessions 表 + 索引.
@@ -1072,10 +1075,13 @@ class MySQLBackend(BaseBackend):
                         "ALTER TABLE practice_sessions ADD COLUMN updated_at "
                         "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
                     )
+                if 'reps' not in existing_cols:
+                    cur.execute("ALTER TABLE practice_sessions ADD COLUMN reps BIGINT NULL")
             conn.commit()
         self._PRACTICE_SESSIONS_DDL_DONE = True
 
-    def _validate_session_fields(self, tempo_note: str, tempo_bpm: int, duration_minutes: int, content: str) -> None:
+    def _validate_session_fields(self, tempo_note: str, tempo_bpm: int, duration_minutes: int, content: str,
+                                 reps: Optional[int] = None) -> None:
         # 用类常量替代硬编码值, 与 schemas.py 保持单一事实源
         if tempo_note not in self._ALLOWED_TEMPO_NOTES:
             raise ValueError(f"tempo_note 必须是 {self._ALLOWED_TEMPO_NOTES} 之一, 收到 {tempo_note!r}")
@@ -1085,6 +1091,52 @@ class MySQLBackend(BaseBackend):
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
         if not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN:
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
+        if reps is not None and (isinstance(reps, bool) or not isinstance(reps, int)
+                                 or not (self._REPS_MIN <= reps <= self._REPS_MAX)):
+            raise ValueError(f"reps 必须在 {self._REPS_MIN}-{self._REPS_MAX} 之间或为空, 收到 {reps!r}")
+
+    def _rewrite_behavior_log_reps(self, cur, practice_date, session_id: int,
+                                   started_at: Optional[str], reps: Optional[int],
+                                   remove: bool = False) -> None:
+        """整段替换 behavior_log. 按 session_id 匹配, 没有 id 时再用 enter_time."""
+        date_s = practice_date.isoformat() if hasattr(practice_date, "isoformat") else str(practice_date)[:10]
+        cur.execute("SELECT behavior_log FROM daily_practices WHERE date = %s", (date_s,))
+        row = cur.fetchone()
+        if not row:
+            return
+        raw = row.get("behavior_log") if isinstance(row, dict) else row[0]
+        try:
+            entries = json.loads(raw) if raw else []
+        except (TypeError, ValueError):
+            entries = []
+        if not isinstance(entries, list):
+            return
+        kept = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                kept.append(entry)
+                continue
+            sid = entry.get("session_id")
+            same = False
+            if sid is not None:
+                try:
+                    same = int(sid) == int(session_id)
+                except (TypeError, ValueError):
+                    same = False
+            elif started_at and entry.get("enter_time") == started_at:
+                same = True
+            if not same:
+                kept.append(entry)
+                continue
+            if remove:
+                continue
+            patched = dict(entry)
+            patched["reps"] = reps
+            kept.append(patched)
+        cur.execute(
+            "UPDATE daily_practices SET behavior_log = %s WHERE date = %s",
+            (json.dumps(kept, ensure_ascii=False), date_s),
+        )
 
     def get_practice_session_by_id(self, session_id: int) -> Dict:
         self._ensure_practice_sessions_schema()
@@ -1327,10 +1379,11 @@ class MySQLBackend(BaseBackend):
         content_source: str = 'manual',
         is_extra: bool = False,
         started_at: Optional[str] = None,
+        reps: Optional[int] = None,
     ) -> Dict:
         """插入 1 条 practice_session, 返回 dict (含 id). 不动 daily_practices 汇总."""
         self._ensure_practice_sessions_schema()
-        self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content)
+        self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content, reps)
         if isinstance(practice_date, str):
                 practice_date = self._safe_to_date(practice_date)
         with self._get_connection() as conn:
@@ -1339,11 +1392,11 @@ class MySQLBackend(BaseBackend):
                     INSERT INTO practice_sessions
                     (practice_date, item_id, item_name, duration_minutes,
                      tempo_note, tempo_bpm, content, content_source,
-                     is_extra, started_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     is_extra, started_at, reps)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (practice_date.isoformat(), int(item_id), item_name, int(duration_minutes),
                       tempo_note, int(tempo_bpm), content, content_source,
-                      1 if is_extra else 0, started_at))
+                      1 if is_extra else 0, started_at, reps))
                 new_id = cur.lastrowid
                 if not new_id:
                     raise RuntimeError("INSERT session 后 lastrowid 为空")
@@ -1358,6 +1411,8 @@ class MySQLBackend(BaseBackend):
         content: Optional[str] = None,
         duration_minutes: Optional[int] = None,
         expected_version: Optional[int] = None,
+        reps: Optional[int] = None,
+        apply_reps: bool = False,
     ) -> Optional[Dict]:
         """更新 session tempo/content/duration, duration 变化时重算 daily.
 
@@ -1373,6 +1428,11 @@ class MySQLBackend(BaseBackend):
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
         if content is not None and (not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN):
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
+        if apply_reps and reps is not None and (
+            isinstance(reps, bool) or not isinstance(reps, int)
+            or not (self._REPS_MIN <= reps <= self._REPS_MAX)
+        ):
+            raise ValueError(f"reps 必须在 {self._REPS_MIN}-{self._REPS_MAX} 之间或为空, 收到 {reps!r}")
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
                 # 1. 读旧 session (含 version)
@@ -1403,6 +1463,8 @@ class MySQLBackend(BaseBackend):
                     updates.append('content = %s'); params.append(content)
                 if duration_minutes is not None:
                     updates.append('duration_minutes = %s'); params.append(int(duration_minutes))
+                if apply_reps:
+                    updates.append('reps = %s'); params.append(reps)
                 if updates:
                     params.append(int(session_id))
                     # updated_at 由 ON UPDATE CURRENT_TIMESTAMP 自动维护
@@ -1462,6 +1524,10 @@ class MySQLBackend(BaseBackend):
                         json.dumps([{'session_id': int(session_id), 'old_minutes': old_duration, 'new_minutes': new_duration}], ensure_ascii=False),
                         json.dumps([], ensure_ascii=False), delta, None, str(int(session_id)),
                     ))
+                if apply_reps:
+                    self._rewrite_behavior_log_reps(
+                        cur, row['practice_date'], int(session_id), row.get('started_at'), reps, remove=False,
+                    )
                 # 4. 同步冗余列 (任意字段 update 都同步, 跟 save 行为一致)
                 if updates:
                     cur.execute('SELECT tempo_note, tempo_bpm FROM practice_sessions WHERE id = %s', (int(session_id),))
@@ -1484,7 +1550,8 @@ class MySQLBackend(BaseBackend):
         with self._get_connection() as conn:
             with conn.cursor(DatetimeSafeDictCursor) as cur:
                 cur.execute(
-                    'SELECT version, practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = %s',
+                    'SELECT version, practice_date, item_id, item_name, duration_minutes, started_at '
+                    'FROM practice_sessions WHERE id = %s',
                     (int(session_id),),
                 )
                 row = cur.fetchone()
@@ -1495,6 +1562,7 @@ class MySQLBackend(BaseBackend):
                 item_id = int(row['item_id'])
                 item_name = str(row['item_name'])
                 removed_minutes = int(row['duration_minutes'])
+                started_at = row.get('started_at')
 
                 # Sprint 09 P0-12: 乐观锁校验
                 if expected_version is not None and int(expected_version) != current_version:
@@ -1504,9 +1572,12 @@ class MySQLBackend(BaseBackend):
                         current_version=current_version,
                     )
 
-                # 1. 删 session
+                # 1. 删 session, 并拿掉 behavior_log 里对应那条
                 cur.execute('DELETE FROM practice_sessions WHERE id = %s', (int(session_id),))
-                # 2. 重算 daily
+                self._rewrite_behavior_log_reps(
+                    cur, practice_date, int(session_id), started_at, None, remove=True,
+                )
+                # 2. 重算 daily (只动 minutes; 不在 items 上记 reps)
                 cur.execute('SELECT items FROM daily_practices WHERE date = %s', (practice_date,))
                 drow = cur.fetchone()
                 if drow and drow.get('items'):
@@ -1549,7 +1620,7 @@ class MySQLBackend(BaseBackend):
     def save_practice_session_and_daily_summary(self, practice_date, item, item_id, minutes,
                                                   tempo_note, tempo_bpm, content,
                                                   content_source='manual', practice_at=None,
-                                                  is_extra=False) -> Dict:
+                                                  is_extra=False, reps: Optional[int] = None) -> Dict:
         """核心事务方法: 写 1 条 session + 同步 daily 汇总 + 写 audit + 更新冗余列.
 
         Args:
@@ -1557,7 +1628,7 @@ class MySQLBackend(BaseBackend):
         Returns: 新插入 session 的 dict.
         """
         self._ensure_practice_sessions_schema()
-        self._validate_session_fields(tempo_note, tempo_bpm, minutes, content)
+        self._validate_session_fields(tempo_note, tempo_bpm, minutes, content, reps)
         if isinstance(practice_date, str):
                 practice_date = self._safe_to_date(practice_date)
 
@@ -1578,11 +1649,11 @@ class MySQLBackend(BaseBackend):
                         INSERT INTO practice_sessions
                         (practice_date, item_id, item_name, duration_minutes,
                          tempo_note, tempo_bpm, content, content_source,
-                         is_extra, started_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         is_extra, started_at, reps)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ''', (practice_date.isoformat(), int(item_id), actual_item_name, int(minutes),
                           tempo_note, int(tempo_bpm), content, content_source,
-                          1 if is_extra else 0, started_at))
+                          1 if is_extra else 0, started_at, reps))
                     new_session_id = cur.lastrowid
                     if not new_session_id:
                         raise RuntimeError("INSERT session 后 lastrowid 为空")
@@ -1639,6 +1710,7 @@ class MySQLBackend(BaseBackend):
                         'content': content,
                         'tempo_note': tempo_note,
                         'tempo_bpm': tempo_bpm,
+                        'reps': reps,
                     }
                     cur.execute('SELECT behavior_log FROM daily_practices WHERE date = %s', (practice_date.isoformat(),))
                     bl_row = cur.fetchone()
