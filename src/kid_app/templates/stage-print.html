@@ -1134,9 +1134,9 @@
       }
     });
 
-    // 日合计：只显示总练习时长
+    // 日总时长：只显示练习时长（不含遍数合计 —— 长音与乐曲的遍数不可通约）
     html += '</tbody><tfoot><tr>';
-    html += '<td class="m-item">日合计</td>';
+    html += '<td class="m-item">日总时长</td>';
     dateList.forEach(function (d) {
       var dayObj = null;
       for (var i = 0; i < days.length; i++) {
