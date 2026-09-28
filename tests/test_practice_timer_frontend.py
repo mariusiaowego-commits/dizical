@@ -358,3 +358,36 @@ def test_reps_zero_confirm_screens_use_inline_svg_not_emoji(html):
         assert "icon-inline" in seg, f"{screen} 缺 inline SVG 图标"
         assert "<svg" in seg, f"{screen} 的图标必须是 inline <svg>"
 
+
+def test_reps_wheel_arrow_up_increases(html):
+    """v2 (dad 2026-09-28 实测报方向反): ▲ = 增加(+1), ▼ = 减少(-1); 键盘 ↑ 同向.
+
+    v1 把 ▲ 绑成 step(-1) 跟「滚轴上滚 = 数值增」的物理隐喻相反。
+    两个实例 + 键盘三处必须同向, 否则改一处又会漂回去。
+    """
+    for pre in ("Early", "Normal"):
+        i = html.index(f'id="btnUp{pre}"')
+        up = html[i:i + 160]
+        j = html.index(f'id="btnDown{pre}"')
+        dn = html[j:j + 160]
+        assert "step(1)" in up and "增加一遍" in up, f"btnUp{pre} 必须 = 增加一遍"
+        assert "step(-1)" in dn and "减少一遍" in dn, f"btnDown{pre} 必须 = 减少一遍"
+    assert "if (e.key === 'ArrowUp') {\n        e.preventDefault();\n        activeWheel.step(1);" in html, \
+        "键盘 ↑ 必须 = 增加"
+    assert "} else if (e.key === 'ArrowDown') {\n        e.preventDefault();\n        activeWheel.step(-1);" in html, \
+        "键盘 ↓ 必须 = 减少"
+
+
+def test_reps_wheel_is_flat_full_width_band(html):
+    """v2: 通栏平板 — 去胶囊外壳 / 去白圆角底 / 去内层白窗 / 去装饰红点.
+
+    反面断言跟正面成对: 只写正面会让「新样式加了但旧元素还留着」照样通过。
+    """
+    assert html.count('class="reps-band"') == 2, "两个实例都要用通栏平板 .reps-band"
+    assert 'class="capsule-pill"' not in html, "pill 胶囊外壳必须已移除"
+    assert "tape-track-backdrop" not in html, "白圆角底必须已移除"
+    assert "drum-frame" not in html, "内层白窗 (框套框) 必须已移除"
+    assert "tape-coral-dot" not in html, "多余装饰红点必须已移除"
+    assert "stepper-divider" not in html, "箭头卡分隔线随卡片一起移除"
+    assert "max-width: 310px" not in html, "滚轮不许再有 310px 宽度上限 (要通栏)"
+
