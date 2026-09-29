@@ -15,6 +15,7 @@ fix/achievements-mysql-conn (2026-07-24)
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 import sqlite3
 from typing import Any, Iterable, Sequence
@@ -97,12 +98,48 @@ def fetch_tuples(cur):
     return cur.fetchall()
 
 
+_SAFE_CURSOR_CLS = None
+
+
+def _safe_mysql_dict_cursor():
+    """MySQL dict cursor: 优先复用 database_mysql.DatetimeSafeDictCursor.
+
+    Why: pymysql 把 DATETIME 列返成 `datetime.datetime`, FastAPI 的 JSONResponse
+    遇到它直接 `TypeError: Object of type datetime is not JSON serializable`
+    (本仓 2026-08-16 已为同类 500 在 database_mysql.py:16-39 建过该 cursor)。
+    拿不到 (极端情况: CI 不装 pymysql / 循环 import) 时回退普通 DictCursor —
+    此时靠 `_normalize_datetimes()` 兜底, 保证 datetime 不外泄。
+    """
+    global _SAFE_CURSOR_CLS
+    if _SAFE_CURSOR_CLS is None:
+        try:
+            from src.database_mysql import DatetimeSafeDictCursor
+
+            _SAFE_CURSOR_CLS = DatetimeSafeDictCursor
+        except Exception:  # pragma: no cover - 极端回退路径
+            _SAFE_CURSOR_CLS = _MySQLDictCursor or None
+    return _SAFE_CURSOR_CLS
+
+
+def _normalize_datetimes(row: dict) -> dict:
+    """datetime / date 值 → str (跟 DatetimeSafeDictCursor 同口径 `str(v)`).
+
+    幂等: 已经是字符串的值原样返回, 所以即使 cursor 层已转换也无副作用.
+    """
+    for k, v in list(row.items()):
+        if isinstance(v, (dt.datetime, dt.date)):
+            row[k] = str(v)
+    return row
+
+
 def execute_dicts(conn, sql: str, params: Sequence[Any] = ()) -> list[dict]:
-    """一步: 执行 + 转 dict 列表. MySQL 自动切 DictCursor."""
+    """一步: 执行 + 转 dict 列表. MySQL 自动切 DictCursor + datetime 归一化."""
     if is_mysql_env():
-        cur = conn.cursor(_MySQLDictCursor)
+        cur = conn.cursor(_safe_mysql_dict_cursor())
         cur.execute(_to_mysql_placeholders(sql), params)
-        return cur.fetchall()  # DictCursor 直接 list[dict]
+        rows = cur.fetchall()
+        # DictCursor 直接给 list[dict]; 再过一道归一化防 datetime 泄漏 (见 _normalize_datetimes)
+        return [_normalize_datetimes(r) for r in rows]
     else:
         cur = execute(conn, sql, params)
         return fetch_dicts(cur)
