@@ -26,6 +26,8 @@ BPM_MAX = 150
 CONTENT_MAX_LEN = 200
 CONTENT_MIN_LEN = 1
 ALLOWED_CONTENT_SOURCES = ("manual", "legacy", "backfill")
+REPS_MIN = 1
+REPS_MAX = 99
 
 
 # ─── Sub-models ──────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ class SessionDetail(BaseModel):
     tempo_bpm: int = Field(..., ge=BPM_MIN, le=BPM_MAX)
     content: str = Field(..., min_length=CONTENT_MIN_LEN, max_length=CONTENT_MAX_LEN)
     content_source: str = "manual"
+    reps: Optional[int] = Field(None, ge=REPS_MIN, le=REPS_MAX)
 
     @field_validator("tempo_note")
     @classmethod
@@ -66,6 +69,7 @@ class BehaviorLogEntry(BaseModel):
     enter_time: str = ""
     item: str = ""
     minutes: int = 0
+    reps: Optional[int] = Field(None, ge=REPS_MIN, le=REPS_MAX)
 
 
 # ─── Main request schema ────────────────────────────────────────────────
@@ -99,6 +103,7 @@ class PracticeLogRequest(BaseModel):
     tempo_bpm: Optional[int] = None
     content: Optional[str] = None
     content_source: str = "manual"
+    reps: Optional[int] = Field(None, ge=REPS_MIN, le=REPS_MAX)
 
     # ── 嵌套 alias (兼容性, 会被 model_validator 合并到顶层) ──
     session_detail: Optional[SessionDetail] = None
@@ -149,6 +154,8 @@ class PracticeLogRequest(BaseModel):
                 self.content = sd.content
             if self.content_source == "manual" and sd.content_source != "manual":
                 self.content_source = sd.content_source
+            if self.reps is None and sd.reps is not None:
+                self.reps = sd.reps
         return self
 
     def has_session_detail(self) -> bool:

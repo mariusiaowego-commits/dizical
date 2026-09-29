@@ -241,6 +241,7 @@ class Database(BaseBackend):
                     content_source TEXT NOT NULL DEFAULT 'manual',
                     is_extra INTEGER NOT NULL DEFAULT 0,
                     started_at TEXT,
+                    reps INTEGER,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     version INTEGER NOT NULL DEFAULT 1,
                     updated_at DATETIME
@@ -253,6 +254,8 @@ class Database(BaseBackend):
             if 'updated_at' not in ps_columns:
                 # SQLite 不支持 ALTER ADD COLUMN DEFAULT CURRENT_TIMESTAMP — 默认 NULL, 写入端填.
                 cursor.execute("ALTER TABLE practice_sessions ADD COLUMN updated_at DATETIME")
+            if 'reps' not in ps_columns:
+                cursor.execute("ALTER TABLE practice_sessions ADD COLUMN reps INTEGER")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_ps_date ON practice_sessions(practice_date)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_ps_item_date ON practice_sessions(item_id, practice_date)")
             # schema_migrations 标记 (幂等)
@@ -1179,8 +1182,11 @@ class Database(BaseBackend):
     _BPM_MIN = 40
     _BPM_MAX = 150
     _CONTENT_MAX_LEN = 200
+    _REPS_MIN = 1
+    _REPS_MAX = 99
 
-    def _validate_session_fields(self, tempo_note: str, tempo_bpm: int, duration_minutes: int, content: str) -> None:
+    def _validate_session_fields(self, tempo_note: str, tempo_bpm: int, duration_minutes: int, content: str,
+                                 reps: Optional[int] = None) -> None:
         """校验 session 业务字段. 失败 raise ValueError."""
         if tempo_note not in self._ALLOWED_TEMPO_NOTES:
             raise ValueError(f"tempo_note 必须是 {self._ALLOWED_TEMPO_NOTES} 之一, 收到 {tempo_note!r}")
@@ -1190,16 +1196,21 @@ class Database(BaseBackend):
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
         if not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN:
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
+        if reps is not None and (isinstance(reps, bool) or not isinstance(reps, int)
+                                 or not (self._REPS_MIN <= reps <= self._REPS_MAX)):
+            raise ValueError(f"reps 必须在 {self._REPS_MIN}-{self._REPS_MAX} 之间或为空, 收到 {reps!r}")
 
     def create_practice_session(self, practice_date: dt.date, item_id: int, item_name: str,
                                  duration_minutes: int, tempo_note: str = "♪", tempo_bpm: int = 80,
                                  content: str = "", content_source: str = "manual",
-                                 is_extra: bool = False, started_at: Optional[str] = None) -> Dict:
+                                 is_extra: bool = False, started_at: Optional[str] = None,
+                                 reps: Optional[int] = None) -> Dict:
         """插入 1 条 session, 返回插入后的 dict. 不动 daily_practices 汇总.
 
         单纯插入, 不事务化同步 daily 汇总 (由 save_practice_session_and_daily_summary 调用).
+        reps: 1-99, None 表示未记录 (落库 NULL, 不是 0).
         """
-        self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content)
+        self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content, reps)
         if isinstance(practice_date, str):
             practice_date = dt.date.fromisoformat(practice_date)
         with self._get_connection() as conn:
@@ -1208,11 +1219,11 @@ class Database(BaseBackend):
                 """INSERT INTO practice_sessions
                    (practice_date, item_id, item_name, duration_minutes,
                     tempo_note, tempo_bpm, content, content_source,
-                    is_extra, started_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    is_extra, started_at, reps)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (practice_date.isoformat(), item_id, item_name, duration_minutes,
                  tempo_note, tempo_bpm, content, content_source,
-                 1 if is_extra else 0, started_at),
+                 1 if is_extra else 0, started_at, reps),
             )
             new_id = cursor.lastrowid
             if new_id is None:
@@ -1415,6 +1426,64 @@ class Database(BaseBackend):
                         pass
             return None
 
+    def _rewrite_behavior_log_reps(self, cursor, practice_date, session_id: int,
+                                   reps: Optional[int], remove: bool = False) -> None:
+        """整段替换 behavior_log. 只按 session_id 精确匹配.
+
+        2026-09-28 FIX-1 (审计 P0-1): 删掉了原来的 enter_time 兜底匹配.
+        真库里 900 条老 entry 没有 session_id, 其中 883 条的 enter_time 与某
+        session.started_at 完全相同 (批量补录/同日多科目共享同一 started_at).
+        旧兜底会让 PUT reps 把遍数写进所有同 enter_time 的老 entry, 更会让
+        delete session 把那些老 entry 整段删掉 (不可逆历史数据损坏).
+        老 entry 本来就没有遍数概念 (NULL = 未记录), 没有 session_id 就跳过.
+
+        2026-09-28 FIX-2 (审计 P0-2): 解析失败 / 非 list 时直接 return, 不写库.
+        旧代码 except 里塞 entries = [] 后继续走, 最后无条件 UPDATE ... = '[]',
+        把非 JSON 文本形态的历史日志整段清空.
+
+        remove=True 时删掉对应条目, 避免删 session 后镜像还留着遍数.
+        """
+        date_s = practice_date.isoformat() if hasattr(practice_date, "isoformat") else str(practice_date)[:10]
+        cursor.execute("SELECT behavior_log FROM daily_practices WHERE date = ?", (date_s,))
+        row = cursor.fetchone()
+        if not row:
+            return
+        raw = row["behavior_log"]
+        if not raw:
+            return
+        try:
+            entries = json.loads(raw)
+        except (TypeError, ValueError):
+            return
+        if not isinstance(entries, list):
+            return
+        kept = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                kept.append(entry)
+                continue
+            sid = entry.get("session_id")
+            if sid is None:
+                # 老 entry: 无 session_id, 认不出来就不碰 (不写 reps, 也不删)
+                kept.append(entry)
+                continue
+            try:
+                same = int(sid) == int(session_id)
+            except (TypeError, ValueError):
+                same = False
+            if not same:
+                kept.append(entry)
+                continue
+            if remove:
+                continue
+            patched = dict(entry)
+            patched["reps"] = reps
+            kept.append(patched)
+        cursor.execute(
+            "UPDATE daily_practices SET behavior_log = ? WHERE date = ?",
+            (json.dumps(kept, ensure_ascii=False), date_s),
+        )
+
     def delete_practice_session(self, session_id: int, expected_version: Optional[int] = None) -> None:
         """删单条 session + 重算 daily 汇总 + 写 audit. 整事务.
 
@@ -1424,7 +1493,11 @@ class Database(BaseBackend):
             cursor = conn.cursor()
             cursor.execute("BEGIN IMMEDIATE")
             try:
-                cursor.execute("SELECT version, practice_date, item_id, item_name, duration_minutes FROM practice_sessions WHERE id = ?", (session_id,))
+                cursor.execute(
+                    "SELECT version, practice_date, item_id, item_name, duration_minutes "
+                    "FROM practice_sessions WHERE id = ?",
+                    (session_id,),
+                )
                 row = cursor.fetchone()
                 if not row:
                     raise ValueError(f"session_id={session_id} 不存在")
@@ -1444,9 +1517,12 @@ class Database(BaseBackend):
                             current_version=int(current_version),
                         )
 
-                # 1. 删 session
+                # 1. 删 session, 并拿掉 behavior_log 里对应那条 (遍数镜像不再残留)
                 cursor.execute("DELETE FROM practice_sessions WHERE id = ?", (session_id,))
-                # 2. 重算 daily 汇总
+                self._rewrite_behavior_log_reps(
+                    cursor, practice_date, session_id, None, remove=True,
+                )
+                # 2. 重算 daily 汇总 (只动 minutes; 不在 items 上记 reps)
                 cursor.execute("SELECT items, log FROM daily_practices WHERE date = ?", (practice_date,))
                 drow = cursor.fetchone()
                 if drow:
@@ -1496,6 +1572,8 @@ class Database(BaseBackend):
         content: Optional[str] = None,
         duration_minutes: Optional[int] = None,
         expected_version: Optional[int] = None,
+        reps: Optional[int] = None,
+        apply_reps: bool = False,
     ) -> Optional[Dict]:
         """更新 session 的 tempo/content/duration.
         duration_minutes 变化时自动重算 daily 汇总 + 写 audit.
@@ -1513,6 +1591,11 @@ class Database(BaseBackend):
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
         if content is not None and (not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN):
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
+        if apply_reps and reps is not None and (
+            isinstance(reps, bool) or not isinstance(reps, int)
+            or not (self._REPS_MIN <= reps <= self._REPS_MAX)
+        ):
+            raise ValueError(f"reps 必须在 {self._REPS_MIN}-{self._REPS_MAX} 之间或为空, 收到 {reps!r}")
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM practice_sessions WHERE id = ?", (session_id,))
@@ -1533,6 +1616,8 @@ class Database(BaseBackend):
                 updates.append("content = ?"); params.append(content)
             if duration_minutes is not None:
                 updates.append("duration_minutes = ?"); params.append(duration_minutes)
+            if apply_reps:
+                updates.append("reps = ?"); params.append(reps)
             # Sprint 09 P0-12: 乐观锁校验 — expected_version 不为 None 时加 WHERE version=?
             if expected_version is not None:
                 params.extend([int(expected_version), session_id])
@@ -1585,6 +1670,11 @@ class Database(BaseBackend):
                          _dumps([]), delta, None, str(session_id)),
                     )
 
+            if apply_reps:
+                self._rewrite_behavior_log_reps(
+                    cursor, row["practice_date"], session_id, reps, remove=False,
+                )
+
             # 3. 同步冗余列
             cursor.execute("SELECT tempo_note, tempo_bpm FROM practice_sessions WHERE id = ?", (session_id,))
             s = cursor.fetchone()
@@ -1601,7 +1691,8 @@ class Database(BaseBackend):
                                                   minutes: int, tempo_note: str, tempo_bpm: int,
                                                   content: str, content_source: str = "manual",
                                                   practice_at: Optional[str] = None,
-                                                  is_extra: bool = False) -> Dict:
+                                                  is_extra: bool = False,
+                                                  reps: Optional[int] = None) -> Dict:
         """核心事务方法: 写 1 条 session + 同步 daily 汇总 + 写 audit + 更新冗余列.
 
         Args:
@@ -1610,7 +1701,7 @@ class Database(BaseBackend):
 
         Returns: 新插入 session 的 dict.
         """
-        self._validate_session_fields(tempo_note, tempo_bpm, minutes, content)
+        self._validate_session_fields(tempo_note, tempo_bpm, minutes, content, reps)
         if isinstance(practice_date, str):
             practice_date = dt.date.fromisoformat(practice_date)
         with self._get_connection() as conn:
@@ -1638,11 +1729,11 @@ class Database(BaseBackend):
                     """INSERT INTO practice_sessions
                        (practice_date, item_id, item_name, duration_minutes,
                         tempo_note, tempo_bpm, content, content_source,
-                        is_extra, started_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        is_extra, started_at, reps)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (practice_date.isoformat(), item_id, actual_item_name, minutes,
                      tempo_note, tempo_bpm, content, content_source,
-                     1 if is_extra else 0, started_at),
+                     1 if is_extra else 0, started_at, reps),
                 )
                 new_session_id = cursor.lastrowid
                 if new_session_id is None:
@@ -1695,6 +1786,7 @@ class Database(BaseBackend):
                     "content": content,
                     "tempo_note": tempo_note,
                     "tempo_bpm": tempo_bpm,
+                    "reps": reps,
                 }
                 if existing_log:
                     new_log = (existing_log + "\n" + json.dumps(audit_entry, ensure_ascii=False)).strip()

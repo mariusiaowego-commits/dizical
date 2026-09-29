@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>提前结束弹窗 · 方向C 分区卡层 · v1-minimax</title>
+<style>
+    .finish-modal-box {
+      background: white; border-radius: 24px; padding: 28px 24px;
+      max-width: 380px; width: 100%; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-height: 92vh; overflow-y: auto;
+    }
+    .finish-modal-screen { width: 100%; }
+    .finish-modal-box .finish-icon { font-size: 44px; margin-bottom: 8px; }
+    .finish-modal-box h3 { font-size: 22px; color: #2E7D32; margin-bottom: 4px; }
+    .finish-modal-box .finish-mins {
+      font-size: 52px; font-weight: 800; color: #4ECDC4;
+      line-height: 1.1; margin: 8px 0 4px;
+    }
+    .finish-modal-box .finish-mins-label { font-size: 15px; color: #7F8C8D; margin-bottom: 12px; }
+    .finish-modal-actions { display: flex; gap: 10px; flex-direction: column; }
+    .finish-modal-actions.finish-modal-3btns { flex-direction: row; gap: 8px; }
+    .finish-modal-actions button {
+      padding: 14px 8px; border: none; border-radius: 16px;
+      font-size: 16px; font-weight: bold; cursor: pointer;
+      transition: transform 0.15s;
+      flex: 1;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .finish-modal-actions button:active { transform: scale(0.96); }
+    .finish-modal-actions .btn-confirm,
+    .finish-modal-actions .btn-submit { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
+    .finish-modal-actions .btn-cancel,
+    .finish-modal-actions .btn-resume { background: #F0D060; color: #5D4037; }
+    .finish-modal-actions .btn-abort { background: #F0F0F0; color: #888; }
+
+    #finishEarlyModal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    #finishEarlyModal.open { display: flex; }
+    .icon-inline { display: inline-flex; vertical-align: middle; }
+
+    /* ═══ Reps Wheel 物理滚轮控件 (Variant A 暖白版) ═══ */
+    .reps-wheel-container {
+      margin: 2px 0 10px; width: 100%; display: flex; flex-direction: column; align-items: center;
+    }
+    .reps-wheel-title {
+      font-size: 14px; font-weight: 700; color: #5D4037; margin-bottom: 4px;
+    }
+    .counter-stage.reps-stage {
+      position: relative; width: 100%; height: 126px;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none; margin: 0 auto;
+    }
+    .tape-ribbon-track {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      width: 118px; display: flex; flex-direction: column; align-items: center;
+      pointer-events: none; z-index: 1;
+    }
+    .tape-slot-top {
+      position: absolute; bottom: 31px; width: 70px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; pointer-events: auto; z-index: 2;
+      transition: transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.22s ease;
+      mask-image: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 60%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 60%, transparent 100%);
+    }
+    .tape-slot-top:hover { transform: translateY(-2px); }
+    .tape-slot-bottom {
+      position: absolute; top: 31px; width: 70px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; pointer-events: auto; z-index: 2;
+      transition: transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.22s ease;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 60%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 60%, transparent 100%);
+    }
+    .tape-slot-bottom:hover { transform: translateY(2px); }
+    /* v2: 相邻项只留文字 + mask 渐隐, 不再画框 (去掉框套框) */
+    .tape-inner-box {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; font-style: italic; color: #8A8A93;
+      font-variant-numeric: tabular-nums;
+    }
+    /* v2: 通栏平板 (原 capsule-pill 胶囊) — 单层, 无圆角无投影 */
+    .reps-band {
+      position: relative; width: 100%; height: 62px; border-radius: 0;
+      background: linear-gradient(180deg, #FBF8F3 0%, #F2ECE1 100%);
+      border-top: 1px solid rgba(0,0,0,0.07); border-bottom: 1px solid rgba(0,0,0,0.07);
+      display: flex; align-items: center; padding: 0 10px; gap: 10px;
+      z-index: 3; user-select: none; -webkit-user-select: none;
+    }
+    .roller-casing {
+      position: relative; width: 118px; height: 44px; border-radius: 0;
+      background: linear-gradient(180deg, #D9D4CC 0%, #E8E3DB 100%);
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.24), inset 0 -1px 2px rgba(255,255,255,0.85);
+      display: flex; align-items: center; justify-content: center;
+      cursor: grab; touch-action: none; flex-shrink: 0;
+    }
+    .roller-casing:active { cursor: grabbing; }
+    .axle-pin {
+      width: 4px; height: 12px;
+      background: linear-gradient(180deg, #8E8E93 0%, #D1D1D6 40%, #AEAEB2 70%, #636366 100%);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.3);
+      flex-shrink: 0;
+    }
+    .axle-pin.left { border-radius: 0; }
+    .axle-pin.right { border-radius: 0; }
+    .roller-wheel {
+      position: relative; width: 11px; height: 38px; border-radius: 0;
+      background: #C7C7CD;
+      background-image:
+        repeating-linear-gradient(
+          180deg, rgba(255,255,255,0.52) 0px, rgba(255,255,255,0.52) 2px,
+          transparent 2px, transparent 4px,
+          rgba(0,0,0,0.16) 4px, rgba(0,0,0,0.16) 6px,
+          transparent 6px, transparent 8px
+        ),
+        linear-gradient(180deg, #9E9EA5 0%, #BFBFC6 22%, #DADAE0 42%, #B8B8BF 68%, #8C8C93 100%);
+      box-shadow: inset -1px 0 2px rgba(0,0,0,0.26), inset 1px 0 2px rgba(255,255,255,0.72), 0 2px 5px rgba(0,0,0,0.20);
+      flex-shrink: 0;
+    }
+    .roller-drum {
+      position: relative; width: 72px; height: 38px; margin: 0 2px; border-radius: 0;
+      background: linear-gradient(180deg, #D4CEBF 0%, #FFFFFF 18%, #FFFFFF 82%, #CCC6B7 100%);
+      border: 1px solid rgba(0,0,0,0.09);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.9);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; perspective: 800px; flex-shrink: 0;
+    }
+    .drum-value {
+      font-size: 24px; font-weight: 800; font-style: italic; color: #2C3E50;
+      letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+      will-change: transform, opacity;
+      transition: transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15);
+    }
+    .drum-value.empty-state {
+      font-style: normal; font-size: 21px; font-weight: 600; color: #7F8C8D;
+    }
+    /* v2: 两个箭头直排, 不再套卡片 */
+    .stepper-card {
+      display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;
+    }
+    .stepper-btn {
+      width: 30px; height: 22px; min-height: 22px; border: 0; background: transparent; border-radius: 0;
+      color: #2C3E50; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; touch-action: manipulation;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .stepper-btn:hover { background: #F8F5F0; }
+    .stepper-btn:active { transform: scale(0.90); }
+    .stepper-btn svg { width: 12px; height: 12px; fill: currentColor; }
+    .stepper-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
+    .capsule-summary {
+      flex: 1; display: flex; align-items: center; justify-content: flex-end; min-width: 0;
+    }
+    .capsule-summary-text {
+      font-size: 13px; font-weight: 700; color: #FF6B6B; letter-spacing: -0.01em;
+    }
+    .presets-row {
+      display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 2px 0 8px;
+    }
+    .preset-chip {
+      min-height: 26px; padding: 0 10px; border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.08); background: #FFFFFF;
+      color: #5D4037; font-size: 12px; font-weight: 500;
+      cursor: pointer; touch-action: manipulation; transition: all 0.16s ease;
+    }
+    .preset-chip:hover { border-color: #FF6B6B; color: #FF6B6B; }
+    .preset-chip.active { background: #FF6B6B; color: #FFFFFF; border-color: #FF6B6B; }
+    @media (prefers-reduced-motion: reduce) {
+      .drum-value, .tape-slot-top, .tape-slot-bottom, .stepper-btn {
+        transition: none !important; animation: none !important;
+      }
+
+    /* ═════ 方向 C · 分区卡层 (只作用于容器, 不改滚轮本体) ═════ */
+    .finish-modal-box {
+      padding: 0;                 /* 分区自己带 padding, 卡片整体不再留白 */
+      max-width: 380px;
+      overflow: hidden;           /* 分区圆角裁切, 不再整块滚 */
+    }
+    /* 卡头: 图标 + 标题 一行, 收掉原来的垂直堆叠 */
+    .z-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 16px 12px;
+      text-align: left;
+    }
+    .z-head .finish-icon { margin: 0; flex-shrink: 0; display: flex; }
+    .z-head h3 { margin: 0; font-size: 17px; color: #2E7D32; }
+    /* 分区 1: 练习时长 —— 大数字横排, 不再独占一整块 */
+    .z-time {
+      display: flex; align-items: baseline; justify-content: center; gap: 6px;
+      padding: 2px 16px 14px;
+    }
+    .z-time .finish-mins {
+      font-size: 44px; font-weight: 800; color: #4ECDC4; line-height: 1; margin: 0;
+    }
+    .z-time .finish-mins-label {
+      font-size: 14px; color: #7F8C8D; margin: 0;
+    }
+    /* 分区 2: 练习遍数 —— 标签与滚轮同一行, 档位并入滚轮右侧 */
+    .z-reps {
+      background: #FBF8F3;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      padding: 10px 14px 11px;
+    }
+    .z-reps-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .z-reps-label {
+      font-size: 13px; font-weight: 700; color: #5D4037;
+      flex-shrink: 0; width: 34px; line-height: 1.2;
+    }
+    /* 滚轮容器: 去掉原来的上下留白与标题, 压成一行 */
+    .z-reps .reps-wheel-container {
+      margin: 0; flex: 1; min-width: 0;
+      display: flex; flex-direction: row; align-items: center; gap: 8px;
+    }
+    .z-reps .reps-wheel-title { display: none; }   /* 标签已移到左侧 */
+    .z-reps .counter-stage.reps-stage { height: 96px; width: 100%; }
+    .z-reps .reps-band { height: 56px; }
+    /* 档位 chips: 竖排到滚轮右侧, 不再单独占一行 */
+    .z-reps .presets-row {
+      margin: 0; flex-shrink: 0;
+      flex-direction: column; align-items: stretch; gap: 3px;
+    }
+    .z-reps .preset-chip {
+      min-height: 22px; padding: 0 8px; font-size: 11px; text-align: center;
+    }
+    /* 分区 3: 三按钮 */
+    .z-actions { padding: 12px 14px 14px; }
+    .z-actions .finish-modal-actions { gap: 8px; }
+    .z-actions .finish-modal-actions button { padding: 13px 6px; font-size: 15px; }
+    /* 二屏沿用同一张卡, 只是内容换掉 */
+    .z-zero { padding: 18px 20px 20px; text-align: center; }
+    .z-zero .finish-icon { display: flex; justify-content: center; margin-bottom: 10px; }
+    .z-zero h3 { font-size: 18px; color: #5D4037; margin-bottom: 6px; }
+    .z-zero p { font-size: 13px; color: #7F8C8D; line-height: 1.6; margin-bottom: 16px; }
+    .z-zero .finish-modal-actions { display: flex; gap: 8px; }
+    .z-zero .finish-modal-actions button { flex: 1; padding: 13px 6px; font-size: 15px; }
+
+    /* iPad 竖屏 744px: 弹窗不被撑太宽, 内部留白略增 */
+    @media (min-width: 600px) {
+      .finish-modal-box { max-width: 440px; }
+      .z-reps-row { gap: 12px; }
+    }
+
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px 16px 60px;
+      background: #F2EDE3;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+                   "Microsoft YaHei", sans-serif;
+      color: #5D4037;
+    }
+    .demo-head { max-width: 440px; margin: 0 auto 16px; }
+    .demo-ver {
+      display: inline-block; font-size: 12px; font-weight: 700; color: #fff;
+      background: #FF6B6B; border-radius: 4px; padding: 2px 8px; margin-bottom: 8px;
+    }
+    .demo-title { font-size: 19px; font-weight: 700; margin: 0 0 6px; }
+    .demo-note { font-size: 13px; color: #7F8C8D; line-height: 1.6; margin: 0 0 14px; }
+    .demo-note b { color: #5D4037; }
+    .demo-open {
+      display: block; width: 100%; max-width: 440px; margin: 0 auto;
+      padding: 13px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: #fff;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .demo-hint {
+      max-width: 440px; margin: 12px auto 0; font-size: 12px; color: #A08B72; line-height: 1.7;
+    }
+    .demo-hint kbd {
+      background: #fff; border: 1px solid #D8CDBC; border-radius: 4px;
+      padding: 1px 5px; font-size: 11px; font-family: ui-monospace, Menlo, monospace;
+    }
+
+</style>
+</head>
+<body>
+
+  <div class="demo-head">
+    <span class="demo-ver">v1-minimax · 方向 C 分区卡层</span>
+    <h1 class="demo-title">「提前结束练习」弹窗 · 布局重设计</h1>
+    <p class="demo-note">
+      原型取自 dad 反馈的「<b>上轻下重</b>」：遍数滚轮整块挤在下半区、六处留白偏大。<br>
+      改法：切成 <b>3 个有边界的区</b>（卡头 / 练习时长 / 练习遍数），遍数区内部
+      <b>压成一行</b>（标签 + 滚轮 + 档位同排），靠分区边界与背景色差重新分配视觉重量。
+      滚轮视觉本体与交互语义原样复用，未改。
+    </p>
+    <button class="demo-open" onclick="openModal()">打开弹窗</button>
+    <div class="demo-hint">
+      滚轮可操作：<kbd>▲</kbd> 增加 / <kbd>▼</kbd> 减少 · 点上下相邻数字 ·
+      拖动滚轴 · 点右侧档位 · 键盘 <kbd>↑</kbd> 增加 <kbd>↓</kbd> 减少 <kbd>0-9</kbd> 直设<br>
+      停在「—」点提交会弹二次确认（沿用原交互）
+    </div>
+  </div>
+
+  <!-- 提前结束确认弹窗 (结构来自 practice.html #finishEarlyModal) -->
+  <div id="finishEarlyModal">
+    <div class="finish-modal-box">
+      <!-- Screen 1: 主确认界面 -->
+      <div id="feScreen1" class="finish-modal-screen">
+        <div class="z-head">
+          <div class="finish-icon"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span></div>
+          <h3>提前结束练习</h3>
+        </div>
+
+        <div class="z-time">
+          <div class="finish-mins" id="finishMinsDisplay">12</div>
+          <div class="finish-mins-label">分钟</div>
+        </div>
+
+        <div class="z-reps">
+          <div class="z-reps-row">
+            <div class="z-reps-label">练习<br>遍数</div>
+      <!-- 遍数滚轮控件 (Variant A) -->
+      <div class="reps-wheel-container">
+        <div class="reps-wheel-title">练习遍数</div>
+        <div class="counter-stage reps-stage" id="stageEarly">
+          <div class="tape-ribbon-track" id="ribbonWrapEarly">
+            <div class="tape-slot-top" id="topSlotEarly" title="点击选择此项" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(-1)">
+              <div class="tape-inner-box" id="topValEarly">—</div>
+            </div>
+            <div class="tape-slot-bottom" id="bottomSlotEarly" title="点击选择此项" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(1)">
+              <div class="tape-inner-box" id="bottomValEarly">1</div>
+            </div>
+          </div>
+          <div class="reps-band">
+            <div class="roller-casing" id="casingEarly">
+              <div class="axle-pin left"></div>
+              <div class="roller-wheel left"></div>
+              <div class="roller-drum" id="drumEarly">
+                <div class="drum-value empty-state" id="drumValEarly">—</div>
+              </div>
+              <div class="roller-wheel right"></div>
+              <div class="axle-pin right"></div>
+            </div>
+            <div class="stepper-card">
+              <button type="button" class="stepper-btn" id="btnUpEarly" aria-label="增加一遍" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(1)">
+                <svg viewBox="0 0 24 24"><path d="M12 7l-6 6h12z"/></svg>
+              </button>
+              <button type="button" class="stepper-btn" id="btnDownEarly" aria-label="减少一遍" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(-1)">
+                <svg viewBox="0 0 24 24"><path d="M12 17l6-6H6z"/></svg>
+              </button>
+            </div>
+            <div class="capsule-summary">
+              <span class="capsule-summary-text" id="statusTagEarly">不记遍数</span>
+            </div>
+          </div>
+        </div>
+        <div class="presets-row" id="presetsEarly">
+          <button type="button" class="preset-chip active" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(0)">不记</button>
+          <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(1)">1 遍</button>
+          <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(3)">3 遍</button>
+          <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(5)">5 遍</button>
+          <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(10)">10 遍</button>
+          <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(20)">20 遍</button>
+        </div>
+      </div>
+          </div>
+        </div>
+
+        <div class="z-actions">
+          <div class="finish-modal-actions finish-modal-3btns">
+            <button class="btn-submit" onclick="confirmFinishEarly()">提交</button>
+            <button class="btn-resume" onclick="cancelFinishEarly()">继续练</button>
+            <button class="btn-abort" onclick="abortFinishEarly()">不练了</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen 2: 二次确认不记遍数 -->
+      <div id="feScreen2" class="finish-modal-screen z-zero" style="display:none">
+        <div class="finish-icon"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span></div>
+        <h3>本次不记录遍数？</h3>
+        <p>当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+        <div class="finish-modal-actions">
+          <button type="button" class="btn-resume" onclick="showScreenEarly(1)">返回修改</button>
+          <button type="button" class="btn-submit" onclick="confirmZeroFinishEarly()">确认不记遍数</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+    let _repsAudioCtx = null;
+    function playMechanicalClick(freq = 1100) {
+      try {
+        if (!_repsAudioCtx) {
+          _repsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (_repsAudioCtx.state === 'suspended') {
+          _repsAudioCtx.resume();
+        }
+        const osc = _repsAudioCtx.createOscillator();
+        const gain = _repsAudioCtx.createGain();
+        const filter = _repsAudioCtx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, _repsAudioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(120, _repsAudioCtx.currentTime + 0.024);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(800, _repsAudioCtx.currentTime);
+        filter.Q.setValueAtTime(2.5, _repsAudioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.14, _repsAudioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, _repsAudioCtx.currentTime + 0.024);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(_repsAudioCtx.destination);
+
+        osc.start();
+        osc.stop(_repsAudioCtx.currentTime + 0.026);
+      } catch (e) {}
+    }
+
+    class RepsWheelWidget {
+      constructor(prefix, initialValue = 0) {
+        this.prefix = prefix;
+        this.min = 0;   // 0 = "—" (不记)
+        this.max = 24;  // UI 最大 24
+        this.value = initialValue;
+
+        // DOM Elements
+        this.casing = document.getElementById(`casing${prefix}`);
+        this.drumVal = document.getElementById(`drumVal${prefix}`);
+        this.topVal = document.getElementById(`topVal${prefix}`);
+        this.bottomVal = document.getElementById(`bottomVal${prefix}`);
+        this.topSlot = document.getElementById(`topSlot${prefix}`);
+        this.bottomSlot = document.getElementById(`bottomSlot${prefix}`);
+        this.statusTag = document.getElementById(`statusTag${prefix}`);
+        this.btnUp = document.getElementById(`btnUp${prefix}`);
+        this.btnDown = document.getElementById(`btnDown${prefix}`);
+        this.stage = document.getElementById(`stage${prefix}`);
+        this.presetsContainer = document.getElementById(`presets${prefix}`);
+
+        this.initEvents();
+        this.render(false);
+      }
+
+      formatLabel(val) {
+        if (val === 0) return '—';
+        return String(val);
+      }
+
+      set(newVal, withSound = true) {
+        const clamped = Math.max(this.min, Math.min(this.max, newVal));
+        if (clamped !== this.value) {
+          const direction = clamped > this.value ? 1 : -1;
+          this.value = clamped;
+          if (withSound && typeof playMechanicalClick === 'function') {
+            playMechanicalClick(clamped === 0 ? 800 : 1100 + clamped * 20);
+          }
+          this.animateRoll(direction);
+        } else {
+          this.render(false);
+        }
+      }
+
+      step(delta) {
+        this.set(this.value + delta, true);
+      }
+
+      animateRoll(direction) {
+        if (!this.drumVal) return;
+        this.drumVal.style.transition = 'none';
+        this.drumVal.style.transform = `translateY(${direction * 14}px) rotateX(${direction * -22}deg)`;
+        this.drumVal.style.opacity = '0.35';
+
+        void this.drumVal.offsetHeight;
+
+        this.drumVal.style.transition = 'transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.18s ease';
+        this.drumVal.style.transform = 'translateY(0) rotateX(0deg)';
+        this.drumVal.style.opacity = '1';
+
+        this.render(true);
+      }
+
+      render(isAnimated = false) {
+        if (!this.drumVal) return;
+        const cur = this.value;
+        const prev = cur - 1;
+        const next = cur + 1;
+
+        // 1. 中央当前项
+        if (cur === 0) {
+          this.drumVal.textContent = '—';
+          this.drumVal.classList.add('empty-state');
+        } else {
+          this.drumVal.textContent = cur;
+          this.drumVal.classList.remove('empty-state');
+        }
+
+        // 2. 上方前一项 (更小的值; 点它 = 减少)
+        if (this.topSlot && this.topVal) {
+          if (prev >= this.min) {
+            this.topSlot.style.display = 'flex';
+            this.topVal.textContent = this.formatLabel(prev);
+            this.topSlot.style.opacity = '1';
+          } else {
+            this.topSlot.style.display = 'none';
+          }
+        }
+
+        // 3. 下方后一项 (更大的值; 点它 = 增加)
+        if (this.bottomSlot && this.bottomVal) {
+          if (next <= this.max) {
+            this.bottomSlot.style.display = 'flex';
+            this.bottomVal.textContent = this.formatLabel(next);
+            this.bottomSlot.style.opacity = '1';
+          } else {
+            this.bottomSlot.style.display = 'none';
+          }
+        }
+
+        // 4. 按钮禁用状态 (▲ 增加至 max 禁用, ▼ 减少至 min 禁用)
+        if (this.btnUp) this.btnUp.disabled = cur >= this.max;
+        if (this.btnDown) this.btnDown.disabled = cur <= this.min;
+
+        // 5. 状态说明
+        if (this.statusTag) {
+          this.statusTag.textContent = cur === 0 ? '不记遍数' : `${cur} 遍`;
+        }
+
+        // 6. 预设 chip 激活态高亮
+        if (this.presetsContainer) {
+          this.presetsContainer.querySelectorAll('.preset-chip').forEach(chip => {
+            const chipVal = parseInt(chip.textContent) || 0;
+            if (chipVal === cur || (chip.textContent.includes('不记') && cur === 0)) {
+              chip.classList.add('active');
+            } else {
+              chip.classList.remove('active');
+            }
+          });
+        }
+      }
+
+      initEvents() {
+        if (!this.casing) return;
+        let isDragging = false;
+        let startY = 0;
+        let startVal = 0;
+        const STEP_THRESHOLD = 28;
+
+        const onPointerDown = (e) => {
+          isDragging = true;
+          startY = e.clientY;
+          startVal = this.value;
+          try { this.casing.setPointerCapture(e.pointerId); } catch (_) {}
+        };
+
+        const onPointerMove = (e) => {
+          if (!isDragging) return;
+          const dy = e.clientY - startY;
+          const deltaSteps = Math.trunc(dy / STEP_THRESHOLD);
+          const targetVal = startVal + deltaSteps;
+          if (targetVal !== this.value) {
+            this.set(targetVal, true);
+          }
+        };
+
+        const onPointerUp = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          try { this.casing.releasePointerCapture(e.pointerId); } catch (_) {}
+        };
+
+        this.casing.addEventListener('pointerdown', onPointerDown);
+        this.casing.addEventListener('pointermove', onPointerMove);
+        this.casing.addEventListener('pointerup', onPointerUp);
+        this.casing.addEventListener('pointercancel', onPointerUp);
+
+        // 鼠标滚轮支持
+        if (this.stage) {
+          let wheelTimeout = null;
+          let wheelAccum = 0;
+          this.stage.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            wheelAccum += e.deltaY;
+            if (Math.abs(wheelAccum) >= 24) {
+              const step = wheelAccum > 0 ? 1 : -1;
+              this.step(step);
+              wheelAccum = 0;
+            }
+            clearTimeout(wheelTimeout);
+            wheelTimeout = setTimeout(() => { wheelAccum = 0; }, 140);
+          }, { passive: false });
+        }
+      }
+    }
+
+    // 实例化 (原 practice.html 同款, 只起 Early 一个)
+    window.repsWheelEarly = new RepsWheelWidget('Early', 0);
+
+    // 全局键盘监听 (↑ / ↓ 步进, 0-9 直接选) —— 语义与原实现一致
+    // 全局键盘监听 (↑ / ↓ 步进, 0-9 直接选)
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      let activeWheel = null;
+      if (document.getElementById('finishNormalModal')?.classList.contains('open') && document.getElementById('fnScreen1')?.style.display !== 'none') {
+        activeWheel = window.repsWheelNormal;
+      } else if (document.getElementById('finishEarlyModal')?.classList.contains('open') && document.getElementById('feScreen1')?.style.display !== 'none') {
+        activeWheel = window.repsWheelEarly;
+      }
+      if (!activeWheel) return;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeWheel.step(1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeWheel.step(-1);
+      } else if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        activeWheel.set(parseInt(e.key, 10));
+      }
+    });
+
+    // ── demo 用: 开关弹窗 (原页面由计时器触发) ──────────────────
+    function openModal() {
+      showScreenEarly(1);
+      window.repsWheelEarly.set(0, false);
+      document.getElementById('finishEarlyModal').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('finishEarlyModal').classList.remove('open');
+    }
+
+    function showScreenEarly(n) {
+      const s1 = document.getElementById('feScreen1');
+      const s2 = document.getElementById('feScreen2');
+      if (!s1 || !s2) return;
+      if (n === 2) { s1.style.display = 'none'; s2.style.display = 'block'; }
+      else { s1.style.display = 'block'; s2.style.display = 'none'; }
+    }
+
+    // 提交: 停在「—」先走二次确认 (原交互)
+    function confirmFinishEarly() {
+      if (window.repsWheelEarly && window.repsWheelEarly.value === 0) {
+        showScreenEarly(2);
+        return;
+      }
+      alert('提交: ' + window.repsWheelEarly.value + ' 遍');
+      closeModal();
+    }
+    function confirmZeroFinishEarly() {
+      alert('提交: 不记遍数');
+      closeModal();
+    }
+    function cancelFinishEarly() { closeModal(); }
+    function abortFinishEarly() { closeModal(); }
+
+    // dad 一进来就能看
+    openModal();
+</script>
+</body>
+</html>

@@ -309,3 +309,111 @@ def test_ruler_drag_buildvine_debounced(html):
     """buildVineDebounced 必须存在, 拖拽期间防抖重建花纹, 避免每帧重画"""
     assert "function buildVineDebounced" in html, "缺 buildVineDebounced 防抖函数"
     assert "buildVineDebounced(150)" in html, "松手后必须触发 buildVineDebounced(150)"
+
+
+# ── 8. sprint 26092601: 练习遍数 (Reps Wheel) 前端契约 ─────────────
+@pytest.mark.parametrize("reps_el", [
+    "stageNormal", "casingNormal", "drumValNormal", "topValNormal", "bottomValNormal",
+    "btnUpNormal", "btnDownNormal", "fnScreen1", "fnScreen2",
+    "stageEarly", "casingEarly", "drumValEarly", "topValEarly", "bottomValEarly",
+    "btnUpEarly", "btnDownEarly", "feScreen1", "feScreen2",
+    "extraRepsInput", "emReps"
+])
+def test_reps_wheel_elements_present(html, reps_el):
+    """遍数滚轮各元素必须在位"""
+    assert f'id="{reps_el}"' in html, f"遍数滚轮缺少元素 #{reps_el}"
+
+
+def test_reps_wheel_script_contracts(html):
+    """遍数滚轮类与音频、二屏确认契约"""
+    assert "class RepsWheelWidget" in html
+    assert "function playMechanicalClick" in html
+    assert "function showScreenNormal" in html
+    assert "function showScreenEarly" in html
+    assert "function confirmZeroFinishNormal" in html
+    assert "function confirmZeroFinishEarly" in html
+    assert "body.reps = window._currentPracticeReps;" in html
+    assert "window.repsWheelNormal = new RepsWheelWidget" in html
+    assert "window.repsWheelEarly = new RepsWheelWidget" in html
+
+
+def test_reps_records_and_edit_binding(html):
+    """今日记录与编辑弹窗遍数绑定"""
+    assert ".rs-reps" in html
+    assert "data-reps" in html
+    assert "subjectHasReps" in html
+    assert "reps: reps" in html
+
+
+def test_reps_zero_confirm_screens_use_inline_svg_not_emoji(html):
+    """FIX-5 (审计 P2-4): 二屏「不记遍数」确认图标禁用 emoji, 必须 inline SVG.
+
+    dad 偏好: 不用 emoji. 同 modal 内其它 finish-icon 都是内联 SVG.
+    原来两处用 🤔 (本 PR 新引入, main 上 count == 0).
+    """
+    assert "🤔" not in html, "二屏确认图标不许用 emoji (dad 明确禁)"
+    for screen in ("feScreen2", "fnScreen2"):
+        i = html.index(f'id="{screen}"')
+        seg = html[i:i + 1200]
+        assert "icon-inline" in seg, f"{screen} 缺 inline SVG 图标"
+        assert "<svg" in seg, f"{screen} 的图标必须是 inline <svg>"
+
+
+def test_reps_wheel_arrow_up_increases(html):
+    """v2 (dad 2026-09-28 实测报方向反): ▲ = 增加(+1), ▼ = 减少(-1); 键盘 ↑ 同向.
+
+    v1 把 ▲ 绑成 step(-1) 跟「滚轴上滚 = 数值增」的物理隐喻相反。
+    两个实例 + 键盘三处必须同向, 否则改一处又会漂回去。
+    """
+    for pre in ("Early", "Normal"):
+        i = html.index(f'id="btnUp{pre}"')
+        up = html[i:i + 160]
+        j = html.index(f'id="btnDown{pre}"')
+        dn = html[j:j + 160]
+        assert "step(1)" in up and "增加一遍" in up, f"btnUp{pre} 必须 = 增加一遍"
+        assert "step(-1)" in dn and "减少一遍" in dn, f"btnDown{pre} 必须 = 减少一遍"
+    assert "if (e.key === 'ArrowUp') {\n        e.preventDefault();\n        activeWheel.step(1);" in html, \
+        "键盘 ↑ 必须 = 增加"
+    assert "} else if (e.key === 'ArrowDown') {\n        e.preventDefault();\n        activeWheel.step(-1);" in html, \
+        "键盘 ↓ 必须 = 减少"
+
+
+def test_reps_wheel_is_flat_full_width_band(html):
+    """v2: 通栏平板 — 去胶囊外壳 / 去白圆角底 / 去内层白窗 / 去装饰红点.
+
+    反面断言跟正面成对: 只写正面会让「新样式加了但旧元素还留着」照样通过。
+    """
+    assert html.count('class="reps-band"') == 2, "两个实例都要用通栏平板 .reps-band"
+    assert 'class="capsule-pill"' not in html, "pill 胶囊外壳必须已移除"
+    assert "tape-track-backdrop" not in html, "白圆角底必须已移除"
+    assert "drum-frame" not in html, "内层白窗 (框套框) 必须已移除"
+    assert "tape-coral-dot" not in html, "多余装饰红点必须已移除"
+    assert "stepper-divider" not in html, "箭头卡分隔线随卡片一起移除"
+    assert "max-width: 310px" not in html, "滚轮不许再有 310px 宽度上限 (要通栏)"
+
+
+def test_finish_modal_box_has_max_width(html):
+    """弹窗必须有宽度上限。
+
+    2026-09-29 实测回归: v4 布局从 demo 搬进生产时, .finish-modal-box 只有 width:100%,
+    demo 里宽度靠外层 .fe-modal-wrapper(max-width:376px) 收住, 生产没搬那层壳
+    -> 弹窗直接撑满整屏宽。上限必须写在 box 自身。
+    """
+    i = html.index(".finish-modal-box {")
+    seg = html[i:i + 700]
+    assert "width: 100%" in seg, "弹窗应占满可用宽度"
+    assert "max-width: 376px" in seg, "弹窗缺 max-width 上限 (会撑满整屏, 见 2026-09-29 回归)"
+
+
+def test_no_mangled_svg_path(html):
+    """模板里不许出现 koboyo 抓取变形签名的 SVG path。
+
+    2026-09-29: practice.html 里 5 个 koboyo 图标 (计时器保护弹窗 / 打卡成功 / 选择练习项目 /
+    补录 / 今日练习记录) 的 path data 含重复段 + 非法 arc, 浏览器 console 报
+    "Expected number / Expected arc flag" 共 4 条。修复 = 换 Lucide 官方图标。
+    变形签名的特征: 数字后跟 "-" 再跟空格再跟数字 (如 "40.6- 1 40.8" / "2.4- 4.9")。
+    """
+    import re
+    sig = re.findall(r"[\d.]- [\d.]", html)
+    assert not sig, "出现 %d 处 koboyo 变形 SVG path (浏览器会报错): %s" % (len(sig), sig[:3])
+

@@ -624,6 +624,11 @@
       border-radius: 6px; border: 1px solid #ddd; text-align: center;
     }
 
+    .session-sub-row .sub-reps-input {
+      width: 52px; padding: 2px 4px; font-size: 16px;
+      border-radius: 6px; border: 1px solid #ddd; text-align: center;
+    }
+
     .session-sub-row .sub-content-input {
       width: 100%; padding: 4px 8px; font-size: 16px;
       border-radius: 6px; border: 1px solid #ddd;
@@ -1572,6 +1577,15 @@ function renderLogEntries() {
     });
   });
 
+  // 事件: 子行 遍数输入
+  container.querySelectorAll('.sub-reps-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const [i, si] = e.target.dataset.idsx.split('-').map(Number);
+      const val = parseInt(e.target.value);
+      logEntries[i].sessions[si].reps = (val > 0) ? Math.min(99, val) : null;
+    });
+  });
+
   // 事件: 子行 音符切换
   container.querySelectorAll('.session-sub-row .tempo-note-mini').forEach(btn => {
     btn.addEventListener('click', e => {
@@ -1650,8 +1664,8 @@ function renderLogEntries() {
       const entry = logEntries[idx];
       const last = entry.sessions[entry.sessions.length - 1];
       const newSession = last
-        ? { minutes: 0, tempo_note: last.tempo_note, tempo_bpm: last.tempo_bpm, content: '', is_subfetched: false }
-        : { minutes: 0, tempo_note: '♪', tempo_bpm: 80, content: '', is_subfetched: false };
+        ? { minutes: 0, reps: null, tempo_note: last.tempo_note, tempo_bpm: last.tempo_bpm, content: '', is_subfetched: false }
+        : { minutes: 0, reps: null, tempo_note: '♪', tempo_bpm: 80, content: '', is_subfetched: false };
       entry.sessions.push(newSession);
       renderLogEntries();
     });
@@ -1672,6 +1686,7 @@ function renderSubRowHtml(parentIdx, subIdx, s, entry) {
     <div class="session-sub-row" data-idx="${parentIdx}" data-sub="${subIdx}">
       <div class="sub-line-1">
         <input type="number" class="sub-minutes-input" data-idsx="${idsx}" placeholder="分" min="1" value="${s.minutes || ''}">
+        <input type="number" class="sub-reps-input" data-idsx="${idsx}" placeholder="遍" min="1" max="99" value="${s.reps || ''}">
         <button type="button" class="tempo-note-mini${s.tempo_note === '♪' ? ' selected' : ''}" data-note="♪" data-idsx="${idsx}">♪</button>
         <button type="button" class="tempo-note-mini${s.tempo_note === '♩' ? ' selected' : ''}" data-note="♩" data-idsx="${idsx}">♩</button>
         <div class="bpm-stepper">
@@ -1756,7 +1771,7 @@ async function autoFillEntryDefaults(idx) {
 
   // 应用到 sessions (只改第一个 session, 其他保持)
   if (entry.sessions.length === 0) {
-    entry.sessions.push({ minutes: 0, tempo_note: tempoNote, tempo_bpm: tempoBpm, content: '', is_subfetched: true });
+    entry.sessions.push({ minutes: 0, reps: null, tempo_note: tempoNote, tempo_bpm: tempoBpm, content: '', is_subfetched: true });
   } else {
     entry.sessions[0].tempo_note = tempoNote;
     entry.sessions[0].tempo_bpm = tempoBpm;
@@ -1811,6 +1826,9 @@ document.getElementById('submitLogBtn').addEventListener('click', async () => {
         tempo_bpm: s.tempo_bpm || 80,
         content: s.content || (s.tempo_note || '♪') + '=' + (s.tempo_bpm || 80),
       };
+      if (s.reps != null && s.reps > 0) {
+        body.reps = s.reps;
+      }
       try {
         const r = await fetch('/api/log', {
           method: 'POST',
@@ -1867,6 +1885,7 @@ async function loadTodayHistory() {
         }
         html += `<div style="display:flex;gap:8px;align-items:center;padding:2px 0 2px 8px;border-left:2px solid #e8d8b0;margin:2px 0;font-size:13px">
           <span style="color:#8B6914;font-weight:600">${s.tempo_note}=${s.tempo_bpm}</span>
+          ${s.reps ? `<span style="color:#C45C26;font-weight:600;font-size:12px">${s.reps}遍</span>` : ''}
           <span style="color:#5D4037;flex:1">${s.content || ''}</span>
           <span style="color:#A88B5C;font-size:12px">${s.duration_minutes}min</span>
         </div>`;
