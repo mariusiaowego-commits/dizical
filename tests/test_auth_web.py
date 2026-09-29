@@ -13,6 +13,7 @@ Sprint 26081003 — Web 用户体系单测 (29 case).
 
 用 FastAPI TestClient, 走真实路由 + 自带临时 web_users 表.
 """
+import base64
 import os
 import tempfile
 import sqlite3
@@ -288,15 +289,64 @@ def test_me_not_logged_in(client):
 # 5. Cookie 完整性 (3 case)
 # ═══════════════════════════════════════════════════════════
 
+# ─── cookie 篡改辅助 ───────────────────────────────────
+# cookie = base64url(JSON).base64url(hmac_sha256), 两段都是**无填充** base64url。
+# 签名 32 字节 → 43 字符 → 末位字符只有 4 个有效 bit, 另 2 bit 解码时被丢弃:
+# 换末位时有 1/16 概率落到同一个签名的别名字符上 → 请求仍 200 → 断言假红
+# (2026-09-29 实测: 1000 次探针里旧策略 59 次篡改后仍通过 = 5.9%; 连跑 60 次红 6 次;
+#  新策略 1000 次 0 次、连跑 20 次 0 红)。
+# 故篡改必须落在**中段**——中段字符 6 bit 全有效, 解码字节必定改变。
+_B64_URL_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+
+def _b64url_decode(s: str) -> bytes:
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+def _tamper_sig_middle(token: str) -> str:
+    """篡改签名段中段 1 字符 (解码后的签名字节必定改变)."""
+    payload_b64, sig_b64 = token.split(".", 1)
+    i = len(sig_b64) // 2
+    for c in _B64_URL_CHARS:
+        if c != sig_b64[i]:
+            return f"{payload_b64}.{sig_b64[:i]}{c}{sig_b64[i + 1:]}"
+    raise AssertionError("unreachable: 64 个字符里必有 1 个不同于原字符")
+
+
 def test_cookie_tampered_signature(client):
-    """改 cookie 1 字符 → 401."""
+    """改 cookie 签名中段 1 字符 → 401 (不篡改末位: 无填充 base64url 末位有冗余 bit)."""
     _make_user("yoyo", password="mypass-12345")
     client.post("/api/auth/login", json={"username": "yoyo", "password": "mypass-12345"})
-    # 篡改 cookie
     raw = client.cookies.get("dizical_session")
-    client.cookies.set("dizical_session", raw[:-1] + ("x" if raw[-1] != "x" else "y"))
+    client.cookies.set("dizical_session", _tamper_sig_middle(raw))
     r = client.get("/api/auth/me")
     assert r.status_code == 401
+
+
+def test_tamper_sig_middle_always_changes_bytes():
+    """锁: 签名中段 63 种替换全部改变解码后的签名字节 (中段 6 bit 全有效)."""
+    sig = base64.urlsafe_b64encode(bytes(range(32))).rstrip(b"=").decode()
+    base = _b64url_decode(sig)
+    i = len(sig) // 2
+    n = 0
+    for c in _B64_URL_CHARS:
+        if c == sig[i]:
+            continue
+        assert _b64url_decode(f"{sig[:i]}{c}{sig[i + 1:]}") != base
+        n += 1
+    assert n == 63
+
+
+def test_b64url_last_char_has_aliases():
+    """锁: 无填充 base64url 末位有 3 个别名字符 → 改末位不保证改签名。
+
+    这条锁就是「不许改末位」的理由 (2026-09-29 假红根因)。
+    若签名改成带填充 (末位不再有冗余 bit), 本锁会红 → 提醒复核篡改策略。
+    """
+    sig = base64.urlsafe_b64encode(bytes(range(32))).rstrip(b"=").decode()
+    base = _b64url_decode(sig)
+    aliases = [c for c in _B64_URL_CHARS if c != sig[-1] and _b64url_decode(sig[:-1] + c) == base]
+    assert len(aliases) == 3, f"末位别名数变了 (应为 3): {aliases}"
 
 
 def test_cookie_session_version_mismatch(client):
