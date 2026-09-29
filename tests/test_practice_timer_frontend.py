@@ -404,3 +404,16 @@ def test_finish_modal_box_has_max_width(html):
     assert "width: 100%" in seg, "弹窗应占满可用宽度"
     assert "max-width: 376px" in seg, "弹窗缺 max-width 上限 (会撑满整屏, 见 2026-09-29 回归)"
 
+
+def test_no_mangled_svg_path(html):
+    """模板里不许出现 koboyo 抓取变形签名的 SVG path。
+
+    2026-09-29: practice.html 里 5 个 koboyo 图标 (计时器保护弹窗 / 打卡成功 / 选择练习项目 /
+    补录 / 今日练习记录) 的 path data 含重复段 + 非法 arc, 浏览器 console 报
+    "Expected number / Expected arc flag" 共 4 条。修复 = 换 Lucide 官方图标。
+    变形签名的特征: 数字后跟 "-" 再跟空格再跟数字 (如 "40.6- 1 40.8" / "2.4- 4.9")。
+    """
+    import re
+    sig = re.findall(r"[\d.]- [\d.]", html)
+    assert not sig, "出现 %d 处 koboyo 变形 SVG path (浏览器会报错): %s" % (len(sig), sig[:3])
+
