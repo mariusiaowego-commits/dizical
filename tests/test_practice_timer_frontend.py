@@ -391,3 +391,16 @@ def test_reps_wheel_is_flat_full_width_band(html):
     assert "stepper-divider" not in html, "箭头卡分隔线随卡片一起移除"
     assert "max-width: 310px" not in html, "滚轮不许再有 310px 宽度上限 (要通栏)"
 
+
+def test_finish_modal_box_has_max_width(html):
+    """弹窗必须有宽度上限。
+
+    2026-09-29 实测回归: v4 布局从 demo 搬进生产时, .finish-modal-box 只有 width:100%,
+    demo 里宽度靠外层 .fe-modal-wrapper(max-width:376px) 收住, 生产没搬那层壳
+    -> 弹窗直接撑满整屏宽。上限必须写在 box 自身。
+    """
+    i = html.index(".finish-modal-box {")
+    seg = html[i:i + 700]
+    assert "width: 100%" in seg, "弹窗应占满可用宽度"
+    assert "max-width: 376px" in seg, "弹窗缺 max-width 上限 (会撑满整屏, 见 2026-09-29 回归)"
+
