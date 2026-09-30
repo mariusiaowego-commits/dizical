@@ -986,50 +986,54 @@ def calc_all() -> dict[str, CalcResult]:
     calc 完毕自动把新解锁的 milestone 写进 stats (持久化 hook).
     """
     conn, _is_mysql = _get_conn()
-    today = dt.date.today()
+    try:
+        today = dt.date.today()
 
-    achievements = _get_achievements(conn)
-    stats        = _get_achievement_stats(conn)
-    dates        = _get_practice_dates(conn)
-    total_mins   = _get_total_mins(conn)
-    top_items    = _get_top_items(conn, limit=3)
-    all_item_ids = _get_all_item_ids(conn)
-    has_all_items, all_items_achieved_at = _has_all_items_ever(conn)
-    has_double    = _has_double_practice(conn)
-    streak        = _get_consecutive_streak(dates, today)
+        achievements = _get_achievements(conn)
+        stats        = _get_achievement_stats(conn)
+        dates        = _get_practice_dates(conn)
+        total_mins   = _get_total_mins(conn)
+        top_items    = _get_top_items(conn, limit=3)
+        all_item_ids = _get_all_item_ids(conn)
+        has_all_items, all_items_achieved_at = _has_all_items_ever(conn)
+        has_double    = _has_double_practice(conn)
+        streak        = _get_consecutive_streak(dates, today)
 
-    results: dict[str, CalcResult] = {}
+        results: dict[str, CalcResult] = {}
 
-    for ach in achievements:
-        aid = ach["id"]
-        cat = ach["category"]
+        for ach in achievements:
+            aid = ach["id"]
+            cat = ach["category"]
 
-        if cat == "seasonal":
-            seasonal_type = ach.get("seasonal_type", "monthly")
-            results[aid] = _calc_seasonal(
-                conn, aid, seasonal_type, today, streak, total_mins, all_item_ids)
-        else:  # milestone
-            results[aid] = _calc_milestone(
-                conn, aid, stats, streak, total_mins,
-                top_items, has_all_items, all_items_achieved_at, has_double, today)
+            if cat == "seasonal":
+                seasonal_type = ach.get("seasonal_type", "monthly")
+                results[aid] = _calc_seasonal(
+                    conn, aid, seasonal_type, today, streak, total_mins, all_item_ids)
+            else:  # milestone
+                results[aid] = _calc_milestone(
+                    conn, aid, stats, streak, total_mins,
+                    top_items, has_all_items, all_items_achieved_at, has_double, today)
 
-    # 持久化 hook: 把新解锁的 milestone 写进 stats
-    _persist_unlocked_milestones(conn, results)
+        # 持久化 hook: 把新解锁的 milestone 写进 stats
+        _persist_unlocked_milestones(conn, results)
 
-    conn.close()
-    return results
+        return results
+    finally:
+        # MySQL 侧是池连接: close = 归还池; 异常路径也必须归还 (旧写法只在成功路径 close)
+        conn.close()
 
 
 def get_achievements_by_type(category: str) -> list[dict]:
     """按 category 过滤 achievements 表数据"""
     conn, _is_mysql = _get_conn()
-    cur = _exec(conn, 
-        "SELECT * FROM achievements WHERE category = ? ORDER BY sort_order",
-        (category,))
-    cols = [d[0] for d in cur.description]
-    rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-    conn.close()
-    return rows
+    try:
+        cur = _exec(conn, 
+            "SELECT * FROM achievements WHERE category = ? ORDER BY sort_order",
+            (category,))
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 # 复用 datetime

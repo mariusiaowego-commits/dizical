@@ -189,13 +189,13 @@ async def api_users_reset_password(request: Request, user_id: int):
     update_password(user_id, hash_password(new_password))
     # 重置后必须改密
     from src.db_adapter import execute as _db_execute, get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(conn, "UPDATE web_users SET must_change_password = 1 WHERE user_id = ?",
                     (user_id,))
         conn.commit()
     finally:
-        if not is_mysql: conn.close()
+        conn.close()
 
     return JSONResponse({
         "ok": True,
