@@ -631,3 +631,62 @@ def test_claim_check_select_db_error_returns_503(monkeypatch):
     assert resp.status_code == 503
     assert _json.loads(resp.body)["error"] == "db_unreachable"
     assert mock_conn.close.called
+
+
+# ─── J. 建库路径三源同步: claimed_at / detail 必须能建出来 ─────────────────
+# 2026-09-30 线上复盘: 云 MySQL 的 achievement_stats 缺 claimed_at → /api/badge/unclaimed
+#   报 1054 → 降级 503 → 前端 checkUnclaimed 静默 return → 徽章弹窗永不出现.
+#   根因: 这一列只写在 migrate_add_claimed_at.py 里, schema_mysql.sql 与 sqlite
+#   _init_tables 都没有 → 从零建库必漏. 两条锁分别盯 MySQL 定义 (静态) 和 sqlite (行为).
+def test_init_tables_adds_claimed_at_and_detail_idempotent(tmp_path):
+    """老库缺列 (模拟线上) → Database() 初始化幂等补上; 二次运行不抛、列不重复。"""
+    db_path = tmp_path / "legacy_claimed.db"
+    raw = sqlite3.connect(str(db_path))
+    raw.executescript(
+        """
+        CREATE TABLE achievement_stats (
+            achievement_id TEXT PRIMARY KEY,
+            achieved       TEXT NOT NULL,
+            achieved_at    DATETIME,
+            raw_stats      TEXT NOT NULL,
+            computed_value INTEGER
+        );
+        CREATE TABLE practice_audit_log (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel       TEXT NOT NULL,
+            method        TEXT NOT NULL,
+            practice_date DATE NOT NULL,
+            created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    raw.commit()
+    raw.close()
+
+    from src.database import Database
+
+    db = Database(db_path=str(db_path))  # 触发 _init_tables
+    conn = db._get_connection()
+    stats_cols = {r[1] for r in conn.execute("PRAGMA table_info(achievement_stats)")}
+    audit_cols = {r[1] for r in conn.execute("PRAGMA table_info(practice_audit_log)")}
+    assert "claimed_at" in stats_cols, "achievement_stats.claimed_at 未补 (弹窗判据列)"
+    assert "detail" in audit_cols, "practice_audit_log.detail 未补 (领取写审计载体)"
+    conn.close()
+
+    # 幂等: 再初始化一次, 不抛错且列不重复
+    db2 = Database(db_path=str(db_path))
+    conn2 = db2._get_connection()
+    cols2 = [r[1] for r in conn2.execute("PRAGMA table_info(achievement_stats)")]
+    assert cols2.count("claimed_at") == 1
+    conn2.close()
+
+
+def test_schema_mysql_declares_claimed_at_and_detail():
+    """从零建库的 MySQL 定义必须含这两列 (线上缺列那条老路别再走一遍)。"""
+    from pathlib import Path
+
+    sql = (Path(__file__).resolve().parent.parent / "schema_mysql.sql").read_text(encoding="utf-8")
+    stats_block = sql.split("CREATE TABLE achievement_stats", 1)[1].split(");", 1)[0]
+    audit_block = sql.split("CREATE TABLE practice_audit_log", 1)[1].split(");", 1)[0]
+    assert "claimed_at" in stats_block, "schema_mysql.sql achievement_stats 缺 claimed_at"
+    assert "detail" in audit_block, "schema_mysql.sql practice_audit_log 缺 detail"
