@@ -9,6 +9,20 @@
 - 异常拆分：纯 Python 组装异常不再伪装成 `503 db_unreachable`（改为 500 + traceback）；**DB 调用失败仍 503**（sprint 26093001 / PR #348）。
 - 连接归还统一：MySQL 池连接现在无条件 `close()`（= 归还池），修掉高并发下池耗尽的隐患（同 PR，全仓 18 处）。
 - **对 dizical-minip**：无需改动（503 的触发面未扩大，字段未变）。
+- **线上库缺列（同日追加修复，非代码问题）**：云 MySQL 的 `achievement_stats.claimed_at`（弹窗判据列）
+  与 `practice_audit_log.detail`（领取写审计的 badge_id 载体）此前只写在 `src/migrate_add_claimed_at.py`，
+  `schema_mysql.sql` 与 sqlite 建表都没有 → 线上从零建库必漏。
+  症状：`GET /api/badge/unclaimed` 报 `1054 Unknown column 's.claimed_at'` → 被降级成 `503 db_unreachable`
+  → 前端 `checkUnclaimed()` 静默 return → 徽章认领弹窗永不出现（部署全绿、健康检查 alive 都看不出来）。
+  处置：数据面补列 + backfill（历史已得徽章视作已领）+ index；建库路径三源补齐（PR #351）。
+  **端点 / 入参 / 返回结构未变 → 仍属 ✅ 完全兼容**，对 dizical-minip 无影响。
+
+| 数据面动作（云 MySQL，MCP `runStatement`） | requestId |
+|------|------|
+| `ALTER TABLE achievement_stats ADD COLUMN claimed_at DATETIME NULL DEFAULT NULL` | `45ffabbf-3c91-4c0b-8324-5715f544b3df` |
+| `UPDATE achievement_stats SET claimed_at = achieved_at WHERE achieved='Y' AND claimed_at IS NULL`（26 行） | `a7ebee27-f6e6-459e-869d-cbecf63064d3` |
+| `CREATE INDEX idx_achievement_stats_unclaimed ON achievement_stats (achievement_id, claimed_at)` | `750aabca-a342-4099-8c0a-80562d9aaf80` |
+| `ALTER TABLE practice_audit_log ADD COLUMN detail VARCHAR(255) DEFAULT NULL` | `752829ed-8b96-4fe8-ae45-28a3b49b2303` |
 
 ---
 
