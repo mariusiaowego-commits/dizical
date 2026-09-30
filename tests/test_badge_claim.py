@@ -602,3 +602,32 @@ def test_claim_update_db_error_still_degrades_to_503(monkeypatch):
     assert resp.status_code == 503
     assert _json.loads(resp.body)["error"] == "db_unreachable"
     assert mock_conn.close.called
+
+
+def test_claim_check_select_db_error_returns_503(monkeypatch):
+    """rowcount==0 后的区分 SELECT 失败 → 仍 503 (不是 500)。
+
+    2026-09-30 grok PR 审计非阻断项: P2 拆分后这条 SELECT 落在内层 try 外面,
+    DB 失败面从 503 变 500。它是 DB 调用 (不是组装), 且此处没写入任何东西
+    → 归 503 降级。
+    """
+    import json as _json
+    from unittest.mock import MagicMock
+
+    from src.kid_app.routes import badge_claim
+
+    mock_conn = MagicMock()
+    cur = mock_conn.cursor.return_value
+    cur.rowcount = 0  # UPDATE 没改到行 → 走区分分支
+
+    def boom(*a, **kw):
+        raise Exception("no such table: achievement_stats")
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+    monkeypatch.setattr(badge_claim.db_adapter, "execute_dicts", boom)
+
+    resp = badge_claim.api_claim(badge_claim.ClaimRequest(badge_id="mysql_1"))
+    assert resp.status_code == 503
+    assert _json.loads(resp.body)["error"] == "db_unreachable"
+    assert mock_conn.close.called

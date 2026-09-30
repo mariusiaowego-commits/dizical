@@ -12,6 +12,7 @@ config_users.py 1 / auth_web.py 1)。
 """
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -71,3 +72,101 @@ def test_mysql_branch_closes_even_when_query_raises(monkeypatch):
         auth.fetch_user_by_username("nobody")
 
     assert fake_conn.close.called, "异常路径没 close → 连接泄漏"
+
+
+# ─── 静态守卫: close() 必须在 finally (或专用 close 包装器) 里 ───────────────
+#
+# 背景 (2026-09-30 grok PR #348 审计非阻断项): `achievement_definitions.calc_all`
+# 与 `get_achievements_by_type` 只在成功路径 conn.close() → 中途抛异常就漏关
+# (MySQL 侧 = 池连接不归还)。跟 P3-1 同族, 用 AST 守卫住整个类。
+
+# 请求期会跑的模块 (one-shot migrate_*.py 脚本不在内: 进程随即退出, 不构成池压力)
+_CLOSE_GUARD_SCOPE = (
+    "kid_app",
+    "db_adapter.py",
+    "achievement_definitions.py",
+    "database_mysql.py",
+)
+
+
+def _bare_close_lines(nodes) -> set[int]:
+    """只挑 DB 连接名上的 close() — `conn.close()` / `_conn.close()`。
+
+    排除 `self.pool.close()` (方法定义) 与 `s.close()` (socket, 一次性对象不构成池压力)。
+    """
+    out: set[int] = set()
+    for n in nodes:
+        for sub in ast.walk(n):
+            if (
+                isinstance(sub, ast.Call)
+                and isinstance(sub.func, ast.Attribute)
+                and sub.func.attr == "close"
+                and isinstance(sub.func.value, ast.Name)
+                and sub.func.value.id.lstrip("_").startswith("conn")
+            ):
+                out.add(sub.lineno)
+    return out
+
+
+def _guard_offenders(path: Path) -> list[int]:
+    tree = ast.parse(path.read_text())
+    safe: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Try):
+            if node.finalbody:
+                safe |= _bare_close_lines(node.finalbody)
+            elif len(node.body) <= 2 and _bare_close_lines(node.body):
+                # 专用 close 包装器 (如 badge_claim._close_quietly: try: conn.close() except: log)
+                safe |= _bare_close_lines(node.body)
+    return sorted(_bare_close_lines([tree]) - safe)
+
+
+def test_close_must_be_in_finally_or_dedicated_closer():
+    """静态锁: 生产代码里 `conn.close()` 不许裸放在函数体末尾 (异常路径漏关)。"""
+    offenders: list[str] = []
+    for rel in _CLOSE_GUARD_SCOPE:
+        base = SRC / rel
+        files = sorted(base.rglob("*.py")) if base.is_dir() else [base]
+        for f in files:
+            for line_no in _guard_offenders(f):
+                offenders.append(f"{f.relative_to(SRC.parent)}:{line_no}")
+    assert not offenders, (
+        "这些 close() 不在 finally / 专用包装器里 → 异常路径漏关 (MySQL = 池不归还): "
+        + ", ".join(offenders)
+    )
+
+
+def test_calc_all_closes_conn_when_body_raises(monkeypatch):
+    """行为锁: calc_all 中途抛异常, 连接也必须 close。"""
+    from src import achievement_definitions as ad
+
+    fake_conn = MagicMock()
+
+    def boom(*a, **kw):
+        raise RuntimeError("calc 中途炸")
+
+    monkeypatch.setattr(ad, "_get_conn", lambda: (fake_conn, True))
+    monkeypatch.setattr(ad, "_get_achievements", boom)
+
+    with pytest.raises(RuntimeError):
+        ad.calc_all()
+
+    assert fake_conn.close.called, "calc_all 异常路径没 close → MySQL 池连接不归还"
+
+
+def test_get_achievements_by_type_closes_conn_when_body_raises(monkeypatch):
+    """行为锁: get_achievements_by_type 中途抛异常, 连接也必须 close。"""
+    from src import achievement_definitions as ad
+
+    fake_conn = MagicMock()
+
+    def boom(*a, **kw):
+        raise RuntimeError("_exec 中途炸")
+
+    monkeypatch.setattr(ad, "_get_conn", lambda: (fake_conn, True))
+    monkeypatch.setattr(ad, "_exec", boom)
+
+    with pytest.raises(RuntimeError):
+        ad.get_achievements_by_type("seasonal")
+
+    assert fake_conn.close.called, "get_achievements_by_type 异常路径没 close → 连接泄漏"

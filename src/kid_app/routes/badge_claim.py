@@ -247,12 +247,19 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
         if rowcount == 0:
             # 已领取过 / 不存在 / 未达成, 返幂等语义
             # 区分: 真已领取 vs 真不存在 vs 未达成
-            check_rows = db_adapter.execute_dicts(
-                conn,
-                "SELECT achieved, claimed_at FROM achievement_stats "
-                "WHERE achievement_id = ?",
-                (badge_id,),
-            )
+            try:
+                check_rows = db_adapter.execute_dicts(
+                    conn,
+                    "SELECT achieved, claimed_at FROM achievement_stats "
+                    "WHERE achievement_id = ?",
+                    (badge_id,),
+                )
+            except Exception as e:
+                # DB 调用失败 → 跟 UPDATE 段同口径 503 (这条路径还没写入任何东西)
+                logger.error(f"badge_claim claim check failed (badge={badge_id}): {e}")
+                return JSONResponse(
+                    {"status": "error", "error": "db_unreachable"}, status_code=503
+                )
             check = check_rows[0] if check_rows else None
             if check is None:
                 return JSONResponse(

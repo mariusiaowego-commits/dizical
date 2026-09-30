@@ -106,7 +106,7 @@ def _safe_mysql_dict_cursor():
     Why: pymysql 把 DATETIME 列返成 `datetime.datetime`, FastAPI 的 JSONResponse
     遇到它直接 `TypeError: Object of type datetime is not JSON serializable`
     (本仓 2026-08-16 已为同类 500 在 database_mysql.py:16-39 建过该 cursor)。
-    拿不到 (极端情况: CI 不装 pymysql / 循环 import) 时回退普通 DictCursor —
+    拿不到 (极端情况: 循环 import 等) 时回退普通 DictCursor —
     此时靠 `_normalize_datetimes()` 兜底, 保证 datetime 不外泄。
     """
     global _SAFE_CURSOR_CLS
