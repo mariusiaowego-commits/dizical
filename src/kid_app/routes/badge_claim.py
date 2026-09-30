@@ -10,27 +10,35 @@ Sprint 26091101 feat/sprint-26091101-badge-3d-ccg:
   - 信任 caller = dizical web UI / mac-app WKWebView (跟 badge_workflow 同模式)
   - 弹窗是 child-facing, 不需 PIN
   - practice_audit_log.practice_date NOT NULL → 用当天 (CST) 占位, badge_id 走 detail
+
+Sprint 26092901 fix/badge-claim-db-260929 (P0 修复: 线上长期 500):
+  旧版 `_open_db()` 直连本地 sqlite (`data/dizi.db`)。线上 CloudRun 走云 MySQL,
+  但容器镜像里那份 `data/dizi.db` 是构建时的老文件 (没有 achievement_* 三张表)
+  → `/api/badge/unclaimed` 报 `no such table: achievement_stats` 500。
+  该错误在 9-19 那版镜像上就已存在 (pod dizical-prod-132, 9-28 20:51/20:56/21:07)。
+  修法 (对齐 badge_db.py PR #287 的范式):
+    - 连接走 `src.db_adapter.get_conn()` (MySQL = src.database 连接池 / SQLite = settings.db_path)
+    - 占位符统一 `?`, adapter 内部按后端转 `%s`
+    - 读用 `execute_dicts` (列名取值 + datetime → str 归一化)
+    - 写用 `execute` + `commit`
+    - 异常捕获宽化: 旧版只捕 `sqlite3.OperationalError`, MySQL 下 pymysql 异常会击穿成 500
 """
 from __future__ import annotations
 
 import datetime as dt
 import json
 import logging
-import sqlite3
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from src import db_adapter
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/badge", tags=["badge-claim"])
-
-# ─── 路径常量 ──────────────────────────────────────────────────────────────
-_ROOT = Path(__file__).parent.parent.parent.parent
-DB_PATH = _ROOT / "data" / "dizi.db"
 
 
 # ─── Pydantic models ──────────────────────────────────────────────────────
@@ -55,16 +63,24 @@ def _cst_now_iso() -> str:
     return (dt.datetime.utcnow() + dt.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _open_db() -> sqlite3.Connection:
-    """直开 SQLite, 跟 badge_db.py / database.py 同路径约定.
+def _open_db():
+    """统一连接入口 (双后端).
 
-    不用 db._get_connection() 是因为该方法在 app 启动时绑 settings.db_path,
-    但 sprint 期间可能在 worktree 跑, 走直开更稳.
+    Sprint 26092901: 替换旧版直连 sqlite 的 `_open_db()`。
+    MySQL 走 src.database 连接池, SQLite 走 settings.db_path (单测可 monkeypatch)。
+
+    Returns:
+        (conn, is_mysql) — 调用方负责 conn.close() (MySQL 下 = 归还连接池)。
     """
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    return db_adapter.get_conn()
+
+
+def _close_quietly(conn) -> None:
+    """关连接但不让关闭异常影响响应 (MySQL 池归还失败不该变 500)."""
+    try:
+        conn.close()
+    except Exception as e:  # pragma: no cover - 关闭异常只记日志
+        logger.warning(f"badge_claim close failed: {e}")
 
 
 # ─── GET /api/badge/unclaimed ─────────────────────────────────────────────
@@ -111,20 +127,22 @@ def api_unclaimed() -> JSONResponse:
         ORDER BY s.achieved_at DESC, a.sort_order ASC
     """
     try:
-        conn = _open_db()
-    except sqlite3.OperationalError as e:
-        # DB 不存在 / 列缺失 (迁移未跑)
-        logger.error(f"_open_db failed: {e}")
+        conn, _ = _open_db()
+    except Exception as e:
+        # DB 连不上 / 配置缺失 → 503 降级 (旧版此处只捕 sqlite3.OperationalError)
+        logger.error(f"badge_claim open db failed: {e}")
         return JSONResponse(
             {"unclaimed_count": 0, "badges": [], "error": "db_unreachable"},
             status_code=503,
         )
 
     try:
-        rows = conn.execute(sql).fetchall()
+        # execute_dicts: 列名取值 + MySQL datetime → ISO 字符串 (避免 JSONResponse TypeError)
+        rows = db_adapter.execute_dicts(conn, sql)
         badges: list[dict[str, Any]] = []
         # Sprint 26091201 feat/badge-3d-ccg B-1: 兜底链解析 card_theme
         from src.kid_app.badge_theme import resolve_card_stars, resolve_card_theme
+
         for r in rows:
             badges.append(
                 {
@@ -152,8 +170,15 @@ def api_unclaimed() -> JSONResponse:
                 }
             )
         return JSONResponse({"unclaimed_count": len(badges), "badges": badges})
+    except Exception as e:
+        # 表/列缺失 (迁移未跑) / 连接中断 / 其它后端异常 → 503 降级, 不抛 500
+        logger.error(f"badge_claim unclaimed query failed: {e}")
+        return JSONResponse(
+            {"unclaimed_count": 0, "badges": [], "error": "db_unreachable"},
+            status_code=503,
+        )
     finally:
-        conn.close()
+        _close_quietly(conn)
 
 
 # ─── POST /api/badge/claim ────────────────────────────────────────────────
@@ -195,27 +220,29 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
     )
 
     try:
-        conn = _open_db()
-    except sqlite3.OperationalError as e:
-        logger.error(f"_open_db failed: {e}")
+        conn, _ = _open_db()
+    except Exception as e:
+        logger.error(f"badge_claim open db failed: {e}")
         return JSONResponse(
             {"status": "error", "error": "db_unreachable"}, status_code=503
         )
 
     try:
         # 1. 幂等 UPDATE
-        cur = conn.execute(update_sql, (claimed_at_iso, badge_id))
-        rowcount = cur.rowcount
+        cur = db_adapter.execute(conn, update_sql, (claimed_at_iso, badge_id))
+        rowcount = getattr(cur, "rowcount", 0) or 0
         conn.commit()
 
         if rowcount == 0:
             # 已领取过 / 不存在 / 未达成, 返幂等语义
             # 区分: 真已领取 vs 真不存在 vs 未达成
-            check = conn.execute(
+            check_rows = db_adapter.execute_dicts(
+                conn,
                 "SELECT achieved, claimed_at FROM achievement_stats "
                 "WHERE achievement_id = ?",
                 (badge_id,),
-            ).fetchone()
+            )
+            check = check_rows[0] if check_rows else None
             if check is None:
                 return JSONResponse(
                     {"status": "error", "error": "badge_not_found"},
@@ -238,7 +265,8 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
 
         # 2. 首次领取成功 → 写审计
         try:
-            conn.execute(
+            db_adapter.execute(
+                conn,
                 audit_sql,
                 (
                     "web",
@@ -252,8 +280,10 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
                 ),
             )
             conn.commit()
-        except sqlite3.OperationalError as e:
-            # audit 写失败不阻塞主流程 (业务已落地, 审计是辅助)
+        except Exception as e:
+            # audit 写失败不阻塞主流程 (业务已落地, 审计是辅助)。
+            # Sprint 26092901: 旧版只捕 sqlite3.OperationalError → MySQL 下审计报错会把
+            # 主业务成功响应带崩成 500, 这里宽化为 Exception。
             logger.warning(
                 f"badge_claim audit insert failed (badge={badge_id}): {e}"
             )
@@ -266,5 +296,11 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
                 "already_claimed": False,
             }
         )
+    except Exception as e:
+        # 领取写路径异常 (缺表 / 连接中断 / 后端差异) → 503 降级, 不抛 500
+        logger.error(f"badge_claim claim failed (badge={badge_id}): {e}")
+        return JSONResponse(
+            {"status": "error", "error": "db_unreachable"}, status_code=503
+        )
     finally:
-        conn.close()
+        _close_quietly(conn)

@@ -46,10 +46,15 @@ AGENTS.md
 PRDs/
 
 # 数据库 (本地 SQLite, 不进容器)
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
+# Sprint 26092901: 原来只有 `*.db` —— Docker 的该模式只匹配根目录, `data/dizi.db`
+# 照样被 Dockerfile `COPY . /app` 打进镜像 (线上 badge_claim 读的就是这份 9-8 老库,
+# 报 no such table: achievement_stats)。必须用 `**/` 递归匹配。
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite3
 
 # 备份
 backups/

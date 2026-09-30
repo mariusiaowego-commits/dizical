@@ -275,7 +275,6 @@ class TestUnclaimedPayload:
         """隔离 tmp DB, 创 achievements + stats + badges + audit 表."""
         from src import models
         import src.kid_app.app as app_module
-        import src.kid_app.routes.badge_claim as claim_mod
         from src.database import Database
         import src.database as db_module
 
@@ -344,9 +343,10 @@ class TestUnclaimedPayload:
         p1 = _patch.object(models.settings, "db_path", path); p1.start()
         p2 = _patch.object(db_module, "db", new_db); p2.start()
         p3 = _patch.object(app_module, "db", new_db); p3.start()
-        p4 = _patch.object(claim_mod, "DB_PATH", Path(path)); p4.start()
+        # Sprint 26092901 fix/badge-claim-db: badge_claim 改走 src.db_adapter.get_conn(),
+        # SQLite 分支读 models.settings.db_path (p1 已 patch) —— 不再有模块级 DB_PATH 常量。
         yield TestClient(app_module.app)
-        for p in (p1, p2, p3, p4):
+        for p in (p1, p2, p3):
             p.stop()
 
     def test_unclaimed_badge_has_card_theme_field(self, client):
