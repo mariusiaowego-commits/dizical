@@ -173,6 +173,7 @@
     flex-wrap: wrap;
   }
   .rp-tempo { font-weight: 600; color: #8B6914; min-width: 48px; flex-shrink: 0; }
+  .rp-reps { font-weight: 600; color: #c45c26; flex-shrink: 0; min-width: 36px; }
   .rp-content { flex: 1; color: #5D4037; min-width: 0; word-break: break-word; }
   .rp-mins { color: #888; font-size: 12px; flex-shrink: 0; min-width: 36px; text-align: right; }
   .rp-legacy { color: #B0A090; font-style: italic; }
@@ -836,7 +837,8 @@ document.addEventListener('DOMContentLoaded', function() {
           tempo_bpm: 0,
           content: '历史汇总',
           duration_minutes: totalForItem - covered,
-          is_legacy: true
+          is_legacy: true,
+          reps: null
         });
       }
     });
@@ -866,10 +868,15 @@ document.addEventListener('DOMContentLoaded', function() {
       html += '<div class="rp-session-heading">' + escapeHtml(opts.heading || '练习明细') + '</div>';
     }
     groups.forEach(function(g) {
+      var gReps = null;
+      (g.sessions || []).forEach(function(s) {
+        if (s.reps != null) gReps = (gReps == null ? 0 : gReps) + s.reps;
+      });
+      var repsSpan = gReps != null ? (' · 合计 ' + escapeHtml(gReps) + ' 遍') : '';
       html += '<div class="rp-group">';
       html += '<div class="rp-group-header">';
       html += '<span class="rp-g-name">' + escapeHtml(g.name) + '</span>';
-      html += '<span class="rp-g-mins">' + escapeHtml(g.minutes) + ' 分钟</span>';
+      html += '<span class="rp-g-mins">' + escapeHtml(g.minutes) + ' 分钟' + repsSpan + '</span>';
       html += '</div>';
       if (g.sessions && g.sessions.length) {
         g.sessions.forEach(function(s) {
@@ -880,6 +887,9 @@ document.addEventListener('DOMContentLoaded', function() {
           html += '<div class="rp-session' + (s.is_legacy ? ' rp-legacy' : '') + '">';
           if (tempoText) {
             html += '<span class="rp-tempo">' + escapeHtml(tempoText) + '</span>';
+          }
+          if (s.reps != null) {
+            html += '<span class="rp-reps">' + escapeHtml(s.reps) + ' 遍</span>';
           }
           html += '<span class="rp-content">' + escapeHtml(contentText) + '</span>';
           html += '<span class="rp-mins">' + escapeHtml(s.duration_minutes || 0) + 'min</span>';

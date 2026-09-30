@@ -17,6 +17,7 @@
       --paper-table-w: 420mm;
       --col-item-min: 22mm;
       --col-short-min: 8mm;
+      --col-reps-min: 6mm;
       --col-tempo-min: 12mm;
       --col-detail-min: 18mm;
       --col-detail-max: 32mm;
@@ -223,6 +224,7 @@
     table.sess .c-time { min-width: 12mm; white-space: nowrap; color: var(--muted); }
     table.sess .c-mins { min-width: 8mm; white-space: nowrap; font-weight: 600; text-align: right; }
     table.sess .c-tempo { min-width: 14mm; white-space: nowrap; color: var(--gold); font-weight: 600; }
+    table.sess .c-reps { min-width: 10mm; white-space: nowrap; font-weight: 600; text-align: center; }
     table.sess .c-extra {
       width: 10mm; text-align: center;
     }
@@ -368,6 +370,12 @@
       text-align: center !important; vertical-align: middle !important;
       padding: 0.5mm 0.3mm;
     }
+    table.matrix td.m-reps {
+      font-weight: 700; white-space: nowrap;
+      font-size: 8pt; min-width: var(--col-reps-min); max-width: 10mm;
+      text-align: center !important; vertical-align: middle !important;
+      padding: 0.5mm 0;
+    }
     table.matrix td.m-once {
       font-weight: 700; white-space: nowrap;
       font-size: 8pt; min-width: var(--col-short-min); max-width: 10mm;  /* sprint-26080802: 9.5pt → 8pt */
@@ -378,6 +386,8 @@
       text-align: left; padding: 0.8mm 1.2mm;
       font-size: 9pt; overflow-wrap: anywhere; min-width: var(--col-detail-min); max-width: var(--col-detail-max);  /* v2: 设上限, 文字换行不跨列 */
     }
+    table.matrix.days-6 td.m-detail,
+    table.matrix.days-7 td.m-detail { min-width: 14mm; }
     table.matrix td.m-empty { background: #f7f5f0; color: #ccc; }
     table.matrix .det-extra {
       display: inline-block; font-size: 7pt; margin-left: 1px;
@@ -409,6 +419,8 @@
     table.matrix.days-2 td.m-total,
     table.matrix.days-1 td.m-tempo,
     table.matrix.days-2 td.m-tempo,
+    table.matrix.days-1 td.m-reps,
+    table.matrix.days-2 td.m-reps,
     table.matrix.days-1 td.m-once,
     table.matrix.days-2 td.m-once { font-size: 9.5pt; }  /* sprint-26080802: 10.5pt → 9.5pt (主表 11pt, 短列 9.5pt 已足) */
 
@@ -705,11 +717,17 @@
         var id = g.item_id;
         if (id == null) return;
         if (!itemMap[id]) {
-          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0 };
+          // 2026-09-28 FIX-4: 字段名跟后端 payload 统一为 reps
+          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0, reps: null };
         }
         itemMap[id].minutes += g.minutes || 0;
         itemMap[id].session_count += (g.sessions || []).length;
         if (g.item_name) itemMap[id].item_name = g.item_name;
+        (g.sessions || []).forEach(function (s) {
+          if (s.reps != null) {
+            itemMap[id].reps = (itemMap[id].reps == null ? 0 : itemMap[id].reps) + s.reps;
+          }
+        });
       });
     });
     var byItem = Object.keys(itemMap).map(function (k) { return itemMap[k]; });
@@ -910,7 +928,12 @@
       html += '<div class="overview">';
       byItem.forEach(function (it) {
         var pct = sum.total_minutes ? Math.round(it.minutes / sum.total_minutes * 100) : 0;
-        html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次 ' + pct + '%</span>';
+        // 2026-09-28 FIX-4: 字段名统一成 reps (跟后端 _filter_payload_by_days 一致).
+        // 原来读 it.total_reps, 后端 payload 里根本没有这个 key, 靠 undefined 兜底
+        // 重算才能出数 —— 兜底一删就会静默显「—」.
+        var rSum = it.reps;
+        var repsPart = rSum != null ? (rSum + '遍') : '—';
+        html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次/' + repsPart + ' ' + pct + '%</span>';
       });
       html += '</div>';
     }
@@ -931,18 +954,25 @@
       html += '<div class="day-head"><span>' + esc(fmtCnDate(day.date)) + ' · ' + esc(day.date) + '</span>';
       html += '<span class="dh-meta">' + esc(day.total_minutes) + ' 分钟 · ' + esc(day.session_count) + ' 次</span></div>';
       (day.groups || []).forEach(function (g) {
+        var gReps = null;
+        (g.sessions || []).forEach(function (s) {
+          if (s.reps != null) gReps = (gReps == null ? 0 : gReps) + s.reps;
+        });
+        var repsLabel = gReps != null ? (gReps + ' 遍') : '—';
         html += '<div class="item-block">';
-        html += '<div class="item-head">' + esc(g.item_name) + '<span>' + esc(g.minutes) + ' 分钟 · ' + esc((g.sessions || []).length) + ' 次</span></div>';
+        html += '<div class="item-head">' + esc(g.item_name) + '<span>' + esc(g.minutes) + ' 分钟 · ' + esc((g.sessions || []).length) + ' 次 · ' + esc(repsLabel) + '</span></div>';
         html += '<table class="sess"><thead><tr>';
-        html += '<th class="c-time">时间</th><th class="c-mins">时长</th><th class="c-tempo">速度</th><th>内容</th><th class="c-extra"></th>';
+        html += '<th class="c-time">时间</th><th class="c-mins">时长</th><th class="c-tempo">速度</th><th class="c-reps">遍数</th><th>内容</th><th class="c-extra"></th>';
         html += '</tr></thead><tbody>';
         (g.sessions || []).forEach(function (s) {
           var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+          var repsStr = s.reps != null ? (esc(s.reps) + '遍') : '—';
           var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
           html += '<tr>';
           html += '<td class="c-time">' + esc(fmtTime(s.started_at)) + '</td>';
           html += '<td class="c-mins">' + esc(s.duration_minutes) + '′</td>';
           html += '<td class="c-tempo">' + esc(tempo) + '</td>';
+          html += '<td class="c-reps">' + repsStr + '</td>';
           html += '<td>' + content + '</td>';
           html += '<td class="c-extra">' + (s.is_extra ? '<span class="tag-extra">额外</span>' : '') + '</td>';
           html += '</tr>';
@@ -1005,17 +1035,19 @@
     });
 
     var nDays = dateList.length;
-    var COLS_PER_DAY = 4; // 总时长 速度 单次 明细
-    var subLabels = ['总时长', '速度', '单次', '明细'];
+    var COLS_PER_DAY = 5; // 总时长 速度 遍数 单次 明细
+    var subLabels = ['总时长', '速度', '遍数', '单次', '明细'];
     // 按展示天数自适应：天越少，短列可略宽、明细更宽
     var itemW = nDays <= 2 ? 10 : nDays <= 4 ? 8 : 7;
     var shortW = nDays <= 1 ? 5 : nDays <= 2 ? 4 : nDays <= 4 ? 3 : nDays <= 6 ? 2.8 : 2.4;  /* sprint-26080801: 6 天时短列 2% → 2.8%, iPad viewport 1133px 上 ≈ 32px ≈ 8mm */
     var tempoW = shortW + 0.5;
+    var repsW = nDays <= 1 ? 4 : nDays <= 2 ? 3.2 : nDays <= 4 ? 2.5 : nDays <= 6 ? 2.2 : 2.0;
     html += '<table class="matrix days-' + nDays + '"><colgroup>';
     html += '<col style="width:' + itemW + '%">';
     dateList.forEach(function () {
       html += '<col style="width:' + shortW + '%">';
       html += '<col style="width:' + tempoW + '%">';
+      html += '<col style="width:' + repsW + '%">';
       html += '<col style="width:' + shortW + '%">';
       html += '<col>'; // 明细
     });
@@ -1029,7 +1061,7 @@
     html += '</tr><tr>';
     dateList.forEach(function () {
       subLabels.forEach(function (lab, i) {
-        var cls = 'th-sub' + (i === 0 ? ' th-first' : '') + (i === 3 ? ' th-detail' : '');
+        var cls = 'th-sub' + (i === 0 ? ' th-first' : '') + (i === 4 ? ' th-detail' : '');
         html += '<th class="' + cls + '">' + lab + '</th>';
       });
     });
@@ -1061,7 +1093,7 @@
           if (!cell || (!sess.length && !total)) {
             if (ri === 0) {
               html += '<td class="m-total m-empty" rowspan="' + maxS + '">—</td>';
-              html += '<td class="m-empty" rowspan="' + maxS + '" colspan="3"></td>';
+              html += '<td class="m-empty" rowspan="' + maxS + '" colspan="4"></td>';
             }
             return;
           }
@@ -1070,10 +1102,11 @@
             if (ri === 0) {
               html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
               html += '<td class="m-tempo">—</td>';
+              html += '<td class="m-reps">—</td>';
               html += '<td class="m-once">—</td>';
               html += '<td class="m-detail empty-content">—</td>';
             } else {
-              html += '<td class="m-empty" colspan="3"></td>';
+              html += '<td class="m-empty" colspan="4"></td>';
             }
             return;
           }
@@ -1085,23 +1118,25 @@
           if (ri < daySessN) {
             var s = sess[ri];
             var tempo = s.tempo_bpm ? ((s.tempo_note || '') + '=' + s.tempo_bpm) : '—';
+            var repsStr = s.reps != null ? esc(s.reps) : '—';
             var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
             html += '<td class="m-tempo">' + esc(tempo) + '</td>';
+            html += '<td class="m-reps">' + repsStr + '</td>';
             html += '<td class="m-once">' + esc(s.duration_minutes || 0) + '′</td>';
             html += '<td class="m-detail">' + content;
             if (s.is_extra) html += '<span class="det-extra">额外</span>';
             html += '</td>';
           } else {
-            html += '<td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td>';
+            html += '<td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td><td class="m-empty"></td>';
           }
         });
         html += '</tr>';
       }
     });
 
-    // 日合计：只显示总练习时长
+    // 日总时长：只显示练习时长（不含遍数合计 —— 长音与乐曲的遍数不可通约）
     html += '</tbody><tfoot><tr>';
-    html += '<td class="m-item">日合计</td>';
+    html += '<td class="m-item">日总时长</td>';
     dateList.forEach(function (d) {
       var dayObj = null;
       for (var i = 0; i < days.length; i++) {

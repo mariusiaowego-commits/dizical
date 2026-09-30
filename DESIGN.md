@@ -5,10 +5,13 @@
 
 ## 来源 (Source of Truth)
 
-本设计语言的**注册版本**保存在 `/Users/mt16/dev/designrepo/styles/dizicute/`:
+本设计语言的**注册版本**保存在 `/Users/mt16/dev/uiux-asset-library/design-system/dizicute/`:
 - `DESIGN.md` (YAML tokens + rationale) — **机器可读, 单源权威**
 - `AGENT.md` (机器合同: 组件硬规则 + WCAG 豁免说明)
 - `src/` (编译产物: tailwind.theme.css, tokens.json)
+
+> 路径订正 (2026-09-28): 原写 `/Users/mt16/dev/designrepo/styles/dizicute/`, 该路径本机已不存在;
+> designrepo 后续并入 `uiux-asset-library/design-system/dizicute/`. 以本行路径为准.
 
 本文件 (dizical 根目录) 是 dizical 项目的**本地副本 / 引用**, 跟 designrepo dizicute 同步. **如有不一致, designrepo 赢**.
 
@@ -67,6 +70,18 @@ PingFang SC (苹方, iOS/macOS 系统自带). Web fallback: `system-ui, -apple-s
 - **dizical 微信小程序 AppID/AppSecret**: 配置管理 (`channels/mini-program/config/`, chmod 600)
 - **dizical 盲盒主题视觉风格 — enamel pin (强制约束)**: 所有盲盒主题 (ok_sea / rapunzel / 未来主题) 视觉风格**必须**是 enamel pin (cloisonné 掐丝 + 厚金边 + chibi Q版). 跨主题不变 (即使换 IP/角色/叙事独立, 也仍是 enamel pin); 同主题内 7 张图必须 enamel pin 一致 (不能某张偏离). 改这条需明确指令 (类似 mac app icon 待遇). 跟 alma 协作策划案时主动强调.
 
+## 已登记的 token 例外 (2026-09-28)
+
+以下颜色**故意不登记**为 dizicute token, 在此登记为例外, 以区别于「私自引入 hex」:
+
+| 位置 | 色值 | 用途 | 为什么不登记 |
+|---|---|---|---|
+| `practice.html` 遍数滚轮 (`RepsWheelWidget`) | 17 个灰/米色 (如 `#9E9EA5`→`#BFBFC6`→`#DADAE0`→`#B8B8BF`→`#8C8C93`, `#F8F5F0`, `#F5F1EB`, `#E8E3DB`, `#D9D4CC`, `#D4CEBF`, `#CCC6B7`, `#D1D1D6`, `#C7C7CD`, `#636366`, `#8E8E93`, `#AEAEB2`, `#D4C4A8`) | 拟物滚轮的金属外壳 —— 滚轴肋条渐变 / 内凹投影 / 窗体层次 | 这些是**组件内部拟物光影层次**, 不是语义色; 提为全局 token 会把「材质层次」污染成调色板 |
+| `practice.html` / `report.html` / `config-practice-log.html` / `stage-print.html` | `#C45C26` | 遍数强调色 (「N 遍」数字, 4 个文件同义复用) | **语义色**, 本该登记; 本次先记例外, 待回设计系统登记为 `colors.reps` 之类 |
+
+- 这批色值来自 dad 2026-09-28 认可的滚轮定稿 demo (`docs/demos/practice-reps-wheel-v4-260926.html`), 不是随手引入.
+- **待办**: 下次动设计系统时, 把 `#C45C26` 提为语义 token; 17 个外壳色可收敛成 `practice.html` 内的局部 CSS 变量 (`--reps-*`), 不必进全局调色板.
+
 ## 渠道 (Channels)
 
 dizicute **服务**:
@@ -109,6 +124,6 @@ dizicute **不服务**:
 
 ## 引用
 
-- designrepo dizicute: `/Users/mt16/dev/designrepo/styles/dizicute/`
+- designrepo dizicute: `/Users/mt16/dev/uiux-asset-library/design-system/dizicute/`
 - designrepo catalog: `file:///Users/mt16/dev/designrepo/catalog/index.html`
 - Google DESIGN.md 规范: https://github.com/google-labs-code/design.md

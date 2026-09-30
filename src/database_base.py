@@ -31,6 +31,7 @@ class BaseBackend(ABC):
         content_source: str = "manual",
         is_extra: bool = False,
         started_at: Optional[str] = None,
+        reps: Optional[int] = None,
     ) -> Dict:
         """插入 1 条 practice_session, 返回 dict."""
 
@@ -42,8 +43,10 @@ class BaseBackend(ABC):
         tempo_bpm: Optional[int] = None,
         content: Optional[str] = None,
         duration_minutes: Optional[int] = None,
+        reps: Optional[int] = None,
+        apply_reps: bool = False,
     ) -> Optional[Dict]:
-        """更新 session, duration 变化时重算 daily."""
+        """更新 session, duration 变化时重算 daily. apply_reps 时写入 reps (None=清空)."""
 
     @abstractmethod
     def delete_practice_session(self, session_id: int) -> None:
@@ -62,5 +65,6 @@ class BaseBackend(ABC):
         content_source: str = "manual",
         practice_at: Optional[str] = None,
         is_extra: bool = False,
+        reps: Optional[int] = None,
     ) -> Dict:
         """事务: 写 session + 同步 daily + 写 audit + 更新冗余列."""

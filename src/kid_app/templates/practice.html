@@ -31,47 +31,461 @@
     .modal-actions .btn-stay { background: #4ECDC4; color: white; }
     .modal-actions .btn-leave { background: #FF6B6B; color: white; }
 
-    /* 提前结束确认弹窗 */
+    /* ═══ 提前结束 / 正常结束 确认弹窗 (v4 布局: 左对齐 keyline / 单层平板 / 等高分栏 / sticky 底栏) ═══ */
     #finishEarlyModal {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(45, 35, 25, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
     }
-    #finishEarlyModal.open { display: flex; }
+    #finishEarlyModal.open {
+      display: flex;
+    }
+
+    .fe-modal-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 376px;
+      width: 100%;
+    }
+
+    /* A7: 弹窗容器采用 flex column 架构，支持内部正文滚动 + 动作栏 sticky 固底 */
     .finish-modal-box {
-      background: white; border-radius: 24px; padding: 32px 28px;
-      max-width: 380px; width: 100%; text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 22px 20px 18px;
+      width: 100%;
+      max-width: 376px;   /* v4: 原 demo 由 .fe-modal-wrapper 提供宽度上限, 生产补回 box 自身 */
+      box-shadow: 0 20px 60px rgba(60, 40, 20, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.04);
+      max-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
     }
-    .finish-modal-box .finish-icon { font-size: 48px; margin-bottom: 12px; }
-    .finish-modal-box h3 { font-size: 22px; color: #2E7D32; margin-bottom: 8px; }
-    .finish-modal-box .finish-mins {
-      font-size: 56px; font-weight: 800; color: #4ECDC4;
-      line-height: 1.1; margin: 12px 0;
+
+    .finish-modal-scroll-body {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      width: 100%;
+      /* A1: 全弹窗统一为左起始对齐 (Keyline = 内容左边缘 20px) */
+      text-align: left;
     }
-    .finish-modal-box .finish-mins-label { font-size: 16px; color: #7F8C8D; margin-bottom: 24px; }
-    .finish-modal-actions { display: flex; gap: 10px; flex-direction: column; }
-    .finish-modal-actions.finish-modal-3btns { flex-direction: row; gap: 8px; }
+
+    .finish-modal-screen {
+      width: 100%;
+    }
+
+    /* ── A1 & A5: 顶部 Header 图标 + 标题左对齐，去除多余圆角徽章背景 ── */
+    .fe-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .fe-header-icon {
+      width: 20px;
+      height: 20px;
+      color: #2E7D32;
+      flex-shrink: 0;
+    }
+    .fe-header-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: #2E7D32;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    /* ── 改点 1 & A1: 纯排版时长（无背景无边框，左起始对齐与标题严格对齐） ── */
+    .fe-duration-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 20px; /* A2: 组间距 ≥ 16px */
+    }
+    .fe-duration-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #7F8C8D;
+      letter-spacing: 0.02em;
+      margin-bottom: 2px;
+    }
+    .fe-duration-display {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .finish-mins {
+      font-size: 46px;
+      font-weight: 800;
+      color: #4ECDC4;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .finish-mins-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #5D4037;
+      opacity: 0.9;
+    }
+
+    /* ── A2 & v4: 滚轮模块标题紧贴分栏 (6px) ── */
+    .reps-module-header {
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .reps-module-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #5D4037;
+    }
+
+    /* ── v4: 左右等高分栏对齐网格 (align-items: start; 窄屏弹性收缩无溢出) ── */
+    .reps-module-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(180px, 1.15fr) minmax(140px, 1fr);
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 18px; /* A2: 组间距 ≥ 16px */
+    }
+
+    /* 375px 及以下窄屏响应：压两列下限防溢出，保持左右同一条带视觉隐喻 */
+    @media (max-width: 380px) {
+      .reps-module-grid {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 10px;
+      }
+      .preset-chip {
+        padding: 0 2px;
+        font-size: 12px;
+      }
+    }
+
+    /* ── 改点 2 & v4: 扁平滚轮本体 (高度升至 74px，与右侧 presets-row 严格等高并齐平) ── */
+    .reps-left-col {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .counter-stage.reps-stage {
+      position: relative;
+      width: 100%;
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+      margin: 0 auto;
+    }
+
+    /* 上下相邻数字轨道 (保留渐变透明度与点击步进，72×30 尺寸冻结) */
+    .tape-ribbon-track {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .tape-slot-top {
+      position: absolute;
+      bottom: 37px;
+      width: 72px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 2;
+      transition: transform 120ms ease-out, opacity 120ms ease-out;
+      mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    }
+    .tape-slot-top:hover { transform: translateY(-2px); }
+
+    .tape-slot-bottom {
+      position: absolute;
+      top: 37px;
+      width: 72px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 2;
+      transition: transform 120ms ease-out, opacity 120ms ease-out;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%);
+    }
+    .tape-slot-bottom:hover { transform: translateY(2px); }
+
+    .tape-inner-box {
+      font-size: 16px;
+      font-weight: 700;
+      font-style: italic;
+      color: #9A9287;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    /* v4: reps-band 加高至 74px，纯平底板，与右侧标签块完全等高 */
+    .reps-band {
+      position: relative;
+      width: 100%;
+      height: 74px;
+      border-radius: 8px;
+      background: #F7F4EE;
+      border: 1px solid rgba(93, 64, 55, 0.09);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px 0 10px;
+      gap: 6px;
+      z-index: 3;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* casing 纯平作为触控载体，内部 drum 垂直居中 */
+    .roller-casing {
+      position: relative;
+      flex: 1;
+      height: 100%;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+    .roller-casing:active {
+      cursor: grabbing;
+    }
+
+    .roller-drum {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      perspective: 800px;
+    }
+    .drum-value {
+      font-size: 26px;
+      font-weight: 800;
+      font-style: italic;
+      color: #2C3E50;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      transition: transform 120ms cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 100ms ease;
+    }
+    .drum-value.empty-state {
+      font-style: normal;
+      font-size: 21px;
+      font-weight: 600;
+      color: #7F8C8D;
+    }
+
+    /* A3 & B2: 步进按键高 24px (触控合成 52px 竖向区)，垂直居中置于 74px 带中 */
+    .stepper-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+      justify-content: center;
+    }
+    .stepper-btn {
+      width: 30px;
+      height: 24px;
+      min-height: 24px;
+      border: 1px solid rgba(93, 64, 55, 0.12);
+      background: #FFFFFF;
+      border-radius: 4px;
+      color: #5D4037;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform 120ms ease-out, background-color 120ms ease-out, border-color 120ms ease-out;
+    }
+    .stepper-btn:hover {
+      background: #EFEBE4;
+      border-color: rgba(93, 64, 55, 0.22);
+    }
+    .stepper-btn:active {
+      transform: scale(0.96);
+      background: #E5DFD6;
+    }
+    .stepper-btn svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+    .stepper-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── 右侧区块：快速档位 (74px: 2 行 × 34px + 6px 间隙) 与状态反馈 ── */
+    .reps-right-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 8px; /* A2: 组内距 6-8px */
+      min-width: 0;
+    }
+
+    /* A3: 触控目标抬高至 34px，间隙 6px，同心圆角 r4 */
+    .presets-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+    .preset-chip {
+      height: 34px;
+      min-height: 34px;
+      padding: 0 4px;
+      border-radius: 4px;
+      border: 1px solid rgba(93, 64, 55, 0.12);
+      background: #FFFFFF;
+      color: #5D4037;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
+      white-space: nowrap;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .preset-chip:hover {
+      border-color: #FF6B6B;
+      color: #FF6B6B;
+      background: #FFF9F8;
+    }
+    .preset-chip.active {
+      background: #FF6B6B;
+      color: #FFFFFF;
+      border-color: #FF6B6B;
+      box-shadow: 0 2px 6px rgba(255, 107, 107, 0.25);
+    }
+
+    /* 状态反馈行：居于 74px 标签块下方，与左侧下浮动数字 bottomSlot 处在同一下沿区 */
+    .reps-result-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 2px;
+      font-size: 12px;
+      color: #7F8C8D;
+      font-weight: 500;
+      min-height: 18px;
+    }
+    .capsule-summary-text {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FF6B6B;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── A7: 底部动作按钮行 (作为 sticky footer，独立于滚动区) ── */
+    .finish-modal-actions {
+      display: flex;
+      gap: 8px;
+      flex-direction: row;
+      flex-shrink: 0;
+      width: 100%;
+    }
     .finish-modal-actions button {
-      padding: 14px 8px; border: none; border-radius: 16px;
-      font-size: 16px; font-weight: bold; cursor: pointer;
-      transition: transform 0.15s;
+      padding: 12px 8px;
+      height: 44px;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease-out, opacity 120ms ease-out;
       flex: 1;
       white-space: nowrap;
       min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .finish-modal-actions button:active { transform: scale(0.96); }
     .finish-modal-actions .btn-confirm,
-    .finish-modal-actions .btn-submit { background: linear-gradient(135deg, #4ECDC4, #44B8AC); color: white; }
+    .finish-modal-actions .btn-submit {
+      background: linear-gradient(135deg, #4ECDC4, #44B8AC);
+      color: white;
+      box-shadow: 0 4px 12px rgba(78, 205, 196, 0.35);
+    }
     .finish-modal-actions .btn-cancel,
-    .finish-modal-actions .btn-resume { background: #F0D060; color: #5D4037; }
-    .finish-modal-actions .btn-abort { background: #F0F0F0; color: #888; }
+    .finish-modal-actions .btn-resume {
+      background: #F0D060;
+      color: #5D4037;
+      box-shadow: 0 4px 12px rgba(240, 208, 96, 0.35);
+    }
+    .finish-modal-actions .btn-abort {
+      background: #F0F0F0;
+      color: #888888;
+    }
 
-    /* 正常结束确认弹窗（修复：正常结束不再自动提交，等待用户点确认/放弃） */
+    /* 正常结束确认弹窗 (与提前结束同一套布局语言) */
     #finishNormalModal {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
       z-index: 200; align-items: center; justify-content: center; padding: 20px;
     }
     #finishNormalModal.open { display: flex; }
+
+    /* Screen 2: 二次确认不记遍数 */
+    .finish-screen-zero {
+      padding: 4px 0 10px;
+      text-align: left;
+    }
+    .finish-screen-zero .fe-header-row {
+      margin-bottom: 10px;
+    }
+    .finish-screen-zero .fe-header-icon {
+      color: #5D4037;
+    }
+    .finish-screen-zero p {
+      font-size: 14px;
+      color: #7F8C8D;
+      line-height: 1.55;
+      margin: 10px 0 16px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .drum-value, .tape-slot-top, .tape-slot-bottom, .stepper-btn {
+        transition: none !important; animation: none !important;
+      }
+    }
 
     /* 顶部状态栏 */
     .top-bar {
@@ -577,6 +991,7 @@
     .rg-mins { font-size: 13px; font-weight: 600; color: #FF6B6B; }
     .record-session { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px 8px; font-size: 13px; color: #6D5540; border-left: 2px solid #E8D8B0; margin: 2px 0; }
     .rs-tempo { font-weight: 600; color: #8B6914; min-width: 50px; }
+    .rs-reps { font-weight: 600; color: #C45C26; min-width: 36px; }
     .rs-content { flex: 1; color: #5D4037; }
     .rs-mins { color: #A88B5C; font-size: 12px; min-width: 40px; text-align: right; }
     .rs-del { background: none; border: 1px solid #E0D0A0; color: #C06060; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer; }
@@ -1040,7 +1455,7 @@
   <!-- 计时器保护弹窗 -->
   <div id="timerProtectModal">
     <div class="modal-box">
-      <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span> 计时器还在跑</h3>
+      <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M10 2h4"/><path d="M12 2v3"/></svg></span> 计时器还在跑</h3>
       <p>离开这个页面的话，计时会取消哦！</p>
       <div class="modal-actions">
         <button class="btn-stay" onclick="closeTimerProtect()">继续练习</button>
@@ -1050,12 +1465,84 @@
   </div>
 
   <!-- 提前结束确认弹窗 -->
-  <div id="finishEarlyModal">
+  <!-- ═══─ 提前结束确认弹窗 (v4) ─── -->
+  <div id="finishEarlyModal" role="dialog" aria-modal="true" aria-label="提前结束练习">
     <div class="finish-modal-box">
-      <div class="finish-icon"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 159 149" fill="currentColor" aria-hidden="true"><path d="M27.9 9.4A29 29 0 0 0 14 19.3c-5.9 8-6.1 10-5.8 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 57.3.3 42.7.3 42.9 2.7 48.1a30 30 0 0 0 15.7 14.9c4.6 1.8 8.1 1.9 52.9 1.9s48.3-.1 52.9-1.9a30 30 0 0 0 15.4-14c2.4-4.8 2.6-6.5 3.5-25.1 1-23.1.3-66.4-1.2-71.5A31 31 0 0 0 130 9a1085 1085 0 0 0- 102.1.4m104.2 4.2a27 27 0 0 1 13.6 14.8c1.6 4.6 1.8 9.2 1.8 46.1 0 46.9-.2 48.2-8 56-7.5 7.6-7.7 7.6- 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 61.6 7.3l-47.4-.3-5.3-3a25 25 0 0 1-12.1-15c-.7-2.6-1.1-18-1.1-44.6 0-33.6.3-41.4 1.5-45.7A25 25 0 0 1 32.2 12c2.4-.4 24.8-.8 49.8-.7 44 .2 45.6.3 50.1 2.3"/><path d="M30.3 27.5a9 9 0 0 0-4.2 3.4A138 138 0 0 0 25 56c0 23 0 23.1 2.4 25.5 1.3 1.3 3.9 2.6 5.7 3s24 .5 49.2.3l45.9-.3 2.4-2.8c2.4-2.8 2.4- 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 2.9 2.4-25.8 0-14.6-.4-23.8-1.1-25.1-2.5-4.6-4.9-4.8-53.1-4.8-36.2.1-45.9.4-48.5 1.5M128 32c1.9 1.9 2 3.3 2 23.3 0 17.6-.3 21.6-1.6 23.5l-1.5 2.2H31l-1.5-2.4c-1.4-2.1-1.6-5.7-1.3-24.1.3-20.1.4-21.8 2.2- 23.1 1.7-1.2 10-1.4 48.8-1.4 45.5 0 46.9.1 48.8 2M40.4 99.4a12.6 12.6 0 0 0-6 17.5c2.6 4.8 10.6 6.7 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 16.4 3.7 8-4.2 7.1-17.7-1.5-21.2-4-1.7-4.9-1.7-8.9 0m8.7 3.9c2.1 1.6 3.9 5.1 3.9 7.7 0 3-5.3 8-8.5 8- 3.5 0-8.5-5-8.5-8.5 0-5.8 8.7-10.6 13.1-7.2m27.7-4.5c-1.6.2-4 1.8-5.8 3.8a12 12 0 0 0 5.4 19.4c5.7 1.9 12.5-2.1 14.6-8.5.9-2.6.7-4.1-.5-7.3q-3.5-8.6-13.7-7.4m8.3 6.1q5.7 5.6 0 11.2-5.3 5.3-10.7.5c- 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 5.6-4.7-2-14.6 5.2-14.6 1.5 0 3.8 1.2 5.5 2.9m24.2-5.5c-3.9 1.8-7.3 7-7.3 11.2 0 7.5 8.5 13.7 15.6 11.4a12 12 0 0 0 3.4-21.1 12 12 0 0 0-11.7-1.5m10.2 4.9c5.7 4.9 2 14.7-5.6 14.7-7 0-10.6-9.4-5.4-14.5 3.1-3.2 7.5-3.2 11-.2"/></svg></span></div>
-      <h3>提前结束练习</h3>
-      <div class="finish-mins" id="finishMinsDisplay">0</div>
-      <div class="finish-mins-label">分钟</div>
+      <div class="finish-modal-scroll-body">
+        <div id="feScreen1" class="finish-modal-screen">
+          <div class="fe-header-row">
+            <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M10 2h4"/><path d="M12 2v3"/></svg>
+            <h3 class="fe-header-title">提前结束练习</h3>
+          </div>
+
+          <div class="fe-duration-section">
+            <span class="fe-duration-label">本次练习时长</span>
+            <div class="fe-duration-display">
+              <span class="finish-mins" id="finishMinsDisplay">0</span>
+              <span class="finish-mins-label">分钟</span>
+            </div>
+          </div>
+
+          <div class="reps-module-header"><span class="reps-module-title">练习遍数</span></div>
+          <div class="reps-module-grid">
+            <div class="reps-left-col">
+              <div class="counter-stage reps-stage" id="stageEarly">
+                <div class="tape-ribbon-track" id="ribbonWrapEarly">
+                  <div class="tape-slot-top" id="topSlotEarly" title="点击选择此项" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(-1)">
+                    <div class="tape-inner-box" id="topValEarly">—</div>
+                  </div>
+                  <div class="tape-slot-bottom" id="bottomSlotEarly" title="点击选择此项" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(1)">
+                    <div class="tape-inner-box" id="bottomValEarly">1</div>
+                  </div>
+                </div>
+                <div class="reps-band">
+                  <div class="roller-casing" id="casingEarly">
+                    <div class="roller-drum" id="drumEarly">
+                      <div class="drum-value empty-state" id="drumValEarly">—</div>
+                    </div>
+                  </div>
+                  <div class="stepper-card">
+                    <button type="button" class="stepper-btn" id="btnUpEarly" aria-label="增加一遍" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(1)">
+                      <svg viewBox="0 0 24 24"><path d="M12 7l-6 6h12z"/></svg>
+                    </button>
+                    <button type="button" class="stepper-btn" id="btnDownEarly" aria-label="减少一遍" onclick="if(window.repsWheelEarly) window.repsWheelEarly.step(-1)">
+                      <svg viewBox="0 0 24 24"><path d="M12 17l6-6H6z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="reps-right-col">
+              <div class="presets-row" id="presetsEarly">
+                <button type="button" class="preset-chip active" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(0)">不记</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(1)">1 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(3)">3 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(5)">5 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(10)">10 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelEarly) window.repsWheelEarly.set(20)">20 遍</button>
+              </div>
+              <div class="reps-result-row">
+                <span>已选：</span>
+                <span class="capsule-summary-text" id="statusTagEarly">不记遍数</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+          <div id="feScreen2" class="finish-modal-screen finish-screen-zero" style="display:none">
+            <div class="fe-header-row">
+              <span class="icon-inline"><svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+              <h3 class="fe-header-title">本次不记录遍数？</h3>
+            </div>
+            <p>当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+            <div class="finish-modal-actions">
+              <button type="button" class="btn-resume" onclick="showScreenEarly(1)">返回修改</button>
+              <button type="button" class="btn-submit" onclick="confirmZeroFinishEarly()">确认不记遍数</button>
+            </div>
+          </div>
+      </div>
+
       <div class="finish-modal-actions finish-modal-3btns">
         <button class="btn-submit" onclick="confirmFinishEarly()">提交</button>
         <button class="btn-resume" onclick="cancelFinishEarly()">继续练</button>
@@ -1064,16 +1551,87 @@
     </div>
   </div>
 
-  <!-- 正常结束确认弹窗（修复：纯计时到点不再自动提交，弹此窗让用户选 打卡/放弃） -->
-  <div id="finishNormalModal">
+  <!-- ═══─ 正常结束确认弹窗 (v4) ─── -->
+  <div id="finishNormalModal" role="dialog" aria-modal="true" aria-label="练习完成">
     <div class="finish-modal-box">
-      <div class="finish-icon"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 156 151" fill="currentColor" aria-hidden="true"><path d="M121.7 7.7c-.3.5-1.3 3.6-2.2 6.9a32 32 0 0 1-4.7 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.3 5 9.2 8-.1q4.2-12.7 14.6-15.7c2.4-.7 5.1-1.8 5.9-2.6 1.3-1.1 1.3-1.5 0-2.6-.8-.8-3.5-1.9-6-2.7- 6.6-1.8-12.4-8-14.5-15.5l-2-7.3c-.5-1.3-3.1-1.7-3.8-.5m11 24.8c1.8 1.1 3.2 2.2 3.2 2.5s-1.9 1.9-4.2 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 2.5a26 26 0 0 0 6.2-6.5l3-4.5 3 4.5c1.6 2.5 4.4 5.4 6.2 6.5m-98.1-9c-.3.9-.6 2.5-.6 3.5 0 4.3-4.3 13.1-8.5 17.4a20 20 0 0 1-10.6 6.3c-5.1 1.5-6.5 2.4-6.7 4.1q-.6 2.2 2.5 2.8c10.8 2.4 16 6.1 20.2 14.5 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 16.9c9.2-2.9 9.3-5.1.5-7.8-10.5-3.3-16.4-9.8-19.3-21.5-1.3-5.1-2.1-6.7-3.6-6.9q-2-.2-2.7 1.3m12.6 26.6a25 25 0 0 0 6.1 3.9c.6 0-.9 1.3-3.4 2.9-5.3 3.4-8 6.3-10.7 11.4l-2.1 3.9-1.6-3.4a37 37 0 0 0- 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 16.1c-.6.7-1.5 3.9-2.1 7a35.5 35.5 0 0 1-28.7 28.7c-3.4.5-4 1-4 3.1s.6 2.5 4.5 3.2a35 35 0 0 1 28.6 28.6c1.3 8.4 5.6 8.2 7.4-.5a35 35 0 0 1 25.8-27.8q13-4.2 1.2-7.5c-15.4-4.6-23.8-13.5-27.1-28.5q-2.3- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 4.9a46 46 0 0 0-17.2-16.8l-3.8-1.6 5.1-2.6c6-3 13-10.4 16.2-17l2.2-4.7 2.9 5.4a56 56 0 0 0 6.7 9.2"/ ></svg></span></div>
-      <h3>练习完成!</h3>
-      <div class="finish-mins" id="finishNormalMinsDisplay">0</div>
-      <div class="finish-mins-label">分钟</div>
+      <div class="finish-modal-scroll-body">
+        <div id="fnScreen1" class="finish-modal-screen">
+          <div class="fe-header-row">
+            <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.4l2.6 2.6 4.6-5.2"/></svg>
+            <h3 class="fe-header-title">练习完成!</h3>
+          </div>
+
+          <div class="fe-duration-section">
+            <span class="fe-duration-label">本次练习时长</span>
+            <div class="fe-duration-display">
+              <span class="finish-mins" id="finishNormalMinsDisplay">0</span>
+              <span class="finish-mins-label">分钟</span>
+            </div>
+          </div>
+
+          <div class="reps-module-header"><span class="reps-module-title">练习遍数</span></div>
+          <div class="reps-module-grid">
+            <div class="reps-left-col">
+              <div class="counter-stage reps-stage" id="stageNormal">
+                <div class="tape-ribbon-track" id="ribbonWrapNormal">
+                  <div class="tape-slot-top" id="topSlotNormal" title="点击选择此项" onclick="if(window.repsWheelNormal) window.repsWheelNormal.step(-1)">
+                    <div class="tape-inner-box" id="topValNormal">—</div>
+                  </div>
+                  <div class="tape-slot-bottom" id="bottomSlotNormal" title="点击选择此项" onclick="if(window.repsWheelNormal) window.repsWheelNormal.step(1)">
+                    <div class="tape-inner-box" id="bottomValNormal">1</div>
+                  </div>
+                </div>
+                <div class="reps-band">
+                  <div class="roller-casing" id="casingNormal">
+                    <div class="roller-drum" id="drumNormal">
+                      <div class="drum-value empty-state" id="drumValNormal">—</div>
+                    </div>
+                  </div>
+                  <div class="stepper-card">
+                    <button type="button" class="stepper-btn" id="btnUpNormal" aria-label="增加一遍" onclick="if(window.repsWheelNormal) window.repsWheelNormal.step(1)">
+                      <svg viewBox="0 0 24 24"><path d="M12 7l-6 6h12z"/></svg>
+                    </button>
+                    <button type="button" class="stepper-btn" id="btnDownNormal" aria-label="减少一遍" onclick="if(window.repsWheelNormal) window.repsWheelNormal.step(-1)">
+                      <svg viewBox="0 0 24 24"><path d="M12 17l6-6H6z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="reps-right-col">
+              <div class="presets-row" id="presetsNormal">
+                <button type="button" class="preset-chip active" onclick="if(window.repsWheelNormal) window.repsWheelNormal.set(0)">不记</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelNormal) window.repsWheelNormal.set(1)">1 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelNormal) window.repsWheelNormal.set(3)">3 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelNormal) window.repsWheelNormal.set(5)">5 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelNormal) window.repsWheelNormal.set(10)">10 遍</button>
+                <button type="button" class="preset-chip" onclick="if(window.repsWheelNormal) window.repsWheelNormal.set(20)">20 遍</button>
+              </div>
+              <div class="reps-result-row">
+                <span>已选：</span>
+                <span class="capsule-summary-text" id="statusTagNormal">不记遍数</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+          <div id="fnScreen2" class="finish-modal-screen finish-screen-zero" style="display:none">
+            <div class="fe-header-row">
+              <span class="icon-inline"><svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+              <h3 class="fe-header-title">本次不记录遍数？</h3>
+            </div>
+            <p>当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+            <div class="finish-modal-actions">
+              <button type="button" class="btn-cancel" onclick="showScreenNormal(1)">返回修改</button>
+              <button type="button" class="btn-confirm" onclick="confirmZeroFinishNormal()">确认不记遍数</button>
+            </div>
+          </div>
+      </div>
+
       <div class="finish-modal-actions">
-        <button class="btn-confirm" onclick="confirmFinishNormal()"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 119 91" fill="currentColor" aria-hidden="true"><path d="M104 11.7 81.1 36 51.7 67.3A199 199 0 0 1 38.1 81c-.4 0-7.2-7-15.1-15.5C9.4 50.9 5.5 47.9 5.5 52.2A293 293 0 0 0 38.4 87c.7 0 12.3-11.8 25.8-26.3l37.2- 0-7.2-7-15.1-15.5C9.4 50.9 5.5 47.9 5.5 52.2A293 293 0 0 0 38.4 87c.7 0 12.3-11.8 25.8-26.3l37.2- 39.6a94 94 0 0 0 12.3-14.5c-.9-2.7-3.8-1.2-9.7 5.1"/></svg></span> 打卡记录</button>
-        <button class="btn-cancel" onclick="cancelFinishNormal()"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 118 119" fill="currentColor" aria-hidden="true"><path d="M5.3 7.6c-.4 1.1 6.5 8.7 24.7 26.9l25.2 25.3-24.3 24.7C7.2 108.6 3.7 112.9 8 113.8c.9.1 12.1-10.4 26.5-24.8l25-25.1 24.8 25A623 623 0 0 0 110 114c1.8 0 3.1-2.9 2.1-4.7-.5-1-11.8-12.6-25-25.8L63 59.5l25.2-25.2C112.9 9.6 115.7 6 110.3 6c-1 0-12.8 11-26.5 24.7L59 55.5 34.2 30.7A274 274 0 0 0 7.7 6Q6 6.1 5.3 7.6"/></svg></span> 放弃</button>
+        <button class="btn-confirm" onclick="confirmFinishNormal()">打卡记录</button>
+        <button class="btn-cancel" onclick="cancelFinishNormal()">放弃</button>
       </div>
     </div>
   </div>
@@ -1086,7 +1644,7 @@
 
   <!-- 练习科目选择 -->
   <div class="item-section card">
-    <h2><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 68 119" fill="currentColor" aria-hidden="true"><path d="M36.7 5.7c-.2.4-.8 19-1.2 41.3s-.8 40.6-1 40.8q-.5.3- 2.3-.7c-1.2-.6-4.5-1.1-7.4-1.1C14 86 4.6 93.4 3.3 102.9c-.5 3.6-.2 4.4 3 7.6s4 3.5 9.1 3.5c6.8 0 10.9-1.6 16.1-6.1 6.3-5.5 6.6-7.2 7.6-38.4l.9-33.8V30l4 2a30 30 0 0 1 13.6 13.6c2.4 4.8 2.6 6.3 2.2 12.8-.4 5.4-1.3 9-3.2 13-1.5 3.1-2.4 6.1-2.1 6.6 1.1 1.8 3-.5 6.6-8.2 3-6.5 3.3-8.2 3.3-16.3.1-11.5- 2.3-16.9-12.3-27.9-7.6-8.3-10-12.1-11.1-17.1-.5-2.8-3.2-4.6-4.3-2.8"/></svg></span> 选择练习项目</h2>
+    <h2><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span> 选择练习项目</h2>
 
     <!-- 选中后收拢展示 -->
     <div class="selected-summary" id="selectedSummary">
@@ -1204,7 +1762,7 @@
         <div class="picker-card">
           <div class="activity-wheel" id="extraWheel"></div>
           <div class="picker-col">
-            <div class="picker-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 78 130" fill="currentColor" aria-hidden="true"><path d="M33.4 6.8c-1.6 1-4.8 7.6-17.9 36.8A211 211 0 0 1 4.4 70.7c.4 1 3.3 1.3 11.6 1.3 6 0 11 .2 11 .5S23.6 83.9 19.4 97a221 221 0 0 0-6.9 25q.6 1 2 1c1.8 0 59- 70.6 59-72.8 0-1.5-1.5-1.7-12.2-2-6.8-.1-12.3-.5-12.3-.7 0-.3 4.3-9.1 9.5-19.6 7.7-15.2 9.4-19.4 8.4- 20.5S62.4 6 50.1 6c-8.6 0-16.1.4-16.7.8M61 11.5c0 .3-4.3 9.1-9.6 19.6a127 127 0 0 0-9 20.5c.4 1 3.5 1.4 12.1 1.6l11.6.3-12.2 15-22.6 27.7a107 107 0 0 1-10.3 12c0-.4 2.7-9 6-19.2s6-19 6-19.6c0-1.9-2.6- 2.4-13-2.4h-9.8L18 49.7l12.8-28L35.9 11h12.5c6.9 0 12.6.2 12.6.5"/></svg></span> 补录</div>
+            <div class="picker-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6v6l3.644 1.822"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M21.92 13.267a10 10 0 1 0-8.653 8.653"/></svg></span> 补录</div>
             <div class="dial-knob" id="extraKnobEl">
               <div class="dial-disc"></div>
               <svg class="dial-ticks" id="extraTicks" viewBox="-110 -110 220 220"></svg>
@@ -1237,6 +1795,10 @@
               <button type="button" class="bpm-step" onclick="stepExtraBpm(1)" aria-label="加1">+</button>
             </div>
             <input type="hidden" id="extraBpmInput" value="80">
+            <div class="sp-reps-group" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;">
+              <span class="sp-tempo-label" style="font-size:13px;color:#8B6914;">遍数</span>
+              <input type="number" id="extraRepsInput" min="1" max="99" placeholder="—" style="width:48px;padding:3px 4px;border:1px solid #d4c4a8;border-radius:6px;font-size:13px;text-align:center;background:#fff;color:#5D4037;">
+            </div>
           </div>
           <div class="sp-content-tags" id="extraContentTags"></div>
           <input type="text" class="sp-content-input" id="extraContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="补录内容">
@@ -1249,7 +1811,7 @@
 
   <!-- 今日练习记录 -->
   <div class="card today-records">
-    <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 129 182" fill="currentColor" aria-hidden="true"><path d="M55 11.2c-4.9 2.5-9 7.7-9 11.4 0 2.2-.4 2.4-4.8 2.4- 4.9 0-9.2 2.1-9.2 4.5 0 1-2.3 1.4-9.1 1.7-8.7.3-9.2.4-11.9 3.5-2.2 2.5-3 4.5-3.5 9.5-.3 3.5-.5 31.8-.3 63 .3 55.5.3 56.7 2.4 59.5 4.4 6.1 6 6.3 37.9 6.2 16 0 37.7-.4 48.3-.7l19.4-.7 3.3-3.6 3.3- 3.6.7-39.9c1-50.7.2-81.4-2.3-86.4s-7-7-16.4-7c-6.1 0-7.8-.3-7.8-1.4 0-2.5-4.2-4.6-9.2-4.6-4.4 0- 4.8-.2-4.8-2.4 0-2.8-3.5-8.2-7.3-11-4.3-3.1-14-3.4-19.7-.4m17.2 4.4c4 2.1 5 4.5 5.7 13.6.1.4 3.1.8 6.9 1l6.7.3.3 6c.5 10.4 1.5 10-27.6 10-19.9 0-25.2-.3-26.6-1.4-1.3-1.1-1.6-2.8-1.4-8l.3-6.6 6.8-.3 6.7-.3v-3C50 16 61.5 10.2 72.2 15.6M31.3 41c.5 4.3 1.2 6 3.2 7.7C37.1 51 37.6 51 64.1 51h27l2.4- 2.5c2-1.9 2.5-3.4 2.5-7.5v-5h7.8c9.1 0 11.6 1.3 13.2 6.8 1.4 5.3 1.4 114.8-.1 119.1a9 9 0 0 1-3.3 4.3c-2.5 1.4-62.4 2.8-83 2-11.5-.5-13.1-.8-15.5-2.8l-2.6-2.2-.6-45.9c-.3-25.2-.3-52.8.1-61.5.7-19.9 1.3-20.7 13.6-20.4l5.2.1z"/><path d="M32.2 77.3C27.8 81.9 30.8 89 37 89c6.3 0 9.3-7.5 4.7-11.8-3-2.8- 6.8-2.8-9.5.1m7.1 4.1c.7 1.9-1.8 4-3.8 3.2-1.5-.6-2-2.8-.8-3.9s4.1-.7 4.6.7m23.7-.5c-5.7.5-7.5 1-7.5 2.1 0 1.3 3 1.5 19.8 1.8 17.4.2 19.8.1 20.4-1.4q.4-1.6-.8-2.5c-1.5-.9-19.4-.9-31.9 0M32 103a8 8 0 0 0-2 5 7 7 0 0 0 11.8 5 7 7 0 0 0-4.8-12 8 8 0 0 0-5 2m6.9 3.3q1.2 1.4-.4 3.3c-1.3 1.8-1.5 1.8-3.1.2- 1.4-1.4-1.5-2-.4-3.2 1.5-1.9 2.4-2 3.9-.3m17.3 0c-2.7 3.3 0 3.8 19.9 3.5 18.6-.3 19.4-.4 19.4- 2.3s-.8-2-19.1-2.3c-14.8-.2-19.4.1-20.2 1.1m-24.6 22.9c-5.3 7.5 4.1 16.1 10.2 9.5 4.6-4.8 1.7-11.7- 4.8-11.7-2.9 0-4.3.6-5.4 2.2m7.4 3.3c1.5 1.8.5 3.5-2 3.5-1 0-2.2-.5-2.5-1-.7-1.1 1.2-4 2.5-4q.8.1 2 1.5m17 0c-2.5 3 0 3.5 19.4 3.5 19.6 0 23-.6 20.5-3.7-1.7-2-38.2-1.9-39.9.2"/></svg></span> 今日练习记录</h3>
+    <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg></span> 今日练习记录</h3>
     <!-- 2026-07-27 fix: 明显展示今日总时长 + 科目数 + session 数 (dad 看不到位置) -->
     <div class="today-summary-bar" id="todaySummaryBar">
       <div class="tsb-main">
@@ -1398,6 +1960,216 @@
       try {
         new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQYMTYq9n6p7IQQ5jcOyp5mMZEA3YK3b4LyDeEBpp9XjtnVJUJLU4s2zak1ToNXm4qd2UFmn1eXeqHFWYqrc5cClcF5sreDnw5B0YW2s4OPGj3hmcLDl5cB/dGVysujnxH13aHS07enGf3dqdrTu6sR6eGx4tO/qw3l9b3q18OnBdn9xe7bx6sB4gHF9ufLqwHWAdn+69OvAdoF3gL316r53gnmCefTrvneDeoN69e28d4N7g3n17rx3hHyEevXuuneFfIV79u67d4Z9hXv27rt3h3yGfPbuuneHfod99u67d4h+h3z27rt3iH+Hffbuu3eIf4d99u67d4hA').play();
       } catch(e) {}
+    }
+
+    // Mechanical click sound for Reps Wheel (WebAudio API)
+    let _repsAudioCtx = null;
+    function playMechanicalClick(freq = 1100) {
+      try {
+        if (!_repsAudioCtx) {
+          _repsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (_repsAudioCtx.state === 'suspended') {
+          _repsAudioCtx.resume();
+        }
+        const osc = _repsAudioCtx.createOscillator();
+        const gain = _repsAudioCtx.createGain();
+        const filter = _repsAudioCtx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, _repsAudioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(120, _repsAudioCtx.currentTime + 0.024);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(800, _repsAudioCtx.currentTime);
+        filter.Q.setValueAtTime(2.5, _repsAudioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.14, _repsAudioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, _repsAudioCtx.currentTime + 0.024);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(_repsAudioCtx.destination);
+
+        osc.start();
+        osc.stop(_repsAudioCtx.currentTime + 0.026);
+      } catch (e) {}
+    }
+
+    /* ═══ 物理滚轮核心逻辑控制器 (Variant A 暖白版) ═══ */
+    class RepsWheelWidget {
+      constructor(prefix, initialValue = 0) {
+        this.prefix = prefix;
+        this.min = 0;   // 0 = "—" (不记)
+        this.max = 24;  // UI 最大 24
+        this.value = initialValue;
+
+        // DOM Elements
+        this.casing = document.getElementById(`casing${prefix}`);
+        this.drumVal = document.getElementById(`drumVal${prefix}`);
+        this.topVal = document.getElementById(`topVal${prefix}`);
+        this.bottomVal = document.getElementById(`bottomVal${prefix}`);
+        this.topSlot = document.getElementById(`topSlot${prefix}`);
+        this.bottomSlot = document.getElementById(`bottomSlot${prefix}`);
+        this.statusTag = document.getElementById(`statusTag${prefix}`);
+        this.btnUp = document.getElementById(`btnUp${prefix}`);
+        this.btnDown = document.getElementById(`btnDown${prefix}`);
+        this.stage = document.getElementById(`stage${prefix}`);
+        this.presetsContainer = document.getElementById(`presets${prefix}`);
+
+        this.initEvents();
+        this.render(false);
+      }
+
+      formatLabel(val) {
+        if (val === 0) return '—';
+        return String(val);
+      }
+
+      set(newVal, withSound = true) {
+        const clamped = Math.max(this.min, Math.min(this.max, newVal));
+        if (clamped !== this.value) {
+          const direction = clamped > this.value ? 1 : -1;
+          this.value = clamped;
+          if (withSound && typeof playMechanicalClick === 'function') {
+            playMechanicalClick(clamped === 0 ? 800 : 1100 + clamped * 20);
+          }
+          this.animateRoll(direction);
+        } else {
+          this.render(false);
+        }
+      }
+
+      step(delta) {
+        this.set(this.value + delta, true);
+      }
+
+      animateRoll(direction) {
+        if (!this.drumVal) return;
+        this.drumVal.style.transition = 'none';
+        this.drumVal.style.transform = `translateY(${direction * 14}px) rotateX(${direction * -22}deg)`;
+        this.drumVal.style.opacity = '0.35';
+
+        void this.drumVal.offsetHeight;
+
+        this.drumVal.style.transition = 'transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.18s ease';
+        this.drumVal.style.transform = 'translateY(0) rotateX(0deg)';
+        this.drumVal.style.opacity = '1';
+
+        this.render(true);
+      }
+
+      render(isAnimated = false) {
+        if (!this.drumVal) return;
+        const cur = this.value;
+        const prev = cur - 1;
+        const next = cur + 1;
+
+        // 1. 中央当前项
+        if (cur === 0) {
+          this.drumVal.textContent = '—';
+          this.drumVal.classList.add('empty-state');
+        } else {
+          this.drumVal.textContent = cur;
+          this.drumVal.classList.remove('empty-state');
+        }
+
+        // 2. 上方前一项 (更小的值; 点它 = 减少)
+        if (this.topSlot && this.topVal) {
+          if (prev >= this.min) {
+            this.topSlot.style.display = 'flex';
+            this.topVal.textContent = this.formatLabel(prev);
+            this.topSlot.style.opacity = '1';
+          } else {
+            this.topSlot.style.display = 'none';
+          }
+        }
+
+        // 3. 下方后一项 (更大的值; 点它 = 增加)
+        if (this.bottomSlot && this.bottomVal) {
+          if (next <= this.max) {
+            this.bottomSlot.style.display = 'flex';
+            this.bottomVal.textContent = this.formatLabel(next);
+            this.bottomSlot.style.opacity = '1';
+          } else {
+            this.bottomSlot.style.display = 'none';
+          }
+        }
+
+        // 4. 按钮禁用状态 (▲ 增加至 max 禁用, ▼ 减少至 min 禁用)
+        if (this.btnUp) this.btnUp.disabled = cur >= this.max;
+        if (this.btnDown) this.btnDown.disabled = cur <= this.min;
+
+        // 5. 状态说明
+        if (this.statusTag) {
+          this.statusTag.textContent = cur === 0 ? '不记遍数' : `${cur} 遍`;
+        }
+
+        // 6. 预设 chip 激活态高亮
+        if (this.presetsContainer) {
+          this.presetsContainer.querySelectorAll('.preset-chip').forEach(chip => {
+            const chipVal = parseInt(chip.textContent) || 0;
+            if (chipVal === cur || (chip.textContent.includes('不记') && cur === 0)) {
+              chip.classList.add('active');
+            } else {
+              chip.classList.remove('active');
+            }
+          });
+        }
+      }
+
+      initEvents() {
+        if (!this.casing) return;
+        let isDragging = false;
+        let startY = 0;
+        let startVal = 0;
+        const STEP_THRESHOLD = 28;
+
+        const onPointerDown = (e) => {
+          isDragging = true;
+          startY = e.clientY;
+          startVal = this.value;
+          try { this.casing.setPointerCapture(e.pointerId); } catch (_) {}
+        };
+
+        const onPointerMove = (e) => {
+          if (!isDragging) return;
+          const dy = e.clientY - startY;
+          const deltaSteps = Math.trunc(dy / STEP_THRESHOLD);
+          const targetVal = startVal + deltaSteps;
+          if (targetVal !== this.value) {
+            this.set(targetVal, true);
+          }
+        };
+
+        const onPointerUp = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          try { this.casing.releasePointerCapture(e.pointerId); } catch (_) {}
+        };
+
+        this.casing.addEventListener('pointerdown', onPointerDown);
+        this.casing.addEventListener('pointermove', onPointerMove);
+        this.casing.addEventListener('pointerup', onPointerUp);
+        this.casing.addEventListener('pointercancel', onPointerUp);
+
+        // 鼠标滚轮支持
+        if (this.stage) {
+          let wheelTimeout = null;
+          let wheelAccum = 0;
+          this.stage.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            wheelAccum += e.deltaY;
+            if (Math.abs(wheelAccum) >= 24) {
+              const step = wheelAccum > 0 ? 1 : -1;
+              this.step(step);
+              wheelAccum = 0;
+            }
+            clearTimeout(wheelTimeout);
+            wheelTimeout = setTimeout(() => { wheelAccum = 0; }, 140);
+          }, { passive: false });
+        }
+      }
     }
 
     // Fire confetti
@@ -2097,6 +2869,8 @@
           // 修复：正常结束不再自动提交，弹 finishNormalModal 让用户点 打卡/放弃
           document.getElementById('finishNormalMinsDisplay').textContent = duration;
           document.getElementById('confirmMins').textContent = duration;
+          showScreenNormal(1);
+          if (window.repsWheelNormal) window.repsWheelNormal.set(0, false);
           const normalModal = document.getElementById('finishNormalModal');
           normalModal.classList.add('open');
           celebrateVine();        // 归零: 纹末红果微光呼吸一下
@@ -2106,15 +2880,55 @@
       }, 1000);
     }
 
+    function showScreenNormal(n) {
+      const s1 = document.getElementById('fnScreen1');
+      const s2 = document.getElementById('fnScreen2');
+      if (!s1 || !s2) return;
+      if (n === 2) {
+        s1.style.display = 'none';
+        s2.style.display = 'block';
+      } else {
+        s1.style.display = 'block';
+        s2.style.display = 'none';
+      }
+    }
+
+    function showScreenEarly(n) {
+      const s1 = document.getElementById('feScreen1');
+      const s2 = document.getElementById('feScreen2');
+      if (!s1 || !s2) return;
+      if (n === 2) {
+        s1.style.display = 'none';
+        s2.style.display = 'block';
+      } else {
+        s1.style.display = 'block';
+        s2.style.display = 'none';
+      }
+    }
+
     function confirmFinishNormal() {
       // 正常结束 → 确认打卡
+      if (window.repsWheelNormal && window.repsWheelNormal.value === 0) {
+        showScreenNormal(2);
+        return;
+      }
+      window._currentPracticeReps = window.repsWheelNormal ? window.repsWheelNormal.value : null;
       document.getElementById('finishNormalModal').classList.remove('open');
+      showScreenNormal(1);
+      submitPractice();
+    }
+
+    function confirmZeroFinishNormal() {
+      window._currentPracticeReps = null;
+      document.getElementById('finishNormalModal').classList.remove('open');
+      showScreenNormal(1);
       submitPractice();
     }
 
     function cancelFinishNormal() {
       // 正常结束 → 放弃本次练习,清零
       document.getElementById('finishNormalModal').classList.remove('open');
+      showScreenNormal(1);
       resetTimer();
     }
 
@@ -2136,6 +2950,8 @@
       document.getElementById('startBtn').textContent = '开始';
       document.getElementById('finishEarlyBtn').style.display = 'none';
       // 显示弹窗确认
+      showScreenEarly(1);
+      if (window.repsWheelEarly) window.repsWheelEarly.set(0, false);
       document.getElementById('finishMinsDisplay').textContent = finalMins;
       document.getElementById('finishEarlyModal').classList.add('open');
       // 弹窗入场动效
@@ -2143,13 +2959,28 @@
     }
 
     function confirmFinishEarly() {
+      if (window.repsWheelEarly && window.repsWheelEarly.value === 0) {
+        showScreenEarly(2);
+        return;
+      }
+      window._currentPracticeReps = window.repsWheelEarly ? window.repsWheelEarly.value : null;
       document.getElementById('finishEarlyModal').classList.remove('open');
       document.getElementById('confirmMins').textContent = document.getElementById('finishMinsDisplay').textContent;
+      showScreenEarly(1);
+      submitPractice();
+    }
+
+    function confirmZeroFinishEarly() {
+      window._currentPracticeReps = null;
+      document.getElementById('finishEarlyModal').classList.remove('open');
+      document.getElementById('confirmMins').textContent = document.getElementById('finishMinsDisplay').textContent;
+      showScreenEarly(1);
       submitPractice();
     }
 
     function cancelFinishEarly() {
       document.getElementById('finishEarlyModal').classList.remove('open');
+      showScreenEarly(1);
       // 恢复计时状态，继续练习
       finishPending = false;
       started = true;
@@ -2168,6 +2999,7 @@
     function abortFinishEarly() {
       // 不练了: 取消当前计时,回到 idle 状态,不打卡
       document.getElementById('finishEarlyModal').classList.remove('open');
+      showScreenEarly(1);
       finishPending = false;
       started = false;
       paused = false;
@@ -2220,6 +3052,9 @@
           body.tempo_bpm = parseInt(bpmEl.value) || 80;
           body.content = contentEl.value.trim();
         }
+        if (window._currentPracticeReps != null && window._currentPracticeReps > 0) {
+          body.reps = window._currentPracticeReps;
+        }
         let res = await fetch('/api/log', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -2236,7 +3071,7 @@
             const confirmP = confirmArea4.querySelector('p');
             if (confirmP) {
               confirmP.dataset.originalHtml = confirmP.innerHTML;
-              confirmP.innerHTML = '<span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" preserveAspectRatio="xMidYMid meet" viewBox="0 0 156 151" fill="currentColor" aria-hidden="true"><path d="M121.7 7.7c-.3.5-1.3 3.6-2.2 6.9a32 32 0 0 1-4.7 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.8c-3.2 3.9-9.4 7.6-12.6 7.6-2.4 0-4.6 2.5-3.9 4.4.3.7 2.2 1.7 4.3 2.1 8.6 1.6 13.8 6.6 16.9 16.2 3 9.3 5 9.2 8-.1q4.2-12.7 14.6-15.7c2.4-.7 5.1-1.8 5.9-2.6 1.3-1.1 1.3-1.5 0-2.6-.8-.8-3.5-1.9-6-2.7- 6.6-1.8-12.4-8-14.5-15.5l-2-7.3c-.5-1.3-3.1-1.7-3.8-.5m11 24.8c1.8 1.1 3.2 2.2 3.2 2.5s-1.9 1.9-4.2 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 3.5a26 26 0 0 0-6.2 6.7l-2.1 3.6-2.2-3.8a26 26 0 0 0-6.2-6.7c-2.2-1.5-3.9-3-3.9-3.3s1.4-1.4 3.2- 2.5a26 26 0 0 0 6.2-6.5l3-4.5 3 4.5c1.6 2.5 4.4 5.4 6.2 6.5m-98.1-9c-.3.9-.6 2.5-.6 3.5 0 4.3-4.3 13.1-8.5 17.4a20 20 0 0 1-10.6 6.3c-5.1 1.5-6.5 2.4-6.7 4.1q-.6 2.2 2.5 2.8c10.8 2.4 16 6.1 20.2 14.5 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 1.7 3.4 3.1 7.4 3.1 8.9 0 3.6 2.4 5.7 4.5 4q1.3-1.2 1.5-2.6c0-.7 1-3.9 2.1-7.1a28 28 0 0 1 17.6- 16.9c9.2-2.9 9.3-5.1.5-7.8-10.5-3.3-16.4-9.8-19.3-21.5-1.3-5.1-2.1-6.7-3.6-6.9q-2-.2-2.7 1.3m12.6 26.6a25 25 0 0 0 6.1 3.9c.6 0-.9 1.3-3.4 2.9-5.3 3.4-8 6.3-10.7 11.4l-2.1 3.9-1.6-3.4a37 37 0 0 0- 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 11.8-12.4l-2.8-1.5 3.9-2.7c4.9-3.3 8.7-7.9 10.8-12.7l1.5-3.7 2.6 5.2c1.6 3.2 4.4 6.6 7.5 9.1m43.1 16.1c-.6.7-1.5 3.9-2.1 7a35.5 35.5 0 0 1-28.7 28.7c-3.4.5-4 1-4 3.1s.6 2.5 4.5 3.2a35 35 0 0 1 28.6 28.6c1.3 8.4 5.6 8.2 7.4-.5a35 35 0 0 1 25.8-27.8q13-4.2 1.2-7.5c-15.4-4.6-23.8-13.5-27.1-28.5q-2.3- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 10.6-5.6-6.3m11.5 29.1c2 2.1 6.1 5.1 8.9 6.5l5.3 2.7-5.4 2.8a37 37 0 0 0-15.5 15.6l-2.9 5.4-2.5- 4.9a46 46 0 0 0-17.2-16.8l-3.8-1.6 5.1-2.6c6-3 13-10.4 16.2-17l2.2-4.7 2.9 5.4a56 56 0 0 0 6.7 9.2"/ ></svg></span> 打卡成功！太棒啦！';
+              confirmP.innerHTML = '<span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span> 打卡成功！太棒啦！';
             }
             confirmArea4.classList.add('show');
             gsap.fromTo('#confirmArea', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" });
@@ -2319,6 +3154,9 @@
         // 如果有 session detail，一起传
         if (sessionDetail) {
           body.session_detail = sessionDetail;
+          if (sessionDetail.reps != null && sessionDetail.reps > 0) {
+            body.reps = sessionDetail.reps;
+          }
         }
         
         let res = await fetch('/api/log', {
@@ -2444,14 +3282,17 @@
       const tempo_note = noteBtn ? noteBtn.getAttribute('data-note') : '♪';
       const tempo_bpm = parseInt(document.getElementById('extraBpmInput').value) || 80;
       const content = extraContent;
+      const extraRepsVal = parseInt(document.getElementById('extraRepsInput')?.value);
+      const reps = (extraRepsVal > 0) ? Math.min(99, extraRepsVal) : null;
       
-      await addExtraMins(pendingExtraMins, item, { tempo_note, tempo_bpm, content });
+      await addExtraMins(pendingExtraMins, item, { tempo_note, tempo_bpm, content, reps });
       // PR-C (260815): 补录计数 +1 并刷新 dashboard
       _extraLogCount++;
       updateDashboardExtra();
 
       // 重置输入
       document.getElementById('extraContentInput').value = '';
+      if (document.getElementById('extraRepsInput')) document.getElementById('extraRepsInput').value = '';
     }
 
     async function deleteExtraRecord(id) {
@@ -2512,6 +3353,7 @@
             tempo_note: '',
             tempo_bpm: 0,
             content: '',
+            reps: null,
             duration_minutes: totalForItem - coveredBySessions,
             is_extra: false,
           });
@@ -2523,6 +3365,8 @@
         const groupOrder = [];
         const groups = {};
         const subjectTotals = {};
+        const subjectReps = {};
+        const subjectHasReps = {};
         displaySessions.forEach(s => {
           const key = s.item_name;
           if (!groups[key]) {
@@ -2531,6 +3375,10 @@
           }
           groups[key].push(s);
           subjectTotals[key] = (subjectTotals[key] || 0) + (s.duration_minutes || 0);
+          if (s.reps != null && s.reps > 0) {
+            subjectReps[key] = (subjectReps[key] || 0) + s.reps;
+            subjectHasReps[key] = true;
+          }
         });
 
         // PR-C: 用 DOM 节点 + textContent 替代 innerHTML 拼接, 防 XSS.
@@ -2546,7 +3394,8 @@
           nameSpan.textContent = escape(name);
           const minsSpan = document.createElement('span');
           minsSpan.className = 'rg-mins';
-          minsSpan.textContent = `${escape(subjectTotals[name] || 0)} 分钟`;
+          const repsSummary = subjectHasReps[name] ? ` · 合计 ${subjectReps[name]} 遍` : '';
+          minsSpan.textContent = `${escape(subjectTotals[name] || 0)} 分钟${repsSummary}`;
           header.appendChild(nameSpan);
           header.appendChild(minsSpan);
           groupDiv.appendChild(header);
@@ -2558,11 +3407,18 @@
             row.className = 'record-session';
             row.setAttribute('data-item-id', escape(s.item_id));
             row.setAttribute('data-session-id', s.id);
+            row.setAttribute('data-reps', s.reps || '');
             if (tempoText) {
               const tempoSpan = document.createElement('span');
               tempoSpan.className = 'rs-tempo';
               tempoSpan.textContent = escape(tempoText);
               row.appendChild(tempoSpan);
+            }
+            if (s.reps != null && s.reps > 0) {
+              const repsSpan = document.createElement('span');
+              repsSpan.className = 'rs-reps';
+              repsSpan.textContent = `${escape(s.reps)} 遍`;
+              row.appendChild(repsSpan);
             }
             const contentSpan = document.createElement('span');
             contentSpan.className = 'rs-content';
@@ -2703,6 +3559,9 @@
       document.getElementById('emBpm').value = bpmStr || '80';
       document.getElementById('emContent').value = content;
       document.getElementById('emDuration').value = mins;
+      const repsVal = row?.getAttribute('data-reps');
+      const emRepsInput = document.getElementById('emReps');
+      if (emRepsInput) emRepsInput.value = (repsVal && parseInt(repsVal) > 0) ? repsVal : '';
       // V4: 渲染编辑弹窗 content_tags
       const itemId = row?.getAttribute('data-item-id');
       if (itemId) renderEmContentTags(itemId);
@@ -2751,11 +3610,15 @@
       const bpm = parseInt(document.getElementById('emBpm')?.value) || 80;
       const content = document.getElementById('emContent')?.value?.trim() || '';
       const duration = parseInt(document.getElementById('emDuration')?.value) || 1;
+      const emRepsInput = document.getElementById('emReps');
+      const repsVal = emRepsInput ? parseInt(emRepsInput.value) : null;
+      const reps = (repsVal && repsVal > 0) ? Math.min(99, repsVal) : null;
       try {
+        const putBody = { tempo_note: note, tempo_bpm: bpm, content: content, duration_minutes: duration, reps: reps };
         let res = await fetch('/api/practice-sessions/' + _editingSessionId, {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ tempo_note: note, tempo_bpm: bpm, content: content, duration_minutes: duration }),
+          body: JSON.stringify(putBody),
         });
         let result = await res.json();
         if (result.ok) {
@@ -3643,6 +4506,37 @@ function settleSecToZero(){
         console.warn('loadAllItems failed', e);
       }
     })();
+
+    // 实例化完成弹窗中的 Reps 滚轮控件
+    try {
+      window.repsWheelNormal = new RepsWheelWidget('Normal', 0);
+      window.repsWheelEarly = new RepsWheelWidget('Early', 0);
+    } catch (e) {
+      console.warn('RepsWheel init error', e);
+    }
+
+    // 全局键盘监听 (↑ / ↓ 步进, 0-9 直接选)
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      let activeWheel = null;
+      if (document.getElementById('finishNormalModal')?.classList.contains('open') && document.getElementById('fnScreen1')?.style.display !== 'none') {
+        activeWheel = window.repsWheelNormal;
+      } else if (document.getElementById('finishEarlyModal')?.classList.contains('open') && document.getElementById('feScreen1')?.style.display !== 'none') {
+        activeWheel = window.repsWheelEarly;
+      }
+      if (!activeWheel) return;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeWheel.step(1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeWheel.step(-1);
+      } else if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        activeWheel.set(parseInt(e.key, 10));
+      }
+    });
   </script>
 <!-- 2026-07-27: session 编辑弹窗 -->
 <div class="edit-modal-overlay" id="editSessionModal">
@@ -3653,7 +4547,9 @@ function settleSecToZero(){
       <button type="button" class="tempo-note-mini em-note-btn" id="emNoteM" data-note="♩">♩</button>
       <span>=</span>
       <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="150" value="80" style="width:60px">
-      <span style="margin-left:12px">时长</span>
+      <span style="margin-left:12px">遍数</span>
+      <input type="number" id="emReps" min="1" max="99" placeholder="—" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid #ddd;text-align:center">
+      <span style="margin-left:10px">时长</span>
       <input type="number" id="emDuration" min="1" max="60" value="1" style="width:50px;padding:4px 6px;border-radius:6px;border:1px solid #ddd;text-align:center">
       <span>min</span>
     </div>

@@ -593,12 +593,19 @@ def api_get_record(date_str: str):
         if item.get('item_id') is None and item.get('item') in all_items_by_name:
             item['item_id'] = all_items_by_name[item['item']]
 
+    sessions = []
+    for s in db.get_practice_sessions(date):
+        row = dict(s)
+        row["reps"] = row.get("reps")
+        sessions.append(row)
+
     return JSONResponse({
         "date": date_str,
         "total_minutes": record.get('total_minutes', 0),
         "items": items_raw,
         "log": record.get('log', ''),
-        "practiced": record.get('practiced', 'Y')
+        "practiced": record.get('practiced', 'Y'),
+        "sessions": sessions,
     })
 
 
@@ -636,11 +643,12 @@ async def api_save_record(request: Request):
             item_name = items[0].get("item", "")
             item_id = int(items[0].get("item_id", 0))
             minutes = items[0].get("minutes", 0)
+            reps = body.get("reps") if "reps" in body else items[0].get("reps")
             try:
                 s = db.save_practice_session_and_daily_summary(
                     date, item_name, item_id, minutes,
                     tempo_note, tempo_bpm, content, content_source,
-                    practice_at=None, is_extra=False,
+                    practice_at=None, is_extra=False, reps=reps,
                 )
                 daily = db.get_daily_practice(date)
                 return JSONResponse({
