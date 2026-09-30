@@ -94,6 +94,14 @@ class Database(BaseBackend):
                 # sprint 26091401 F1: 卡背「典故·短板」列 (dad: modal 典故太长, 卡背要 ≤60 字短版)
                 if ach_cols and "story_short" not in ach_cols:
                     cursor.execute("ALTER TABLE achievements ADD COLUMN story_short TEXT")
+                # sprint 26093001 收尾 (2026-09-30 线上复盘): achievement_stats.claimed_at
+                #   徽章领取弹窗的判据列 (claimed_at IS NULL = 未领, /api/badge/unclaimed 的数据源).
+                #   此前只存在于 src/migrate_add_claimed_at.py — schema_mysql.sql 和本处都没有
+                #   → 从零建库必漏; 线上就是这么漏的 (1054 Unknown column 's.claimed_at'
+                #   → 降级 503 → 前端 checkUnclaimed 静默 return → 弹窗永不出现).
+                stats_cols = {row[1] for row in cursor.execute("PRAGMA table_info(achievement_stats)").fetchall()}
+                if stats_cols and "claimed_at" not in stats_cols:
+                    cursor.execute("ALTER TABLE achievement_stats ADD COLUMN claimed_at TEXT DEFAULT NULL")
             except Exception:
                 # 读路径不能因为迁移失败 500, 但 _init_tables 是启动期 — 异常应往上冒
                 # 这里吞异常仅限"表不存在"以外的边缘情况 (生产已观察到的不稳定)
@@ -154,11 +162,17 @@ class Database(BaseBackend):
                     total_minutes INTEGER,
                     session_id TEXT,
                     error TEXT,
+                    detail TEXT DEFAULT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_date ON practice_audit_log(practice_date)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_channel ON practice_audit_log(channel)')
+            # sprint 26093001 收尾 (2026-09-30 线上复盘): 老库缺 detail 列 → 幂等补.
+            #   detail 是徽章领取写审计的 badge_id 载体 (POST /api/badge/claim) — 缺列会让领取 500.
+            audit_cols = {row[1] for row in cursor.execute("PRAGMA table_info(practice_audit_log)").fetchall()}
+            if audit_cols and "detail" not in audit_cols:
+                cursor.execute("ALTER TABLE practice_audit_log ADD COLUMN detail TEXT DEFAULT NULL")
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS weekly_assignments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

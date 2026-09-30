@@ -21,6 +21,7 @@ CREATE TABLE achievement_stats (
     achievement_id VARCHAR(255) PRIMARY KEY,
     achieved       TEXT NOT NULL ,
     achieved_at    DATETIME,
+    claimed_at     DATETIME NULL DEFAULT NULL,
     raw_stats      TEXT NOT NULL ,
     computed_value BIGINT
 );
@@ -90,6 +91,7 @@ CREATE TABLE practice_audit_log (
                     total_minutes BIGINT,
                     session_id TEXT,
                     error TEXT,
+                    detail VARCHAR(255) DEFAULT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
 
