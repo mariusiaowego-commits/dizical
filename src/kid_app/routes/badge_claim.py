@@ -137,8 +137,19 @@ def api_unclaimed() -> JSONResponse:
         )
 
     try:
-        # execute_dicts: 列名取值 + MySQL datetime → ISO 字符串 (避免 JSONResponse TypeError)
-        rows = db_adapter.execute_dicts(conn, sql)
+        try:
+            # execute_dicts: 列名取值 + MySQL datetime → ISO 字符串 (避免 JSONResponse TypeError)
+            rows = db_adapter.execute_dicts(conn, sql)
+        except Exception as e:
+            # 表/列缺失 (迁移未跑) / 连接中断 / 其它后端异常 → 503 降级, 不抛 500
+            logger.error(f"badge_claim unclaimed query failed: {e}")
+            return JSONResponse(
+                {"unclaimed_count": 0, "badges": [], "error": "db_unreachable"},
+                status_code=503,
+            )
+
+        # ↓ 组装是纯 Python (resolve_card_theme/stars)。这里的异常是真 bug →
+        #   让它抛 500 + traceback, 不再伪装成 db_unreachable (2026-09-29 审计 P2-1)。
         badges: list[dict[str, Any]] = []
         # Sprint 26091201 feat/badge-3d-ccg B-1: 兜底链解析 card_theme
         from src.kid_app.badge_theme import resolve_card_stars, resolve_card_theme
@@ -170,13 +181,6 @@ def api_unclaimed() -> JSONResponse:
                 }
             )
         return JSONResponse({"unclaimed_count": len(badges), "badges": badges})
-    except Exception as e:
-        # 表/列缺失 (迁移未跑) / 连接中断 / 其它后端异常 → 503 降级, 不抛 500
-        logger.error(f"badge_claim unclaimed query failed: {e}")
-        return JSONResponse(
-            {"unclaimed_count": 0, "badges": [], "error": "db_unreachable"},
-            status_code=503,
-        )
     finally:
         _close_quietly(conn)
 
@@ -228,10 +232,17 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
         )
 
     try:
-        # 1. 幂等 UPDATE
-        cur = db_adapter.execute(conn, update_sql, (claimed_at_iso, badge_id))
-        rowcount = getattr(cur, "rowcount", 0) or 0
-        conn.commit()
+        # 1. 幂等 UPDATE (DB 失败 → 503; 见下内层 try)
+        try:
+            cur = db_adapter.execute(conn, update_sql, (claimed_at_iso, badge_id))
+            rowcount = getattr(cur, "rowcount", 0) or 0
+            conn.commit()
+        except Exception as e:
+            # 缺表 / 连接中断 / 后端差异 → 503 降级, 不抛 500
+            logger.error(f"badge_claim claim update failed (badge={badge_id}): {e}")
+            return JSONResponse(
+                {"status": "error", "error": "db_unreachable"}, status_code=503
+            )
 
         if rowcount == 0:
             # 已领取过 / 不存在 / 未达成, 返幂等语义
@@ -295,12 +306,6 @@ def api_claim(req: ClaimRequest) -> JSONResponse:
                 "claimed_at": claimed_at_iso,
                 "already_claimed": False,
             }
-        )
-    except Exception as e:
-        # 领取写路径异常 (缺表 / 连接中断 / 后端差异) → 503 降级, 不抛 500
-        logger.error(f"badge_claim claim failed (badge={badge_id}): {e}")
-        return JSONResponse(
-            {"status": "error", "error": "db_unreachable"}, status_code=503
         )
     finally:
         _close_quietly(conn)

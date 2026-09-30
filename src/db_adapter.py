@@ -6,7 +6,9 @@ fix/achievements-mysql-conn (2026-07-24)
 - 让 calc_all() / achievement_definitions.py 不再写死 sqlite3.connect
 - SQLite (本地开发/单测) 和 MySQL (云生产) 共用同一套 SQL
 - 占位符统一 `?`, 内部根据 backend 转 `%s` (MySQL)
-- 默认 cursor 用 tuple 模式, fetch_dicts() 转 list[dict]
+- cursor 两种: 默认 tuple 模式 (fetch_dicts() 手工转 list[dict]);
+  execute_dicts() 走 MySQL DictCursor + `_normalize_datetimes()` 归一化,
+  避免 pymysql 的 datetime 直接进 JSONResponse (见 database_mysql.py:16 同类前科)
 
 不要做:
 - 不替换 src.database.Database / MySQLBackend 的接口 (已 merge 契约保持稳定)
@@ -20,14 +22,11 @@ import os
 import sqlite3
 from typing import Any, Iterable, Sequence
 
-try:
-    import pymysql
-    from pymysql.cursors import DictCursor as _MySQLDictCursor
-except ImportError:  # 极端情况 (CI 不装 pymysql)
-    pymysql = None
-    _MySQLDictCursor = None
-
+# pymysql 是硬依赖 (requirements.txt 已列)。旧版这里有 try/except ImportError 兜底,
+# 但紧随其后是无条件的 `import pymysql.cursors` → 兜底永远不生效, 是死代码
+# (2026-09-29 PR 级审计 P3-2)。去掉兜底, 让缺依赖直接报错, 不假装能跑。
 import pymysql.cursors
+from pymysql.cursors import DictCursor as _MySQLDictCursor
 
 
 def is_mysql_env() -> bool:

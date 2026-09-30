@@ -545,3 +545,60 @@ def test_claim_mysql_audit_failure_does_not_break_main_flow(monkeypatch):
     body = _json.loads(resp.body)
     assert body["status"] == "ok"
     assert body["already_claimed"] is False
+
+
+# ─── M. Sprint 26093001: except 拆分 (DB 失败 → 503; Python 组装失败 → 真 500) ──
+#
+# 背景 (2026-09-29 PR 级审计 P2-1): 旧版把「查询」和「纯 Python 组装」包在同一个
+# `except Exception` 里 → 组装代码有 bug 时也被伪装成 503 db_unreachable,
+# 运维看到的是「DB 不可达」而不是真错的 traceback。以下两条锁住拆分后的两侧语义。
+
+def test_unclaimed_assembly_error_is_not_masked_as_503(monkeypatch):
+    """组装期异常 (resolve_card_theme/stars 内部 bug) 必须原样抛出, 不许吞成 503。"""
+    import datetime as dt
+
+    from src.kid_app.routes import badge_claim
+
+    row = {
+        "id": "asm_1", "name": "组装测试", "type": "count", "category": "milestone",
+        "cond_text": "条件", "description": "描述",
+        "card_theme": None, "card_stars": None, "card_no": None,
+        "achieved_at": dt.datetime(2026, 9, 1, 10, 0, 0),
+        "badge_url": "/static/badges/x.png",
+    }
+    mock_conn, _ = _mysql_mock_conn([row])
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    def boom(**kwargs):
+        raise RuntimeError("resolve_card_theme 内部 bug")
+
+    monkeypatch.setattr("src.kid_app.badge_theme.resolve_card_theme", boom)
+
+    # 原样抛出 → FastAPI 转 500 (诚实), 而不是 503 db_unreachable (掩盖真 bug)
+    with pytest.raises(RuntimeError, match="内部 bug"):
+        badge_claim.api_unclaimed()
+    # 即使抛异常, 连接也必须归还
+    assert mock_conn.close.called
+
+
+def test_claim_update_db_error_still_degrades_to_503(monkeypatch):
+    """对照面: POST 的 UPDATE 段 DB 失败仍走 503 降级 (拆分后不能把 DB 降级弄丢)。"""
+    import json as _json
+    from unittest.mock import MagicMock
+
+    from src.kid_app.routes import badge_claim
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.execute.side_effect = Exception(
+        "no such table: achievement_stats"
+    )
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    resp = badge_claim.api_claim(badge_claim.ClaimRequest(badge_id="mysql_1"))
+    assert resp.status_code == 503
+    assert _json.loads(resp.body)["error"] == "db_unreachable"
+    assert mock_conn.close.called
