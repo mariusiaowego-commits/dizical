@@ -80,12 +80,13 @@ def test_mysql_branch_closes_even_when_query_raises(monkeypatch):
 # 与 `get_achievements_by_type` 只在成功路径 conn.close() → 中途抛异常就漏关
 # (MySQL 侧 = 池连接不归还)。跟 P3-1 同族, 用 AST 守卫住整个类。
 
-# 请求期会跑的模块 (one-shot migrate_*.py 脚本不在内: 进程随即退出, 不构成池压力)
+# 请求期 / 常驻进程会跑的模块 (one-shot migrate_*.py 脚本不在内: 进程随即退出, 不构成池压力)
 _CLOSE_GUARD_SCOPE = (
     "kid_app",
     "db_adapter.py",
     "achievement_definitions.py",
     "database_mysql.py",
+    "cli.py",
 )
 
 
@@ -170,3 +171,26 @@ def test_get_achievements_by_type_closes_conn_when_body_raises(monkeypatch):
         ad.get_achievements_by_type("seasonal")
 
     assert fake_conn.close.called, "get_achievements_by_type 异常路径没 close → 连接泄漏"
+
+
+def test_cli_get_last_practice_closes_conn(monkeypatch):
+    """行为锁: `cli._get_last_practice()` 用完归还连接。
+
+    CLI 仪表盘每 ~3 秒调一次本函数; 旧写法借了连接就 return, 从不 close →
+    MySQL 池连接在 CLI 进程里一路涨 (2026-09-30 grok 审计记录, 尾巴清理)。
+    """
+    from src import cli
+    import src.database as dbmod
+
+    fake_conn = MagicMock()
+    fake_conn.execute.return_value.fetchone.return_value = None  # 无记录 → 提前 return None
+
+    class _FakeDB:
+        @staticmethod
+        def _get_connection():
+            return fake_conn
+
+    monkeypatch.setattr(dbmod, "db", _FakeDB)
+
+    assert cli._get_last_practice() is None
+    assert fake_conn.close.called, "cli._get_last_practice 用完没 close → 连接不归还"

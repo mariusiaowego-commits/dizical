@@ -85,7 +85,7 @@ def fetch_dicts(cur) -> list[dict]:
     """把当前 cursor 的 fetchall() 结果转 list[dict].
 
     - SQLite: 默认 cursor 没 row_factory, 这里手工 zip(cols, row)
-    - MySQL: 用 DictCursor 替代默认 cursor (execute 之前要换 cursor 类型)
+    - MySQL: 传进来的 cursor 已是 DictCursor (切换发生在 execute_dicts, 本函数只做 zip)
     """
     rows = cur.fetchall()
     cols = [d[0] for d in cur.description]
@@ -116,7 +116,7 @@ def _safe_mysql_dict_cursor():
 
             _SAFE_CURSOR_CLS = DatetimeSafeDictCursor
         except Exception:  # pragma: no cover - 极端回退路径
-            _SAFE_CURSOR_CLS = _MySQLDictCursor or None
+            _SAFE_CURSOR_CLS = _MySQLDictCursor
     return _SAFE_CURSOR_CLS
 
 
