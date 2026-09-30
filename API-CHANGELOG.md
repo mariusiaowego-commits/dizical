@@ -1,5 +1,19 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-09-30 (已上线 #134 / #135) — sprint 26092901 + 26093001 线上修复
+**类型**: ✅ 完全兼容（仅内部实现与错误路径；端点 / 请求参数 / 返回结构不变，客户端无需改动）
+
+## 变更（无契约变更，仅为同步记录）
+
+- `GET /api/badge/unclaimed` / `POST /api/badge/claim`：修掉「容器内读 9-8 老 sqlite 库」导致的线上 500（sprint 26092901 / PR #346）。
+- 异常拆分：纯 Python 组装异常不再伪装成 `503 db_unreachable`（改为 500 + traceback）；**DB 调用失败仍 503**（sprint 26093001 / PR #348）。
+- 连接归还统一：MySQL 池连接现在无条件 `close()`（= 归还池），修掉高并发下池耗尽的隐患（同 PR，全仓 18 处）。
+- **对 dizical-minip**：无需改动（503 的触发面未扩大，字段未变）。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-09-28 (未上线) — sprint 26092601 练习 session 遍数
 **类型**: 🟡 部分兼容（新增可选入参 `reps` + 返回体新增字段；不传也能跑。dizical-minip 本次不动，建议择期同步展示）
 
@@ -12,7 +26,7 @@
 - 读出: session 对象、stage 明细每条 session、`by_item.reps`（该科目下非空遍数之和；全是 NULL 则字段为 `null`）。`GET /config/api/records/{date}` 额外返回 `sessions`（含 `reps`）。
 - `behavior_log[]` 同步写入 `reps`。删除 session 时去掉对应日志条目。不在 `daily_practices.items` 上存遍数。
 - 三源同步: `schema_mysql.sql` / `.cloudrun-deploy/schema_mysql.sql` / 本地 SQLite `_init_tables` 幂等加列 + `src/migrate_add_session_reps.py`。
-- **云端**: 尚未上线。DDL 待 dad 拍板后走 MCP。
+- **云端**: 已上线。#134（2026-09-30）部署合并态；#135（同日）含审计后续。DDL 走 MCP `runStatement`（requestId `fa527627-e431-47d0-83b1-42aedfbe7ca4`）。
 
 ---
 
