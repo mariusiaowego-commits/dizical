@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>收拢态运行指标排版方案对比 · Run-State Row Variants</title>
+  <style>
+    :root {
+      --color-primary: #FF6B6B;
+      --color-primary-warm: #FF8C5A;
+      --color-navy: #2C3E50;
+      --color-bg: #FFF8F0;
+      --color-white: #FFFFFF;
+      --color-muted: #666666;
+      --border-subtle: rgba(44, 62, 80, 0.08);
+      --border-hairline: rgba(44, 62, 80, 0.06);
+      --bg-tile: rgba(44, 62, 80, 0.035);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--color-bg);
+      color: var(--color-navy);
+      font-family: var(--font-family);
+      line-height: 1.4;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .demo-header {
+      max-width: 1080px;
+      width: 100%;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .demo-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--color-navy);
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .demo-subtitle {
+      font-size: 13px;
+      color: var(--color-muted);
+      margin-bottom: 18px;
+    }
+
+    /* 交互工具条 */
+    .demo-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 18px;
+      background: var(--color-white);
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 2px 8px rgba(44, 62, 80, 0.04);
+      margin-bottom: 24px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-muted);
+    }
+
+    .btn-toggle-group {
+      display: inline-flex;
+      background: rgba(44, 62, 80, 0.05);
+      padding: 2px;
+      border-radius: 8px;
+    }
+
+    .btn-toggle {
+      border: none;
+      background: transparent;
+      color: var(--color-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn-toggle.active {
+      background: var(--color-white);
+      color: var(--color-navy);
+      box-shadow: 0 1px 3px rgba(44, 62, 80, 0.12);
+    }
+
+    .btn-action {
+      background: var(--color-navy);
+      color: var(--color-white);
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-action:hover {
+      opacity: 0.9;
+    }
+
+    /* 方案对比网格 */
+    .variants-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      gap: 24px;
+      max-width: 1120px;
+      width: 100%;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .variants-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 单个方案展示卡 */
+    .variant-card {
+      background: var(--color-white);
+      border-radius: 16px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 16px rgba(44, 62, 80, 0.04);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .variant-badge-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .variant-tag {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-primary);
+      background: rgba(255, 107, 107, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .variant-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-navy);
+    }
+
+    .variant-desc {
+      font-size: 11.5px;
+      color: var(--color-muted);
+      line-height: 1.4;
+      margin-bottom: 16px;
+      text-align: left;
+      width: 100%;
+      min-height: 48px;
+    }
+
+    /* 仿票据卡片容器 */
+    .ticket-container-mock {
+      background: var(--color-white);
+      border: 1.5px dashed var(--border-subtle);
+      border-radius: 14px;
+      padding: 15px;
+      width: 220px; /* 默认 220px 对应真实收拢卡片 */
+      box-sizing: border-box;
+      transition: width 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.width-wide .ticket-container-mock {
+      width: 320px;
+    }
+
+    body.width-fluid .ticket-container-mock {
+      width: 100%;
+    }
+
+    .mock-context-top {
+      font-size: 10px;
+      color: var(--color-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .mock-context-title {
+      font-weight: 700;
+      color: var(--color-navy);
+    }
+
+    /* 共通小图标 */
+    .icon-disc {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .icon-disc.disc-dur {
+      background: rgba(255, 107, 107, 0.12);
+      color: var(--color-primary);
+    }
+    .icon-disc.disc-streak {
+      background: rgba(255, 140, 90, 0.12);
+      color: var(--color-primary-warm);
+    }
+    .icon-disc.disc-progress {
+      background: rgba(44, 62, 80, 0.08);
+      color: var(--color-navy);
+    }
+    .icon-disc.disc-folder {
+      background: rgba(44, 62, 80, 0.08);
+      color: var(--color-navy);
+    }
+    .icon-svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       方案 A: 经典两端对齐 + 细分隔线 (Current ref02 Style)
+       ════════════════════════════════════════════════════════════════ */
+    .style-a-wrap {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .style-a-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 7px 2px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .style-a-row:first-child {
+      padding-top: 2px;
+    }
+
+    .style-a-row:last-child {
+      border-bottom: none;
+      padding-bottom: 2px;
+    }
+
+    .style-a-lead {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-muted);
+      flex-shrink: 0;
+    }
+
+    .style-a-val {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .style-a-val strong {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--color-navy);
+      margin-right: 2px;
+    }
+
+    .style-a-val .hint {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--color-muted);
+      opacity: 0.85;
+    }
+
+    .style-a-progress-block {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      width: 100%;
+      padding: 7px 2px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .style-a-progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .style-a-progress-bar-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(44, 62, 80, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .style-a-progress-bar-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 999px;
+      width: 27.5%;
+      transition: width 0.3s ease;
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       方案 B: 独立微卡片堆叠 (Discrete Mini-Cards, ref01 Style)
+       ════════════════════════════════════════════════════════════════ */
+    .style-b-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      width: 100%;
+    }
+
+    .style-b-card {
+      background: var(--bg-tile);
+      border: 1px solid rgba(44, 62, 80, 0.04);
+      border-radius: 8px;
+      padding: 6px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .style-b-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .style-b-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--color-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .style-b-card-body {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .style-b-val-num {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--color-navy);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .style-b-val-unit {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--color-muted);
+    }
+
+    .style-b-hint {
+      font-size: 9.5px;
+      color: var(--color-muted);
+      opacity: 0.85;
+    }
+
+    .style-b-progress-bar-track {
+      width: 100%;
+      height: 3.5px;
+      background: rgba(44, 62, 80, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    .style-b-progress-bar-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 999px;
+      width: 27.5%;
+      transition: width 0.3s ease;
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       方案 C: 2×2 四宫格瓦片 (2x2 Matrix Tiles)
+       ════════════════════════════════════════════════════════════════ */
+    .style-c-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .style-c-tile {
+      background: var(--bg-tile);
+      border: 1px solid rgba(44, 62, 80, 0.04);
+      border-radius: 8px;
+      padding: 7px 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 52px;
+    }
+
+    .style-c-tile.tile-wide {
+      grid-column: span 2;
+      min-height: auto;
+    }
+
+    .style-c-tile-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .style-c-tile-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--color-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .style-c-tile-main {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+    }
+
+    .style-c-tile-num {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-navy);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .style-c-tile-unit {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--color-muted);
+    }
+
+    .style-c-tile-sub {
+      font-size: 9.5px;
+      color: var(--color-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .style-c-progress-track {
+      width: 100%;
+      height: 3px;
+      background: rgba(44, 62, 80, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .style-c-progress-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 999px;
+      width: 27.5%;
+      transition: width 0.3s ease;
+    }
+
+    /* 方案特性评测对比表格 */
+    .comparison-section {
+      max-width: 1080px;
+      width: 100%;
+      margin-top: 36px;
+      background: var(--color-white);
+      border-radius: 16px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 16px rgba(44, 62, 80, 0.04);
+      padding: 24px;
+    }
+
+    .comparison-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-navy);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .comparison-table th {
+      background: rgba(44, 62, 80, 0.03);
+      font-weight: 700;
+      color: var(--color-navy);
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge-rating {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .rating-high { background: rgba(44, 62, 80, 0.1); color: var(--color-navy); }
+    .rating-coral { background: rgba(255, 107, 107, 0.15); color: var(--color-primary); }
+  </style>
+</head>
+<body>
+
+  <header class="demo-header">
+    <h1 class="demo-title">收拢态运行指标排版方案对比</h1>
+    <p class="demo-subtitle">Run-State Metrics Typography & Layout Exploration · Dizicute 6-Color System</p>
+
+    <!-- 控制面板 -->
+    <div class="demo-toolbar">
+      <div class="toolbar-group">
+        <span class="toolbar-label">卡片宽度测试:</span>
+        <div class="btn-toggle-group">
+          <button type="button" class="btn-toggle active" onclick="setWidthMode('narrow', this)">真实收拢 (220px)</button>
+          <button type="button" class="btn-toggle" onclick="setWidthMode('wide', this)">宽栏样本 (320px)</button>
+          <button type="button" class="btn-toggle" onclick="setWidthMode('fluid', this)">流式满宽 (100%)</button>
+        </div>
+      </div>
+
+      <div class="toolbar-group" style="margin-left: 12px;">
+        <span class="toolbar-label">练琴计时模拟:</span>
+        <button type="button" class="btn-action" id="btnTimerToggle" onclick="toggleTimer()">
+          <span id="btnTimerLabel">播放 (+1s)</span>
+        </button>
+        <button type="button" class="btn-action" style="background: rgba(44,62,80,0.1); color: var(--color-navy);" onclick="adjustTimer(15)">+15秒</button>
+        <button type="button" class="btn-action" style="background: rgba(44,62,80,0.1); color: var(--color-navy);" onclick="resetTimer()">重置</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3 方案横向对比 -->
+  <main class="variants-grid">
+
+    <!-- ════════ 方案 A ════════ -->
+    <div class="variant-card">
+      <div class="variant-badge-wrap">
+        <span class="variant-tag">Variant A</span>
+        <span class="variant-name">经典两端对齐 (ref02)</span>
+      </div>
+      <p class="variant-desc">当前线上方案：左侧为微型图标盘与弱化标签，右侧为加粗数值；行间使用 1px 细线分隔；4px 进度条全宽延伸。极致纤薄节省垂直空间。</p>
+
+      <div class="ticket-container-mock">
+        <div class="mock-context-top">
+          <span class="mock-context-title">萨丽哈 · 慢板</span>
+          <span>进行中</span>
+        </div>
+
+        <div class="style-a-wrap">
+          <!-- 行 1: 今日累计 -->
+          <div class="style-a-row">
+            <div class="style-a-lead">
+              <span class="icon-disc disc-dur">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
+              </span>
+              <span>今日已练</span>
+            </div>
+            <div class="style-a-val">
+              <strong>0</strong>分 · 0 次
+            </div>
+          </div>
+
+          <!-- 行 2: 本次进度 -->
+          <div class="style-a-progress-block">
+            <div class="style-a-progress-head">
+              <div class="style-a-lead">
+                <span class="icon-disc disc-progress">
+                  <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 0a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3zM8 3a6 6 0 1 0 0 12A6 6 0 0 0 8 3zm-4.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zm4.25-2.75a.75.75 0 0 1 1.5 0v2.44l1.28.77a.75.75 0 1 1-.76 1.3l-1.75-1.05A.75.75 0 0 1 7.75 9V6.25z"/></svg>
+                </span>
+                <span>本次进度</span>
+              </div>
+              <div class="style-a-val">
+                <span class="timer-display-a">已练 02:45 / 目标 10 分</span>
+              </div>
+            </div>
+            <div class="style-a-progress-bar-track">
+              <div class="style-a-progress-bar-fill progress-fill-el"></div>
+            </div>
+          </div>
+
+          <!-- 行 3: 连续打卡 -->
+          <div class="style-a-row">
+            <div class="style-a-lead">
+              <span class="icon-disc disc-streak">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm10.854 3.646a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 10.293l3.646-3.647a.5.5 0 0 1 .708 0z"/></svg>
+              </span>
+              <span>连续打卡</span>
+            </div>
+            <div class="style-a-val">
+              <strong>61</strong>天 <span class="hint">· 最近 9-23</span>
+            </div>
+          </div>
+
+          <!-- 行 4: 科目档案 -->
+          <div class="style-a-row">
+            <div class="style-a-lead">
+              <span class="icon-disc disc-folder">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.879a1.5 1.5 0 0 1 1.06.44l1.122 1.12A.5.5 0 0 0 8.914 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z"/></svg>
+              </span>
+              <span>科目档案</span>
+            </div>
+            <div class="style-a-val">
+              基本功 · <strong>No.1034</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 方案 B ════════ -->
+    <div class="variant-card">
+      <div class="variant-badge-wrap">
+        <span class="variant-tag" style="color: var(--color-primary-warm); background: rgba(255, 140, 90, 0.1);">Variant B</span>
+        <span class="variant-name">独立微卡片堆叠 (ref01)</span>
+      </div>
+      <p class="variant-desc">卡片分组结构：将每个指标包裹在带轻微底色的胶囊卡片中；上方为小字标签与状态，下方放大数值与单位。块状感强，触控直觉清晰。</p>
+
+      <div class="ticket-container-mock">
+        <div class="mock-context-top">
+          <span class="mock-context-title">萨丽哈 · 慢板</span>
+          <span>进行中</span>
+        </div>
+
+        <div class="style-b-wrap">
+          <!-- 块 1: 今日累计 -->
+          <div class="style-b-card">
+            <div class="style-b-card-head">
+              <span class="style-b-label">今日已练</span>
+              <span class="icon-disc disc-dur">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
+              </span>
+            </div>
+            <div class="style-b-card-body">
+              <div>
+                <span class="style-b-val-num">0</span>
+                <span class="style-b-val-unit">分</span>
+              </div>
+              <span class="style-b-hint">0 次练习</span>
+            </div>
+          </div>
+
+          <!-- 块 2: 本次进度 -->
+          <div class="style-b-card">
+            <div class="style-b-card-head">
+              <span class="style-b-label">本次进度</span>
+              <span class="style-b-hint timer-display-b">已练 02:45 / 10分</span>
+            </div>
+            <div class="style-b-progress-bar-track">
+              <div class="style-b-progress-bar-fill progress-fill-el"></div>
+            </div>
+          </div>
+
+          <!-- 块 3: 连续打卡 -->
+          <div class="style-b-card">
+            <div class="style-b-card-head">
+              <span class="style-b-label">连续打卡</span>
+              <span class="icon-disc disc-streak">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm10.854 3.646a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 10.293l3.646-3.647a.5.5 0 0 1 .708 0z"/></svg>
+              </span>
+            </div>
+            <div class="style-b-card-body">
+              <div>
+                <span class="style-b-val-num">61</span>
+                <span class="style-b-val-unit">天</span>
+              </div>
+              <span class="style-b-hint">最近 9-23</span>
+            </div>
+          </div>
+
+          <!-- 块 4: 科目档案 -->
+          <div class="style-b-card">
+            <div class="style-b-card-head">
+              <span class="style-b-label">科目档案</span>
+              <span class="style-b-hint">基本功</span>
+            </div>
+            <div class="style-b-card-body">
+              <div>
+                <span class="style-b-val-num">No.1034</span>
+              </div>
+              <span class="style-b-hint">吸气长音</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 方案 C ════════ -->
+    <div class="variant-card">
+      <div class="variant-badge-wrap">
+        <span class="variant-tag" style="color: var(--color-navy); background: rgba(44, 62, 80, 0.1);">Variant C</span>
+        <span class="variant-name">2×2 四宫格瓦片</span>
+      </div>
+      <p class="variant-desc">仪表盘瓦片结构：将指标两两并排组成紧凑四宫格，数字字号更大，横向利用率高；底部进度条嵌入本次进度单元格中。适合大屏与宽展位。</p>
+
+      <div class="ticket-container-mock">
+        <div class="mock-context-top">
+          <span class="mock-context-title">萨丽哈 · 慢板</span>
+          <span>进行中</span>
+        </div>
+
+        <div class="style-c-wrap">
+          <!-- 格 1: 今日累计 -->
+          <div class="style-c-tile">
+            <div class="style-c-tile-head">
+              <span class="style-c-tile-label">今日已练</span>
+              <span class="icon-disc disc-dur">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
+              </span>
+            </div>
+            <div class="style-c-tile-main">
+              <span class="style-c-tile-num">0</span>
+              <span class="style-c-tile-unit">分</span>
+            </div>
+            <div class="style-c-tile-sub">0 次练习</div>
+          </div>
+
+          <!-- 格 2: 连续打卡 -->
+          <div class="style-c-tile">
+            <div class="style-c-tile-head">
+              <span class="style-c-tile-label">连续打卡</span>
+              <span class="icon-disc disc-streak">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm10.854 3.646a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 10.293l3.646-3.647a.5.5 0 0 1 .708 0z"/></svg>
+              </span>
+            </div>
+            <div class="style-c-tile-main">
+              <span class="style-c-tile-num">61</span>
+              <span class="style-c-tile-unit">天</span>
+            </div>
+            <div class="style-c-tile-sub">最近 9-23</div>
+          </div>
+
+          <!-- 格 3: 本次进度 (通栏或半格，此处设计为半格完整版) -->
+          <div class="style-c-tile">
+            <div class="style-c-tile-head">
+              <span class="style-c-tile-label">本次进度</span>
+              <span class="icon-disc disc-progress">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 0a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3zM8 3a6 6 0 1 0 0 12A6 6 0 0 0 8 3zm-4.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zm4.25-2.75a.75.75 0 0 1 1.5 0v2.44l1.28.77a.75.75 0 1 1-.76 1.3l-1.75-1.05A.75.75 0 0 1 7.75 9V6.25z"/></svg>
+              </span>
+            </div>
+            <div class="style-c-tile-main">
+              <span class="style-c-tile-num timer-min-c">02:45</span>
+            </div>
+            <div class="style-c-progress-track">
+              <div class="style-c-progress-fill progress-fill-el"></div>
+            </div>
+          </div>
+
+          <!-- 格 4: 科目档案 -->
+          <div class="style-c-tile">
+            <div class="style-c-tile-head">
+              <span class="style-c-tile-label">科目档案</span>
+              <span class="icon-disc disc-folder">
+                <svg class="icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.879a1.5 1.5 0 0 1 1.06.44l1.122 1.12A.5.5 0 0 0 8.914 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z"/></svg>
+              </span>
+            </div>
+            <div class="style-c-tile-main">
+              <span class="style-c-tile-num" style="font-size: 13px;">#1034</span>
+            </div>
+            <div class="style-c-tile-sub">吸气长音 · 基本功</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 详细对比评估 -->
+  <section class="comparison-section">
+    <h2 class="comparison-title">
+      <span>排版架构与工程适配评估</span>
+    </h2>
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>评估维度</th>
+          <th>方案 A: 经典两端对齐 (ref02)</th>
+          <th>方案 B: 独立微卡片堆叠 (ref01)</th>
+          <th>方案 C: 2×2 四宫格瓦片</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>垂直高度占用</strong></td>
+          <td><span class="badge-rating rating-coral">最小 (~120px)</span> - 极省高度，iPad mini 竖屏安全</td>
+          <td><span class="badge-rating rating-high">中等 (~165px)</span> - 卡片内边距带来额外高度</td>
+          <td><span class="badge-rating rating-coral">较紧凑 (~126px)</span> - 横向分流降低总高度</td>
+        </tr>
+        <tr>
+          <td><strong>窄卡片适应力 (220px)</strong></td>
+          <td><span class="badge-rating rating-coral">优</span> - 左右端对齐清晰，不挤压</td>
+          <td><span class="badge-rating rating-coral">优</span> - 上下堆叠自然自适应</td>
+          <td><span class="badge-rating rating-high">良</span> - 单格宽度约 88px，文字需紧凑</td>
+        </tr>
+        <tr>
+          <td><strong>视觉层次与聚焦</strong></td>
+          <td>线性列表感，重点在进度条</td>
+          <td>块状聚焦强，卡片感与票据风格契合</td>
+          <td>仪表盘感最强，核心数字最醒目</td>
+        </tr>
+        <tr>
+          <td><strong>矮档弹性压缩潜力</strong></td>
+          <td>极高：可合并行或收窄 gap</td>
+          <td>中等：微卡片有最小高度限制</td>
+          <td>高：直接收紧 grid gap 即可</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    // 宽度切换控制
+    function setWidthMode(mode, btn) {
+      document.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.body.classList.remove('width-wide', 'width-fluid');
+      if (mode === 'wide') {
+        document.body.classList.add('width-wide');
+      } else if (mode === 'fluid') {
+        document.body.classList.add('width-fluid');
+      }
+    }
+
+    // 练琴模拟计时器 (目标 10 分钟 = 600 秒)
+    let elapsedSeconds = 165; // 02:45
+    const targetSeconds = 600; // 10:00
+    let timerInterval = null;
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function updateTimerUI() {
+      const pct = Math.min(100, Math.max(0, (elapsedSeconds / targetSeconds) * 100));
+      const timeStr = formatTime(elapsedSeconds);
+
+      // A 方案
+      const timerA = document.querySelector('.timer-display-a');
+      if (timerA) timerA.textContent = `已练 ${timeStr} / 目标 10 分`;
+
+      // B 方案
+      const timerB = document.querySelector('.timer-display-b');
+      if (timerB) timerB.textContent = `已练 ${timeStr} / 10分`;
+
+      // C 方案
+      const timerC = document.querySelector('.timer-min-c');
+      if (timerC) timerC.textContent = timeStr;
+
+      // 进度条全量更新
+      document.querySelectorAll('.progress-fill-el').forEach(bar => {
+        bar.style.width = pct.toFixed(1) + '%';
+      });
+    }
+
+    function toggleTimer() {
+      const btn = document.getElementById('btnTimerLabel');
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        if (btn) btn.textContent = '播放 (+1s)';
+      } else {
+        timerInterval = setInterval(() => {
+          elapsedSeconds++;
+          if (elapsedSeconds > targetSeconds) elapsedSeconds = 0;
+          updateTimerUI();
+        }, 1000);
+        if (btn) btn.textContent = '暂停';
+      }
+    }
+
+    function adjustTimer(delta) {
+      elapsedSeconds = Math.max(0, elapsedSeconds + delta);
+      updateTimerUI();
+    }
+
+    function resetTimer() {
+      elapsedSeconds = 0;
+      updateTimerUI();
+    }
+
+    // 初始化
+    updateTimerUI();
+  </script>
+</body>
+</html>

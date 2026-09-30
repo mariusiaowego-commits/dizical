@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中央仪表卡 · 刻度尺真件 + CTA 位置候选 — 2026-09-20</title>
+<!-- 真件样式与真件脚本：从生产页 practice.html 逐字抽取，未改一个字符 -->
+<link rel="stylesheet" href="./practice-skeleton-260920/real-practice.css">
+<style>
+  /* 只做外层包装与候选切换，不覆盖真件样式 */
+  .pk-top { max-width: 1180px; margin: 0 auto 14px; background: #FFFFFF; border: 1px solid rgba(44,62,80,0.10);
+            border-radius: 16px; padding: 14px 18px; }
+  .pk-top h1 { font-size: 18px; margin: 0 0 6px; color: #2C3E50; }
+  .pk-top p { font-size: 12.5px; color: #666; line-height: 1.7; margin: 4px 0; }
+  .pk-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .pk-btn { font: inherit; font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+            border: 1px solid rgba(44,62,80,0.18); background: #FFF; color: #2C3E50; min-height: 36px; }
+  .pk-btn.on { border-color: #FF6B6B; background: rgba(255,107,107,0.06); font-weight: 700; }
+  .pk-stage { max-width: 1180px; margin: 0 auto; display: flex; justify-content: center; }
+  /* 仪表卡舞台：模拟右栏 667px 宽 */
+  .pk-instrument { width: 100%; max-width: 667px; }
+  .pk-slot { border: 1px dashed rgba(44,62,80,0.18); border-radius: 12px; background: rgba(255,107,107,0.03);
+             color: #666; font-size: 12.5px; text-align: center; padding: 10px; margin-bottom: 12px; }
+  /* 三个候选的排布差异（只动顺序/对齐，不动真件本身） */
+  .pk-instrument.vA .pk-cta-row { margin-top: 14px; }
+  .pk-instrument.vB .pk-cta-row { margin-top: 12px; display: flex; justify-content: center; }
+  .pk-instrument.vB .pk-ruler-row { margin-top: 14px; }
+  .pk-instrument.vC .pk-slot { display: none; }
+  .pk-cta-wide { width: 100%; }
+  .pk-cta-mid { width: 320px; max-width: 100%; }
+  .pk-instrument .timer-block { margin: 0; }
+  .pk-instrument .timer-block #timerCard { width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="pk-top">
+  <h1>中央仪表卡 — 刻度尺真件 + 开始按钮位置候选</h1>
+  <p>
+    本页里的 <b>滚轮数字 / 刻度尺 / ±1 步进 / 花纹 / 气泡 / 开始-暂停-提前结束</b> 全部是<b>生产页真件</b>：
+    CSS 与 JS 从 <code>src/kid_app/templates/practice.html</code> 逐字抽取（未改一个字符），拖尺子、点 ±1、点开始都能真跑。
+  </p>
+  <p>
+    针对反馈"时间是视觉中心、刻度尺是高频交互件、CTA 不该挤在边角"给出 3 个候选，只改<b>顺序与对齐</b>，不改真件：
+    <b>A</b> 读数 → 尺子 → CTA 整宽 ／ <b>B</b> 读数 → CTA 居中 320 → 尺子（CTA 紧贴读数组成中央核心）／ <b>C</b> 去掉卡片内主视觉条，读数 + 尺子独占中央、CTA 整宽在下。
+  </p>
+  <div class="pk-bar">
+    <span style="font-size:12.5px;color:#666">候选</span>
+    <button class="pk-btn on" data-v="A">A · CTA 整宽在下</button>
+    <button class="pk-btn" data-v="B">B · CTA 居中贴读数</button>
+    <button class="pk-btn" data-v="C">C · 无主视觉条</button>
+    <span style="font-size:12.5px;color:#666;margin-left:6px">真件状态：<span id="pkState">选择态 10 分钟</span></span>
+  </div>
+</div>
+
+<div class="pk-stage">
+  <div class="pk-instrument vA" id="pkInst">
+    <div class="pk-slot">中央主视觉预留层 667 × 240（Phase 1 = 刻度尺时钟 + 节拍器视觉 / Phase 2 = 3D 挂载位）</div>
+
+    <div class="timer-block">
+      <div id="timerCard">
+        <div class="readout">
+          <div class="ac-root" id="ttCounter"></div>
+          <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+        </div>
+
+        <div class="ruler-wrap pk-ruler-row">
+          <button class="step-btn minus" id="ttStepMinus" onclick="ttStepMin(-1)" aria-label="减少一分钟">−</button>
+          <div class="ruler" id="ruler">
+            <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+            <div class="notes-bubbles" aria-hidden="true"></div>
+            <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10"
+                   tabindex="-1" aria-label="练习时长（分钟）">
+          </div>
+          <button class="step-btn plus" id="ttStepPlus" onclick="ttStepMin(1)" aria-label="增加一分钟">+</button>
+        </div>
+
+        <div class="btn-row pk-cta-row">
+          <button class="btn btn-primary pk-cta-wide" id="startBtn" onclick="demoToggleTimer()">开始练习</button>
+          <button class="btn btn-danger" id="finishEarlyBtn" onclick="demoFinishEarly()" style="display:none">提前结束</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/gsap.min.js"></script>
+<script src="./practice-skeleton-260920/real-timer-visual.js"></script>
+<script src="./practice-skeleton-260920/demo-glue.js"></script>
+<script>
+  /* 候选切换：只改容器 class（顺序/对齐），真件 DOM 与事件不动 */
+  (function () {
+    var inst = document.getElementById('pkInst');
+    document.querySelectorAll('.pk-btn[data-v]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.pk-btn[data-v]').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        inst.className = 'pk-instrument v' + b.dataset.v;
+        /* C 变体：CTA 整宽；B 变体：CTA 居中 320 */
+        var cta = document.getElementById('startBtn');
+        var early = document.getElementById('finishEarlyBtn');
+        cta.className = 'btn btn-primary ' + (b.dataset.v === 'B' ? 'pk-cta-mid' : 'pk-cta-wide');
+        if (early) early.className = 'btn btn-danger';
+        if (typeof ttInitTimer === 'function') { try { ttInitTimer(); } catch (e) {} }
+      });
+    });
+    /* 状态提示（选择态 / 计时中） */
+    setInterval(function () {
+      var el = document.getElementById('pkState');
+      var b = document.getElementById('startBtn');
+      if (el) el.textContent = b && b.textContent.indexOf('暂停') >= 0 ? '计时中' : (b && b.textContent.indexOf('继续') >= 0 ? '已暂停' : '选择态 10 分钟');
+    }, 400);
+  })();
+</script>
+
+</body>
+</html>

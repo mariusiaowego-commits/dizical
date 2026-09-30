@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本次练什么 — prompt bar</title>
+<style>
+  :root {
+    --c-primary: #FF6B6B;
+    --c-secondary: #2C3E50;
+    --c-tertiary: #FFF8F0;
+    --c-neutral: #FFFFFF;
+    --c-muted: #666666;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    --serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --shadow-ticket:
+      0 4px 16px rgba(44, 62, 80, 0.06),
+      0 1px 3px rgba(44, 62, 80, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html, body { margin: 0; }
+  body {
+    background: var(--c-tertiary);
+    color: var(--c-secondary);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 24px 16px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; }
+  button {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  h1 { margin: 0 0 8px; font-size: 24px; font-weight: 700; }
+  h2 { margin: 28px 0 8px; font-size: 20px; font-weight: 600; }
+  p { margin: 0 0 8px; }
+  code, pre { font-family: var(--mono); font-size: 12px; }
+  pre {
+    margin: 0 0 12px;
+    padding: 12px;
+    background: var(--c-neutral);
+    border-radius: 12px;
+    white-space: pre-wrap;
+    line-height: 1.45;
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: 400px 300px;
+    gap: 32px;
+    align-items: start;
+    justify-content: center;
+    margin: 0 auto 32px;
+  }
+  .col-kicker {
+    margin: 0 0 8px;
+    font-family: var(--serif);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+  .switcher { display: flex; flex-wrap: nowrap; gap: 8px; margin: 0 0 8px; }
+  .switcher button {
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 9999px;
+    background: var(--c-neutral);
+    border: 1px solid rgba(44, 62, 80, 0.14);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .switcher button[aria-pressed="true"] {
+    border-color: var(--c-primary);
+    background: rgba(255, 107, 107, 0.08);
+  }
+  .meter {
+    margin: 0 0 8px;
+    min-height: 36px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--c-muted);
+  }
+
+  .ticket {
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255, 107, 107, 0.07), rgba(255, 107, 107, 0.02)),
+      var(--c-tertiary);
+    box-shadow: var(--shadow-ticket);
+    padding: 16px;
+    overflow: visible;
+  }
+  .is-narrow .ticket { padding: 16px 12px; }
+  .room {
+    min-height: 500px;
+    display: flex;
+    align-items: flex-start;
+    font-family: var(--serif);
+    font-size: 12px;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+  .slot { position: relative; }
+  .cta {
+    margin-top: 16px;
+    min-height: 48px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--c-neutral);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent),
+      var(--c-primary);
+  }
+
+  /* ===== component ===== */
+  .pss-kicker {
+    margin: 0 0 8px;
+    font-family: var(--serif);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+  .pss-anchor { position: relative; }
+  .pss-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 52px;
+    padding: 4px;
+    border-radius: 16px;
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    background: var(--c-neutral);
+    box-shadow: var(--shadow-ticket);
+  }
+  .pss-bar:focus-within { border-color: var(--c-primary); }
+  .pss-plus,
+  .pss-clear {
+    flex: 0 0 auto;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--c-muted);
+  }
+  .pss-plus:hover,
+  .pss-clear:hover { background: rgba(44, 62, 80, 0.05); color: var(--c-secondary); }
+  .pss.is-open .pss-plus {
+    background: rgba(255, 107, 107, 0.1);
+    color: var(--c-primary);
+  }
+  .pss-plus svg,
+  .pss-clear svg { display: block; }
+  .pss-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    border: 0;
+    margin: 0;
+    padding: 0 4px;
+    background: transparent;
+    color: var(--c-secondary);
+    font-size: 14px;
+    line-height: 1.3;
+    outline: none;
+  }
+  .pss-input::placeholder { color: var(--c-muted); }
+
+  .pss-panel {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    padding: 4px 4px 0;
+    border-radius: 12px;
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    background: var(--c-neutral);
+    box-shadow:
+      0 1px 2px rgba(44, 62, 80, 0.06),
+      0 16px 36px -18px rgba(44, 62, 80, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    transform-origin: bottom center;
+    animation: pss-pop 180ms var(--ease) both;
+  }
+  @keyframes pss-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pss-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .pss-list { position: relative; overflow-y: auto; overscroll-behavior: contain; }
+  .pss-hl {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 8px;
+    background: rgba(255, 107, 107, 0.1);
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      top 220ms var(--ease),
+      height 220ms var(--ease),
+      opacity 150ms ease;
+  }
+  .pss-row,
+  .pss-none {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: var(--c-secondary);
+    background: transparent;
+  }
+  .pss-none {
+    font-weight: 500;
+    color: var(--c-muted);
+  }
+  .pss-row.is-current { box-shadow: inset 3px 0 0 var(--c-primary); }
+  .pss-foot {
+    margin: 0;
+    padding: 6px 8px 8px;
+    font-family: var(--serif);
+    font-size: 11px;
+    color: var(--c-muted);
+    white-space: nowrap;
+  }
+
+  .is-narrow .pss-row,
+  .is-narrow .pss-none { font-size: 12px; padding: 0 6px; }
+
+  .pss-plus:focus-visible,
+  .pss-clear:focus-visible,
+  .pss-input:focus-visible,
+  .pss-row:focus-visible,
+  .switcher button:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pss-panel { animation-name: pss-fade; }
+    .pss-hl { transition: opacity 150ms ease; }
+    .pss-plus { transition: none; }
+  }
+
+  .readout {
+    margin: 0 0 12px;
+    padding: 12px;
+    background: var(--c-neutral);
+    border-radius: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .docs { max-width: 760px; margin: 0 auto; }
+  .docs ul { margin: 0 0 8px; padding-left: 1.2em; }
+
+  @media (max-width: 780px) {
+    .cols { grid-template-columns: minmax(0, 400px); }
+  }
+</style>
+</head>
+<body>
+  <div class="cols">
+    <div>
+      <p class="col-kicker">票面内容宽 400</p>
+      <div class="switcher" id="switchWide" role="group" aria-label="宽票科目"></div>
+      <p class="meter" id="meterWide">测量中</p>
+      <article class="ticket" id="ticketWide" aria-label="宽票卡">
+        <div class="room">面板从这条栏的上沿向上长</div>
+        <div class="slot" id="slotWide"></div>
+        <div class="cta" aria-hidden="true">检票 · 开始练习</div>
+      </article>
+    </div>
+    <div class="is-narrow">
+      <p class="col-kicker">票根窄宽 300</p>
+      <div class="switcher" id="switchNarrow" role="group" aria-label="窄票科目"></div>
+      <p class="meter" id="meterNarrow">测量中</p>
+      <article class="ticket" id="ticketNarrow" aria-label="窄票卡">
+        <div class="room">窄宽里同样向上长</div>
+        <div class="slot" id="slotNarrow"></div>
+        <div class="cta" aria-hidden="true">检票 · 开始练习</div>
+      </article>
+    </div>
+  </div>
+
+  <div class="docs">
+    <h1>本次练什么</h1>
+    <p>票卡里的 session 选择。布局照 prompt bar：左边 ＋，中间输入，点 ＋ 后面板从栏的上沿向上弹出。配色照票卡，不用参考稿的颜色。下面两张票分别是 400px 和 300px。展开时票卡高度和下面的检票按钮都不该动。</p>
+    <div class="readout" id="readout">还没有选择</div>
+    <h2>集成契约</h2>
+    <pre>var ui = PracticeSessionSelector.mount(host, {
+  options: PracticeSessionSelector.parse(item.content_options),
+  value: '',
+  onChange: function (value, meta) {
+    // value: string，清空时为 ''
+    // meta.source: 'option' | 'custom' | 'clear'
+    // meta.fallback: 没配标签、正在用兜底四词
+    // meta.optionCount
+  }
+});
+ui.setOptions(rawOrArray); // 不发 onChange，不清空
+ui.setValue('');           // 切科目时票卡自己清空，不发 onChange
+ui.getValue();
+ui.open();
+ui.close();
+ui.destroy();</pre>
+    <ul>
+      <li>点「＋」列出全部标签，不按输入框里已有的字过滤。接着打字，就按输入框实时过滤。</li>
+      <li>Enter 选中当前高亮行。面板关着时，Enter 把输入框里的文字当成自填提交。</li>
+      <li>Esc、点栏外，关上面板，不改已提交的值。末尾 × 清空，并 <code>onChange('', { source: 'clear' })</code>。</li>
+      <li>面板是栏的兄弟，<code>position: absolute; bottom: calc(100% + 8px)</code>，不占高度。票卡这一截不要 <code>overflow: hidden</code>，否则向上的面板会被裁掉。</li>
+      <li>根 <code>.pss</code>：<code>is-empty</code> <code>is-selected</code> <code>is-open</code> <code>is-custom</code> <code>is-fallback</code>。</li>
+      <li><code>.pss-anchor</code> <code>.pss-bar</code> <code>.pss-plus</code> <code>.pss-input</code> <code>.pss-clear</code> <code>.pss-panel</code> <code>.pss-list</code> <code>.pss-hl</code> <code>.pss-row</code>（当前提交 <code>.is-current</code>）<code>.pss-row-custom</code> <code>.pss-none</code> <code>.pss-foot</code>。</li>
+    </ul>
+  </div>
+
+<script>
+/* ===== component: copy from here through PracticeSessionSelector ===== */
+(function () {
+  var FALLBACK = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
+  var seq = 0;
+
+  function parseContentOptions(raw) {
+    var list = Array.isArray(raw) ? raw : String(raw == null ? '' : raw).split(/[,，]/);
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var text = String(list[i]).trim();
+      if (!text || seen[text]) continue;
+      seen[text] = true;
+      out.push(text);
+    }
+    return out;
+  }
+
+  function iconPlus() {
+    var wrap = document.createElement('span');
+    wrap.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
+    return wrap.firstChild;
+  }
+
+  function iconClear() {
+    var wrap = document.createElement('span');
+    wrap.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
+    return wrap.firstChild;
+  }
+
+  function mount(host, opts) {
+    opts = opts || {};
+    var id = 'pss' + (++seq);
+    var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
+    var options = [];
+    var usingFallback = false;
+    var value = '';
+    var open = false;
+    var browseAll = true;
+    var active = 0;
+    var engaged = false;
+    var items = [];
+
+    var root = document.createElement('div');
+    root.className = 'pss is-empty';
+    var kicker = document.createElement('p');
+    kicker.className = 'pss-kicker';
+    kicker.textContent = '本次练什么';
+
+    var anchor = document.createElement('div');
+    anchor.className = 'pss-anchor';
+
+    var panel = document.createElement('div');
+    panel.className = 'pss-panel';
+    panel.id = id + '-panel';
+    panel.hidden = true;
+    var list = document.createElement('div');
+    list.className = 'pss-list';
+    list.id = id + '-list';
+    list.setAttribute('role', 'listbox');
+    var hl = document.createElement('span');
+    hl.className = 'pss-hl';
+    hl.setAttribute('aria-hidden', 'true');
+    list.appendChild(hl);
+    var foot = document.createElement('p');
+    foot.className = 'pss-foot';
+    foot.textContent = '上下键选择，回车确认';
+    panel.append(list, foot);
+
+    var bar = document.createElement('div');
+    bar.className = 'pss-bar';
+    var plus = document.createElement('button');
+    plus.type = 'button';
+    plus.className = 'pss-plus';
+    plus.setAttribute('aria-label', '展开练习内容');
+    plus.setAttribute('aria-expanded', 'false');
+    plus.setAttribute('aria-controls', list.id);
+    plus.appendChild(iconPlus());
+    var input = document.createElement('input');
+    input.className = 'pss-input';
+    input.type = 'text';
+    input.maxLength = 200;
+    input.placeholder = '选一个或输入本次练习内容';
+    input.setAttribute('aria-label', '本次练习内容');
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', list.id);
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.enterKeyHint = 'done';
+    var clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'pss-clear';
+    clearBtn.setAttribute('aria-label', '清空本次练习内容');
+    clearBtn.hidden = true;
+    clearBtn.appendChild(iconClear());
+    bar.append(plus, input, clearBtn);
+    anchor.append(panel, bar);
+    root.append(kicker, anchor);
+    host.replaceChildren(root);
+
+    function queryText() {
+      return browseAll ? '' : input.value.trim();
+    }
+
+    function emit(source) {
+      onChange(value, {
+        source: source,
+        fallback: usingFallback,
+        optionCount: options.length
+      });
+    }
+
+    function paint() {
+      var has = value.length > 0;
+      root.classList.toggle('is-empty', !has);
+      root.classList.toggle('is-selected', has);
+      root.classList.toggle('is-custom', has && options.indexOf(value) === -1);
+      root.classList.toggle('is-fallback', usingFallback);
+      root.classList.toggle('is-open', open);
+      root.dataset.value = value;
+      plus.setAttribute('aria-expanded', open ? 'true' : 'false');
+      input.setAttribute('aria-expanded', open ? 'true' : 'false');
+      clearBtn.hidden = input.value.trim().length === 0 && !has;
+    }
+
+    function selectable() {
+      var q = queryText().toLowerCase();
+      var shown = options.filter(function (text) {
+        return !q || text.toLowerCase().indexOf(q) !== -1;
+      });
+      var typed = input.value.trim();
+      var rows = shown.map(function (text) { return { kind: 'option', text: text }; });
+      if (typed && options.indexOf(typed) === -1) rows.push({ kind: 'custom', text: typed });
+      return { shown: shown, rows: rows, empty: q && shown.length === 0 };
+    }
+
+    function placeHighlight() {
+      var buttons = list.querySelectorAll('.pss-row');
+      var target = buttons[active];
+      if (!target || !engaged) {
+        hl.style.opacity = '0';
+        input.removeAttribute('aria-activedescendant');
+        return;
+      }
+      hl.style.top = target.offsetTop + 'px';
+      hl.style.height = target.offsetHeight + 'px';
+      hl.style.opacity = '1';
+      input.setAttribute('aria-activedescendant', target.id);
+      if (target.scrollIntoView) target.scrollIntoView({ block: 'nearest' });
+    }
+
+    function render() {
+      var pack = selectable();
+      items = pack.rows;
+      if (active > items.length - 1) active = 0;
+      var empty = list.querySelector('.pss-none');
+      if (empty) empty.remove();
+      var old = list.querySelectorAll('.pss-row');
+      for (var i = 0; i < old.length; i++) old[i].remove();
+      if (pack.empty) {
+        var none = document.createElement('div');
+        none.className = 'pss-none';
+        none.textContent = '没有符合的标签';
+        list.appendChild(none);
+      }
+      items.forEach(function (item, index) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pss-row' + (item.kind === 'custom' ? ' pss-row-custom' : '');
+        button.id = id + '-opt-' + index;
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', item.text === value ? 'true' : 'false');
+        if (item.text === value) button.classList.add('is-current');
+        button.textContent = item.kind === 'custom' ? '使用我输入的内容' : item.text;
+        button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+        button.addEventListener('mouseenter', function () {
+          active = index;
+          engaged = true;
+          placeHighlight();
+        });
+        button.addEventListener('click', function () { pick(index); });
+        list.appendChild(button);
+      });
+      placeHighlight();
+      paint();
+    }
+
+    function clampList() {
+      list.style.maxHeight = 'none';
+      var rect = panel.getBoundingClientRect();
+      if (rect.top < 8) {
+        var listRect = list.getBoundingClientRect();
+        list.style.maxHeight = Math.max(44, Math.floor(listRect.height - (8 - rect.top))) + 'px';
+      }
+    }
+
+    function openPanel() {
+      if (open) {
+        render();
+        clampList();
+        return;
+      }
+      open = true;
+      panel.hidden = false;
+      render();
+      clampList();
+      paint();
+    }
+
+    function closePanel() {
+      if (!open) return;
+      open = false;
+      engaged = false;
+      panel.hidden = true;
+      input.removeAttribute('aria-activedescendant');
+      paint();
+    }
+
+    function pick(index) {
+      var item = items[index];
+      if (!item) return;
+      var next = item.text.trim().slice(0, 200);
+      if (!next) return;
+      var changed = next !== value;
+      value = next;
+      input.value = next;
+      browseAll = false;
+      closePanel();
+      input.focus({ preventScroll: true });
+      if (changed) emit(item.kind === 'custom' ? 'custom' : 'option');
+      else paint();
+    }
+
+    function commitTyped() {
+      var next = input.value.trim().slice(0, 200);
+      if (!next) return;
+      var kind = options.indexOf(next) === -1 ? 'custom' : 'option';
+      var changed = next !== value;
+      value = next;
+      input.value = next;
+      closePanel();
+      if (changed) emit(kind);
+      else paint();
+    }
+
+    function clearAll() {
+      var had = value.length > 0;
+      value = '';
+      input.value = '';
+      browseAll = true;
+      closePanel();
+      paint();
+      render();
+      if (had) emit('clear');
+      input.focus({ preventScroll: true });
+    }
+
+    function setOptions(raw) {
+      var parsed = parseContentOptions(raw);
+      usingFallback = parsed.length === 0;
+      options = usingFallback ? FALLBACK.slice() : parsed;
+      render();
+    }
+
+    function setValue(next) {
+      value = String(next == null ? '' : next).trim().slice(0, 200);
+      input.value = value;
+      browseAll = true;
+      paint();
+      if (open) render();
+    }
+
+    plus.addEventListener('click', function () {
+      if (open && browseAll) {
+        closePanel();
+        return;
+      }
+      browseAll = true;
+      active = 0;
+      engaged = false;
+      openPanel();
+      input.focus({ preventScroll: true });
+    });
+
+    input.addEventListener('input', function () {
+      browseAll = false;
+      active = 0;
+      engaged = false;
+      openPanel();
+    });
+
+    input.addEventListener('keydown', function (event) {
+      var composing = event.isComposing || event.keyCode === 229;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        if (!open) {
+          browseAll = input.value.trim().length === 0;
+          openPanel();
+        }
+        if (!items.length) return;
+        event.preventDefault();
+        engaged = true;
+        active = event.key === 'ArrowDown'
+          ? (active + 1) % items.length
+          : (active - 1 + items.length) % items.length;
+        placeHighlight();
+        return;
+      }
+      if (event.key === 'Enter') {
+        if (composing) return;
+        event.preventDefault();
+        if (open && items.length) pick(active);
+        else commitTyped();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePanel();
+      }
+    });
+
+    clearBtn.addEventListener('click', clearAll);
+    panel.addEventListener('mouseleave', function () {
+      engaged = false;
+      placeHighlight();
+    });
+
+    function onPointerDown(event) {
+      if (!open) return;
+      if (root.contains(event.target)) return;
+      closePanel();
+    }
+    function onKeyDown(event) {
+      if (event.key === 'Escape' && open) {
+        event.preventDefault();
+        closePanel();
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    setOptions(opts.options || []);
+    setValue(opts.value || '');
+
+    return {
+      element: root,
+      anchor: anchor,
+      panel: panel,
+      list: list,
+      input: input,
+      plus: plus,
+      clearBtn: clearBtn,
+      setOptions: setOptions,
+      setValue: setValue,
+      getValue: function () { return value; },
+      open: function () { browseAll = true; active = 0; engaged = false; openPanel(); },
+      close: closePanel,
+      isOpen: function () { return open; },
+      destroy: function () {
+        document.removeEventListener('pointerdown', onPointerDown);
+        document.removeEventListener('keydown', onKeyDown);
+        root.remove();
+      }
+    };
+  }
+
+  window.PracticeSessionSelector = {
+    mount: mount,
+    parse: parseContentOptions,
+    fallback: FALLBACK.slice()
+  };
+})();
+/* ===== component end ===== */
+
+/* ===== demo only ===== */
+(function () {
+  var ITEMS = [
+    {
+      id: 1340,
+      name: '萨丽哈',
+      content_options: '单独练习：低音34；低音54；中音34；中音54,背全曲,第1句,第2句,第3句,第4句,第5句,第6句,第7句'
+    },
+    {
+      id: 1343,
+      name: '单吐tuku',
+      content_options: 'tu （♩=80）,ku （♩=70）'
+    },
+    {
+      id: 1001,
+      name: '基本功',
+      content_options: ''
+    }
+  ];
+
+  function bind(switcher, slot, ticket, meter, onChange) {
+    var ui = PracticeSessionSelector.mount(slot, {
+      options: ITEMS[0].content_options,
+      value: '',
+      onChange: onChange || function () {}
+    });
+    var activeId = ITEMS[0].id;
+    function closedBox() {
+      return {
+        ticket: Math.round(ticket.getBoundingClientRect().height),
+        slot: Math.round(slot.getBoundingClientRect().height),
+        cta: Math.round(ticket.querySelector('.cta').getBoundingClientRect().top)
+      };
+    }
+    var base = null;
+    function refresh() {
+      var now = closedBox();
+      if (!base || !ui.isOpen()) base = now;
+      var dTicket = now.ticket - base.ticket;
+      var dCta = now.cta - base.cta;
+      var overflow = 0;
+      var nodes = ui.element.querySelectorAll('.pss-row, .pss-input, .pss-kicker, .pss-foot, .pss-none');
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].scrollWidth > nodes[i].clientWidth + 1) overflow += 1;
+      }
+      var panel = ui.panel.getBoundingClientRect();
+      var box = ticket.getBoundingClientRect();
+      var outside = ui.isOpen() && (panel.left < box.left - 1 || panel.right > box.right + 1);
+      meter.textContent = '票 ' + now.ticket + ' · 栏 ' + now.slot + ' · 检票 ' + dCta + ' · 差 ' + dTicket + ' · 溢出 ' + overflow + (outside ? ' · 出界' : '');
+    }
+    ITEMS.forEach(function (item) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = item.name;
+      button.dataset.item = String(item.id);
+      button.setAttribute('aria-pressed', item.id === activeId ? 'true' : 'false');
+      button.addEventListener('click', function () {
+        activeId = item.id;
+        var all = switcher.querySelectorAll('button');
+        for (var i = 0; i < all.length; i++) {
+          all[i].setAttribute('aria-pressed', all[i] === button ? 'true' : 'false');
+        }
+        ui.close();
+        ui.setOptions(item.content_options);
+        ui.setValue('');
+        refresh();
+      });
+      switcher.appendChild(button);
+    });
+    ui.plus.addEventListener('click', function () { window.setTimeout(refresh, 30); });
+    ui.input.addEventListener('input', function () { window.setTimeout(refresh, 30); });
+    refresh();
+    if (window.ResizeObserver) new ResizeObserver(refresh).observe(ticket);
+    return { ui: ui, refresh: refresh, ticket: ticket };
+  }
+
+  var readout = document.getElementById('readout');
+  var wide = bind(
+    document.getElementById('switchWide'),
+    document.getElementById('slotWide'),
+    document.getElementById('ticketWide'),
+    document.getElementById('meterWide'),
+    function (value, meta) {
+      readout.textContent = [
+        'value: ' + (value || '（空）'),
+        'source: ' + meta.source,
+        'fallback: ' + meta.fallback,
+        'optionCount: ' + meta.optionCount
+      ].join('\n');
+    }
+  );
+  var narrow = bind(
+    document.getElementById('switchNarrow'),
+    document.getElementById('slotNarrow'),
+    document.getElementById('ticketNarrow'),
+    document.getElementById('meterNarrow')
+  );
+
+  if (location.hash === '#open') wide.ui.open();
+
+  if (location.hash === '#selftest') {
+    var fails = [];
+    function fail(code) { fails.push(code); }
+    var ui = wide.ui;
+    var before = document.getElementById('ticketWide').getBoundingClientRect();
+    var slotH = document.getElementById('slotWide').getBoundingClientRect().height;
+    var ctaTop = document.getElementById('ticketWide').querySelector('.cta').getBoundingClientRect().top;
+    ui.plus.click();
+    if (!ui.isOpen()) fail('not-open');
+    if (getComputedStyle(ui.panel).position !== 'absolute') fail('not-absolute');
+    var originParts = getComputedStyle(ui.panel).transformOrigin.split(' ');
+    var originY = parseFloat(originParts[1]);
+    if (Math.abs(originY - ui.panel.offsetHeight) > 2) fail('origin-' + originParts.join(','));
+    var after = document.getElementById('ticketWide').getBoundingClientRect();
+    if (Math.round(after.height) !== Math.round(before.height)) fail('ticket-grew');
+    if (Math.round(document.getElementById('slotWide').getBoundingClientRect().height) !== Math.round(slotH)) fail('slot-grew');
+    if (Math.round(document.getElementById('ticketWide').querySelector('.cta').getBoundingClientRect().top) !== Math.round(ctaTop)) fail('cta-moved');
+    var rows = ui.list.querySelectorAll('.pss-row');
+    if (rows.length !== 9) fail('count-' + rows.length);
+    var longText = '单独练习：低音34；低音54；中音34；中音54';
+    if (rows[0].textContent !== longText) fail('long');
+    if (rows[0].scrollWidth > rows[0].clientWidth + 1) fail('wide-ov-' + rows[0].scrollWidth + '-' + rows[0].clientWidth);
+    if (rows[0].offsetHeight < 44) fail('row-h');
+    ui.input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    ui.input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    if (ui.getValue() !== '背全曲') fail('key-' + ui.getValue());
+    if (ui.isOpen()) fail('key-open');
+    ui.clearBtn.click();
+    ui.plus.click();
+    if (ui.plus.offsetHeight < 44 || ui.input.offsetHeight < 44) fail('bar-h');
+    var panelBox = ui.panel.getBoundingClientRect();
+    var ticketBox = after;
+    if (panelBox.left < ticketBox.left - 1 || panelBox.right > ticketBox.right + 1) fail('panel-x');
+    if (panelBox.bottom > ui.anchor.getBoundingClientRect().top + 1) fail('panel-not-above');
+    ui.input.value = '第1';
+    ui.input.dispatchEvent(new Event('input', { bubbles: true }));
+    var filtered = Array.prototype.map.call(ui.list.querySelectorAll('.pss-row'), function (n) { return n.textContent; });
+    if (filtered.join('|') !== '第1句|使用我输入的内容') fail('filter-' + filtered.join('|'));
+    ui.input.value = 'zzzz';
+    ui.input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!ui.list.querySelector('.pss-none')) fail('no-empty');
+    if (!ui.list.querySelector('.pss-row-custom')) fail('no-custom');
+    var custom = ui.list.querySelector('.pss-row-custom');
+    if (custom.textContent !== '使用我输入的内容') fail('custom-label');
+    custom.click();
+    if (ui.getValue() !== 'zzzz') fail('custom-value');
+    if (ui.isOpen()) fail('stayed-open');
+    if (!ui.element.classList.contains('is-custom')) fail('custom-class');
+    ui.clearBtn.click();
+    if (ui.getValue() !== '') fail('not-cleared');
+    document.querySelector('#switchWide [data-item="1001"]').click();
+    ui.plus.click();
+    var fb = Array.prototype.map.call(ui.list.querySelectorAll('.pss-row'), function (n) { return n.textContent; }).join('|');
+    if (fb !== '长音练习|吐音练习|连吐练习|换气练习') fail('fallback-' + fb);
+    if (!ui.element.classList.contains('is-fallback')) fail('fallback-class');
+    var nUi = narrow.ui;
+    var nBefore = document.getElementById('ticketNarrow').getBoundingClientRect().height;
+    document.querySelector('#switchNarrow [data-item="1340"]').click();
+    nUi.plus.click();
+    var nRow = nUi.list.querySelector('.pss-row');
+    if (!nRow || nRow.textContent !== longText) fail('narrow-long');
+    if (nRow.scrollWidth > nRow.clientWidth + 1) fail('narrow-ov-' + nRow.scrollWidth + '-' + nRow.clientWidth);
+    var nPanel = nUi.panel.getBoundingClientRect();
+    var nTicket = document.getElementById('ticketNarrow').getBoundingClientRect();
+    if (nPanel.right > nTicket.right + 1 || nPanel.left < nTicket.left - 1) fail('narrow-x');
+    if (Math.round(nTicket.height) !== Math.round(nBefore)) fail('narrow-grew');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    if (nUi.isOpen() || ui.isOpen()) fail('esc');
+    var result = fails.length ? ('FAIL ' + fails.join(',')) : 'PASS';
+    document.documentElement.dataset.selftest = result;
+    document.title = result;
+  }
+})();
+</script>
+</body>
+</html>
