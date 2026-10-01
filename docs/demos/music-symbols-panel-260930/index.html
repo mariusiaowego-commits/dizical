@@ -199,12 +199,14 @@ function buildFrame(width, label, sublabel){
     } else if (spaceAbove >= panelH) {                // 下方不够 → 放上方
       top = fieldTop - gap - panelH;
     } else if (spaceAbove > spaceBelow) {             // 两边都不够 → 取空间大的一侧，面板限高内滚
-      top = Math.max(visTopRel + 4, fieldTop - gap - Math.max(spaceAbove, 120));
-      panel.style.maxHeight = Math.max(120, spaceAbove) + 'px';
+      var hUp = Math.min(panelH, Math.max(0, spaceAbove));   // 高度不超过可用空间（绝不许压盖输入框）
+      top = Math.max(visTopRel + 4, fieldTop - gap - hUp);
+      panel.style.maxHeight = hUp + 'px';
       capped = true;
     } else {
+      var hDown = Math.min(panelH, Math.max(0, spaceBelow));
       top = fieldBottom + gap;
-      panel.style.maxHeight = Math.max(120, spaceBelow) + 'px';
+      panel.style.maxHeight = hDown + 'px';
       capped = true;
     }
     if (!capped) panel.style.maxHeight = '';

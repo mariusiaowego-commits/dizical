@@ -25,7 +25,8 @@
   var GAP = 8;          // 面板与输入框的间距
   var EDGE = 6;         // 面板与视口边缘的安全边距
   var MAX_W = 336;      // 面板宽度上限
-  var MIN_H = 120;      // 限高时的最小可滚高度
+  /* 26093002: 故意不设「最小可滚高度」。两侧都放不下时面板宁可压矮 + 内部滚动，
+     也绝不允许越过输入框边界 —— dad 硬约束：输入框与面板必须同时可见。 */
 
   var panel = null;
   var panelBody = null;
@@ -160,10 +161,16 @@
     } else if (spaceAbove >= panelH) {
       top = r.top - GAP - panelH;                        // 2) 翻到上方
     } else if (spaceAbove > spaceBelow) {
-      panel.style.maxHeight = Math.max(MIN_H, spaceAbove) + 'px';   // 3) 上方更大 → 上方限高内滚
-      top = Math.max(vis.top + EDGE, r.top - GAP - Math.max(MIN_H, spaceAbove));
+      /* 3) 两边都放不下 → 取较大一侧（上方）限高内滚。
+         高度必须 <= 该侧可用空间，否则会越过输入框边界把它盖住（dad 硬约束）。
+         GAP(8) > EDGE(6)，所以即便把 top 钳到视口内，面板底边仍停在输入框上方。 */
+      var hUp = Math.min(panelH, Math.max(0, spaceAbove));
+      panel.style.maxHeight = hUp + 'px';
+      top = Math.max(vis.top + EDGE, r.top - GAP - hUp);
     } else {
-      panel.style.maxHeight = Math.max(MIN_H, spaceBelow) + 'px';   // 4) 下方更大 → 下方限高内滚
+      /* 4) 同上，取较大一侧（下方）；hDown <= spaceBelow 时底边不会溢出视口 */
+      var hDown = Math.min(panelH, Math.max(0, spaceBelow));
+      panel.style.maxHeight = hDown + 'px';
       top = r.bottom + GAP;
     }
     panel.style.overflowY = 'auto';
