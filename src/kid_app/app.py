@@ -620,12 +620,6 @@ def _week_progress():
     return pct, f"{days}/{goal} 天"
 
 
-def _calc_yesterday_mins(days_ago: int = 1):
-    d = dt.date.today() - dt.timedelta(days=days_ago)
-    p = db.get_daily_practice(d)
-    return p.get("total_minutes", 0) if p else 0
-
-
 def _calc_yesterday_seconds(days_ago: int = 1) -> int:
     d = dt.date.today() - dt.timedelta(days=days_ago)
     return total_seconds_of_practice(db.get_daily_practice(d))

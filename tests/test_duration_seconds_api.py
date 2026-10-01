@@ -404,3 +404,11 @@ def test_behavior_log_entry_seconds_follow_its_own_minutes(client, monkeypatch):
     assert r.status_code == 200, r.text
     got = [e["seconds"] for e in saved["log"]]
     assert got == [0, 120, 0], f"期望 [0,120,0]，实际 {got}（旧实现给 [600,120,600]）"
+
+
+def test_dead_yesterday_mins_helper_removed():
+    """F1: 分钟版「昨天练了多少」是死函数（口径不一致的陷阱），已删除。"""
+    from src.kid_app import app as app_module
+
+    assert not hasattr(app_module, "_calc_yesterday_mins"), "死函数又回来了"
+    assert hasattr(app_module, "_calc_yesterday_seconds")
