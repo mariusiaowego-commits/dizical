@@ -1,5 +1,27 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-09-30 (未上线) — 练习时长秒级（API 面）
+**类型**: 🟡 部分兼容（新增可选入参与返回字段；不传 `seconds` 时服务端按 `minutes × 60` 补。分钟字段名、语义、逐条 ceil 后相加的聚合都不变。dizical-minip 不改也能跑，建议择期同步展示）
+
+## 变更
+
+- `POST /api/log` 与 `behavior_log[]` 可选 `seconds`（0–86400）。缺省 = `minutes * 60`。请求带了秒且秒 > 0 时，这次写入的 `minutes = ceil(秒/60)`（至少 1）。响应新增 `seconds`，`total` 仍是这次写入的分钟。
+- `POST /config/api/records` 的 `items[]` 可选 `seconds`（缺省 = 该条 `minutes * 60`）。不改写客户端传来的分钟。`total_seconds` 由服务端按条目相加，忽略请求体里的合计。响应在原有字段上追加 `total_seconds`。
+- `PUT /api/practice-sessions/{id}` 可选 `duration_seconds`（1–86400）。带了秒时同时把 `duration_minutes` 写成 `ceil(秒/60)`。
+- 读出新增（旧分钟字段保持原值原义）:
+  - `GET /api/practices/{date}`: `total_seconds`、`items[].seconds`、`sessions[].duration_seconds`、`behavior_log[].seconds`
+  - `GET /api/practices/monthly` 与 `GET /api/practices/stage/{date}`: `seconds_data`、`day_seconds`（`data[日期][科目]` 仍是分钟数，给图表柱高）
+  - `GET /api/practices/stage-detail`: `summary.total_seconds`、`by_item[].seconds`、每日 `total_seconds`、session `duration_seconds`
+  - `GET /config/api/records`、`/{date}`、`/stats`、`/config/api/practice-week`、`/config/api/practice-month-summary`: 对应的 `total_seconds` / `seconds` / `item_seconds` / `daily_seconds`
+  - `GET /api/today-stats`: `total_seconds`
+- 去重 key 的时长槽从整数分钟改为秒。10 秒与 50 秒不再互相挡。没带 `seconds` 时按 `minutes * 60`，旧客户端同分钟仍互相挡。
+- 秒列为 0 且分钟 > 0 时，读出按未回填处理，用 `minutes * 60`。
+- **对 dizical-minip**：无需改代码。展示若要秒级，择期读新字段；不要改分钟字段的读法。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-09-30 (已上线 #134 / #135) — sprint 26092901 + 26093001 线上修复
 **类型**: ✅ 完全兼容（仅内部实现与错误路径；端点 / 请求参数 / 返回结构不变，客户端无需改动）
 

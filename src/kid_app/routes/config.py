@@ -12,6 +12,13 @@ from fastapi.encoders import jsonable_encoder
 
 from src.database import db
 from src import practice as practice_module
+from src.kid_app.duration_fmt import (
+    pick_seconds,
+    total_seconds_of_practice,
+    annotate_item,
+    annotate_session,
+    invoke,
+)
 from src import db_adapter  # Sprint 08: conn.execute → db_adapter.execute (双后端占位符)
 from src.lesson_manager import LessonManager
 from src.payment import PaymentManager
@@ -523,9 +530,11 @@ def api_records_stats():
     month_practices = db.get_daily_practices_in_range(month_start, today)
     month_mins = sum(p.get('total_minutes', 0) for p in month_practices)
     month_days = sum(1 for p in month_practices if p.get('total_minutes', 0) > 0)
+    week_secs = sum(total_seconds_of_practice(p) for p in week_practices)
+    month_secs = sum(total_seconds_of_practice(p) for p in month_practices)
     return JSONResponse({
-        "week": {"minutes": week_mins, "days": week_days, "start": week_start.isoformat(), "end": today.isoformat()},
-        "month": {"minutes": month_mins, "days": month_days, "start": month_start.isoformat()}
+        "week": {"minutes": week_mins, "seconds": week_secs, "days": week_days, "start": week_start.isoformat(), "end": today.isoformat()},
+        "month": {"minutes": month_mins, "seconds": month_secs, "days": month_days, "start": month_start.isoformat()}
     })
 
 
@@ -556,6 +565,7 @@ def api_get_records(year: int, month: int):
                 items_raw = []
         result[d_key] = {
             'total_minutes': p.get('total_minutes', 0),
+            'total_seconds': total_seconds_of_practice({**p, 'items': items_raw}),
             'item_count': len(items_raw) if items_raw else 0,
             'practiced': p.get('practiced', 'Y')
         }
@@ -595,14 +605,21 @@ def api_get_record(date_str: str):
 
     sessions = []
     for s in db.get_practice_sessions(date):
-        row = dict(s)
+        row = annotate_session(dict(s))
         row["reps"] = row.get("reps")
         sessions.append(row)
+
+    items_out = [annotate_item(it) if isinstance(it, dict) else it for it in (items_raw or [])]
+    if any(isinstance(it, dict) for it in items_out):
+        total_seconds = sum(it.get("seconds", 0) for it in items_out if isinstance(it, dict))
+    else:
+        total_seconds = pick_seconds(record.get('total_seconds'), record.get('total_minutes', 0))
 
     return JSONResponse({
         "date": date_str,
         "total_minutes": record.get('total_minutes', 0),
-        "items": items_raw,
+        "total_seconds": total_seconds,
+        "items": items_out,
         "log": record.get('log', ''),
         "practiced": record.get('practiced', 'Y'),
         "sessions": sessions,
@@ -633,43 +650,64 @@ async def api_save_record(request: Request):
         if total_minutes == 0 and items:
             total_minutes = sum(i.get('minutes', 0) for i in items)
 
+        # 秒缺省 = 该条 minutes*60。合计由服务端相加，不采用前端传来的 total_seconds。
+        normalized = []
+        for raw in items:
+            it = dict(raw)
+            mins = int(it.get('minutes') or 0)
+            if it.get('seconds') is None:
+                it['seconds'] = mins * 60
+            else:
+                try:
+                    it['seconds'] = int(it['seconds'])
+                except (TypeError, ValueError):
+                    return JSONResponse({"ok": False, "error": "seconds 必须是整数"}, status_code=400)
+            if it['seconds'] < 0 or it['seconds'] > 86400:
+                return JSONResponse({"ok": False, "error": "seconds 必须在 0-86400"}, status_code=400)
+            normalized.append(it)
+        total_seconds = sum(int(it.get('seconds') or 0) for it in normalized)
+
         # 7-27: session 细节分支 (tempo_note/tempo_bpm/content 三个字段都在 → 走整事务)
         has_session_detail = all(k in body for k in ("tempo_note", "tempo_bpm", "content"))
-        if has_session_detail and items:
+        if has_session_detail and normalized:
             tempo_note = body.get("tempo_note", "♪")
             tempo_bpm = int(body.get("tempo_bpm", 80))
             content = body.get("content", "")
             content_source = body.get("content_source", "manual")
-            item_name = items[0].get("item", "")
-            item_id = int(items[0].get("item_id", 0))
-            minutes = items[0].get("minutes", 0)
-            reps = body.get("reps") if "reps" in body else items[0].get("reps")
+            item_name = normalized[0].get("item", "")
+            item_id = int(normalized[0].get("item_id", 0))
+            minutes = normalized[0].get("minutes", 0)
+            item_seconds = int(normalized[0].get("seconds") or 0)
+            reps = body.get("reps") if "reps" in body else normalized[0].get("reps")
             try:
-                s = db.save_practice_session_and_daily_summary(
+                s = invoke(
+                    db.save_practice_session_and_daily_summary,
                     date, item_name, item_id, minutes,
                     tempo_note, tempo_bpm, content, content_source,
                     practice_at=None, is_extra=False, reps=reps,
+                    seconds=item_seconds,
                 )
                 daily = db.get_daily_practice(date)
                 return JSONResponse({
                     "ok": True,
                     "total": daily.get("total_minutes", minutes) if daily else minutes,
+                    "total_seconds": total_seconds_of_practice(daily) if daily else item_seconds,
                     "session": s,
                 })
             except ValueError as e:
                 return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
-        # 旧路径 (无 session 字段)
+        # 旧路径 (无 session 字段)。items 上的 seconds 由存储层累加，不传前端合计。
         db.save_daily_practice(
             date=date,
-            items=items,
+            items=normalized,
             total_minutes=total_minutes,
             log=log,
             practiced=practiced,
             channel='web',
             method='config-records'
         )
-        return JSONResponse({"ok": True})
+        return JSONResponse({"ok": True, "total_seconds": total_seconds})
 
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -960,8 +998,10 @@ def api_practice_week(date_str: Optional[str] = None):
         "week_start": week_start.isoformat(),
         "week_end": summary["week_end"].isoformat(),
         "total_minutes": summary["total_minutes"],
+        "total_seconds": summary.get("total_seconds", pick_seconds(None, summary["total_minutes"])),
         "practice_days": summary["practice_days"],
         "item_totals": summary["item_totals"],
+        "item_seconds": summary.get("item_seconds", {}),
         "assignment": _serialize_assignment(summary["assignment"]),
         "days": days_serialized,
     })
@@ -1456,9 +1496,12 @@ def api_practice_month_summary(year: Optional[int] = None, month: Optional[int] 
         "year": year,
         "month": month,
         "total_minutes": data["total_minutes"],
+        "total_seconds": data.get("total_seconds", pick_seconds(None, data["total_minutes"])),
         "practice_days": data["practice_days"],
         "item_totals": data["item_totals"],
+        "item_seconds": data.get("item_seconds", {}),
         "daily_minutes": data.get("daily_minutes", {}),
+        "daily_seconds": data.get("daily_seconds", {}),
     })
 
 

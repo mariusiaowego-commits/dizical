@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>demo — 练习时长展示口径对照（秒级）</title>
+<style>
+  :root{
+    --ink:#2C3E50; --ink2:#5D6D7E; --line:rgba(0,0,0,.08); --bg:#F7F6F3;
+    --card:#fff; --teal:#4ECDC4; --teal2:#44B8AC; --gold:#F0D060; --gold-ink:#5D4037;
+    --coral:#FF6B6B;
+  }
+  *{box-sizing:border-box;-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 -apple-system,"PingFang SC","Helvetica Neue",sans-serif;padding:22px}
+  h1{font-size:19px;margin:0 0 6px}
+  .sub{color:var(--ink2);font-size:13px;margin:0 0 18px}
+  .note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 20px;font-size:13px;color:var(--ink2)}
+  .note b{color:var(--ink)}
+  .note ul{margin:8px 0 0;padding-left:18px}
+  .note li{margin:3px 0}
+  .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 26px}
+  @media(max-width:1099px){.board{grid-template-columns:1fr}}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+  .col h2{font-size:14px;margin:0 0 2px}
+  .col .tag{font-size:12px;color:var(--ink2);margin:0 0 12px}
+  .col.now{border-color:#E8E2D2}
+  .col.a{border-color:#DCEFEC}
+  .col.b{border-color:#DCE3EF}
+  .badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:999px;margin-right:6px;vertical-align:1px}
+  .badge.now{background:#F5F0DC;color:#8A6D1F}
+  .badge.a{background:#E4F5F2;color:#2E7D74}
+  .badge.b{background:#E7EDF7;color:#3A5C8A}
+  .surface{border-top:1px solid var(--line);padding:12px 0 2px}
+  .surface:first-of-type{border-top:0;padding-top:0}
+  .surface h3{font-size:12.5px;margin:0 0 8px;color:var(--ink2);font-weight:600;letter-spacing:.02em}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px}
+  .row .nm{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .vl{color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .row.tot{border-top:1px dashed var(--line);margin-top:4px;padding-top:8px;font-weight:700}
+  .row.tot .vl{color:var(--ink)}
+  .row.grp{font-weight:600;margin-top:3px}
+  .chips{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+  .chip{aspect-ratio:1/1;border-radius:8px;background:#EEF1F4;display:flex;align-items:center;justify-content:center;font-size:10px;color:#7B8A99}
+  .chip.on{background:#CDEAE6;color:#2E7D74;font-weight:600}
+  .top{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+  .top .vl{color:var(--ink2);font-variant-numeric:tabular-nums}
+  .try{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin:0 0 22px}
+  .try h2{font-size:15px;margin:0 0 4px}
+  .try p{font-size:12.5px;color:var(--ink2);margin:0 0 12px}
+  .try input[type=number]{width:120px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;text-align:center;
+       font-variant-numeric:tabular-nums}
+  .try .out{margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  @media(max-width:1099px){.try .out{grid-template-columns:1fr}}
+  .out .cell{border:1px solid var(--line);border-radius:12px;padding:12px}
+  .out .cell .k{font-size:12px;color:var(--ink2);margin-bottom:6px}
+  .out .cell .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .presets button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--ink);cursor:pointer}
+  .presets button:hover{border-color:#C9D2DA}
+  .legend{font-size:12px;color:var(--ink2);margin-top:10px}
+</style>
+</head>
+<body>
+
+<h1>练习时长展示口径对照（单位：秒）</h1>
+<p class="sub">同一批真实记录，三种口径并排。数据取自 2026-09-23（含 4 条 1 分钟的记录）。左列＝现状，中列与右列＝两个候选口径。</p>
+
+<div class="note">
+  <b>看什么</b>
+  <ul>
+    <li><b>现状（左）</b>：练 10 秒也记成 1 分钟；1 分钟的记录和 60 秒的记录长得一样。</li>
+    <li><b>口径 A（中）</b>：一律 <code>xx分xx秒</code>，包括 <code>0分10秒</code>。</li>
+    <li><b>口径 B（右）</b>：不足 1 分钟只写 <code>xx秒</code>；满 1 分钟写 <code>xx分xx秒</code>；整分钟结尾是否省掉 <code>00秒</code> 见下。</li>
+    <li>每列都渲染四个真实界面位置：今日记录 / 报表明细 / 成就 TOP / 月历格子。</li>
+  </ul>
+</div>
+
+<div class="board">
+  <!-- 现状 -->
+  <section class="col now">
+    <h2><span class="badge now">现状</span>按分钟（进位后）</h2>
+    <p class="tag">秒在落库前被 ceil 掉，显示整数分钟</p>
+
+    <div class="surface">
+      <h3>今日记录（练习页）</h3>
+      <div class="row"><span class="nm">吸气长音</span><span class="vl">7 分钟</span></div>
+      <div class="row"><span class="nm">单吐tuku</span><span class="vl">2 分钟</span></div>
+      <div class="row"><span class="nm">双吐</span><span class="vl">2 分钟</span></div>
+      <div class="row"><span class="nm">紫竹调</span><span class="vl">3 分钟</span></div>
+      <div class="row"><span class="nm">小看戏</span><span class="vl">10 分钟</span></div>
+      <div class="row"><span class="nm">春耕曲</span><span class="vl">5 分钟</span></div>
+      <div class="row tot"><span class="nm">今日合计</span><span class="vl">29 分钟</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>报表 · 当日明细 + 单次</h3>
+      <div class="row"><span class="nm">单吐tuku（1 次）</span><span class="vl">1min</span></div>
+      <div class="row"><span class="nm">双吐（2 次）</span><span class="vl">1min / 1min</span></div>
+      <div class="row"><span class="nm">小看戏（3 次）</span><span class="vl">4 / 3 / 3min</span></div>
+      <div class="row tot"><span class="nm">总练习</span><span class="vl">29 分钟</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>成就页 · 昨日 / 本月 TOP</h3>
+      <div class="top"><span>小看戏</span><span class="vl">10分钟</span></div>
+      <div class="top"><span>吸气长音</span><span class="vl">7分钟</span></div>
+      <div class="top"><span>本月合计</span><span class="vl">600 分钟</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>报表 · 月历格子</h3>
+      <div class="chips">
+        <div class="chip on">20m</div><div class="chip on">15m</div><div class="chip on">32m</div><div class="chip on">11m</div>
+        <div class="chip on">13m</div><div class="chip on">28m</div><div class="chip on">32m</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 口径 A -->
+  <section class="col a">
+    <h2><span class="badge a">口径 A</span>一律 xx分xx秒</h2>
+    <p class="tag">任何位置都写全两个单位</p>
+
+    <div class="surface">
+      <h3>今日记录（练习页）</h3>
+      <div class="row"><span class="nm">吸气长音</span><span class="vl">7分0秒</span></div>
+      <div class="row"><span class="nm">单吐tuku</span><span class="vl">2分0秒</span></div>
+      <div class="row"><span class="nm">双吐</span><span class="vl">2分0秒</span></div>
+      <div class="row"><span class="nm">紫竹调</span><span class="vl">3分0秒</span></div>
+      <div class="row"><span class="nm">小看戏</span><span class="vl">10分0秒</span></div>
+      <div class="row"><span class="nm">春耕曲</span><span class="vl">5分0秒</span></div>
+      <div class="row tot"><span class="nm">今日合计</span><span class="vl">29分0秒</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>报表 · 当日明细 + 单次</h3>
+      <div class="row"><span class="nm">单吐tuku（1 次）</span><span class="vl">1分0秒</span></div>
+      <div class="row"><span class="nm">双吐（2 次）</span><span class="vl">1分0秒 / 1分0秒</span></div>
+      <div class="row"><span class="nm">小看戏（3 次）</span><span class="vl">4分0秒 / 3分0秒 / 3分0秒</span></div>
+      <div class="row tot"><span class="nm">总练习</span><span class="vl">29分0秒</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>成就页 · 昨日 / 本月 TOP</h3>
+      <div class="top"><span>小看戏</span><span class="vl">10分0秒</span></div>
+      <div class="top"><span>吸气长音</span><span class="vl">7分0秒</span></div>
+      <div class="top"><span>本月合计</span><span class="vl">600分0秒（10小时0分0秒）</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>报表 · 月历格子</h3>
+      <div class="chips">
+        <div class="chip on">20:00</div><div class="chip on">15:00</div><div class="chip on">32:00</div><div class="chip on">11:00</div>
+        <div class="chip on">13:00</div><div class="chip on">28:00</div><div class="chip on">32:00</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 口径 B -->
+  <section class="col b">
+    <h2><span class="badge b">口径 B</span>不足 1 分钟只写秒</h2>
+    <p class="tag">口语化：10 秒 / 2 分 30 秒 / 29 分</p>
+
+    <div class="surface">
+      <h3>今日记录（练习页）</h3>
+      <div class="row"><span class="nm">吸气长音</span><span class="vl">7分</span></div>
+      <div class="row"><span class="nm">单吐tuku</span><span class="vl">2分</span></div>
+      <div class="row"><span class="nm">双吐</span><span class="vl">2分</span></div>
+      <div class="row"><span class="nm">紫竹调</span><span class="vl">3分</span></div>
+      <div class="row"><span class="nm">小看戏</span><span class="vl">10分</span></div>
+      <div class="row"><span class="nm">春耕曲</span><span class="vl">5分</span></div>
+      <div class="row tot"><span class="nm">今日合计</span><span class="vl">29分</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>报表 · 当日明细 + 单次</h3>
+      <div class="row"><span class="nm">单吐tuku（1 次）</span><span class="vl">1分</span></div>
+      <div class="row"><span class="nm">双吐（2 次）</span><span class="vl">1分 / 1分</span></div>
+      <div class="row"><span class="nm">小看戏（3 次）</span><span class="vl">4分 / 3分 / 3分</span></div>
+      <div class="row tot"><span class="nm">总练习</span><span class="vl">29分</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>成就页 · 昨日 / 本月 TOP</h3>
+      <div class="top"><span>小看戏</span><span class="vl">10分</span></div>
+      <div class="top"><span>吸气长音</span><span class="vl">7分</span></div>
+      <div class="top"><span>本月合计</span><span class="vl">10 小时</span></div>
+    </div>
+
+    <div class="surface">
+      <h3>报表 · 月历格子</h3>
+      <div class="chips">
+        <div class="chip on">20:00</div><div class="chip on">15:00</div><div class="chip on">32:00</div><div class="chip on">11:00</div>
+        <div class="chip on">13:00</div><div class="chip on">28:00</div><div class="chip on">32:00</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="try">
+  <h2>试试各种秒数（秒级之后才会出现的数字）</h2>
+  <p>输入秒数，看三种口径分别渲染成什么。点下面预设快速看。</p>
+  <input id="sec" type="number" min="0" step="1" value="10">
+  <div class="presets">
+    <button data-s="10">10 秒</button>
+    <button data-s="50">50 秒</button>
+    <button data-s="65">65 秒</button>
+    <button data-s="130">130 秒</button>
+    <button data-s="599">599 秒</button>
+    <button data-s="3600">3600 秒</button>
+    <button data-s="7325">7325 秒</button>
+  </div>
+  <div class="out">
+    <div class="cell"><div class="k">现状（按分进位）</div><div class="v" id="o-now">—</div></div>
+    <div class="cell"><div class="k">口径 A：一律 xx分xx秒</div><div class="v" id="o-a">—</div></div>
+    <div class="cell"><div class="k">口径 B：不足 1 分钟只写秒</div><div class="v" id="o-b">—</div></div>
+  </div>
+  <div class="legend">口径 B 的整分钟是否写成「7分」还是「7分0秒」，是同一口径下的两种写法，可再定一个。月历格子两种口径都用 <code>mm:ss</code> 短格式（格子小，字多了挤）。</div>
+</div>
+
+<script>
+function pad(n){ return String(n).padStart(2,'0'); }
+function ceilMin(s){ return Math.max(1, Math.ceil(s/60)); }
+function fmtA(s){
+  var m = Math.floor(s/60), r = s%60;
+  return m + '分' + r + '秒';
+}
+function fmtB(s){
+  if (s < 60) return s + '秒';
+  var m = Math.floor(s/60), r = s%60;
+  return r === 0 ? (m + '分') : (m + '分' + r + '秒');
+}
+function fmtShort(s){
+  var m = Math.floor(s/60), r = s%60;
+  return m + ':' + pad(r);
+}
+function render(){
+  var s = Math.max(0, parseInt(document.getElementById('sec').value || '0', 10));
+  document.getElementById('o-now').textContent = ceilMin(s) + ' 分钟';
+  document.getElementById('o-a').textContent = fmtA(s);
+  document.getElementById('o-b').textContent = fmtB(s);
+}
+document.getElementById('sec').addEventListener('input', render);
+Array.prototype.forEach.call(document.querySelectorAll('.presets button'), function(b){
+  b.addEventListener('click', function(){
+    document.getElementById('sec').value = b.getAttribute('data-s');
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>

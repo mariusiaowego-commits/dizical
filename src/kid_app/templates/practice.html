@@ -11,6 +11,7 @@
        一旦拉不到整页动效全死 → 本地优先, 失败才回退 CDN -->
   <script src="/static/vendor/gsap.min.js"></script>
   <script>if(!window.gsap){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');}</script>
+  <script src="/static/js/duration-fmt.js"></script>
   <style>
     body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
@@ -465,11 +466,11 @@
 
     /* Screen 2: 二次确认不记遍数 */
     .finish-screen-zero {
-      padding: 4px 0 10px;
+      padding: 0;
       text-align: left;
     }
     .finish-screen-zero .fe-header-row {
-      margin-bottom: 10px;
+      margin-bottom: 14px;
     }
     .finish-screen-zero .fe-header-icon {
       color: #5D4037;
@@ -478,7 +479,7 @@
       font-size: 14px;
       color: #7F8C8D;
       line-height: 1.55;
-      margin: 10px 0 16px;
+      margin: 0 0 20px; /* 动作行与正文间距 ≥ 16px */
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1448,7 +1449,10 @@
   <script>
     (function () {
       var el = document.getElementById('mobileTopbarAside');
-      if (el) el.textContent = '{{ today_mins }} 分';
+      if (el) {
+        var tm = parseInt('{{ today_mins }}') || 0;
+        el.textContent = DizicalDur.fmt(tm * 60) || '0分';
+      }
     })();
   </script>
 
@@ -1479,7 +1483,7 @@
             <span class="fe-duration-label">本次练习时长</span>
             <div class="fe-duration-display">
               <span class="finish-mins" id="finishMinsDisplay">0</span>
-              <span class="finish-mins-label">分钟</span>
+              <span class="finish-mins-label"></span>
             </div>
           </div>
 
@@ -1543,7 +1547,7 @@
           </div>
       </div>
 
-      <div class="finish-modal-actions finish-modal-3btns">
+      <div class="finish-modal-actions finish-modal-3btns" id="feOuterActions">
         <button class="btn-submit" onclick="confirmFinishEarly()">提交</button>
         <button class="btn-resume" onclick="cancelFinishEarly()">继续练</button>
         <button class="btn-abort" onclick="abortFinishEarly()">不练了</button>
@@ -1565,7 +1569,7 @@
             <span class="fe-duration-label">本次练习时长</span>
             <div class="fe-duration-display">
               <span class="finish-mins" id="finishNormalMinsDisplay">0</span>
-              <span class="finish-mins-label">分钟</span>
+              <span class="finish-mins-label"></span>
             </div>
           </div>
 
@@ -1629,7 +1633,7 @@
           </div>
       </div>
 
-      <div class="finish-modal-actions">
+      <div class="finish-modal-actions" id="fnOuterActions">
         <button class="btn-confirm" onclick="confirmFinishNormal()">打卡记录</button>
         <button class="btn-cancel" onclick="cancelFinishNormal()">放弃</button>
       </div>
@@ -1816,7 +1820,7 @@
     <div class="today-summary-bar" id="todaySummaryBar">
       <div class="tsb-main">
         <div class="tsb-label">今日总时长</div>
-        <div class="tsb-value"><span id="todayTotalMins">0</span><span class="tsb-unit">分钟</span></div>
+        <div class="tsb-value"><span id="todayTotalMins">0分</span><span class="tsb-unit"></span></div>
       </div>
       <div class="tsb-side">
         <div class="tsb-stat"><span class="tsb-stat-num" id="todayItemCount">0</span><span class="tsb-stat-lbl">科目</span></div>
@@ -2867,7 +2871,9 @@
           document.getElementById('finishEarlyBtn').style.display = 'none';
           document.getElementById('startBtn').textContent = '开始';
           // 修复：正常结束不再自动提交，弹 finishNormalModal 让用户点 打卡/放弃
-          document.getElementById('finishNormalMinsDisplay').textContent = duration;
+          const normalSecs = duration * 60;
+          window._currentPracticeSeconds = normalSecs;
+          document.getElementById('finishNormalMinsDisplay').textContent = DizicalDur.fmt(normalSecs);
           document.getElementById('confirmMins').textContent = duration;
           showScreenNormal(1);
           if (window.repsWheelNormal) window.repsWheelNormal.set(0, false);
@@ -2883,26 +2889,32 @@
     function showScreenNormal(n) {
       const s1 = document.getElementById('fnScreen1');
       const s2 = document.getElementById('fnScreen2');
+      const acts = document.getElementById('fnOuterActions');
       if (!s1 || !s2) return;
       if (n === 2) {
         s1.style.display = 'none';
         s2.style.display = 'block';
+        if (acts) acts.style.display = 'none';
       } else {
         s1.style.display = 'block';
         s2.style.display = 'none';
+        if (acts) acts.style.display = 'flex';
       }
     }
 
     function showScreenEarly(n) {
       const s1 = document.getElementById('feScreen1');
       const s2 = document.getElementById('feScreen2');
+      const acts = document.getElementById('feOuterActions');
       if (!s1 || !s2) return;
       if (n === 2) {
         s1.style.display = 'none';
         s2.style.display = 'block';
+        if (acts) acts.style.display = 'none';
       } else {
         s1.style.display = 'block';
         s2.style.display = 'none';
+        if (acts) acts.style.display = 'flex';
       }
     }
 
@@ -2913,6 +2925,8 @@
         return;
       }
       window._currentPracticeReps = window.repsWheelNormal ? window.repsWheelNormal.value : null;
+      window._currentPracticeSeconds = duration * 60;
+      document.getElementById('confirmMins').textContent = duration;
       document.getElementById('finishNormalModal').classList.remove('open');
       showScreenNormal(1);
       submitPractice();
@@ -2920,6 +2934,8 @@
 
     function confirmZeroFinishNormal() {
       window._currentPracticeReps = null;
+      window._currentPracticeSeconds = duration * 60;
+      document.getElementById('confirmMins').textContent = duration;
       document.getElementById('finishNormalModal').classList.remove('open');
       showScreenNormal(1);
       submitPractice();
@@ -2944,6 +2960,7 @@
       finishPending = true;  // 标记提前结束但未打卡
       const savedElapsed = elapsed;    // 先保存再清零，防竞态
       finishSavedElapsed = savedElapsed;   // 持久化到全局,供 cancelFinishEarly 用
+      window._currentPracticeSeconds = savedElapsed;
       const finalMins = Math.max(1, Math.ceil(savedElapsed / 60));
       // 不重置 elapsed,保留以备 cancel 恢复
       started = false;
@@ -2952,7 +2969,8 @@
       // 显示弹窗确认
       showScreenEarly(1);
       if (window.repsWheelEarly) window.repsWheelEarly.set(0, false);
-      document.getElementById('finishMinsDisplay').textContent = finalMins;
+      document.getElementById('finishMinsDisplay').textContent = DizicalDur.fmt(savedElapsed) || '0秒';
+      document.getElementById('confirmMins').textContent = finalMins;
       document.getElementById('finishEarlyModal').classList.add('open');
       // 弹窗入场动效
       gsap.fromTo('.finish-modal-box', { scale: 0.5, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.4, ease: 'back.out(2)' });
@@ -2965,7 +2983,9 @@
       }
       window._currentPracticeReps = window.repsWheelEarly ? window.repsWheelEarly.value : null;
       document.getElementById('finishEarlyModal').classList.remove('open');
-      document.getElementById('confirmMins').textContent = document.getElementById('finishMinsDisplay').textContent;
+      const finalMins = Math.max(1, Math.ceil(finishSavedElapsed / 60));
+      window._currentPracticeSeconds = finishSavedElapsed;
+      document.getElementById('confirmMins').textContent = finalMins;
       showScreenEarly(1);
       submitPractice();
     }
@@ -2973,7 +2993,9 @@
     function confirmZeroFinishEarly() {
       window._currentPracticeReps = null;
       document.getElementById('finishEarlyModal').classList.remove('open');
-      document.getElementById('confirmMins').textContent = document.getElementById('finishMinsDisplay').textContent;
+      const finalMins = Math.max(1, Math.ceil(finishSavedElapsed / 60));
+      window._currentPracticeSeconds = finishSavedElapsed;
+      document.getElementById('confirmMins').textContent = finalMins;
       showScreenEarly(1);
       submitPractice();
     }
@@ -2988,6 +3010,7 @@
       timerRunning = true;
       // 恢复 elapsed(从 finishSavedElapsed,不要重置)
       elapsed = finishSavedElapsed;
+      window._currentPracticeSeconds = finishSavedElapsed;
       document.getElementById('startBtn').textContent = '暂停';
       document.getElementById('finishEarlyBtn').style.display = 'inline-block';
       // 重建中央数值 + 恢复显示
@@ -3006,6 +3029,7 @@
       timerRunning = false;
       elapsed = 0;
       finishSavedElapsed = 0;
+      window._currentPracticeSeconds = 0;
       clearInterval(timerInterval);
       // 放弃本次 → 花纹收卷 + 回选择态, 时长回到默认 10 分钟
       duration = 10;
@@ -3027,6 +3051,7 @@
       if (!selectedItem) return;
       let finalMins = parseInt(document.getElementById('confirmMins').textContent) || 0;
       if (finalMins === 0) return;
+      let finalSecs = window._currentPracticeSeconds || (finalMins * 60);
       // 2026-07-29: 内容必填校验 (dos 不能提交空明细)
       const contentEl = document.getElementById('sessionContentInput');
       if (!contentEl || !contentEl.value.trim()) {
@@ -3037,11 +3062,11 @@
       try {
         let body = {
           date: todayDate, item: selectedItem, item_id: selectedItemId,
-          minutes: finalMins, log: '',
+          minutes: finalMins, seconds: finalSecs, log: '',
           // PR-C: 传 practice_at 让 session.started_at 有值 (CST ISO 无 Z)
           // save_practice_session_and_daily_summary 用它写 started_at 列
           practice_at: nowCstLocal(),
-          behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins}]
+          behavior_log: [{enter_time: enterTime, item: selectedItem, minutes: finalMins, seconds: finalSecs}]
         };
         // 2026-07-27: 本次练习 速度 + 内容 (Q3=A 必填, 后端/前端双检)
         const noteEl = document.querySelector('.sp-tempo-note-btn.selected');
@@ -3064,6 +3089,7 @@
         if (json.ok) {
           timerRunning = false;
           finishPending = false;
+          window._currentPracticeSeconds = 0;
           fireConfetti();
           // 显示成功消息，但保留 confirmMins 元素（后续打卡还需要它）
           const confirmArea4 = document.getElementById('confirmArea');
@@ -3123,13 +3149,17 @@
         if (extras.length === 0) {
           logList.innerHTML = '<div style="font-size:13px;color:#A5D6A7;text-align:center;padding:6px;">暂无额外记录</div>';
         } else {
-          logList.innerHTML = extras.map(it => `
+          logList.innerHTML = extras.map(it => {
+            const sec = DizicalDur.pick(it.seconds, it.minutes);
+            const durStr = DizicalDur.fmt(sec) || (it.minutes + '分');
+            return `
             <div class="extra-log-item">
               <span>${it.item}</span>
-              <span class="extra-mins">+${it.minutes}分钟</span>
+              <span class="extra-mins">+${durStr}</span>
               <button class="extra-del" onclick="deleteExtraRecord('${it.item_id}')">✕</button>
             </div>
-          `).join('');
+          `;
+          }).join('');
         }
       } catch(e) {}
     }
@@ -3144,11 +3174,12 @@
           item: theItem.name,
           item_id: theItem.item_id,
           minutes: mins,
+          seconds: mins * 60,
           log: '',
           is_extra: true,
           // PR-C: 传 practice_at (CST ISO), session.started_at 有值
           practice_at: nowCstLocal(),
-          behavior_log: [{enter_time: enterTime, item: theItem.name, minutes: mins}]
+          behavior_log: [{enter_time: enterTime, item: theItem.name, minutes: mins, seconds: mins * 60}]
         };
 
         // 如果有 session detail，一起传
@@ -3306,7 +3337,7 @@
         let result = await res.json();
         if (result.ok) {
           refreshExtraSection();
-          renderTodayRecords(result.items || [], result.total_minutes || 0);
+          renderTodayRecords(result.items || [], result.total_minutes || 0, result.sessions || []);
         } else {
           alert('删除失败: ' + (result.error || '未知错误'));
         }
@@ -3327,25 +3358,35 @@
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
       })();
 
-      // 构建显示用 session 列表: 合并 sessions + items 中未被覆盖的分钟数
+      // 构建显示用 session 列表: 合并 sessions + items 中未被覆盖的分钟数/秒数
       const itemMinutes = {};   // item_id → 总分钟 (来自 items)
+      const itemSeconds = {};   // item_id → 总秒数 (来自 items)
       const itemNames = {};    // item_id → name
       (items || []).forEach(it => {
+        const sec = DizicalDur.pick(it.seconds, it.minutes);
+        itemSeconds[it.item_id] = (itemSeconds[it.item_id] || 0) + sec;
         itemMinutes[it.item_id] = (itemMinutes[it.item_id] || 0) + (it.minutes || 0);
         itemNames[it.item_id] = it.item || '未知科目';
       });
 
       const sessionMinutes = {};  // item_id → 已由 sessions 覆盖的分钟数
+      const sessionSeconds = {};  // item_id → 已由 sessions 覆盖的秒数
       const displaySessions = [...(sessions || [])];
       (sessions || []).forEach(s => {
+        const sec = DizicalDur.pick(s.duration_seconds, s.duration_minutes);
+        sessionSeconds[s.item_id] = (sessionSeconds[s.item_id] || 0) + sec;
         sessionMinutes[s.item_id] = (sessionMinutes[s.item_id] || 0) + (s.duration_minutes || 0);
       });
 
-      // 对 items 中每个科目, 补上 sessions 未覆盖的分钟数
+      // 对 items 中每个科目, 补上 sessions 未覆盖的秒数/分钟数
       Object.keys(itemMinutes).forEach(itemId => {
         const totalForItem = itemMinutes[itemId];
         const coveredBySessions = sessionMinutes[itemId] || 0;
-        if (totalForItem > coveredBySessions) {
+        const totalSecForItem = itemSeconds[itemId] || (totalForItem * 60);
+        const coveredSec = sessionSeconds[itemId] || 0;
+        const secGap = totalSecForItem - coveredSec;
+        const minGap = totalForItem - coveredBySessions;
+        if (secGap > 0 || minGap > 0) {
           displaySessions.push({
             id: -(itemId),  // 负 id = 伪 session (不可编辑/删除)
             item_id: itemId,
@@ -3354,7 +3395,8 @@
             tempo_bpm: 0,
             content: '',
             reps: null,
-            duration_minutes: totalForItem - coveredBySessions,
+            duration_minutes: minGap > 0 ? minGap : Math.max(1, Math.ceil(secGap / 60)),
+            duration_seconds: secGap > 0 ? secGap : (minGap * 60),
             is_extra: false,
           });
         }
@@ -3364,6 +3406,7 @@
         // 按 item_name 分组显示
         const groupOrder = [];
         const groups = {};
+        const subjectSeconds = {};
         const subjectTotals = {};
         const subjectReps = {};
         const subjectHasReps = {};
@@ -3374,6 +3417,8 @@
             groupOrder.push(key);
           }
           groups[key].push(s);
+          const sSec = DizicalDur.pick(s.duration_seconds, s.duration_minutes);
+          subjectSeconds[key] = (subjectSeconds[key] || 0) + sSec;
           subjectTotals[key] = (subjectTotals[key] || 0) + (s.duration_minutes || 0);
           if (s.reps != null && s.reps > 0) {
             subjectReps[key] = (subjectReps[key] || 0) + s.reps;
@@ -3395,7 +3440,8 @@
           const minsSpan = document.createElement('span');
           minsSpan.className = 'rg-mins';
           const repsSummary = subjectHasReps[name] ? ` · 合计 ${subjectReps[name]} 遍` : '';
-          minsSpan.textContent = `${escape(subjectTotals[name] || 0)} 分钟${repsSummary}`;
+          const groupDurStr = DizicalDur.fmt(subjectSeconds[name]) || '0分';
+          minsSpan.textContent = `${groupDurStr}${repsSummary}`;
           header.appendChild(nameSpan);
           header.appendChild(minsSpan);
           groupDiv.appendChild(header);
@@ -3408,6 +3454,9 @@
             row.setAttribute('data-item-id', escape(s.item_id));
             row.setAttribute('data-session-id', s.id);
             row.setAttribute('data-reps', s.reps || '');
+            const sSec = DizicalDur.pick(s.duration_seconds, s.duration_minutes);
+            row.setAttribute('data-duration-minutes', s.duration_minutes || Math.max(1, Math.ceil(sSec / 60)));
+            row.setAttribute('data-duration-seconds', sSec);
             if (tempoText) {
               const tempoSpan = document.createElement('span');
               tempoSpan.className = 'rs-tempo';
@@ -3426,7 +3475,7 @@
             row.appendChild(contentSpan);
             const minsSpan2 = document.createElement('span');
             minsSpan2.className = 'rs-mins';
-            minsSpan2.textContent = `${escape(s.duration_minutes)}min`;
+            minsSpan2.textContent = escape(DizicalDur.fmt(sSec) || '0分');
             row.appendChild(minsSpan2);
             if (isToday && isRealSession) {
               const editBtn = document.createElement('button');
@@ -3454,9 +3503,18 @@
       const totalEl = document.getElementById('todayTotalMins');
       const itemEl = document.getElementById('todayItemCount');
       const sessEl = document.getElementById('todaySessionCount');
+      
+      let todaySec = 0;
+      if (items && items.length) {
+        todaySec = items.reduce((s, x) => s + DizicalDur.pick(x.seconds, x.minutes), 0);
+      } else if (sessions && sessions.length) {
+        todaySec = sessions.reduce((s, x) => s + DizicalDur.pick(x.duration_seconds, x.duration_minutes), 0);
+      } else if (total) {
+        todaySec = total * 60;
+      }
+
       if (totalEl && itemEl && sessEl) {
-        const itemTotal = (items || []).reduce((s, x) => s + (x.minutes || 0), 0);
-        totalEl.textContent = itemTotal || (sessions || []).reduce((s, x) => s + (x.duration_minutes || 0), 0);
+        totalEl.textContent = DizicalDur.fmt(todaySec) || '0分';
         itemEl.textContent = (items || []).length || new Set((sessions || []).map(s => s.item_name)).size;
         sessEl.textContent = (sessions || []).length;
       }
@@ -3465,7 +3523,9 @@
       gsap.fromTo(card, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" });
       gsap.fromTo('.record-item, .record-group', { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" });
       const todayStat = document.querySelector('.today-stat');
-      if (todayStat) todayStat.textContent = '今日已练习: ' + total + ' 分钟';
+      if (todayStat) todayStat.textContent = '今日已练习: ' + (DizicalDur.fmt(todaySec) || '0分');
+      const topbarAside = document.getElementById('mobileTopbarAside');
+      if (topbarAside) topbarAside.textContent = DizicalDur.fmt(todaySec) || '0分';
     }
 
     // ── V4 Tab 切换 ──
@@ -3545,8 +3605,8 @@
       const tempoText = row.querySelector('.rs-tempo')?.textContent || '♪=80';
       const [note, bpmStr] = tempoText.split('=');
       const content = row.querySelector('.rs-content')?.textContent || '';
-      const minsText = row.querySelector('.rs-mins')?.textContent || '1min';
-      const mins = parseInt(minsText) || 1;
+      const durMinsAttr = row?.getAttribute('data-duration-minutes');
+      const mins = durMinsAttr ? (parseInt(durMinsAttr) || 1) : (parseInt(row.querySelector('.rs-mins')?.textContent) || 1);
       _editingSessionId = sessionId;
       // 回填
       if (note === '♩') {
@@ -3614,7 +3674,7 @@
       const repsVal = emRepsInput ? parseInt(emRepsInput.value) : null;
       const reps = (repsVal && repsVal > 0) ? Math.min(99, repsVal) : null;
       try {
-        const putBody = { tempo_note: note, tempo_bpm: bpm, content: content, duration_minutes: duration, reps: reps };
+        const putBody = { tempo_note: note, tempo_bpm: bpm, content: content, duration_minutes: duration, duration_seconds: duration * 60, reps: reps };
         let res = await fetch('/api/practice-sessions/' + _editingSessionId, {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
