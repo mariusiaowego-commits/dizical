@@ -2306,8 +2306,10 @@ async def api_log(request: Request):
     stored_minutes = write_minutes(minutes, req.seconds)
     for entry in behavior_entries:
         if entry.get("seconds") is None:
+            # minutes == 0 的条目写 0 秒；**不得**借用 session 级总秒
+            # （独立代码评审 P2：会把「进来看一眼没练」记成整段 session 时长）
             em = int(entry.get("minutes") or 0)
-            entry["seconds"] = em * 60 if em else seconds
+            entry["seconds"] = em * 60 if em else 0
         else:
             entry["seconds"] = int(entry["seconds"])
 
