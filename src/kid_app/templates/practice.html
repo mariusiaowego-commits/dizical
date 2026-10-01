@@ -1450,8 +1450,8 @@
     (function () {
       var el = document.getElementById('mobileTopbarAside');
       if (el) {
-        var tm = parseInt('{{ today_mins }}') || 0;
-        el.textContent = DizicalDur.fmt(tm * 60) || '0分';
+        var ts = parseInt('{{ today_seconds }}') || 0;   // F2: 注入秒真值, 与保存后同口径
+        el.textContent = DizicalDur.fmt(ts) || '0分';
       }
     })();
   </script>
@@ -1642,7 +1642,7 @@
 
   <!-- 顶部状态栏 -->
   <div class="top-bar">
-    <div class="today-stat">今日已练习: {{today_mins}} 分钟</div>
+    <div class="today-stat">今日已练习: {{ today_text }}</div>
     <div class="server-clock" id="serverClock"></div>
   </div>
 

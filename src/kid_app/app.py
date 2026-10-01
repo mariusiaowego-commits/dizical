@@ -2877,6 +2877,9 @@ def practice_page():
 
     today_p = db.get_daily_practice(today)
     today_mins = today_p["total_minutes"] if today_p else 0
+    # F2: 首屏与「保存后」同口径（口径 B —— 不足 1 分钟显示秒，用秒真值格式化）
+    today_secs = total_seconds_of_practice(today_p)
+    today_text = fmt_dur(today_secs) or "0分"
 
     # ── 科目摘要 ──
     subject_info_dict = {}
@@ -2904,6 +2907,8 @@ def practice_page():
         child_name=child_name(),
         items_html=items_html,
         today_mins=today_mins,
+        today_seconds=today_secs,
+        today_text=today_text,
         assign_json=assign_json,
         today_date=today.isoformat(),
         subject_info_json=subject_info_json,
