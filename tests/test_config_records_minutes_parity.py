@@ -34,32 +34,36 @@ def client(monkeypatch):
 
 @pytest.fixture
 def captured(monkeypatch):
-    """在 Database 类上截存储层入参 —— config 与 app 是同一个 db 单例，
-    且 config 全 kwargs / app 走位置参数，所以按位置名 + kwargs 合并记录。"""
+    """在 db **单例实例**上截存储层入参 —— config 与 app 是同一个对象，
+    且 config 全 kwargs / app 走位置参数，所以按位置名 + kwargs 合并记录。
+
+    用实例属性（而不是 class 属性）：class 身份在别的测试文件里可能被换掉，
+    会导致打桩静默失效（曾出现「科目 ID 3 不存在」的假红）。
+    """
     box = {"calls": [], "session": []}
 
-    from src.database import Database
+    from src.database import db as _db
 
     names = ["date", "items", "total_minutes", "log", "practiced", "channel", "method", "practice_at"]
 
     def fake_save(*args, **kwargs):
-        argv = args[1:]                 # 类属性打桩后实例访问会绑 self，先去掉
+        argv = args[1:] if (args and args[0] is _db) else args
         rec = {n: v for n, v in zip(names, argv)}
         rec.update(kwargs)
         box["calls"].append(rec)
 
     def fake_session(*args, **kwargs):
-        argv = args[1:]                 # 去掉 self
+        argv = args[1:] if (args and args[0] is _db) else args
         box["session"].append({
             "minutes": argv[3] if len(argv) > 3 else kwargs.get("minutes"),
             "seconds": kwargs.get("seconds"),
         })
         return {"id": 1}
 
-    monkeypatch.setattr(Database, "save_daily_practice", fake_save)
-    monkeypatch.setattr(Database, "save_practice_session_and_daily_summary", fake_session)
-    monkeypatch.setattr(Database, "get_daily_practice", lambda self, d: None)
-    monkeypatch.setattr(Database, "append_behavior_log", lambda self, *a, **k: None)
+    monkeypatch.setattr(_db, "save_daily_practice", fake_save)
+    monkeypatch.setattr(_db, "save_practice_session_and_daily_summary", fake_session)
+    monkeypatch.setattr(_db, "get_daily_practice", lambda *a, **k: None)
+    monkeypatch.setattr(_db, "append_behavior_log", lambda *a, **k: None)
     return box
 
 
