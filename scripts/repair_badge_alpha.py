@@ -58,7 +58,7 @@ def metrics(arr: np.ndarray) -> dict:
     }
 
 
-def fill_interior_holes(arr: np.ndarray, max_hole: int) -> tuple[np.ndarray, int, bool]:
+def fill_interior_holes(arr: np.ndarray, max_hole: int, allow_flat: bool = False) -> tuple[np.ndarray, int, bool]:
     """轮廓内破洞回填 alpha=255 (max_hole<=0 = 不限大小)。
 
     返回 (新数组, 回填像素数, 回填区 RGB 是否单色)。
@@ -90,7 +90,7 @@ def fill_interior_holes(arr: np.ndarray, max_hole: int) -> tuple[np.ndarray, int
 
     rgb = arr[:, :, :3][fill]
     uniq = np.unique(rgb.reshape(-1, 3), axis=0) if len(rgb) else []
-    if len(uniq) == 1:
+    if len(uniq) == 1 and not allow_flat:
         # 单色 → 内容已毁, 回填只会画出灰/黑斑, 交给 A3 重生图
         return arr, 0, True
 
@@ -148,7 +148,7 @@ def process(path: str, args) -> dict:
             "a3": m0["interior_pct"] >= args.a3_threshold,
         }
 
-    arr, filled_px, flat = fill_interior_holes(before, args.max_hole)
+    arr, filled_px, flat = fill_interior_holes(before, args.max_hole, args.allow_flat_fill)
     arr, feathered_px = feather_binary_alpha(arr, args.feather)
     m1 = metrics(arr)
 
@@ -179,6 +179,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="真写 (先备份到 backups/2026-10-01-badge-alpha/)")
     ap.add_argument("--max-hole", type=int, default=0, help="轮廓内回填的最大连通块像素 (默认 0 = 不限大小; 单色破洞永远不回填)")
+    ap.add_argument("--allow-flat-fill", action="store_true",
+                    help="允许回填「单色」破洞。**只在白底原图备份证明该区域原本就是同色时才用** —— "
+                         "证据链: badges_backup_white_bg/<name>.png 在破洞坐标上 RGB 与现图逐字节一致 (100%% 对齐). "
+                         "实例: all_items.png 破洞 10445px 恒为 (255,255,255), 备份同坐标也是 (255,255,255) → 回填即真复原.")
     ap.add_argument("--feather", type=float, default=1.0, help="硬二值图的 alpha 羽化 sigma (默认 1.0)")
     ap.add_argument("--only", default="", help="只处理文件名含该子串的图 (不含 .png)")
     ap.add_argument("--dir", default=BADGE_DIR, help="要处理的目录 (默认 src/kid_app/static/badges; 可用于对 backups/ 里的原图重跑)")

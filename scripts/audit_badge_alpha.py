@@ -49,10 +49,11 @@ def main() -> int:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=BADGE_DIR, help="要审计的目录 (默认 src/kid_app/static/badges)")
+    ap.add_argument("--ext", default="png", help="扩展名 (默认 png; webp 档用 webp)")
     ap.add_argument("--only", default="", help="只审计文件名含该子串的图")
     args = ap.parse_args()
 
-    paths = sorted(glob.glob(os.path.join(args.dir, "*.png")))
+    paths = sorted(glob.glob(os.path.join(args.dir, f"*.{args.ext}")))
     if args.only:
         paths = [p for p in paths if args.only in os.path.basename(p)]
 
