@@ -57,13 +57,6 @@ cat > "${APP_DIR}/Contents/Info.plist" <<'PLIST'
     <string>dizical-icon</string>
     <key>CFBundleIconName</key>
     <string>dizical-icon</string>
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsLocalNetworking</key>
-        <true/>
-        <key>NSAllowsArbitraryLoads</key>
-        <true/>
-    </dict>
 </dict>
 </plist>
 PLIST
