@@ -2870,7 +2870,6 @@ def practice_page():
         items_html = "<p style='color:#7F8C8D;text-align:center;'>No practice items. Ask dad to add via dizical practice config</p>"
 
     today_p = db.get_daily_practice(today)
-    today_mins = today_p["total_minutes"] if today_p else 0
     # F2: 首屏与「保存后」同口径（口径 B —— 不足 1 分钟显示秒，用秒真值格式化）
     today_secs = total_seconds_of_practice(today_p)
     today_text = fmt_dur(today_secs) or "0分"
@@ -2900,7 +2899,6 @@ def practice_page():
         active_nav="practice",  # sidebar: 练习
         child_name=child_name(),
         items_html=items_html,
-        today_mins=today_mins,
         today_seconds=today_secs,
         today_text=today_text,
         assign_json=assign_json,
