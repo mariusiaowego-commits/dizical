@@ -1450,8 +1450,8 @@
     (function () {
       var el = document.getElementById('mobileTopbarAside');
       if (el) {
-        var tm = parseInt('{{ today_mins }}') || 0;
-        el.textContent = DizicalDur.fmt(tm * 60) || '0分';
+        var ts = parseInt('{{ today_seconds }}') || 0;   // F2: 注入秒真值, 与保存后同口径
+        el.textContent = DizicalDur.fmt(ts) || '0分';
       }
     })();
   </script>
@@ -1642,7 +1642,7 @@
 
   <!-- 顶部状态栏 -->
   <div class="top-bar">
-    <div class="today-stat">今日已练习: {{today_mins}} 分钟</div>
+    <div class="today-stat">今日已练习: {{ today_text }}</div>
     <div class="server-clock" id="serverClock"></div>
   </div>
 
@@ -3596,6 +3596,32 @@
 
     // 2026-07-27: 编辑 session (弹窗 + 二次确认)
     let _editingSessionId = null;
+    let _editingDurationMinutes = null;   // F3: 打开弹窗时原记录的分钟
+    let _editingDurationSeconds = null;   // F3: 打开弹窗时原记录的秒（真值，可能 null）
+
+    // F3: 分钟归一 —— 字符串/浮点/NaN/非正 → 钳到 [1, 1440]（与秒上限 86400 自洽）
+    function clampEditMinutes(v) {
+      var d = parseInt(v, 10);
+      if (!isFinite(d) || d < 1) d = 1;
+      return Math.min(1440, d);
+    }
+    // F3: 秒归一 —— 分钟没动且原秒有效 → 复用原秒；否则按分钟 ×60。永不越出 [1, 86400]
+    // 下限必须是 1（后端 app.py:2053 校验 1–86400）：用 60 会把 10 秒的练习抬成 60 秒，
+    // 正是 warden 独立审计抓到的回归
+    function computeEditSeconds(durNow, origMins, origSecs) {
+      var d  = clampEditMinutes(durNow);
+      var om = parseInt(origMins, 10);
+      var os = parseInt(origSecs, 10);
+      var out = (isFinite(om) && isFinite(os) && d === om && os > 0) ? os : d * 60;
+      return Math.min(86400, Math.max(1, out));
+    }
+    // F3: 编辑弹窗的 PUT body 组装（被测试直接调用，避免"字符串存在"式假锁）
+    function buildEditPutBody(note, bpm, content, durNow, origMins, origSecs, reps) {
+      return { tempo_note: note, tempo_bpm: bpm, content: content,
+               duration_minutes: clampEditMinutes(durNow),
+               duration_seconds: computeEditSeconds(durNow, origMins, origSecs),
+               reps: reps };
+    }
 
     function editSession(sessionId) {
       // 从 DOM 读当前行的 tempo + content 回填弹窗
@@ -3607,6 +3633,10 @@
       const content = row.querySelector('.rs-content')?.textContent || '';
       const durMinsAttr = row?.getAttribute('data-duration-minutes');
       const mins = durMinsAttr ? (parseInt(durMinsAttr) || 1) : (parseInt(row.querySelector('.rs-mins')?.textContent) || 1);
+      // F3: 记住原记录的分钟与秒 —— 只改音符/内容时不能把 1分30秒 抹成 2 分钟
+      const durSecsAttr = row?.getAttribute('data-duration-seconds');
+      _editingDurationMinutes = mins;
+      _editingDurationSeconds = (durSecsAttr === null || durSecsAttr === undefined) ? null : parseInt(durSecsAttr, 10);
       _editingSessionId = sessionId;
       // 回填
       if (note === '♩') {
@@ -3674,7 +3704,8 @@
       const repsVal = emRepsInput ? parseInt(emRepsInput.value) : null;
       const reps = (repsVal && repsVal > 0) ? Math.min(99, repsVal) : null;
       try {
-        const putBody = { tempo_note: note, tempo_bpm: bpm, content: content, duration_minutes: duration, duration_seconds: duration * 60, reps: reps };
+        const putBody = buildEditPutBody(note, bpm, content, duration,
+                                        _editingDurationMinutes, _editingDurationSeconds, reps);
         let res = await fetch('/api/practice-sessions/' + _editingSessionId, {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},

@@ -18,6 +18,7 @@ from src.kid_app.duration_fmt import (
     annotate_item,
     annotate_session,
     invoke,
+    write_minutes,
 )
 from src import db_adapter  # Sprint 08: conn.execute → db_adapter.execute (双后端占位符)
 from src.lesson_manager import LessonManager
@@ -647,16 +648,15 @@ async def api_save_record(request: Request):
         import datetime as dt
         date = dt.date.fromisoformat(date_str)
 
-        if total_minutes == 0 and items:
-            total_minutes = sum(i.get('minutes', 0) for i in items)
-
+        # F6: 分钟与 /api/log 同口径 —— 带了秒时分钟 = ceil(秒/60)（write_minutes），
+        # 客户端传来的 minutes 只当"没带秒"时的兜底。同一次练习两入口写出的分钟必须一致。
         # 秒缺省 = 该条 minutes*60。合计由服务端相加，不采用前端传来的 total_seconds。
         normalized = []
         for raw in items:
             it = dict(raw)
-            mins = int(it.get('minutes') or 0)
+            mins_in = int(it.get('minutes') or 0)
             if it.get('seconds') is None:
-                it['seconds'] = mins * 60
+                it['seconds'] = mins_in * 60
             else:
                 try:
                     it['seconds'] = int(it['seconds'])
@@ -664,8 +664,13 @@ async def api_save_record(request: Request):
                     return JSONResponse({"ok": False, "error": "seconds 必须是整数"}, status_code=400)
             if it['seconds'] < 0 or it['seconds'] > 86400:
                 return JSONResponse({"ok": False, "error": "seconds 必须在 0-86400"}, status_code=400)
+            it['minutes'] = write_minutes(mins_in, it.get('seconds'))
             normalized.append(it)
         total_seconds = sum(int(it.get('seconds') or 0) for it in normalized)
+        # F6: items 非空时合计一律取**派生和**（与 /api/log 落库口径一致；同时挡住
+        # save_daily_practice 的新建当天路径把客户端错值直接写库 —— database.py:1051）
+        total_minutes = (sum(int(it.get('minutes') or 0) for it in normalized)
+                         if normalized else total_minutes)
 
         # 7-27: session 细节分支 (tempo_note/tempo_bpm/content 三个字段都在 → 走整事务)
         has_session_detail = all(k in body for k in ("tempo_note", "tempo_bpm", "content"))

@@ -1,5 +1,22 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-01 (未上线, 待合并) — sprint 26100101 P2 清理（API 面）
+**类型**: 🟡 部分兼容（`/config/api/records` 落库分钟的算法改为按秒派生；请求/响应结构不变。dizical-minip 三处写入实测行为零变化，见下）
+
+## 变更
+
+- `POST /config/api/records`：`items[].minutes` 不再直接采信客户端值 —— 该条带 `seconds` 时 `minutes = ceil(seconds/60)`（至少 1，与 `POST /api/log` 同口径）。带秒但秒 ≤ 0 时沿用客户端分钟。
+- `POST /config/api/records`：`total_minutes` 在 `items` 非空时**一律取派生和**（原先只在客户端传 0 时才求和）。挡住 `save_daily_practice` 新建当天路径把客户端错合计直接写库。
+- 负数秒（坏数据）口径统一：`seconds < 0` → 读出 0，不再回退 `minutes × 60`。四处同改：`database._item_secs`（sqlite）、`database_mysql._item_secs`、`duration_fmt.pick_seconds`、`static/js/duration-fmt.js` 的 `pick`。生产库负数坏行 0 行 → 无可见变化。
+- `behavior_log[]` 条目的 `seconds`：条目自身 `minutes == 0` 时写 0，不再借用整段 session 的总秒。
+- `GET /practice` 页面首屏「今日已练习」与移动端顶栏改秒口径（口径 B），与保存后一致；`today_mins` 模板参数已删。
+- **对 dizical-minip**：无需改代码。三处 `submitRecord` 都是单条 `items` + `total_minutes == items[0].minutes` + 不带 `seconds` → 派生分钟与之相等、派生合计与之相等，落库结果不变（证据：dizical-minip `src/utils/api.ts:341`、`src/pages/practice/practice.vue:1284 / 1437 / 1539`，2026-10-01 核对）。
+- **云端**：本批尚未部署。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-09-30 (已上线 #138, 2026-10-01) — 练习时长秒级（API 面）
 **类型**: 🟡 部分兼容（新增可选入参与返回字段；不传 `seconds` 时服务端按 `minutes × 60` 补。分钟字段名、语义、逐条 ceil 后相加的聚合都不变。dizical-minip 不改也能跑，建议择期同步展示）
 

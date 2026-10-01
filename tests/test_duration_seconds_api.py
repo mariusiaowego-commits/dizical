@@ -161,7 +161,9 @@ def test_api_log_legacy_with_seconds_ceils_minutes(client, monkeypatch):
     assert body["seconds"] == 61
     assert saved["items"][0]["minutes"] == 2
     assert saved["items"][0]["seconds"] == 61
-    assert saved["log"][0]["seconds"] == 61
+    # sprint 26100101 F5: 条目自己的 minutes=0（"进来看一眼没练"）不得继承 session 总秒 61
+    # 旧实现: em * 60 if em else seconds → 61（此处曾是 == 61, 即 bug 被测试锁死）
+    assert saved["log"][0]["seconds"] == 0
 
 
 def test_api_log_session_path_passes_seconds(client, monkeypatch):
@@ -380,3 +382,33 @@ def test_put_session_duration_seconds_also_writes_ceiled_minutes(client, monkeyp
     session = r.json()["session"]
     assert session["duration_minutes"] == 2
     assert session["duration_seconds"] == 61
+
+
+def test_behavior_log_entry_seconds_follow_its_own_minutes(client, monkeypatch):
+    """F5: 条目 seconds 只由自己的 minutes 决定，不借用 session 总秒。"""
+    saved = {}
+
+    monkeypatch.setattr("src.kid_app.app.db.save_daily_practice",
+                        lambda *a, **k: None)
+    monkeypatch.setattr("src.kid_app.app.db.append_behavior_log",
+                        lambda *a, **k: saved.setdefault("log", []).append(a[1]))
+
+    r = client.post("/api/log", json=_legacy_body(
+        date="2099-05-16", item_id=986, minutes=10, seconds=600,
+        behavior_log=[
+            {"enter_time": "2099-05-16 19:00:00", "item": "长音", "minutes": 0},   # 看一眼没练
+            {"enter_time": "2099-05-16 19:05:00", "item": "吐音", "minutes": 2},   # 练了 2 分钟
+            {"enter_time": "2099-05-16 19:09:00", "item": "活指", "minutes": 0, "seconds": 0},
+        ],
+    ))
+    assert r.status_code == 200, r.text
+    got = [e["seconds"] for e in saved["log"]]
+    assert got == [0, 120, 0], f"期望 [0,120,0]，实际 {got}（旧实现给 [600,120,600]）"
+
+
+def test_dead_yesterday_mins_helper_removed():
+    """F1: 分钟版「昨天练了多少」是死函数（口径不一致的陷阱），已删除。"""
+    from src.kid_app import app as app_module
+
+    assert not hasattr(app_module, "_calc_yesterday_mins"), "死函数又回来了"
+    assert hasattr(app_module, "_calc_yesterday_seconds")

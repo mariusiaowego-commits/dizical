@@ -620,12 +620,6 @@ def _week_progress():
     return pct, f"{days}/{goal} 天"
 
 
-def _calc_yesterday_mins(days_ago: int = 1):
-    d = dt.date.today() - dt.timedelta(days=days_ago)
-    p = db.get_daily_practice(d)
-    return p.get("total_minutes", 0) if p else 0
-
-
 def _calc_yesterday_seconds(days_ago: int = 1) -> int:
     d = dt.date.today() - dt.timedelta(days=days_ago)
     return total_seconds_of_practice(db.get_daily_practice(d))
@@ -2306,8 +2300,10 @@ async def api_log(request: Request):
     stored_minutes = write_minutes(minutes, req.seconds)
     for entry in behavior_entries:
         if entry.get("seconds") is None:
+            # minutes == 0 的条目写 0 秒；**不得**借用 session 级总秒
+            # （独立代码评审 P2：会把「进来看一眼没练」记成整段 session 时长）
             em = int(entry.get("minutes") or 0)
-            entry["seconds"] = em * 60 if em else seconds
+            entry["seconds"] = em * 60 if em else 0
         else:
             entry["seconds"] = int(entry["seconds"])
 
@@ -2874,7 +2870,9 @@ def practice_page():
         items_html = "<p style='color:#7F8C8D;text-align:center;'>No practice items. Ask dad to add via dizical practice config</p>"
 
     today_p = db.get_daily_practice(today)
-    today_mins = today_p["total_minutes"] if today_p else 0
+    # F2: 首屏与「保存后」同口径（口径 B —— 不足 1 分钟显示秒，用秒真值格式化）
+    today_secs = total_seconds_of_practice(today_p)
+    today_text = fmt_dur(today_secs) or "0分"
 
     # ── 科目摘要 ──
     subject_info_dict = {}
@@ -2901,7 +2899,8 @@ def practice_page():
         active_nav="practice",  # sidebar: 练习
         child_name=child_name(),
         items_html=items_html,
-        today_mins=today_mins,
+        today_seconds=today_secs,
+        today_text=today_text,
         assign_json=assign_json,
         today_date=today.isoformat(),
         subject_info_json=subject_info_json,
