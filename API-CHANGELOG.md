@@ -1,6 +1,6 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-10-01 (未上线, 待合并) — sprint 26100101 P2 清理（API 面）
+**日期**: 2026-10-01 (已上线 #139, 2026-10-01 21:01 CST) — sprint 26100101 P2 清理（API 面）
 **类型**: 🟡 部分兼容（`/config/api/records` 落库分钟的算法改为按秒派生；请求/响应结构不变。dizical-minip 三处写入实测行为零变化，见下）
 
 ## 变更
@@ -11,7 +11,7 @@
 - `behavior_log[]` 条目的 `seconds`：条目自身 `minutes == 0` 时写 0，不再借用整段 session 的总秒。
 - `GET /practice` 页面首屏「今日已练习」与移动端顶栏改秒口径（口径 B），与保存后一致；`today_mins` 模板参数已删。
 - **对 dizical-minip**：无需改代码。三处 `submitRecord` 都是单条 `items` + `total_minutes == items[0].minutes` + 不带 `seconds` → 派生分钟与之相等、派生合计与之相等，落库结果不变（证据：dizical-minip `src/utils/api.ts:341`、`src/pages/practice/practice.vue:1284 / 1437 / 1539`，2026-10-01 核对）。
-- **云端**：本批尚未部署。
+- **云端**: 已上线。**#139**（2026-10-01 21:01 CST，buildId `2607902432`，runId `multi_tenant_1xCGPl9Zng3s4G`，镜像 `dizical-prod-139-20261001210140`）部署于 PR **#355** 合并之后（merge commit `fbba8d3`），FlowRatio 100。**本批无 DDL / 无数据迁移**（`total_seconds` / `duration_seconds` 两列在 #138 已加并回填）。校验：线上 `static/js/duration-fmt.js` md5 与 main 一致（`9ebe99c0ec795b44b886fe1cf00e1a80`）且含 F4 指纹行 `if (s === 0 && mins > 0)`；`/login` 200、`/health/live` 200、`/practice` 302 → PIN 门（预期）。
 
 ---
 
