@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="/static/css/badge-ccg.css?v=26091605">
   <link rel="stylesheet" href="/static/css/badge-ccg-themes.css?v=26091605">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <!-- sprint 26091302 B6: CCG 卡面 JS (DizicalCCG.mountCard 带 opts 第 4 参数) -->
   <script src="/static/js/badge-ccg.js?v=26091605"></script>
   <script src="/static/js/duration-fmt.js"></script>
@@ -226,8 +225,8 @@
       transform: translateY(-2px);
     }
 
-    /* 统一卡片 — sprint 26091602: 去外层白底框 (排除盲盒 #card-daily-blindbox .b-card) */
-    .b-card:not(#card-daily-blindbox .b-card) {
+    /* 统一卡片 — sprint 26091602: 去外层白底框 */
+    .b-card {
       display: flex; flex-direction: column; align-items: center; text-align: left;
       padding: 0;
       border-radius: 16px;
@@ -239,14 +238,14 @@
       box-shadow: none;
       transition: transform 0.2s;
     }
-    .b-card.unlocked:not(#card-daily-blindbox .b-card) {
+    .b-card.unlocked {
       background: transparent;
       border: none;
       box-shadow: none;
     }
-    .b-card.unlocked:not(#card-daily-blindbox .b-card)::before { display: none; }
-    .b-card.unlocked:not(#card-daily-blindbox .b-card):hover { box-shadow: none; transform: translateY(-2px); }
-    .b-card.locked:not(#card-daily-blindbox .b-card) { background: transparent; border: none; }
+    .b-card.unlocked::before { display: none; }
+    .b-card.unlocked:hover { box-shadow: none; transform: translateY(-2px); }
+    .b-card.locked { background: transparent; border: none; }
     /* 锁卡视觉在 sprint 26091302 B6 F2 改为: .ccg-stage.is-locked CSS filter 处理 (badge-ccg.css),
        不再依赖 .b-img / .b-name 的灰度规则 — 死代码清理.
        真正生效的「锁卡」提示是 CCG 卡右下角的小锁 icon (badge-ccg.css .is-locked::after). */
@@ -256,65 +255,7 @@
     /* F2 死代码清理: 旧 .b-name / .b-tag / .b-card.locked .b-name / .b-card.locked .b-lock
        全删 — 服务端 _build_milestone_card 不再输出这些元素. CCG 卡自带的 .ccg-holo-head
        (含 tag / No.) + .ccg-plate (含名称/条件/日期/星级) 接管全部文本.
-       注: #card-daily-blindbox 的 .b-name/.b-tag 规则在文件下方独立存在 (盲盒仍走 PNG), 保留. */
-
-    /* ── 每日打卡盲盒 ── */
-    .blindbox-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .blindbox-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #333;
-    }
-
-    .blindbox-progress {
-      font-size: 16px;
-      font-weight: 600;
-      color: #FF6B35;
-      background: rgba(255, 107, 53, 0.1);
-      padding: 4px 12px;
-      border-radius: 20px;
-    }
-
-    .blindbox-stage-info {
-      font-size: 13px;
-      color: #7F8C8D;
-      margin-bottom: 16px;
-    }
-
-    .blindbox-badges-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 12px;
-      margin: 16px 0;
-    }
-
-    /* 盲盒卡片：复用 .b-card 样式，仅覆盖尺寸 */
-    #card-daily-blindbox .b-card {
-      width: 200px;
-      border-radius: 20px;
-      padding: 12px 10px 14px;
-      border: none;
-      overflow: visible;  /* 允许 hover 放大时不被裁剪 */
-    }
-    #card-daily-blindbox .b-img-wrap {
-      width: 128px; height: 128px;  /* 保持图片尺寸 */
-      border-radius: 50%;
-      overflow: hidden;
-    }
-    #card-daily-blindbox .b-img {
-      max-width: 128px; max-height: 128px;  /* 保持图片尺寸 */
-      width: 100%; height: 100%;
-      object-fit: cover;
-      border-radius: 50%;
-    }
-
+       (含 tag / No.) + .ccg-plate (含名称/条件/日期/星级) 接管全部文本. */
     @media (max-width: 639px) {
       .board-grid,
       .board-grid-top { grid-template-columns: repeat(2, 1fr); }
@@ -325,77 +266,6 @@
     @media (min-width: 640px) and (max-width: 1099px) {
       .board-grid,
       .board-grid-top { grid-template-columns: repeat(3, 1fr); }
-    }
-    /* iPad 适配：卡片放大，允许换行 */
-    @media (max-width: 1099px) {
-      #card-daily-blindbox .b-card {
-        width: 160px;
-      }
-      #card-daily-blindbox .b-img-wrap {
-        width: 130px; height: 130px;
-      }
-      #card-daily-blindbox .b-img {
-        max-width: 130px; max-height: 130px;
-      }
-      .blindbox-badges-grid {
-        gap: 10px;
-      }
-    }
-
-    /* Phase 2: 视觉锚点 — 恢复卡片背景 */
-    #card-daily-blindbox .b-card.unlocked {
-      background: #fffdf8;
-      box-shadow: 0 2px 8px rgba(200,160,40,0.15);
-    }
-    #card-daily-blindbox .b-card.unlocked .b-img-wrap {
-      background: linear-gradient(135deg, #fff8e1, #fffdf8);
-      border: 2px solid rgba(200,160,40,0.3);
-      box-shadow: 0 2px 12px rgba(200,160,40,0.2), inset 0 1px 3px rgba(255,255,255,0.8);
-    }
-    #card-daily-blindbox .b-card.locked {
-      background: #f8f7f4;
-    }
-    #card-daily-blindbox .b-card.locked .b-img-wrap {
-      background: #f0eeea;
-      border: none;
-    }
-
-    /* Phase 3: 锁定态强化 */
-    #card-daily-blindbox .b-card.locked .b-img {
-      opacity: 0.5;
-      filter: grayscale(1) brightness(1.05);
-    }
-    #card-daily-blindbox .b-card.locked .b-name {
-      color: #c0bdb8;
-    }
-
-    /* Phase 4: Today (Day 7) 特殊处理 */
-    #card-daily-blindbox .b-card.today .b-img-wrap {
-      /* 不突出 today，保持跟其他 locked 一样 */
-    }
-    @keyframes todayPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0); }
-      50% { box-shadow: 0 0 0 6px rgba(255,107,107,0.15); }
-    }
-    /* Phase 4: Today (Day 7) 特殊处理 — 不突出，保持跟其他 locked 一样 */
-
-    /* Phase 5: Hover 效果 */
-    #card-daily-blindbox .b-card.unlocked:hover {
-      transform: translateY(-4px) scale(1.03);
-      box-shadow: 0 8px 24px rgba(200,160,40,0.25);
-    }
-    #card-daily-blindbox .b-card.locked:hover {
-      cursor: not-allowed;
-    }
-
-    /* today 呼吸动效 — 去掉，会形成圆角矩形背景 */
-    /* #card-daily-blindbox .b-card.locked.today .b-img-wrap {
-      animation: breathe 2s ease-in-out infinite;
-    } */
-
-    @keyframes breathe {
-      0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
-      50% { box-shadow: 0 0 40px rgba(255, 107, 53, 0.6); }
     }
   </style>
 </head>
@@ -417,9 +287,6 @@
     </div>
     <div class="week-pct-text">{{week_pct}}% 完成</div>
   </div>
-
-  <!-- 卡片1.5: 每日打卡盲盒 -->
-  {{daily_blindbox_html}}
 
   <!-- 卡片2: 练习看板 -->
   <div class="ac-card" id="card-board">
@@ -755,14 +622,10 @@
         }
       );
 
-      /* sprint 26091302 B6: 把所有 .b-card (列表) 转成 CCG 静态卡 (locked 走 opts.locked).
-         注意: 盲盒内的 .b-card 不动 — 它们的视觉是圆形盲盒头像, 不是徽章卡.
-         排除规则: #card-daily-blindbox .b-card 保持原样. */
+      /* sprint 26091302 B6: 把所有 .b-card (列表) 转成 CCG 静态卡 (locked 走 opts.locked). */
       function _upgradeAllBCards(root) {
         if (!window.DizicalCCG || !DizicalCCG.mountCard) return;
-        var list = (root || document).querySelectorAll(
-          '.b-card:not(#card-daily-blindbox .b-card)'
-        );
+        var list = (root || document).querySelectorAll('.b-card');
         list.forEach(function (bCard) {
           var locked = bCard.classList.contains('locked');
           // F5: 不传 opts.static — 列表卡现在跟 demo 静止态逐图层一致 (绑 pointer / hover / 翻面 / idle drift)
@@ -862,64 +725,6 @@
       );
     });
 
-    /* ── 盲盒动效 ─────────────────────────────────────────────────
-       盲盒的 .b-card 不走 CCG 接线 (它们的视觉是圆形盲盒头像, 跟徽章卡无关).
-       原 confetti / GSAP 入场动效保留, 不动. */
-    const blindboxBadges = document.querySelectorAll('#card-daily-blindbox .b-card');
-    if (blindboxBadges.length > 0) {
-      // 入场动画
-      gsap.fromTo(blindboxBadges, 
-        { scale: 0.8, opacity: 0, y: 20 },
-        { scale: 1, opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'back.out(1.7)' }
-      );
-      
-      // 检查是否有今日未解锁的badge
-      const todayBadge = document.querySelector('#card-daily-blindbox .b-card.today');
-      if (todayBadge) {
-        // 今日未解锁，播放呼吸动效（CSS已处理）
-      }
-      
-      // 获取打卡天数
-      const progressEl = document.querySelector('.blindbox-progress');
-      if (progressEl) {
-        const checkinText = progressEl.textContent;
-        const checkinDays = parseInt(checkinText) || 0;
-        // 触发庆祝特效
-        triggerCelebration(checkinDays);
-      }
-    }
-
-    function triggerCelebration(checkinDays) {
-      if (checkinDays === 7) {
-        // 7/7: dramatic confetti
-        if (typeof confetti === 'function') {
-          confetti({
-            particleCount: 200,
-            spread: 100,
-            origin: { y: 0.6 },
-            colors: ['#FF6B35', '#FFD700', '#FF69B4', '#00CED1', '#9370DB']
-          });
-        }
-      } else if (checkinDays >= 4) {
-        // 4/7-6/7: 中等粒子
-        if (typeof confetti === 'function') {
-          confetti({
-            particleCount: 80,
-            spread: 60,
-            origin: { y: 0.7 }
-          });
-        }
-      } else if (checkinDays >= 1) {
-        // 1/7-3/7: 轻微粒子
-        if (typeof confetti === 'function') {
-          confetti({
-            particleCount: 30,
-            spread: 40,
-            origin: { y: 0.8 }
-          });
-        }
-      }
-    }
   </script>
 </body>
 </html>

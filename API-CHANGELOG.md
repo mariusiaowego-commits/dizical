@@ -1,5 +1,20 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-02 — sprint 26100102 盲盒 feature 下线
+**类型**: 🔴 不兼容（端点整体移除，调用方将收到 404）
+
+## 变更
+
+- `GET /api/blindbox` **已移除**（原每日打卡盲盒数据：小程序盲盒数据源）。请求该路径现在命中登录门（302）或 404，不再返回盲盒 JSON。
+- `GET /config/blindbox`（盲盒主题配置页）**已移除**，配套的 `GET /config/api/blindbox/theme` 与 `POST /config/api/blindbox/theme` 一并移除。`/config` 首页的「盲盒主题」入口卡同步下线。
+- **对 dizical-minip**：**无需改代码**。消费函数 `getBlindbox` 零调用（派活方核对结论，2026-10-01），小程序侧没有接线该端点。移除的是无人调用的公开端点。
+- 数据库不受影响：盲盒读的是 `weekly_assignments` / `daily_practices` 两张既有表，未新增 schema，本次**无 DDL / 无数据迁移**。成就体系（`achievements` / `achievement_badges`）与 seasonal `daily` 类成就的判定逻辑保留不动。
+- 静态资源：`daily_checkin_1..7.png`、`rapunzel_1..7.png` 共 14 张盲盒徽章图随之下线。其他徽章 PNG 不受影响。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-01 (已上线 #139, 2026-10-01 21:01 CST) — sprint 26100101 P2 清理（API 面）
 **类型**: 🟡 部分兼容（`/config/api/records` 落库分钟的算法改为按秒派生；请求/响应结构不变。dizical-minip 三处写入实测行为零变化，见下）
 

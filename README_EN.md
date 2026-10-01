@@ -30,7 +30,7 @@ The name is a pun: *dizi* (竹笛, the Chinese bamboo flute) + *cal* (calendar) 
 ### 👧 Kid side (iPhone Safari 440 CSS / iPad mini 744×1133 / Mac 1728)
 - **`/prepare`** — GSAP scroll-driven daily prep checklist, teacher's weekly assignments with images
 - **`/practice`** — 3-floor subject picker, dual semi-circle duration dials, session timer with finish-protection (a 7-year-old can't swipe away), fuzzy item matching ("单吐" matches "单吐练习"), Apple Reminders two-way sync (type "单吐10分钟" in Reminders → logged practice)
-- **`/achievements`** — 7-cell board: streak, weekly delta, monthly delta, cumulative minutes, plus a 7-day blind-box theme row (Rapunzel, etc.)
+- **`/achievements`** — 7-cell board: streak, weekly delta, monthly delta, cumulative minutes
 - **`/badges`** — the enamel-pin collection wall (see below)
 - **`/report`** — practice heatmap calendar, stage stacked bars, printable stage sheet (print-first CSS, Noto Serif)
 - **`/praise`** — parent-curated encouragement pool
@@ -40,7 +40,7 @@ The name is a pun: *dizi* (竹笛, the Chinese bamboo flute) + *cal* (calendar) 
 - **Real-time calc + auto-unlock** — `calc_all()` persists to `achievement_stats`; locked state is pure CSS grayscale (no fake locked images)
 - **Kid-voice unlock copy** — "你在 2025-10-03 第一次连着打卡 7 天" instead of engineering jargon
 - **AI-generated artwork** — each pin is generated via image-gen + rembg U2-Net background removal, 1024×1024 RGBA with hard alpha mask; the whole pipeline is a documented draft-JSON contract (`data/lib/badge_data/{draft_id}.json`) between the backend and the image pipeline
-- **7-day blind-box themes** — 7 matching pins per theme (Rapunzel, ocean), all sharing one art direction
+- **Seasonal pins** — 7 matching pins per seasonal theme, all sharing one art direction
 
 ### 👨👩 Parent side
 - **Lesson scheduling** — auto-generate weekly lessons on Saturday, holiday conflict detection, fee tracking with payment reminders on lesson day
