@@ -31,15 +31,20 @@ def short(sec: Any) -> str:
 
 
 def pick_seconds(seconds: Any, minutes: Any) -> int:
-    """优先用已存的秒。缺省、或秒为 0 但分钟 > 0（未回填的 DEFAULT 0）时用分钟 × 60。"""
+    """优先用已存的秒。缺省、或秒为 0 但分钟 > 0（未回填的 DEFAULT 0）时用分钟 × 60。
+
+    负数秒 = 坏数据, 返回 0 (不替它造数); 与 `database._item_secs` 同口径。
+    """
     mins = _as_int(minutes)
     if mins is None or mins < 0:
         mins = 0
     if seconds is None or seconds == "":
         return mins * 60
     s = _as_int(seconds)
-    if s is None or s < 0:
+    if s is None:
         return mins * 60
+    if s < 0:
+        return 0
     if s == 0 and mins > 0:
         return mins * 60
     return s

@@ -28,13 +28,15 @@
     return minutes + ':' + rs;
   }
 
-  /* 秒是真值。缺省，或秒为 0 但分钟 > 0（未回填的 DEFAULT 0），用分钟 × 60。 */
+  /* 秒是真值。缺省，或秒为 0 但分钟 > 0（未回填的 DEFAULT 0），用分钟 × 60。
+     负数秒 = 坏数据 → 0（与 Python pick_seconds / _item_secs 同口径）。 */
   function pick(seconds, minutes) {
     var mins = asInt(minutes);
     if (mins === null || mins < 0) mins = 0;
     if (seconds === undefined || seconds === null || seconds === '') return mins * 60;
     var s = asInt(seconds);
-    if (s === null || s < 0) return mins * 60;
+    if (s === null) return mins * 60;
+    if (s < 0) return 0;
     if (s === 0 && mins > 0) return mins * 60;
     return s;
   }

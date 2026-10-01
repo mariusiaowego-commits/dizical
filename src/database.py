@@ -28,7 +28,7 @@ def _item_secs(it) -> int:
         secs = int(raw)
     except (TypeError, ValueError):
         return mins * 60
-    if secs <= 0 and mins > 0:
+    if secs == 0 and mins > 0:
         return mins * 60
     return max(0, secs)
 
