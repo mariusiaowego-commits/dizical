@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from src.database import db
 from src import db_adapter  # fix/achievements-mysql-conn (2026-07-24): 跨后端 SQL 适配
+from src.kid_app.duration_fmt import total_seconds_of_practice
 
 router = APIRouter()
 
@@ -49,7 +50,12 @@ def api_today_stats():
     today = dt.date.today()
     p = db.get_daily_practice(today)
     total = p.get("total_minutes", 0) if p else 0
-    return JSONResponse({"date": today.isoformat(), "total_minutes": total})
+    total_seconds = total_seconds_of_practice(p)
+    return JSONResponse({
+        "date": today.isoformat(),
+        "total_minutes": total,
+        "total_seconds": total_seconds,
+    })
 
 
 @router.get("/api/lessons/upcoming")

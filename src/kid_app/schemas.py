@@ -69,6 +69,7 @@ class BehaviorLogEntry(BaseModel):
     enter_time: str = ""
     item: str = ""
     minutes: int = 0
+    seconds: Optional[int] = Field(None, ge=0, le=86400)
     reps: Optional[int] = Field(None, ge=REPS_MIN, le=REPS_MAX)
 
 
@@ -91,6 +92,8 @@ class PracticeLogRequest(BaseModel):
     item: str = Field(..., min_length=1)
     item_id: int = Field(..., ge=1)
     minutes: int = Field(..., ge=1)
+    # 秒是真值。缺省时服务端按 minutes * 60 补。分钟字段语义不变（仍 ge=1）。
+    seconds: Optional[int] = Field(None, ge=0, le=86400)
 
     # ── 可选 ──
     is_extra: bool = False

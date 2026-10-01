@@ -618,6 +618,7 @@
     </div>
   </div>
 
+<script src="/static/js/duration-fmt.js"></script>
 <script>
 (function () {
   var stageSelect = document.getElementById('stageSelect');
@@ -708,19 +709,22 @@
     }
     var filtered = allDays.filter(function (d) { return daysMap[d.date]; });
     var total = 0;
+    var totalSec = 0;
     var sessN = 0;
     var itemMap = {};
     filtered.forEach(function (day) {
       total += day.total_minutes || 0;
+      totalSec += DizicalDur.pick(day.total_seconds, day.total_minutes);
       sessN += day.session_count || 0;
       (day.groups || []).forEach(function (g) {
         var id = g.item_id;
         if (id == null) return;
         if (!itemMap[id]) {
           // 2026-09-28 FIX-4: 字段名跟后端 payload 统一为 reps
-          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, session_count: 0, reps: null };
+          itemMap[id] = { item_id: id, item_name: g.item_name, minutes: 0, seconds: 0, session_count: 0, reps: null };
         }
         itemMap[id].minutes += g.minutes || 0;
+        itemMap[id].seconds += DizicalDur.pick(g.seconds, g.minutes);
         itemMap[id].session_count += (g.sessions || []).length;
         if (g.item_name) itemMap[id].item_name = g.item_name;
         (g.sessions || []).forEach(function (s) {
@@ -743,6 +747,7 @@
       assignment_items: data.assignment_items || [],
       summary: {
         total_minutes: total,
+        total_seconds: totalSec,
         practice_days: filtered.length,
         session_count: sessN,
         item_count: byItem.length
@@ -754,7 +759,12 @@
 
   function availableDayList(data) {
     return (data && data.days ? data.days : []).map(function (d) {
-      return { date: d.date, total_minutes: d.total_minutes || 0, session_count: d.session_count || 0 };
+      return {
+        date: d.date,
+        total_minutes: d.total_minutes || 0,
+        total_seconds: DizicalDur.pick(d.total_seconds, d.total_minutes),
+        session_count: d.session_count || 0
+      };
     });
   }
 
@@ -796,7 +806,8 @@
       lab.appendChild(t);
       var m = document.createElement('span');
       m.className = 'df-mins';
-      m.textContent = d.total_minutes + '′';
+      // 26093002: 0 不可达。勾选日只来自 session，写入拒绝 duration_minutes<=0，pick 后 total_seconds>0，fmt 不会空。
+      m.textContent = DizicalDur.fmt(d.total_seconds);
       lab.appendChild(m);
       box.appendChild(lab);
     });
@@ -918,7 +929,7 @@
     }
     html += '</div>';
     html += '<div class="ph-stats">';
-    html += '<div><strong>' + esc(sum.total_minutes || 0) + '</strong> 分钟</div>';
+    html += '<div><strong>' + esc(DizicalDur.fmt(DizicalDur.pick(sum.total_seconds, sum.total_minutes)) || '0分') + '</strong></div>';
     html += '<div>' + esc(sum.practice_days || 0) + ' 天 · ' + esc(sum.session_count || 0) + ' 次 · ' + esc(sum.item_count || 0) + ' 科</div>';
     html += '</div></div>';
 
@@ -933,7 +944,9 @@
         // 重算才能出数 —— 兜底一删就会静默显「—」.
         var rSum = it.reps;
         var repsPart = rSum != null ? (rSum + '遍') : '—';
-        html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(it.minutes) + '′/' + esc(it.session_count) + '次/' + repsPart + ' ' + pct + '%</span>';
+        // 26093002: 0 不可达。科目小计来自 duration_minutes>0 的 session，pick 后秒>0，chip 不会空出时长。
+        var itDur = DizicalDur.fmt(DizicalDur.pick(it.seconds, it.minutes));
+        html += '<span class="ov"><b>' + esc(it.item_name) + '</b> ' + esc(itDur) + '/' + esc(it.session_count) + '次/' + repsPart + ' ' + pct + '%</span>';
       });
       html += '</div>';
     }
@@ -952,7 +965,10 @@
     days.forEach(function (day) {
       html += '<div class="day-block">';
       html += '<div class="day-head"><span>' + esc(fmtCnDate(day.date)) + ' · ' + esc(day.date) + '</span>';
-      html += '<span class="dh-meta">' + esc(day.total_minutes) + ' 分钟 · ' + esc(day.session_count) + ' 次</span></div>';
+      // 26093002: 0 不可达（日合计来自 duration_minutes>0 的 session）。fmt 为空时有意不拼时长，只留「N 次」。
+      var dayDur = DizicalDur.fmt(DizicalDur.pick(day.total_seconds, day.total_minutes));
+      var dayMeta = (dayDur ? dayDur + ' · ' : '') + (day.session_count || 0) + ' 次';
+      html += '<span class="dh-meta">' + esc(dayMeta) + '</span></div>';
       (day.groups || []).forEach(function (g) {
         var gReps = null;
         (g.sessions || []).forEach(function (s) {
@@ -960,7 +976,10 @@
         });
         var repsLabel = gReps != null ? (gReps + ' 遍') : '—';
         html += '<div class="item-block">';
-        html += '<div class="item-head">' + esc(g.item_name) + '<span>' + esc(g.minutes) + ' 分钟 · ' + esc((g.sessions || []).length) + ' 次 · ' + esc(repsLabel) + '</span></div>';
+        // 26093002: 0 不可达（科合计来自 duration_minutes>0 的 session）。fmt 为空时有意不拼时长，只留次数和遍数。
+        var gDur = DizicalDur.fmt(DizicalDur.pick(g.seconds, g.minutes));
+        var gMeta = (gDur ? gDur + ' · ' : '') + (g.sessions || []).length + ' 次 · ' + repsLabel;
+        html += '<div class="item-head">' + esc(g.item_name) + '<span>' + esc(gMeta) + '</span></div>';
         html += '<table class="sess"><thead><tr>';
         html += '<th class="c-time">时间</th><th class="c-mins">时长</th><th class="c-tempo">速度</th><th class="c-reps">遍数</th><th>内容</th><th class="c-extra"></th>';
         html += '</tr></thead><tbody>';
@@ -970,7 +989,9 @@
           var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
           html += '<tr>';
           html += '<td class="c-time">' + esc(fmtTime(s.started_at)) + '</td>';
-          html += '<td class="c-mins">' + esc(s.duration_minutes) + '′</td>';
+          var sessSec = DizicalDur.pick(s.duration_seconds, s.duration_minutes);
+          var sessFull = DizicalDur.fmt(sessSec);
+          html += '<td class="c-mins"' + (sessFull ? ' title="' + esc(sessFull) + '"' : '') + '>' + esc(DizicalDur.short(sessSec)) + '</td>';
           html += '<td class="c-tempo">' + esc(tempo) + '</td>';
           html += '<td class="c-reps">' + repsStr + '</td>';
           html += '<td>' + content + '</td>';
@@ -1002,13 +1023,15 @@
 
     var itemOrder = [];
     var itemNames = {};
-    var itemTotals = {}; // 全阶段每科合计，供小结
+    var itemTotals = {}; // 全阶段每科分钟，柱宽/占比仍用分钟
+    var itemSeconds = {};
     (data.by_item || []).forEach(function (it) {
       var id = it.item_id;
       if (id == null) return;
       if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
       itemNames[id] = it.item_name || ('科目' + id);
       itemTotals[id] = it.minutes || 0;
+      itemSeconds[id] = DizicalDur.pick(it.seconds, it.minutes);
     });
     days.forEach(function (day) {
       (day.groups || []).forEach(function (g) {
@@ -1017,6 +1040,7 @@
         if (itemOrder.indexOf(id) < 0) itemOrder.push(id);
         itemNames[id] = g.item_name || itemNames[id] || ('科目' + id);
         if (itemTotals[id] == null) itemTotals[id] = 0;
+        if (itemSeconds[id] == null) itemSeconds[id] = 0;
       });
     });
 
@@ -1029,6 +1053,7 @@
       (day.groups || []).forEach(function (g) {
         grid[d][g.item_id] = {
           minutes: g.minutes || 0,
+          seconds: DizicalDur.pick(g.seconds, g.minutes),
           sessions: (g.sessions && g.sessions.length) ? g.sessions.slice() : []
         };
       });
@@ -1089,8 +1114,13 @@
           var cell = grid[d][itemId];
           var sess = (cell && cell.sessions) ? cell.sessions : [];
           var total = cell ? cell.minutes : 0;
+          var totalSec = cell ? DizicalDur.pick(cell.seconds, cell.minutes) : 0;
+          // 10mm nowrap：格内 short（25:30），完整秒在 title。占比仍用分钟。
+          var totalLabel = DizicalDur.short(totalSec);
+          var totalFull = DizicalDur.fmt(totalSec);
+          var totalTitle = totalFull ? ' title="' + esc(totalFull) + '"' : '';
 
-          if (!cell || (!sess.length && !total)) {
+          if (!cell || (!sess.length && !total && !totalSec)) {
             if (ri === 0) {
               html += '<td class="m-total m-empty" rowspan="' + maxS + '">—</td>';
               html += '<td class="m-empty" rowspan="' + maxS + '" colspan="4"></td>';
@@ -1100,7 +1130,7 @@
 
           if (sess.length === 0) {
             if (ri === 0) {
-              html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
+              html += '<td class="m-total" rowspan="' + maxS + '"' + totalTitle + '>' + esc(totalLabel) + '</td>';
               html += '<td class="m-tempo">—</td>';
               html += '<td class="m-reps">—</td>';
               html += '<td class="m-once">—</td>';
@@ -1113,7 +1143,7 @@
 
           var daySessN = sess.length;
           if (ri === 0) {
-            html += '<td class="m-total" rowspan="' + maxS + '">' + esc(total) + '′</td>';
+            html += '<td class="m-total" rowspan="' + maxS + '"' + totalTitle + '>' + esc(totalLabel) + '</td>';
           }
           if (ri < daySessN) {
             var s = sess[ri];
@@ -1122,7 +1152,9 @@
             var content = s.content ? esc(s.content) : '<span class="empty-content">（未填写）</span>';
             html += '<td class="m-tempo">' + esc(tempo) + '</td>';
             html += '<td class="m-reps">' + repsStr + '</td>';
-            html += '<td class="m-once">' + esc(s.duration_minutes || 0) + '′</td>';
+            var onceSec = DizicalDur.pick(s.duration_seconds, s.duration_minutes);
+            var onceFull = DizicalDur.fmt(onceSec);
+            html += '<td class="m-once"' + (onceFull ? ' title="' + esc(onceFull) + '"' : '') + '>' + esc(DizicalDur.short(onceSec)) + '</td>';
             html += '<td class="m-detail">' + content;
             if (s.is_extra) html += '<span class="det-extra">额外</span>';
             html += '</td>';
@@ -1142,25 +1174,29 @@
       for (var i = 0; i < days.length; i++) {
         if (days[i].date === d) { dayObj = days[i]; break; }
       }
-      var t = dayObj ? dayObj.total_minutes : 0;
-      html += '<td class="m-total" colspan="' + COLS_PER_DAY + '">' + esc(t) + '′</td>';
+      var t = dayObj ? DizicalDur.pick(dayObj.total_seconds, dayObj.total_minutes) : 0;
+      var tFull = DizicalDur.fmt(t);
+      html += '<td class="m-total" colspan="' + COLS_PER_DAY + '"' + (tFull ? ' title="' + esc(tFull) + '"' : '') + '>' + esc(DizicalDur.short(t)) + '</td>';
     });
     html += '</tr>';
 
     // 小结：本周练习 x 天 总时长 xxx 分 每科 xx分(xx%) …
     var grand = sum.total_minutes || 0;
+    var grandSec = DizicalDur.pick(sum.total_seconds, sum.total_minutes);
     var dayN = sum.practice_days || 0;
     var parts = [];
     itemOrder.forEach(function (id) {
       var m = itemTotals[id] || 0;
-      if (m <= 0) return;
+      var sec = itemSeconds[id] || 0;
+      if (m <= 0 && sec <= 0) return;
       var pct = grand ? Math.round(m / grand * 100) : 0;
-      parts.push(esc(itemNames[id]) + m + '分(' + pct + '%)');
+      // 26093002: 0 不可达。双 0 已在上行 return；m>0 时秒经 pick，秒为 0 会回退 minutes*60，fmt 不会空。
+      parts.push(esc(itemNames[id]) + esc(DizicalDur.fmt(sec)) + '(' + pct + '%)');
     });
     html += '<tr>';
     html += '<td class="m-item">小结</td>';
     html += '<td class="m-summary" colspan="' + (nDays * COLS_PER_DAY) + '">';
-    html += '本周练习' + esc(dayN) + '天　总时长' + esc(grand) + '分';
+    html += '本周练习' + esc(dayN) + '天　总时长' + esc(DizicalDur.fmt(grandSec) || '0分');
     if (parts.length) {
       html += '　';
       parts.forEach(function (p) {

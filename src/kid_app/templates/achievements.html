@@ -13,6 +13,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <!-- sprint 26091302 B6: CCG 卡面 JS (DizicalCCG.mountCard 带 opts 第 4 参数) -->
   <script src="/static/js/badge-ccg.js?v=26091605"></script>
+  <script src="/static/js/duration-fmt.js"></script>
   <style>
     body { padding-bottom: 80px; }
     .nav {
@@ -435,7 +436,7 @@
       </div>
       <div class="board-cell">
         <div class="board-num-row">
-          <span class="board-num">{{yesterday_mins}}</span>
+          <span class="board-num">{{ yesterday_mins or '0分' }}</span>
           <span class="board-unit">{{yesterday_unit}}</span>
         </div>
         <div class="board-label">{{yesterday_label}}</div>
@@ -468,10 +469,10 @@
         <div class="top-cell">
           <div class="top-date">{{last_date}}</div>
           {% if last_top1_name %}
-          <div class="top-row"><span class="top-name">{{last_top1_name}}</span><span class="top-mins">{{last_top1_mins}}分钟</span></div>
+          <div class="top-row"><span class="top-name">{{last_top1_name}}</span><span class="top-mins">{{last_top1_mins}}</span></div>
           {% endif %}
           {% if last_top2_name %}
-          <div class="top-row"><span class="top-name">{{last_top2_name}}</span><span class="top-mins">{{last_top2_mins}}分钟</span></div>
+          <div class="top-row"><span class="top-name">{{last_top2_name}}</span><span class="top-mins">{{last_top2_mins}}</span></div>
           {% endif %}
         </div>
         {% endif %}
@@ -481,10 +482,10 @@
         <div class="top-cell">
           <div class="top-date">本周</div>
           {% if week_top1_name %}
-          <div class="top-row"><span class="top-name">{{week_top1_name}}</span><span class="top-mins">{{week_top1_mins}}分钟</span></div>
+          <div class="top-row"><span class="top-name">{{week_top1_name}}</span><span class="top-mins">{{week_top1_mins}}</span></div>
           {% endif %}
           {% if week_top2_name %}
-          <div class="top-row"><span class="top-name">{{week_top2_name}}</span><span class="top-mins">{{week_top2_mins}}分钟</span></div>
+          <div class="top-row"><span class="top-name">{{week_top2_name}}</span><span class="top-mins">{{week_top2_mins}}</span></div>
           {% endif %}
           {% if not week_top1_name %}
           <div class="top-empty">暂无</div>
@@ -496,10 +497,10 @@
         <div class="top-cell">
           <div class="top-date">本月</div>
           {% if month_top1_name %}
-          <div class="top-row"><span class="top-name">{{month_top1_name}}</span><span class="top-mins">{{month_top1_mins}}分钟</span></div>
+          <div class="top-row"><span class="top-name">{{month_top1_name}}</span><span class="top-mins">{{month_top1_mins}}</span></div>
           {% endif %}
           {% if month_top2_name %}
-          <div class="top-row"><span class="top-name">{{month_top2_name}}</span><span class="top-mins">{{month_top2_mins}}分钟</span></div>
+          <div class="top-row"><span class="top-name">{{month_top2_name}}</span><span class="top-mins">{{month_top2_mins}}</span></div>
           {% endif %}
           {% if not month_top1_name %}
           <div class="top-empty">暂无</div>

@@ -8,6 +8,63 @@ from .models import Lesson, Payment, LessonStatus, settings
 from .database_base import BaseBackend
 
 
+def _item_secs(it) -> int:
+    """条目秒数。契约: seconds 缺省、或为 0 且 minutes > 0 → 按 minutes * 60 视作。
+
+    不能用 it.get('seconds', default): key 存在且值为 0 时不会走 default, 老数据会把
+    历史分钟权重算成 0 秒 (agy 复核 P1-3)。
+    """
+    try:
+        mins = int(it.get('minutes', 0) or 0)
+    except (TypeError, ValueError):
+        mins = 0
+    try:
+        raw = it.get('seconds')
+    except AttributeError:
+        return mins * 60
+    if raw is None:
+        return mins * 60
+    try:
+        secs = int(raw)
+    except (TypeError, ValueError):
+        return mins * 60
+    if secs <= 0 and mins > 0:
+        return mins * 60
+    return max(0, secs)
+
+
+def _backfill_items_seconds(cursor) -> None:
+    """sprint 26093002: 把 daily_practices.items JSON 里缺 seconds 的条目补成 minutes * 60.
+
+    幂等: 只补缺 key 的条目, 已经有 seconds 的不动. 返回值为 None (调用方不需要).
+    历史事实不可改写: 老的「2 分钟」就是 2 分 0 秒, 不试图还原被 ceil 掉的真实秒数.
+    """
+    cursor.execute("SELECT id, items FROM daily_practices")
+    rows = cursor.fetchall()
+    for row in rows:
+        row_id = row[0] if not isinstance(row, sqlite3.Row) else row["id"]
+        raw = row[1] if not isinstance(row, sqlite3.Row) else row["items"]
+        if not raw:
+            continue
+        try:
+            items = json.loads(raw) if isinstance(raw, str) else raw
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(items, list):
+            continue
+        changed = False
+        for it in items:
+            if not isinstance(it, dict) or "seconds" in it:
+                continue
+            it["seconds"] = int(it.get("minutes", 0) or 0) * 60
+            changed = True
+        if changed:
+            cursor.execute(
+                "UPDATE daily_practices SET items = ? WHERE id = ?",
+                (json.dumps(items, ensure_ascii=False), row_id),
+            )
+
+
 class Database(BaseBackend):
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or settings.db_path
@@ -249,6 +306,7 @@ class Database(BaseBackend):
                     item_id INTEGER NOT NULL,
                     item_name TEXT NOT NULL,
                     duration_minutes INTEGER NOT NULL,
+                    duration_seconds INTEGER NOT NULL DEFAULT 0,
                     tempo_note TEXT NOT NULL DEFAULT '♪',
                     tempo_bpm INTEGER NOT NULL DEFAULT 80,
                     content TEXT NOT NULL DEFAULT '',
@@ -270,6 +328,10 @@ class Database(BaseBackend):
                 cursor.execute("ALTER TABLE practice_sessions ADD COLUMN updated_at DATETIME")
             if 'reps' not in ps_columns:
                 cursor.execute("ALTER TABLE practice_sessions ADD COLUMN reps INTEGER")
+            # sprint 26093002: 秒真值列. 老库幂等补 + 回填 minutes * 60 (不还原被 ceil 掉的秒).
+            if 'duration_seconds' not in ps_columns:
+                cursor.execute("ALTER TABLE practice_sessions ADD COLUMN duration_seconds INTEGER NOT NULL DEFAULT 0")
+                cursor.execute("UPDATE practice_sessions SET duration_seconds = COALESCE(duration_minutes, 0) * 60")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_ps_date ON practice_sessions(practice_date)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_ps_item_date ON practice_sessions(item_id, practice_date)")
             # schema_migrations 标记 (幂等)
@@ -285,6 +347,7 @@ class Database(BaseBackend):
                     date DATE NOT NULL UNIQUE,
                     items TEXT NOT NULL DEFAULT '[]',
                     total_minutes INTEGER NOT NULL DEFAULT 0,
+                    total_seconds INTEGER NOT NULL DEFAULT 0,
                     log TEXT,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
@@ -303,6 +366,12 @@ class Database(BaseBackend):
                 cursor.execute("ALTER TABLE daily_practices ADD COLUMN practiced TEXT NOT NULL DEFAULT 'Y'")
             if 'practice_at' not in columns:
                 cursor.execute("ALTER TABLE daily_practices ADD COLUMN practice_at DATETIME")
+            # sprint 26093002 (2026-09-30 秒级时长): 秒是真值, 分钟保留为 ceil 派生值.
+            #   老库缺列 → 幂等补 + 回填 seconds = minutes * 60 (历史事实: 当年就是按整分钟记的).
+            if 'total_seconds' not in columns:
+                cursor.execute("ALTER TABLE daily_practices ADD COLUMN total_seconds INTEGER NOT NULL DEFAULT 0")
+                cursor.execute("UPDATE daily_practices SET total_seconds = COALESCE(total_minutes, 0) * 60")
+            _backfill_items_seconds(cursor)
 
             # Migration: add category_id if practice_items doesn't have it
             cursor.execute("PRAGMA table_info(practice_items)")
@@ -940,35 +1009,47 @@ class Database(BaseBackend):
                 existing_practiced = row[2] or 'Y'
 
                 # 合并 items：同名累加分钟数，不同则追加
+                # 26093002: 同时累加 seconds（秒是真值；缺 seconds 的旧条目按 minutes*60 视作）
                 for it in items:
                     found = False
                     for ex in existing_items:
                         if ex.get('item') == it['item']:
+                            _ex_secs = _item_secs(ex)   # 先取, 免得回退时读到已加过的分钟
                             ex['minutes'] += it['minutes']
+                            ex['seconds'] = _ex_secs + _item_secs(it)
                             found = True
                             break
                     if not found:
-                        existing_items.append(it)
+                        new_it = dict(it)
+                        new_it['seconds'] = _item_secs(it)
+                        existing_items.append(new_it)
                 merged_items = existing_items
                 merged_total = sum(it.get('minutes', 0) for it in merged_items)
+                merged_total_seconds = sum(_item_secs(it) for it in merged_items)
                 merged_log = (existing_log + '\n' + log).strip() if log else existing_log
                 final_practiced = 'Y' if merged_total > 0 else existing_practiced
                 # UPDATE 路径: 永远不覆盖 practice_at (保留首次的练习时间)
                 # 只有在"该日首次创建"时 (新 INSERT 路径) 才写 practice_at
                 cursor.execute('''
                     UPDATE daily_practices
-                    SET items = ?, total_minutes = ?, log = ?, practiced = ?
+                    SET items = ?, total_minutes = ?, total_seconds = ?, log = ?, practiced = ?
                     WHERE date = ?
-                ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_log, final_practiced, date.isoformat()))
+                ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_total_seconds, merged_log, final_practiced, date.isoformat()))
                 audit_items = merged_items
                 audit_total = merged_total
             else:
                 # 新建记录 (含 practice_at)
+                insert_total_seconds = sum(_item_secs(it) for it in items)
+                normalized_items = []
+                for it in items:
+                    new_it = dict(it)
+                    new_it['seconds'] = _item_secs(it)
+                    normalized_items.append(new_it)
                 cursor.execute('''
-                    INSERT INTO daily_practices (date, items, total_minutes, log, practiced, practice_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (date.isoformat(), json.dumps(items, ensure_ascii=False), total_minutes, log, practiced, practice_at))
-                audit_items = items
+                    INSERT INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced, practice_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (date.isoformat(), json.dumps(normalized_items, ensure_ascii=False), total_minutes, insert_total_seconds, log, practiced, practice_at))
+                audit_items = normalized_items
                 audit_total = total_minutes
 
             # Sprint 09 P0-22 (PR-E): audit 移入事务内 (commit 前), 业务失败 → 整事务 rollback → audit 也不写.
@@ -1050,14 +1131,18 @@ class Database(BaseBackend):
                 conn.commit()
         else:
             new_total = sum(it.get("minutes", 0) for it in new_items)
+            # 26093002: items 里的秒也要保留/补齐（旧条目按 minutes*60 视作）
+            for it in new_items:
+                it.setdefault("seconds", int(it.get("minutes", 0) or 0) * 60)
+            new_total_seconds = sum(_item_secs(it) for it in new_items)
             # 直接写 DB，绕过 save_daily_practice 的合并逻辑，避免旧数据干扰
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, log, practiced)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ''', (date.isoformat(), json.dumps(new_items, ensure_ascii=False),
-                      new_total, existing.get("log", ""), 'Y'))
+                      new_total, new_total_seconds, existing.get("log", ""), 'Y'))
                 conn.commit()
 
     def remove_daily_practice_item(self, date: dt.date, item_name: str) -> None:
@@ -1084,14 +1169,18 @@ class Database(BaseBackend):
             cursor.execute('SELECT * FROM daily_practices WHERE date = ?', (date.isoformat(),))
             row = cursor.fetchone()
             if row:
+                mins = row['total_minutes'] or 0
                 return {
                     'id': row['id'],
                     'date': dt.date.fromisoformat(row['date']),
                     'items': self._normalize_items(row['items']),
                     'total_minutes': row['total_minutes'],
+                    # 26093002: 秒真值; 老行(列为 0 但分钟 > 0)按 minutes*60 兜底, 不返回 0
+                    'total_seconds': row['total_seconds'] if ('total_seconds' in row.keys() and row['total_seconds']) else int(mins) * 60,
                     'log': row['log'],
                     'practiced': row['practiced'] if 'practiced' in row.keys() else 'Y',
-                    'behavior_log': json.loads(row['behavior_log']) if 'behavior_log' in row.keys() else [],
+                    # 26093002: behavior_log 列可为 NULL (ALTER 加列无默认值), json.loads(None) 会抛
+                    'behavior_log': json.loads(row['behavior_log']) if ('behavior_log' in row.keys() and row['behavior_log']) else [],
                     # 2026-07-27 补: practice_at 字段 (migrate_add_practice_at.py 加列后漏读)
                     'practice_at': row['practice_at'] if 'practice_at' in row.keys() else None,
                 }
@@ -1110,9 +1199,10 @@ class Database(BaseBackend):
                 'date': dt.date.fromisoformat(row['date']),
                 'items': self._normalize_items(row['items']),
                 'total_minutes': row['total_minutes'],
+                'total_seconds': row['total_seconds'] if ('total_seconds' in row.keys() and row['total_seconds']) else int(row['total_minutes'] or 0) * 60,
                 'log': row['log'],
                 'practiced': row['practiced'] if 'practiced' in row.keys() else 'Y',
-                'behavior_log': json.loads(row['behavior_log']) if 'behavior_log' in row.keys() else [],
+                'behavior_log': json.loads(row['behavior_log']) if ('behavior_log' in row.keys() and row['behavior_log']) else [],
             } for row in cursor.fetchall()]
 
     # ─── Progress → daily_practices.log ───────────────────────────────────────
@@ -1218,24 +1308,27 @@ class Database(BaseBackend):
                                  duration_minutes: int, tempo_note: str = "♪", tempo_bpm: int = 80,
                                  content: str = "", content_source: str = "manual",
                                  is_extra: bool = False, started_at: Optional[str] = None,
-                                 reps: Optional[int] = None) -> Dict:
+                                 reps: Optional[int] = None,
+                                 duration_seconds: Optional[int] = None) -> Dict:
         """插入 1 条 session, 返回插入后的 dict. 不动 daily_practices 汇总.
 
         单纯插入, 不事务化同步 daily 汇总 (由 save_practice_session_and_daily_summary 调用).
         reps: 1-99, None 表示未记录 (落库 NULL, 不是 0).
+        duration_seconds (26093002): 秒真值; 不传则 duration_minutes * 60 (旧调用兼容).
         """
         self._validate_session_fields(tempo_note, tempo_bpm, duration_minutes, content, reps)
+        secs = int(duration_seconds) if duration_seconds is not None else int(duration_minutes) * 60
         if isinstance(practice_date, str):
             practice_date = dt.date.fromisoformat(practice_date)
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """INSERT INTO practice_sessions
-                   (practice_date, item_id, item_name, duration_minutes,
+                   (practice_date, item_id, item_name, duration_minutes, duration_seconds,
                     tempo_note, tempo_bpm, content, content_source,
                     is_extra, started_at, reps)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (practice_date.isoformat(), item_id, item_name, duration_minutes,
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (practice_date.isoformat(), item_id, item_name, duration_minutes, secs,
                  tempo_note, tempo_bpm, content, content_source,
                  1 if is_extra else 0, started_at, reps),
             )
@@ -1508,7 +1601,7 @@ class Database(BaseBackend):
             cursor.execute("BEGIN IMMEDIATE")
             try:
                 cursor.execute(
-                    "SELECT version, practice_date, item_id, item_name, duration_minutes "
+                    "SELECT version, practice_date, item_id, item_name, duration_minutes, duration_seconds "
                     "FROM practice_sessions WHERE id = ?",
                     (session_id,),
                 )
@@ -1520,6 +1613,8 @@ class Database(BaseBackend):
                 item_id = row["item_id"]
                 item_name = row["item_name"]
                 removed_minutes = row["duration_minutes"]
+                removed_seconds = row["duration_seconds"] if row["duration_seconds"] is not None \
+                    else int(removed_minutes) * 60
 
                 # Sprint 09 P0-12: 乐观锁校验
                 if expected_version is not None:
@@ -1544,23 +1639,26 @@ class Database(BaseBackend):
                     new_items = []
                     for it in items:
                         if it.get("item_id") == item_id:
+                            _old_secs = _item_secs(it)   # 先取, 免得回退时读到已减过的分钟
                             it["minutes"] = max(0, it.get("minutes", 0) - removed_minutes)
+                            it["seconds"] = max(0, _old_secs - removed_seconds)
                             if it["minutes"] > 0:
                                 new_items.append(it)
                             # minutes == 0 → 移除整条
                         else:
                             new_items.append(it)
                     new_total = sum(it.get("minutes", 0) for it in new_items)
+                    new_total_seconds = sum(_item_secs(it) for it in new_items)
                     # 写回
                     if new_items:
                         cursor.execute(
-                            "UPDATE daily_practices SET items = ?, total_minutes = ? WHERE date = ?",
-                            (json.dumps(new_items, ensure_ascii=False), new_total, practice_date),
+                            "UPDATE daily_practices SET items = ?, total_minutes = ?, total_seconds = ? WHERE date = ?",
+                            (json.dumps(new_items, ensure_ascii=False), new_total, new_total_seconds, practice_date),
                         )
                     else:
                         # 当日无任何 item → 仍保留 daily 行但 minutes=0, items='[]'
                         cursor.execute(
-                            "UPDATE daily_practices SET items = '[]', total_minutes = 0 WHERE date = ?",
+                            "UPDATE daily_practices SET items = '[]', total_minutes = 0, total_seconds = 0 WHERE date = ?",
                             (practice_date,),
                         )
                 # 3. 写 audit
@@ -1588,9 +1686,12 @@ class Database(BaseBackend):
         expected_version: Optional[int] = None,
         reps: Optional[int] = None,
         apply_reps: bool = False,
+        duration_seconds: Optional[int] = None,
     ) -> Optional[Dict]:
         """更新 session 的 tempo/content/duration.
         duration_minutes 变化时自动重算 daily 汇总 + 写 audit.
+        duration_seconds (26093002): 秒真值, 与 duration_minutes 同时给时以 seconds 为准调整
+        daily 的秒合计; 只给 minutes 时 seconds 按 minutes*60 同步.
 
         Sprint 09 P0-12 (PR-D): 加 expected_version 乐观锁. None=跳过校验 (兼容旧调用),
         整数=WHERE id=? AND version=? 检查, affected_rows=0 即 raise ConflictError(409).
@@ -1603,6 +1704,8 @@ class Database(BaseBackend):
             raise ValueError(f"tempo_bpm 必须在 {self._BPM_MIN}-{self._BPM_MAX} 之间, 收到 {tempo_bpm}")
         if duration_minutes is not None and duration_minutes <= 0:
             raise ValueError(f"duration_minutes 必须 > 0, 收到 {duration_minutes}")
+        if duration_seconds is not None and duration_seconds <= 0:
+            raise ValueError(f"duration_seconds 必须 > 0, 收到 {duration_seconds}")
         if content is not None and (not isinstance(content, str) or not content.strip() or len(content) > self._CONTENT_MAX_LEN):
             raise ValueError(f"content 必须是 1-{self._CONTENT_MAX_LEN} 个字符的非空字符串, 收到 {content!r}")
         if apply_reps and reps is not None and (
@@ -1618,6 +1721,14 @@ class Database(BaseBackend):
                 raise ValueError(f"session_id={session_id} 不存在")
             old_duration = row["duration_minutes"]
             new_duration = duration_minutes if duration_minutes is not None else old_duration
+            old_seconds = row["duration_seconds"] if row["duration_seconds"] is not None \
+                else int(old_duration) * 60
+            if duration_seconds is not None:
+                new_seconds = int(duration_seconds)
+            elif duration_minutes is not None:
+                new_seconds = int(new_duration) * 60
+            else:
+                new_seconds = old_seconds
 
             # 1. 更新 session 字段 + version 自增 (Sprint 09 P0-12)
             updates = ["version = version + 1", "updated_at = CURRENT_TIMESTAMP"]
@@ -1630,6 +1741,8 @@ class Database(BaseBackend):
                 updates.append("content = ?"); params.append(content)
             if duration_minutes is not None:
                 updates.append("duration_minutes = ?"); params.append(duration_minutes)
+            if duration_seconds is not None or duration_minutes is not None:
+                updates.append("duration_seconds = ?"); params.append(new_seconds)
             if apply_reps:
                 updates.append("reps = ?"); params.append(reps)
             # Sprint 09 P0-12: 乐观锁校验 — expected_version 不为 None 时加 WHERE version=?
@@ -1655,9 +1768,11 @@ class Database(BaseBackend):
                     current_version=current.get("version"),
                 )
 
-            # 2. 时长变了 → 重算 daily 汇总
-            if duration_minutes is not None and new_duration != old_duration:
+            # 2. 时长变了 → 重算 daily 汇总 (minutes 与 seconds 同步)
+            if (duration_minutes is not None and new_duration != old_duration) or \
+               (duration_seconds is not None and new_seconds != old_seconds):
                 delta = new_duration - old_duration
+                delta_seconds = new_seconds - old_seconds
                 practice_date = row["practice_date"]
                 item_id = row["item_id"]
                 cursor.execute("SELECT items FROM daily_practices WHERE date = ?", (practice_date,))
@@ -1666,13 +1781,17 @@ class Database(BaseBackend):
                     from json import loads as _loads, dumps as _dumps
                     items = _loads(drow["items"]) if drow["items"] else []
                     new_total = 0
+                    new_total_seconds = 0
                     for it in items:
                         if it.get("item_id") == item_id:
+                            _old_secs = _item_secs(it)   # 先取, 免得回退时读到已改过的分钟
                             it["minutes"] = max(0, it.get("minutes", 0) + delta)
+                            it["seconds"] = max(0, _old_secs + delta_seconds)
                         new_total += it.get("minutes", 0)
+                        new_total_seconds += _item_secs(it)
                     cursor.execute(
-                        "UPDATE daily_practices SET items = ?, total_minutes = ? WHERE date = ?",
-                        (_dumps(items, ensure_ascii=False), new_total, practice_date),
+                        "UPDATE daily_practices SET items = ?, total_minutes = ?, total_seconds = ? WHERE date = ?",
+                        (_dumps(items, ensure_ascii=False), new_total, new_total_seconds, practice_date),
                     )
                     # 写 audit
                     cursor.execute(
@@ -1680,7 +1799,8 @@ class Database(BaseBackend):
                            (channel, method, practice_date, input_items, result_items, total_minutes, error, session_id)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                         ("internal", "update_session_duration", practice_date,
-                         _dumps([{"session_id": session_id, "old_minutes": old_duration, "new_minutes": new_duration}]),
+                         _dumps([{"session_id": session_id, "old_minutes": old_duration, "new_minutes": new_duration,
+                                  "old_seconds": old_seconds, "new_seconds": new_seconds}]),
                          _dumps([]), delta, None, str(session_id)),
                     )
 
@@ -1706,16 +1826,20 @@ class Database(BaseBackend):
                                                   content: str, content_source: str = "manual",
                                                   practice_at: Optional[str] = None,
                                                   is_extra: bool = False,
-                                                  reps: Optional[int] = None) -> Dict:
+                                                  reps: Optional[int] = None,
+                                                  seconds: Optional[int] = None) -> Dict:
         """核心事务方法: 写 1 条 session + 同步 daily 汇总 + 写 audit + 更新冗余列.
 
         Args:
             practice_at: CST ISO 'YYYY-MM-DD HH:MM:SS[.fff]', 与 save_daily_practice 行为一致:
                           新建 daily 行才写 practice_at; 已有 daily 行不动 practice_at (保留首次).
+            seconds (26093002): 秒真值; 不传则 minutes * 60 (旧客户端兼容).
+                                minutes 语义不变 = ceil(秒/60), 聚合仍是逐条 ceil 后相加.
 
         Returns: 新插入 session 的 dict.
         """
         self._validate_session_fields(tempo_note, tempo_bpm, minutes, content, reps)
+        secs = int(seconds) if seconds is not None else int(minutes) * 60
         if isinstance(practice_date, str):
             practice_date = dt.date.fromisoformat(practice_date)
         with self._get_connection() as conn:
@@ -1741,11 +1865,11 @@ class Database(BaseBackend):
                 started_at = practice_at  # 业务时间为 CST ISO 字符串
                 cursor.execute(
                     """INSERT INTO practice_sessions
-                       (practice_date, item_id, item_name, duration_minutes,
+                       (practice_date, item_id, item_name, duration_minutes, duration_seconds,
                         tempo_note, tempo_bpm, content, content_source,
                         is_extra, started_at, reps)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (practice_date.isoformat(), item_id, actual_item_name, minutes,
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (practice_date.isoformat(), item_id, actual_item_name, minutes, secs,
                      tempo_note, tempo_bpm, content, content_source,
                      1 if is_extra else 0, started_at, reps),
                 )
@@ -1753,11 +1877,13 @@ class Database(BaseBackend):
                 if new_session_id is None:
                     raise RuntimeError("INSERT 后 lastrowid 为空, 不应发生")
 
-                # 4. 更新 daily 汇总 (累加 minutes)
+                # 4. 更新 daily 汇总 (累加 minutes + seconds; 缺 seconds 的旧条目按 minutes*60 视作)
                 found = False
                 for it in existing_items:
                     if it.get("item") == actual_item_name:
+                        _old_secs = _item_secs(it)   # 先取, 免得回退时读到已加过的分钟
                         it["minutes"] = it.get("minutes", 0) + minutes
+                        it["seconds"] = _old_secs + secs
                         found = True
                         break
                 if not found:
@@ -1765,8 +1891,10 @@ class Database(BaseBackend):
                         "item": actual_item_name,
                         "item_id": item_id,
                         "minutes": minutes,
+                        "seconds": secs,
                     })
                 new_total = sum(it.get("minutes", 0) for it in existing_items)
+                new_total_seconds = sum(_item_secs(it) for it in existing_items)
                 final_practiced = "Y" if new_total > 0 else existing_practiced
 
                 # 5. UPDATE 或 INSERT daily
@@ -1774,19 +1902,19 @@ class Database(BaseBackend):
                     # 已存在: 不覆盖 practice_at (保留首次), 不重置 log
                     cursor.execute(
                         """UPDATE daily_practices
-                           SET items = ?, total_minutes = ?, practiced = ?
+                           SET items = ?, total_minutes = ?, total_seconds = ?, practiced = ?
                            WHERE date = ?""",
-                        (json.dumps(existing_items, ensure_ascii=False), new_total,
+                        (json.dumps(existing_items, ensure_ascii=False), new_total, new_total_seconds,
                          final_practiced, practice_date.isoformat()),
                     )
                 else:
                     # 新建: 写 practice_at
                     cursor.execute(
                         """INSERT INTO daily_practices
-                           (date, items, total_minutes, log, practiced, practice_at)
-                           VALUES (?, ?, ?, ?, ?, ?)""",
+                           (date, items, total_minutes, total_seconds, log, practiced, practice_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
                         (practice_date.isoformat(),
-                         json.dumps(existing_items, ensure_ascii=False), new_total, "",
+                         json.dumps(existing_items, ensure_ascii=False), new_total, new_total_seconds, "",
                           final_practiced, practice_at),
                     )
 
@@ -1796,6 +1924,7 @@ class Database(BaseBackend):
                     "item": actual_item_name,
                     "item_id": item_id,
                     "minutes": minutes,
+                    "seconds": secs,
                     "session_id": new_session_id,
                     "content": content,
                     "tempo_note": tempo_note,

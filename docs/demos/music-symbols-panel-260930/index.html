@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>demo — 老师要求 · 常用音乐符号面板</title>
+<style>
+  :root{
+    --ink:#2C3E50; --ink2:#5D6D7E; --line:rgba(0,0,0,.10); --bg:#F7F6F3;
+    --card:#fff; --teal:#4ECDC4; --teal2:#44B8AC; --soft:#F0F4F6;
+  }
+  *{box-sizing:border-box;-webkit-text-size-adjust:100%}
+  body{margin:0;padding:22px;background:var(--bg);color:var(--ink);
+       font:14px/1.55 -apple-system,"PingFang SC","Helvetica Neue",sans-serif}
+  h1{font-size:19px;margin:0 0 6px}
+  .sub{font-size:13px;color:var(--ink2);margin:0 0 16px}
+  .note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 20px;font-size:13px;color:var(--ink2)}
+  .note b{color:var(--ink)}
+  .note ol{margin:8px 0 0;padding-left:20px}
+  .note li{margin:3px 0}
+  .frames{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .frame{background:#EDEBE6;border-radius:20px;padding:10px;flex:0 0 auto}
+  .frame > .cap{font-size:11.5px;color:var(--ink2);text-align:center;margin:2px 0 8px}
+  .screen{position:relative;background:#fff;border-radius:14px;overflow:hidden;
+          box-shadow:0 2px 10px rgba(0,0,0,.07)}
+  .scroll{overflow-y:auto;padding:14px 14px 90px;height:620px}
+  .hdr{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px}
+  .hdr h2{font-size:15px;margin:0}
+  .hdr span{font-size:11.5px;color:var(--ink2)}
+  .lab{font-size:12px;color:var(--ink2);margin:12px 0 5px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:11px;margin:0 0 10px;background:#fff}
+  .rowhd{display:flex;justify-content:space-between;align-items:center;margin:0 0 7px}
+  .rowhd .nm{font-size:13px;font-weight:600}
+  .rowhd .id{font-size:11px;color:#9AA7B2}
+  textarea{width:100%;min-height:62px;resize:vertical;border:1px solid var(--line);border-radius:10px;
+           padding:9px 10px;font:13.5px/1.6 inherit;color:var(--ink);background:#FCFDFD}
+  textarea:focus{outline:2px solid rgba(78,205,196,.45);outline-offset:1px;background:#fff}
+  input.tempo{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:13.5px inherit;background:#FCFDFD}
+  .addbtn{border:1px dashed #C4CFD6;background:#fff;color:var(--ink2);border-radius:10px;padding:8px 12px;
+          font-size:12.5px;cursor:pointer;width:100%}
+  .addbtn:hover{border-color:#A9B8C2;color:var(--ink)}
+  .empty{font-size:12.5px;color:#9AA7B2;text-align:center;padding:14px;border:1px dashed var(--line);border-radius:10px;margin:0 0 10px}
+  /* 触发按钮（挂在每个输入框右上角） */
+  .fld{position:relative}
+  .trigger{position:absolute;top:6px;right:6px;border:1px solid var(--line);background:#fff;border-radius:8px;
+           padding:3px 8px;font-size:11.5px;color:var(--ink2);cursor:pointer;line-height:1.5}
+  .trigger:hover{border-color:#A9B8C2;color:var(--ink)}
+  .trigger.on{border-color:var(--teal);color:#2E7D74;background:#EAF8F6}
+  /* 浮层 */
+  .panel{position:absolute;z-index:40;background:#fff;border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 10px 28px rgba(0,0,0,.14);padding:10px 10px 8px;display:none}
+  .panel.open{display:block}
+  .panel .grp{margin:0 0 7px}
+  .panel .grp:last-child{margin-bottom:0}
+  .panel .gh{font-size:11px;color:#8A97A2;margin:0 0 5px;letter-spacing:.03em}
+  .syms{display:flex;flex-wrap:wrap;gap:5px}
+  .syms button{min-width:44px;height:44px;padding:0 9px;border:1px solid var(--line);background:#fff;
+               border-radius:10px;font-size:15.5px;line-height:1;color:var(--ink);cursor:pointer;
+               font-family:-apple-system,"PingFang SC",sans-serif}
+  .syms button.word{min-width:auto;font-size:12.5px;padding:0 11px}
+  .syms button:hover{background:var(--soft);border-color:#C4CFD6}
+  .syms button:active{background:#E4F5F2;border-color:var(--teal)}
+  .tipbar{margin:10px 0 0;font-size:11.5px;color:#8A97A2}
+  .live{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+  .live .k{font-size:11.5px;color:#8A97A2;margin-bottom:5px}
+  .live .v{font-size:13px;white-space:pre-wrap;min-height:20px;color:var(--ink)}
+  .ovcheck{font-size:12px;margin-top:7px;font-weight:600;color:#8A97A2}
+  .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(44,62,80,.92);color:#fff;
+         font-size:12px;border-radius:999px;padding:7px 14px;opacity:0;transition:opacity .18s;z-index:60;pointer-events:none}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<h1>老师要求 · 常用音乐符号面板（可点）</h1>
+<p class="sub">三档宽度并排：375（手机）/ 440（iPhone 竖屏）/ 744（iPad mini 竖屏）。每个框右上角有「符号」按钮，聚焦输入框也会自动跟随弹出。</p>
+
+<div class="note">
+  <b>怎么试</b>
+  <ol>
+    <li>点任意「老师要求」输入框 → 面板跟随该框出现；点右上角「符号」按钮也能开。</li>
+    <li>点面板里的符号 → 插入到光标处（不是复制到剪贴板，所以不用长按黏贴）。</li>
+    <li>看 375 档：先点「+ 添加科目要求」才会有第一个框；没加之前面板不会乱弹。</li>
+    <li>「速度」框（如 ♩=82）也能用面板；点面板时输入框不会失焦，光标位置保留。</li>
+    <li><b>不遮挡原则</b>：面板永远不盖住正在输入的框 —— 下方空间够就贴在下方，不够就翻到上方，两边都不够时面板自己限高内滚，绝不上移盖住输入框。底部有实时判定读数（「遮挡输入框：否」＋间距 px）与滚动跟随。</li>
+    <li>底部「最近插入的字段内容」实时显示插入结果，用来核对插入位置正确。</li>
+  </ol>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<script>
+// ── 符号表（A 组：BMP 基本区，真机覆盖好 + 词条） ──
+var GROUPS = [
+  { name:'记谱',   items:['♩','♪','♫','♬','♯','♭','♮','=','.','·','-','0','|','‖',':'] },
+  { name:'技巧',   items:['tr','T','K','V','↗','↘','◐','○'] },
+  { name:'力度与结构', items:['p','mf','f','pp','ff','cresc.','dim.','D.C.','D.S.','Fine','4/4','3/4','2/4','6/8'] },
+  { name:'词条', word:true, items:['打音','叠音','赠音','历音','花舌','气震音','超吹','长音','渐快','渐慢','自由速度','散板','循环换气'] }
+];
+
+function el(html){ var d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+
+function buildFrame(width, label, sublabel){
+  var frame = el('<div class="frame"></div>');
+  frame.appendChild(el('<div class="cap">'+label+' · '+sublabel+'</div>'));
+  var screen = el('<div class="screen" style="width:'+width+'px"></div>');
+  var scroll = el('<div class="scroll"></div>');
+
+  scroll.appendChild(el('<div class="hdr"><h2>老师要求</h2><span>2026-09-30</span></div>'));
+  scroll.appendChild(el('<div class="lab">科目要求（每个科目一条）</div>'));
+  var rows = el('<div class="rows"></div>');
+  scroll.appendChild(rows);
+  scroll.appendChild(el('<button class="addbtn" type="button">+ 添加科目要求</button>'));
+  scroll.appendChild(el('<div class="lab">速度（可点面板插 ♩=82 这类）</div>'));
+  var tempoWrap = el('<div class="fld"><input class="tempo" placeholder="速度 e.g. ♩=82" value=""></div>');
+  scroll.appendChild(tempoWrap);
+  scroll.appendChild(el('<div class="lab">老师补充说明</div>'));
+  var notesWrap = el('<div class="fld"><textarea placeholder="整周的统一说明…"></textarea></div>');
+  scroll.appendChild(notesWrap);
+
+  var live = el('<div class="live"><div class="k">最近插入的字段内容</div><div class="v" id="live-'+width+'">（还没插入）</div></div>');
+  scroll.appendChild(live);
+  var statusEl = el('<div class="ovcheck">遮挡输入框：未测量（先聚焦一个输入框）</div>');
+  live.appendChild(statusEl);
+  scroll.appendChild(el('<div class="tipbar">面板里的字符全部是 BMP 基本区，避免 iPad 上出现白框。补充平面字符（𝄐 𝄞 等）已排除。</div>'));
+
+  var panel = el('<div class="panel"></div>');
+  var toast = el('<div class="toast">已插入</div>');
+  screen.appendChild(scroll);
+  screen.appendChild(panel);
+  screen.appendChild(toast);
+  frame.appendChild(screen);
+
+  var state = { target:null, hideTimer:null };
+  var liveEl = live.querySelector('.v');
+
+  function buildPanel(){
+    panel.innerHTML = '';
+    GROUPS.forEach(function(g){
+      var grp = el('<div class="grp"><div class="gh">'+g.name+'</div><div class="syms"></div></div>');
+      var syms = grp.querySelector('.syms');
+      g.items.forEach(function(s){
+        var b = el('<button type="button"'+(g.word?' class="word"':'')+'>'+s+'</button>');
+        b.addEventListener('pointerdown', function(e){ e.preventDefault(); });  // 保住焦点与光标
+        b.addEventListener('click', function(e){ e.preventDefault(); insert(s); });
+        syms.appendChild(b);
+      });
+      panel.appendChild(grp);
+    });
+  }
+
+  function showToast(t){
+    toast.textContent = t;
+    toast.classList.add('on');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ toast.classList.remove('on'); }, 900);
+  }
+
+  function insert(sym){
+    var t = state.target;
+    if (!t) { showToast('先点一个输入框'); return; }
+    var isArea = (t.tagName === 'TEXTAREA');
+    var start = t.selectionStart, end = t.selectionEnd;
+    if (start == null) { start = end = (t.value || '').length; }
+    var v = t.value || '';
+    var next = v.slice(0, start) + sym + v.slice(end);
+    t.value = next;
+    var caret = start + sym.length;
+    try { t.setSelectionRange(caret, caret); } catch(e){}
+    t.dispatchEvent(new Event('input', { bubbles:true }));   // 兼容草稿缓存 / 字段反读
+    liveEl.textContent = t.value || '（空）';
+    positionPanel();
+    showToast('已插入 ' + sym);
+  }
+
+  function positionPanel(){
+    if (!state.target) return;
+    var fld = state.target.closest('.fld') || state.target.parentNode;
+    var pr = screen.getBoundingClientRect();
+    var fr = fld.getBoundingClientRect();
+    var sr = scroll.getBoundingClientRect();
+    panel.style.maxHeight = '';                      // 先复位，避免上一轮的限高影响测量
+    panel.style.overflowY = '';
+    panel.style.width = Math.min(screen.clientWidth - 12, 336) + 'px';
+    var panelH = panel.offsetHeight || 220;
+    var gap = 8;
+    // 可视区：iPad 软键盘弹起时 visualViewport 会缩小，按它算可用高度
+    var vv = window.visualViewport;
+    var visTopRel = (sr.top - pr.top);
+    var visBottomRel = (sr.bottom - pr.top);
+    if (vv) visBottomRel = Math.min(visBottomRel, (vv.height + vv.offsetTop) - pr.top);
+    var fieldTop = fr.top - pr.top;
+    var fieldBottom = fr.bottom - pr.top;
+    var spaceBelow = visBottomRel - fieldBottom - gap;
+    var spaceAbove = fieldTop - visTopRel - gap;
+    var top, capped = false;
+    if (spaceBelow >= panelH) {                       // 优先放输入框下方
+      top = fieldBottom + gap;
+    } else if (spaceAbove >= panelH) {                // 下方不够 → 放上方
+      top = fieldTop - gap - panelH;
+    } else if (spaceAbove > spaceBelow) {             // 两边都不够 → 取空间大的一侧，面板限高内滚
+      var hUp = Math.min(panelH, Math.max(0, spaceAbove));   // 高度不超过可用空间（绝不许压盖输入框）
+      top = Math.max(visTopRel + 4, fieldTop - gap - hUp);
+      panel.style.maxHeight = hUp + 'px';
+      capped = true;
+    } else {
+      var hDown = Math.min(panelH, Math.max(0, spaceBelow));
+      top = fieldBottom + gap;
+      panel.style.maxHeight = hDown + 'px';
+      capped = true;
+    }
+    if (!capped) panel.style.maxHeight = '';
+    panel.style.overflowY = 'auto';
+    panel.style.top = top + 'px';
+    panel.style.left = Math.max(6, Math.min(fr.left - pr.left, screen.clientWidth - panel.offsetWidth - 6)) + 'px';
+    // 硬校验：面板矩形与输入框矩形不得相交（不只靠算法，实测一次）
+    var pTop = panel.offsetTop, pBot = pTop + panel.offsetHeight;
+    var overlap = !(pBot <= fieldTop || pTop >= fieldBottom);
+    if (statusEl) {
+      statusEl.textContent = overlap
+        ? '遮挡输入框：是（不合格）'
+        : '遮挡输入框：否 · 与输入框间距 ' + (pTop >= fieldBottom ? (pTop - fieldBottom) : (fieldTop - pBot)) + 'px' + (capped ? ' · 空间不足，面板已限高内滚' : '');
+      statusEl.style.color = overlap ? '#C0392B' : '#2E7D74';
+    }
+  }
+
+  function openPanel(target){
+    state.target = target;
+    buildPanel();
+    panel.classList.add('open');
+    Array.prototype.forEach.call(scroll.querySelectorAll('.trigger'), function(b){ b.classList.remove('on'); });
+    var trg = target.parentNode.querySelector('.trigger');
+    if (trg) trg.classList.add('on');
+    positionPanel();
+  }
+  function closePanel(){
+    panel.classList.remove('open');
+    Array.prototype.forEach.call(scroll.querySelectorAll('.trigger'), function(b){ b.classList.remove('on'); });
+  }
+
+  // 每个输入框：包一层 .fld + 右上角触发按钮
+  function wrapField(input){
+    var w = document.createElement('div');
+    w.className = 'fld';
+    input.parentNode.insertBefore(w, input);
+    w.appendChild(input);
+    var trg = el('<button class="trigger" type="button">符号</button>');
+    trg.addEventListener('pointerdown', function(e){ e.preventDefault(); });
+    trg.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      if (panel.classList.contains('open') && state.target === input) { closePanel(); }
+      else { input.focus(); openPanel(input); }
+    });
+    w.appendChild(trg);
+    input.addEventListener('focus', function(){ openPanel(input); });
+    input.addEventListener('blur', function(){
+      clearTimeout(state.hideTimer);
+      state.hideTimer = setTimeout(function(){
+        if (document.activeElement && panel.contains(document.activeElement)) return;
+        closePanel();
+      }, 180);
+    });
+  }
+
+  var ROWS = [
+    { nm:'吸气长音', id:'12' },
+    { nm:'单吐tuku', id:'31' }
+  ];
+  function addRow(nm, id){
+    var card = el('<div class="card"><div class="rowhd"><span class="nm">'+nm+'</span><span class="id">ID '+id+'</span></div></div>');
+    var fld = el('<div class="fld"><textarea placeholder="这个科目的老师要求…"></textarea></div>');
+    card.appendChild(fld);
+    rows.appendChild(card);
+    wrapField(card.querySelector('textarea'));
+  }
+  var emptyBox = el('<div class="empty">还没有科目要求行。点下面的按钮添加，添加后面板会用同样的方式跟随。</div>');
+  rows.appendChild(emptyBox);
+
+  scroll.querySelector('.addbtn').addEventListener('click', function(){
+    if (rows.querySelector('.empty')) rows.querySelector('.empty').remove();
+    var next = ROWS.shift();
+    if (!next) next = { nm:'新科目', id:'—' };
+    addRow(next.nm, next.id);
+  });
+  addRow('小看戏', '45');   // 给两档都预置一行，便于直接试
+  ROWS.shift();
+
+  wrapField(tempoWrap.querySelector('input'));
+  wrapField(notesWrap.querySelector('textarea'));
+
+  // 滚动 / 旋屏 / 软键盘变化时，面板跟着输入框重定位（不遮挡原则必须一直成立）
+  scroll.addEventListener('scroll', function(){ if (panel.classList.contains('open')) positionPanel(); });
+  window.addEventListener('resize', function(){ if (panel.classList.contains('open')) positionPanel(); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function(){ if (panel.classList.contains('open')) positionPanel(); });
+    window.visualViewport.addEventListener('scroll', function(){ if (panel.classList.contains('open')) positionPanel(); });
+  }
+
+  return frame;
+}
+
+var host = document.getElementById('frames');
+host.appendChild(buildFrame(375, '375', '手机窄屏（iPhone SE 类）'));
+host.appendChild(buildFrame(440, '440', 'iPhone 17 Pro Max'));
+host.appendChild(buildFrame(744, '744', 'iPad mini 竖屏'));
+</script>
+</body>
+</html>
