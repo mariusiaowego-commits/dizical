@@ -48,7 +48,7 @@ from .models import Lesson, Payment, LessonStatus
 def _item_secs(it) -> int:
     """条目秒数。契约与 sqlite `_item_secs` 相同，不 import database。
 
-    seconds 缺省 / None / 非数 / ≤0 且 minutes>0 → minutes*60。
+    seconds 缺省 / None / 非数 / ==0 且 minutes>0 → minutes*60；负数 = 坏数据 → 0。
     不能用 it.get('seconds', default)：key 在且值为 0 时不会走 default。
     调用方必须在改 minutes 之前取旧值，否则回退会读到已经加减过的分钟。
     """
