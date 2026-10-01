@@ -1,7 +1,7 @@
 """sprint 26100101 F3 锁（Python 侧）：驱动 tests/js/edit_seconds_check.js + 断言接线。
 
 改前：编辑弹窗保存写死 `duration_seconds: duration * 60` → 1分30秒 的记录只改音符
-就被抹成 2 分钟（秒真值丢失）。JS 侧的 12 条行为用例 + 负控在 node 脚本里。
+就被抹成 2 分钟（秒真值丢失）。JS 侧的 15 条行为用例（含 <60 秒三条）+ 负控在 node 脚本里。
 """
 from __future__ import annotations
 
