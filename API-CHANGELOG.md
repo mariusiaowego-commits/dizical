@@ -1,6 +1,6 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-09-30 (未上线) — 练习时长秒级（API 面）
+**日期**: 2026-09-30 (已上线 #138, 2026-10-01) — 练习时长秒级（API 面）
 **类型**: 🟡 部分兼容（新增可选入参与返回字段；不传 `seconds` 时服务端按 `minutes × 60` 补。分钟字段名、语义、逐条 ceil 后相加的聚合都不变。dizical-minip 不改也能跑，建议择期同步展示）
 
 ## 变更
@@ -17,6 +17,8 @@
 - 去重 key 的时长槽从整数分钟改为秒。10 秒与 50 秒不再互相挡。没带 `seconds` 时按 `minutes * 60`，旧客户端同分钟仍互相挡。
 - 秒列为 0 且分钟 > 0 时，读出按未回填处理，用 `minutes * 60`。
 - **对 dizical-minip**：无需改代码。展示若要秒级，择期读新字段；不要改分钟字段的读法。
+- **云端**: 已上线。**#138**（2026-10-01 13:20 CST）部署于 PR **#353** 合并之后（merge commit `1135e45`），FlowRatio 100。DDL 走 MCP `runStatement`：`ALTER TABLE daily_practices ADD total_seconds`（requestId `9453cb6a-5125-4b6c-b594-c1e0c0e55821`）、`ALTER TABLE practice_sessions ADD duration_seconds`（`600300c5-9e63-469c-8700-397a3d2c5fa5`）、回填 `daily_practices` 327 行（`66038b89-391a-4e38-b511-645d3d4e959a`）、回填 `practice_sessions` 1298 行（`5494a977-4272-41f9-991b-f5e2d29a780d`）、复核（`e8baf027-490e-436a-bf52-757c78e777ee`：`SUM(minutes)*60 = SUM(seconds)`，坏行 0）。
+  线上验证：`GET /api/today-stats` 返回 `{"total_minutes":0,"total_seconds":0}`（老键在、新键已上）；`/static/js/duration-fmt.js` 200。
 
 ---
 
