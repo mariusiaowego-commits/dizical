@@ -3605,13 +3605,15 @@
       if (!isFinite(d) || d < 1) d = 1;
       return Math.min(1440, d);
     }
-    // F3: 秒归一 —— 分钟没动且原秒有效 → 复用原秒；否则按分钟 ×60。永不越出 [60, 86400]
+    // F3: 秒归一 —— 分钟没动且原秒有效 → 复用原秒；否则按分钟 ×60。永不越出 [1, 86400]
+    // 下限必须是 1（后端 app.py:2053 校验 1–86400）：用 60 会把 10 秒的练习抬成 60 秒，
+    // 正是 warden 独立审计抓到的回归
     function computeEditSeconds(durNow, origMins, origSecs) {
       var d  = clampEditMinutes(durNow);
       var om = parseInt(origMins, 10);
       var os = parseInt(origSecs, 10);
       var out = (isFinite(om) && isFinite(os) && d === om && os > 0) ? os : d * 60;
-      return Math.min(86400, Math.max(60, out));
+      return Math.min(86400, Math.max(1, out));
     }
     // F3: 编辑弹窗的 PUT body 组装（被测试直接调用，避免"字符串存在"式假锁）
     function buildEditPutBody(note, bpm, content, durNow, origMins, origSecs, reps) {

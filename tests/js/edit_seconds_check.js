@@ -47,6 +47,9 @@ const CASES = [
   [1, 1, null, 1, 60, '原记录没秒（老数据）→ 分钟×60'],
   [1, 1, 0, 1, 60, '原秒为 0 → 分钟×60'],
   [2, 2, '90', 2, 90, '原秒是字符串（getAttribute）→ 仍按 90 复用'],
+  [1, 1, 10, 1, 10, '<60 秒也必须如实保住（后端下限是 1，不是 60）'],
+  [1, 1, 45, 1, 45, '45 秒 → 45（warden 审计抓的回归点）'],
+  [1, 1, 59, 1, 59, '59 秒 → 59'],
   [0, 2, 90, 1, 60, '分钟填 0 → 钳到 1（PUT 下限）'],
   [-1, 2, 90, 1, 60, '负分钟 → 钳到 1'],
   [2000, 1, 60, 1440, 86400, '超上限 → 分钟 1440 / 秒 86400 自洽'],
@@ -63,7 +66,7 @@ function runCases(api, label) {
   for (const [durNow, om, os, wantMin, wantSec, why] of CASES) {
     const body = api.buildEditPutBody('♪', 80, 'x', durNow, om, os, null);
     const okRange = body.duration_minutes >= 1 && body.duration_minutes <= 1440 &&
-                    body.duration_seconds >= 60 && body.duration_seconds <= 86400;
+                    body.duration_seconds >= 1 && body.duration_seconds <= 86400;
     const ok = body.duration_minutes === wantMin && body.duration_seconds === wantSec && okRange;
     if (!ok) bad++;
     console.log(`${ok ? 'PASS' : 'FAIL'}  [${label}] (${JSON.stringify(durNow)},${om},${os}) →`

@@ -22,7 +22,7 @@ def test_js_edit_seconds_check_passes_with_negative_control():
         pytest.skip("node 不在 PATH")
     r = subprocess.run([node, str(JS_CHECK)], capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, f"node 检查失败:\n{r.stdout}\n{r.stderr}"
-    assert "OK: now 用例 12 条, 失败合计 0" in r.stdout
+    assert "OK: now 用例 15 条, 失败合计 0" in r.stdout
     assert "负控红了" in r.stdout, "负控没跑或没红"
 
 
