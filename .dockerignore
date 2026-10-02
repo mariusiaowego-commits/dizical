@@ -76,3 +76,7 @@ scripts/spike_*.sh
 .cloudrun/
 spike-deploy.sh
 static/badges/streak_*.png
+
+# 白底备份目录 (27 个入库文件 / 32 MB): 服务路径永不读, 属 dad 备份资产 —— 保留在仓库, 不进镜像
+# 2026-10-02 sprint 26100102 清仓: 部署包 152M → 约 120M
+**/badges_backup_white_bg/
