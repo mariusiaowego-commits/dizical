@@ -89,8 +89,11 @@ An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders en
 ## V2.9 生图配方 (2026-10-02, recovery_first_practice 7/14 重做)
 
 **根因**: 原 prompt 结尾写 `transparent PNG background` → ① 模型把设计站预览那种**灰白棋盘格当纹理画进 RGB**;
-② 原 placeholder 里 "rising / floating ... into the sky" 这类**飘浮元素**设计 → 剪影天然**开放**, 抠图必留残边
-(实测出厂 `recovery_first_practice_7_v1` 轮廓半径剖面最大凹陷 **9.17%**, 封闭圆框配方 **0.20%**)。
+② 原 placeholder 里 "rising / floating ... into the sky" 这类**飘浮元素**设计 → 剪影天然**开放**, 抠图必留残边。
+（口径说明: 「开放剪影」用**剪影外沿沿 720 个角度取半径、与局部中位数的最大负偏差**度量。出厂
+`recovery_first_practice_7_v1` 该指标远大于新图 —— 基线取滑动中位数时 出厂 4.06% / 新图 0.15%,
+基线取包络时 出厂 16.36% / 新图 0.24%; 两口径方向一致、相差 1~2 个数量级。精确值随口径变动,
+复算必须写明: 角度分箱 720、平滑窗口 15、基线取滑动中位数还是包络。）
 
 **新配方 (三段)**:
 
