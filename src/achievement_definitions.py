@@ -642,7 +642,7 @@ def _calc_seasonal(conn: sqlite3.Connection, aid: str,
     """
     now_year, now_month = today.year, today.month
 
-    # ── daily: 基于 stage 的每日打卡盲盒 ───────────────────────
+    # ── daily: 基于 stage 的每日打卡 (seasonal daily 成就) ────────
     if seasonal_type == "daily":
         # 获取当前stage
         cur = _exec(conn, """

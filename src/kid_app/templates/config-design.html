@@ -8,10 +8,10 @@
     ④ 使用说明 (什么时候需要)
 
   PIN 行为:
-    - 默认要 PIN (跟 config-badge / config-blindbox 一致)
+    - 默认要 PIN (跟 config-badge 一致)
     - `?demo=true` query param bypass PIN (专门给"展示给朋友看"用)
 
-  设计风格: dizicute 暖色 (跟 config-blindbox.html / config-badge.html 一致)
+  设计风格: dizicute 暖色 (跟 config-badge.html 一致)
   不用 emoji (AGENTS.md §UI 偏好), 按钮只用名字
 -->
 <!DOCTYPE html>
@@ -569,7 +569,7 @@ function submitPin() {
     return;
   }
   // 简单验证: 用 PIN 调一次 status API (PIN 是 dawdPIN 设置)
-  // 这里只做客户端 bypass, 真正的 PIN 在 server 端 (跟 config-badge / config-blindbox 一致)
+  // 这里只做客户端 bypass, 真正的 PIN 在 server 端 (跟 config-badge 一致)
   sessionStorage.setItem(PIN_KEY, pin);
   document.getElementById("pin-overlay").style.display = "none";
   document.querySelector(".design-container").style.display = "";
