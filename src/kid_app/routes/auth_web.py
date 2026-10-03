@@ -261,8 +261,7 @@ async def api_admin_reset_password(request: Request):
                         (user["user_id"],))
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
     return JSONResponse({
         "ok": True,

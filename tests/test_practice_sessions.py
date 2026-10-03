@@ -192,7 +192,9 @@ class TestSaveAndDailySummary:
         # daily 汇总
         daily = db.get_daily_practice(test_date)
         assert daily["total_minutes"] == 8
-        assert daily["items"] == [{"item": item_name, "item_id": item_id, "minutes": 8}]
+        # 26093002: items 现在同时带 seconds（秒真值）；旧断言只比 minutes 的部分字段
+        assert daily["items"] == [{"item": item_name, "item_id": item_id, "minutes": 8, "seconds": 480}]
+        assert daily["total_seconds"] == 480
         assert daily["practice_at"] == "2024-07-27 19:00:00.000"  # 首次写入, 保留
         # sessions
         sessions = db.get_practice_sessions(test_date)

@@ -199,7 +199,7 @@ def _fetchone_dict(sql: str, params: tuple = ()) -> Optional[dict]:
     统一用 cur.description 取列名 + zip — 双后端一致.
     """
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         cur = _db_execute(conn, sql, params)
         row = cur.fetchone()
@@ -210,8 +210,7 @@ def _fetchone_dict(sql: str, params: tuple = ()) -> Optional[dict]:
         cols = [d[0] for d in cur.description]
         return dict(zip(cols, row))
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def fetch_user_by_username(username: str) -> Optional[dict]:
@@ -238,7 +237,7 @@ def fetch_user_by_id(user_id: int) -> Optional[dict]:
 
 def update_last_login(user_id: int) -> None:
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(
             conn,
@@ -247,15 +246,14 @@ def update_last_login(user_id: int) -> None:
         )
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def create_user(username: str, display_name: str, password_hash: str,
                 role: str, avatar_letter: str, created_by: Optional[int]) -> int:
     """建账号. 返 user_id. 重复 username 抛 ValueError."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         cur = _db_execute(
             conn,
@@ -274,8 +272,7 @@ def create_user(username: str, display_name: str, password_hash: str,
             raise ValueError(f"用户名 '{username}' 已存在")
         raise
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def update_password(user_id: int, new_hash: str, bump_session: bool = True) -> None:
@@ -285,7 +282,7 @@ def update_password(user_id: int, new_hash: str, bump_session: bool = True) -> N
     dad 不用每次都重登, 但 must_change=1 自动让用户改密一次.
     """
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         if bump_session:
             _db_execute(
@@ -305,13 +302,12 @@ def update_password(user_id: int, new_hash: str, bump_session: bool = True) -> N
             )
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def update_role(user_id: int, role: str) -> None:
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(
             conn,
@@ -320,8 +316,7 @@ def update_role(user_id: int, role: str) -> None:
         )
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 # ─── Login lockout (Q4: 输错 5 次锁 5 分钟) ─────────────────
@@ -374,14 +369,13 @@ def increment_login_failed(user_id: int) -> int:
         conn.commit()
         return int(cnt) if cnt is not None else 0
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def reset_login_failed(user_id: int) -> None:
     """登录成功时清零 + 清 lockout."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(
             conn,
@@ -390,13 +384,12 @@ def reset_login_failed(user_id: int) -> None:
         )
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def revoke_user(user_id: int) -> None:
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(
             conn,
@@ -405,14 +398,13 @@ def revoke_user(user_id: int) -> None:
         )
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def bump_session_version(user_id: int) -> None:
     """踢出所有设备: 递增 session_version, 老 cookie sv 字段不匹配 → 401."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(
             conn,
@@ -421,8 +413,7 @@ def bump_session_version(user_id: int) -> None:
         )
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 # ─── web_invites (Q7: 一次性邀请链接) ─────────────────
@@ -433,7 +424,7 @@ def create_invite(role: str, expires_at, max_uses: int = 1,
                    note: str = "", created_by: Optional[int] = None) -> str:
     """建邀请链接. 返 invite_token (URL 用)."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         token = secrets.token_urlsafe(32)  # 32 字节随机 → 43 字符 url-safe
         _db_execute(
@@ -447,8 +438,7 @@ def create_invite(role: str, expires_at, max_uses: int = 1,
         conn.commit()
         return token
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def fetch_invite(token: str) -> Optional[dict]:
@@ -477,7 +467,7 @@ def fetch_invite(token: str) -> Optional[dict]:
 def consume_invite(token: str) -> bool:
     """兑换 invite (used_count+=1). 返 True 表示成功."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         cur = _db_execute(
             conn,
@@ -489,14 +479,13 @@ def consume_invite(token: str) -> bool:
         # SQLite/MySQL rowcount 兼容
         return (cur.rowcount or 0) > 0
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def list_invites() -> list[dict]:
     """dad 后台列所有 invite. 双后端统一 (Sprint 26081004 修 list_invites tuple path bug)."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         cur = _db_execute(
             conn,
@@ -513,25 +502,23 @@ def list_invites() -> list[dict]:
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in rows]
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def revoke_invite(invite_id: int) -> None:
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         _db_execute(conn, "UPDATE web_invites SET revoked = 1 WHERE invite_id = ?", (invite_id,))
         conn.commit()
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 def list_users() -> list[dict]:
     """列 web_users. 双后端统一用 description + zip 转 dict (Sprint v3.3 修)."""
     from src.db_adapter import get_conn
-    conn, is_mysql = get_conn()
+    conn, _ = get_conn()
     try:
         cur = _db_execute(
             conn,
@@ -548,8 +535,7 @@ def list_users() -> list[dict]:
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in rows]
     finally:
-        if not is_mysql:
-            conn.close()
+        conn.close()
 
 
 # ─── FastAPI Dependencies ──────────────────────────────────────────

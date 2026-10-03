@@ -662,7 +662,7 @@ def api_card_appearance_list() -> JSONResponse:
     from src import db_adapter
     from src.kid_app import badge_db, badge_theme
 
-    conn, is_mysql = db_adapter.get_conn()
+    conn, _ = db_adapter.get_conn()
     try:
         # 幂等确保 card_theme / card_stars 列 (双后端)
         badge_db.ensure_card_theme_column(conn)
@@ -674,11 +674,12 @@ def api_card_appearance_list() -> JSONResponse:
         logger.exception("card-appearance list failed")
         return JSONResponse({"ok": False, "error": f"读取失败: {e}"}, status_code=500)
     finally:
-        if not is_mysql:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        # MySQL 侧是 DBUtils PooledDB 连接: close() = 归还池 (不销毁)。
+        # 旧版对 MySQL 跳过 close → 只能靠 GC 兜底, 高并发下耗尽池 (审计 P3-1)。
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     data = [_appearance_row(r) for r in rows]
     return JSONResponse({
@@ -746,7 +747,7 @@ def api_card_appearance_update(req: CardAppearanceUpdateRequest) -> JSONResponse
                 }, status_code=400)
             updates["card_stars"] = n
 
-    conn, is_mysql = db_adapter.get_conn()
+    conn, _ = db_adapter.get_conn()
     try:
         badge_db.ensure_card_theme_column(conn)
         badge_db.ensure_card_stars_column(conn)
@@ -776,11 +777,12 @@ def api_card_appearance_update(req: CardAppearanceUpdateRequest) -> JSONResponse
         logger.exception("card-appearance update failed for %s", badge_id)
         return JSONResponse({"ok": False, "error": f"更新失败: {e}"}, status_code=500)
     finally:
-        if not is_mysql:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        # MySQL 侧是 DBUtils PooledDB 连接: close() = 归还池 (不销毁)。
+        # 旧版对 MySQL 跳过 close → 只能靠 GC 兜底, 高并发下耗尽池 (审计 P3-1)。
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     if not rows:
         return JSONResponse(

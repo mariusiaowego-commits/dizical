@@ -83,3 +83,33 @@ An emoji-adjacent 3D enamel pin of [PLACEHOLDER]. Polished gold metal borders en
 - V2.4 (2026-06-16) 升级: PIL 阈值去背 + rembg 兜底（透明 < 28% 触发），详 docs/badge-image-workflow.md
 - CDN URL 有效期依赖 FAL Nous Portal 服务
 - 若需重新生成，直接替换 Placeholder 到模板重新生图 (skill 自动跑去白底)
+
+---
+
+## V2.9 生图配方 (2026-10-02, recovery_first_practice 7/14 重做)
+
+**根因**: 原 prompt 结尾写 `transparent PNG background` → ① 模型把设计站预览那种**灰白棋盘格当纹理画进 RGB**;
+② 原 placeholder 里 "rising / floating ... into the sky" 这类**飘浮元素**设计 → 剪影天然**开放**, 抠图必留残边。
+（口径说明: 「开放剪影」用**剪影外沿沿 720 个角度取半径、与局部中位数的最大负偏差**度量。出厂
+`recovery_first_practice_7_v1` 该指标远大于新图 —— 基线取滑动中位数时 出厂 4.06% / 新图 0.15%,
+基线取包络时 出厂 16.36% / 新图 0.24%; 两口径方向一致、相差 1~2 个数量级。精确值随口径变动,
+复算必须写明: 角度分箱 720、平滑窗口 15、基线取滑动中位数还是包络。）
+
+**新配方 (三段)**:
+
+1. **placeholder 原文照抄** (见上文各分类)
+2. **+ 封闭容器段**: `A thick, unbroken, highly polished gold circular rim completely encloses the entire composition —
+   every element sits strictly inside the rim, nothing floats or breaks outside it.`
+3. **+ 纯色底段**: `The whole area outside the gold rim is one flat solid colour: pure magenta #FF00FF, perfectly uniform
+   (no gradient, no shadow, no glow, no texture). Never draw a transparency checkerboard, never draw a white or grey
+   background, no text, no watermark.`
+
+**去背**: 不再用"全图近白扫描", 改为**只从画布四边洪水填充近洋红像素**(阈值 ~70, 只认与边缘连通的一片),
+画内粉/白不会被误抠; 透明区 RGB 归一**纯黑**。
+
+**出图 4 条门禁** (缺一不可): 封闭破洞 == 0 | 半径剖面凹陷 < 1% | 边缘近白 < 1% | 周期 FFT < 40 (无棋盘格)。
+实现: `~/.hermes/profiles/dizical/skills/badge-image/scripts/matte_and_gate.py`。
+
+**本轮重生图记录** (覆盖原破损档, 出厂破损版仍在 git 历史/backup):
+- `recovery_first_practice_14_v1` ← fal `0aacb950/iAAGnLsjJgubrUKpc2Khx_z0c1meCM.png`
+- `recovery_first_practice_7_v1`  ← fal `0aacb943/BISX7FN2EkHVQ4_n3Boo6_XIK969mI.png`

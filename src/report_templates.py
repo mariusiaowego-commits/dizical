@@ -7,6 +7,8 @@ import json
 import datetime as dt
 from typing import Dict, Any, Optional, Callable
 
+from src.kid_app.duration_fmt import fmt as fmt_dur, pick_seconds
+
 # ---------------------------------------------------------------------------
 # 模板注册表
 # ---------------------------------------------------------------------------
@@ -41,9 +43,9 @@ TEMPLATES["academic"] = {
 - 整体要美观、平衡、有学术感，让人一眼看懂这个月练习得怎么样""",
     "layout": """请将以上数据转化为信息图布局，包含：
 1. 标题区：{year}年{month}月练习月报
-2. 核心指标卡：总练习时长{total_minutes}分钟、练习天数{practice_days}/{total_days}天
+2. 核心指标卡：总练习时长{total_minutes}、练习天数{practice_days}/{total_days}天
 3. 各项练习时长分布（横向柱状图风格的手绘图表）：{item_bar_chart}
-4. 每周练习时长趋势（{n}周：{week_mins}分钟）
+4. 每周练习时长趋势（{n}周：{week_mins}）
 5. 总结栏""",
     "data_fields": """数据说明：
 - total_minutes: 本月总练习时长（分钟）
@@ -133,16 +135,21 @@ def build_prompt(
     """
     tmpl = get_template(template_id)
 
-    # 动态数据注入
+    # 动态数据注入。时长文字走口径 B；占比仍用同一套分钟数，不在这里换单位。
+    item_seconds = data.get("item_seconds") or {}
     item_bars = "、".join(
-        f"{k}{v}分钟" for k, v in data.get("item_totals", {}).items()
+        f"{k}{fmt_dur(pick_seconds(item_seconds.get(k), v)) or '0分'}"
+        for k, v in data.get("item_totals", {}).items()
     )
-    week_mins = "、".join(str(w["total_minutes"]) for w in data.get("weeks", []))
+    week_mins = "、".join(
+        fmt_dur(pick_seconds(w.get("total_seconds"), w.get("total_minutes"))) or "0分"
+        for w in data.get("weeks", [])
+    )
 
     layout_params = {
         "year": year,
         "month": month,
-        "total_minutes": data.get("total_minutes", 0),
+        "total_minutes": fmt_dur(pick_seconds(data.get("total_seconds"), data.get("total_minutes", 0))) or "0分",
         "practice_days": data.get("practice_days", 0),
         "total_days": data.get("total_days", 0),
         "item_bar_chart": item_bars or "暂无数据",
@@ -221,7 +228,7 @@ TEMPLATES["stage_academic"] = {
    副标题: "周期 {stage_start} ~ {stage_end} · 上课日 {lesson_date}" (中灰 14pt)
 
 2. 核心指标卡 (3 个并排, 等宽, 圆角边框):
-   - 总时长: {total_minutes} 分钟 (大数字 32pt 深蓝, 标签"总时长"中灰 12pt)
+   - 总时长: 见下方已写好的时长（N秒 / N分 / N分M秒；没有练习写 0分）(大数字 32pt 深蓝, 标签"总时长"中灰 12pt)
    - 练习天数: {practice_days} 天 (同上)
    - 总次数: {session_count} 次 (同上)
 
@@ -241,10 +248,10 @@ TEMPLATES["stage_academic"] = {
     "layout": """请将以上数据转化为信息图布局 (横版, 1 张), 包含:
 1. 标题区: "竹笛练习明细 · Stage {stage_order}" (深蓝大字)
 2. 周期副标题: "周期 {stage_start} ~ {stage_end} · 上课日 {lesson_date}"
-3. 核心指标卡: 总时长 {total_minutes} 分钟, 练习天数 {practice_days} 天, 共 {session_count} 次
+3. 核心指标卡: 总时长 {total_minutes}, 练习天数 {practice_days} 天, 共 {session_count} 次
 4. 科目小计 (横向柱状图风格): {item_bar_chart} — 每科一行: 名称 + 时长 + 占比%
 5. 按日练习表 (简化矩阵): 日期 | 总时长 | 主要科目 | 主要内容片段
-6. 总结栏: 一句话评语 ("本期总时长 xx 分钟, 主要练习了 X / Y, 节奏稳定")""",
+6. 总结栏: 一句话评语 ("本期总时长按 N秒 / N分 / N分M秒 写, 主要练习了 X / Y, 节奏稳定")""",
     "data_fields": """数据说明:
 - stage_order: stage 编号
 - stage_start / stage_end: 周期起止
@@ -275,7 +282,8 @@ def _build_stage_item_bar_chart(by_item: list, total_minutes: int) -> str:
         m = it.get("minutes", 0) or 0
         pct = round(m / total_minutes * 100) if total_minutes else 0
         bar = "█" * max(1, pct // 5)
-        lines.append(f"- {it.get('item_name', '?')}: {m} 分钟 ({pct}%) {bar}")
+        label = fmt_dur(pick_seconds(it.get("seconds"), m)) or "0分"
+        lines.append(f"- {it.get('item_name', '?')}: {label} ({pct}%) {bar}")
     return "\n".join(lines)
 
 
@@ -295,7 +303,8 @@ def _build_stage_day_summary(days: list) -> str:
             preview = " / ".join(contents[:2]) if contents else "(无内容)"
             item_summaries.append(f"{g.get('item_name', '?')}: {preview}")
         joined = " · ".join(item_summaries) or "(无)"
-        lines.append(f"- {d.get('date', '?')} ({d.get('total_minutes', 0)} 分钟): {joined}")
+        day_label = fmt_dur(pick_seconds(d.get("total_seconds"), d.get("total_minutes", 0))) or "0分"
+        lines.append(f"- {d.get('date', '?')} ({day_label}): {joined}")
     return "\n".join(lines)
 
 
@@ -336,7 +345,7 @@ def build_stage_image_prompt(
             stage_start=stage_start,
             stage_end=stage_end,
             lesson_date=lesson_date,
-            total_minutes=total_m,
+            total_minutes=fmt_dur(pick_seconds(summary.get("total_seconds"), total_m)) or "0分",
             practice_days=practice_days,
             session_count=session_count,
             item_bar_chart=item_bar_chart,

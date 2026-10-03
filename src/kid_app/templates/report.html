@@ -7,6 +7,7 @@
   <title>练习报告 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="/static/js/duration-fmt.js"></script>
   <style>
     body { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
     .nav {
@@ -254,7 +255,7 @@
     <div style="display:flex;gap:12px;margin-bottom:16px;">
       <div style="flex:1;text-align:center;padding:12px;background:#E8F5E9;border-radius:12px;">
         <div style="font-size:28px;font-weight:bold;color:#27AE60;">{{total_mins}}</div>
-        <div style="font-size:13px;color:#7F8C8D;">总练习分钟</div>
+        <div style="font-size:13px;color:#7F8C8D;">总练习时长</div>
       </div>
       <div style="flex:1;text-align:center;padding:12px;background:#FFF8E1;border-radius:12px;">
         <div style="font-size:28px;font-weight:bold;color:#F57C00;">{{practice_days}}</div>
@@ -446,33 +447,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function minsToH(mins) { return mins * hScale; }
 
-    // 顶标策略 (仅 compact 月图): 按柱宽决定密度
-    // bar 槽宽 = BAR_W + BAR_GAP; 「55分」约 22–26px, 纯数字约 12–16px
+    // 顶标策略 (仅 compact 月图): 按槽宽抽稀。柱高仍按分钟，不改 BAR_W。
+    // 月图 30 天、容器约 700–1024：barW ≤ 28、gap 4–6，slotW 约 8–34px。
+    // 「55分30秒」约 45px（9px）会叠到邻柱；可见字用 short「55:30」约 27px，再靠 stride / stagger。
+    // stage 图 slotW 60–92（BAR_W 40/52/72 + gap 20），同样只显示 short，完整秒进 <title>。
     var slotW = BAR_W + BAR_GAP;
     var topLabelStride = 1;
     var topLabelFont = 10;
-    var topLabelSuffix = '分';
     var topLabelStagger = false;
     if (compactTop) {
       if (slotW < 18) {
         topLabelStride = 3;
         topLabelFont = 9;
-        topLabelSuffix = '';
         topLabelStagger = true;
       } else if (slotW < 24) {
         topLabelStride = 2;
         topLabelFont = 9;
-        topLabelSuffix = '';
         topLabelStagger = true;
       } else if (slotW < 32) {
         topLabelStride = 1;
         topLabelFont = 9;
-        topLabelSuffix = '';
         topLabelStagger = true;
       } else {
         topLabelStride = 1;
         topLabelFont = 10;
-        topLabelSuffix = '分';
         topLabelStagger = false;
       }
     }
@@ -508,7 +506,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var barY = stackY - barH;
         var colIdx = it.id % STAGE_COLORS.length;
         var gradUrl = 'url(#' + STAGE_GRAD_IDS[colIdx] + ')';
-        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + gradUrl + '" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
+        var secBag = (chartData.seconds_data && chartData.seconds_data[d]) || {};
+        var barSec = DizicalDur.pick(secBag[it.id], v);
+        svg += '<rect x="' + x + '" y="' + barY + '" width="' + BAR_W + '" height="' + barH + '" fill="' + gradUrl + '" data-bar="1" data-itemname="' + (it.name || '未知') + '" data-value="' + v + '" data-seconds="' + barSec + '" data-prev="" data-date="' + d + '" style="cursor:pointer"/>';
         stackY = barY;
       });
 
@@ -522,16 +522,22 @@ document.addEventListener('DOMContentLoaded', function() {
             var ty = topLabelStagger
               ? (pIdx % 2 === 0 ? 14 : 28)
               : 32;
-            var labelText = Math.round(dayTotal) + topLabelSuffix;
-            // title 给完整「N分」, 窄屏 hover/长按可读
+            var daySec = DizicalDur.pick(chartData.day_seconds && chartData.day_seconds[d], dayTotal);
+            var labelText = DizicalDur.short(daySec);
+            var labelFull = DizicalDur.fmt(daySec);
             svg += '<text x="' + (x + BAR_W / 2) + '" y="' + ty + '" text-anchor="middle" font-size="' + topLabelFont + '" fill="#666" font-weight="500" class="bar-label">'
-              + '<title>' + Math.round(dayTotal) + '分 · ' + d + '</title>'
+              + '<title>' + labelFull + ' · ' + d + '</title>'
               + labelText + '</text>';
           }
         }
       } else {
         // stage 图: 全部显示 (天数少, 柱宽够)
-        svg += '<text x="' + (x + BAR_W / 2) + '" y="32" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">' + Math.round(dayTotal) + '分</text>';
+        var stageDaySec = DizicalDur.pick(chartData.day_seconds && chartData.day_seconds[d], dayTotal);
+        var stageLabel = DizicalDur.short(stageDaySec);
+        var stageFull = DizicalDur.fmt(stageDaySec);
+        svg += '<text x="' + (x + BAR_W / 2) + '" y="32" text-anchor="middle" font-size="10" fill="#666" font-weight="500" class="bar-label">'
+          + '<title>' + (stageFull ? stageFull + ' · ' : '') + d + '</title>'
+          + stageLabel + '</text>';
       }
 
       // 日期 + 周几 (labelStride 控制密度, feat/month-chart 用 stride=3 简化后每 i%stride 都标)
@@ -587,23 +593,29 @@ document.addEventListener('DOMContentLoaded', function() {
   // 月份科目累计渲染 (feat/month-summary): 横向 bar, 从长到短排序, 颜色复用月图 STAGE_COLORS
   function renderMonthSummary(monthData) {
     // 1) 聚合每科目总分钟
-    var totals = {};  // item_id -> total minutes
+    var totals = {};  // item_id -> total minutes（柱宽仍按这个）
+    var secTotals = {};  // item_id -> 秒，文字用口径 B
     var itemNames = {};  // item_id -> name (复用月图 items 数组的 name)
     monthData.items.forEach(function(it) {
       totals[it.id] = 0;
+      secTotals[it.id] = 0;
       itemNames[it.id] = it.name || ('科目' + it.id);
     });
     monthData.dates.forEach(function(d) {
       var row = monthData.data[d] || {};
+      var secRow = (monthData.seconds_data && monthData.seconds_data[d]) || {};
       Object.keys(row).forEach(function(itemIdStr) {
         var itemId = parseInt(itemIdStr, 10);
         var v = row[itemIdStr];
         if (v && v > 0) totals[itemId] = (totals[itemId] || 0) + v;
+        if (v && v > 0) {
+          secTotals[itemId] = (secTotals[itemId] || 0) + DizicalDur.pick(secRow[itemIdStr], v);
+        }
       });
     });
-    // 2) 数组化 + 排序 (从长到短, 同长度按 id 升序)
+    // 2) 数组化 + 排序 (从长到短, 同长度按 id 升序)。排序仍按分钟，和柱宽一致。
     var arr = Object.keys(totals).map(function(id) {
-      return { id: parseInt(id, 10), name: itemNames[id], total: totals[id] };
+      return { id: parseInt(id, 10), name: itemNames[id], total: totals[id], seconds: secTotals[id] || 0 };
     }).filter(function(x) { return x.total > 0; });
     arr.sort(function(a, b) {
       if (b.total !== a.total) return b.total - a.total;
@@ -628,7 +640,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     var maxTotal = arr[0].total;
     var grandTotal = arr.reduce(function(s, x) { return s + x.total; }, 0);
-    subEl.textContent = '共 ' + arr.length + ' 个科目, 总 ' + grandTotal + ' 分钟';
+    var grandSec = arr.reduce(function(s, x) { return s + (x.seconds || 0); }, 0);
+    subEl.textContent = '共 ' + arr.length + ' 个科目, 总 ' + (DizicalDur.fmt(grandSec) || '0分');
     // 响应式: 横向 bar 长度按容器宽自适应, 留 40% 给右侧文字
     var containerW = wrapEl.clientWidth || 600;
     var RANK_W = 24, LABEL_W = 70, RIGHT_PAD = 8, BAR_AREA_RATIO = 0.6;
@@ -642,14 +655,15 @@ document.addEventListener('DOMContentLoaded', function() {
       var colorIdx = x.id % 15;  // 复用月图 STAGE_COLORS (15 色梯度)
       var color = STAGE_COLORS[colorIdx];
       // 行布局: [排名] [bar] [科目名 + 数字]
+      // 26093002: 右侧时长 0 不可达。renderMonthSummary 只留 total>0，秒与分钟在同一分支用 pick 累加。
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
         + '<span style="min-width:' + RANK_W + 'px;font-size:11px;color:' + rankColor + ';font-weight:600;text-align:right;">#' + (i + 1) + '</span>'
         + '<div style="min-width:' + LABEL_W + 'px;font-size:13px;color:#3D2E1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + x.name + '</div>'
         + '<div style="flex:1;background:#F5F0E8;border-radius:6px;height:14px;overflow:hidden;position:relative;">'
-        +   '<div data-summary-bar="1" data-item-id="' + x.id + '" data-item-name="' + x.name + '" data-total="' + x.total + '" data-pct="' + pct + '" '
+        +   '<div data-summary-bar="1" data-item-id="' + x.id + '" data-item-name="' + x.name + '" data-total="' + x.total + '" data-seconds="' + (x.seconds || 0) + '" data-pct="' + pct + '" '
         +        'style="width:' + barW + 'px;height:100%;background:' + color + ';cursor:pointer;transition:transform 0.15s;"></div>'
         + '</div>'
-        + '<span style="min-width:60px;font-size:12px;color:#666;text-align:right;font-weight:500;">' + x.total + ' 分 <span style="color:#999;font-weight:400;">' + pct + '%</span></span>'
+        + '<span style="min-width:60px;font-size:12px;color:#666;text-align:right;font-weight:500;">' + DizicalDur.fmt(x.seconds) + ' <span style="color:#999;font-weight:400;">' + pct + '%</span></span>'
         + '</div>';
     });
     wrapEl.innerHTML = html;
@@ -664,7 +678,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var name = bar.getAttribute('data-item-name');
         var total = bar.getAttribute('data-total');
         var pct = bar.getAttribute('data-pct');
-        showSummaryTooltip(bar, '<div class="tt-item"><strong>' + name + '</strong></div><div class="tt-item">' + total + ' 分钟 (' + pct + '%)</div>');
+        var sec = bar.getAttribute('data-seconds');
+        // 26093002: 悬停 tooltip，不是常驻文字。柱只在分钟>0 时画出，data-seconds 经 pick，fmt 不会空。
+        showSummaryTooltip(bar, '<div class="tt-item"><strong>' + name + '</strong></div><div class="tt-item">' + DizicalDur.fmt(sec) + ' (' + pct + '%)</div>');
         gsap.to(bar, { scaleY: 1.15, transformOrigin: 'left center', duration: 0.15, ease: 'power2.out' });
       });
       bar.addEventListener('mousemove', function(e) {
@@ -741,17 +757,19 @@ document.addEventListener('DOMContentLoaded', function() {
       rect.addEventListener('mouseenter', function() {
         var name = rect.getAttribute('data-itemname');
         var val = rect.getAttribute('data-value');
+        var sec = rect.getAttribute('data-seconds');
         var prev = rect.getAttribute('data-prev');
         var date = rect.getAttribute('data-date');
 
         var diffHtml = '';
         if (prev !== '' && prev !== 'null' && prev !== null) {
-          var diff = parseInt(val) - parseInt(prev);
-          if (diff > 0) diffHtml = '<div class="tt-diff up">↑ +' + diff + '分 vs昨日</div>';
-          else if (diff < 0) diffHtml = '<div class="tt-diff down">↓ ' + diff + '分 vs昨日</div>';
+          var diff = parseInt(val, 10) - parseInt(prev, 10);
+          var diffLabel = DizicalDur.fmt(Math.abs(diff) * 60);
+          if (diff > 0) diffHtml = '<div class="tt-diff up">↑ +' + diffLabel + ' vs昨日</div>';
+          else if (diff < 0) diffHtml = '<div class="tt-diff down">↓ ' + diffLabel + ' vs昨日</div>';
           else diffHtml = '<div class="tt-diff" style="color:#AAA">＝ 持平昨日</div>';
         }
-        tooltip.innerHTML = '<div class="tt-item"><strong>' + name + '</strong></div><div class="tt-item">' + val + '分钟</div>' + diffHtml;
+        tooltip.innerHTML = '<div class="tt-item"><strong>' + name + '</strong></div><div class="tt-item">' + DizicalDur.fmt(sec) + '</div>' + diffHtml;
         tooltip.style.opacity = '1';
         gsap.to(rect, { scaleY: 1.04, transformOrigin: 'bottom', duration: 0.15, ease: 'power2.out' });
       });
@@ -792,6 +810,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function groupSessionsByItem(items, sessions) {
     var itemMinutes = {};
+    var itemSeconds = {};
     var itemNames = {};
     var itemOrder = [];
     (items || []).forEach(function(it) {
@@ -800,13 +819,16 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!itemMinutes.hasOwnProperty(id)) {
         itemOrder.push(id);
         itemMinutes[id] = 0;
+        itemSeconds[id] = 0;
         itemNames[id] = it.item || '未知科目';
       }
       itemMinutes[id] += (it.minutes || 0);
+      itemSeconds[id] += DizicalDur.pick(it.seconds, it.minutes);
       if (it.item) itemNames[id] = it.item;
     });
 
     var sessionMinutes = {};
+    var sessionSeconds = {};
     var sessionsByItem = {};
     (sessions || []).forEach(function(s) {
       var id = s.item_id;
@@ -814,6 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!sessionsByItem[id]) sessionsByItem[id] = [];
       sessionsByItem[id].push(s);
       sessionMinutes[id] = (sessionMinutes[id] || 0) + (s.duration_minutes || 0);
+      sessionSeconds[id] = (sessionSeconds[id] || 0) + DizicalDur.pick(s.duration_seconds, s.duration_minutes);
       if (!itemNames.hasOwnProperty(id)) {
         itemOrder.push(id);
         itemNames[id] = s.item_name || '未知科目';
@@ -822,13 +845,14 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    // items 有分钟但 sessions 未覆盖 → 历史汇总伪行
+    // items 有分钟但 sessions 未覆盖 → 历史汇总伪行。分组差仍按分钟，秒差单独补。
     itemOrder.forEach(function(id) {
       if (!itemMinutes.hasOwnProperty(id)) return;
       var totalForItem = itemMinutes[id] || 0;
       var covered = sessionMinutes[id] || 0;
       if (totalForItem > covered) {
         if (!sessionsByItem[id]) sessionsByItem[id] = [];
+        var secGap = (itemSeconds[id] || 0) - (sessionSeconds[id] || 0);
         sessionsByItem[id].push({
           id: -id,
           item_id: id,
@@ -837,6 +861,7 @@ document.addEventListener('DOMContentLoaded', function() {
           tempo_bpm: 0,
           content: '历史汇总',
           duration_minutes: totalForItem - covered,
+          duration_seconds: secGap > 0 ? secGap : (totalForItem - covered) * 60,
           is_legacy: true,
           reps: null
         });
@@ -846,15 +871,18 @@ document.addEventListener('DOMContentLoaded', function() {
     return itemOrder.map(function(id) {
       var rows = sessionsByItem[id] || [];
       var sessSum = (sessionMinutes[id] || 0);
+      var sessSec = (sessionSeconds[id] || 0);
       // 组头优先用 items 汇总 (含 legacy 补差后的真值), 否则 session 合计
       var headerMins = itemMinutes.hasOwnProperty(id) ? itemMinutes[id] : sessSum;
+      var headerSec = itemSeconds.hasOwnProperty(id) ? itemSeconds[id] : sessSec;
       return {
         item_id: id,
         name: itemNames[id] || '未知科目',
         minutes: headerMins,
+        seconds: headerSec,
         sessions: rows
       };
-    }).filter(function(g) { return g.minutes > 0 || (g.sessions && g.sessions.length); });
+    }).filter(function(g) { return g.minutes > 0 || g.seconds > 0 || (g.sessions && g.sessions.length); });
   }
 
   function renderSessionGroupsHtml(items, sessions, opts) {
@@ -876,7 +904,7 @@ document.addEventListener('DOMContentLoaded', function() {
       html += '<div class="rp-group">';
       html += '<div class="rp-group-header">';
       html += '<span class="rp-g-name">' + escapeHtml(g.name) + '</span>';
-      html += '<span class="rp-g-mins">' + escapeHtml(g.minutes) + ' 分钟' + repsSpan + '</span>';
+      html += '<span class="rp-g-mins">' + escapeHtml(DizicalDur.fmt(g.seconds) || '0分') + repsSpan + '</span>';
       html += '</div>';
       if (g.sessions && g.sessions.length) {
         g.sessions.forEach(function(s) {
@@ -892,14 +920,16 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<span class="rp-reps">' + escapeHtml(s.reps) + ' 遍</span>';
           }
           html += '<span class="rp-content">' + escapeHtml(contentText) + '</span>';
-          html += '<span class="rp-mins">' + escapeHtml(s.duration_minutes || 0) + 'min</span>';
+          // 26093002: 0 不可达。session 写入拒绝 duration_minutes<=0；历史汇总行的分钟差>0，pick 后秒>0。
+          html += '<span class="rp-mins">' + escapeHtml(DizicalDur.fmt(DizicalDur.pick(s.duration_seconds, s.duration_minutes))) + '</span>';
           html += '</div>';
         });
       } else {
         // 仅有汇总、无 session 行
         html += '<div class="rp-session rp-legacy">';
         html += '<span class="rp-content">科目汇总</span>';
-        html += '<span class="rp-mins">' + escapeHtml(g.minutes) + 'min</span>';
+        // 26093002: 0 不可达。无 session 的组只在 minutes>0 或 seconds>0 时留下，分钟>0 时 pick 把秒补成 minutes*60。
+        html += '<span class="rp-mins">' + escapeHtml(DizicalDur.fmt(g.seconds)) + '</span>';
         html += '</div>';
       }
       html += '</div>';
@@ -959,7 +989,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fetch('/api/practices/' + date).then(function(r) { return r.json(); }).then(function(data) {
       var total = data.total_minutes || 0;
-      document.getElementById('diziModalTotal').textContent = '总练习 ' + total + ' 分钟';
+      var totalSec = DizicalDur.pick(data.total_seconds, total);
+      document.getElementById('diziModalTotal').textContent = '总练习 ' + (DizicalDur.fmt(totalSec) || '0分');
       var items = data.items || [];
       var sessions = data.sessions || [];
 
@@ -979,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
             +   '</div>'
             +   '<div class="seg-text-col">'
             +     '<div class="seg-name">' + escapeHtml(it.item || '未知') + '</div>'
-            +     '<div class="seg-mins">' + escapeHtml(it.minutes) + '分钟</div>'
+            +     '<div class="seg-mins">' + escapeHtml(DizicalDur.fmt(DizicalDur.pick(it.seconds, it.minutes)) || '0分') + '</div>'
             +   '</div>'
             + '</div>';
         });
@@ -992,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function() {
           modalDetail.innerHTML = '<div class="rp-session-empty">这天没有练习记录</div>';
         } else {
           modalDetail.innerHTML = renderSessionGroupsHtml(items, sessions, {
-            heading: '练习明细 · 共 ' + total + ' 分钟'
+            heading: '练习明细 · 共 ' + (DizicalDur.fmt(totalSec) || '0分')
           });
           gsap.fromTo(modalDetail.querySelectorAll('.rp-group'), {
             opacity: 0, y: 10
@@ -1052,7 +1083,9 @@ document.addEventListener('DOMContentLoaded', function() {
       if (entry.tempo_bpm) {
         html += '<span class="trail-tempo">' + (entry.tempo_note || '♪') + '=' + entry.tempo_bpm + '</span>';
       }
-      html += '<span class="trail-mins">' + (entry.minutes || 0) + '分钟</span>';
+      var trailDur = DizicalDur.fmt(DizicalDur.pick(entry.seconds, entry.minutes));
+      // 26093002: 0 有意不渲染。fmt 为空就不输出 trail-mins，轨迹行不留空时长槽。
+      if (trailDur) html += '<span class="trail-mins">' + trailDur + '</span>';
       html += '</div>';
     });
     html += '</div>';
@@ -1122,22 +1155,25 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        var totalDiff = (data.total_minutes || 0) - (prevData.total_minutes || 0);
+        var curSec = DizicalDur.pick(data.total_seconds, data.total_minutes);
+        var prevSec = DizicalDur.pick(prevData.total_seconds, prevData.total_minutes);
+        var totalDiff = curSec - prevSec;
         var totalDiffColor = totalDiff > 0 ? '#27AE60' : totalDiff < 0 ? '#E74C3C' : '#999';
         var diffLabel = totalDiff > 0 ? '↑' : totalDiff < 0 ? '↓' : '＝';
+        var diffText = totalDiff === 0 ? '持平昨日' : (diffLabel + ' ' + DizicalDur.fmt(Math.abs(totalDiff)) + ' vs 昨日');
 
         var detailHtml = '';
         detailHtml += '<div class="detail-total-row">';
         detailHtml += '<span style="font-size:14px;color:#333;">总时长</span>';
-        detailHtml += '<span style="font-size:14px;font-weight:bold;color:#333;">' + (data.total_minutes || 0) + ' 分钟';
+        detailHtml += '<span style="font-size:14px;font-weight:bold;color:#333;">' + (DizicalDur.fmt(curSec) || '0分');
         if (!isToday) {
-          detailHtml += ' <span style="font-size:12px;color:' + totalDiffColor + ';">' + diffLabel + ' ' + Math.abs(totalDiff) + '分 vs 昨日</span>';
+          detailHtml += ' <span style="font-size:12px;color:' + totalDiffColor + ';">' + diffText + '</span>';
         }
         detailHtml += '</span></div>';
 
-        // 主内容: 科目组成 + session 明细 (55 分怎么来的)
+        // 主内容: 科目组成 + session 明细
         detailHtml += renderSessionGroupsHtml(data.items || [], data.sessions || [], {
-          heading: formatCnDate(date) + ' 共 ' + (data.total_minutes || 0) + ' 分钟，组成如下'
+          heading: formatCnDate(date) + ' 共 ' + (DizicalDur.fmt(curSec) || '0分') + '，组成如下'
         });
 
         var trail = renderTrail(data.behavior_log || [], date);

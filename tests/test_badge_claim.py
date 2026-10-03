@@ -20,7 +20,6 @@ import os
 import sqlite3
 import sys
 import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -35,7 +34,6 @@ def isolated_db(monkeypatch):
     """
     from src import models
     import src.kid_app.app as app_module
-    import src.kid_app.routes.badge_claim as badge_claim_module
 
     fd, path = tempfile.mkstemp(suffix='.db')
     os.close(fd)
@@ -101,8 +99,8 @@ def isolated_db(monkeypatch):
 
     # 2. monkeypatch 各层 DB 引用
     monkeypatch.setattr(models.settings, "db_path", path)
-    # badge_claim 走自己的常量 — 直接 patch
-    monkeypatch.setattr(badge_claim_module, "DB_PATH", Path(path))
+    # Sprint 26092901 fix/badge-claim-db: badge_claim 改走 src.db_adapter.get_conn(),
+    # SQLite 分支读 models.settings.db_path (上一行已 patch) —— 不再有模块级 DB_PATH 常量。
     # app module 里也有 db 单例引用 — 同步替换
     from src.database import Database
     new_db = Database(db_path=path)
@@ -426,3 +424,269 @@ def test_unclaimed_payload_includes_card_theme(isolated_db, client):
     # _seed_achievement 用 type='count' (非中文, 不在 TYPE_THEME_MAP), category='milestone'
     # → 应走默认 azure
     assert b["card_theme"] == "azure"
+
+
+# ─── L. Sprint 26092901 fix/badge-claim-db: MySQL 后端回归锁 ─────────────
+#
+# 背景 (线上事故): CloudRun 上 GET /api/badge/unclaimed 长期 500 —
+# `sqlite3.OperationalError: no such table: achievement_stats`。旧版 _open_db() 直连本地
+# data/dizi.db, 而容器镜像里那份是构建时的老库 (无 achievement_* 三表); 云 MySQL 里表和数据
+# 都在 → 接口走错库。该错在 9-19 那版镜像 (pod 132) 上同样存在。
+# 下面 3 个测例锁住修复后的三条硬约束: 走 adapter / datetime 归一化 / 缺表降级不 500。
+
+def _mysql_mock_conn(rows, *, rowcount=0, raise_on_execute=None):
+    """造一个假的 MySQL 连接 (MagicMock), cursor 返回指定行."""
+    from unittest.mock import MagicMock
+
+    if raise_on_execute is not None:
+        mock_cursor = MagicMock()
+        mock_cursor.execute.side_effect = raise_on_execute
+    else:
+        mock_cursor = MagicMock()
+        mock_cursor.description = [(k,) for k in rows[0].keys()] if rows else []
+        mock_cursor.fetchall.return_value = rows
+        mock_cursor.fetchone.return_value = rows[0] if rows else None
+    mock_cursor.rowcount = rowcount
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    return mock_conn, mock_cursor
+
+
+def test_unclaimed_mysql_backend_normalizes_datetime(monkeypatch):
+    """MySQL 模式: 走 db_adapter + datetime 列必须归一化成 str (否则 JSONResponse 抛 TypeError)."""
+    import datetime as dt
+    import json as _json
+
+    from src.kid_app.routes import badge_claim
+
+    row = {
+        "id": "mysql_1",
+        "name": "MySQL 徽章",
+        "type": "count",
+        "category": "milestone",
+        "cond_text": "条件",
+        "description": "描述",
+        "card_theme": None,
+        "card_stars": None,
+        "card_no": None,
+        "achieved_at": dt.datetime(2026, 9, 1, 10, 0, 0),  # pymysql 原生 datetime
+        "badge_url": "/static/badges/x.png",
+    }
+    mock_conn, mock_cursor = _mysql_mock_conn([row])
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    resp = badge_claim.api_unclaimed()
+    assert resp.status_code == 200
+
+    body = _json.loads(resp.body)
+    assert body["unclaimed_count"] == 1
+    got = body["badges"][0]
+    # ★ 核心锁: datetime 已归一化成 str, 不是 datetime 对象
+    assert isinstance(got["achieved_at"], str), (
+        f"achieved_at 未归一化 → JSONResponse 会 500 (got {type(got['achieved_at'])})"
+    )
+    assert got["achieved_at"] == str(row["achieved_at"])
+    # 列名取值 (tuple cursor 会 TypeError: tuple indices must be integers)
+    assert got["id"] == "mysql_1"
+    assert "?" not in mock_cursor.execute.call_args[0][0]
+
+
+def test_unclaimed_missing_table_degrades_to_503_not_500(monkeypatch):
+    """缺表 (迁移未跑 / 读错库) → 503 降级, 不再抛 500 (线上事故的直接回归锁)."""
+    import json as _json
+
+    from src.kid_app.routes import badge_claim
+
+    boom = Exception("no such table: achievement_stats")
+    mock_conn, _ = _mysql_mock_conn([], raise_on_execute=boom)
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    resp = badge_claim.api_unclaimed()
+    assert resp.status_code == 503
+    body = _json.loads(resp.body)
+    assert body == {"unclaimed_count": 0, "badges": [], "error": "db_unreachable"}
+
+
+def test_claim_mysql_audit_failure_does_not_break_main_flow(monkeypatch):
+    """首次领取成功但审计 INSERT 报错 → 仍返 200 (审计是辅助, 不能带崩主业务).
+
+    旧版 except 只捕 sqlite3.OperationalError → MySQL 下这里会变成 500。
+    """
+    import json as _json
+    from unittest.mock import MagicMock
+
+    from src.kid_app.routes import badge_claim
+
+    # execute 第 1 次 (UPDATE) 成功 rowcount=1; 第 2 次 (audit INSERT) 抛 MySQL 风格异常
+    update_cursor = MagicMock()
+    update_cursor.rowcount = 1
+    audit_cursor = MagicMock()
+    audit_cursor.execute.side_effect = Exception("(1146, \"Table 'x.practice_audit_log' doesn't exist\")")
+
+    calls = {"n": 0}
+
+    def fake_cursor(*args, **kwargs):
+        calls["n"] += 1
+        return update_cursor if calls["n"] == 1 else audit_cursor
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.side_effect = fake_cursor
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    resp = badge_claim.api_claim(badge_claim.ClaimRequest(badge_id="mysql_1"))
+    assert resp.status_code == 200
+    body = _json.loads(resp.body)
+    assert body["status"] == "ok"
+    assert body["already_claimed"] is False
+
+
+# ─── M. Sprint 26093001: except 拆分 (DB 失败 → 503; Python 组装失败 → 真 500) ──
+#
+# 背景 (2026-09-29 PR 级审计 P2-1): 旧版把「查询」和「纯 Python 组装」包在同一个
+# `except Exception` 里 → 组装代码有 bug 时也被伪装成 503 db_unreachable,
+# 运维看到的是「DB 不可达」而不是真错的 traceback。以下两条锁住拆分后的两侧语义。
+
+def test_unclaimed_assembly_error_is_not_masked_as_503(monkeypatch):
+    """组装期异常 (resolve_card_theme/stars 内部 bug) 必须原样抛出, 不许吞成 503。"""
+    import datetime as dt
+
+    from src.kid_app.routes import badge_claim
+
+    row = {
+        "id": "asm_1", "name": "组装测试", "type": "count", "category": "milestone",
+        "cond_text": "条件", "description": "描述",
+        "card_theme": None, "card_stars": None, "card_no": None,
+        "achieved_at": dt.datetime(2026, 9, 1, 10, 0, 0),
+        "badge_url": "/static/badges/x.png",
+    }
+    mock_conn, _ = _mysql_mock_conn([row])
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    def boom(**kwargs):
+        raise RuntimeError("resolve_card_theme 内部 bug")
+
+    monkeypatch.setattr("src.kid_app.badge_theme.resolve_card_theme", boom)
+
+    # 原样抛出 → FastAPI 转 500 (诚实), 而不是 503 db_unreachable (掩盖真 bug)
+    with pytest.raises(RuntimeError, match="内部 bug"):
+        badge_claim.api_unclaimed()
+    # 即使抛异常, 连接也必须归还
+    assert mock_conn.close.called
+
+
+def test_claim_update_db_error_still_degrades_to_503(monkeypatch):
+    """对照面: POST 的 UPDATE 段 DB 失败仍走 503 降级 (拆分后不能把 DB 降级弄丢)。"""
+    import json as _json
+    from unittest.mock import MagicMock
+
+    from src.kid_app.routes import badge_claim
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.execute.side_effect = Exception(
+        "no such table: achievement_stats"
+    )
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+
+    resp = badge_claim.api_claim(badge_claim.ClaimRequest(badge_id="mysql_1"))
+    assert resp.status_code == 503
+    assert _json.loads(resp.body)["error"] == "db_unreachable"
+    assert mock_conn.close.called
+
+
+def test_claim_check_select_db_error_returns_503(monkeypatch):
+    """rowcount==0 后的区分 SELECT 失败 → 仍 503 (不是 500)。
+
+    2026-09-30 grok PR 审计非阻断项: P2 拆分后这条 SELECT 落在内层 try 外面,
+    DB 失败面从 503 变 500。它是 DB 调用 (不是组装), 且此处没写入任何东西
+    → 归 503 降级。
+    """
+    import json as _json
+    from unittest.mock import MagicMock
+
+    from src.kid_app.routes import badge_claim
+
+    mock_conn = MagicMock()
+    cur = mock_conn.cursor.return_value
+    cur.rowcount = 0  # UPDATE 没改到行 → 走区分分支
+
+    def boom(*a, **kw):
+        raise Exception("no such table: achievement_stats")
+
+    monkeypatch.setattr("src.db_adapter.is_mysql_env", lambda: True)
+    monkeypatch.setattr(badge_claim, "_open_db", lambda: (mock_conn, True))
+    monkeypatch.setattr(badge_claim.db_adapter, "execute_dicts", boom)
+
+    resp = badge_claim.api_claim(badge_claim.ClaimRequest(badge_id="mysql_1"))
+    assert resp.status_code == 503
+    assert _json.loads(resp.body)["error"] == "db_unreachable"
+    assert mock_conn.close.called
+
+
+# ─── J. 建库路径三源同步: claimed_at / detail 必须能建出来 ─────────────────
+# 2026-09-30 线上复盘: 云 MySQL 的 achievement_stats 缺 claimed_at → /api/badge/unclaimed
+#   报 1054 → 降级 503 → 前端 checkUnclaimed 静默 return → 徽章弹窗永不出现.
+#   根因: 这一列只写在 migrate_add_claimed_at.py 里, schema_mysql.sql 与 sqlite
+#   _init_tables 都没有 → 从零建库必漏. 两条锁分别盯 MySQL 定义 (静态) 和 sqlite (行为).
+def test_init_tables_adds_claimed_at_and_detail_idempotent(tmp_path):
+    """老库缺列 (模拟线上) → Database() 初始化幂等补上; 二次运行不抛、列不重复。"""
+    db_path = tmp_path / "legacy_claimed.db"
+    raw = sqlite3.connect(str(db_path))
+    raw.executescript(
+        """
+        CREATE TABLE achievement_stats (
+            achievement_id TEXT PRIMARY KEY,
+            achieved       TEXT NOT NULL,
+            achieved_at    DATETIME,
+            raw_stats      TEXT NOT NULL,
+            computed_value INTEGER
+        );
+        CREATE TABLE practice_audit_log (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel       TEXT NOT NULL,
+            method        TEXT NOT NULL,
+            practice_date DATE NOT NULL,
+            created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    raw.commit()
+    raw.close()
+
+    from src.database import Database
+
+    db = Database(db_path=str(db_path))  # 触发 _init_tables
+    conn = db._get_connection()
+    stats_cols = {r[1] for r in conn.execute("PRAGMA table_info(achievement_stats)")}
+    audit_cols = {r[1] for r in conn.execute("PRAGMA table_info(practice_audit_log)")}
+    assert "claimed_at" in stats_cols, "achievement_stats.claimed_at 未补 (弹窗判据列)"
+    assert "detail" in audit_cols, "practice_audit_log.detail 未补 (领取写审计载体)"
+    conn.close()
+
+    # 幂等: 再初始化一次, 不抛错且列不重复
+    db2 = Database(db_path=str(db_path))
+    conn2 = db2._get_connection()
+    cols2 = [r[1] for r in conn2.execute("PRAGMA table_info(achievement_stats)")]
+    assert cols2.count("claimed_at") == 1
+    conn2.close()
+
+
+def test_schema_mysql_declares_claimed_at_and_detail():
+    """从零建库的 MySQL 定义必须含这两列 (线上缺列那条老路别再走一遍)。"""
+    from pathlib import Path
+
+    sql = (Path(__file__).resolve().parent.parent / "schema_mysql.sql").read_text(encoding="utf-8")
+    stats_block = sql.split("CREATE TABLE achievement_stats", 1)[1].split(");", 1)[0]
+    audit_block = sql.split("CREATE TABLE practice_audit_log", 1)[1].split(");", 1)[0]
+    assert "claimed_at" in stats_block, "schema_mysql.sql achievement_stats 缺 claimed_at"
+    assert "detail" in audit_block, "schema_mysql.sql practice_audit_log 缺 detail"

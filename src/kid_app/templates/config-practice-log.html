@@ -7,6 +7,10 @@
   <title>练习记录管理 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="/static/js/duration-fmt.js"></script>
+  <!-- 常用音乐符号面板（老师要求输入框随焦点取用，不遮挡输入框） -->
+  <link rel="stylesheet" href="/static/css/music-symbols-panel.css">
+  <script src="/static/js/music-symbols-panel.js"></script>
   <style>
     :root {
       --cream: #f5e6d3;
@@ -957,12 +961,12 @@
         <div class="practice-stats-grid" id="practice-stats-grid">
           <div class="practice-stat-card">
             <div class="stat-label">本周练习时长</div>
-            <div class="stat-value" id="stat-week-mins">--<span class="stat-unit">分钟</span></div>
+            <div class="stat-value" id="stat-week-mins">--</div>
             <div class="stat-sub" id="stat-week-days">-- 天</div>
           </div>
           <div class="practice-stat-card">
             <div class="stat-label">本月练习时长</div>
-            <div class="stat-value" id="stat-month-mins">--<span class="stat-unit">分钟</span></div>
+            <div class="stat-value" id="stat-month-mins">--</div>
             <div class="stat-sub" id="stat-month-days">-- 天</div>
           </div>
           <div class="practice-stat-card">
@@ -1193,10 +1197,10 @@ async function loadStats() {
   wMins.replaceChildren();
   const wSpan = document.createElement('span');
   wSpan.id = 'w-mins-val';
-  wSpan.textContent = String(w.minutes);
+  wSpan.textContent = DizicalDur.fmt(DizicalDur.pick(w.seconds, w.minutes)) || '0分';
   const wUnit = document.createElement('span');
   wUnit.className = 'stat-unit';
-  wUnit.textContent = '分钟';
+  wUnit.textContent = '';
   wMins.appendChild(wSpan);
   wMins.appendChild(wUnit);
 
@@ -1204,10 +1208,10 @@ async function loadStats() {
   mMins.replaceChildren();
   const mSpan = document.createElement('span');
   mSpan.id = 'm-mins-val';
-  mSpan.textContent = String(m.minutes);
+  mSpan.textContent = DizicalDur.fmt(DizicalDur.pick(m.seconds, m.minutes)) || '0分';
   const mUnit = document.createElement('span');
   mUnit.className = 'stat-unit';
-  mUnit.textContent = '分钟';
+  mUnit.textContent = '';
   mMins.appendChild(mSpan);
   mMins.appendChild(mUnit);
 
@@ -1218,7 +1222,7 @@ async function loadStats() {
   document.getElementById('stat-month-days-val').textContent = String(m.days);
   document.getElementById('stat-month-range').textContent = '本月';
 
-  // GSAP 卡片入场 + 数字滚动 (gsap 不可用时静默跳过)
+  // GSAP 卡片入场。时长已是口径 B 文字，不再滚动整数。gsap 不可用时静默跳过。
   if (window.gsap) {
     const cards = document.querySelectorAll('#tab-stats .practice-stat-card');
     if (cards.length) {
@@ -1228,20 +1232,6 @@ async function loadStats() {
         { opacity: 1, y: 0, stagger: 0.1, duration: 0.5, ease: 'back.out(1.5)' }
       );
       gsap.killTweensOf([document.getElementById('w-mins-val'), document.getElementById('m-mins-val')]);
-      const wProxy = { v: 0 };
-      gsap.to(wProxy, { v: w.minutes, duration: 0.8, ease: 'power2.out',
-        onUpdate() {
-          const el = document.getElementById('w-mins-val');
-          if (el) el.textContent = String(Math.round(wProxy.v));
-        }
-      });
-      const mProxy = { v: 0 };
-      gsap.to(mProxy, { v: m.minutes, duration: 0.8, ease: 'power2.out', delay: 0.1,
-        onUpdate() {
-          const el = document.getElementById('m-mins-val');
-          if (el) el.textContent = String(Math.round(mProxy.v));
-        }
-      });
     }
   }
 }
@@ -1526,7 +1516,7 @@ function renderLogEntries() {
           <option value="">选择科目...</option>
           ${practiceItems.map(it => `<option value="${it.item_id}" ${it.item_id == entry.item_id ? 'selected' : ''}>${it.name} (${it.item_id})</option>`).join('')}
         </select>
-        <span class="entry-total" data-idx="${i}">${calcEntryTotal(entry)} 分钟</span>
+        <span class="entry-total" data-idx="${i}">${DizicalDur.fmt(calcEntryTotal(entry) * 60) || '0分'}</span>
         <button class="remove-btn" data-idx="${i}">×</button>
       </div>
       <div class="entry-assign-hint" data-idx="${i}" style="display:none"></div>
@@ -1573,7 +1563,7 @@ function renderLogEntries() {
       logEntries[i].sessions[si].minutes = parseInt(e.target.value) || 0;
       const total = calcEntryTotal(logEntries[i]);
       const totalEl = container.querySelector(`.entry-total[data-idx="${i}"]`);
-      if (totalEl) totalEl.textContent = total + ' 分钟';
+      if (totalEl) totalEl.textContent = DizicalDur.fmt(total * 60) || '0分';
     });
   });
 
@@ -1887,7 +1877,7 @@ async function loadTodayHistory() {
           <span style="color:#8B6914;font-weight:600">${s.tempo_note}=${s.tempo_bpm}</span>
           ${s.reps ? `<span style="color:#C45C26;font-weight:600;font-size:12px">${s.reps}遍</span>` : ''}
           <span style="color:#5D4037;flex:1">${s.content || ''}</span>
-          <span style="color:#A88B5C;font-size:12px">${s.duration_minutes}min</span>
+          <span style="color:#A88B5C;font-size:12px">${DizicalDur.fmt(DizicalDur.pick(s.duration_seconds, s.duration_minutes))}</span>
         </div>`;
       });
       if (lastItem) html += '</div>';
@@ -1899,7 +1889,7 @@ async function loadTodayHistory() {
       content.innerHTML = data.items.map(it =>
         `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
           <span>${it.item}</span>
-          <span class="badge badge-green">${it.minutes} 分钟</span>
+          <span class="badge badge-green">${DizicalDur.fmt(DizicalDur.pick(it.seconds, it.minutes))}</span>
         </div>`
       ).join('') + (data.log ? `<p style="color:#7F8C8D;font-size:13px;margin-top:8px">📝 ${data.log}</p>` : '');
     } else {
@@ -1945,6 +1935,12 @@ function renderAssignEntries() {
       </div>`;
     container.appendChild(row);
   });
+
+  // 每个科目要求行 + 速度框：聚焦即弹符号面板（不遮挡输入框，插入到光标处）
+  if (window.DizicalSymbols) {
+    DizicalSymbols.attachAll(container, '.entry-bottom .form-textarea', { trigger: true });
+    DizicalSymbols.attachAll(container, '.metronome-input');
+  }
 
   container.querySelectorAll('.item-select').forEach(sel => {
     sel.addEventListener('change', e => {
@@ -2781,6 +2777,12 @@ function startEditAssignment(lessonDate) {
           await loadEditItemHistory(idx, newId, editItems[idx].item);
         });
       });
+
+      // 历史卡编辑态的老师要求框同样接符号面板
+      if (window.DizicalSymbols) {
+        DizicalSymbols.attachAll(wrap, '.entry-bottom .form-textarea', { trigger: true });
+        DizicalSymbols.attachAll(wrap, '.edit-item-metro');
+      }
     };
     renderEditFormItems();
     // PR-C fix: + 添加科目 按钮 handler
@@ -2896,10 +2898,12 @@ async function loadWeek() {
     const data = await res.json();
 
     // 统计
+    const weekSec = DizicalDur.pick(data.total_seconds, data.total_minutes);
+    const avgSec = data.practice_days ? Math.round(weekSec / data.practice_days) : 0;
     document.getElementById('weekStats').innerHTML = `
       <span class="badge badge-green">练习 ${data.practice_days}/7 天</span>
-      <span class="badge badge-blue">总计 ${data.total_minutes} 分钟</span>
-      <span class="badge badge-orange">日均 ${data.practice_days ? Math.round(data.total_minutes / data.practice_days) : 0} 分钟</span>
+      <span class="badge badge-blue">总计 ${DizicalDur.fmt(weekSec) || '0分'}</span>
+      <span class="badge badge-orange">日均 ${DizicalDur.fmt(avgSec) || '0分'}</span>
     `;
 
     // 日历网格
@@ -2915,14 +2919,15 @@ async function loadWeek() {
       const day = data.days[key] || {};
       const isToday = day.is_today;
       const isFuture = day.is_future;
-      const mins = day.total_minutes || 0;
+      const daySec = DizicalDur.pick(day.total_seconds, day.total_minutes);
+      const dayLabel = isFuture ? '-' : (daySec ? DizicalDur.short(daySec) : '—');
 
       const cell = document.createElement('div');
       cell.className = `week-day ${isToday ? 'today' : ''} ${isFuture ? 'future' : ''}`;
       cell.innerHTML = `
         <div class="day-label">${dayNames[i]}</div>
         <div class="day-date">${d.getMonth()+1}/${d.getDate()}</div>
-        <div class="day-minutes ${mins === 0 ? 'zero' : ''}">${isFuture ? '-' : (mins ? mins + "'" : '—')}</div>
+        <div class="day-minutes ${daySec === 0 ? 'zero' : ''}">${dayLabel}</div>
       `;
       grid.appendChild(cell);
     }
@@ -2931,14 +2936,16 @@ async function loadWeek() {
     const bars = document.getElementById('itemBars');
     if (data.item_totals && Object.keys(data.item_totals).length) {
       const total = Object.values(data.item_totals).reduce((a, b) => a + b, 0);
+      const secMap = data.item_seconds || {};
       const sorted = Object.entries(data.item_totals).sort((a, b) => b[1] - a[1]);
       bars.innerHTML = sorted.map(([name, mins]) => {
         const pct = total > 0 ? (mins / total * 100) : 0;
+        const sec = DizicalDur.pick(secMap[name], mins);
         return `
           <div class="bar-row">
             <span class="bar-label">${name}</span>
             <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-            <span class="bar-value">${mins}' (${pct.toFixed(0)}%)</span>
+            <span class="bar-value">${DizicalDur.fmt(sec)} (${pct.toFixed(0)}%)</span>
           </div>
         `;
       }).join('');
@@ -2989,6 +2996,11 @@ async function loadWeek() {
   loadTodayHistory();
   // 草稿恢复 (需求1): 必须在 renderAssignEntries 之后 (填回 entries + 表单字段)
   restoreAssignDraft();
+  // 老师补充说明框：也接符号面板（固定 1 个，不随行渲染）
+  if (window.DizicalSymbols) {
+    const _assignNotesEl = document.getElementById('assignNotes');
+    if (_assignNotesEl) DizicalSymbols.attach(_assignNotesEl, { trigger: true });
+  }
   try {
     if (sessionStorage.getItem(VIDEO_UPLOAD_PENDING_KEY)) {
       sessionStorage.removeItem(VIDEO_UPLOAD_PENDING_KEY);

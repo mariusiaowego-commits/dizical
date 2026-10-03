@@ -280,10 +280,10 @@ def test_sort_order_change_keeps_card_no(card_db):
 # ─── G. API: /api/badge/unclaimed ────────────────────────────────────
 @pytest.fixture()
 def unclaimed_env(tmp_path, monkeypatch):
-    """隔离 sqlite + patch badge_claim.DB_PATH + app db 单例, 供两个 API 测试用."""
+    """隔离 sqlite + patch settings.db_path + app db 单例, 供两个 API 测试用."""
     import src.database as db_module
     import src.kid_app.app as app_module
-    import src.kid_app.routes.badge_claim as badge_claim_module
+    from src import models
 
     db_path = tmp_path / "api.db"
     conn = sqlite3.connect(str(db_path))
@@ -318,7 +318,9 @@ def unclaimed_env(tmp_path, monkeypatch):
     new_db = Database(db_path=str(db_path))
     monkeypatch.setattr(db_module, "db", new_db)
     monkeypatch.setattr(app_module, "db", new_db)
-    monkeypatch.setattr(badge_claim_module, "DB_PATH", Path(str(db_path)))
+    # Sprint 26092901 fix/badge-claim-db: badge_claim 改走 src.db_adapter.get_conn(),
+    # SQLite 分支读 models.settings.db_path —— 旧版模块级常量 DB_PATH 已删。
+    monkeypatch.setattr(models.settings, "db_path", str(db_path))
     monkeypatch.setenv("DATABASE_URL", "")
     yield str(db_path)
 

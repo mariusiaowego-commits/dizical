@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .database import db
 from .models import LessonStatus
+from .kid_app.duration_fmt import pick_seconds
 
 
 def get_last_attended_lesson_date_next() -> Optional[dt.date]:
@@ -310,9 +311,11 @@ def get_week_summary(week_start: dt.date) -> Dict:
     assignment = db.get_weekly_assignment(week_start)
     progress = db.get_progress_from_log_in_range(week_start, week_end)
     
-    # 汇总各项目时长
+    # 汇总各项目时长。分钟仍是逐条 minutes 相加；秒是逐条 seconds 相加。
     item_totals = {}
+    item_seconds = {}
     total_minutes = 0
+    total_seconds = 0
     practice_days = []
     
     for p in practices:
@@ -321,16 +324,25 @@ def get_week_summary(week_start: dt.date) -> Dict:
         items_raw = p['items']
         if isinstance(items_raw, str):
             items_raw = json.loads(items_raw)
+        day_secs = 0
         for item in (items_raw or []):
             name = item['item']
             item_totals[name] = item_totals.get(name, 0) + item['minutes']
+            sec = pick_seconds(item.get('seconds'), item.get('minutes'))
+            item_seconds[name] = item_seconds.get(name, 0) + sec
+            day_secs += sec
+        if not items_raw:
+            day_secs = pick_seconds(p.get('total_seconds'), p.get('total_minutes'))
+        total_seconds += day_secs
 
     return {
         'week_start': week_start,
         'week_end': week_end,
         'assignment': assignment,
         'item_totals': item_totals,
+        'item_seconds': item_seconds,
         'total_minutes': total_minutes,
+        'total_seconds': total_seconds,
         'practice_days': len(practice_days),
         'progress': progress
     }
@@ -355,6 +367,7 @@ def get_week_days(week_start: dt.date) -> Dict[str, Dict]:
             'date': d,
             'has_practice': False,
             'total_minutes': 0,
+            'total_seconds': 0,
             'items': [],
             'progress': None,
             'is_today': d == today,
@@ -371,7 +384,17 @@ def get_week_days(week_start: dt.date) -> Dict[str, Dict]:
             items_raw = p['items']
             if isinstance(items_raw, str):
                 items_raw = json.loads(items_raw)
-            days[key]['items'] = items_raw if items_raw else []
+            ann_items = []
+            day_secs = 0
+            for it in (items_raw or []):
+                copied = dict(it)
+                copied['seconds'] = pick_seconds(it.get('seconds'), it.get('minutes'))
+                ann_items.append(copied)
+                day_secs += copied['seconds']
+            if not ann_items:
+                day_secs = pick_seconds(p.get('total_seconds'), p.get('total_minutes'))
+            days[key]['items'] = ann_items
+            days[key]['total_seconds'] = day_secs
 
     for key, note in progress.items():
         if key in days:
@@ -391,20 +414,33 @@ def get_month_summary(year: int, month: int) -> Dict:
     practices = db.get_daily_practices_in_range(start_date, end_date)
     progress = db.get_progress_from_log_in_range(start_date, end_date)
 
-    # 按项目汇总
+    # 按项目汇总。分钟逐条相加；秒逐条相加，不先加秒再 ceil。
     item_totals = {}
+    item_seconds = {}
     total_minutes = 0
+    total_seconds = 0
+    daily_seconds = {}
     practice_days = set()
     
     for p in practices:
         total_minutes += p['total_minutes']
         practice_days.add(p['date'])
+        raw_date = p['date']
+        d_key = raw_date.isoformat()[:10] if hasattr(raw_date, 'isoformat') else str(raw_date)[:10]
         items_raw = p['items']
         if isinstance(items_raw, str):
             items_raw = json.loads(items_raw)
+        day_secs = 0
         for item in (items_raw or []):
             name = item['item']
             item_totals[name] = item_totals.get(name, 0) + item['minutes']
+            sec = pick_seconds(item.get('seconds'), item.get('minutes'))
+            item_seconds[name] = item_seconds.get(name, 0) + sec
+            day_secs += sec
+        if not items_raw:
+            day_secs = pick_seconds(p.get('total_seconds'), p.get('total_minutes'))
+        total_seconds += day_secs
+        daily_seconds[d_key] = day_secs
     
     # 按周分组
     weeks = []
@@ -422,7 +458,10 @@ def get_month_summary(year: int, month: int) -> Dict:
         'start_date': start_date,
         'end_date': end_date,
         'item_totals': item_totals,
+        'item_seconds': item_seconds,
         'total_minutes': total_minutes,
+        'total_seconds': total_seconds,
+        'daily_seconds': daily_seconds,
         'practice_days': len(practice_days),
         'total_days': end_date.day,
         'weeks': weeks,

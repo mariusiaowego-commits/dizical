@@ -13,6 +13,14 @@ from fastapi.encoders import jsonable_encoder
 
 from src.database import db
 from src import practice as practice_module
+from src.kid_app.duration_fmt import (
+    pick_seconds,
+    total_seconds_of_practice,
+    annotate_item,
+    annotate_session,
+    invoke,
+    write_minutes,
+)
 from src import db_adapter  # Sprint 08: conn.execute → db_adapter.execute (双后端占位符)
 from src.lesson_manager import LessonManager
 from src.payment import PaymentManager
@@ -524,9 +532,11 @@ def api_records_stats():
     month_practices = db.get_daily_practices_in_range(month_start, today)
     month_mins = sum(p.get('total_minutes', 0) for p in month_practices)
     month_days = sum(1 for p in month_practices if p.get('total_minutes', 0) > 0)
+    week_secs = sum(total_seconds_of_practice(p) for p in week_practices)
+    month_secs = sum(total_seconds_of_practice(p) for p in month_practices)
     return JSONResponse({
-        "week": {"minutes": week_mins, "days": week_days, "start": week_start.isoformat(), "end": today.isoformat()},
-        "month": {"minutes": month_mins, "days": month_days, "start": month_start.isoformat()}
+        "week": {"minutes": week_mins, "seconds": week_secs, "days": week_days, "start": week_start.isoformat(), "end": today.isoformat()},
+        "month": {"minutes": month_mins, "seconds": month_secs, "days": month_days, "start": month_start.isoformat()}
     })
 
 
@@ -557,6 +567,7 @@ def api_get_records(year: int, month: int):
                 items_raw = []
         result[d_key] = {
             'total_minutes': p.get('total_minutes', 0),
+            'total_seconds': total_seconds_of_practice({**p, 'items': items_raw}),
             'item_count': len(items_raw) if items_raw else 0,
             'practiced': p.get('practiced', 'Y')
         }
@@ -596,14 +607,21 @@ def api_get_record(date_str: str):
 
     sessions = []
     for s in db.get_practice_sessions(date):
-        row = dict(s)
+        row = annotate_session(dict(s))
         row["reps"] = row.get("reps")
         sessions.append(row)
+
+    items_out = [annotate_item(it) if isinstance(it, dict) else it for it in (items_raw or [])]
+    if any(isinstance(it, dict) for it in items_out):
+        total_seconds = sum(it.get("seconds", 0) for it in items_out if isinstance(it, dict))
+    else:
+        total_seconds = pick_seconds(record.get('total_seconds'), record.get('total_minutes', 0))
 
     return JSONResponse({
         "date": date_str,
         "total_minutes": record.get('total_minutes', 0),
-        "items": items_raw,
+        "total_seconds": total_seconds,
+        "items": items_out,
         "log": record.get('log', ''),
         "practiced": record.get('practiced', 'Y'),
         "sessions": sessions,
@@ -631,46 +649,71 @@ async def api_save_record(request: Request):
         import datetime as dt
         date = dt.date.fromisoformat(date_str)
 
-        if total_minutes == 0 and items:
-            total_minutes = sum(i.get('minutes', 0) for i in items)
+        # F6: 分钟与 /api/log 同口径 —— 带了秒时分钟 = ceil(秒/60)（write_minutes），
+        # 客户端传来的 minutes 只当"没带秒"时的兜底。同一次练习两入口写出的分钟必须一致。
+        # 秒缺省 = 该条 minutes*60。合计由服务端相加，不采用前端传来的 total_seconds。
+        normalized = []
+        for raw in items:
+            it = dict(raw)
+            mins_in = int(it.get('minutes') or 0)
+            if it.get('seconds') is None:
+                it['seconds'] = mins_in * 60
+            else:
+                try:
+                    it['seconds'] = int(it['seconds'])
+                except (TypeError, ValueError):
+                    return JSONResponse({"ok": False, "error": "seconds 必须是整数"}, status_code=400)
+            if it['seconds'] < 0 or it['seconds'] > 86400:
+                return JSONResponse({"ok": False, "error": "seconds 必须在 0-86400"}, status_code=400)
+            it['minutes'] = write_minutes(mins_in, it.get('seconds'))
+            normalized.append(it)
+        total_seconds = sum(int(it.get('seconds') or 0) for it in normalized)
+        # F6: items 非空时合计一律取**派生和**（与 /api/log 落库口径一致；同时挡住
+        # save_daily_practice 的新建当天路径把客户端错值直接写库 —— database.py:1051）
+        total_minutes = (sum(int(it.get('minutes') or 0) for it in normalized)
+                         if normalized else total_minutes)
 
         # 7-27: session 细节分支 (tempo_note/tempo_bpm/content 三个字段都在 → 走整事务)
         has_session_detail = all(k in body for k in ("tempo_note", "tempo_bpm", "content"))
-        if has_session_detail and items:
+        if has_session_detail and normalized:
             tempo_note = body.get("tempo_note", "♪")
             tempo_bpm = int(body.get("tempo_bpm", 80))
             content = body.get("content", "")
             content_source = body.get("content_source", "manual")
-            item_name = items[0].get("item", "")
-            item_id = int(items[0].get("item_id", 0))
-            minutes = items[0].get("minutes", 0)
-            reps = body.get("reps") if "reps" in body else items[0].get("reps")
+            item_name = normalized[0].get("item", "")
+            item_id = int(normalized[0].get("item_id", 0))
+            minutes = normalized[0].get("minutes", 0)
+            item_seconds = int(normalized[0].get("seconds") or 0)
+            reps = body.get("reps") if "reps" in body else normalized[0].get("reps")
             try:
-                s = db.save_practice_session_and_daily_summary(
+                s = invoke(
+                    db.save_practice_session_and_daily_summary,
                     date, item_name, item_id, minutes,
                     tempo_note, tempo_bpm, content, content_source,
                     practice_at=None, is_extra=False, reps=reps,
+                    seconds=item_seconds,
                 )
                 daily = db.get_daily_practice(date)
                 return JSONResponse({
                     "ok": True,
                     "total": daily.get("total_minutes", minutes) if daily else minutes,
+                    "total_seconds": total_seconds_of_practice(daily) if daily else item_seconds,
                     "session": s,
                 })
             except ValueError as e:
                 return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
-        # 旧路径 (无 session 字段)
+        # 旧路径 (无 session 字段)。items 上的 seconds 由存储层累加，不传前端合计。
         db.save_daily_practice(
             date=date,
-            items=items,
+            items=normalized,
             total_minutes=total_minutes,
             log=log,
             practiced=practiced,
             channel='web',
             method='config-records'
         )
-        return JSONResponse({"ok": True})
+        return JSONResponse({"ok": True, "total_seconds": total_seconds})
 
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -869,65 +912,6 @@ async def api_mark_fee_paid(date: str, paid: bool = True):
 # ─── API: 练习统计（已移到上方 /api/records/stats） ────────────────────────────
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 盲盒主题配置
-# ═══════════════════════════════════════════════════════════════════════════
-
-@router.get("/blindbox", response_class=HTMLResponse)
-def config_blindbox():
-    """盲盒主题配置页 — 选择每周打卡盲盒的故事主题"""
-    from src.kid_app.app import render, get_setting, THEMES, ACTIVE_THEME_SETTING_KEY, DEFAULT_THEME
-    current = get_setting(ACTIVE_THEME_SETTING_KEY) or DEFAULT_THEME
-    return render(
-        "config-blindbox",
-        active_nav="portal",  # sidebar: Portal
-        pin_locked="true" if get_setting("dad_pin") else "false",
-        themes=list(THEMES.values()),
-        current_theme=current,
-    )
-
-
-@router.get("/api/blindbox/theme")
-async def api_get_blindbox_theme():
-    """获取当前生效主题 + 所有可用主题列表"""
-    from src.kid_app.app import get_active_theme, THEMES
-    return JSONResponse({
-        "ok": True,
-        "active": get_active_theme()["slug"],
-        "themes": [
-            {
-                "slug": t["slug"],
-                "title": t["title"],
-                "tag": t["tag"],
-                "desc": t["desc"],
-                "cover": t["cover"],
-            }
-            for t in THEMES.values()
-        ],
-    })
-
-
-@router.post("/api/blindbox/theme")
-async def api_set_blindbox_theme(request: Request):
-    """切换当前生效主题（需 PIN 验证）"""
-    from src.kid_app.app import THEMES, ACTIVE_THEME_SETTING_KEY
-
-    body = json.loads(await request.body())
-    pin = body.get("pin", "")
-    slug = body.get("theme", "").strip()
-
-    # PIN 验证（与 config-praise 保持一致）
-    stored_pin = db.get_setting("dad_pin")
-    if stored_pin and pin != stored_pin:
-        return JSONResponse({"ok": False, "error": "PIN 不对"}, status_code=401)
-
-    if slug not in THEMES:
-        return JSONResponse({"ok": False, "error": f"未知主题: {slug}"}, status_code=400)
-
-    db.set_setting(ACTIVE_THEME_SETTING_KEY, slug)
-    return JSONResponse({"ok": True, "active": slug})
-
-
 # ── 练习记录管理 API ─────────────────────────────────────────────────────────
 
 @router.get("/practice-log", response_class=HTMLResponse)
@@ -961,8 +945,10 @@ def api_practice_week(date_str: Optional[str] = None):
         "week_start": week_start.isoformat(),
         "week_end": summary["week_end"].isoformat(),
         "total_minutes": summary["total_minutes"],
+        "total_seconds": summary.get("total_seconds", pick_seconds(None, summary["total_minutes"])),
         "practice_days": summary["practice_days"],
         "item_totals": summary["item_totals"],
+        "item_seconds": summary.get("item_seconds", {}),
         "assignment": _serialize_assignment(summary["assignment"]),
         "days": days_serialized,
     })
@@ -1457,9 +1443,12 @@ def api_practice_month_summary(year: Optional[int] = None, month: Optional[int] 
         "year": year,
         "month": month,
         "total_minutes": data["total_minutes"],
+        "total_seconds": data.get("total_seconds", pick_seconds(None, data["total_minutes"])),
         "practice_days": data["practice_days"],
         "item_totals": data["item_totals"],
+        "item_seconds": data.get("item_seconds", {}),
         "daily_minutes": data.get("daily_minutes", {}),
+        "daily_seconds": data.get("daily_seconds", {}),
     })
 
 
@@ -1709,7 +1698,7 @@ def config_design(request: Request):
     """设计系统服务监控页 — 启动/重启/停止/打开 intro demo
 
     PIN 行为:
-    - 默认要 PIN (跟 config-badge / config-blindbox 一致, admin 操作)
+    - 默认要 PIN (跟 config-badge 一致, admin 操作)
     - `?demo=true` query param bypass PIN (展示给朋友看用)
     """
     from src.kid_app.app import render

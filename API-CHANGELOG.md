@@ -1,5 +1,89 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-02 (已上线 #140, 2026-10-02 17:38 CST) — sprint 26100102 盲盒 feature 下线
+**类型**: 🔴 不兼容（端点整体移除，调用方将收到 404）
+
+## 变更
+
+- `GET /api/blindbox` **已移除**（原每日打卡盲盒数据：小程序盲盒数据源）。请求该路径现在命中登录门（302）或 404，不再返回盲盒 JSON。
+- `GET /config/blindbox`（盲盒主题配置页）**已移除**，配套的 `GET /config/api/blindbox/theme` 与 `POST /config/api/blindbox/theme` 一并移除。`/config` 首页的「盲盒主题」入口卡同步下线。
+- **对 dizical-minip**：**无需改代码**。消费函数 `getBlindbox` 零调用（派活方核对结论，2026-10-01），小程序侧没有接线该端点。移除的是无人调用的公开端点。
+- 数据库不受影响：盲盒读的是 `weekly_assignments` / `daily_practices` 两张既有表，未新增 schema，本次**无 DDL / 无数据迁移**。成就体系（`achievements` / `achievement_badges`）与 seasonal `daily` 类成就的判定逻辑保留不动。
+- 静态资源：`daily_checkin_1..7.png`、`rapunzel_1..7.png` 共 14 张盲盒徽章图随之下线。其他徽章 PNG 不受影响。
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-10-01 (已上线 #139, 2026-10-01 21:01 CST) — sprint 26100101 P2 清理（API 面）
+**类型**: 🟡 部分兼容（`/config/api/records` 落库分钟的算法改为按秒派生；请求/响应结构不变。dizical-minip 三处写入实测行为零变化，见下）
+
+## 变更
+
+- `POST /config/api/records`：`items[].minutes` 不再直接采信客户端值 —— 该条带 `seconds` 时 `minutes = ceil(seconds/60)`（至少 1，与 `POST /api/log` 同口径）。带秒但秒 ≤ 0 时沿用客户端分钟。
+- `POST /config/api/records`：`total_minutes` 在 `items` 非空时**一律取派生和**（原先只在客户端传 0 时才求和）。挡住 `save_daily_practice` 新建当天路径把客户端错合计直接写库。
+- 负数秒（坏数据）口径统一：`seconds < 0` → 读出 0，不再回退 `minutes × 60`。四处同改：`database._item_secs`（sqlite）、`database_mysql._item_secs`、`duration_fmt.pick_seconds`、`static/js/duration-fmt.js` 的 `pick`。生产库负数坏行 0 行 → 无可见变化。
+- `behavior_log[]` 条目的 `seconds`：条目自身 `minutes == 0` 时写 0，不再借用整段 session 的总秒。
+- `GET /practice` 页面首屏「今日已练习」与移动端顶栏改秒口径（口径 B），与保存后一致；`today_mins` 模板参数已删。
+- **对 dizical-minip**：无需改代码。三处 `submitRecord` 都是单条 `items` + `total_minutes == items[0].minutes` + 不带 `seconds` → 派生分钟与之相等、派生合计与之相等，落库结果不变（证据：dizical-minip `src/utils/api.ts:341`、`src/pages/practice/practice.vue:1284 / 1437 / 1539`，2026-10-01 核对）。
+- **云端**: 已上线。**#139**（2026-10-01 21:01 CST，buildId `2607902432`，runId `multi_tenant_1xCGPl9Zng3s4G`，镜像 `dizical-prod-139-20261001210140`）部署于 PR **#355** 合并之后（merge commit `fbba8d3`），FlowRatio 100。**本批无 DDL / 无数据迁移**（`total_seconds` / `duration_seconds` 两列在 #138 已加并回填）。校验：线上 `static/js/duration-fmt.js` md5 与 main 一致（`9ebe99c0ec795b44b886fe1cf00e1a80`）且含 F4 指纹行 `if (s === 0 && mins > 0)`；`/login` 200、`/health/live` 200、`/practice` 302 → PIN 门（预期）。
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-09-30 (已上线 #138, 2026-10-01) — 练习时长秒级（API 面）
+**类型**: 🟡 部分兼容（新增可选入参与返回字段；不传 `seconds` 时服务端按 `minutes × 60` 补。分钟字段名、语义、逐条 ceil 后相加的聚合都不变。dizical-minip 不改也能跑，建议择期同步展示）
+
+## 变更
+
+- `POST /api/log` 与 `behavior_log[]` 可选 `seconds`（0–86400）。缺省 = `minutes * 60`。请求带了秒且秒 > 0 时，这次写入的 `minutes = ceil(秒/60)`（至少 1）。响应新增 `seconds`，`total` 仍是这次写入的分钟。
+- `POST /config/api/records` 的 `items[]` 可选 `seconds`（缺省 = 该条 `minutes * 60`）。不改写客户端传来的分钟。`total_seconds` 由服务端按条目相加，忽略请求体里的合计。响应在原有字段上追加 `total_seconds`。
+- `PUT /api/practice-sessions/{id}` 可选 `duration_seconds`（1–86400）。带了秒时同时把 `duration_minutes` 写成 `ceil(秒/60)`。
+- 读出新增（旧分钟字段保持原值原义）:
+  - `GET /api/practices/{date}`: `total_seconds`、`items[].seconds`、`sessions[].duration_seconds`、`behavior_log[].seconds`
+  - `GET /api/practices/monthly` 与 `GET /api/practices/stage/{date}`: `seconds_data`、`day_seconds`（`data[日期][科目]` 仍是分钟数，给图表柱高）
+  - `GET /api/practices/stage-detail`: `summary.total_seconds`、`by_item[].seconds`、每日 `total_seconds`、session `duration_seconds`
+  - `GET /config/api/records`、`/{date}`、`/stats`、`/config/api/practice-week`、`/config/api/practice-month-summary`: 对应的 `total_seconds` / `seconds` / `item_seconds` / `daily_seconds`
+  - `GET /api/today-stats`: `total_seconds`
+- 去重 key 的时长槽从整数分钟改为秒。10 秒与 50 秒不再互相挡。没带 `seconds` 时按 `minutes * 60`，旧客户端同分钟仍互相挡。
+- 秒列为 0 且分钟 > 0 时，读出按未回填处理，用 `minutes * 60`。
+- **对 dizical-minip**：无需改代码。展示若要秒级，择期读新字段；不要改分钟字段的读法。
+- **云端**: 已上线。**#138**（2026-10-01 13:20 CST）部署于 PR **#353** 合并之后（merge commit `1135e45`），FlowRatio 100。DDL 走 MCP `runStatement`：`ALTER TABLE daily_practices ADD total_seconds`（requestId `9453cb6a-5125-4b6c-b594-c1e0c0e55821`）、`ALTER TABLE practice_sessions ADD duration_seconds`（`600300c5-9e63-469c-8700-397a3d2c5fa5`）、回填 `daily_practices` 327 行（`66038b89-391a-4e38-b511-645d3d4e959a`）、回填 `practice_sessions` 1298 行（`5494a977-4272-41f9-991b-f5e2d29a780d`）、复核（`e8baf027-490e-436a-bf52-757c78e777ee`：`SUM(minutes)*60 = SUM(seconds)`，坏行 0）。
+  线上验证：`GET /api/today-stats` 返回 `{"total_minutes":0,"total_seconds":0}`（老键在、新键已上）；`/static/js/duration-fmt.js` 200。
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-09-30 (已上线 #134 / #135) — sprint 26092901 + 26093001 线上修复
+**类型**: ✅ 完全兼容（仅内部实现与错误路径；端点 / 请求参数 / 返回结构不变，客户端无需改动）
+
+## 变更（无契约变更，仅为同步记录）
+
+- `GET /api/badge/unclaimed` / `POST /api/badge/claim`：修掉「容器内读 9-8 老 sqlite 库」导致的线上 500（sprint 26092901 / PR #346）。
+- 异常拆分：纯 Python 组装异常不再伪装成 `503 db_unreachable`（改为 500 + traceback）；**DB 调用失败仍 503**（sprint 26093001 / PR #348）。
+- 连接归还统一：MySQL 池连接现在无条件 `close()`（= 归还池），修掉高并发下池耗尽的隐患（同 PR，全仓 18 处）。
+- **对 dizical-minip**：无需改动（503 的触发面未扩大，字段未变）。
+- **线上库缺列（同日追加修复，非代码问题）**：云 MySQL 的 `achievement_stats.claimed_at`（弹窗判据列）
+  与 `practice_audit_log.detail`（领取写审计的 badge_id 载体）此前只写在 `src/migrate_add_claimed_at.py`，
+  `schema_mysql.sql` 与 sqlite 建表都没有 → 线上从零建库必漏。
+  症状：`GET /api/badge/unclaimed` 报 `1054 Unknown column 's.claimed_at'` → 被降级成 `503 db_unreachable`
+  → 前端 `checkUnclaimed()` 静默 return → 徽章认领弹窗永不出现（部署全绿、健康检查 alive 都看不出来）。
+  处置：数据面补列 + backfill（历史已得徽章视作已领）+ index；建库路径三源补齐（PR #351）。
+  **端点 / 入参 / 返回结构未变 → 仍属 ✅ 完全兼容**，对 dizical-minip 无影响。
+
+| 数据面动作（云 MySQL，MCP `runStatement`） | requestId |
+|------|------|
+| `ALTER TABLE achievement_stats ADD COLUMN claimed_at DATETIME NULL DEFAULT NULL` | `45ffabbf-3c91-4c0b-8324-5715f544b3df` |
+| `UPDATE achievement_stats SET claimed_at = achieved_at WHERE achieved='Y' AND claimed_at IS NULL`（26 行） | `a7ebee27-f6e6-459e-869d-cbecf63064d3` |
+| `CREATE INDEX idx_achievement_stats_unclaimed ON achievement_stats (achievement_id, claimed_at)` | `750aabca-a342-4099-8c0a-80562d9aaf80` |
+| `ALTER TABLE practice_audit_log ADD COLUMN detail VARCHAR(255) DEFAULT NULL` | `752829ed-8b96-4fe8-ae45-28a3b49b2303` |
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-09-28 (未上线) — sprint 26092601 练习 session 遍数
 **类型**: 🟡 部分兼容（新增可选入参 `reps` + 返回体新增字段；不传也能跑。dizical-minip 本次不动，建议择期同步展示）
 
@@ -12,7 +96,7 @@
 - 读出: session 对象、stage 明细每条 session、`by_item.reps`（该科目下非空遍数之和；全是 NULL 则字段为 `null`）。`GET /config/api/records/{date}` 额外返回 `sessions`（含 `reps`）。
 - `behavior_log[]` 同步写入 `reps`。删除 session 时去掉对应日志条目。不在 `daily_practices.items` 上存遍数。
 - 三源同步: `schema_mysql.sql` / `.cloudrun-deploy/schema_mysql.sql` / 本地 SQLite `_init_tables` 幂等加列 + `src/migrate_add_session_reps.py`。
-- **云端**: 尚未上线。DDL 待 dad 拍板后走 MCP。
+- **云端**: 已上线。#134（2026-09-30）部署合并态；#135（同日）含审计后续。DDL 走 MCP `runStatement`（requestId `fa527627-e431-47d0-83b1-42aedfbe7ca4`）。
 
 ---
 

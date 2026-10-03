@@ -2291,6 +2291,7 @@ def _get_local_ip() -> str:
 
 def _get_last_practice() -> str | None:
     """获取最近一次练习记录"""
+    conn = None
     try:
         from src.database import db
         conn = db._get_connection()
@@ -2308,6 +2309,14 @@ def _get_last_practice() -> str | None:
         return f"{d}  {minutes}分钟  {items_str}"
     except Exception:
         return None
+    finally:
+        # 归还连接 (MySQL 侧是池连接: close = 归池)。仪表盘每 ~3 秒调一次本函数,
+        # 之前不关 → CLI 进程的连接一路涨
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def _render_dashboard(stdscr, running: bool, pid: int | None, port_ok: bool,

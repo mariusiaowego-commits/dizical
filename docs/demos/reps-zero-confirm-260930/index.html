@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>零遍数二次弹窗重做（可点交互对比）· dizical</title>
+  <style>
+    :root {
+      --bg: #F7F5F0;
+      --card-bg: #FFFFFF;
+      --text: #2C3E50;
+      --muted: #7F8C8D;
+      --wood: #5D4037;
+      --border: rgba(93, 64, 55, 0.12);
+
+      /* 配色方案 1: 现版青绿主色 */
+      --teal-primary-grad: linear-gradient(135deg, #4ECDC4, #44B8AC);
+      --teal-primary-shadow: 0 4px 12px rgba(78, 205, 196, 0.35);
+      --teal-yellow-bg: #F0D060;
+      --teal-yellow-color: #5D4037;
+      --teal-yellow-shadow: 0 4px 12px rgba(240, 208, 96, 0.35);
+      --teal-abort-bg: #F0F0F0;
+      --teal-abort-color: #888888;
+
+      /* 配色方案 2: dizicute 珊瑚红主色 (DESIGN.md 标准) */
+      --coral-primary: #FF6B6B;
+      --coral-primary-shadow: 0 4px 14px rgba(255, 107, 107, 0.35);
+      --coral-secondary-bg: #F5F3EF;
+      --coral-secondary-color: #2C3E50;
+      --coral-secondary-border: 1px solid #E2DCD5;
+      --coral-abort-bg: #F0F0F0;
+      --coral-abort-color: #888888;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    /* 顶部控制栏 */
+    .top-control-bar {
+      max-width: 1720px;
+      margin: 0 auto 20px;
+      background: #FFFFFF;
+      border-radius: 18px;
+      padding: 16px 20px;
+      box-shadow: 0 4px 20px rgba(60, 40, 20, 0.06), 0 0 0 1px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .top-row-main {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .title-group h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #2C3E50;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .title-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: #EBF7F6;
+      color: #26988E;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      border: 1px solid rgba(78, 205, 196, 0.35);
+    }
+    .title-group p {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-top: 2px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-group-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #5D4037;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .seg-control {
+      display: inline-flex;
+      background: #F0ECE4;
+      padding: 3px;
+      border-radius: 12px;
+      gap: 3px;
+      user-select: none;
+    }
+    .seg-btn {
+      border: none;
+      background: transparent;
+      padding: 7px 14px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #5D4037;
+      cursor: pointer;
+      transition: all 120ms ease-out;
+      white-space: nowrap;
+    }
+    .seg-btn:hover {
+      color: #2C3E50;
+    }
+    .seg-btn.active {
+      background: #FFFFFF;
+      color: #2C3E50;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .seg-btn.active.bug-state {
+      background: #FFF1F0;
+      color: #D32F2F;
+      box-shadow: 0 2px 8px rgba(211, 47, 47, 0.15);
+    }
+
+    /* 「看什么」指导卡片 */
+    .guide-banner {
+      background: #FFFDF7;
+      border: 1px solid #F0E6D2;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #5D4037;
+      line-height: 1.6;
+    }
+    .guide-banner strong {
+      color: #2C3E50;
+    }
+    .guide-banner ol {
+      margin-left: 20px;
+      margin-top: 4px;
+    }
+    .guide-banner li {
+      margin-bottom: 2px;
+    }
+
+    /* 全局数据遥测条 */
+    .telemetry-bar {
+      max-width: 1720px;
+      margin: 0 auto 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .telemetry-card {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .t-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #7F8C8D;
+      text-transform: uppercase;
+    }
+    .t-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #2C3E50;
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .t-val.danger {
+      color: #D32F2F;
+    }
+    .t-val.success {
+      color: #2E7D32;
+    }
+    .t-sub {
+      font-size: 11px;
+      color: #9A9287;
+      margin-top: 2px;
+    }
+
+    /* 三档视口并排主容器 */
+    .viewports-stage {
+      max-width: 1720px;
+      margin: 0 auto;
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      overflow-x: auto;
+      padding-bottom: 30px;
+    }
+
+    .viewport-card {
+      background: #FFFFFF;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 30px rgba(60, 40, 20, 0.05);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .viewport-header {
+      padding: 14px 18px;
+      background: #FAF7F2;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .vp-tag-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #2C3E50;
+    }
+    .vp-tag-size {
+      font-size: 12px;
+      font-weight: 700;
+      background: #EAE4D9;
+      color: #5D4037;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 设备外框模拟视口容器 */
+    .device-viewport {
+      background: #2D2319;
+      background-image: radial-gradient(circle at 50% 20%, #3D3023 0%, #1F1710 100%);
+      padding: 28px 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 480px;
+      position: relative;
+    }
+
+    /* 视口各自设定宽 */
+    .vp-375 { width: 375px; }
+    .vp-440 { width: 440px; }
+    .vp-744 { width: 560px; } /* 在桌面展示时收束为 560px 宽度以防横向撑爆，内容逻辑严格模拟 iPad 744 居中 */
+
+    /* ════════════════════════════════════════════════
+     * 生产代码 1:1 移植 CSS (Finish Modal Styles)
+     * 来源: src/kid_app/templates/practice.html:60-120, 418-485
+     * ════════════════════════════════════════════════ */
+    .finish-modal-box {
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 22px 20px 18px;
+      width: 100%;
+      max-width: 376px;   /* v4 硬约束: 宽度上限 376px */
+      box-shadow: 0 20px 60px rgba(60, 40, 20, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.04);
+      max-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      text-align: left;
+    }
+
+    .finish-modal-scroll-body {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      width: 100%;
+      text-align: left;
+    }
+
+    .finish-modal-screen {
+      width: 100%;
+    }
+
+    /* Header 行 */
+    .fe-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .fe-header-icon {
+      width: 20px;
+      height: 20px;
+      color: #2E7D32;
+      flex-shrink: 0;
+    }
+    .fe-header-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: #2E7D32;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    /* 时长展示排版 */
+    .fe-duration-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .fe-duration-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #7F8C8D;
+      letter-spacing: 0.02em;
+      margin-bottom: 2px;
+    }
+    .fe-duration-display {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .finish-mins {
+      font-size: 46px;
+      font-weight: 800;
+      color: #4ECDC4;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      transition: color 150ms ease;
+    }
+    body[data-theme="coral"] .finish-mins {
+      color: #FF6B6B;
+    }
+    .finish-mins-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #5D4037;
+      opacity: 0.9;
+    }
+
+    /* 遍数模块 */
+    .reps-module-header {
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .reps-module-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #5D4037;
+    }
+
+    .reps-module-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(180px, 1.15fr) minmax(140px, 1fr);
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .reps-left-col {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .counter-stage.reps-stage {
+      position: relative;
+      width: 100%;
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+      margin: 0 auto;
+    }
+
+    .tape-ribbon-track {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .tape-slot-top, .tape-slot-bottom {
+      position: absolute;
+      width: 72px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 2;
+      transition: transform 120ms ease-out, opacity 120ms ease-out;
+    }
+    .tape-slot-top {
+      bottom: 37px;
+      mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    }
+    .tape-slot-bottom {
+      top: 37px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%);
+    }
+    .tape-inner-box {
+      font-size: 16px;
+      font-weight: 700;
+      font-style: italic;
+      color: #9A9287;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .reps-band {
+      position: relative;
+      width: 100%;
+      height: 74px;
+      border-radius: 8px;
+      background: #F7F4EE;
+      border: 1px solid rgba(93, 64, 55, 0.09);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px 0 10px;
+      gap: 6px;
+      z-index: 3;
+      user-select: none;
+    }
+
+    .roller-casing {
+      position: relative;
+      flex: 1;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+    .roller-drum {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      perspective: 800px;
+    }
+    .drum-value {
+      font-size: 26px;
+      font-weight: 800;
+      font-style: italic;
+      color: #2C3E50;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .drum-value.empty-state {
+      font-style: normal;
+      font-size: 21px;
+      font-weight: 600;
+      color: #7F8C8D;
+    }
+
+    .stepper-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+      justify-content: center;
+    }
+    .stepper-btn {
+      width: 30px;
+      height: 24px;
+      border: 1px solid rgba(93, 64, 55, 0.12);
+      background: #FFFFFF;
+      border-radius: 4px;
+      color: #5D4037;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .stepper-btn svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+
+    .reps-right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .presets-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .preset-chip {
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(93, 64, 55, 0.12);
+      background: #F7F4EE;
+      color: #5D4037;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 120ms ease-out;
+    }
+    .preset-chip.active {
+      background: #5D4037;
+      color: #FFFFFF;
+      border-color: #5D4037;
+    }
+
+    .reps-result-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #7F8C8D;
+      font-weight: 500;
+    }
+    .capsule-summary-text {
+      font-size: 13px;
+      font-weight: 800;
+      color: #C45C26;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── 动作按钮与 Sticky Footer ── */
+    .finish-modal-actions {
+      display: flex;
+      gap: 8px;
+      flex-direction: row;
+      flex-shrink: 0;
+      width: 100%;
+    }
+    .finish-modal-actions button {
+      padding: 12px 8px;
+      height: 44px;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease-out, opacity 120ms ease-out;
+      flex: 1;
+      white-space: nowrap;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .finish-modal-actions button:active { transform: scale(0.96); }
+
+    /* 现版青绿主色按钮 */
+    body[data-theme="teal"] .finish-modal-actions .btn-confirm,
+    body[data-theme="teal"] .finish-modal-actions .btn-submit {
+      background: var(--teal-primary-grad);
+      color: white;
+      box-shadow: var(--teal-primary-shadow);
+    }
+    body[data-theme="teal"] .finish-modal-actions .btn-cancel,
+    body[data-theme="teal"] .finish-modal-actions .btn-resume {
+      background: var(--teal-yellow-bg);
+      color: var(--teal-yellow-color);
+      box-shadow: var(--teal-yellow-shadow);
+    }
+    body[data-theme="teal"] .finish-modal-actions .btn-abort {
+      background: var(--teal-abort-bg);
+      color: var(--teal-abort-color);
+    }
+
+    /* dizicute 珊瑚红主色按钮 */
+    body[data-theme="coral"] .finish-modal-actions .btn-confirm,
+    body[data-theme="coral"] .finish-modal-actions .btn-submit {
+      background: var(--coral-primary);
+      color: white;
+      box-shadow: var(--coral-primary-shadow);
+    }
+    body[data-theme="coral"] .finish-modal-actions .btn-cancel,
+    body[data-theme="coral"] .finish-modal-actions .btn-resume {
+      background: #FFF1E8;
+      color: #C45C26;
+      box-shadow: none;
+      border: 1px solid rgba(255, 107, 107, 0.25);
+    }
+    body[data-theme="coral"] .finish-modal-actions .btn-abort {
+      background: var(--coral-abort-bg);
+      color: var(--coral-abort-color);
+    }
+
+    /* 方案 A / C 二屏次按钮风格 */
+    body[data-theme="coral"] .finish-modal-actions .btn-secondary-clean {
+      background: var(--coral-secondary-bg);
+      color: var(--coral-secondary-color);
+      border: var(--coral-secondary-border);
+      box-shadow: none;
+    }
+    body[data-theme="teal"] .finish-modal-actions .btn-secondary-clean {
+      background: var(--teal-yellow-bg);
+      color: var(--teal-yellow-color);
+      box-shadow: var(--teal-yellow-shadow);
+    }
+
+    /* 二屏正文样式 */
+    .finish-screen-zero {
+      padding: 4px 0 10px;
+      text-align: left;
+    }
+    .finish-screen-zero .fe-header-row {
+      margin-bottom: 10px;
+    }
+    .finish-screen-zero .fe-header-icon {
+      color: #5D4037;
+    }
+    .finish-screen-zero .fe-header-title {
+      color: #5D4037;
+    }
+    .finish-screen-zero p {
+      font-size: 14px;
+      color: #7F8C8D;
+      line-height: 1.55;
+      margin: 10px 0 16px;
+    }
+
+    /* ════════════════════════════════════════════════
+     * 状态机控制核心 (State-based Rendering)
+     * ════════════════════════════════════════════════ */
+
+    /* 状态 1: 屏1 (Normal Screen 1) */
+    body[data-state="s1"] .screen-1 { display: block; }
+    body[data-state="s1"] .screen-2-content { display: none; }
+    body[data-state="s1"] .actions-screen-1 { display: flex; }
+    body[data-state="s1"] .actions-screen-2-buggy { display: none; }
+    body[data-state="s1"] .actions-screen-2-clean { display: none; }
+    body[data-state="s1"] .screen-2-overlay { display: none; }
+
+    /* 状态 2: 屏2 现版故障 (Buggy State: 5 buttons stacked) */
+    body[data-state="s2-bug"] .screen-1 { display: none; }
+    body[data-state="s2-bug"] .screen-2-content { display: block; }
+    /* 故障重现: 内部 2 按钮显示，外层 3 按钮仍然坚挺存在! */
+    body[data-state="s2-bug"] .actions-screen-2-buggy { display: flex; margin-bottom: 10px; }
+    body[data-state="s2-bug"] .actions-screen-1 { display: flex; } /* 外层 sticky 依然在！产生 2 行 5 按钮 */
+    body[data-state="s2-bug"] .actions-screen-2-clean { display: none; }
+    body[data-state="s2-bug"] .screen-2-overlay { display: none; }
+
+    /* 状态 3: 屏2 新方案 A (Plan A: Actions Synced) */
+    body[data-state="s2-plan-a"] .screen-1 { display: none; }
+    body[data-state="s2-plan-a"] .screen-2-content { display: block; }
+    body[data-state="s2-plan-a"] .actions-screen-2-buggy { display: none; }
+    body[data-state="s2-plan-a"] .actions-screen-1 { display: none; } /* 外层 3 按钮消失！ */
+    body[data-state="s2-plan-a"] .actions-screen-2-clean { display: flex; } /* 切换为单行 2 按钮！ */
+    body[data-state="s2-plan-a"] .screen-2-overlay { display: none; }
+
+    /* 状态 4: 屏2 新方案 C (Plan C: Absolute Sheet Overlay) */
+    body[data-state="s2-plan-c"] .screen-1 { display: block; }
+    body[data-state="s2-plan-c"] .screen-2-content { display: none; }
+    body[data-state="s2-plan-c"] .actions-screen-1 { display: flex; }
+    body[data-state="s2-plan-c"] .actions-screen-2-buggy { display: none; }
+    body[data-state="s2-plan-c"] .actions-screen-2-clean { display: none; }
+    /* 方案 C 核心: 覆层全卡片覆盖，纯 CSS 盖住整个 Modal Box */
+    body[data-state="s2-plan-c"] .screen-2-overlay {
+      position: absolute;
+      inset: 0;
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 22px 20px 18px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* 视口下方实测数据卡片 */
+    .viewport-metrics-panel {
+      padding: 16px;
+      background: #FFFFFF;
+      border-top: 1px solid var(--border);
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 14px;
+    }
+    .m-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .m-item.full-width {
+      grid-column: 1 / -1;
+    }
+    .m-key {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9A9287;
+    }
+    .m-val {
+      font-size: 14px;
+      font-weight: 700;
+      color: #2C3E50;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-status {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-top: 4px;
+    }
+    .metric-status.danger {
+      background: #FEECEB;
+      color: #D32F2F;
+      border: 1px solid rgba(211, 47, 47, 0.2);
+    }
+    .metric-status.success {
+      background: #EDF7ED;
+      color: #2E7D32;
+      border: 1px solid rgba(46, 125, 50, 0.2);
+    }
+    .metric-status.normal {
+      background: #F5F5F5;
+      color: #616161;
+    }
+
+    /* 故障态醒目标注 */
+    .bug-alert-ribbon {
+      display: none;
+      background: #FFF1F0;
+      border: 1px solid #FFCCC7;
+      color: #CF1322;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    body[data-state="s2-bug"] .bug-alert-ribbon {
+      display: block;
+    }
+  </style>
+</head>
+<body data-state="s2-bug" data-theme="teal">
+
+  <!-- 顶部控制栏 -->
+  <header class="top-control-bar">
+    <div class="top-row-main">
+      <div class="title-group">
+        <h1>
+          零遍数二次弹窗重做（可点交互对比）
+          <span class="title-badge">item 3 of 3</span>
+        </h1>
+        <p>真实复现 5 按钮堆叠故障 vs 方案 A 动作栏联动 vs 方案 C 绝对定位覆层</p>
+      </div>
+
+      <div class="toolbar-group">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="btn-group-label">弹窗状态:</span>
+          <div class="seg-control" id="segState">
+            <button type="button" class="seg-btn" data-val="s1">屏 1</button>
+            <button type="button" class="seg-btn active bug-state" data-val="s2-bug">屏 2 现版（故障）</button>
+            <button type="button" class="seg-btn" data-val="s2-plan-a">屏 2 新方案 A (推荐)</button>
+            <button type="button" class="seg-btn" data-val="s2-plan-c">屏 2 新方案 C</button>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="btn-group-label">主色方案:</span>
+          <div class="seg-control" id="segTheme">
+            <button type="button" class="seg-btn active" data-val="teal">现版青绿主色</button>
+            <button type="button" class="seg-btn" data-val="coral">dizicute 珊瑚红主色</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 「看什么」指导说明卡片 -->
+    <div class="guide-banner">
+      <strong>看什么（对比要点指南）：</strong>
+      <ol>
+        <li><strong>看【屏 2 现版（故障）】</strong>：这就是 dad 看到的怪异现象——界面挤出两行动作行共 5 个按钮（第 1 行 2 个 + 第 2 行 3 个），中缝垂直错位，上下粘连。</li>
+        <li><strong>看【屏 2 新方案 A】</strong>：动作行随屏幕状态联动，只保留一行动作行（左「返回修改」次按钮 + 右「确认不记遍数」主按钮），原外层三按钮彻底消失。</li>
+        <li><strong>看【屏 2 新方案 C】</strong>：第 2 屏改为绝对定位白卡覆层（position: absolute; inset: 0），零改动底层 JS 契约，物理遮盖外层三按钮。</li>
+        <li><strong>看【配色对照】</strong>：切换「dizicute 珊瑚红主色」，对比品牌标准珊瑚红（#FF6B6B）与现版青绿渐变在弹窗里的视觉亲和力。</li>
+        <li><strong>看三档视口（375 / 440 / 744）</strong>：下方读数卡完全由 JS 真实量出，验证 376px 边界限制与单按钮可用宽度。</li>
+      </ol>
+    </div>
+  </header>
+
+  <!-- 全局状态遥测 HUD -->
+  <section class="telemetry-bar">
+    <div class="telemetry-card">
+      <div class="t-label">当前弹窗视效状态</div>
+      <div class="t-val" id="hudStateText">屏 2 现版（故障）</div>
+      <div class="t-sub" id="hudStateSub">两行动作行同屏堆叠</div>
+    </div>
+    <div class="telemetry-card">
+      <div class="t-label">动作按钮数量与行数</div>
+      <div class="t-val danger" id="hudBtnCount">5 个按钮 / 2 行</div>
+      <div class="t-sub" id="hudBtnSub">严重超载，视觉无焦点</div>
+    </div>
+    <div class="telemetry-card">
+      <div class="t-label">弹窗边界与左对齐 Keyline</div>
+      <div class="t-val success">376px / Keyline 20px</div>
+      <div class="t-sub">严格遵从 v4 定稿硬约束</div>
+    </div>
+    <div class="telemetry-card">
+      <div class="t-label">按钮触控高度规范</div>
+      <div class="t-val success">44.0 px</div>
+      <div class="t-sub">符合 Apple HIG 最小触控规范</div>
+    </div>
+  </section>
+
+  <!-- 三档视口并排展示区 -->
+  <main class="viewports-stage">
+
+    <!-- ── 视口 1: iPhone SE (375px) ── -->
+    <div class="viewport-card vp-375" id="vpCard375">
+      <div class="viewport-header">
+        <span class="vp-tag-name">iPhone SE 窄屏</span>
+        <span class="vp-tag-size">375 CSS px</span>
+      </div>
+
+      <div class="device-viewport">
+        <!-- 弹窗容器 -->
+        <div class="finish-modal-box" id="box375">
+          <div class="bug-alert-ribbon">故障状态：发现 2 行 5 个按钮叠加</div>
+
+          <div class="finish-modal-scroll-body">
+            <!-- 屏 1 内容 -->
+            <div class="finish-modal-screen screen-1">
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.4l2.6 2.6 4.6-5.2"/></svg>
+                <h3 class="fe-header-title">练习完成!</h3>
+              </div>
+
+              <div class="fe-duration-section">
+                <span class="fe-duration-label">本次练习时长</span>
+                <div class="fe-duration-display">
+                  <span class="finish-mins">10</span>
+                  <span class="finish-mins-label">分钟</span>
+                </div>
+              </div>
+
+              <div class="reps-module-header"><span class="reps-module-title">练习遍数</span></div>
+              <div class="reps-module-grid">
+                <div class="reps-left-col">
+                  <div class="counter-stage reps-stage">
+                    <div class="tape-ribbon-track">
+                      <div class="tape-slot-top"><div class="tape-inner-box">—</div></div>
+                      <div class="tape-slot-bottom"><div class="tape-inner-box">1</div></div>
+                    </div>
+                    <div class="reps-band">
+                      <div class="roller-casing">
+                        <div class="roller-drum">
+                          <div class="drum-value empty-state">—</div>
+                        </div>
+                      </div>
+                      <div class="stepper-card">
+                        <button type="button" class="stepper-btn" aria-label="增加一遍"><svg viewBox="0 0 24 24"><path d="M12 7l-6 6h12z"/></svg></button>
+                        <button type="button" class="stepper-btn" aria-label="减少一遍"><svg viewBox="0 0 24 24"><path d="M12 17l6-6H6z"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="reps-right-col">
+                  <div class="presets-row">
+                    <button type="button" class="preset-chip active">不记</button>
+                    <button type="button" class="preset-chip">1 遍</button>
+                    <button type="button" class="preset-chip">3 遍</button>
+                    <button type="button" class="preset-chip">5 遍</button>
+                    <button type="button" class="preset-chip">10 遍</button>
+                    <button type="button" class="preset-chip">20 遍</button>
+                  </div>
+                  <div class="reps-result-row">
+                    <span>已选：</span>
+                    <span class="capsule-summary-text">不记遍数</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 屏 2 内容（现版与方案 A 共用此文档流） -->
+            <div class="finish-modal-screen finish-screen-zero screen-2-content">
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 class="fe-header-title">本次不记录遍数？</h3>
+              </div>
+              <p>当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+
+              <!-- 现版故障内嵌动作行 (第 1 行) -->
+              <div class="finish-modal-actions actions-screen-2-buggy">
+                <button type="button" class="btn-resume" onclick="setDemoState('s1')">返回修改</button>
+                <button type="button" class="btn-submit" onclick="alert('已确认不记遍数打卡！')">确认不记遍数</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 方案 C: 绝对定位整卡覆层 (Sheet Overlay) -->
+          <div class="screen-2-overlay">
+            <div>
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" style="color:#5D4037" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 class="fe-header-title" style="color:#5D4037">本次不记录遍数？</h3>
+              </div>
+              <p style="font-size:14px;color:#7F8C8D;line-height:1.55;margin:10px 0 16px;">当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+            </div>
+            <div class="finish-modal-actions">
+              <button type="button" class="btn-secondary-clean" onclick="setDemoState('s1')">返回修改</button>
+              <button type="button" class="btn-confirm" onclick="alert('方案 C: 已确认打卡！')">确认不记遍数</button>
+            </div>
+          </div>
+
+          <!-- 外层 Sticky Footer (第一屏 3 按钮) -->
+          <div class="finish-modal-actions finish-modal-3btns actions-screen-1">
+            <button type="button" class="btn-submit" onclick="setDemoState('s2-plan-a')">提交</button>
+            <button type="button" class="btn-resume">继续练</button>
+            <button type="button" class="btn-abort">不练了</button>
+          </div>
+
+          <!-- 方案 A 外层替换 Sticky Footer (第二屏 2 按钮) -->
+          <div class="finish-modal-actions actions-screen-2-clean">
+            <button type="button" class="btn-secondary-clean" onclick="setDemoState('s1')">返回修改</button>
+            <button type="button" class="btn-confirm" onclick="alert('方案 A: 已确认打卡！')">确认不记遍数</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 实测数据面板 -->
+      <div class="viewport-metrics-panel">
+        <div class="metrics-grid">
+          <div class="m-item">
+            <span class="m-key">弹窗实测外宽</span>
+            <span class="m-val m-val-box-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">内容可用净宽</span>
+            <span class="m-val m-val-net-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">动作区行数</span>
+            <span class="m-val m-val-rows">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">可见按钮总数</span>
+            <span class="m-val m-val-btns">—</span>
+          </div>
+          <div class="m-item full-width">
+            <span class="m-key">单按钮宽度实测</span>
+            <span class="m-val m-val-btn-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">按钮触控高度</span>
+            <span class="m-val m-val-btn-h">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">布局评定</span>
+            <span class="metric-status m-val-diag">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 视口 2: iPhone 17 Pro Max (440px) ── -->
+    <div class="viewport-card vp-440" id="vpCard440">
+      <div class="viewport-header">
+        <span class="vp-tag-name">iPhone 17 Pro Max</span>
+        <span class="vp-tag-size">440 CSS px</span>
+      </div>
+
+      <div class="device-viewport">
+        <!-- 弹窗容器 -->
+        <div class="finish-modal-box" id="box440">
+          <div class="bug-alert-ribbon">故障状态：发现 2 行 5 个按钮叠加</div>
+
+          <div class="finish-modal-scroll-body">
+            <!-- 屏 1 内容 -->
+            <div class="finish-modal-screen screen-1">
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.4l2.6 2.6 4.6-5.2"/></svg>
+                <h3 class="fe-header-title">练习完成!</h3>
+              </div>
+
+              <div class="fe-duration-section">
+                <span class="fe-duration-label">本次练习时长</span>
+                <div class="fe-duration-display">
+                  <span class="finish-mins">10</span>
+                  <span class="finish-mins-label">分钟</span>
+                </div>
+              </div>
+
+              <div class="reps-module-header"><span class="reps-module-title">练习遍数</span></div>
+              <div class="reps-module-grid">
+                <div class="reps-left-col">
+                  <div class="counter-stage reps-stage">
+                    <div class="tape-ribbon-track">
+                      <div class="tape-slot-top"><div class="tape-inner-box">—</div></div>
+                      <div class="tape-slot-bottom"><div class="tape-inner-box">1</div></div>
+                    </div>
+                    <div class="reps-band">
+                      <div class="roller-casing">
+                        <div class="roller-drum">
+                          <div class="drum-value empty-state">—</div>
+                        </div>
+                      </div>
+                      <div class="stepper-card">
+                        <button type="button" class="stepper-btn" aria-label="增加一遍"><svg viewBox="0 0 24 24"><path d="M12 7l-6 6h12z"/></svg></button>
+                        <button type="button" class="stepper-btn" aria-label="减少一遍"><svg viewBox="0 0 24 24"><path d="M12 17l6-6H6z"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="reps-right-col">
+                  <div class="presets-row">
+                    <button type="button" class="preset-chip active">不记</button>
+                    <button type="button" class="preset-chip">1 遍</button>
+                    <button type="button" class="preset-chip">3 遍</button>
+                    <button type="button" class="preset-chip">5 遍</button>
+                    <button type="button" class="preset-chip">10 遍</button>
+                    <button type="button" class="preset-chip">20 遍</button>
+                  </div>
+                  <div class="reps-result-row">
+                    <span>已选：</span>
+                    <span class="capsule-summary-text">不记遍数</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 屏 2 内容 -->
+            <div class="finish-modal-screen finish-screen-zero screen-2-content">
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 class="fe-header-title">本次不记录遍数？</h3>
+              </div>
+              <p>当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+
+              <!-- 现版故障内嵌动作行 -->
+              <div class="finish-modal-actions actions-screen-2-buggy">
+                <button type="button" class="btn-resume" onclick="setDemoState('s1')">返回修改</button>
+                <button type="button" class="btn-submit" onclick="alert('已确认不记遍数打卡！')">确认不记遍数</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 方案 C: 绝对定位整卡覆层 -->
+          <div class="screen-2-overlay">
+            <div>
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" style="color:#5D4037" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 class="fe-header-title" style="color:#5D4037">本次不记录遍数？</h3>
+              </div>
+              <p style="font-size:14px;color:#7F8C8D;line-height:1.55;margin:10px 0 16px;">当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+            </div>
+            <div class="finish-modal-actions">
+              <button type="button" class="btn-secondary-clean" onclick="setDemoState('s1')">返回修改</button>
+              <button type="button" class="btn-confirm" onclick="alert('方案 C: 已确认打卡！')">确认不记遍数</button>
+            </div>
+          </div>
+
+          <!-- 外层 Sticky Footer (第一屏 3 按钮) -->
+          <div class="finish-modal-actions finish-modal-3btns actions-screen-1">
+            <button type="button" class="btn-submit" onclick="setDemoState('s2-plan-a')">提交</button>
+            <button type="button" class="btn-resume">继续练</button>
+            <button type="button" class="btn-abort">不练了</button>
+          </div>
+
+          <!-- 方案 A 外层替换 Sticky Footer (第二屏 2 按钮) -->
+          <div class="finish-modal-actions actions-screen-2-clean">
+            <button type="button" class="btn-secondary-clean" onclick="setDemoState('s1')">返回修改</button>
+            <button type="button" class="btn-confirm" onclick="alert('方案 A: 已确认打卡！')">确认不记遍数</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 实测数据面板 -->
+      <div class="viewport-metrics-panel">
+        <div class="metrics-grid">
+          <div class="m-item">
+            <span class="m-key">弹窗实测外宽</span>
+            <span class="m-val m-val-box-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">内容可用净宽</span>
+            <span class="m-val m-val-net-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">动作区行数</span>
+            <span class="m-val m-val-rows">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">可见按钮总数</span>
+            <span class="m-val m-val-btns">—</span>
+          </div>
+          <div class="m-item full-width">
+            <span class="m-key">单按钮宽度实测</span>
+            <span class="m-val m-val-btn-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">按钮触控高度</span>
+            <span class="m-val m-val-btn-h">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">布局评定</span>
+            <span class="metric-status m-val-diag">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 视口 3: iPad mini 竖屏 (744px) ── -->
+    <div class="viewport-card vp-744" id="vpCard744">
+      <div class="viewport-header">
+        <span class="vp-tag-name">iPad mini 竖屏</span>
+        <span class="vp-tag-size">744 CSS px (居中视效)</span>
+      </div>
+
+      <div class="device-viewport">
+        <!-- 弹窗容器 -->
+        <div class="finish-modal-box" id="box744">
+          <div class="bug-alert-ribbon">故障状态：发现 2 行 5 个按钮叠加</div>
+
+          <div class="finish-modal-scroll-body">
+            <!-- 屏 1 内容 -->
+            <div class="finish-modal-screen screen-1">
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.4l2.6 2.6 4.6-5.2"/></svg>
+                <h3 class="fe-header-title">练习完成!</h3>
+              </div>
+
+              <div class="fe-duration-section">
+                <span class="fe-duration-label">本次练习时长</span>
+                <div class="fe-duration-display">
+                  <span class="finish-mins">10</span>
+                  <span class="finish-mins-label">分钟</span>
+                </div>
+              </div>
+
+              <div class="reps-module-header"><span class="reps-module-title">练习遍数</span></div>
+              <div class="reps-module-grid">
+                <div class="reps-left-col">
+                  <div class="counter-stage reps-stage">
+                    <div class="tape-ribbon-track">
+                      <div class="tape-slot-top"><div class="tape-inner-box">—</div></div>
+                      <div class="tape-slot-bottom"><div class="tape-inner-box">1</div></div>
+                    </div>
+                    <div class="reps-band">
+                      <div class="roller-casing">
+                        <div class="roller-drum">
+                          <div class="drum-value empty-state">—</div>
+                        </div>
+                      </div>
+                      <div class="stepper-card">
+                        <button type="button" class="stepper-btn" aria-label="增加一遍"><svg viewBox="0 0 24 24"><path d="M12 7l-6 6h12z"/></svg></button>
+                        <button type="button" class="stepper-btn" aria-label="减少一遍"><svg viewBox="0 0 24 24"><path d="M12 17l6-6H6z"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="reps-right-col">
+                  <div class="presets-row">
+                    <button type="button" class="preset-chip active">不记</button>
+                    <button type="button" class="preset-chip">1 遍</button>
+                    <button type="button" class="preset-chip">3 遍</button>
+                    <button type="button" class="preset-chip">5 遍</button>
+                    <button type="button" class="preset-chip">10 遍</button>
+                    <button type="button" class="preset-chip">20 遍</button>
+                  </div>
+                  <div class="reps-result-row">
+                    <span>已选：</span>
+                    <span class="capsule-summary-text">不记遍数</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 屏 2 内容 -->
+            <div class="finish-modal-screen finish-screen-zero screen-2-content">
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 class="fe-header-title">本次不记录遍数？</h3>
+              </div>
+              <p>当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+
+              <!-- 现版故障内嵌动作行 -->
+              <div class="finish-modal-actions actions-screen-2-buggy">
+                <button type="button" class="btn-resume" onclick="setDemoState('s1')">返回修改</button>
+                <button type="button" class="btn-submit" onclick="alert('已确认不记遍数打卡！')">确认不记遍数</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 方案 C: 绝对定位整卡覆层 -->
+          <div class="screen-2-overlay">
+            <div>
+              <div class="fe-header-row">
+                <svg class="fe-header-icon" style="color:#5D4037" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <h3 class="fe-header-title" style="color:#5D4037">本次不记录遍数？</h3>
+              </div>
+              <p style="font-size:14px;color:#7F8C8D;line-height:1.55;margin:10px 0 16px;">当前遍数为「—」，点击确定将只记录练习时长，不统计重复遍数。</p>
+            </div>
+            <div class="finish-modal-actions">
+              <button type="button" class="btn-secondary-clean" onclick="setDemoState('s1')">返回修改</button>
+              <button type="button" class="btn-confirm" onclick="alert('方案 C: 已确认打卡！')">确认不记遍数</button>
+            </div>
+          </div>
+
+          <!-- 外层 Sticky Footer (第一屏 3 按钮) -->
+          <div class="finish-modal-actions finish-modal-3btns actions-screen-1">
+            <button type="button" class="btn-submit" onclick="setDemoState('s2-plan-a')">提交</button>
+            <button type="button" class="btn-resume">继续练</button>
+            <button type="button" class="btn-abort">不练了</button>
+          </div>
+
+          <!-- 方案 A 外层替换 Sticky Footer (第二屏 2 按钮) -->
+          <div class="finish-modal-actions actions-screen-2-clean">
+            <button type="button" class="btn-secondary-clean" onclick="setDemoState('s1')">返回修改</button>
+            <button type="button" class="btn-confirm" onclick="alert('方案 A: 已确认打卡！')">确认不记遍数</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 实测数据面板 -->
+      <div class="viewport-metrics-panel">
+        <div class="metrics-grid">
+          <div class="m-item">
+            <span class="m-key">弹窗实测外宽</span>
+            <span class="m-val m-val-box-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">内容可用净宽</span>
+            <span class="m-val m-val-net-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">动作区行数</span>
+            <span class="m-val m-val-rows">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">可见按钮总数</span>
+            <span class="m-val m-val-btns">—</span>
+          </div>
+          <div class="m-item full-width">
+            <span class="m-key">单按钮宽度实测</span>
+            <span class="m-val m-val-btn-w">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">按钮触控高度</span>
+            <span class="m-val m-val-btn-h">—</span>
+          </div>
+          <div class="m-item">
+            <span class="m-key">布局评定</span>
+            <span class="metric-status m-val-diag">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // 状态机全局变量
+    let currentState = 's2-bug';
+    let currentTheme = 'teal';
+
+    // 状态文字字典
+    const STATE_CONFIG = {
+      's1': {
+        name: '屏 1 (标准态)',
+        sub: '时长 + 遍数滚轮 + 外层 3 按钮',
+        btnText: '3 个按钮 / 1 行',
+        btnClass: 'normal',
+        btnSub: '标准第一屏，外层提交/继续练/不练了'
+      },
+      's2-bug': {
+        name: '屏 2 现版（故障态）',
+        sub: '两行动作行同屏堆叠，中缝错位',
+        btnText: '5 个按钮 / 2 行',
+        btnClass: 'danger',
+        btnSub: '严重超载，视觉无焦点（dad 看到的怪）'
+      },
+      's2-plan-a': {
+        name: '屏 2 新方案 A (推荐)',
+        sub: '外层动作行联动受控，单行 2 按钮',
+        btnText: '2 个按钮 / 1 行',
+        btnClass: 'success',
+        btnSub: '左返回/右确认，原 3 按钮彻底消失'
+      },
+      's2-plan-c': {
+        name: '屏 2 新方案 C',
+        sub: '整卡绝对定位覆层，物理遮蔽 3 按钮',
+        btnText: '2 个按钮 / 1 行',
+        btnClass: 'success',
+        btnSub: '顶层覆盖，零修改底层 JS 契约'
+      }
+    };
+
+    function setDemoState(state) {
+      currentState = state;
+      document.body.dataset.state = state;
+
+      // 更新按钮组激活态
+      document.querySelectorAll('#segState .seg-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.val === state);
+      });
+
+      // 更新 HUD
+      const cfg = STATE_CONFIG[state];
+      if (cfg) {
+        document.getElementById('hudStateText').textContent = cfg.name;
+        document.getElementById('hudStateSub').textContent = cfg.sub;
+        const hudBtn = document.getElementById('hudBtnCount');
+        hudBtn.textContent = cfg.btnText;
+        hudBtn.className = 't-val ' + cfg.btnClass;
+        document.getElementById('hudBtnSub').textContent = cfg.btnSub;
+      }
+
+      // 实时测量 DOM
+      requestAnimationFrame(updateMetrics);
+    }
+
+    function setDemoTheme(theme) {
+      currentTheme = theme;
+      document.body.dataset.theme = theme;
+
+      document.querySelectorAll('#segTheme .seg-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.val === theme);
+      });
+
+      requestAnimationFrame(updateMetrics);
+    }
+
+    // 核心测量函数: 纯 JS 抓取真实 getBoundingClientRect()
+    function updateMetrics() {
+      const cards = [
+        { id: 'vpCard375', boxId: 'box375' },
+        { id: 'vpCard440', boxId: 'box440' },
+        { id: 'vpCard744', boxId: 'box744' }
+      ];
+
+      cards.forEach(c => {
+        const card = document.getElementById(c.id);
+        const box = document.getElementById(c.boxId);
+        if (!card || !box) return;
+
+        const boxRect = box.getBoundingClientRect();
+        const scrollBody = box.querySelector('.finish-modal-scroll-body');
+        const netRect = scrollBody ? scrollBody.getBoundingClientRect() : boxRect;
+
+        // 收集当前视口内真实可见的按钮
+        const allButtons = Array.from(box.querySelectorAll('button'));
+        const visibleButtons = allButtons.filter(btn => {
+          // 只统计划归在动作栏或覆层动作栏里的核心操作按钮
+          if (!btn.closest('.finish-modal-actions')) return false;
+          const r = btn.getBoundingClientRect();
+          const s = window.getComputedStyle(btn);
+          const p = window.getComputedStyle(btn.parentElement);
+          return r.width > 0 && r.height > 0 && s.display !== 'none' && p.display !== 'none' && s.visibility !== 'hidden';
+        });
+
+        // 统计不重复的 Top 坐标以判定实际显示了多少行
+        const topSet = new Set();
+        visibleButtons.forEach(b => {
+          topSet.add(Math.round(b.getBoundingClientRect().top));
+        });
+
+        const rowCount = topSet.size;
+        const btnCount = visibleButtons.length;
+        const btnWArray = visibleButtons.map(b => Math.round(b.getBoundingClientRect().width * 10) / 10);
+        const btnH = visibleButtons.length > 0 ? Math.round(visibleButtons[0].getBoundingClientRect().height * 10) / 10 : 0;
+
+        // 回写到界面卡片
+        const wBoxEl = card.querySelector('.m-val-box-w');
+        const wNetEl = card.querySelector('.m-val-net-w');
+        const rCountEl = card.querySelector('.m-val-rows');
+        const bCountEl = card.querySelector('.m-val-btns');
+        const bWidthEl = card.querySelector('.m-val-btn-w');
+        const bHeightEl = card.querySelector('.m-val-btn-h');
+        const diagEl = card.querySelector('.m-val-diag');
+
+        if (wBoxEl) wBoxEl.textContent = Math.round(boxRect.width) + ' px';
+        if (wNetEl) wNetEl.textContent = Math.round(netRect.width) + ' px';
+        if (rCountEl) rCountEl.textContent = rowCount + ' 行';
+        if (bCountEl) bCountEl.textContent = btnCount + ' 个';
+
+        if (bWidthEl) {
+          if (btnCount === 5) {
+            bWidthEl.textContent = '行1: ' + btnWArray[0] + 'px / 行2: ' + btnWArray[2] + 'px';
+          } else if (btnCount === 2) {
+            bWidthEl.textContent = btnWArray[0] + ' px (双按钮齐平等宽)';
+          } else if (btnCount === 3) {
+            bWidthEl.textContent = btnWArray[0] + ' px (三按钮齐平等宽)';
+          } else {
+            bWidthEl.textContent = (btnWArray[0] || 0) + ' px';
+          }
+        }
+
+        if (bHeightEl) bHeightEl.textContent = btnH + ' px';
+
+        if (diagEl) {
+          if (btnCount === 5) {
+            diagEl.className = 'metric-status danger';
+            diagEl.textContent = '异常: 2行共5按钮叠加，列网格错位';
+          } else if (btnCount === 2) {
+            diagEl.className = 'metric-status success';
+            diagEl.textContent = '正常: 单行2按钮，左右齐平，主次分明';
+          } else {
+            diagEl.className = 'metric-status normal';
+            diagEl.textContent = '屏1标准态: 单行3按钮';
+          }
+        }
+      });
+    }
+
+    // 绑定顶部工具栏交互
+    document.getElementById('segState').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (btn && btn.dataset.val) setDemoState(btn.dataset.val);
+    });
+
+    document.getElementById('segTheme').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (btn && btn.dataset.val) setDemoTheme(btn.dataset.val);
+    });
+
+    // 页面就绪后立即测量
+    window.addEventListener('load', () => {
+      setDemoState('s2-bug');
+      window.addEventListener('resize', updateMetrics);
+    });
+  </script>
+</body>
+</html>

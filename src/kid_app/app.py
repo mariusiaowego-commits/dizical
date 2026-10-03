@@ -22,6 +22,18 @@ from src import practice as practice_module
 from src import db_adapter  # Sprint 08: 双后端占位符适配 (conn.execute → db_adapter.execute)
 from src.kid_app.subject_info import get_subject_info
 from src.kid_app.schemas import PracticeLogRequest  # PR-B: Pydantic 校验
+from src.kid_app.duration_fmt import (  # 口径 B + 秒字段注解
+    fmt as fmt_dur,
+    short as short_dur,
+    pick_seconds,
+    total_seconds_of_practice,
+    write_minutes,
+    resolve_request_seconds,
+    annotate_item,
+    annotate_session,
+    annotate_behavior,
+    invoke,
+)
 from src.kid_app.errors import ConflictError, NotFoundError, MaintenanceBlockedError  # Sprint 09 P0-12 (PR-D)
 from pydantic import ValidationError
 
@@ -123,7 +135,6 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/lessons")
         or path.startswith("/api/bless-pool")
         or path.startswith("/api/achievements")
-        or path.startswith("/api/blindbox")
         or path.startswith("/api/items")
         or path.startswith("/api/practices/")
         or path.startswith("/api/practice-sessions")
@@ -176,25 +187,32 @@ _dedup_cache: Dict[tuple, tuple] = {}
 
 def _dedup_key(date: str, item_id: int, minutes: int,
                tempo_bpm: int = 0, content: str = "",
-               practice_at: str = "", reps: Optional[int] = None) -> tuple:
-    """reps 纳入 key: None 与漏传相同, 数字不同则不算同一次打卡."""
+               practice_at: str = "", reps: Optional[int] = None,
+               seconds: Optional[int] = None) -> tuple:
+    """时长槽用秒。没带 seconds 时用 minutes*60，这样 10 秒和 50 秒不会互相挡，
+    旧客户端同 5 分钟仍互相挡，且 seconds=300 与没带秒的 minutes=5 算同一次。
+    reps: None 与漏传相同, 数字不同则不算同一次打卡.
+    """
     reps_key = None if reps is None else int(reps)
-    return (date, int(item_id), int(minutes), int(tempo_bpm or 0),
+    dur = int(seconds) if seconds is not None else int(minutes or 0) * 60
+    return (date, int(item_id), dur, int(tempo_bpm or 0),
             content or "", practice_at or "", reps_key)
 
 
 def _check_dedup(date: str, item_id: int, minutes: int,
                  tempo_bpm: int = 0, content: str = "",
-                 practice_at: str = "", reps: Optional[int] = None) -> Optional[dict]:
-    """5s 内 (date, item_id, minutes, tempo_bpm, content, practice_at, reps) 重复 → 返回缓存 response JSON.
+                 practice_at: str = "", reps: Optional[int] = None,
+                 seconds: Optional[int] = None) -> Optional[dict]:
+    """窗口内同 key 重复 → 返回缓存 response JSON.
 
     2026-08-01 fix: 把 tempo_bpm / content / practice_at 加进 dedup key,
     解决 1 科目录 8 条 session 都被屏蔽的 bug (原 key 只看 minutes, 8 条同 5min 全算重复).
+    2026-09-30: 时长槽从整数分钟改成秒, 10 秒与 50 秒不再互相挡.
     副作用: 防双击/网络重传仍有效 (同一前端同一时刻连续 POST 仍被屏蔽).
     """
     if not date or not (item_id and minutes):
         return None
-    key = _dedup_key(date, item_id, minutes, tempo_bpm, content, practice_at, reps)
+    key = _dedup_key(date, item_id, minutes, tempo_bpm, content, practice_at, reps, seconds)
     cached = _dedup_cache.get(key)
     if cached and (time.time() - cached[0]) < _DEDUP_WINDOW_SECONDS:
         return cached[1]
@@ -203,12 +221,12 @@ def _check_dedup(date: str, item_id: int, minutes: int,
 
 def _record_dedup(date: str, item_id: int, minutes: int, body_json: dict,
                    tempo_bpm: int = 0, content: str = "",
-                   practice_at: str = "", reps: Optional[int] = None) -> None:
-    """记录 (date, item_id, minutes, tempo_bpm, content, practice_at, reps) → response JSON.
-    2026-08-01 fix: key 扩展 (见 _check_dedup docstring)."""
+                   practice_at: str = "", reps: Optional[int] = None,
+                   seconds: Optional[int] = None) -> None:
+    """记录去重 key → response JSON. 时长槽用秒 (见 _dedup_key)."""
     if not date or not (item_id and minutes):
         return
-    key = _dedup_key(date, item_id, minutes, tempo_bpm, content, practice_at, reps)
+    key = _dedup_key(date, item_id, minutes, tempo_bpm, content, practice_at, reps, seconds)
     _dedup_cache[key] = (time.time(), body_json)
     if len(_dedup_cache) > 100:
         cutoff = time.time() - _DEDUP_WINDOW_SECONDS
@@ -601,10 +619,9 @@ def _week_progress():
     return pct, f"{days}/{goal} 天"
 
 
-def _calc_yesterday_mins(days_ago: int = 1):
+def _calc_yesterday_seconds(days_ago: int = 1) -> int:
     d = dt.date.today() - dt.timedelta(days=days_ago)
-    p = db.get_daily_practice(d)
-    return p.get("total_minutes", 0) if p else 0
+    return total_seconds_of_practice(db.get_daily_practice(d))
 
 
 def _calc_total_all_time():
@@ -687,13 +704,15 @@ def _calc_top_items(conn: sqlite3.Connection,
             if not isinstance(it, dict):
                 continue
             iid = it.get("item_id")
-            mins = it.get("minutes", 0) or 0
-            if iid is not None:
-                totals[int(iid)] = totals.get(int(iid), 0) + int(mins)
+            if iid is None:
+                continue
+            # 展示用秒相加。秒缺省时等于 minutes*60，名次与按分钟排一致。
+            sec = pick_seconds(it.get("seconds"), it.get("minutes", 0) or 0)
+            totals[int(iid)] = totals.get(int(iid), 0) + sec
 
     ranked = sorted(((totals[iid], item_id_to_name.get(iid, f"#{iid}"))
                      for iid in totals if totals[iid] > 0), reverse=True)
-    return [(name, mins) for mins, name in ranked[:limit]]
+    return [(name, sec) for sec, name in ranked[:limit]]
 
 
 def _calc_last_practice_top(limit: int = 2) -> dict:
@@ -794,9 +813,10 @@ def _calc_month_mins_and_days():
     return mins, days
 
 
-def _ring_diff(current, previous, unit="天", ref_period="上周"):
+def _ring_diff(current, previous, unit="天", ref_period="上周", as_seconds=False):
     """计算环比差异文字（自然中文）: (diff_text, is_positive)
     ref_period: 对比周期文字，默认"上周"；可传"4月"等上月名称
+    as_seconds: current/previous 是秒，差值按口径 B 写（0 秒不出现「0秒」）。
     """
     if previous == 0:
         return "", False
@@ -805,7 +825,10 @@ def _ring_diff(current, previous, unit="天", ref_period="上周"):
         return f"与{ref_period}持平", False
     direction = "多" if diff > 0 else "少"
     if unit == "分":
-        return f"比{ref_period}{direction}{abs(diff)}分钟", diff > 0
+        label = fmt_dur(abs(diff)) if as_seconds else f"{abs(diff)}分钟"
+        if as_seconds and not label:
+            return f"与{ref_period}持平", False
+        return f"比{ref_period}{direction}{label}", diff > 0
     else:
         return f"比{ref_period}{direction}{abs(diff)}天", diff > 0
 
@@ -1029,228 +1052,6 @@ def _build_milestone_card(
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 每日打卡盲盒 · 主题注册中心
-# ═══════════════════════════════════════════════════════════════════════════
-# 每个主题 = 1 个 dict 集 (IMAGES/NAMES/DESCS/CONDS) + 1 个 meta dict (title/tag/desc/cover)
-# 加新主题: 1) 写新 *_<SLUG>_* 4 个 dict  2) THEMES[slug] = {...}  3) 准备 7 张图
-# ═══════════════════════════════════════════════════════════════════════════
-
-# ─── 主题 1: ok哥赶海（原版） ──────────────────────────────────────────────
-OK_SEA_IMAGES = {
-    1: "/static/badges/daily_checkin_1.png",
-    2: "/static/badges/daily_checkin_2.png",
-    3: "/static/badges/daily_checkin_3.png",
-    4: "/static/badges/daily_checkin_4.png",
-    5: "/static/badges/daily_checkin_5.png",
-    6: "/static/badges/daily_checkin_6.png",
-    7: "/static/badges/daily_checkin_7.png",
-}
-
-OK_SEA_NAMES = {
-    1: "🐡 惊喜起点",
-    2: "🦀️ 爆桶狂欢",
-    3: "🐙 爆笑羁绊",
-    4: "🐚 声音共鸣",
-    5: "🌟 狂欢大奖",
-    6: "🪼 最后高光",
-    7: "🗺️ 终极神话",
-}
-
-OK_SEA_DESCS = {
-    1: "ok哥每天赶海第一件事不是看潮水，是看桶——今天桶空着，大海准备了什么？他刚弯腰，一只粉色河豚\"噗\"地蹦进桶里，气得圆滚滚的，像个生气的汤圆。ok哥说：\"哟，这河豚气鼓鼓的，跟我周一早上不想起床的样子一模一样！\"你周一打卡，河豚就是你的开工信号——它虽然气鼓鼓的，但它来了，就说明大海今天给你留了惊喜！",
-    2: "ok哥最爱的词就是\"爆桶\"——桶装满了叫爆桶，桶装太满了也叫爆桶，桶里跳出一只大螃蟹还叫爆桶。今天他从沙子里拽出一只拳头大的红螃蟹，螃蟹死活不肯松钳，一夹——正好夹住YoYo的笛梢！YoYo使劲拔笛子，螃蟹使劲夹笛子，ok哥在旁边不帮忙，光顾着喊：\"大货！大货！别动让我拍！\"你周二打卡，这只螃蟹就是你的——它夹着你的笛子不放，就像你坚持练笛不放弃一样！",
-    3: "ok哥抓过无数海鲜，但章鱼是他一生的对手。上次他抓了一只，章鱼八条腿分别吸在他的帽子、眼镜、桶、YoYo的笛子上，还剩三条腿悠闲地给自己扇风。ok哥说：\"这哥们比我还能抓——它把我抓住了！\"你周三打卡，章鱼就是你的\"周中恶魔\"——练笛练到周三最累了，这只章鱼就像你的疲惫，缠着你不放，但你看ok哥笑成那样，就知道其实它也是你的开心果！",
-    4: "赶海最浪漫的时刻不是抓到大货，是你在海边捡到一枚海螺，贴到耳朵上——\"呜——\"，里面好像藏着整片大海的声音。ok哥说：\"我赶海十几年，海螺听过无数，但没有一个像今天这枚——它里面传出来的不是海浪声，是笛声！\"他把海螺递给YoYo，YoYo贴到耳朵上，里面飘出了彩虹色的乐谱。你周四打卡，这枚极光海螺就是你的回声——你吹进去的每一个音符，大海都记住了！",
-    5: "周五了！ok哥说：\"赶海一整周，今天该开大奖了！\"他一铲子下去，沙子里蹦出一个金灿灿的宝箱，打开一看——不是金币，不是珍珠，是一枚比脸还大的黄金海星和一本发光的乐谱！ok哥愣了一秒，然后对着镜头比了个\"OK\"：\"收货！比爆桶还爽！\"你周五打卡，放学了大解放，宝箱为你打开，这周最亮的奖励归你！",
-    6: "ok哥赶海赶了一周，今晚他决定来点不一样的——夜赶海！手电筒一开，海面突然浮起一只半透明的魔鬼鱼，浑身发着梦幻紫光，像一片会飞的光。ok哥说：\"我赶海这么多年，夜光的见过不少，但会跟着笛声游的我头一回见！\"YoYo开始吹笛，魔鬼鱼真的跟着笛声的节奏游。你周六打卡，夜光魔鬼鱼为你亮起来——周末的夜晚，笛声和荧光交织，这是属于你的深海演唱会！",
-    7: "ok哥换上了他的船长服——虽然这衣服他自己都忘了什么时候买的，但他说：\"大结局必须有仪式感！\"海浪突然退去，沙滩上浮现出一个蓝色光环，一条由海水聚成的小神龙从光环中腾空而起，嘴里叼着一个玻璃漂流瓶。ok哥说：\"我赶了一辈子海，今天终于赶到了龙！\"瓶子里面是一张金色的乐谱，是这周你吹过的所有曲子的终极合集。你周日打卡，一周完美收官，神龙亲自给你颁奖！",
-}
-
-OK_SEA_CONDS = {d: "完成今日练习即可解锁" for d in range(1, 8)}
-
-# ─── 主题 2: 长发公主的冒险 ────────────────────────────────────────────────
-RAPUNZEL_IMAGES = {
-    1: "/static/badges/rapunzel_1.png",
-    2: "/static/badges/rapunzel_2.png",
-    3: "/static/badges/rapunzel_3.png",
-    4: "/static/badges/rapunzel_4.png",
-    5: "/static/badges/rapunzel_5.png",
-    6: "/static/badges/rapunzel_6.png",
-    7: "/static/badges/rapunzel_7.png",
-}
-
-RAPUNZEL_NAMES = {
-    1: "🌅 塔窗之光",
-    2: "🐿️ 松鼠朋友",
-    3: "🌸 花园发现",
-    4: "🎨 彩虹编织",
-    5: "⛈️ 风雨挑战",
-    6: "✨ 魔法时刻",
-    7: "🚪 自由之门",
-}
-
-RAPUNZEL_DESCS = {
-    1: "小公主每天在塔里练习用长发扫地，今天她抬起头，看到窗外有一朵粉色的小花。她深吸一口气，把长发甩出去——\"噗\"一声，长发缠住了花茎！她小心翼翼地拉回来，花瓣上的露珠在阳光下闪闪发光。小公主笑了：\"原来我的头发可以够到外面的世界！\"你周一打卡，就像小公主第一次用长发够到窗外的花，虽然只是小小的尝试，但已经迈出了第一步！",
-    2: "一阵风吹过，一只小松鼠\"啪\"地掉在窗台上，吓得瑟瑟发抖。小公主赶紧把长发甩过去，松鼠抓住头发，像荡秋千一样飞进房间。松鼠抖了抖蓬松的尾巴，好奇地看着公主。公主摸摸它的头：\"别怕，我叫长发公主，你呢？\"松鼠\"吱吱\"叫了两声，好像在说\"谢谢你\"。你周二打卡，就像小公主救了松鼠，你的坚持帮助了需要帮助的朋友！",
-    3: "小公主从窗户往下看，发现塔下有一片美丽的花园，开满了五颜六色的花。她灵机一动，把长发甩下去，\"噗噗噗\"——长发像绳子一样，把花朵一朵一朵拉上来！松鼠在旁边帮忙递花，房间瞬间变成了花园。公主开心地转圈，长发上的花朵像星星一样闪烁。你周三打卡，就像小公主发现了花园，你的努力正在把美好的事物带到你身边！",
-    4: "小公主把长发分成几股，用花朵和藤蔓编织成彩色的绳子。她把绳子挂在窗边，阳光照进来——\"哇！\"整个房间出现了彩虹！松鼠兴奋地跳来跳去，用爪子去抓彩虹。公主笑着说：\"原来我的头发不只能扫地，还能编织彩虹！\"你周四打卡，就像小公主编织彩虹，你的坚持正在创造意想不到的美好！",
-    5: "暴风雨来了！窗户被吹开，雨水灌进来，小松鼠和几只小鸟吓得缩在角落。小公主深吸一口气，把长发甩出去，像一把大伞一样罩住小动物们。风雨打在长发上，公主咬着牙撑住。雨停了，小动物们都安全，公主累得坐在地上，但笑得很开心。你周五打卡，就像小公主面对风雨，虽然很累，但你保护了重要的东西！",
-    6: "深夜，月光从窗户照进来。小公主的长发突然开始发光——金色的光芒像星星一样闪烁！小动物们都醒了，围着公主看。公主把长发甩向天花板，光芒像烟花一样散开，照亮了整个房间。松鼠\"吱吱\"叫着，好像在说：\"好美啊！\"你周六打卡，就像小公主发现长发的秘密，你的坚持正在积累看不见的力量！",
-    7: "小公主站在高塔的大门前，心跳得很快。她深吸一口气，推开门——阳光照进来，长发铺在地上，像一条金色的地毯。松鼠跳到她肩膀上，小鸟围着她飞。公主迈出第一步，踩在金色的长发上，走向外面的世界。她回头看了看高塔，笑了：\"谢谢你，我的头发，你让我有勇气走出这里。\"你周日打卡，就像小公主推开大门，一周的坚持让你有勇气走向新的世界！",
-}
-
-RAPUNZEL_CONDS = {d: "完成今日练习即可解锁" for d in range(1, 8)}
-
-# ─── THEMES 注册中心 ──────────────────────────────────────────────────────
-# 主题元信息: card title (前 emoji + 名称) / modal tag / 描述 / cover 图
-THEMES = {
-    "ok_sea": {
-        "slug": "ok_sea",
-        "title": "🎁 每日打卡盲盒",         # 卡片标题
-        "tag": "突破",                     # modal 标签
-        "desc": "ok哥赶海，每天一个小惊喜。",  # portal 描述
-        "cover": "/static/badges/daily_checkin_5.png",  # portal 预览图
-        "dicts": (OK_SEA_IMAGES, OK_SEA_NAMES, OK_SEA_DESCS, OK_SEA_CONDS),
-    },
-    "rapunzel": {
-        "slug": "rapunzel",
-        "title": "👸 长发公主盲盒",
-        "tag": "成长",
-        "desc": "小公主在高塔里每天用长发帮助小动物，逐渐获得勇气，最终走出高塔。",
-        "cover": "/static/badges/rapunzel_5.png",
-        "dicts": (RAPUNZEL_IMAGES, RAPUNZEL_NAMES, RAPUNZEL_DESCS, RAPUNZEL_CONDS),
-    },
-}
-
-DEFAULT_THEME = "ok_sea"
-ACTIVE_THEME_SETTING_KEY = "active_blindbox_theme"
-
-
-def get_active_theme() -> dict:
-    """从 settings 表读当前生效主题，缺失/未注册时回退 DEFAULT_THEME。"""
-    try:
-        slug = db.get_setting(ACTIVE_THEME_SETTING_KEY) or DEFAULT_THEME
-    except Exception:
-        slug = DEFAULT_THEME
-    if slug not in THEMES:
-        slug = DEFAULT_THEME
-    return THEMES[slug]
-
-
-def _daily_blindbox_html():
-    """生成每日打卡盲盒卡片 HTML（主题由 settings['active_blindbox_theme'] 决定）"""
-    conn = db._get_connection()
-    today = dt.date.today()
-
-    # 加载当前主题
-    theme = get_active_theme()
-    theme_meta = {"title": theme["title"], "tag": theme["tag"]}
-    IMAGES, NAMES, DESCS, CONDS = theme["dicts"]
-
-    # 获取当前stage
-    cur = db_adapter.execute(conn, """
-        SELECT stage_start, stage_end, stage_order
-        FROM weekly_assignments
-        WHERE stage_order = (SELECT MAX(stage_order) FROM weekly_assignments)
-    """)
-    stage_row = cur.fetchone()
-    if not stage_row:
-        return "", 0
-
-    stage_start_str, stage_end_str, stage_order = stage_row
-    if not stage_start_str:
-        return "", 0
-    # stage_end 为 NULL 时视为 today（当前 stage 尚未结束）
-    stage_end_date = _as_date(stage_end_str) if stage_end_str else today
-    stage_start = _as_date(stage_start_str)
-
-    # 计算今天是stage的第几天（1-7）
-    stage_day = (today - stage_start).days + 1
-    if stage_day < 1:
-        return "", 0  # stage 还没开始
-    # 盲盒就 7 天 (图也只设计了 7 张), cap at 7
-    # stage 已结束 (today > stage_end) 时, stage_day 仍显示 7, 表示"本周第 7 天"
-    stage_day = min(stage_day, 7)
-
-    # 计算本周打卡了几天
-    cur = db_adapter.execute(conn, """
-        SELECT COUNT(DISTINCT date)
-        FROM daily_practices
-        WHERE date >= ? AND date <= ?
-    """"", (stage_start_str, stage_end_date.isoformat()))
-    checkin_days = cur.fetchone()[0]
-
-    # 查询每一天是否已打卡
-    checked_days = set()
-    cur = db_adapter.execute(conn, """
-        SELECT DISTINCT date
-        FROM daily_practices
-        WHERE date >= ? AND date <= ?
-    """"", (stage_start_str, stage_end_date.isoformat()))
-    for row in cur.fetchall():
-        checked_days.add(row[0])
-
-    import html as _html
-
-    # 生成所有badge的HTML
-    badges_html = ""
-    for day in range(1, stage_day + 1):
-        day_date = stage_start + dt.timedelta(days=day - 1)
-        day_date_str = day_date.isoformat()
-        is_checked = day_date_str in checked_days
-        is_today = day == stage_day
-
-        image = IMAGES.get(day, "")
-        name = NAMES.get(day, "")
-        desc = DESCS.get(day, "")
-        cond = CONDS.get(day, "")
-
-        checked_class = "unlocked" if is_checked else "locked"
-        today_class = "today" if is_today and not is_checked else ""
-        locked_flag = "no" if is_checked else "yes"
-
-        badges_html += f"""
-        <div class="b-card {checked_class} {today_class}"
-             data-id="daily_checkin_{day}"
-             data-name="{_html.escape(name)}"
-             data-tag="{_html.escape(theme_meta['tag'])}"
-             data-cond="{_html.escape(cond)}"
-             data-desc="{_html.escape(desc)}"
-             data-img="{_html.escape(image)}"
-             data-locked="{locked_flag}"
-             onclick="openModal(this)">
-          <div class="b-img-wrap"><img class="b-img" src="{image}" alt="{name}" onerror="this.style.display='none'"></div>
-          <div class="b-name">第{day}天</div>
-          {"<span class='b-lock'>🔒</span>" if not is_checked else ""}
-        </div>
-        """
-
-    # 判断今天是否已打卡
-    today_checked = today.isoformat() in checked_days
-
-    html = f"""
-    <div class="ac-card" id="card-daily-blindbox" data-theme="{theme['slug']}">
-      <div class="blindbox-header">
-        <span class="blindbox-title">{_html.escape(theme_meta['title'])}</span>
-        <span class="blindbox-progress">{checkin_days}/7</span>
-      </div>
-
-      <div class="blindbox-stage-info">
-        <span>Stage {stage_order} · 第{stage_day}天</span>
-      </div>
-
-      <div class="blindbox-badges-grid">
-        {badges_html}
-      </div>
-
-      <div class="blindbox-hint">
-        {"<span class='hint-unlocked'>✅ 今日已解锁</span>" if today_checked else "<span class='hint-locked'>🔒 完成今日练习解锁</span>"}
-      </div>
-    </div>
-    """
-    return html, checkin_days
-
 # ─── API: 某日练习明细 ─────────────────────────────────────────────────────
 # ─── API: 月份数据 (feat/month-chart) - 必须注册在 /api/practices/{date_str} 之前避免路由抢占
 @app.get("/api/practices/monthly")
@@ -1313,6 +1114,8 @@ def api_practices_monthly(month: str):
             "dates": dates_in_month,
             "items": [],
             "data": {},
+            "seconds_data": {},
+            "day_seconds": {},
         })
 
     item_names = {}
@@ -1323,12 +1126,28 @@ def api_practices_monthly(month: str):
         item_names[iid] = nm[0] if nm else f"科目{iid}"
 
     data = {}
+    seconds_data = {}
+    day_seconds = {}
     for d in dates_in_month:
         data[d] = {}
+        seconds_data[d] = {}
         p = practices.get(d, {"items": []})
-        item_map = {it.get("item_id"): it.get("minutes", 0) for it in p.get("items", [])}
+        item_map = {}
+        sec_map = {}
+        for it in p.get("items", []) or []:
+            iid = it.get("item_id")
+            item_map[iid] = it.get("minutes", 0)
+            sec_map[iid] = pick_seconds(it.get("seconds"), it.get("minutes"))
+        day_total = 0
         for iid in all_item_ids:
+            # data 仍是分钟数（图表柱高）。秒走平行的 seconds_data，不把格子改成对象。
             data[d][iid] = item_map.get(iid, None)
+            if iid in sec_map:
+                seconds_data[d][iid] = sec_map[iid]
+                day_total += sec_map[iid]
+            else:
+                seconds_data[d][iid] = None
+        day_seconds[d] = day_total
 
     return JSONResponse({
         "month": f"{view_year}-{view_month:02d}",
@@ -1338,6 +1157,8 @@ def api_practices_monthly(month: str):
         "dates": dates_in_month,
         "items": [{"id": iid, "name": item_names[iid]} for iid in all_item_ids],
         "data": data,
+        "seconds_data": seconds_data,
+        "day_seconds": day_seconds,
     })
 
 
@@ -1392,10 +1213,12 @@ def _build_stage_detail_payload(stage: dict) -> dict:
                 "item_id": iid,
                 "item_name": s.get("item_name") or "未知科目",
                 "minutes": 0,
+                "seconds": 0,
                 "session_count": 0,
                 "reps": None,
             }
         by_item_map[iid]["minutes"] += int(s.get("duration_minutes") or 0)
+        by_item_map[iid]["seconds"] += pick_seconds(s.get("duration_seconds"), s.get("duration_minutes"))
         by_item_map[iid]["session_count"] += 1
         _add_reps(by_item_map[iid], s.get("reps"))
         if s.get("item_name"):
@@ -1403,6 +1226,7 @@ def _build_stage_detail_payload(stage: dict) -> dict:
 
     by_item = sorted(by_item_map.values(), key=lambda x: (-x["minutes"], x["item_id"]))
     total_minutes = sum(x["minutes"] for x in by_item)
+    total_seconds = sum(x["seconds"] for x in by_item)
     practice_dates = sorted({s.get("practice_date") for s in sessions if s.get("practice_date")})
 
     # days: 按日 → 科目 → session (dad 拍板 A)
@@ -1425,13 +1249,16 @@ def _build_stage_detail_payload(stage: dict) -> dict:
                 "item_id": iid,
                 "item_name": s.get("item_name") or "未知科目",
                 "minutes": 0,
+                "seconds": 0,
                 "sessions": [],
             }
             item_order_in_day[d].append(iid)
+        row_seconds = pick_seconds(s.get("duration_seconds"), s.get("duration_minutes"))
         row = {
             "id": s.get("id"),
             "started_at": s.get("started_at"),
             "duration_minutes": int(s.get("duration_minutes") or 0),
+            "duration_seconds": row_seconds,
             "tempo_note": s.get("tempo_note") or "",
             "tempo_bpm": s.get("tempo_bpm") or 0,
             "content": s.get("content") or "",
@@ -1441,6 +1268,7 @@ def _build_stage_detail_payload(stage: dict) -> dict:
         }
         days_map[d][iid]["sessions"].append(row)
         days_map[d][iid]["minutes"] += row["duration_minutes"]
+        days_map[d][iid]["seconds"] += row_seconds
         if s.get("item_name"):
             days_map[d][iid]["item_name"] = s["item_name"]
 
@@ -1448,15 +1276,18 @@ def _build_stage_detail_payload(stage: dict) -> dict:
     for d in sorted(days_map.keys()):
         groups = []
         day_total = 0
+        day_total_seconds = 0
         sess_n = 0
         for iid in item_order_in_day[d]:
             g = days_map[d][iid]
             groups.append(g)
             day_total += g["minutes"]
+            day_total_seconds += g["seconds"]
             sess_n += len(g["sessions"])
         days.append({
             "date": d,
             "total_minutes": day_total,
+            "total_seconds": day_total_seconds,
             "session_count": sess_n,
             "groups": groups,
         })
@@ -1481,6 +1312,7 @@ def _build_stage_detail_payload(stage: dict) -> dict:
         "notes": stage.get("notes") or "",
         "summary": {
             "total_minutes": total_minutes,
+            "total_seconds": total_seconds,
             "practice_days": len(practice_dates),
             "session_count": len(sessions),
             "item_count": len(by_item),
@@ -1570,6 +1402,7 @@ def _filter_payload_by_days(payload: dict, days_csv: Optional[str]) -> dict:
         return payload
     days = [d for d in (payload.get("days") or []) if d.get("date") in keep]
     total = sum(int(d.get("total_minutes") or 0) for d in days)
+    total_seconds = sum(pick_seconds(d.get("total_seconds"), d.get("total_minutes")) for d in days)
     sess_n = sum(int(d.get("session_count") or 0) for d in days)
     item_map: dict = {}
     for d in days:
@@ -1582,10 +1415,12 @@ def _filter_payload_by_days(payload: dict, days_csv: Optional[str]) -> dict:
                     "item_id": gid,
                     "item_name": g.get("item_name") or "未知科目",
                     "minutes": 0,
+                    "seconds": 0,
                     "session_count": 0,
                     "reps": None,
                 }
             item_map[gid]["minutes"] += int(g.get("minutes") or 0)
+            item_map[gid]["seconds"] += pick_seconds(g.get("seconds"), g.get("minutes"))
             item_map[gid]["session_count"] += len(g.get("sessions") or [])
             for sess in g.get("sessions") or []:
                 _add_reps(item_map[gid], sess.get("reps") if isinstance(sess, dict) else None)
@@ -1596,6 +1431,7 @@ def _filter_payload_by_days(payload: dict, days_csv: Optional[str]) -> dict:
     payload["by_item"] = by_item
     payload["summary"] = {
         "total_minutes": total,
+        "total_seconds": total_seconds,
         "practice_days": len(days),
         "session_count": sess_n,
         "item_count": len(by_item),
@@ -1860,6 +1696,7 @@ def api_practice_day(date_str: str):
     if not practice:
         return JSONResponse({
             "date": date_str, "id": None, "items": [], "total_minutes": 0,
+            "total_seconds": 0,
             "log": "", "behavior_log": [], "sessions": [],
         })
     # 2026-07-27: 新增 sessions[] (按时间升序), 老客户端不读这个字段无影响
@@ -1871,14 +1708,22 @@ def api_practice_day(date_str: str):
             beh = json.loads(beh) if beh else []
         except (TypeError, ValueError):
             beh = []
+    items_out = [annotate_item(it) for it in (practice.get("items") or []) if isinstance(it, dict)]
+    sessions_out = [annotate_session(s) for s in (sessions or [])]
+    beh_out = [annotate_behavior(e) for e in (beh or []) if isinstance(e, dict)]
+    if items_out:
+        total_seconds = sum(it["seconds"] for it in items_out)
+    else:
+        total_seconds = pick_seconds(practice.get("total_seconds"), practice.get("total_minutes", 0))
     return JSONResponse({
         "date": date_str,
         "id": practice.get("id"),
-        "items": practice.get("items", []),
+        "items": items_out,
         "total_minutes": practice.get("total_minutes", 0),
+        "total_seconds": total_seconds,
         "log": practice.get("log", ""),
-        "behavior_log": beh,
-        "sessions": sessions,
+        "behavior_log": beh_out,
+        "sessions": sessions_out,
     })
 
 
@@ -1972,20 +1817,40 @@ async def api_update_practice_session(session_id: int, request: Request):
         tempo_bpm = body.get("tempo_bpm")
         content = body.get("content")
         duration_minutes = body.get("duration_minutes")
+        duration_seconds = body.get("duration_seconds", None)
+        has_duration_seconds = "duration_seconds" in body
         apply_reps = "reps" in body
         reps = body.get("reps") if apply_reps else None
         if apply_reps and reps is not None and (
             isinstance(reps, bool) or not isinstance(reps, int) or not (1 <= reps <= 99)
         ):
             return JSONResponse({"ok": False, "error": "reps 必须在 1-99 之间或为空"}, status_code=400)
-        if not any([tempo_note, tempo_bpm is not None, content, duration_minutes is not None, apply_reps]):
+        if has_duration_seconds and (
+            isinstance(duration_seconds, bool) or not isinstance(duration_seconds, int)
+            or duration_seconds <= 0 or duration_seconds > 86400
+        ):
+            return JSONResponse(
+                {"ok": False, "error": "duration_seconds 必须是 1-86400 的整数"},
+                status_code=400,
+            )
+        # 带了秒就把分钟写成 ceil(秒/60)，分钟列语义不变。只带分钟时秒由存储层按分钟×60 同步。
+        if has_duration_seconds:
+            duration_minutes = write_minutes(duration_minutes or 1, int(duration_seconds))
+        if not any([
+            tempo_note, tempo_bpm is not None, content,
+            duration_minutes is not None, has_duration_seconds, apply_reps,
+        ]):
             return JSONResponse({"ok": False, "error": "至少传一个字段"}, status_code=400)
-        updated = db.update_practice_session(
-            int(session_id),
+        update_kwargs = dict(
             tempo_note=tempo_note, tempo_bpm=tempo_bpm, content=content,
             duration_minutes=duration_minutes, expected_version=expected_version,
             reps=reps, apply_reps=apply_reps,
         )
+        if has_duration_seconds:
+            update_kwargs["duration_seconds"] = int(duration_seconds)
+        updated = invoke(db.update_practice_session, int(session_id), **update_kwargs)
+        if isinstance(updated, dict):
+            updated = annotate_session(updated)
         return JSONResponse({"ok": True, "session": updated})
     except ConflictError as e:
         return JSONResponse(
@@ -2105,7 +1970,11 @@ def api_practice_stage(date_str: str):
             all_item_ids.add(it.get("item_id"))
     all_item_ids = sorted(all_item_ids)
     if not all_item_ids:
-        return JSONResponse({"dates": dates_in_stage, "items": [], "data": {}, "stage_start": stage_start, "stage_end": stage_end})
+        return JSONResponse({
+            "dates": dates_in_stage, "items": [], "data": {},
+            "seconds_data": {}, "day_seconds": {},
+            "stage_start": stage_start, "stage_end": stage_end,
+        })
 
     # 按item_id获取科目名
     item_names = {}
@@ -2115,14 +1984,29 @@ def api_practice_stage(date_str: str):
         nm = nm_c.fetchone()
         item_names[iid] = nm[0] if nm else f"科目{iid}"
 
-    # 构建每个日期每科目的分钟数矩阵
+    # 构建每个日期每科目的分钟数矩阵。柱高仍读 data（分钟）。秒走 seconds_data。
     data = {}
+    seconds_data = {}
+    day_seconds = {}
     for d in dates_in_stage:
         data[d] = {}
+        seconds_data[d] = {}
         p = practices.get(d, {"items": []})
-        item_map = {it.get("item_id"): it.get("minutes", 0) for it in p.get("items", [])}
+        item_map = {}
+        sec_map = {}
+        for it in p.get("items", []) or []:
+            iid = it.get("item_id")
+            item_map[iid] = it.get("minutes", 0)
+            sec_map[iid] = pick_seconds(it.get("seconds"), it.get("minutes"))
+        day_total = 0
         for iid in all_item_ids:
             data[d][iid] = item_map.get(iid, None)
+            if iid in sec_map:
+                seconds_data[d][iid] = sec_map[iid]
+                day_total += sec_map[iid]
+            else:
+                seconds_data[d][iid] = None
+        day_seconds[d] = day_total
 
     return JSONResponse({
         "stage_start": stage_start,
@@ -2131,6 +2015,8 @@ def api_practice_stage(date_str: str):
         "dates": dates_in_stage,
         "items": [{"id": iid, "name": item_names[iid]} for iid in all_item_ids],
         "data": data,
+        "seconds_data": seconds_data,
+        "day_seconds": day_seconds,
     })
 
 
@@ -2186,13 +2072,24 @@ async def api_log(request: Request):
     content_source = req.content_source
     behavior_entries = [e.model_dump() for e in req.behavior_log]
     log_note = req.log
+    # 没带 seconds → minutes*60。带了秒时，写入的分钟改成 ceil(秒/60)，响应里的 total 仍是这次写入的分钟。
+    seconds = resolve_request_seconds(req.seconds, minutes)
+    stored_minutes = write_minutes(minutes, req.seconds)
+    for entry in behavior_entries:
+        if entry.get("seconds") is None:
+            # minutes == 0 的条目写 0 秒；**不得**借用 session 级总秒
+            # （独立代码评审 P2：会把「进来看一眼没练」记成整段 session 时长）
+            em = int(entry.get("minutes") or 0)
+            entry["seconds"] = em * 60 if em else 0
+        else:
+            entry["seconds"] = int(entry["seconds"])
 
     # 用 str(date) 统一 key 格式 (ISO YYYY-MM-DD)
     date_key = str(date)
 
-    # PR-D: 5s dedup — 同 (date, item_id, minutes) 5s 内重复 → 返缓存, 不再写 session/daily.
+    # 去重 key 含秒。10 秒和 50 秒（都可能 ceil 成 1 分钟）不再互相挡。
     dedup_cached = _check_dedup(date_key, int(item_id), int(minutes),
-                                  tempo_bpm, content, practice_at, req.reps)
+                                  tempo_bpm, content, practice_at, req.reps, seconds)
     if dedup_cached is not None:
         return JSONResponse(dedup_cached)
 
@@ -2201,51 +2098,57 @@ async def api_log(request: Request):
             # 2026-07-29 fix: 有 session detail 时只走 save_practice_session_and_daily_summary,
             # 避免 save_daily_practice + save_practice_session_and_daily_summary 双重合并 items
             if has_session_detail:
-                s = db.save_practice_session_and_daily_summary(
-                    date, item_name, int(item_id), minutes,
+                s = invoke(
+                    db.save_practice_session_and_daily_summary,
+                    date, item_name, int(item_id), stored_minutes,
                     tempo_note, tempo_bpm, content, content_source,
                     practice_at=practice_at, is_extra=True, reps=req.reps,
+                    seconds=seconds,
                 )
                 # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
-                resp = {"ok": True, "total": minutes, "session": s}
+                resp = {"ok": True, "total": stored_minutes, "seconds": seconds, "session": s}
                 _record_dedup(date_key, int(item_id), int(minutes), resp,
-                       tempo_bpm, content, practice_at, req.reps)
+                       tempo_bpm, content, practice_at, req.reps, seconds)
                 return JSONResponse(resp)
             # 旧路径: 无 session detail, 只走 save_daily_practice
-            items = [{"item": item_name, "item_id": item_id, "minutes": minutes, "is_extra": True}]
-            db.save_daily_practice(date, items, minutes, '',
+            items = [{"item": item_name, "item_id": item_id, "minutes": stored_minutes,
+                      "seconds": seconds, "is_extra": True}]
+            db.save_daily_practice(date, items, stored_minutes, '',
                                    channel='kid_app', method='extra',
                                    practice_at=practice_at)
             for entry in behavior_entries:
                 db.append_behavior_log(date, entry)
-            resp_legacy = {"ok": True, "total": minutes}
+            resp_legacy = {"ok": True, "total": stored_minutes, "seconds": seconds}
             _record_dedup(date_key, int(item_id), int(minutes), resp_legacy,
-                       tempo_bpm, content, practice_at, req.reps)
+                       tempo_bpm, content, practice_at, req.reps, seconds)
             return JSONResponse(resp_legacy)
 
         # 正常打卡路径
         if has_session_detail:
             # 新路径: 写 session + 同步 daily + 写 audit + 更新冗余列 (整事务)
-            s = db.save_practice_session_and_daily_summary(
-                date, item_name, int(item_id), minutes,
+            s = invoke(
+                db.save_practice_session_and_daily_summary,
+                date, item_name, int(item_id), stored_minutes,
                 tempo_note, tempo_bpm, content, content_source,
                 practice_at=practice_at, is_extra=False, reps=req.reps,
+                seconds=seconds,
             )
             # PR-B dedup: session 事务已写 behavior_log, 不再外部 append
             daily = db.get_daily_practice(date)
             resp_normal = {
                 "ok": True,
-                "total": daily["total_minutes"] if daily else minutes,
+                "total": daily["total_minutes"] if daily else stored_minutes,
+                "seconds": seconds,
                 "session": s,
             }
             _record_dedup(date_key, int(item_id), int(minutes), resp_normal,
-                       tempo_bpm, content, practice_at, req.reps)
+                       tempo_bpm, content, practice_at, req.reps, seconds)
             return JSONResponse(resp_normal)
 
         # 旧路径: 走 save_daily_practice 兼容逻辑 (不创建空 session, 避免污染 sessions 表)
-        # 注意：只传 [{item, item_id, minutes}]，不要预合并！save_daily_practice 内部会读 DB 合并
-        items = [{"item": item_name, "item_id": item_id, "minutes": minutes}]
-        total = minutes  # save_daily_practice 会重新计算，这里只作返回值参考
+        # 注意：只传这一条，不要预合并！save_daily_practice 内部会读 DB 合并
+        items = [{"item": item_name, "item_id": item_id, "minutes": stored_minutes, "seconds": seconds}]
+        total = stored_minutes  # save_daily_practice 会重新计算，这里只作返回值参考
         db.save_daily_practice(date, items, total, log_note,
                                channel='kid_app', method='timer',
                                practice_at=practice_at)
@@ -2254,9 +2157,9 @@ async def api_log(request: Request):
         for entry in behavior_entries:
             db.append_behavior_log(date, entry)
 
-        resp_legacy_normal = {"ok": True, "total": total}
+        resp_legacy_normal = {"ok": True, "total": total, "seconds": seconds}
         _record_dedup(date_key, int(item_id), int(minutes), resp_legacy_normal,
-                       tempo_bpm, content, practice_at, req.reps)
+                       tempo_bpm, content, practice_at, req.reps, seconds)
         return JSONResponse(resp_legacy_normal)
 
     except ValueError as e:
@@ -2744,7 +2647,9 @@ def practice_page():
         items_html = "<p style='color:#7F8C8D;text-align:center;'>No practice items. Ask dad to add via dizical practice config</p>"
 
     today_p = db.get_daily_practice(today)
-    today_mins = today_p["total_minutes"] if today_p else 0
+    # F2: 首屏与「保存后」同口径（口径 B —— 不足 1 分钟显示秒，用秒真值格式化）
+    today_secs = total_seconds_of_practice(today_p)
+    today_text = fmt_dur(today_secs) or "0分"
 
     # ── 科目摘要 ──
     subject_info_dict = {}
@@ -2771,7 +2676,8 @@ def practice_page():
         active_nav="practice",  # sidebar: 练习
         child_name=child_name(),
         items_html=items_html,
-        today_mins=today_mins,
+        today_seconds=today_secs,
+        today_text=today_text,
         assign_json=assign_json,
         today_date=today.isoformat(),
         subject_info_json=subject_info_json,
@@ -2787,8 +2693,8 @@ def achievements_page():
     # ── 卡片2: 练习看板 ────────────────────────────────
     # 连续练习：从今天往前倒查，遇0分钟即停
     streak = _calc_current_streak()
-    yesterday_mins = _calc_yesterday_mins()
-    yesterday_prev = _calc_yesterday_mins(days_ago=2)  # 前天
+    yesterday_secs = _calc_yesterday_seconds()
+    yesterday_prev_secs = _calc_yesterday_seconds(days_ago=2)  # 前天
 
     week_mins, week_days_count = _calc_week_mins_and_days()
     # 上周：找上一条 weekly_assignment（stage_order = 当前stage_order - 1）
@@ -2827,7 +2733,9 @@ def achievements_page():
     month_days_prev = len([p for p in practices_m_prev if p.get("total_minutes", 0) > 0])
 
     # 环比文字
-    yd_diff_txt, yd_pos = _ring_diff(yesterday_mins, yesterday_prev, "分")
+    yd_diff_txt, yd_pos = _ring_diff(
+        yesterday_secs, yesterday_prev_secs, "分", ref_period="前天", as_seconds=True,
+    )
     wm_diff_txt, wm_pos = _ring_diff(week_days_count, week_days_prev)
     # 月份对比：用上月月份名称（如"4月"）
     prev_month_name = f"{prev_month}月"
@@ -2836,9 +2744,6 @@ def achievements_page():
     # ── 卡片3: 勋章展示 (2 tab: milestone + seasonal) ────
     milestone_tab_html = _milestone_html("milestone", sort_by_achieved_at=True)
     seasonal_tab_html = _milestone_html("seasonal", sort_by_achieved_at=True)
-
-    # ── 卡片3.5: 每日打卡盲盒 ─────────────────────────
-    daily_blindbox_html, checkin_days = _daily_blindbox_html()
 
     # ── 练习看板后3格：TOP项目展示 ───────────────────
     last_top = _calc_last_practice_top(2)
@@ -2873,8 +2778,8 @@ def achievements_page():
         streak=str(streak),
         streak_unit="天",
         streak_label="已连续练习",
-        yesterday_mins=str(yesterday_mins),
-        yesterday_unit="分钟",
+        yesterday_mins=fmt_dur(yesterday_secs) or "0分",
+        yesterday_unit="",
         yesterday_label="昨天练习",
         yesterday_diff=yd_diff_txt,
         yesterday_pos="up" if yd_pos else "",
@@ -2890,24 +2795,22 @@ def achievements_page():
         month_pos="up" if mm_pos else "",
         last_date=last_date,
         last_top1_name=last_top1_name,
-        last_top1_mins=last_top1_mins,
+        last_top1_mins=fmt_dur(last_top1_mins),
         last_top2_name=last_top2_name,
-        last_top2_mins=last_top2_mins,
+        last_top2_mins=fmt_dur(last_top2_mins),
         week_date=week_date,
         week_top1_name=week_top1_name,
-        week_top1_mins=week_top1_mins,
+        week_top1_mins=fmt_dur(week_top1_mins),
         week_top2_name=week_top2_name,
-        week_top2_mins=week_top2_mins,
+        week_top2_mins=fmt_dur(week_top2_mins),
         month_date=month_date,
         month_top1_name=month_top1_name,
-        month_top1_mins=month_top1_mins,
+        month_top1_mins=fmt_dur(month_top1_mins),
         month_top2_name=month_top2_name,
-        month_top2_mins=month_top2_mins,
+        month_top2_mins=fmt_dur(month_top2_mins),
         milestone_tab_html=milestone_tab_html,
         seasonal_tab_html=seasonal_tab_html,
         milestone_html=milestone_tab_html,
-        daily_blindbox_html=daily_blindbox_html,
-        checkin_days=checkin_days,
     )
 
 @app.get("/badges", response_class=HTMLResponse)
@@ -3081,18 +2984,20 @@ def report_page(request: Request, month: Optional[str] = None):
         key = day_date.isoformat()
         p = practices.get(key)
         mins = p["total_minutes"] if p else 0
+        # 颜色带仍按分钟。格子文字用 mm:ss（0 秒不显示）。
+        cell_short = short_dur(total_seconds_of_practice(p) if p else 0)
         if mins == 0:
             cls = "cal-day"
             label = '<span class="day-num">' + str(d) + '</span><span class="sel-bar"></span>'
         elif mins < 20:
             cls = "cal-day low"
-            label = '<span class="day-num">' + str(d) + '<br><small>' + str(mins) + 'm</small></span><span class="sel-bar"></span>'
+            label = '<span class="day-num">' + str(d) + '<br><small>' + cell_short + '</small></span><span class="sel-bar"></span>'
         elif mins < 40:
             cls = "cal-day mid"
-            label = '<span class="day-num">' + str(d) + '<br><small>' + str(mins) + 'm</small></span><span class="sel-bar"></span>'
+            label = '<span class="day-num">' + str(d) + '<br><small>' + cell_short + '</small></span><span class="sel-bar"></span>'
         else:
             cls = "cal-day high"
-            label = '<span class="day-num">' + str(d) + '<br><small>' + str(mins) + 'm</small></span><span class="sel-bar"></span>'
+            label = '<span class="day-num">' + str(d) + '<br><small>' + cell_short + '</small></span><span class="sel-bar"></span>'
         if day_date == today:
             cls += " today"
         cal_html += "<div class='" + cls + "' data-date='" + key + "'>" + label + "</div>"
@@ -3113,7 +3018,7 @@ def report_page(request: Request, month: Optional[str] = None):
         active_nav="dashboard",  # sidebar: Dashboard (report 页面对应 Dashboard)
         child_name=child_name(),
         month_str=f"{view_year}/{view_month:02d}",
-        total_mins=str(data["total_minutes"]),
+        total_mins=fmt_dur(pick_seconds(data.get("total_seconds"), data["total_minutes"])) or "0分",
         practice_days=str(data["practice_days"]),
         cal_html=cal_html,
         # 月份切换器
