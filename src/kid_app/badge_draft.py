@@ -18,6 +18,7 @@ schema_version=1 锁定, 未来改 schema 时 +1, 老 dizical 端只读 schema_v
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 import uuid
@@ -53,6 +54,51 @@ def _badge_data_dir() -> Path:
 def _tmp_dir() -> Path:
     """生图临时目录 (不在 badge_data/ 下, 不被 discovery 扫)."""
     return _badge_data_dir() / ".tmp"
+
+
+# ─── 存储位置 (P0 sprint-26101302, 2026-10-13) ─────────────────────
+# PLAN v1.2 目标: 草稿 JSON 与徽章图统一走 COS, 本地文件退化为可选缓存。
+# P0 只落「读侧一条路径 (GET /draft/{id}) + 老草稿 image.url 补全」, 其余读点与写侧归 P1。
+COS_PREFIX_BADGE = "badges/"        # 沿用现名, 不动历史 key
+COS_PREFIX_DRAFT = "badge_drafts/"  # 草稿 JSON (读取走 SDK get_object, 不用 CDN)
+BADGE_STORE_ENV = "BADGE_STORE"
+
+# 真实草稿 id 是 YYYY-MM-DD_{id}_{6位hash}; DRAFT_ID_RE 偏严(▲历史注释), COS key 用白名单校验
+SAFE_DRAFT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def storage_mode() -> str:
+    """解析 BADGE_STORE → 'local' | 'cos'.
+
+    AUTO (默认) = COS 凭据与 SDK 都就绪就用 COS, 否则本地。
+    默认 AUTO 而不是 LOCAL: 生产忘配也走 COS (退回容器本地盘正是 2026-10-13 的事故形态)。
+    """
+    raw = (os.getenv(BADGE_STORE_ENV) or "AUTO").strip().upper()
+    if raw == "LOCAL":
+        return "local"
+    from src.kid_app.cos_client import cos_uploader
+    if raw == "COS":
+        # 显式要 COS 但不可用 → 落 LOCAL, 但必须可见 (/health cos_ok=false, 不回退静默)
+        return "cos" if cos_uploader.is_available else "local"
+    return "cos" if cos_uploader.is_available else "local"
+
+
+def cos_available() -> bool:
+    """COS 是否真可用 (凭据 + SDK 都就绪). /health 与启动日志用."""
+    from src.kid_app.cos_client import cos_uploader
+    return cos_uploader.is_available
+
+
+def cos_draft_key(draft_id: str) -> str:
+    """草稿 JSON 在 COS 上的 key. 非法 id 直接拒 (防 key 注入)."""
+    if not SAFE_DRAFT_ID_RE.match(draft_id or ""):
+        raise ValueError(f"draft_id 非法, 不能做 COS key: {draft_id!r}")
+    return f"{COS_PREFIX_DRAFT}{draft_id}.json"
+
+
+def is_cos_url(url: Any) -> bool:
+    """判定是不是 COS 公开 URL (用于 commit 复用 / 前端口径)."""
+    return isinstance(url, str) and url.startswith("https://") and ".tcb.qcloud.la/" in url
 
 
 # ─── 数据类 ───────────────────────────────────────────────────────
@@ -193,14 +239,35 @@ def save_draft(draft: BadgeDraft) -> Path:
     return path
 
 
-def get_draft(draft_id: str) -> BadgeDraft | None:
-    """读 draft (None 表示文件不存在)."""
+def get_draft_with_source(draft_id: str) -> tuple[BadgeDraft | None, str]:
+    """读 draft, 返 (draft, 来源). 来源 ∈ {"local", "cos", "none"}.
+
+    P0 (sprint-26101302): 本地文件优先 (本地开发 / 老草稿), 本地没有才查 COS —— 生产容器
+    重建后草稿仍在 COS 上, 本地服务也能读到生产草稿 (2026-10-13 只能人工搬草稿的根修)。
+
+    Raises:
+        RuntimeError / json 异常: COS 可用但读失败 (网络/凭据) —— 不许静默当成"不存在"
+    """
     if not DRAFT_ID_RE.match(draft_id):
-        return None
+        return None, "none"
     path = _badge_data_dir() / f"{draft_id}.json"
-    if not path.exists():
-        return None
-    return BadgeDraft.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    if path.exists():
+        return BadgeDraft.from_dict(json.loads(path.read_text(encoding="utf-8"))), "local"
+    if storage_mode() != "cos":
+        return None, "none"
+
+    from src.kid_app.cos_client import cos_uploader
+
+    try:
+        raw = cos_uploader.download(cos_draft_key(draft_id))
+    except FileNotFoundError:
+        return None, "none"
+    return BadgeDraft.from_dict(json.loads(raw.decode("utf-8"))), "cos"
+
+
+def get_draft(draft_id: str) -> BadgeDraft | None:
+    """读 draft (None 表示不存在). 兼容壳: 需要知道来源时用 get_draft_with_source."""
+    return get_draft_with_source(draft_id)[0]
 
 
 def list_drafts(status: str | None = None) -> list[BadgeDraft]:
@@ -257,6 +324,47 @@ def update_draft_image(draft_id: str, image_info: dict[str, Any], by: str = "ski
     return draft
 
 
+def backfill_image_url(draft: BadgeDraft) -> str | None:
+    """老草稿惰性补 image.url (P0 sprint-26101302).
+
+    条件全满足才动手: draft.image 是 dict + 有本地 path + 没有 url + 本地图文件还在 +
+    storage_mode()==cos。上传 key = badges/{badge_id}_v{n}.png (沿用现名) 并写回 image.url。
+    返回 url; 任一条不满足返 None 且**不动** draft。
+
+    注意: 这是读接口里的写副作用 —— 只在 GET /draft/{id} 一处显式调用, 不埋在 get_draft 里。
+    """
+    image = draft.image
+    if not isinstance(image, dict):
+        return None
+    if image.get("url") or not image.get("path"):
+        return None
+    if storage_mode() != "cos":
+        return None
+    src = Path(str(image["path"]))
+    if not src.is_file():
+        return None
+    badge_id = draft.meta.get("id")
+    if not badge_id:
+        return None
+    version = int(image.get("version") or draft.version or 1)
+
+    from src.kid_app.cos_client import cos_uploader
+
+    key = f"{COS_PREFIX_BADGE}{badge_id}_v{version}.png"
+    url = cos_uploader.upload(key, src.read_bytes(), content_type="image/png")
+    image["url"] = url
+    image["storage"] = "cos"
+    now = _now_iso()
+    draft.updated_at = now
+    draft.history.append({
+        "at": now, "from": draft.status, "to": draft.status,
+        "by": "dizical", "event": "image_url_backfilled", "key": key,
+    })
+    # P0: 草稿 JSON 仍写本地 (写侧远端化归 P1); status 不变
+    save_draft(draft)
+    return url
+
+
 def mark_draft_status(draft_id: str, new_status: str, by: str = "dizical",
                       extra: dict[str, Any] | None = None) -> BadgeDraft:
     """通用状态机推进. extra 可加 event 描述.
@@ -300,6 +408,22 @@ def tmp_path_for(draft_id: str, version: int) -> Path:
     return _tmp_dir() / f"{draft_id}_v{version}.png"
 
 
+def write_tmp_image(draft_id: str, version: int, data: bytes) -> Path:
+    """把成品图字节落 .tmp (原子写).
+
+    P0 (sprint-26101302): 回传端点用 —— 与 skill 生图落盘**同一路径约定**, 所以
+    commit_to_cos_or_static / 前端预览不用改就能吃这张图。
+    """
+    if not SAFE_DRAFT_ID_RE.match(draft_id or ""):
+        raise ValueError(f"draft_id 非法: {draft_id!r}")
+    _tmp_dir().mkdir(parents=True, exist_ok=True)
+    dst = tmp_path_for(draft_id, version)
+    tmp = dst.with_suffix(dst.suffix + ".part")
+    tmp.write_bytes(data)
+    tmp.replace(dst)  # 原子 rename
+    return dst
+
+
 def move_tmp_to_static(draft_id: str, version: int) -> Path:
     """skill 完成后, 把临时图复制到 static/badges/{id}_v{n}.png (dizical commit 时用).
 
@@ -324,42 +448,53 @@ def move_tmp_to_static(draft_id: str, version: int) -> Path:
     return dst
 
 
-def commit_to_cos_or_static(draft_id: str, version: int) -> tuple[Path, str]:
-    """V3.0 (sprint 26082401): 走 COS 上传 (生产) 或 static/ (本地 fallback), 返 (路径, 写入 url).
+def commit_image_from_draft(draft_id: str, version: int) -> dict[str, Any]:
+    """V3.1 / P0 (sprint-26101302, 2026-10-13): 把成品图落到最终位置, 返 {path, url, storage, key}.
 
-    Returns:
-        (local_path, url_to_write_to_db)
-        - COS 路径: url = https://<bucket>.tcb.qcloud.la/badges/{id}_v{n}.png (完整 https URL)
-        - Static 路径: url = /static/badges/{id}_v{n}.png (相对路径, 本地 Docker 镜像加载)
+    storage ∈ {"cos", "static"} —— 调用方拿它回话 (commit 响应的 prod_visibility 不再硬编码)。
+    规则:
+      - COS 可用 + .tmp 图在      → 上传 badges/{id}_v{n}.png (沿用现名)
+      - COS 可用 + .tmp 图不在    → 若 draft.image.url 已是 COS URL 直接复用 (回传端点/远端草稿)
+      - COS 不可用                → static/badges/ fallback (老行为, 需 PR+deploy 才可见)
 
     Raises:
-        FileNotFoundError: 临时图不存在
+        FileNotFoundError: 临时图不存在且 draft.image.url 也不可用
         RuntimeError: COS 上传失败 (Storage First, DB 零写入 → 抛回给 commit handler)
     """
-    import shutil
-    src = tmp_path_for(draft_id, version)
-    if not src.exists():
-        raise FileNotFoundError(f"临时图 '{src}' 不存在")
-
     draft = get_draft(draft_id)
     if draft is None:
         raise FileNotFoundError(f"draft '{draft_id}' 不存在")
     badge_id = draft.meta["id"]
+    src = tmp_path_for(draft_id, version)
 
-    # 延迟 import 避免循环依赖 + 测试时 mock
     from src.kid_app.cos_client import cos_uploader
 
     if cos_uploader.is_available:
-        # 生产路径: COS 上传 + 写公开 URL
-        cos_key = f"badges/{badge_id}_v{version}.png"
-        png_bytes = src.read_bytes()
-        # fail loud: RuntimeError 透传到 commit handler 返 500
-        cos_url = cos_uploader.upload(cos_key, png_bytes, content_type="image/png")
-        return src, cos_url
+        key = f"{COS_PREFIX_BADGE}{badge_id}_v{version}.png"
+        if src.exists():
+            url = cos_uploader.upload(key, src.read_bytes(), content_type="image/png")
+            return {"path": str(src), "url": url, "storage": "cos", "key": key}
+        existing_url = (draft.image or {}).get("url") if isinstance(draft.image, dict) else None
+        if is_cos_url(existing_url):
+            return {"path": None, "url": str(existing_url), "storage": "cos", "key": key}
+        raise FileNotFoundError(f"临时图 '{src}' 不存在, 且 draft.image.url 不是 COS URL")
 
-    # 本地 fallback: 老路径 (跟 V2 完全一致)
     local_static = move_tmp_to_static(draft_id, version)
-    return local_static, f"/static/badges/{badge_id}_v{version}.png"
+    return {
+        "path": str(local_static),
+        "url": f"/static/badges/{badge_id}_v{version}.png",
+        "storage": "static",
+        "key": f"{COS_PREFIX_BADGE}{badge_id}_v{version}.png",
+    }
+
+
+def commit_to_cos_or_static(draft_id: str, version: int) -> tuple[Path | None, str]:
+    """兼容壳 (P0 起改调 commit_image_from_draft): 返 (本地路径, 写入 DB 的 url).
+
+    新代码请用 commit_image_from_draft —— 它会额外告诉你 storage=cos|static。
+    """
+    r = commit_image_from_draft(draft_id, version)
+    return (Path(r["path"]) if r["path"] else None), r["url"]
 
 
 def cleanup_tmp(draft_id: str, version: int) -> None:

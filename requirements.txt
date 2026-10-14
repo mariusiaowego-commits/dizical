@@ -20,4 +20,7 @@ httpx>=0.24.0
 uvicorn>=0.23.0
 # PR-F (8-06): COS SDK 直传方案, 容器必须装这个
 # pyproject.toml 也加了, 这里是 Dockerfile pip install -r requirements.txt 必装
-cos-python-sdk-v5>=1.9.44
+# P0 (sprint-26101302, 2026-10-13): 由 `>=1.9.44` 改 pin —— 版本取本机 .venv 实测值
+# (`importlib.metadata.version('cos-python-sdk-v5')` = 1.9.44)。原 `>=` 会在新机器上装到
+# 未验证的新版本; 配合 scripts/start-prod.sh 解释器修正一起保证「服务进程里 qcloud_cos 真能 import」。
+cos-python-sdk-v5==1.9.44
