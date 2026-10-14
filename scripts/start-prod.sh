@@ -13,6 +13,10 @@
 #   ./scripts/start-prod.sh              # 后台启动，写入 /tmp/dizical-8765.pid
 #   ./scripts/start-prod.sh foreground   # 前台运行（调试用）
 #
+# 解释器 (P0/R3: 必须是装了 COS SDK 的那个, 选不到就硬失败, 不回落到系统解释器):
+#   DIZICAL_VENV         指定 venv 目录 (默认 <repo>/.venv)
+#   DIZICAL_UVICORN_BIN  直接指定 uvicorn 可执行 (最高优先级; 例: worktree 里借主仓 .venv)
+#
 # 配套: stop-prod.sh
 
 set -euo pipefail
@@ -32,19 +36,36 @@ if lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
-# 2. 检查 uvicorn 可执行（macOS GUI 环境下 PATH 不含 Homebrew）
-UVICORN_BIN="/opt/homebrew/bin/uvicorn"
-if [[ ! -x "${UVICORN_BIN}" ]]; then
-  # fallback: 从 PATH 找
-  if command -v uvicorn >/dev/null 2>&1; then
-    UVICORN_BIN="$(command -v uvicorn)"
+# 2. 选 uvicorn 可执行 —— 必须用**装了 COS SDK 的解释器**起服务, 否则服务进程里 qcloud_cos
+#    静默 MISSING ⇒ cos_uploader.is_available=False ⇒ 图静默回落 static/badges/ ⇒ 每张新徽章
+#    都要 PR + CloudRun deploy 才可见 (2026-10-13 实测)。历史坑: 这里原本写死
+#    /opt/homebrew/bin/uvicorn (shebang → python@3.14), 而 SDK 装在项目 .venv。
+#    P0/R3: 非 venv 分支**硬失败**, 不再"WARNING 后拿 homebrew 起服务" —— 那正是要堵的静默回落。
+#    覆盖变量 (见脚本头部):
+#      DIZICAL_VENV         venv 目录 (默认 ${PROJECT_ROOT}/.venv)
+#      DIZICAL_UVICORN_BIN  直接指定 uvicorn 可执行 (最高优先级; worktree 里指主仓 .venv 用)
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VENV_DIR="${DIZICAL_VENV:-${PROJECT_ROOT}/.venv}"
+VENV_UVICORN="${VENV_DIR}/bin/uvicorn"
+UVICORN_BIN=""
+if [[ -n "${DIZICAL_UVICORN_BIN:-}" ]]; then
+  if [[ -x "${DIZICAL_UVICORN_BIN}" ]]; then
+    UVICORN_BIN="${DIZICAL_UVICORN_BIN}"   # 显式覆盖 (worktree / 特殊环境)
   else
-    echo "ERROR: 找不到 uvicorn 可执行文件"
-    echo "  期望路径: ${UVICORN_BIN}"
-    echo "  解决: brew install uvicorn 或 python3 -m pip install uvicorn"
+    echo "ERROR: DIZICAL_UVICORN_BIN 不是可执行文件: ${DIZICAL_UVICORN_BIN}"
     exit 1
   fi
+elif [[ -x "${VENV_UVICORN}" ]]; then
+  UVICORN_BIN="${VENV_UVICORN}"            # 首选: 项目 venv
+else
+  echo "ERROR: 找不到可用的 uvicorn —— 拒绝回落系统解释器 (缺 qcloud_cos, 图会静默走 static)."
+  echo "  期望路径: ${VENV_UVICORN}    (DIZICAL_VENV 可覆盖 venv 目录)"
+  echo "  建 venv: python3 -m venv ${VENV_DIR} && ${VENV_DIR}/bin/pip install -r requirements.txt"
+  echo "  已经有 venv 但不是这个目录 (例: worktree 要借主仓的), 显式指:"
+  echo "    DIZICAL_UVICORN_BIN=/abs/path/to/.venv/bin/uvicorn ./scripts/start-prod.sh"
+  exit 1
 fi
+echo "==> uvicorn: ${UVICORN_BIN}  (COS 是否可用见启动日志的 [cos-selfcheck] 行)"
 
 # 3. 必须在项目根目录运行（uvicorn src.kid_app.app:app 依赖相对路径）
 cd "$(dirname "$0")/.."

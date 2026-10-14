@@ -5,11 +5,13 @@
 - GET /api/badge/draft/{id} (读草稿, 404)
 - POST /api/badge/commit-from-draft (写三表, 状态机, stat_logic 默认值)
 - GET /api/badge/discoveries (扫待确认)
+- POST /api/badge/draft/{id}/image (回传成品图; 鉴权 401/200, 见 TestUploadDraftImageAuth)
 
 V2 设计:
 - Pydantic BaseModel 收 body (替代 V1 错法 request.scope.get("body"))
 - stat_logic V2 meta 没收集, commit handler 默认 "无" (跟 V1 insert_achievement_row 兼容)
-- 不 server-side PIN check (前端 localStorage 负责)
+- 老端点沿用前端 localStorage PIN (不做 server-side PIN check) —— 例外: 回传成品图端点
+  会写盘 + 传 COS, P0b audit (2026-10-13) 起**默认拒绝**, 必须带 dad 凭据或 push token。
 """
 import json
 import shutil
@@ -407,3 +409,115 @@ class TestDraftImage:
         assert "越界" in r.json()["error"]
         # 清理
         badge_draft.delete_draft(d.draft_id)
+
+
+# ─── TestUploadDraftImageAuth ───────────────────────────────────
+# P0b audit (2026-10-13): POST /config/api/badge/draft/{id}/image 在 /config/api/ 公开
+# 白名单里 ⇒ 匿名可写盘 + 触发 COS 计费面。改成显式默认拒绝, 两条通道:
+#   ① 机器: X-Badge-Push-Token == env BADGE_PUSH_TOKEN (env 未设 = 通道关闭)
+#   ② dad 守门: X-Dad-Pin header / dad 会话 / pin_ok cookie (复用 config_users._check_dad_or_401)
+
+
+def _rgba_png(size=(1024, 1024), color=(255, 0, 255, 255)) -> bytes:
+    """真 1024×1024 RGBA PNG (端点有尺寸/模式硬校验, 不能用假字节)."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    buf = BytesIO()
+    Image.new("RGBA", size, color).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _push_image(client, draft_id, png: bytes = None, headers: dict = None):
+    return client.post(
+        f"/config/api/badge/draft/{draft_id}/image",
+        files={"file": ("badge.png", png or _rgba_png(), "image/png")},
+        headers=headers or {},
+    )
+
+
+class TestUploadDraftImageAuth:
+    def test_no_credentials_401(self, client, tmp_badge_data, monkeypatch):
+        """① 无 cookie / 无 token → 401, 且**没写盘** (临时图保持原样)."""
+        monkeypatch.delenv("BADGE_PUSH_TOKEN", raising=False)
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        d = _make_awaiting_draft(tmp_badge_data)
+        tmp_png = badge_draft.tmp_path_for(d.draft_id, 1)
+
+        r = _push_image(client, d.draft_id)
+        assert r.status_code == 401, r.text
+        assert r.json()["ok"] is False
+        assert "未授权" in r.json()["error"]
+        assert tmp_png.read_bytes() == b"fake png content"      # 一个字节都没被覆盖
+        # 草稿 image 仍是 helper 写的那份 (helper 不写 source 字段 → None 即"没被换成 api_upload")
+        assert badge_draft.get_draft(d.draft_id).image.get("source") is None
+
+    def test_wrong_token_401(self, client, tmp_badge_data, monkeypatch):
+        """② token 错 → 401."""
+        monkeypatch.setenv("BADGE_PUSH_TOKEN", "right-token")
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        d = _make_awaiting_draft(tmp_badge_data)
+
+        r = _push_image(client, d.draft_id, headers={"X-Badge-Push-Token": "wrong-token"})
+        assert r.status_code == 401, r.text
+        assert badge_draft.tmp_path_for(d.draft_id, 1).read_bytes() == b"fake png content"
+
+    def test_token_channel_closed_when_env_unset_401(self, client, tmp_badge_data, monkeypatch):
+        """④ env 未设 → 该通道关闭 (带了任意 header 也 401), 不给默认 token."""
+        monkeypatch.delenv("BADGE_PUSH_TOKEN", raising=False)
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        d = _make_awaiting_draft(tmp_badge_data)
+
+        r = _push_image(client, d.draft_id, headers={"X-Badge-Push-Token": "any-value"})
+        assert r.status_code == 401, r.text
+
+    def test_valid_token_200_and_status_advances(self, client, tmp_badge_data, monkeypatch):
+        """③ token 对 → 200, 图落盘 + status 推进 draft_created → draft_awaiting_confirm."""
+        import hashlib
+
+        monkeypatch.setenv("BADGE_PUSH_TOKEN", "s3cret-push-token")
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")     # 不碰真 COS
+        meta = _make_valid_meta("push_ok_xyz")
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        assert badge_draft.get_draft(d.draft_id).status == "draft_created"
+        png = _rgba_png()
+
+        r = _push_image(client, d.draft_id, png, {"X-Badge-Push-Token": "s3cret-push-token"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["ok"] is True
+        assert body["status"] == "draft_awaiting_confirm"
+        assert body["storage"] == "local"
+        assert body["image"]["sha256"] == hashlib.sha256(png).hexdigest()
+        assert body["image"]["source"] == "api_upload"
+
+        after = badge_draft.get_draft(d.draft_id)
+        assert after.status == "draft_awaiting_confirm"
+        assert after.image["sha256"] == hashlib.sha256(png).hexdigest()
+        assert after.history[-1]["event"] == "image_generated"
+        assert badge_draft.tmp_path_for(d.draft_id, 1).read_bytes() == png
+
+    def test_dad_pin_header_200_channel_b(self, client, tmp_badge_data, monkeypatch):
+        """通道 ② 单独可用: token 通道关闭, 只带 X-Dad-Pin header 也能 200.
+
+        只桩**存储** (settings 表读), PIN 比较逻辑仍是真代码 (check_dad_pin) —— 不是测试开关。
+        """
+        monkeypatch.delenv("BADGE_PUSH_TOKEN", raising=False)
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        real_get_setting = db.get_setting
+        monkeypatch.setattr(
+            db, "get_setting",
+            lambda key, *a, **kw: ("0905" if key == "dad_pin" else real_get_setting(key, *a, **kw)),
+        )
+        meta = _make_valid_meta("push_pin_xyz")
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+
+        bad = _push_image(client, d.draft_id, headers={"X-Dad-Pin": "0000"})
+        assert bad.status_code == 401, bad.text
+
+        ok = _push_image(client, d.draft_id, headers={"X-Dad-Pin": "0905"})
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["status"] == "draft_awaiting_confirm"

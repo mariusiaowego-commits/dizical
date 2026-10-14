@@ -340,18 +340,51 @@ def test_seed_on_prod_db_copy(tmp_path, monkeypatch):
     monkeypatch.setattr(badge_db, "_STORY_SHORT_COL_DONE", False)
     monkeypatch.setattr(badge_db, "_ACH_COLUMNS_CACHE", {})
 
-    before = dict(conn.execute("SELECT id, description FROM achievements").fetchall())
-    n = badge_db.seed_story_short(conn, path=SEED_JSON)
-    assert n > 0, "真库副本一行都没播上"
-
     seed = badge_db.load_story_short_map(SEED_JSON)
+    before_desc = dict(conn.execute("SELECT id, description FROM achievements").fetchall())
+    before_story = dict(conn.execute("SELECT id, story_short FROM achievements").fetchall())
+    targets = sorted(set(seed) & set(before_story))
+    assert targets, "文案文件与真库副本没有交集, 无法验证 seeder 咬合"
+
+    # ── ① 注入脏值 (两种脏态: 被改过的值 + NULL) ──────────────────────
+    # R2 返工 (2026-10-13): 旧断言 `assert n > 0` 依赖"本机副本尚未全播" (真库全播完 ⇒ n=0 ⇒
+    # 今天即红); 上一版改成"播种完再自比"仍观测不到 seeder 有没有干活 → 改成先注脏值再验修复。
+    dirty_modified, dirty_null = targets[0], (targets[1] if len(targets) > 1 else None)
+    conn.execute("UPDATE achievements SET story_short = 'DRIFTED' WHERE id = ?", (dirty_modified,))
+    if dirty_null:
+        conn.execute("UPDATE achievements SET story_short = NULL WHERE id = ?", (dirty_null,))
+    conn.commit()
+    injected = dict(conn.execute("SELECT id, story_short FROM achievements").fetchall())
+    assert injected[dirty_modified] == "DRIFTED", "注入脏值失败"
+    if dirty_null:
+        assert injected[dirty_null] is None, "注入 NULL 失败"
+    dirty_ids = {dirty_modified} | ({dirty_null} if dirty_null else set())
+
+    # ── ② 播种 ────────────────────────────────────────────────────────
+    n = badge_db.seed_story_short(conn, path=SEED_JSON)
+
+    # ── ③ 断言: 脏行被修好 + 其余行逐行不动 + 再次调用 0 行 ───────────
     after_desc = dict(conn.execute("SELECT id, description FROM achievements").fetchall())
     after_story = dict(conn.execute("SELECT id, story_short FROM achievements").fetchall())
 
-    assert after_desc == before, "长典故被改动了!"
+    assert n >= len(dirty_ids), f"注了 {len(dirty_ids)} 行脏值, seeder 只改了 {n} 行 → 没咬合"
+    for bid in dirty_ids:
+        assert after_story[bid] == seed[bid], f"脏行没被修好: {bid} = {after_story[bid]!r}"
     for bid in set(seed) & set(after_story):
-        assert after_story[bid] == seed[bid]
-    assert badge_db.seed_story_short(conn, path=SEED_JSON) == 0   # 幂等
+        assert after_story[bid] == seed[bid], f"{bid} 与文案文件不一致: {after_story[bid]!r}"
+
+    # 逐行对拍: 除注脏的两行外, 任何行的值都不许变 (文案文件被改过 → 这里必红, 见负控)
+    drift = {bid: (before_story[bid], after_story[bid])
+             for bid in before_story
+             if bid not in dirty_ids and before_story[bid] != after_story[bid]}
+    assert drift == {}, f"无关行被 seeder 改动 (逐行对拍): {drift}"
+
+    assert after_desc == before_desc, "长典故被改动了!"
+    orphan = sorted(set(seed) - set(after_story))
+    if orphan:
+        # 文案文件里有、本机副本里没有 → 多半是本地副本落后生产, 不作为失败判据
+        print(f"[info] 文案文件有 {len(orphan)} 个 id 不在本机副本 (忽略): {orphan}")
+    assert badge_db.seed_story_short(conn, path=SEED_JSON) == 0   # 幂等: 第二次不动任何行
     conn.close()
 
 

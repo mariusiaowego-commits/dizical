@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, File, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 
@@ -150,16 +150,205 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
 def api_get_draft(draft_id: str) -> JSONResponse:
     """STEP 2: skill 读 draft (校验 + 返完整 draft).
 
+    P0 (sprint-26101302, 2026-10-13): 支持 COS 源 —— 本地 json 没有时从 COS 读 (生产容器
+    重建后草稿仍在 COS); 老草稿 (有 image.path 无 image.url) 在这里**惰性补 url**。
+    读侧本轮只做这一条路径, 其余读点 (list/discovery/draft-image/commit 侧) 归 P1。
+
     Returns:
-        {ok: True, draft: dict} or {ok: False, error: str}
+        {ok: True, draft: dict, source: "local"|"cos", storage_mode: "local"|"cos"} or {ok: False, error}
     """
     from src.kid_app import badge_draft
+
+    try:
+        draft, source = badge_draft.get_draft_with_source(draft_id)
+    except Exception as e:  # COS 可用但读失败 → 502, 不许假装"不存在"
+        logger.exception("read draft failed: %s", draft_id)
+        return JSONResponse(
+            {"ok": False, "error": f"读草稿失败 (存储不可用?): {e}"}, status_code=502,
+        )
+
+    if draft is None:
+        return JSONResponse({"ok": False, "error": f"draft '{draft_id}' 不存在"}, status_code=404)
+
+    backfilled = None
+    try:
+        backfilled = badge_draft.backfill_image_url(draft)   # 唯一允许的读侧写副作用
+    except Exception as e:  # 补 url 失败不阻塞读草稿 (草稿内容仍可用, 只是图还没远端化)
+        logger.warning("backfill image.url failed for %s: %r", draft_id, e)
+
+    result = {
+        "ok": True,
+        "draft": draft.to_dict(),
+        "source": source,
+        "storage_mode": badge_draft.storage_mode(),
+    }
+    if backfilled:
+        result["image_url_backfilled"] = backfilled
+    return JSONResponse(result)
+
+
+# ─── POST /config/api/badge/draft/{draft_id}/image (P0 回传端点) ─────
+
+# 成品图规格 = badge 管线出图口径 (1024×1024 RGBA PNG)
+DRAFT_IMAGE_SIZE = (1024, 1024)
+DRAFT_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+
+# ─── 回传端点鉴权 (P0b audit, 2026-10-13) ────────────────────────────
+# audit 发现: /config/api/ 在 app.py 的 _auth_guard_middleware 里是**公开白名单**,
+# 本端点不带任何凭据也能调 (匿名可写盘 + 触发 COS 计费面)。这里改成显式**默认拒绝**。
+# 为什么不直接把它从白名单剔除: 中间件那条 401 分支只认 web session cookie, 表达不了
+# "机器 token"通道 —— 剔出白名单会把合法机器推送一起挡掉, 且会波及同前缀的其它 /config/api
+# 端点 (前置/顺序风险)。所以选择"白名单 + 端点内自查", 鉴权是本端点的第一条语句。
+BADGE_PUSH_TOKEN_HEADER = "X-Badge-Push-Token"
+BADGE_PUSH_TOKEN_ENV = "BADGE_PUSH_TOKEN"
+
+
+def _push_token_ok(request: Request) -> bool:
+    """机器通道: 请求头 X-Badge-Push-Token == env BADGE_PUSH_TOKEN.
+
+    env 未设 (或空) = 该通道关闭 (不给默认 token)。常数时间比较, 不引新依赖 (hmac 是 stdlib)。
+    """
+    import hmac
+    import os
+
+    expected = (os.getenv(BADGE_PUSH_TOKEN_ENV) or "").strip()
+    if not expected:
+        return False
+    supplied = (request.headers.get(BADGE_PUSH_TOKEN_HEADER) or "").strip()
+    return bool(supplied) and hmac.compare_digest(supplied, expected)
+
+
+async def _badge_push_authorized(request: Request) -> bool:
+    """两条通道任一通过即可:
+
+      ① 机器: X-Badge-Push-Token == env BADGE_PUSH_TOKEN
+      ② 人/浏览器: /config 现有的 dad 守门 —— 直接复用 routes/config_users._check_dad_or_401
+         (X-Dad-Pin header、dad 角色 web 会话、dizical_pin_ok cookie 三轨), 不另造一套。
+         multipart 请求读不出 body 里的 pin, 该轨自然只走 header/cookie (helper 内部已 try/except)。
+    """
+    if _push_token_ok(request):
+        return True
+
+    from src.kid_app.routes.config_users import _check_dad_or_401
+
+    return (await _check_dad_or_401(request)) is None
+
+
+@router.post("/api/badge/draft/{draft_id}/image")
+async def api_upload_draft_image(
+    request: Request, draft_id: str, file: UploadFile = File(...)
+) -> JSONResponse:
+    """P0 (sprint-26101302): 异机把成品图**推回**服务, 不用碰服务所在机器的盘。
+
+    鉴权 (P0b): 默认拒绝, 见 _badge_push_authorized (机器 token / dad 守门); 未过 → 401。
+
+    之前只有 image_path (服务端本地绝对路径) ⇒ 异机根本推不进来 (2026-10-13 只能人工搬文件)。
+    本端点收 multipart PNG:
+      1. draft 必须存在, status ∈ {draft_created, draft_awaiting_confirm}
+      2. 图必须是 1024×1024 RGBA (尺寸/模式硬校验; alpha 门禁读数仍由客户端 skill 负责)
+      3. 落 .tmp/{draft_id}_v{n}.png (与 skill 生图同一路径约定 → commit/预览不用改)
+      4. COS 可用则同时上传 badges/{badge_id}_v{n}.png 并写 image.url
+      5. 走 update_draft_image 推进 status=draft_awaiting_confirm (状态机 + history 留痕)
+    """
+    import hashlib
+    import io
+
+    from src.kid_app import badge_draft
+    from src.kid_app.cos_client import cos_uploader
+
+    # 0. 鉴权 (默认拒绝, 第一条语句): 未授权不许触发任何写盘/COS 动作
+    if not await _badge_push_authorized(request):
+        logger.warning(
+            "draft image push denied: draft=%s client=%s token_header=%s",
+            draft_id, getattr(request.client, "host", "?"),
+            bool(request.headers.get(BADGE_PUSH_TOKEN_HEADER)),
+        )
+        return JSONResponse(
+            {"ok": False,
+             "error": "未授权: 需要 dad 凭据 (X-Dad-Pin / dad 会话 / pin_ok cookie) 或 X-Badge-Push-Token"},
+            status_code=401,
+        )
+
+    if not badge_draft.SAFE_DRAFT_ID_RE.match(draft_id or ""):
+        return JSONResponse({"ok": False, "error": "draft_id 非法"}, status_code=400)
 
     draft = badge_draft.get_draft(draft_id)
     if draft is None:
         return JSONResponse({"ok": False, "error": f"draft '{draft_id}' 不存在"}, status_code=404)
 
-    return JSONResponse({"ok": True, "draft": draft.to_dict()})
+    if draft.status not in ("draft_created", "draft_awaiting_confirm"):
+        return JSONResponse({
+            "ok": False,
+            "error": f"draft.status='{draft.status}' 不允许换图 (必须 draft_created / draft_awaiting_confirm)",
+        }, status_code=409)
+
+    raw = await file.read()
+    if not raw:
+        return JSONResponse({"ok": False, "error": "空文件"}, status_code=400)
+    if len(raw) > DRAFT_IMAGE_MAX_BYTES:
+        return JSONResponse(
+            {"ok": False, "error": f"文件过大: {len(raw)}B > {DRAFT_IMAGE_MAX_BYTES}B"},
+            status_code=413,
+        )
+
+    try:
+        from PIL import Image as _PILImage
+        with _PILImage.open(io.BytesIO(raw)) as im:
+            got_size, got_mode, got_fmt = im.size, im.mode, (im.format or "")
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "error": f"不是可解析的图片: {e}"}, status_code=400)
+
+    if got_size != DRAFT_IMAGE_SIZE or got_mode != "RGBA":
+        return JSONResponse({
+            "ok": False,
+            "error": (f"图规格不对: 需要 {DRAFT_IMAGE_SIZE[0]}×{DRAFT_IMAGE_SIZE[1]} RGBA, "
+                      f"收到 {got_size[0]}×{got_size[1]} {got_mode} ({got_fmt})"),
+        }, status_code=400)
+
+    badge_id = draft.meta.get("id")
+    if not badge_id:
+        return JSONResponse({"ok": False, "error": "draft.meta 缺 id"}, status_code=400)
+
+    # 版本沿用草稿当前 image.version (缺省 1) —— 重推同版本 = 覆盖, 与 skill 的 v1 约定一致
+    version = int((draft.image or {}).get("version", 1) or 1) if isinstance(draft.image, dict) else 1
+    sha256 = hashlib.sha256(raw).hexdigest()
+
+    try:
+        tmp = badge_draft.write_tmp_image(draft_id, version, raw)
+        storage = badge_draft.storage_mode()
+        image_url = None
+        if storage == "cos":
+            key = f"{badge_draft.COS_PREFIX_BADGE}{badge_id}_v{version}.png"
+            image_url = cos_uploader.upload(key, raw, content_type="image/png")
+        image_info = {
+            "path": str(tmp),
+            "url": image_url,          # None = 只有本地 (COS 不可用), commit 时会再试
+            "source": "api_upload",
+            "version": version,
+            "bytes": len(raw),
+            "sha256": sha256,
+            # 服务端只校验尺寸/模式: alpha 门禁读数由客户端 skill 产出 → 不冒充"已验"
+            "alpha_verified": False,
+        }
+        badge_draft.update_draft_image(draft_id, image_info, by="api")
+        updated = badge_draft.get_draft(draft_id)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("upload draft image failed: %s", draft_id)
+        return JSONResponse({"ok": False, "error": f"写图失败: {e}"}, status_code=500)
+
+    logger.info(
+        "draft image uploaded: draft=%s badge=%s v=%d bytes=%d storage=%s url=%s",
+        draft_id, badge_id, version, len(raw), storage, image_url,
+    )
+    return JSONResponse({
+        "ok": True,
+        "draft_id": draft_id,
+        "badge_id": badge_id,
+        "status": (updated.status if updated else "draft_awaiting_confirm"),
+        "storage": storage,
+        "image": image_info,
+        "image_url": image_url,
+    })
 
 
 # ─── POST /config/api/badge/commit-from-draft (STEP 3 write) ─────
@@ -207,12 +396,14 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=400)
         image_version = draft.image.get("version", draft.version)
 
-        # 1. V3.0 (sprint 26082401): 上传 PNG → COS (生产) 或 static/badges/ (本地 fallback)
-        #    返 (路径, 写入 url) — url 可能是 https://... (COS) 或 /static/badges/... (local)
-        _local_path, badge_image_url = badge_draft.commit_to_cos_or_static(req.draft_id, image_version)
+        # 1. P0 (sprint-26101302): commit_image_from_draft 返 storage 口径 (cos|static),
+        #    响应据此回话 —— 不再固定写"还需要 PR+deploy" (与真实路径不一致会误导操作者)
+        _commit = badge_draft.commit_image_from_draft(req.draft_id, image_version)
+        badge_image_url = _commit["url"]
+        image_storage = _commit["storage"]
         logger.info(
-            "badge commit image written: draft=%s version=%d url=%s",
-            req.draft_id, image_version, badge_image_url,
+            "badge commit image written: draft=%s version=%d storage=%s url=%s",
+            req.draft_id, image_version, image_storage, badge_image_url,
         )
 
         # 2. 调 badge_db 写三表 (achievements + stats + badges)
@@ -295,24 +486,36 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
         return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)
 
-    # V2.7 (sprint 26090902): prod 可见性提示 — 本地 commit ≠ 生产可见
-    # dad 9-9 实踩: 三表写云端 MySQL 后以为"上线", 但静态图只在本地,
-    # prod 容器镜像没此文件 → kid-app 蓝色占位, 要走 git PR + deploy 才可见
-    prod_visibility = {
-        "deployed": False,
-        "db_written": True,
-        "image_on": "local_static_only",
-        "needs": [
-            "git add src/kid_app/static/badges/{id}_v{n}.png".format(id=badge_id, n=image_version),
-            "git commit + push + PR + merge to main",
-            "CloudRun deploy (跟 hermes 说 'deploy badge' 或跑 dizical-cloudrun-deploy 5 步 SOP)",
-        ],
-        "hint": "本地已生效; 生产 kid-app 还需 git+deploy (约 10-15 分钟). 图片 URL 在 prod 生效前显示占位图.",
-    }
+    # P0 (sprint-26101302, 2026-10-13): 去硬编码 —— 按实际走的存储回话。
+    # 旧版固定写 needs=[git add/PR/deploy] 且 image_url 固定拼 /static/..., COS 上传成功时
+    # 也在说"要去 deploy" → 误导操作者 (2026-10-13 实测)。
+    if image_storage == "cos":
+        prod_visibility = {
+            "deployed": True,              # 图对象已在 COS 公开读 + 三表已指向它 → prod 立即可见
+            "db_written": True,
+            "image_on": "cos",
+            "image_url": badge_image_url,
+            "needs": [],
+            "hint": "图在 COS(公开读) 且三表已写 → 生产 kid-app 立即能看到, 不需要 git/PR/deploy。",
+        }
+    else:
+        prod_visibility = {
+            "deployed": False,
+            "db_written": True,
+            "image_on": "local_static_only",
+            "image_url": badge_image_url,
+            "needs": [
+                "git add src/kid_app/static/badges/{id}_v{n}.png".format(id=badge_id, n=image_version),
+                "git commit + push + PR + merge to main",
+                "CloudRun deploy (跟 hermes 说 'deploy badge' 或跑 dizical-cloudrun-deploy 5 步 SOP)",
+            ],
+            "hint": "本地已生效; 生产 kid-app 还需 git+deploy (约 10-15 分钟). 图片 URL 在 prod 生效前显示占位图.",
+        }
     return JSONResponse({
         "ok": True,
         "badge_id": badge_id,
-        "image_url": f"/static/badges/{badge_id}_v{image_version}.png",
+        "image_url": badge_image_url,      # 真实值: COS https URL 或 /static/badges/...
+        "image_storage": image_storage,
         "prod_visibility": prod_visibility,
     })
 

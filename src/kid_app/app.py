@@ -79,6 +79,27 @@ def _sprint26091201_card_theme_migrate() -> None:
         )
 
 
+# P0 (sprint-26101302, 2026-10-13): COS 自检 —— 必须在服务进程里实测。
+# 解释器漂移 (uvicorn 走 /opt/homebrew 的 3.14, 而 COS SDK 装在 .venv) 会让 qcloud_cos
+# 静默 MISSING ⇒ is_available=False ⇒ 图静默回落 static ⇒ 每张图都要 PR+deploy。
+# 用 print 不用 logger: uvicorn --log-level warning 会吃掉 logger.info (start-prod.sh 就是 warning)。
+@app.on_event("startup")
+def _sprint26101302_cos_selfcheck() -> None:
+    try:
+        from src.kid_app import badge_draft
+        from src.kid_app.cos_client import cos_uploader, sdk_version
+
+        bucket_set = bool(cos_uploader.bucket and cos_uploader.secret_id and cos_uploader.secret_key)
+        print(
+            f"[cos-selfcheck] qcloud_cos={sdk_version()} credentials_set={bucket_set} "
+            f"is_available={cos_uploader.is_available} BADGE_STORE={os.getenv('BADGE_STORE', 'AUTO')} "
+            f"storage_mode={badge_draft.storage_mode()}",
+            flush=True,
+        )
+    except Exception as e:  # noqa: BLE001 (自检失败不许影响启动)
+        print(f"[cos-selfcheck] FAILED: {e!r}", flush=True)
+
+
 # Sprint 26082804: Reviewer 写操作全局拦截 middleware
 # 无论是否在 PUBLIC 列表, 只要携带 reviewer 身份且尝试写操作, 一律 403
 @app.middleware("http")
@@ -123,6 +144,9 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/admin/reset-password")  # Sprint v3.3.2 dad 应急重置 API (走 PIN)
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
         or path.startswith("/api/admin/whitelist")
+        # 注 (P0b audit 2026-10-13): /config/api/ 是历史公开白名单 —— 会写盘/传 COS 的端点
+        # 必须在端点内自查鉴权。范例: routes/badge_workflow.api_upload_draft_image
+        # (默认拒绝, 机器 X-Badge-Push-Token 或 dad 守门)。新增写端点请照此办理。
         or path.startswith("/config/api/") or path == "/config/users"
         or path == "/config/users/verify"  # Sprint 26082901: PIN 页面解锁 POST, 自身 PIN+CSRF+限流校验
         or path == "/config/records"  # 2026-08-17: deprecated 页面, 立刻 302 → /config/practice-log?tab=stats (无需登录, 任何未登录点击都跳走)
@@ -301,6 +325,25 @@ def health_live():
     return {"status": "alive"}
 
 
+def _cos_health() -> dict:
+    """P0 (sprint-26101302): COS 可用性信息 —— 只进响应体, **不参与 status 判定**.
+
+    COS 是可选依赖 (不可用时图回落 static, 系统仍可用), 塞进 ready 判定会让 CloudRun
+    因一个可选依赖把实例摘出流量池 (503)。所以这里的字段永远不会改变返回码。
+    """
+    try:
+        from src.kid_app import badge_draft
+        from src.kid_app.cos_client import cos_uploader, sdk_version
+
+        return {
+            "cos_ok": bool(cos_uploader.is_available),
+            "cos_sdk": sdk_version(),
+            "badge_store": badge_draft.storage_mode(),
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"cos_ok": False, "cos_sdk": f"error: {e!r}", "badge_store": "unknown"}
+
+
 @app.get("/health/ready")
 def health_ready():
     """K8s readiness probe: 验证 DB 可达 + 业务 smoke test.
@@ -322,6 +365,7 @@ def health_ready():
             "db_error": db_error,
             "lesson_count": 0,
             "timestamp": dt.datetime.utcnow().isoformat() + "Z",
+            **_cos_health(),
         }, 503
 
     return {
@@ -332,6 +376,7 @@ def health_ready():
         "db_error": db_error,
         "lesson_count": record_count,
         "timestamp": dt.datetime.utcnow().isoformat() + "Z",
+        **_cos_health(),
     }
 
 
