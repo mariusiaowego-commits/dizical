@@ -144,6 +144,9 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/admin/reset-password")  # Sprint v3.3.2 dad 应急重置 API (走 PIN)
         or path.startswith("/api/__maintenance__") or path.startswith("/health")
         or path.startswith("/api/admin/whitelist")
+        # 注 (P0b audit 2026-10-13): /config/api/ 是历史公开白名单 —— 会写盘/传 COS 的端点
+        # 必须在端点内自查鉴权。范例: routes/badge_workflow.api_upload_draft_image
+        # (默认拒绝, 机器 X-Badge-Push-Token 或 dad 守门)。新增写端点请照此办理。
         or path.startswith("/config/api/") or path == "/config/users"
         or path == "/config/users/verify"  # Sprint 26082901: PIN 页面解锁 POST, 自身 PIN+CSRF+限流校验
         or path == "/config/records"  # 2026-08-17: deprecated 页面, 立刻 302 → /config/practice-log?tab=stats (无需登录, 任何未登录点击都跳走)

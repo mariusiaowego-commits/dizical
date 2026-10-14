@@ -193,10 +193,54 @@ def api_get_draft(draft_id: str) -> JSONResponse:
 DRAFT_IMAGE_SIZE = (1024, 1024)
 DRAFT_IMAGE_MAX_BYTES = 8 * 1024 * 1024
 
+# ─── 回传端点鉴权 (P0b audit, 2026-10-13) ────────────────────────────
+# audit 发现: /config/api/ 在 app.py 的 _auth_guard_middleware 里是**公开白名单**,
+# 本端点不带任何凭据也能调 (匿名可写盘 + 触发 COS 计费面)。这里改成显式**默认拒绝**。
+# 为什么不直接把它从白名单剔除: 中间件那条 401 分支只认 web session cookie, 表达不了
+# "机器 token"通道 —— 剔出白名单会把合法机器推送一起挡掉, 且会波及同前缀的其它 /config/api
+# 端点 (前置/顺序风险)。所以选择"白名单 + 端点内自查", 鉴权是本端点的第一条语句。
+BADGE_PUSH_TOKEN_HEADER = "X-Badge-Push-Token"
+BADGE_PUSH_TOKEN_ENV = "BADGE_PUSH_TOKEN"
+
+
+def _push_token_ok(request: Request) -> bool:
+    """机器通道: 请求头 X-Badge-Push-Token == env BADGE_PUSH_TOKEN.
+
+    env 未设 (或空) = 该通道关闭 (不给默认 token)。常数时间比较, 不引新依赖 (hmac 是 stdlib)。
+    """
+    import hmac
+    import os
+
+    expected = (os.getenv(BADGE_PUSH_TOKEN_ENV) or "").strip()
+    if not expected:
+        return False
+    supplied = (request.headers.get(BADGE_PUSH_TOKEN_HEADER) or "").strip()
+    return bool(supplied) and hmac.compare_digest(supplied, expected)
+
+
+async def _badge_push_authorized(request: Request) -> bool:
+    """两条通道任一通过即可:
+
+      ① 机器: X-Badge-Push-Token == env BADGE_PUSH_TOKEN
+      ② 人/浏览器: /config 现有的 dad 守门 —— 直接复用 routes/config_users._check_dad_or_401
+         (X-Dad-Pin header、dad 角色 web 会话、dizical_pin_ok cookie 三轨), 不另造一套。
+         multipart 请求读不出 body 里的 pin, 该轨自然只走 header/cookie (helper 内部已 try/except)。
+    """
+    if _push_token_ok(request):
+        return True
+
+    from src.kid_app.routes.config_users import _check_dad_or_401
+
+    return (await _check_dad_or_401(request)) is None
+
 
 @router.post("/api/badge/draft/{draft_id}/image")
-async def api_upload_draft_image(draft_id: str, file: UploadFile = File(...)) -> JSONResponse:
+async def api_upload_draft_image(
+    request: Request, draft_id: str, file: UploadFile = File(...)
+) -> JSONResponse:
     """P0 (sprint-26101302): 异机把成品图**推回**服务, 不用碰服务所在机器的盘。
+
+    鉴权 (P0b): 默认拒绝, 见 _badge_push_authorized (机器 token / dad 守门); 未过 → 401。
 
     之前只有 image_path (服务端本地绝对路径) ⇒ 异机根本推不进来 (2026-10-13 只能人工搬文件)。
     本端点收 multipart PNG:
@@ -211,6 +255,19 @@ async def api_upload_draft_image(draft_id: str, file: UploadFile = File(...)) ->
 
     from src.kid_app import badge_draft
     from src.kid_app.cos_client import cos_uploader
+
+    # 0. 鉴权 (默认拒绝, 第一条语句): 未授权不许触发任何写盘/COS 动作
+    if not await _badge_push_authorized(request):
+        logger.warning(
+            "draft image push denied: draft=%s client=%s token_header=%s",
+            draft_id, getattr(request.client, "host", "?"),
+            bool(request.headers.get(BADGE_PUSH_TOKEN_HEADER)),
+        )
+        return JSONResponse(
+            {"ok": False,
+             "error": "未授权: 需要 dad 凭据 (X-Dad-Pin / dad 会话 / pin_ok cookie) 或 X-Badge-Push-Token"},
+            status_code=401,
+        )
 
     if not badge_draft.SAFE_DRAFT_ID_RE.match(draft_id or ""):
         return JSONResponse({"ok": False, "error": "draft_id 非法"}, status_code=400)
