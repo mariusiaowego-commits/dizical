@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>变体 B — 单列竖排 (dizical practice skeleton)</title>
+<link rel="stylesheet" href="real-practice.css">
+<style>
+  body { background: #F8F9FA; }
+  .demo-wrap { max-width: 744px; margin: 0 auto; padding: 14px; }
+  .demo-stack { display: flex; flex-direction: column; gap: 14px; }
+  .demo-timer-full { width: 100%; }
+  .demo-timer-full .timer-block,
+  .demo-timer-full #timerCard { width: 100%; }
+  /* 全宽开始按钮: 用真 .btn.btn-primary, 仅在 demo 层放大宽高 */
+  .demo-start-full {
+    width: 100%;
+    min-height: 48px;
+    font-size: 18px;
+    margin-top: 8px;
+  }
+  /* 参数 chip 行: 默认折叠成一行, 点击展开 */
+  .demo-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+    background: #FFFFFF; border: 2px solid #E0E0E0; border-radius: 12px;
+    padding: 10px 14px; cursor: pointer;
+    font-size: 14px; color: #555;
+  }
+  .demo-chip-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .demo-chip-toggle { color: #FF6B6B; font-weight: bold; flex-shrink: 0; }
+  .demo-chip[aria-expanded="true"] { border-color: #FF6B6B; }
+  .demo-session-collapsed { display: none; }
+  .demo-session-expanded { display: block; margin-top: 8px; }
+  .demo-start-hint {
+    font-size: 13px; color: #7F8C8D; min-height: 18px;
+    margin-top: 6px; padding-left: 4px;
+  }
+  /* 标签按钮回退 */
+  .demo-tag {
+    background: #FFFFFF; border: 2px solid #E0E0E0; color: #555;
+    border-radius: 999px; padding: 6px 14px; font-size: 14px; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .demo-tag:hover { border-color: #FF6B6B; color: #FF6B6B; }
+  .demo-tag.selected { background: #FF6B6B; border-color: #FF6B6B; color: #FFFFFF; }
+</style>
+</head>
+<body>
+<div class="demo-wrap">
+
+  <div class="top-bar">
+    <div class="today-stat">今日已练习: 15 分钟</div>
+    <div class="server-clock">2026-09-20 07:15</div>
+  </div>
+
+  <div class="item-section card">
+    <h2>选择练习项目</h2>
+
+    <div class="selected-summary" id="selectedSummary">
+      <div class="summary-layout">
+        <div class="summary-left">
+          <div class="sum-tag"><span class="sum-name" id="sumName"></span><span class="sum-id" id="sumId"></span></div>
+          <button class="resel-btn" onclick="demoToggleReselect()"><span>重新选择</span></button>
+        </div>
+        <div class="summary-right">
+          <div class="req-highlight-inline" id="reqHighlight"></div>
+          <div class="story-text-muted">
+            <div class="sum-name" id="sumFullName"></div>
+            <div class="sum-req" id="sumReq"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="selection-area expanded" id="selectionArea">
+      <div class="item-filter-wrap">
+        <input type="text" id="itemFilter" placeholder="搜索..." oninput="demoFilterItems(this.value)">
+      </div>
+      <div class="item-grid" id="demoItemGrid">
+        <button class="item-btn" data-id="1001" data-req="长音 8 拍，气息要稳">长音练习</button>
+        <button class="item-btn" data-id="1002" data-req="单吐间隔均匀，速度 80">单吐 tuku</button>
+        <button class="item-btn" data-id="1003" data-req="双吐连音，别抢拍">双吐 kuku</button>
+        <button class="item-btn" data-id="1004" data-req="第一分句连吐">连音练习</button>
+        <button class="item-btn" data-id="1005" data-req="小字一组到二组">音阶上下行</button>
+        <button class="item-btn" data-id="1006" data-req="视奏，不许停">视奏</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-stack">
+
+    <div class="demo-timer-full">
+      <div id="timerCard">
+        <div class="readout">
+          <div class="ac-root" id="ttCounter"></div>
+          <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+        </div>
+        <div class="ruler-wrap">
+          <button class="step-btn minus" id="ttStepMinus" onclick="ttStepMin(-1)" aria-label="减少一分钟">−</button>
+          <div class="ruler" id="ruler">
+            <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+            <div class="notes-bubbles" aria-hidden="true"></div>
+            <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10"
+                   tabindex="-1" aria-label="练习时长（分钟）">
+          </div>
+          <button class="step-btn plus" id="ttStepPlus" onclick="ttStepMin(1)" aria-label="增加一分钟">+</button>
+        </div>
+        <button class="btn btn-primary demo-start-full" id="startBtn" onclick="demoToggleTimer()">开始</button>
+        <button class="btn btn-danger demo-start-full" id="finishEarlyBtn" onclick="demoFinishEarly()" style="display:none">提前结束</button>
+        <div class="demo-start-hint" id="demoStartHint"></div>
+      </div>
+    </div>
+
+    <div class="demo-chip" id="demoChip" aria-expanded="false" onclick="demoToggleChip()">
+      <span class="demo-chip-text" id="demoChipText">速度 ♪ = 80 · 练什么: 长音练习</span>
+      <span class="demo-chip-toggle" id="demoChipToggle">展开</span>
+    </div>
+
+    <div class="demo-session-collapsed" id="demoSessionWrap">
+      <div class="session-panel" id="sessionPanel">
+        <div class="sp-header">本次练习</div>
+        <div class="sp-tempo-row-1">
+          <div class="sp-tempo-label">速度</div>
+          <div class="sp-tempo-note-group" role="group" aria-label="音符">
+            <button type="button" class="sp-tempo-note-btn selected" data-note="♪" onclick="demoSetNote('♪')">♪</button>
+            <button type="button" class="sp-tempo-note-btn" data-note="♩" onclick="demoSetNote('♩')">♩</button>
+          </div>
+          <span class="sp-tempo-eq">=</span>
+          <div class="bpm-stepper" aria-label="BPM">
+            <button type="button" class="bpm-step" onclick="demoStepBpm(-1)" aria-label="减1">−</button>
+            <span class="bpm-value" id="demoBpmValue">80</span>
+            <button type="button" class="bpm-step" onclick="demoStepBpm(1)" aria-label="加1">+</button>
+          </div>
+        </div>
+        <div class="sp-tempo-row-2">
+          <div class="sp-tempo-hint" id="demoTempoHint">♪ = 80</div>
+        </div>
+        <div class="sp-content-tags" id="demoContentTags">
+          <span class="sp-content-tag" onclick="demoPickTag(this, '长音练习')">长音练习</span>
+          <span class="sp-content-tag" onclick="demoPickTag(this, '第一分句连吐')">第一分句连吐</span>
+          <span class="sp-content-tag" onclick="demoPickTag(this, '音阶')">音阶</span>
+        </div>
+        <input type="text" class="sp-content-input" id="demoContentInput" maxlength="200"
+               placeholder="练什么? 例如: 第一分句连吐" aria-label="本次练习内容">
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card today-records">
+    <h3>今日记录</h3>
+    <div class="today-summary-bar" id="todaySummaryBar">
+      <div class="tsb-main">
+        <div class="tsb-label">今日总时长</div>
+        <div class="tsb-value"><span id="todayTotalMins">15</span><span class="tsb-unit">分钟</span></div>
+      </div>
+      <div class="tsb-side">
+        <div class="tsb-stat"><span class="tsb-stat-num" id="todayItemCount">2</span><span class="tsb-stat-lbl">科目</span></div>
+        <div class="tsb-stat"><span class="tsb-stat-num" id="todaySessionCount">3</span><span class="tsb-stat-lbl">次计时</span></div>
+      </div>
+    </div>
+    <div id="demoRecordsList">
+      <div class="record-item">
+        <div><div class="item-name">长音练习</div><div class="item-mins">♪ = 80</div></div>
+        <span class="item-mins">10 分钟</span>
+      </div>
+      <div class="record-item">
+        <div><div class="item-name">单吐 tuku</div><div class="item-mins">♪ = 90</div></div>
+        <span class="item-mins">5 分钟</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="practice-footer">「 慢慢来，比较快。 」</div>
+
+</div>
+
+<script src="../vendor/gsap.min.js"></script>
+<script src="real-timer-visual.js"></script>
+<script src="demo-glue.js"></script>
+<script>
+  /* chip 折叠/展开 (variant B 专用, 不污染 demo-glue) */
+  function demoToggleChip() {
+    const chip = document.getElementById('demoChip');
+    const wrap = document.getElementById('demoSessionWrap');
+    const tog = document.getElementById('demoChipToggle');
+    if (!chip || !wrap) return;
+    const expanded = chip.getAttribute('aria-expanded') === 'true';
+    if (expanded) {
+      chip.setAttribute('aria-expanded', 'false');
+      wrap.classList.remove('demo-session-expanded');
+      wrap.classList.add('demo-session-collapsed');
+      if (tog) tog.textContent = '展开';
+    } else {
+      chip.setAttribute('aria-expanded', 'true');
+      wrap.classList.remove('demo-session-collapsed');
+      wrap.classList.add('demo-session-expanded');
+      if (tog) tog.textContent = '收起';
+    }
+  }
+</script>
+</body>
+</html>

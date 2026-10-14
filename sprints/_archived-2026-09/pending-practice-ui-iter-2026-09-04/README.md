@@ -6,6 +6,8 @@ date: 2026-09-04
 
 # practice-ui-iter — Pending Sprint 包
 
+> ⚠️ **2026-09-20 作废归档**：原因见 `../README.md`。本包不再启动，新方案另立 sprint。
+
 > ⚠️ **这是 _pending_ 状态**，不是正式 sprint。
 > 启动条件: dad 拍板 `integrated-draft.md` §5 的 4 个决策点（dial-knob / dashboard 暖白 / token 收敛 / 女儿账号）。
 
