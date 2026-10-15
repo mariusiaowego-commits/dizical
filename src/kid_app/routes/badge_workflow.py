@@ -505,7 +505,12 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             "image_on": "local_static_only",
             "image_url": badge_image_url,
             "needs": [
-                "git add src/kid_app/static/badges/{id}_v{n}.png".format(id=badge_id, n=image_version),
+                "git add src/kid_app/static/badges/{stem}.png".format(
+                    stem=f"{badge_id}_v{image_version}"),
+                "git add src/kid_app/static/badges/thumbs/{stem}.webp".format(
+                    stem=f"{badge_id}_v{image_version}"),
+                "git add src/kid_app/static/badges/full/{stem}.webp".format(
+                    stem=f"{badge_id}_v{image_version}"),
                 "git commit + push + PR + merge to main",
                 "CloudRun deploy (跟 hermes 说 'deploy badge' 或跑 dizical-cloudrun-deploy 5 步 SOP)",
             ],
@@ -531,7 +536,7 @@ def api_replace_image_from_draft(req: ReplaceImageFromDraftRequest) -> JSONRespo
     2. 校验 draft.status == draft_awaiting_confirm 且 draft.image 存在
     3. 校验 badge_id 已存在 (achievement_badges 表, 不管 is_current)
     4. 拿 image.version (跟 commit-from-draft 一样的 Bug #1 修法)
-    5. 复制 tmp 图到 static/badges/{badge_id}_v{new_version}.png
+    5. 走 commit_image_from_draft (与 commit 同一派生: PNG + thumbs/full webp)
     6. 调 badge_db.update_badge_current(badge_id, new_url, new_version)
        (UPDATE 老行 is_current=0 + INSERT 新行 is_current=1, 走事务)
     7. 标 draft.status=committed, 清理 .tmp/
@@ -565,11 +570,13 @@ def api_replace_image_from_draft(req: ReplaceImageFromDraftRequest) -> JSONRespo
         # Bug #1 同步: 拿 image.version (跟 commit 同源修法)
         image_version = draft.image.get("version", draft.version)
 
-        # 1. 复制 tmp 图到 static/badges/{badge_id}_v{image_version}.png
-        static_path = badge_draft.move_tmp_to_static(req.draft_id, image_version)
+        # 1. 与 commit 同一函数: PNG + 两档 webp, 失败抛错 (本 except 返 500, 不换行)
+        _commit = badge_draft.commit_image_from_draft(
+            req.draft_id, image_version, badge_id=req.badge_id,
+        )
+        new_url = _commit["url"]
 
         # 2. 换 badge 行 (UPDATE 老 is_current=0 + INSERT 新 is_current=1)
-        new_url = f"/static/badges/{req.badge_id}_v{image_version}.png"
         badge_db.update_badge_current(
             badge_id=req.badge_id,
             new_url=new_url,

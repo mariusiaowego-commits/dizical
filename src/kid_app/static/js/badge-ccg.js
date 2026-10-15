@@ -454,17 +454,36 @@
   /* 画面内层: 方案二多一层 Z 轴悬浮主体, 方案一主体贴在箔层之上.
      dad 2026-09-13 l1: 箔层已整体搬到卡面级 (见 frontMarkup), 这里只出主体 ——
      画面窗不再拥有自己的镭射底 (= dad 数的第二个圆角矩形外框)。 */
-  /* sprint 26091603 P0-5: 响应式图源 —— 列表墙只要 320px 缩略图, 聚焦单卡才吃 1024px 全图.
-     只改写 /static/badges/<name>.png 这一种来源 (已是 webp / 外链 / 别的目录一律原样返回).
-     转码产物由 P1 管线 (scripts/generate_badge_webp.py) 生成; 文件还没生成时 <img> 会 error,
-     bindReady 里一次性回退原生 PNG —— 所以这里可以乐观地先要 webp. */
+  /* sprint 26091603 P0-5 / sprint 26101302 P2: 响应式图源.
+     wall → thumbs/320, 其它 mode → full/1024.
+     只改写两种 PNG:
+       /static/badges/<stem>.png
+       https://<bucket>.tcb.qcloud.la/badges/<stem>.png
+     父目录不是 badges (已在 thumbs/ 或 full/)、不是 png、别的 host、draft-image: 原样返回.
+     webp 还没有时 <img> error, armImageFallback 一次性回到原 PNG. */
   function resolveCardImage(src, mode) {
     if (!src) return src;
-    var m = String(src).match(/^\/static\/badges\/([^\/]+)\.png$/i);
-    if (!m) return src;
-    return (mode === "wall")
-      ? "/static/badges/thumbs/" + m[1] + ".webp"
-      : "/static/badges/full/" + m[1] + ".webp";
+    var raw = String(src);
+    var tier = (mode === "wall") ? "thumbs" : "full";
+    var u;
+    try {
+      u = new URL(raw, "http://dizical.local");
+    } catch (e) {
+      return src;
+    }
+    var file = u.pathname.split("/").pop();
+    if (!file) return src;
+    var fm = file.match(/^([^/]+)\.png$/i);
+    if (!fm) return src;
+    var stem = fm[1];
+    if (raw.charAt(0) === "/" && raw.charAt(1) !== "/" && u.pathname === "/static/badges/" + file) {
+      return "/static/badges/" + tier + "/" + stem + ".webp";
+    }
+    var host = (u.hostname || "").toLowerCase();
+    if (/^https:/i.test(raw) && host.endsWith(".tcb.qcloud.la") && u.pathname === "/badges/" + file) {
+      return u.origin + "/badges/" + tier + "/" + stem + ".webp";
+    }
+    return src;
   }
 
   /* 图源 + 回退原图一起出; 只有真换了源才带 data-fallback (否则 error 时会自指). */
@@ -547,6 +566,15 @@
     );
   }
 
+  function armImageFallback(img) {
+    var fb = img.getAttribute("data-fallback");
+    if (!fb) return;
+    img.addEventListener("error", function () {
+      img.removeAttribute("data-fallback");
+      img.setAttribute("src", fb);
+    }, { once: true });
+  }
+
   function bindReady(stage) {
     var imgs = stage.querySelectorAll("img");
     var left = imgs.length;
@@ -556,15 +584,9 @@
       if (left <= 0) stage.classList.add("is-ready");
     }
     imgs.forEach(function (img) {
-      /* sprint 26091603 P0-5: webp 缺失 (P1 产物还没生成) / 加载失败 → 一次性回退原生 PNG.
+      /* sprint 26091603 P0-5: webp 缺失 / 加载失败 → 一次性回退原生 PNG.
          回退只做一次 (回退时立刻摘掉 data-fallback), 避免 404 → 换 src → 再 404 的死循环. */
-      var fb = img.getAttribute("data-fallback");
-      if (fb) {
-        img.addEventListener("error", function () {
-          img.removeAttribute("data-fallback");
-          img.setAttribute("src", fb);
-        }, { once: true });
-      }
+      armImageFallback(img);
       if (img.complete) done();
       else {
         img.addEventListener("load", done, { once: true });
@@ -1458,6 +1480,8 @@
     BADGE: BADGE,
     ORACLE_SEALS: ORACLE_SEALS,
     mountCard: mountCard,
+    resolveCardImage: resolveCardImage,
+    armImageFallback: armImageFallback,
     unmount: unmount,
     unmountAll: unmountAll,
     claim: claim,

@@ -171,7 +171,11 @@ class TestCommitFromDraft:
         # 模拟 skill 写 image + 临时图
         (tmp_badge_data / ".tmp").mkdir(exist_ok=True)
         tmp_png = badge_draft.tmp_path_for(d.draft_id, 1)
-        tmp_png.write_bytes(b"fake png")
+        import io
+        from PIL import Image
+        _png = io.BytesIO()
+        Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(_png, format="PNG")
+        tmp_png.write_bytes(_png.getvalue())
         badge_draft.update_draft_image(d.draft_id, {
             "path": str(tmp_png), "model": "gpt-image-2",
             "alpha_verified": True, "version": 1,
@@ -189,7 +193,9 @@ class TestCommitFromDraft:
         assert pv["deployed"] is False
         assert pv["db_written"] is True
         assert pv["image_on"] == "local_static_only"
-        assert len(pv["needs"]) == 3
+        assert len(pv["needs"]) == 5
+        assert "thumbs/v2_test_commit_happy_xyz_v1.webp" in pv["needs"][1]
+        assert "full/v2_test_commit_happy_xyz_v1.webp" in pv["needs"][2]
         assert "hint" in pv
 
         # 验证 DB 三表 (用 badge_write_tx context manager 跟 V1 一致)
@@ -232,11 +238,16 @@ class TestCommitFromDraft:
             conn.execute("DELETE FROM achievements WHERE id=?", ("v2_test_commit_happy_xyz",))
             conn.execute("DELETE FROM achievement_stats WHERE achievement_id=?", ("v2_test_commit_happy_xyz",))
             conn.execute("DELETE FROM achievement_badges WHERE achievement_id=?", ("v2_test_commit_happy_xyz",))
-        # static/badges/ PNG 也清 (move_tmp_to_static 复制过去的)
-        project_root = Path(tmp_png).resolve().parent.parent.parent.parent.parent
-        static_png = project_root / "src" / "kid_app" / "static" / "badges" / f"v2_test_commit_happy_xyz_v1.png"
-        if static_png.exists():
-            static_png.unlink()
+        # static PNG + 两档 webp (commit_image_from_draft 写在仓库 static/badges/)
+        static_dir = Path(badge_draft.__file__).resolve().parent / "static" / "badges"
+        stem = "v2_test_commit_happy_xyz_v1"
+        for extra in (
+            static_dir / f"{stem}.png",
+            static_dir / "thumbs" / f"{stem}.webp",
+            static_dir / "full" / f"{stem}.webp",
+        ):
+            if extra.exists():
+                extra.unlink()
 
     def test_status_must_be_awaiting(self, client, tmp_badge_data):
         """status=draft_created commit 应 400."""

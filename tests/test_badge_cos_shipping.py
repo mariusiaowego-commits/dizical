@@ -92,6 +92,16 @@ def test_commit_to_static_fallback(draft_with_image):
     # 路径返回 static/ 目录的文件
     assert path.name == "test_cos_badge_v1.png"
     assert "static" in str(path) and "badges" in str(path)
+    static_dir = path.parent
+    thumb = static_dir / "thumbs" / "test_cos_badge_v1.webp"
+    full = static_dir / "full" / "test_cos_badge_v1.webp"
+    try:
+        assert thumb.is_file() and thumb.stat().st_size > 0
+        assert full.is_file() and full.stat().st_size > 0
+    finally:
+        path.unlink(missing_ok=True)
+        thumb.unlink(missing_ok=True)
+        full.unlink(missing_ok=True)
 
 
 # ─── 场景 2: 生产 COS 上传 OK ──────────────────────────────────────
@@ -108,14 +118,17 @@ def test_commit_to_cos_success(draft_with_image):
 
         path, url = badge_draft.commit_to_cos_or_static(draft_id, 1)
 
-    # 验证 upload 被调 (Storage First)
-    mock_cos.upload.assert_called_once()
-    args = mock_cos.upload.call_args
-    cos_key = args[0][0]
-    cos_bytes = args[0][1]
-    assert cos_key == "badges/test_cos_badge_v1.png"
-    assert isinstance(cos_bytes, bytes) and len(cos_bytes) > 0
-    assert args[1].get("content_type") == "image/png"
+    # PNG + thumbs webp + full webp, 同一次 commit
+    assert mock_cos.upload.call_count == 3
+    calls = mock_cos.upload.call_args_list
+    assert calls[0][0][0] == "badges/test_cos_badge_v1.png"
+    assert calls[0][1].get("content_type") == "image/png"
+    assert isinstance(calls[0][0][1], bytes) and len(calls[0][0][1]) > 0
+    assert calls[1][0][0] == "badges/thumbs/test_cos_badge_v1.webp"
+    assert calls[1][1].get("content_type") == "image/webp"
+    assert calls[1][0][1][:4] == b"RIFF"
+    assert calls[2][0][0] == "badges/full/test_cos_badge_v1.webp"
+    assert calls[2][1].get("content_type") == "image/webp"
 
     # url 是 COS https URL, 不是 /static/ 相对路径
     assert url == fake_cos_url
@@ -153,3 +166,50 @@ def test_commit_tmp_missing_raises(draft_with_image):
 
         with pytest.raises(FileNotFoundError, match="临时图"):
             badge_draft.commit_to_cos_or_static(draft_id, 1)
+
+
+def test_webp_upload_failure_names_the_key(draft_with_image):
+    """PNG 已上传后 webp 失败 → 带 thumbs key 抛错, 调用方不入库."""
+    draft_id, _ = draft_with_image
+
+    def upload(key, data, content_type="image/jpeg"):
+        if key.endswith(".webp"):
+            raise RuntimeError("网络超时")
+        return f"https://b.tcb.qcloud.la/{key}"
+
+    with patch("src.kid_app.cos_client.cos_uploader") as mock_cos:
+        mock_cos.is_available = True
+        mock_cos.upload = upload
+        with pytest.raises(RuntimeError, match=r"key=badges/thumbs/test_cos_badge_v1\.webp"):
+            badge_draft.commit_to_cos_or_static(draft_id, 1)
+
+
+def test_reused_cos_url_still_uploads_webp(draft_with_image):
+    """本地临时图没了、image.url 已是 COS URL → 下载 PNG 再补两档 webp, DB url 仍是原 PNG."""
+    draft_id, fake_dir = draft_with_image
+    png_path = fake_dir / ".tmp" / f"{draft_id}_v1.png"
+    png_bytes = png_path.read_bytes()
+    png_path.unlink()
+    existing = "https://636c-cloud1-d4gfwyvsk1435e2e4-1454535414.tcb.qcloud.la/badges/test_cos_badge_v1.png"
+    draft = badge_draft.get_draft(draft_id)
+    draft.image["url"] = existing
+    badge_draft.save_draft(draft)
+
+    seen = []
+
+    def upload(key, data, content_type="image/jpeg"):
+        seen.append((key, content_type, data))
+        return f"https://636c-cloud1-d4gfwyvsk1435e2e4-1454535414.tcb.qcloud.la/{key}"
+
+    with patch("src.kid_app.cos_client.cos_uploader") as mock_cos:
+        mock_cos.is_available = True
+        mock_cos.download = MagicMock(return_value=png_bytes)
+        mock_cos.upload = upload
+        _path, url = badge_draft.commit_to_cos_or_static(draft_id, 1)
+
+    assert url == existing
+    assert [row[0] for row in seen] == [
+        "badges/thumbs/test_cos_badge_v1.webp",
+        "badges/full/test_cos_badge_v1.webp",
+    ]
+    assert all(row[1] == "image/webp" for row in seen)

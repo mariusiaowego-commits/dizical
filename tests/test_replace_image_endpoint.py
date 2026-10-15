@@ -19,10 +19,15 @@ DRAFT_DIR = Path(__file__).parent.parent / "data" / "lib" / "badge_data"
 TMP_DIR = DRAFT_DIR / ".tmp"
 STATIC_BADGES = Path(__file__).parent.parent / "src" / "kid_app" / "static" / "badges"
 
-ONE_PX = bytes.fromhex(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000d49444154789c63f8cf0000000300010073a6cb710000000049454e44ae426082"
-)
+def _one_px() -> bytes:
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGBA", (4, 4), (255, 0, 0, 128)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+ONE_PX = _one_px()
 
 
 def _tmp_db_path() -> Path:
@@ -167,6 +172,8 @@ def fresh_draft(monkeypatch, tmp_path) -> Iterator[tuple[str, Path]]:
     for png in [
         tmp_png,
         STATIC_BADGES / "streak_7_v1.png",
+        STATIC_BADGES / "thumbs" / "streak_7_v1.webp",
+        STATIC_BADGES / "full" / "streak_7_v1.webp",
     ]:
         if png.exists():
             png.unlink()
@@ -175,13 +182,17 @@ def fresh_draft(monkeypatch, tmp_path) -> Iterator[tuple[str, Path]]:
 
 
 def test_replace_happy_path(fresh_draft):
+    from unittest.mock import patch
+
     from src.kid_app.routes.badge_workflow import (
         api_replace_image_from_draft, ReplaceImageFromDraftRequest,
     )
 
     draft_id, _ = fresh_draft
     req = ReplaceImageFromDraftRequest(draft_id=draft_id, badge_id="streak_7")
-    resp = api_replace_image_from_draft(req)
+    with patch("src.kid_app.cos_client.cos_uploader") as mock_cos:
+        mock_cos.is_available = False
+        resp = api_replace_image_from_draft(req)
     body = _read_body(resp)
 
     assert resp.status_code == 200, f"resp body: {body}"
@@ -190,6 +201,8 @@ def test_replace_happy_path(fresh_draft):
     assert body["image_url"] == "/static/badges/streak_7_v1.png"
     assert body["version"] == 1
     assert (STATIC_BADGES / "streak_7_v1.png").exists()
+    assert (STATIC_BADGES / "thumbs" / "streak_7_v1.webp").is_file()
+    assert (STATIC_BADGES / "full" / "streak_7_v1.webp").is_file()
 
     conn = sqlite3.connect(str(_tmp_db_path()))
     try:
@@ -206,6 +219,34 @@ def test_replace_happy_path(fresh_draft):
     # draft status 已 committed
     draft_after = json.loads((DRAFT_DIR / f"{draft_id}.json").read_text())
     assert draft_after["status"] == "committed"
+
+
+def test_replace_calls_commit_image_from_draft(fresh_draft, monkeypatch):
+    """replace 与 commit 共用 commit_image_from_draft, badge_id 用请求里的 id."""
+    from src.kid_app import badge_draft
+    from src.kid_app.routes.badge_workflow import (
+        api_replace_image_from_draft, ReplaceImageFromDraftRequest,
+    )
+
+    draft_id, _ = fresh_draft
+    seen = {}
+
+    def fake(draft_id_arg, version, badge_id=None):
+        seen["args"] = (draft_id_arg, version, badge_id)
+        return {
+            "path": None,
+            "url": "https://bucket.tcb.qcloud.la/badges/streak_7_v1.png",
+            "storage": "cos",
+            "key": "badges/streak_7_v1.png",
+        }
+
+    monkeypatch.setattr(badge_draft, "commit_image_from_draft", fake)
+    req = ReplaceImageFromDraftRequest(draft_id=draft_id, badge_id="streak_7")
+    resp = api_replace_image_from_draft(req)
+    body = _read_body(resp)
+    assert resp.status_code == 200, body
+    assert body["image_url"] == "https://bucket.tcb.qcloud.la/badges/streak_7_v1.png"
+    assert seen["args"] == (draft_id, 1, "streak_7")
 
 
 def test_replace_rejects_wrong_status(fresh_draft):
