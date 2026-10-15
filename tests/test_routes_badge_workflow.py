@@ -666,6 +666,25 @@ def _count_rows(temp_db, table: str, badge_id: str) -> int:
     return cur.fetchone()[0]
 
 
+def _cleanup_static(badge_id: str) -> None:
+    """清本测试在 static/badges/ 可能留下的产物 (跑在旧代码上时 commit 会真拷图)."""
+    root = Path(badge_draft.__file__).resolve().parent
+    for rel in (f"static/badges/{badge_id}_v1.png",
+                f"static/badges/thumbs/{badge_id}_v1.webp",
+                f"static/badges/full/{badge_id}_v1.webp"):
+        p = root / rel
+        if p.exists():
+            p.unlink()
+
+
+@pytest.fixture
+def clean_static_residue():
+    """测试后清 static/badges/ 里的产物 —— 跑在旧代码上时 commit 会真拷图, 断言失败也不留脏."""
+    yield
+    for bid in ("v2_test_f1_pre_xyz", "v2_test_f1_conv_xyz", "v2_test_f1_conf_xyz"):
+        _cleanup_static(bid)
+
+
 def _insert_existing_badge(badge_id: str, url: str | None, version: int = 1) -> None:
     """造"上次 commit 半落地"现场: achievements + achievement_stats (+ badges) 各 1 行."""
     with badge_db.badge_write_tx() as conn:
@@ -688,12 +707,15 @@ def _insert_existing_badge(badge_id: str, url: str | None, version: int = 1) -> 
 
 class TestCommitPreflight:
     def test_preflight_revision_conflict_writes_nothing(self, client, tmp_badge_data, temp_db,
-                                                        monkeypatch):
+                                                        monkeypatch, clean_static_residue):
         """F1 ①: 读草稿后有人并发写 → 预检即 409, 三表 0 行 / COS 没被摸 / 草稿记账不动."""
         import copy as _copy
 
         meta = _make_valid_meta("f1_pre_xyz")
         d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        # 换成**真 PNG** (helper 写的是占位字节): 让旧代码能一路走到"三表已写"那步,
+        # 负控红行才咬在"0 行"上, 而不是被 webp 派生提前 500 挡住。
+        badge_draft.write_tmp_image(d.draft_id, 1, _rgba_png())
         assert badge_draft.get_draft(d.draft_id).revision == 2  # create(1) + update_image(2)
 
         real = badge_draft.get_draft_with_source
@@ -728,7 +750,8 @@ class TestCommitPreflight:
         assert after.revision == 2
         assert after.status == "draft_awaiting_confirm"
 
-    def test_reconverges_when_db_already_has_same_image(self, client, tmp_badge_data, temp_db):
+    def test_reconverges_when_db_already_has_same_image(self, client, tmp_badge_data, temp_db,
+                                                        clean_static_residue):
         """F1 ② 半落地现场 (三表已写 / 草稿没标) → 重试收敛成 200 且不再写 DB."""
         meta = _make_valid_meta("f1_conv_xyz")
         d = _make_awaiting_draft(tmp_badge_data, meta=meta)
@@ -753,7 +776,7 @@ class TestCommitPreflight:
         assert _count_rows(temp_db, "achievement_badges", badge_id) == 1
 
     def test_db_exists_with_other_image_gives_explicit_next_step(self, client, tmp_badge_data,
-                                                                 temp_db):
+                                                                 temp_db, clean_static_residue):
         """F1 ③: DB 里是**另一张图** → 409 且给出处置 (不是无提示死路)."""
         meta = _make_valid_meta("f1_conf_xyz")
         d = _make_awaiting_draft(tmp_badge_data, meta=meta)
