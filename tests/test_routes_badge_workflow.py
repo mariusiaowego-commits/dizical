@@ -681,17 +681,27 @@ def _cleanup_static(badge_id: str) -> None:
 def clean_static_residue():
     """测试后清 static/badges/ 里的产物 —— 跑在旧代码上时 commit 会真拷图, 断言失败也不留脏."""
     yield
-    for bid in ("v2_test_f1_pre_xyz", "v2_test_f1_conv_xyz", "v2_test_f1_conf_xyz"):
+    for bid in ("v2_test_f1_pre_xyz", "v2_test_f1_conv_xyz", "v2_test_f1_conf_xyz",
+                "v2_test_e1_push_xyz", "v2_test_e2_skill_xyz", "v2_test_n2_meta_xyz"):
         _cleanup_static(bid)
 
 
-def _insert_existing_badge(badge_id: str, url: str | None, version: int = 1) -> None:
-    """造"上次 commit 半落地"现场: achievements + achievement_stats (+ badges) 各 1 行."""
+def _insert_half_landed(draft, url: str | None, version: int = 1) -> None:
+    """按 **commit 主路径的口径** 造"上次半落地"现场: 三表各 1 行, meta 从草稿派生, 图 = url。
+
+    N2 (audit 261015) 起必须这样造: 随手的假名字/假典故会让 meta 比对判成"草稿改了 meta",
+    收敛被正确拒绝 (旧版 helper 写死 name="半落地"/description="test")。
+    """
+    meta = dict(draft.meta)
+    badge_id = meta.get("id")
     with badge_db.badge_write_tx() as conn:
         conn.execute(
-            "INSERT INTO achievements (id, name, type, category, stat_logic, description, display_format) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (badge_id, "半落地", "突破", "milestone", "无", "test", "days"),
+            "INSERT INTO achievements (id, name, type, category, stat_logic, description, "
+            "display_format, placeholder, cond_text, unlock_strategy) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (badge_id, meta.get("name"), meta.get("type"), meta.get("category", "milestone"),
+             "", meta.get("zh_story") or "无", meta.get("display_format", "icon"),
+             meta.get("placeholder"), meta.get("cond_text"), meta.get("unlock_strategy", "calc")),
         )
         conn.execute(
             "INSERT INTO achievement_stats (achievement_id, achieved) VALUES (?, ?)",
@@ -730,10 +740,7 @@ class TestCommitPreflight:
             return dd, src
 
         monkeypatch.setattr(badge_draft, "get_draft_with_source", fake)
-        from src.kid_app.cos_client import cos_uploader
-        uploads: list = []
-        monkeypatch.setattr(badge_draft, "storage_mode", lambda: "cos")
-        monkeypatch.setattr(cos_uploader, "upload", lambda *a, **kw: uploads.append(a) or "https://x/y.png")
+        uploads = _enable_cos(monkeypatch)   # COS 上传用桩 (tripwire: 被 409 拒时不许被调用)
 
         r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
         assert r.status_code == 409, r.text
@@ -757,7 +764,7 @@ class TestCommitPreflight:
         d = _make_awaiting_draft(tmp_badge_data, meta=meta)
         badge_id = "v2_test_f1_conv_xyz"
         expected = f"/static/badges/{badge_id}_v1.png"
-        _insert_existing_badge(badge_id, expected, version=1)
+        _insert_half_landed(d, expected, version=1)
 
         r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
         assert r.status_code == 200, r.text
@@ -781,16 +788,152 @@ class TestCommitPreflight:
         meta = _make_valid_meta("f1_conf_xyz")
         d = _make_awaiting_draft(tmp_badge_data, meta=meta)
         badge_id = "v2_test_f1_conf_xyz"
-        _insert_existing_badge(badge_id, f"/static/badges/{badge_id}_v9.png", version=9)
+        _insert_half_landed(d, f"/static/badges/{badge_id}_v9.png", version=9)
 
         r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
         assert r.status_code == 409, r.text
         body = r.json()
         assert body["code"] == "db_exists"
         assert body["db_url"] == f"/static/badges/{badge_id}_v9.png"
-        assert body["draft_url"] == f"/static/badges/{badge_id}_v1.png"
+        assert f"/static/badges/{badge_id}_v1.png" in body["draft_urls"]
         assert "replace-image-from-draft" in body["error"]
         assert badge_draft.get_draft(d.draft_id).status == "draft_awaiting_confirm"
+
+
+def _arm_post_tx_race(monkeypatch, draft_id: str):
+    """模拟"事务落库后、草稿 CAS 前有人抢先写了草稿" —— 挂在事务内最后一条 INSERT 之后。
+
+    真实现里这是并发写(hermes 推新图); 测试里做一次**真草稿写** (update_draft_image → revision+1),
+    让事务后的 `save_draft(expect_revision=...)` 必失败 = audit 复现的 revision_conflict_after_db_write。
+    """
+    real_insert = badge_db.insert_badge_row
+
+    def insert_then_race(conn, badge_id, url, version):
+        real_insert(conn, badge_id, url, version)
+        cur = badge_draft.get_draft(draft_id)
+        badge_draft.update_draft_image(draft_id, dict(cur.image or {}))
+
+    monkeypatch.setattr(badge_db, "insert_badge_row", insert_then_race)
+    return real_insert
+
+
+def _enable_cos(monkeypatch) -> list:
+    """让 commit 主路径走 COS 分支 (与生产同判据 `cos_uploader.is_available`), 但**不上真网**。
+
+    只桩 `is_available` / `upload`; 草稿仍存本地 (`BADGE_STORE=LOCAL`) —— 否则读草稿会走 COS
+    真网络 (红线: 测试不许碰真桶; 上一版这里就是这么踩到的)。
+    """
+    monkeypatch.setenv("COS_BUCKET", "636c-cloud1-testfake-1454535414")
+    monkeypatch.setenv("BADGE_STORE", "LOCAL")
+    from src.kid_app import cos_client
+    from src.kid_app.cos_client import cos_uploader
+
+    monkeypatch.setattr(cos_client.CosUploader, "is_available", property(lambda self: True))
+    uploaded: list = []
+    monkeypatch.setattr(
+        cos_uploader, "upload",
+        lambda key, content, content_type="image/png": uploaded.append(key) or cos_uploader.object_url(key),
+    )
+    return uploaded
+
+
+class TestCommitReconvergence:
+    """N1 (audit 261015): skill/.tmp 流 + 推图流 的半落地都必须能收敛 (上一轮只闭合了后者)."""
+
+    def test_e2_skill_tmp_flow_race_then_retry_converges(self, client, tmp_badge_data, temp_db,
+                                                         monkeypatch, clean_static_residue):
+        """E2: 图只在 .tmp (草稿无 image.url) → 事务后竞态 409 → **重试收敛 200 reconciled**."""
+        _enable_cos(monkeypatch)
+        meta = _make_valid_meta("e2_skill_xyz")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_draft.write_tmp_image(d.draft_id, 1, _rgba_png())   # 真 PNG: webp 派生要能解析
+        assert badge_draft.get_draft(d.draft_id).image.get("url") is None   # skill 流: 无 url
+
+        real_insert = _arm_post_tx_race(monkeypatch, d.draft_id)
+        r1 = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r1.status_code == 409, r1.text
+        b1 = r1.json()
+        assert b1["code"] == "revision_conflict_after_db_write"
+        assert b1["db_written"] is True and b1["badge_id"] == "v2_test_e2_skill_xyz"
+        db_url = temp_db._get_connection().execute(
+            "SELECT url FROM achievement_badges WHERE achievement_id=? AND is_current=1",
+            ("v2_test_e2_skill_xyz",)).fetchone()[0]
+        assert db_url.startswith("https://") and db_url.endswith("/badges/v2_test_e2_skill_xyz_v1.png")
+        assert badge_draft.get_draft(d.draft_id).status == "draft_awaiting_confirm"
+
+        monkeypatch.setattr(badge_db, "insert_badge_row", real_insert)   # 竞态只发生一次
+        r2 = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r2.status_code == 200, r2.text
+        b2 = r2.json()
+        assert b2["reconciled"] is True
+        assert b2["code"] == "already_committed_reconciled"
+        assert b2["image_url"] == db_url
+        assert b2["db_written"] is False
+        after = badge_draft.get_draft(d.draft_id)
+        assert after.status == "committed"
+        assert after.history[-1]["event"] == "commit_reconciled"
+        assert _count_rows(temp_db, "achievements", "v2_test_e2_skill_xyz") == 1
+
+    def test_e1_push_flow_race_then_retry_converges(self, client, tmp_badge_data, temp_db,
+                                                    monkeypatch, clean_static_residue):
+        """E1 (推图流, 上一轮已闭合, 防回归): 草稿 image.url = COS url → 同一构造也必须收敛."""
+        _enable_cos(monkeypatch)
+        meta = _make_valid_meta("e1_push_xyz")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_draft.write_tmp_image(d.draft_id, 1, _rgba_png())   # 真 PNG: webp 派生要能解析
+        from src.kid_app.cos_client import cos_uploader
+        push_url = cos_uploader.object_url("badges/v2_test_e1_push_xyz_v1.png")
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": str(badge_draft.tmp_path_for(d.draft_id, 1)),
+            "url": push_url, "source": "api_upload", "version": 1,
+            "bytes": 1, "sha256": "x" * 64, "alpha_verified": False,
+        })
+
+        real_insert = _arm_post_tx_race(monkeypatch, d.draft_id)
+        r1 = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r1.status_code == 409, r1.text
+        assert r1.json()["code"] == "revision_conflict_after_db_write"
+        db_url = temp_db._get_connection().execute(
+            "SELECT url FROM achievement_badges WHERE achievement_id=? AND is_current=1",
+            ("v2_test_e1_push_xyz",)).fetchone()[0]
+        assert db_url == push_url      # 推图流: commit 复用草稿里那条 COS url
+
+        monkeypatch.setattr(badge_db, "insert_badge_row", real_insert)
+        r2 = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r2.status_code == 200, r2.text
+        assert r2.json()["reconciled"] is True
+        assert r2.json()["image_url"] == push_url
+        assert badge_draft.get_draft(d.draft_id).status == "committed"
+
+    def test_n2_meta_diff_blocks_convergence(self, client, tmp_badge_data, temp_db,
+                                             clean_static_residue):
+        """N2: 图一致但草稿 meta 改了 → 409 db_exists_meta_diff; 库里保持老值, 草稿不标 committed."""
+        meta = _make_valid_meta("n2_meta_xyz")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_id = "v2_test_n2_meta_xyz"
+        _insert_half_landed(d, f"/static/badges/{badge_id}_v1.png")
+        old_name = d.meta["name"]
+        old_story = d.meta["zh_story"]
+
+        cur = badge_draft.get_draft(d.draft_id)
+        cur.meta["name"] = "新名字"
+        cur.meta["zh_story"] = "新典故"
+        badge_draft.save_draft(cur)
+
+        r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r.status_code == 409, r.text
+        body = r.json()
+        assert body["code"] == "db_exists_meta_diff"
+        assert body["db_written"] is False
+        assert body["meta_diff"]["name"] == [old_name, "新名字"]
+        assert "description" in body["meta_diff"]
+
+        row = tuple(temp_db._get_connection().execute(
+            "SELECT name, description FROM achievements WHERE id=?", (badge_id,)).fetchone())
+        assert row == (old_name, old_story)          # 不静默覆盖老行
+        after = badge_draft.get_draft(d.draft_id)
+        assert after.status == "draft_awaiting_confirm"
+        assert after.meta["name"] == "新名字"        # 草稿也没被改回去
 
 
 class TestPushPreflightNoSideEffects:

@@ -291,20 +291,57 @@ def _revision_conflict_response(e: "Exception") -> JSONResponse:
     )
 
 
-def _expected_badge_url(draft, badge_id: str) -> str | None:
-    """本草稿 commit 之后会写进 DB 的那条 url (与 commit 主路径同口径)。
+_META_COMPARE_KEYS = (
+    "name", "type", "category", "description", "display_format", "placeholder",
+    "threshold", "cond_text", "unlock_strategy", "achieved_at_override",
+    "card_theme", "card_stars",
+)
 
-    用途 (F1, audit 261014): badge 已在 DB 时判断"是不是我上次半落地留下的" —— 拿 DB 现有
-    url 跟这个值比对: 相等 → 图就是本次要写的那张 → 只补草稿记账即可收敛。
-    口径跟 commit 主路径一致: image.url 是 COS https 就用它, 否则本地 static 路径.
+
+def _expected_badge_urls(draft, badge_id: str) -> list[str]:
+    """本草稿 commit 之后**可能**写进 DB 的 url 候选 (与 commit 主路径同口径)。
+
+    用途 (F1 audit 261014 → N1 audit 261015): badge 已在 DB 时判断"是不是我上次半落地
+    留下的" —— db_url 命中任一候选 ⇒ 库里就是本草稿这张图 ⇒ 只补草稿记账即收敛。
+
+    为什么是**多个**候选 (N1 根因): commit 主路径优先走 COS —— `commit_image_from_draft`
+    在 `cos_uploader.is_available` 时上传 badges/{stem}.png + 两档 webp, 写库的 url 是
+    **upload 返回的公开 URL**; 只有 COS 不可用才落 `/static/badges/...`。badge-image skill
+    现行提交流 = 图只在 .tmp、草稿没有 image.url ⇒ 上一次落库的是 COS url; 这里若只推断
+    /static/... 就永不相等 → 收敛分支打不开, 半落地仍变死路 (audit 实测 E2)。
     """
     from src.kid_app import badge_draft as _bd
+    from src.kid_app.cos_client import cos_uploader
+
     img = draft.image if isinstance(getattr(draft, "image", None), dict) else {}
     url = img.get("url")
     if _bd.is_cos_url(url):
-        return str(url)
+        return [str(url)]                        # 推图流: 草稿已有 COS url, commit 复用它
     version = img.get("version", getattr(draft, "version", 1))
-    return f"/static/badges/{badge_id}_v{version}.png"
+    keys = _bd.badge_object_keys(badge_id, version)
+    candidates = [f"/static/badges/{keys['stem']}.png"]   # COS 不可用时的落点
+    if cos_uploader.is_available:                          # 与 commit 主路径同一判据
+        candidates.append(cos_uploader.object_url(keys["png"]))
+    return candidates
+
+
+def _meta_diff(draft, db_row: dict) -> dict[str, list]:
+    """草稿 meta (commit 会写进库的那几个字段) 与 DB 现有行的差异. 空 dict = 一致 (N2)。
+
+    stat_logic 不比: commit 恒写 "", 老行可能是 "无" —— 不是操作者能感知的差异, 比了只会把
+    "图一致但老行是 legacy"的收敛场景误判成冲突。sort_order / card_no 是入库时动态分配的,
+    也不比。
+    """
+    meta = dict(draft.meta)
+    meta["description"] = meta.get("zh_story") or "无"
+    meta.setdefault("unlock_strategy", "calc")
+    diff: dict[str, list] = {}
+    for k in _META_COMPARE_KEYS:
+        if k not in db_row or k not in meta:
+            continue
+        if db_row.get(k) != meta.get(k):
+            diff[k] = [db_row.get(k), meta.get(k)]
+    return diff
 
 
 @router.post("/api/badge/draft/{draft_id}/image",
@@ -488,8 +525,11 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
     #   ② 不一致 → 409, 但给出明确处置 (换图走 replace-image-from-draft)
     if badge_db.badge_exists(badge_id):
         db_url = badge_db.fetch_badge_url(badge_id)
-        expected_url = _expected_badge_url(draft, badge_id)
-        if expected_url and db_url == expected_url:
+        expected_urls = _expected_badge_urls(draft, badge_id)
+        db_row = badge_db.fetch_achievement_row(badge_id) or {}
+        meta_diff = _meta_diff(draft, db_row)
+        image_matches = bool(db_url) and db_url in expected_urls
+        if image_matches and not meta_diff:
             image_version_conv = (draft.image or {}).get("version", draft.version)
             try:
                 draft.version = image_version_conv
@@ -514,13 +554,36 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
                 "db_written": False,
                 "note": "DB 三表原本就有这张图 (上次 commit 半落地), 本次只补草稿状态, 未再写 DB",
             })
+        # N2 (audit 261015): 图一致但 meta 有差异 → **不许**静默 200 —— 草稿里的新名字/新典故
+        # 会落不了库, 而响应说 ok 就是在骗操作者。分开报码 + 各自给处置路径。
+        if image_matches and meta_diff:
+            logger.warning("commit 不收敛 (meta 差异): badge=%s diff=%s", badge_id, meta_diff)
+            return JSONResponse({
+                "ok": False,
+                "code": "db_exists_meta_diff",
+                "error": (f"DB 已有 id='{badge_id}' 且图与本草稿一致, 但草稿 meta 与库里的值不同 "
+                          f"({', '.join(sorted(meta_diff))}) → 不收敛, 避免静默丢掉草稿改动。"
+                          f"本端点只负责**新徽章入库**, 不会覆盖老行的 meta: "
+                          f"卡面主题/星级可走 POST /config/api/badge/card-appearance; "
+                          f"名字/典故这类字段请人工 SQL 或改用新 id 建草稿。"),
+                "db_url": db_url,
+                "draft_urls": expected_urls,
+                "meta_diff": meta_diff,
+                "db_written": False,
+                "next": "改 meta: card_theme/card_stars → card-appearance 端点; 其余字段 → 人工 SQL / 新 id 建草稿",
+            }, status_code=409)
+        logger.warning("commit 不收敛 (图不一致): badge=%s db_url=%s candidates=%s",
+                       badge_id, db_url, expected_urls)
         return JSONResponse({
             "ok": False,
             "code": "db_exists",
             "error": (f"DB 已有 id='{badge_id}' 的 badge, 且当前图与本草稿不一致 → 不能重复 commit。"
                       f"换图请走 replace-image-from-draft; 若要重做草稿请先人工核对后清掉旧草稿"),
             "db_url": db_url,
-            "draft_url": expected_url,
+            "draft_urls": expected_urls,
+            "meta_diff": meta_diff,
+            "db_written": False,
+            "next": "换图 → POST /config/api/badge/replace-image-from-draft; 重做 → 清旧草稿后新建",
         }, status_code=409)
 
     # ── F1 (audit 261014) 预检 ①: 进事务/传 COS **之前**比 revision (零副作用) ──
@@ -649,9 +712,9 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             "actual_revision": e.actual,
             "db_written": True,
             "badge_id": badge_id,
-            "next": ("直接重试同一次 commit: DB 里的图若与本草稿一致会自动收敛 (200 reconciled);"
-                     " 若报 db_exists 且 db_url != draft_url, 说明草稿图已被别人换掉 →"
-                     " 用 replace-image-from-draft 决定线上图"),
+            "next": ("直接重试同一次 commit: DB 里的图若与本草稿一致、meta 也一致 → 自动收敛"
+                     " (200 reconciled); 若报 db_exists 说明图不一致 → 用 replace-image-from-draft"
+                     " 决定线上图; 若报 db_exists_meta_diff 说明名字/典故等已被改过 → 人工处置"),
         }, status_code=409)
     except Exception as e:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
