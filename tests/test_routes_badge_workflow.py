@@ -682,7 +682,8 @@ def clean_static_residue():
     """测试后清 static/badges/ 里的产物 —— 跑在旧代码上时 commit 会真拷图, 断言失败也不留脏."""
     yield
     for bid in ("v2_test_f1_pre_xyz", "v2_test_f1_conv_xyz", "v2_test_f1_conf_xyz",
-                "v2_test_e1_push_xyz", "v2_test_e2_skill_xyz", "v2_test_n2_meta_xyz"):
+                "v2_test_e1_push_xyz", "v2_test_e2_skill_xyz", "v2_test_n2_meta_xyz",
+                "v2_test_r1_ui_xyz", "v2_test_r1_ctl_xyz"):
         _cleanup_static(bid)
 
 
@@ -694,14 +695,17 @@ def _insert_half_landed(draft, url: str | None, version: int = 1) -> None:
     """
     meta = dict(draft.meta)
     badge_id = meta.get("id")
+    # achieved_at_override 按 commit 主路径口径归一化 ('' → NULL) —— 库里的真值就是 NULL
+    override = (str(meta.get("achieved_at_override") or "").strip() or None)
     with badge_db.badge_write_tx() as conn:
         conn.execute(
             "INSERT INTO achievements (id, name, type, category, stat_logic, description, "
-            "display_format, placeholder, cond_text, unlock_strategy) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "display_format, placeholder, cond_text, unlock_strategy, achieved_at_override) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (badge_id, meta.get("name"), meta.get("type"), meta.get("category", "milestone"),
              "", meta.get("zh_story") or "无", meta.get("display_format", "icon"),
-             meta.get("placeholder"), meta.get("cond_text"), meta.get("unlock_strategy", "calc")),
+             meta.get("placeholder"), meta.get("cond_text"), meta.get("unlock_strategy", "calc"),
+             override),
         )
         conn.execute(
             "INSERT INTO achievement_stats (achievement_id, achieved) VALUES (?, ?)",
@@ -904,6 +908,51 @@ class TestCommitReconvergence:
         assert r2.json()["reconciled"] is True
         assert r2.json()["image_url"] == push_url
         assert badge_draft.get_draft(d.draft_id).status == "committed"
+
+    def test_r1_ui_draft_empty_override_converges(self, client, tmp_badge_data, temp_db,
+                                                  clean_static_residue):
+        """R1: UI 草稿恒发 `achieved_at_override=''` (config-badge.html:614) → 库里归一成 NULL。
+
+        半落地重试必须收敛 200; 修前这里 409 db_exists_meta_diff {"achieved_at_override":[null,""]}
+        （audit 实测）—— 那条会把 N1 的收敛对**任何 UI 草稿**又挡回去。
+        """
+        meta = dict(_make_valid_meta("r1_ui_xyz"), achieved_at_override="")   # UI 口径
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_id = "v2_test_r1_ui_xyz"
+        _insert_half_landed(d, f"/static/badges/{badge_id}_v1.png")
+        stored = temp_db._get_connection().execute(
+            "SELECT achieved_at_override FROM achievements WHERE id=?", (badge_id,)).fetchone()[0]
+        assert stored is None, "库里应是 NULL (commit 口径 '' → None)"
+        assert badge_draft.get_draft(d.draft_id).meta["achieved_at_override"] == ""
+
+        r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["reconciled"] is True
+        assert body["code"] == "already_committed_reconciled"
+        assert body["image_url"] == f"/static/badges/{badge_id}_v1.png"
+        after = badge_draft.get_draft(d.draft_id)
+        assert after.status == "committed"
+        assert after.history[-1]["event"] == "commit_reconciled"
+
+    def test_r1_meta_truly_different_still_409(self, client, tmp_badge_data, temp_db,
+                                               clean_static_residue):
+        """R1 对照: 归一化只吃 ''↔None —— 真换了 name 仍必须 409 不收敛."""
+        meta = dict(_make_valid_meta("r1_ctl_xyz"), achieved_at_override="")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_id = "v2_test_r1_ctl_xyz"
+        _insert_half_landed(d, f"/static/badges/{badge_id}_v1.png")
+        cur = badge_draft.get_draft(d.draft_id)
+        cur.meta["name"] = "换了名字"
+        badge_draft.save_draft(cur)
+
+        r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r.status_code == 409, r.text
+        body = r.json()
+        assert body["code"] == "db_exists_meta_diff"
+        assert body["meta_diff"]["name"] == [d.meta["name"], "换了名字"]
+        assert "achieved_at_override" not in body["meta_diff"]     # 归一化后不再误报
+        assert badge_draft.get_draft(d.draft_id).status == "draft_awaiting_confirm"
 
     def test_n2_meta_diff_blocks_convergence(self, client, tmp_badge_data, temp_db,
                                              clean_static_residue):

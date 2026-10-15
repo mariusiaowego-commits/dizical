@@ -325,12 +325,22 @@ def _expected_badge_urls(draft, badge_id: str) -> list[str]:
     return candidates
 
 
+# R1 (audit 261015): 按 commit 主路径的口径归一化, 再比 —— 否则"自己上次写的那行"会被判成差异。
+#   ① achieved_at_override: commit 写库时 `meta.get(...).strip() or None`(路由 :656) ⇒
+#      UI 草稿恒发的 `''`(config-badge.html:614) 落到库里是 **NULL**。不归一化就会出现
+#      `meta_diff={"achieved_at_override": [null, ""]}` ⇒ 把 N1 的收敛对**任何 UI 草稿**又挡回去。
+#   ② 不归一的字段: cond_text 的空串是**故意**保留的(""≠None, 见路由注释), 保持原样比对。
+_META_NORMALIZE = {
+    "achieved_at_override": lambda v: (str(v).strip() or None) if isinstance(v, str) else v,
+}
+
+
 def _meta_diff(draft, db_row: dict) -> dict[str, list]:
-    """草稿 meta (commit 会写进库的那几个字段) 与 DB 现有行的差异. 空 dict = 一致 (N2)。
+    """草稿 meta (commit 会写进库的那几个字段) 与 DB 现有行的差异. 空 dict = 一致 (N2/N-R1)。
 
     stat_logic 不比: commit 恒写 "", 老行可能是 "无" —— 不是操作者能感知的差异, 比了只会把
     "图一致但老行是 legacy"的收敛场景误判成冲突。sort_order / card_no 是入库时动态分配的,
-    也不比。
+    也不比。返回的 new 值给的是**归一化后**的值 (即真正会写进库的那个), 方便操作者核对。
     """
     meta = dict(draft.meta)
     meta["description"] = meta.get("zh_story") or "无"
@@ -339,8 +349,12 @@ def _meta_diff(draft, db_row: dict) -> dict[str, list]:
     for k in _META_COMPARE_KEYS:
         if k not in db_row or k not in meta:
             continue
-        if db_row.get(k) != meta.get(k):
-            diff[k] = [db_row.get(k), meta.get(k)]
+        want = meta.get(k)
+        norm = _META_NORMALIZE.get(k)
+        if norm is not None:
+            want = norm(want)
+        if db_row.get(k) != want:
+            diff[k] = [db_row.get(k), want]
     return diff
 
 
