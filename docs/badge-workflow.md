@@ -218,6 +218,39 @@ ls -la /Users/mt16/dev/dizical/src/kid_app/static/badges/<id>.png
 
 ---
 
+## 草稿与图的存储（P1, 2026-10-14：COS 统一）
+
+草稿 JSON 与成品图都可以走 COS，由 env `BADGE_STORE` 决定（`LOCAL` / `COS` / `AUTO`，默认 `AUTO`）。
+
+| 对象 | COS key | 本地形态 |
+|------|---------|----------|
+| 草稿 JSON | `badge_drafts/{draft_id}.json` | `data/lib/badge_data/{draft_id}.json`（COS 模式下=可选缓存） |
+| 成品图 | `badges/{badge_id}_v{n}.png` | `data/lib/badge_data/.tmp/...` + `src/kid_app/static/badges/`（仅 local/static 路径） |
+
+**权威副本裁决**：草稿里有个 `storage` 标记（`local` / `cos`）说明权威副本在哪。读侧**先看标记再看内容** ——
+本地那份若标着 `storage=cos`，它只是缓存，绝不能拿它遮住 COS 上的新版本（这正是 2026-10-13 只能人工搬草稿的根因）。
+写侧**不许静默回落**：COS 可用却写失败 → 直接报错（不本地写一份冒充成功）；只有 `COS 不可用` 才落 LOCAL 并置 `storage=local`。
+
+**并发（CAS）**：草稿有 `revision` 整数，每次写入 +1。写方带上自己读到的 revision（API 层：请求头 `X-Draft-Revision`），
+与存储上的不符 → **409**（`code=revision_conflict`），后写方必须重新读一遍再写，不会静默覆盖。
+⚠️ 已知边界：COS 没有条件写原语，实现是"写前重读比对"（窄窗口内仍可能交错）；要强一致得加锁 key（P2 候选）。
+
+**成品图回传端点**（异机推图，P0 新增 / P1 加鉴权+CAS）：
+
+```bash
+# 机器通道: X-Badge-Push-Token == env BADGE_PUSH_TOKEN (未设 = 通道关闭)
+curl -X POST "$BASE/config/api/badge/draft/$DRAFT_ID/image" \
+     -H "X-Badge-Push-Token: $BADGE_PUSH_TOKEN" \
+     -H "X-Draft-Revision: 1" \
+     -F "file=@badge_v1.png"        # 必须 1024×1024 RGBA
+# 人/浏览器通道: config 页那套 dad 凭据 (X-Dad-Pin header / dad 会话 / dizical_pin_ok cookie)
+```
+
+**已废弃**：`POST /config/api/badge/draft` 的 `image_path`（服务端本地文件路径，异机用不了）。保留行为但别再新接线，
+改用上面的 `/image` 端点。
+
+---
+
 ## 注意事项
 
 - **不要在多页面共用的 db 连接上调用 `conn.close()`**（教训：badges_page() 关闭共享连接导致 500）

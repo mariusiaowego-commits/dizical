@@ -373,11 +373,14 @@ def test_seed_on_prod_db_copy(tmp_path, monkeypatch):
     for bid in set(seed) & set(after_story):
         assert after_story[bid] == seed[bid], f"{bid} 与文案文件不一致: {after_story[bid]!r}"
 
-    # 逐行对拍: 除注脏的两行外, 任何行的值都不许变 (文案文件被改过 → 这里必红, 见负控)
+    # 逐行对拍: 只对**文案文件之外**的行要求一字不动 (2026-10-14 修, PR 366 audit 连带).
+    # 修前这里连"文件里也有的行"一起要求不动 → 文案文件整体改版时 (feat/badge-copy 7451ffa
+    # 重写 47 条) 全库对拍必 drift → 假红: 播种本来就**该**把新文案刷进库。
+    # 正确口径: 文件覆盖的 id 必须收敛到文件 (上面 ③ 断言); 文件外的行才不许被碰。
     drift = {bid: (before_story[bid], after_story[bid])
              for bid in before_story
-             if bid not in dirty_ids and before_story[bid] != after_story[bid]}
-    assert drift == {}, f"无关行被 seeder 改动 (逐行对拍): {drift}"
+             if bid not in dirty_ids and bid not in seed and before_story[bid] != after_story[bid]}
+    assert drift == {}, f"文案文件外的行被 seeder 改动 (逐行对拍): {drift}"
 
     assert after_desc == before_desc, "长典故被改动了!"
     orphan = sorted(set(seed) - set(after_story))

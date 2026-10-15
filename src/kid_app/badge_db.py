@@ -584,6 +584,24 @@ def next_version(badge_id: str) -> int:
     return int(cur.fetchone()[0])
 
 
+def fetch_achievement_row(badge_id: str) -> dict[str, Any] | None:
+    """读 achievements 1 行 (dict), 不存在返 None。
+
+    用途 (N2, audit 261015): commit 收敛前比对草稿 meta 与库里的实际值 —— 图对得上但
+    名字/典故被改过时不许静默 200 (草稿的改动落不了库)。
+    走 _db_execute → sqlite / pymysql 双后端通用 (列名取 cursor.description)。
+    """
+    conn = db._get_connection()
+    cur = _db_execute(conn, "SELECT * FROM achievements WHERE id = ?", (badge_id,))
+    row = cur.fetchone()
+    if row is None:
+        return None
+    cols = [d[0] for d in (getattr(cur, "description", None) or [])]
+    if not cols:
+        return None
+    return {c: row[i] for i, c in enumerate(cols)}
+
+
 def fetch_badge_url(badge_id: str) -> str | None:
     """返回 is_current=1 行的 url. None=未找到.
 

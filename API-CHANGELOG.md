@@ -1,5 +1,65 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-14 起草 / 2026-10-15 返工 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 草稿与图统一 COS
+**类型**: 🟡 部分兼容（老字段保留；新增 `storage` / `revision` 字段、可选请求头 `X-Draft-Revision` 与 409 错误码/字段；「重复 commit 同一张图 → 200」是**行为变更**。**无 DDL / 无数据迁移**）
+
+## 变更
+
+### 2026-10-15 — 返工：CAS 时点 + 半落地收敛语义
+
+- **`POST /config/api/badge/commit-from-draft`**：CAS (revision 比对) **前置**到写三表/传 COS **之前**
+  （预检 ① 在任何副作用前、预检 ② 在事务前），并把"图一致 + meta 一致 → 只补草稿状态"做成**收敛**路径。
+- **重复 commit 同一张图现在返 200（行为变更）**：DB 里已有该 badge 且当前图与本草稿将要写的图一致、
+  且 meta 无差异 → `200 {"ok": true, "reconciled": true, "code": "already_committed_reconciled",
+  "db_written": false, "image_url": "<库里那条 url>"}`，草稿状态补齐为 `committed`（history 记 `commit_reconciled`）。
+  **修前**：一律 `409 {"error": "DB 已有 id='…' 的 badge, 不能重复 commit (V1.1 暂无删除 API)"}` —— 上次
+  "三表已写、草稿没来得及标 committed"的半落地现场重试会卡死，需要人工 SQL。收敛**只补草稿记账，不再写 DB**。
+- **`POST /config/api/badge/commit-from-draft` 的 409 共 4 个 code**：`revision_conflict`（上面那两道预检，
+  `{expected_revision, actual_revision}`）+ 下面三个（都带 `db_written` 与处置线索）：
+  - `db_exists`：DB 已有该 id 但**图**不一致 → `{db_url, draft_urls[], meta_diff{}, db_written:false, next}`
+    （换图走 `POST /config/api/badge/replace-image-from-draft`）。
+  - `db_exists_meta_diff`：图一致但**草稿 meta** 与库里的值不同（`meta_diff` 给字段级 old/new）→ 不收敛，
+    避免静默丢掉新名字/新典故（本端点只负责新徽章入库，不覆盖老行 meta；`card_theme`/`card_stars`
+    可走 `POST /config/api/badge/card-appearance`，其余字段人工 SQL 或改用新 id 建草稿）。
+  - `revision_conflict_after_db_write`：预检之后仍有并发写落地（毫秒窗口）→ `{db_written: true, badge_id,
+    expected_revision, actual_revision, next}`。**此时三表已写**，直接重试同一次 commit 即按上面第一条收敛。
+- **推图侧 CAS 需客户端带请求头**：`POST /config/api/badge/draft/{id}/image` 的 `X-Draft-Revision` 仍是**可选**的
+  —— 不带 header = last-write-wins（后写覆盖，无 409 保护）。要防并发覆盖必须带上（现状见 audit N4，未改）。
+- **对 dizical-minip**：无需改代码（小程序不调这些端点；响应新增字段对老调用方透明）。
+
+### 已知缺口（登记，本次不实现）
+
+- **老徽章改文案没有 API 路径**（audit N-R2）：图一致 + meta 不同 → 409 `db_exists_meta_diff`；
+  `card-appearance` 只管 `card_theme`/`card_stars`；正解目前只有人工 SQL 或换新 id 建草稿。
+  后续建议：给一个受控的 meta 更新端点（字段白名单 + dad 鉴权 + `practice_audit_log` 式留痕），
+  再让上面的 409 直接指向它。
+
+### 2026-10-14 — 草稿与图统一 COS
+
+- **草稿存储位置可配**: 新增 env `BADGE_STORE ∈ {LOCAL, COS, AUTO}`（默认 `AUTO` = COS 凭据与 SDK 就绪就用 COS，否则本地）。
+  COS 模式下草稿 JSON 存 `badge_drafts/{draft_id}.json`，本地文件退化为可选缓存；`badge_drafts/` 是新键前缀，
+  `badges/`（成品图）沿用旧名不动历史 key。
+- **`POST /config/api/badge/draft` 响应新增** `storage`(local|cos) 与 `revision`(int)；`file_contract_path` 随权威副本变化
+  —— `storage=cos` 时返回 COS key（`badge_drafts/xxx.json`），`storage=local` 时仍是本地绝对路径。
+- **`GET /config/api/badge/draft/{id}` 响应新增** `source`(local|cos)、`storage_mode`、`draft.storage`、`draft.revision`；
+  读侧按 `draft.storage` 标记裁决权威副本（本地缓存不会遮住 COS 版本）。标记 `storage=cos` 但 COS 上取不到时，
+  额外返回 `storage_warning` 说明"读到的是本地缓存"。
+- **`POST /config/api/badge/draft/{id}/image`**（P0 新增的成品图回传端点）：
+  - 鉴权改由**路由级依赖**执行（默认拒绝）；未通过 401，body 形如 `{"detail": "未授权: ..."}`
+    （P0 时是 `{"ok": false, "error": ...}` —— 该端点尚无外部调用方，不影响 minip）。
+  - 新增可选请求头 `X-Draft-Revision`（整数）= 调用方读草稿时拿到的 `revision`；与存储上不符 → **409**
+    `{"ok": false, "code": "revision_conflict", "expected_revision": N, "actual_revision": M}`（并发写保护，不静默覆盖）。
+- **`GET /config/api/badge/discoveries` 返回项新增** `storage`、`revision`；`image_url` 在成品图已在 COS 时直接给 COS https URL。
+- **`GET /config/api/badge/draft-image`**：成品图在 COS 时 **302** 跳转到该 COS URL；草稿只在 COS（无本地 json）时也能读。
+- **`POST /config/api/badge/draft` 的 `image_path` 参数标记 DEPRECATED**（服务端本地文件路径，异机不可用）；
+  仍在用（config 页"已有图片模式"），保留行为，响应 hint 会提示改用新端点。**未删除**。
+- **对 dizical-minip**：无需改代码（小程序不读草稿，也不调这些端点；`/api/badge/unclaimed|claim` 未改）。
+- **新 env**: `BADGE_PUSH_TOKEN`（回传端点的机器通道 token；未设 = 该通道关闭，只剩 dad 凭据通道）。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-02 (已上线 #140, 2026-10-02 17:38 CST) — sprint 26100102 盲盒 feature 下线
 **类型**: 🔴 不兼容（端点整体移除，调用方将收到 404）
 

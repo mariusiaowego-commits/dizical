@@ -22,8 +22,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, File, Request, Response, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -91,10 +91,17 @@ def config_badge():
 
 @router.post("/api/badge/draft")
 def api_create_draft(req: DraftRequest) -> JSONResponse:
-    """STEP 1: 收 meta, 写 lib/badge_data/{draft_id}.json, 返 draft_id + json.
+    """STEP 1: 收 meta, 写草稿 (P1: 权威副本 = COS 或本地, 由 BADGE_STORE 决定), 返 draft_id + json.
 
-    新增 image_path 可选字段: 用户已有图片时传本地路径, 后端复制到 .tmp/,
-    直接跳到 draft_awaiting_confirm (跳过 STEP 2 生图).
+    ⚠️ DEPRECATED (P1, 2026-10-14): `image_path` 是**服务端本地文件路径** —— 只有"图片就在
+    服务这台机器上"时才可用 (异机/生产容器根本用不了)。新调用方请改用
+    `POST /config/api/badge/draft/{id}/image` (multipart 推图, 带鉴权)。
+    这里保留旧路径 (config-badge.html:154 的"已有图片模式"还在用), 但仅本地模式有意义:
+    COS 模式下会照旧复制到 .tmp, 响应里 hint 会提示改用新端点。
+
+    Returns:
+        {ok, draft_id, json, file_contract_path, storage, revision}
+        file_contract_path = COS key (storage=cos) 或本地 json 绝对路径 (storage=local)
     """
     from src.kid_app import badge_draft
 
@@ -104,7 +111,7 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
     try:
         draft = badge_draft.create_draft(req.meta)
 
-        # 新增: 用户已有图片 → 复制到 .tmp/, 直接进 draft_awaiting_confirm
+        # DEPRECATED (见 docstring): 用户已有图片 → 复制到 .tmp/, 直接进 draft_awaiting_confirm
         if req.image_path:
             version = 1
             badge_draft.copy_external_image(req.image_path, draft.draft_id, version)
@@ -120,13 +127,16 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    except RuntimeError as e:                       # P1: COS 写失败 → 不静默回落, 明确报错
+        logger.exception("create draft 写存储失败: %s", req.meta.get("id"))
+        return JSONResponse({"ok": False, "error": f"草稿写存储失败: {e}"}, status_code=502)
 
     # V2.7 (sprint 26090902): 落盘校验 — 防"UI 显示成功但后端没写盘"
     # dad 9-9 实踩: 前端显示草稿已创建, hermes /badge-image 查 draft_id 404
     verify = badge_draft.get_draft(draft.draft_id)
     if verify is None:
         return JSONResponse(
-            {"ok": False, "error": f"草稿落盘失败: {draft.draft_id}.json 未写入, 请重试"},
+            {"ok": False, "error": f"草稿落盘失败: {draft.draft_id} 未写入 ({draft.storage}), 请重试"},
             status_code=500,
         )
 
@@ -135,12 +145,22 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
         "ok": True,
         "draft_id": draft.draft_id,
         "json": json.dumps(draft.to_dict(), ensure_ascii=False, indent=2),
-        "file_contract_path": str(badge_draft._badge_data_dir() / f"{draft.draft_id}.json"),
+        "storage": draft.storage,
+        "revision": draft.revision,
+        # P1: 契约位置随权威副本走 (COS = key; 本地 = 绝对路径)
+        "file_contract_path": (
+            badge_draft.cos_draft_key(draft.draft_id) if draft.storage == badge_draft.STORAGE_COS
+            else str(badge_draft.local_path_for(draft.draft_id))
+        ),
     }
     # 有图片时提示可直接跳到待确认
     if req.image_path:
         result["image_imported"] = True
-        result["hint"] = "图片已导入, 可直接切到'待确认' tab 确认上线"
+        result["hint"] = (
+            "图片已导入, 可直接切到'待确认' tab 确认上线"
+            + ("(注意: image_path 是本地文件参数, P1 起已 deprecated, 建议改用 "
+               "POST /config/api/badge/draft/{id}/image)" if draft.storage == badge_draft.STORAGE_COS else "")
+        )
     return JSONResponse(result)
 
 
@@ -182,6 +202,9 @@ def api_get_draft(draft_id: str) -> JSONResponse:
         "source": source,
         "storage_mode": badge_draft.storage_mode(),
     }
+    # P1: 标记 cos 却从本地读到 → 说明读的是缓存 (COS 上那份取不到了), 明确告警别当权威
+    if draft.storage == badge_draft.STORAGE_COS and source != "cos":
+        result["storage_warning"] = "读到的是本地缓存: draft.storage=cos 但 COS 上取不到该对象"
     if backfilled:
         result["image_url_backfilled"] = backfilled
     return JSONResponse(result)
@@ -207,6 +230,8 @@ def _push_token_ok(request: Request) -> bool:
     """机器通道: 请求头 X-Badge-Push-Token == env BADGE_PUSH_TOKEN.
 
     env 未设 (或空) = 该通道关闭 (不给默认 token)。常数时间比较, 不引新依赖 (hmac 是 stdlib)。
+    P1 (P0b audit 收口 c): 两侧都 encode 成 bytes 再比 —— compare_digest 对**非 ASCII 的 str**
+    会抛 TypeError (→500); 攻击者发个非 ASCII header 就能把端点打成 500。
     """
     import hmac
     import os
@@ -215,7 +240,9 @@ def _push_token_ok(request: Request) -> bool:
     if not expected:
         return False
     supplied = (request.headers.get(BADGE_PUSH_TOKEN_HEADER) or "").strip()
-    return bool(supplied) and hmac.compare_digest(supplied, expected)
+    if not supplied:
+        return False
+    return hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
 
 
 async def _badge_push_authorized(request: Request) -> bool:
@@ -234,13 +261,111 @@ async def _badge_push_authorized(request: Request) -> bool:
     return (await _check_dad_or_401(request)) is None
 
 
-@router.post("/api/badge/draft/{draft_id}/image")
+async def require_badge_push_auth(request: Request) -> None:
+    """FastAPI 依赖版鉴权 (P0b audit 收口 a / P1 2026-10-14).
+
+    挂在路由的 dependencies 上 —— 鉴权在图外面执行, 将来有人删掉 handler 里的某一行
+    也不会**静默**把端点重新开成匿名可写。未通过 → 401。
+    """
+    if await _badge_push_authorized(request):
+        return
+    logger.warning(
+        "badge push auth denied: path=%s client=%s token_header=%s pin_header=%s",
+        request.url.path, getattr(request.client, "host", "?"),
+        bool(request.headers.get(BADGE_PUSH_TOKEN_HEADER)),
+        bool(request.headers.get("X-Dad-Pin")),
+    )
+    raise HTTPException(
+        status_code=401,
+        detail="未授权: 需要 dad 凭据 (X-Dad-Pin / dad 会话 / pin_ok cookie) 或 X-Badge-Push-Token",
+    )
+
+
+def _revision_conflict_response(e: "Exception") -> JSONResponse:
+    """RevisionConflict → 409 (CAS 失败: 后写方必须重新读, 不许静默覆盖)."""
+    return JSONResponse(
+        {"ok": False, "error": str(e), "code": "revision_conflict",
+         "expected_revision": getattr(e, "expected", None),
+         "actual_revision": getattr(e, "actual", None)},
+        status_code=409,
+    )
+
+
+_META_COMPARE_KEYS = (
+    "name", "type", "category", "description", "display_format", "placeholder",
+    "threshold", "cond_text", "unlock_strategy", "achieved_at_override",
+    "card_theme", "card_stars",
+)
+
+
+def _expected_badge_urls(draft, badge_id: str) -> list[str]:
+    """本草稿 commit 之后**可能**写进 DB 的 url 候选 (与 commit 主路径同口径)。
+
+    用途 (F1 audit 261014 → N1 audit 261015): badge 已在 DB 时判断"是不是我上次半落地
+    留下的" —— db_url 命中任一候选 ⇒ 库里就是本草稿这张图 ⇒ 只补草稿记账即收敛。
+
+    为什么是**多个**候选 (N1 根因): commit 主路径优先走 COS —— `commit_image_from_draft`
+    在 `cos_uploader.is_available` 时上传 badges/{stem}.png + 两档 webp, 写库的 url 是
+    **upload 返回的公开 URL**; 只有 COS 不可用才落 `/static/badges/...`。badge-image skill
+    现行提交流 = 图只在 .tmp、草稿没有 image.url ⇒ 上一次落库的是 COS url; 这里若只推断
+    /static/... 就永不相等 → 收敛分支打不开, 半落地仍变死路 (audit 实测 E2)。
+    """
+    from src.kid_app import badge_draft as _bd
+    from src.kid_app.cos_client import cos_uploader
+
+    img = draft.image if isinstance(getattr(draft, "image", None), dict) else {}
+    url = img.get("url")
+    if _bd.is_cos_url(url):
+        return [str(url)]                        # 推图流: 草稿已有 COS url, commit 复用它
+    version = img.get("version", getattr(draft, "version", 1))
+    keys = _bd.badge_object_keys(badge_id, version)
+    candidates = [f"/static/badges/{keys['stem']}.png"]   # COS 不可用时的落点
+    if cos_uploader.is_available:                          # 与 commit 主路径同一判据
+        candidates.append(cos_uploader.object_url(keys["png"]))
+    return candidates
+
+
+# R1 (audit 261015): 按 commit 主路径的口径归一化, 再比 —— 否则"自己上次写的那行"会被判成差异。
+#   ① achieved_at_override: commit 写库时 `meta.get(...).strip() or None`(路由 :656) ⇒
+#      UI 草稿恒发的 `''`(config-badge.html:614) 落到库里是 **NULL**。不归一化就会出现
+#      `meta_diff={"achieved_at_override": [null, ""]}` ⇒ 把 N1 的收敛对**任何 UI 草稿**又挡回去。
+#   ② 不归一的字段: cond_text 的空串是**故意**保留的(""≠None, 见路由注释), 保持原样比对。
+_META_NORMALIZE = {
+    "achieved_at_override": lambda v: (str(v).strip() or None) if isinstance(v, str) else v,
+}
+
+
+def _meta_diff(draft, db_row: dict) -> dict[str, list]:
+    """草稿 meta (commit 会写进库的那几个字段) 与 DB 现有行的差异. 空 dict = 一致 (N2/N-R1)。
+
+    stat_logic 不比: commit 恒写 "", 老行可能是 "无" —— 不是操作者能感知的差异, 比了只会把
+    "图一致但老行是 legacy"的收敛场景误判成冲突。sort_order / card_no 是入库时动态分配的,
+    也不比。返回的 new 值给的是**归一化后**的值 (即真正会写进库的那个), 方便操作者核对。
+    """
+    meta = dict(draft.meta)
+    meta["description"] = meta.get("zh_story") or "无"
+    meta.setdefault("unlock_strategy", "calc")
+    diff: dict[str, list] = {}
+    for k in _META_COMPARE_KEYS:
+        if k not in db_row or k not in meta:
+            continue
+        want = meta.get(k)
+        norm = _META_NORMALIZE.get(k)
+        if norm is not None:
+            want = norm(want)
+        if db_row.get(k) != want:
+            diff[k] = [db_row.get(k), want]
+    return diff
+
+
+@router.post("/api/badge/draft/{draft_id}/image",
+             dependencies=[Depends(require_badge_push_auth)])
 async def api_upload_draft_image(
     request: Request, draft_id: str, file: UploadFile = File(...)
 ) -> JSONResponse:
     """P0 (sprint-26101302): 异机把成品图**推回**服务, 不用碰服务所在机器的盘。
 
-    鉴权 (P0b): 默认拒绝, 见 _badge_push_authorized (机器 token / dad 守门); 未过 → 401。
+    鉴权 (P0b/P1): **默认拒绝**, 由路由依赖 `require_badge_push_auth` 执行 (机器 token / dad 守门)。
 
     之前只有 image_path (服务端本地绝对路径) ⇒ 异机根本推不进来 (2026-10-13 只能人工搬文件)。
     本端点收 multipart PNG:
@@ -249,6 +374,8 @@ async def api_upload_draft_image(
       3. 落 .tmp/{draft_id}_v{n}.png (与 skill 生图同一路径约定 → commit/预览不用改)
       4. COS 可用则同时上传 badges/{badge_id}_v{n}.png 并写 image.url
       5. 走 update_draft_image 推进 status=draft_awaiting_confirm (状态机 + history 留痕)
+      6. **P1 CAS**: 可选请求头 `X-Draft-Revision` = 你读草稿时拿到的 revision;
+         与存储上不符 → **409** (后写方重新读一遍再推, 不静默覆盖)
     """
     import hashlib
     import io
@@ -256,20 +383,8 @@ async def api_upload_draft_image(
     from src.kid_app import badge_draft
     from src.kid_app.cos_client import cos_uploader
 
-    # 0. 鉴权 (默认拒绝, 第一条语句): 未授权不许触发任何写盘/COS 动作
-    if not await _badge_push_authorized(request):
-        logger.warning(
-            "draft image push denied: draft=%s client=%s token_header=%s",
-            draft_id, getattr(request.client, "host", "?"),
-            bool(request.headers.get(BADGE_PUSH_TOKEN_HEADER)),
-        )
-        return JSONResponse(
-            {"ok": False,
-             "error": "未授权: 需要 dad 凭据 (X-Dad-Pin / dad 会话 / pin_ok cookie) 或 X-Badge-Push-Token"},
-            status_code=401,
-        )
-
-    if not badge_draft.SAFE_DRAFT_ID_RE.match(draft_id or ""):
+    # 0. 鉴权由路由依赖完成 (见 @router.post(...) 的 dependencies); 这里不再重复
+    if not badge_draft.DRAFT_ID_RE.match(draft_id or ""):
         return JSONResponse({"ok": False, "error": "draft_id 非法"}, status_code=400)
 
     draft = badge_draft.get_draft(draft_id)
@@ -313,6 +428,37 @@ async def api_upload_draft_image(
     version = int((draft.image or {}).get("version", 1) or 1) if isinstance(draft.image, dict) else 1
     sha256 = hashlib.sha256(raw).hexdigest()
 
+    # P1 CAS: 可选 X-Draft-Revision (调用方读草稿时拿到的 revision) —— 不符 → 409, 不静默覆盖
+    expect_revision = None
+    rev_header = (request.headers.get("X-Draft-Revision") or "").strip()
+    if rev_header:
+        try:
+            expect_revision = int(rev_header)
+        except ValueError:
+            return JSONResponse(
+                {"ok": False, "error": f"X-Draft-Revision 必须是整数, 收到 {rev_header!r}"},
+                status_code=400,
+            )
+
+    # F2 (audit 261014): CAS **前置**到写 .tmp / 传 COS 之前。
+    # 修前: expect_revision 只传给 update_draft_image, 那已经晚了一步 —— 被 409 拒掉的推图
+    # 仍把 B 图字节写进 .tmp 与 COS 对象, 而草稿记账还是 A 图 (字节/记账不一致)。
+    # 现在: 先读**权威副本**比一次 revision, 不符立即 409 (零副作用: 不写 .tmp / 不传 COS);
+    # 内层 update_draft_image(expect_revision=...) 留住当第二道网 (兜并发毫秒窗口)。
+    _auth, _auth_src = badge_draft.get_draft_with_source(draft_id)
+    if _auth is None:
+        return JSONResponse(
+            {"ok": False, "error": f"draft '{draft_id}' 在权威副本里不存在", "code": "draft_missing"},
+            status_code=409,
+        )
+    _base_rev = expect_revision if expect_revision is not None else draft.revision
+    if _auth.revision != _base_rev:
+        logger.warning("draft image push 预检 409: draft=%s 手里=%s 权威=%s (%s)",
+                       draft_id, _base_rev, _auth.revision, _auth_src)
+        return _revision_conflict_response(
+            badge_draft.RevisionConflict(draft_id, _base_rev, _auth.revision)
+        )
+
     try:
         tmp = badge_draft.write_tmp_image(draft_id, version, raw)
         storage = badge_draft.storage_mode()
@@ -330,15 +476,20 @@ async def api_upload_draft_image(
             # 服务端只校验尺寸/模式: alpha 门禁读数由客户端 skill 产出 → 不冒充"已验"
             "alpha_verified": False,
         }
-        badge_draft.update_draft_image(draft_id, image_info, by="api")
+        badge_draft.update_draft_image(draft_id, image_info, by="api",
+                                       expect_revision=expect_revision)
         updated = badge_draft.get_draft(draft_id)
+    except badge_draft.RevisionConflict as e:
+        logger.warning("draft image push revision conflict: %s", e)
+        return _revision_conflict_response(e)
     except Exception as e:  # noqa: BLE001
         logger.exception("upload draft image failed: %s", draft_id)
         return JSONResponse({"ok": False, "error": f"写图失败: {e}"}, status_code=500)
 
     logger.info(
-        "draft image uploaded: draft=%s badge=%s v=%d bytes=%d storage=%s url=%s",
-        draft_id, badge_id, version, len(raw), storage, image_url,
+        "draft image uploaded: draft=%s badge=%s v=%d bytes=%d storage=%s revision=%s url=%s",
+        draft_id, badge_id, version, len(raw), storage,
+        (updated.revision if updated else None), image_url,
     )
     return JSONResponse({
         "ok": True,
@@ -346,6 +497,8 @@ async def api_upload_draft_image(
         "badge_id": badge_id,
         "status": (updated.status if updated else "draft_awaiting_confirm"),
         "storage": storage,
+        "draft_storage": (updated.storage if updated else None),
+        "revision": (updated.revision if updated else None),
         "image": image_info,
         "image_url": image_url,
     })
@@ -379,12 +532,82 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
     if not badge_id:
         return JSONResponse({"ok": False, "error": "draft.meta 缺 id 字段"}, status_code=400)
 
-    # 跟 DB 重复检查
+    # 跟 DB 重复检查 —— F1 (audit 261014): 修前这里是无条件 409 死路。
+    # 实测现场: 上一次尝试"三表已写 / 草稿没来得及标 committed" (CAS 竞态或进程被杀),
+    # 重试撞到这里 → 只能人工 SQL 救。现在做成**可收敛**:
+    #   ① DB 当前图 == 本草稿将要写的图 → 就是上次半落地 → 只补草稿记账, 返 200 (reconciled)
+    #   ② 不一致 → 409, 但给出明确处置 (换图走 replace-image-from-draft)
     if badge_db.badge_exists(badge_id):
+        db_url = badge_db.fetch_badge_url(badge_id)
+        expected_urls = _expected_badge_urls(draft, badge_id)
+        db_row = badge_db.fetch_achievement_row(badge_id) or {}
+        meta_diff = _meta_diff(draft, db_row)
+        image_matches = bool(db_url) and db_url in expected_urls
+        if image_matches and not meta_diff:
+            image_version_conv = (draft.image or {}).get("version", draft.version)
+            try:
+                draft.version = image_version_conv
+                badge_draft.save_draft(draft, expect_revision=draft.revision)
+                badge_draft.mark_draft_status(
+                    req.draft_id, "committed", by="dizical",
+                    extra={"event": "commit_reconciled", "badge_id": badge_id,
+                           "reason": "DB 三表已存在同一张图, 草稿状态补齐 (上次半落地)"},
+                )
+                badge_draft.cleanup_tmp(req.draft_id, image_version_conv)
+            except badge_draft.RevisionConflict as e:
+                return _revision_conflict_response(e)
+            logger.warning("commit 收敛: DB 已有 %s 且图一致 (%s) → 只补草稿状态",
+                           badge_id, db_url)
+            return JSONResponse({
+                "ok": True,
+                "reconciled": True,
+                "code": "already_committed_reconciled",
+                "draft_id": req.draft_id,
+                "badge_id": badge_id,
+                "image_url": db_url,
+                "db_written": False,
+                "note": "DB 三表原本就有这张图 (上次 commit 半落地), 本次只补草稿状态, 未再写 DB",
+            })
+        # N2 (audit 261015): 图一致但 meta 有差异 → **不许**静默 200 —— 草稿里的新名字/新典故
+        # 会落不了库, 而响应说 ok 就是在骗操作者。分开报码 + 各自给处置路径。
+        if image_matches and meta_diff:
+            logger.warning("commit 不收敛 (meta 差异): badge=%s diff=%s", badge_id, meta_diff)
+            return JSONResponse({
+                "ok": False,
+                "code": "db_exists_meta_diff",
+                "error": (f"DB 已有 id='{badge_id}' 且图与本草稿一致, 但草稿 meta 与库里的值不同 "
+                          f"({', '.join(sorted(meta_diff))}) → 不收敛, 避免静默丢掉草稿改动。"
+                          f"本端点只负责**新徽章入库**, 不会覆盖老行的 meta: "
+                          f"卡面主题/星级可走 POST /config/api/badge/card-appearance; "
+                          f"名字/典故这类字段请人工 SQL 或改用新 id 建草稿。"),
+                "db_url": db_url,
+                "draft_urls": expected_urls,
+                "meta_diff": meta_diff,
+                "db_written": False,
+                "next": "改 meta: card_theme/card_stars → card-appearance 端点; 其余字段 → 人工 SQL / 新 id 建草稿",
+            }, status_code=409)
+        logger.warning("commit 不收敛 (图不一致): badge=%s db_url=%s candidates=%s",
+                       badge_id, db_url, expected_urls)
         return JSONResponse({
             "ok": False,
-            "error": f"DB 已有 id='{badge_id}' 的 badge, 不能重复 commit (V1.1 暂无删除 API)",
+            "code": "db_exists",
+            "error": (f"DB 已有 id='{badge_id}' 的 badge, 且当前图与本草稿不一致 → 不能重复 commit。"
+                      f"换图请走 replace-image-from-draft; 若要重做草稿请先人工核对后清掉旧草稿"),
+            "db_url": db_url,
+            "draft_urls": expected_urls,
+            "meta_diff": meta_diff,
+            "db_written": False,
+            "next": "换图 → POST /config/api/badge/replace-image-from-draft; 重做 → 清旧草稿后新建",
         }, status_code=409)
+
+    # ── F1 (audit 261014) 预检 ①: 进事务/传 COS **之前**比 revision (零副作用) ──
+    # 根因: 修前 CAS 只在三表写完之后 (save_draft(expect_revision=...)), 前半段 (传 COS) 已发生,
+    # 中间任何一次并发写都会留下"DB 有 / 草稿没有"的半落地状态。现在先读权威副本比一次:
+    # 不符立即 409, COS 不传、三表不写。② 事务前再比一次 (见下), 只剩事务后→草稿写那个毫秒窗口。
+    _pre, _pre_src = badge_draft.get_draft_with_source(req.draft_id)
+    if _pre is None or _pre.revision != draft.revision:
+        return _revision_conflict_response(badge_draft.RevisionConflict(
+            req.draft_id, draft.revision, (_pre.revision if _pre is not None else -1)))
 
     try:
         # Bug #1 修法 (2026-06-15): commit handler 用 image.version 不用顶层 version.
@@ -456,6 +679,13 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         else:
             achieved_at_iso = None
 
+        # F1 预检 ② (audit 261014): 上传 COS 期间也可能有人写草稿 → 事务前再比一次。
+        # 不通过就 409 —— 此时只多传了一份图字节 (幂等覆盖同 key), 三表仍未写, 不产生半落地状态。
+        _pre2, _pre2_src = badge_draft.get_draft_with_source(req.draft_id)
+        if _pre2 is None or _pre2.revision != draft.revision:
+            return _revision_conflict_response(badge_draft.RevisionConflict(
+                req.draft_id, draft.revision, (_pre2.revision if _pre2 is not None else -1)))
+
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":
@@ -474,14 +704,32 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
             )
 
         # 3. 状态变 committed + 顶层 version 跟 image.version 同步 (状态自洽)
+        #    P1 CAS: 从**本函数开头读到的那份** revision 出发写 —— 中途有人写过 → RevisionConflict → 409
         draft.version = image_version  # Bug #1 同步
         from src.kid_app import badge_draft as _bd
-        _bd.save_draft(draft)
+        _bd.save_draft(draft, expect_revision=draft.revision)
         badge_draft.mark_draft_status(req.draft_id, "committed", by="dizical",
                                     extra={"event": "user_confirmed", "badge_id": badge_id})
 
         # 4. 清理临时图 (image_version, 不是 draft.version)
         badge_draft.cleanup_tmp(req.draft_id, image_version)
+    except badge_draft.RevisionConflict as e:
+        # F1 (audit 261014): 走到这里 = 预检 ①② 之后仍有并发写落地 (毫秒窗口) —— 事实是
+        # 三表**已写** (id 已上线), 草稿仍是 draft_awaiting_confirm。所以 409 要带上"已落库"
+        # 和下一步动作, 别让操作者靠日志猜; 重试时会撞 "DB 已有" 分支, 那里图一致会自动收敛。
+        logger.warning("commit revision conflict (DB 已写): %s", e)
+        return JSONResponse({
+            "ok": False,
+            "error": str(e),
+            "code": "revision_conflict_after_db_write",
+            "expected_revision": e.expected,
+            "actual_revision": e.actual,
+            "db_written": True,
+            "badge_id": badge_id,
+            "next": ("直接重试同一次 commit: DB 里的图若与本草稿一致、meta 也一致 → 自动收敛"
+                     " (200 reconciled); 若报 db_exists 说明图不一致 → 用 replace-image-from-draft"
+                     " 决定线上图; 若报 db_exists_meta_diff 说明名字/典故等已被改过 → 人工处置"),
+        }, status_code=409)
     except Exception as e:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
         return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)
@@ -634,33 +882,46 @@ def api_draft_image(draft_id: str) -> Response:
     commit-from-draft 改成 static 路径), fallback 到这个端点.
 
     安全:
-    - draft_id 走 SAFE_ID_RE (^[a-zA-Z0-9_-]+$) → 杜绝 path traversal
-      注: DRAFT_ID_RE 跟实际草稿 ID 格式不匹配 (DRAFT_ID_RE 要求
-      6+ 位 hash, 但草稿用顺序 ID 或短 hash), 所以这里不复用
+    - draft_id 走与读写同一套字符白名单 (badge_draft.DRAFT_ID_RE, P1 返工 R1 统一)
+      → 杜绝 path traversal（含 / 与 .. 直接拒）
     - 真实路径必须 resolve 后仍在 _badge_data_dir() 内
       → 即使 image.path 字段被恶意改, 也读不到项目外文件
     - 仅返 image/png (Content-Type)
     """
-    import re as _re
     from pathlib import Path as _P
     from src.kid_app import badge_draft
 
-    # path traversal 防御: 字符白名单
-    if not _re.match(r"^[a-zA-Z0-9_-]+$", draft_id) or ".." in draft_id:
+    # path traversal 防御: 与读写侧同一套语义 (同一个 pattern 对象)
+    if not badge_draft.DRAFT_ID_RE.match(draft_id or "") or ".." in draft_id:
         return JSONResponse({"ok": False, "error": "draft_id 非法"}, status_code=400)
 
-    # 直接读 json, 不走 get_draft (它有 DRAFT_ID_RE 校验跟实际格式不一致)
-    draft_path = badge_draft._badge_data_dir() / f"{draft_id}.json"
-    if not draft_path.is_file():
-        return JSONResponse({"ok": False, "error": "draft 不存在"}, status_code=404)
-
+    # P1: 草稿可能只在 COS (storage=cos) —— 必须走 get_draft_with_source 的标记裁决,
+    # 不再"直接读本地 json"(那样 COS-only 草稿的预览永远 404)。
     try:
-        import json as _json
-        draft_data = _json.loads(draft_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        return JSONResponse({"ok": False, "error": f"draft 解析失败: {e}"}, status_code=400)
+        draft, src = badge_draft.get_draft_with_source(draft_id)
+    except Exception as e:  # noqa: BLE001 (COS 读失败 → 502, 不假装"不存在")
+        logger.warning("draft-image: 读草稿失败 %s: %r", draft_id, e)
+        return JSONResponse({"ok": False, "error": f"读草稿失败 (存储不可用?): {e}"}, status_code=502)
 
-    img_path_str = (draft_data.get("image") or {}).get("path")
+    if draft is None:
+        # 兜底: id 过白名单但 get_draft_with_source 认不出 (例: 本地怪 json) → 按本地文件直读一次
+        draft_path = badge_draft._badge_data_dir() / f"{draft_id}.json"
+        if not draft_path.is_file():
+            return JSONResponse({"ok": False, "error": "draft 不存在"}, status_code=404)
+        try:
+            import json as _json
+            draft = badge_draft.BadgeDraft.from_dict(
+                _json.loads(draft_path.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as e:
+            return JSONResponse({"ok": False, "error": f"draft 解析失败: {e}"}, status_code=400)
+        src = "local"
+
+    image = draft.image if isinstance(draft.image, dict) else {}
+    # P1: 图在 COS (公开读 https) → 直接 302 过去, 不代理字节
+    if badge_draft.is_cos_url(image.get("url")):
+        return RedirectResponse(url=str(image["url"]), status_code=302)
+
+    img_path_str = image.get("path")
     if not img_path_str:
         return JSONResponse({"ok": False, "error": "draft 还没 image 字段"}, status_code=404)
 
