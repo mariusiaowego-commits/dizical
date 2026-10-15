@@ -1,9 +1,11 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-10-15 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 返工 (CAS 时点 + 半落地收敛语义)
-**类型**: 🟡 部分兼容（老请求不变；新增 409 错误码与字段、以及"重复 commit 同一张图 → 200"这个**行为变更**。**无 DDL / 无数据迁移**）
+**日期**: 2026-10-14 起草 / 2026-10-15 返工 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 草稿与图统一 COS
+**类型**: 🟡 部分兼容（老字段保留；新增 `storage` / `revision` 字段、可选请求头 `X-Draft-Revision` 与 409 错误码/字段；「重复 commit 同一张图 → 200」是**行为变更**。**无 DDL / 无数据迁移**）
 
 ## 变更
+
+### 2026-10-15 — 返工：CAS 时点 + 半落地收敛语义
 
 - **`POST /config/api/badge/commit-from-draft`**：CAS (revision 比对) **前置**到写三表/传 COS **之前**
   （预检 ① 在任何副作用前、预检 ② 在事务前），并把"图一致 + meta 一致 → 只补草稿状态"做成**收敛**路径。
@@ -12,7 +14,8 @@
   "db_written": false, "image_url": "<库里那条 url>"}`，草稿状态补齐为 `committed`（history 记 `commit_reconciled`）。
   **修前**：一律 `409 {"error": "DB 已有 id='…' 的 badge, 不能重复 commit (V1.1 暂无删除 API)"}` —— 上次
   "三表已写、草稿没来得及标 committed"的半落地现场重试会卡死，需要人工 SQL。收敛**只补草稿记账，不再写 DB**。
-- **`POST /config/api/badge/commit-from-draft` 的 409 分三个 code，都带处置线索**：
+- **`POST /config/api/badge/commit-from-draft` 的 409 共 4 个 code**：`revision_conflict`（上面那两道预检，
+  `{expected_revision, actual_revision}`）+ 下面三个（都带 `db_written` 与处置线索）：
   - `db_exists`：DB 已有该 id 但**图**不一致 → `{db_url, draft_urls[], meta_diff{}, db_written:false, next}`
     （换图走 `POST /config/api/badge/replace-image-from-draft`）。
   - `db_exists_meta_diff`：图一致但**草稿 meta** 与库里的值不同（`meta_diff` 给字段级 old/new）→ 不收敛，
@@ -24,14 +27,14 @@
   —— 不带 header = last-write-wins（后写覆盖，无 409 保护）。要防并发覆盖必须带上（现状见 audit N4，未改）。
 - **对 dizical-minip**：无需改代码（小程序不调这些端点；响应新增字段对老调用方透明）。
 
----
+### 已知缺口（登记，本次不实现）
 
-# Backend 切换 — API 变更
+- **老徽章改文案没有 API 路径**（audit N-R2）：图一致 + meta 不同 → 409 `db_exists_meta_diff`；
+  `card-appearance` 只管 `card_theme`/`card_stars`；正解目前只有人工 SQL 或换新 id 建草稿。
+  后续建议：给一个受控的 meta 更新端点（字段白名单 + dad 鉴权 + `practice_audit_log` 式留痕），
+  再让上面的 409 直接指向它。
 
-**日期**: 2026-10-14 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 草稿与图统一 COS
-**类型**: 🟡 部分兼容（老字段保留；新增 `storage` / `revision` 字段与一个可选请求头。**无 DDL / 无数据迁移**）
-
-## 变更
+### 2026-10-14 — 草稿与图统一 COS
 
 - **草稿存储位置可配**: 新增 env `BADGE_STORE ∈ {LOCAL, COS, AUTO}`（默认 `AUTO` = COS 凭据与 SDK 就绪就用 COS，否则本地）。
   COS 模式下草稿 JSON 存 `badge_drafts/{draft_id}.json`，本地文件退化为可选缓存；`badge_drafts/` 是新键前缀，
