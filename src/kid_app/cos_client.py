@@ -207,14 +207,27 @@ class CosUploader:
         return keys[:max_keys]
 
     def delete_object(self, filename: str) -> bool:
-        """删对象 (idempotent). 存在并删成功返 True; 本来不存在返 False; 其它失败抛."""
+        """删对象 (idempotent). 存在并删成功返 True; 本来不存在返 False; 其它失败抛.
+
+        F3 (audit 261014): 修前直接调 SDK delete —— COS/S3 语义下 DELETE 对**不存在**的 key
+        同样返 204 且不抛 → 本函数恒返 True, 跟"本来不存在返 False"的契约相反
+        (调用方 badge_draft.delete_draft 的返回值就成了假话)。现在先 head 一次定存在性
+        (代价: 多 1 次往返), 不存在 → False 且不发 DELETE。
+        """
         if not self.is_available:
             raise RuntimeError("COS 未配置, 无法 delete_object")
+        try:
+            self._cos_client.head_object(Bucket=self.bucket, Key=filename)  # type: ignore[union-attr]
+        except Exception as e:  # noqa: BLE001
+            if self._is_not_found(e):
+                return False
+            raise RuntimeError(f"COS head_object 失败: {e}") from e
         try:
             self._cos_client.delete_object(Bucket=self.bucket, Key=filename)  # type: ignore[union-attr]
         except Exception as e:  # noqa: BLE001
             if self._is_not_found(e):
-                return False
+                # head 之后被别人删掉: 目标状态已达成, 算"删到了"
+                return True
             raise RuntimeError(f"COS delete_object 失败: {e}") from e
         return True
 

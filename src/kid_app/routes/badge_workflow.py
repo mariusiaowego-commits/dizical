@@ -291,6 +291,22 @@ def _revision_conflict_response(e: "Exception") -> JSONResponse:
     )
 
 
+def _expected_badge_url(draft, badge_id: str) -> str | None:
+    """本草稿 commit 之后会写进 DB 的那条 url (与 commit 主路径同口径)。
+
+    用途 (F1, audit 261014): badge 已在 DB 时判断"是不是我上次半落地留下的" —— 拿 DB 现有
+    url 跟这个值比对: 相等 → 图就是本次要写的那张 → 只补草稿记账即可收敛。
+    口径跟 commit 主路径一致: image.url 是 COS https 就用它, 否则本地 static 路径.
+    """
+    from src.kid_app import badge_draft as _bd
+    img = draft.image if isinstance(getattr(draft, "image", None), dict) else {}
+    url = img.get("url")
+    if _bd.is_cos_url(url):
+        return str(url)
+    version = img.get("version", getattr(draft, "version", 1))
+    return f"/static/badges/{badge_id}_v{version}.png"
+
+
 @router.post("/api/badge/draft/{draft_id}/image",
              dependencies=[Depends(require_badge_push_auth)])
 async def api_upload_draft_image(
@@ -373,6 +389,25 @@ async def api_upload_draft_image(
                 status_code=400,
             )
 
+    # F2 (audit 261014): CAS **前置**到写 .tmp / 传 COS 之前。
+    # 修前: expect_revision 只传给 update_draft_image, 那已经晚了一步 —— 被 409 拒掉的推图
+    # 仍把 B 图字节写进 .tmp 与 COS 对象, 而草稿记账还是 A 图 (字节/记账不一致)。
+    # 现在: 先读**权威副本**比一次 revision, 不符立即 409 (零副作用: 不写 .tmp / 不传 COS);
+    # 内层 update_draft_image(expect_revision=...) 留住当第二道网 (兜并发毫秒窗口)。
+    _auth, _auth_src = badge_draft.get_draft_with_source(draft_id)
+    if _auth is None:
+        return JSONResponse(
+            {"ok": False, "error": f"draft '{draft_id}' 在权威副本里不存在", "code": "draft_missing"},
+            status_code=409,
+        )
+    _base_rev = expect_revision if expect_revision is not None else draft.revision
+    if _auth.revision != _base_rev:
+        logger.warning("draft image push 预检 409: draft=%s 手里=%s 权威=%s (%s)",
+                       draft_id, _base_rev, _auth.revision, _auth_src)
+        return _revision_conflict_response(
+            badge_draft.RevisionConflict(draft_id, _base_rev, _auth.revision)
+        )
+
     try:
         tmp = badge_draft.write_tmp_image(draft_id, version, raw)
         storage = badge_draft.storage_mode()
@@ -446,12 +481,56 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
     if not badge_id:
         return JSONResponse({"ok": False, "error": "draft.meta 缺 id 字段"}, status_code=400)
 
-    # 跟 DB 重复检查
+    # 跟 DB 重复检查 —— F1 (audit 261014): 修前这里是无条件 409 死路。
+    # 实测现场: 上一次尝试"三表已写 / 草稿没来得及标 committed" (CAS 竞态或进程被杀),
+    # 重试撞到这里 → 只能人工 SQL 救。现在做成**可收敛**:
+    #   ① DB 当前图 == 本草稿将要写的图 → 就是上次半落地 → 只补草稿记账, 返 200 (reconciled)
+    #   ② 不一致 → 409, 但给出明确处置 (换图走 replace-image-from-draft)
     if badge_db.badge_exists(badge_id):
+        db_url = badge_db.fetch_badge_url(badge_id)
+        expected_url = _expected_badge_url(draft, badge_id)
+        if expected_url and db_url == expected_url:
+            image_version_conv = (draft.image or {}).get("version", draft.version)
+            try:
+                draft.version = image_version_conv
+                badge_draft.save_draft(draft, expect_revision=draft.revision)
+                badge_draft.mark_draft_status(
+                    req.draft_id, "committed", by="dizical",
+                    extra={"event": "commit_reconciled", "badge_id": badge_id,
+                           "reason": "DB 三表已存在同一张图, 草稿状态补齐 (上次半落地)"},
+                )
+                badge_draft.cleanup_tmp(req.draft_id, image_version_conv)
+            except badge_draft.RevisionConflict as e:
+                return _revision_conflict_response(e)
+            logger.warning("commit 收敛: DB 已有 %s 且图一致 (%s) → 只补草稿状态",
+                           badge_id, db_url)
+            return JSONResponse({
+                "ok": True,
+                "reconciled": True,
+                "code": "already_committed_reconciled",
+                "draft_id": req.draft_id,
+                "badge_id": badge_id,
+                "image_url": db_url,
+                "db_written": False,
+                "note": "DB 三表原本就有这张图 (上次 commit 半落地), 本次只补草稿状态, 未再写 DB",
+            })
         return JSONResponse({
             "ok": False,
-            "error": f"DB 已有 id='{badge_id}' 的 badge, 不能重复 commit (V1.1 暂无删除 API)",
+            "code": "db_exists",
+            "error": (f"DB 已有 id='{badge_id}' 的 badge, 且当前图与本草稿不一致 → 不能重复 commit。"
+                      f"换图请走 replace-image-from-draft; 若要重做草稿请先人工核对后清掉旧草稿"),
+            "db_url": db_url,
+            "draft_url": expected_url,
         }, status_code=409)
+
+    # ── F1 (audit 261014) 预检 ①: 进事务/传 COS **之前**比 revision (零副作用) ──
+    # 根因: 修前 CAS 只在三表写完之后 (save_draft(expect_revision=...)), 前半段 (传 COS) 已发生,
+    # 中间任何一次并发写都会留下"DB 有 / 草稿没有"的半落地状态。现在先读权威副本比一次:
+    # 不符立即 409, COS 不传、三表不写。② 事务前再比一次 (见下), 只剩事务后→草稿写那个毫秒窗口。
+    _pre, _pre_src = badge_draft.get_draft_with_source(req.draft_id)
+    if _pre is None or _pre.revision != draft.revision:
+        return _revision_conflict_response(badge_draft.RevisionConflict(
+            req.draft_id, draft.revision, (_pre.revision if _pre is not None else -1)))
 
     try:
         # Bug #1 修法 (2026-06-15): commit handler 用 image.version 不用顶层 version.
@@ -523,6 +602,13 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         else:
             achieved_at_iso = None
 
+        # F1 预检 ② (audit 261014): 上传 COS 期间也可能有人写草稿 → 事务前再比一次。
+        # 不通过就 409 —— 此时只多传了一份图字节 (幂等覆盖同 key), 三表仍未写, 不产生半落地状态。
+        _pre2, _pre2_src = badge_draft.get_draft_with_source(req.draft_id)
+        if _pre2 is None or _pre2.revision != draft.revision:
+            return _revision_conflict_response(badge_draft.RevisionConflict(
+                req.draft_id, draft.revision, (_pre2.revision if _pre2 is not None else -1)))
+
         with badge_db.badge_write_tx() as conn:
             badge_db.insert_achievement_row(conn, meta_for_db)
             if draft.meta.get("category") == "milestone":
@@ -551,10 +637,22 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         # 4. 清理临时图 (image_version, 不是 draft.version)
         badge_draft.cleanup_tmp(req.draft_id, image_version)
     except badge_draft.RevisionConflict as e:
-        # CAS 失败: 有人先写过这个草稿 (例: hermes 刚推了新图) → 409, 让操作者重新读一遍再确认
-        # ⚠️ 注意顺序: 本端点先写 DB 再写草稿, 所以 409 时 badge 行可能已经落库 —— 需人工核对
-        logger.warning("commit revision conflict: %s", e)
-        return _revision_conflict_response(e)
+        # F1 (audit 261014): 走到这里 = 预检 ①② 之后仍有并发写落地 (毫秒窗口) —— 事实是
+        # 三表**已写** (id 已上线), 草稿仍是 draft_awaiting_confirm。所以 409 要带上"已落库"
+        # 和下一步动作, 别让操作者靠日志猜; 重试时会撞 "DB 已有" 分支, 那里图一致会自动收敛。
+        logger.warning("commit revision conflict (DB 已写): %s", e)
+        return JSONResponse({
+            "ok": False,
+            "error": str(e),
+            "code": "revision_conflict_after_db_write",
+            "expected_revision": e.expected,
+            "actual_revision": e.actual,
+            "db_written": True,
+            "badge_id": badge_id,
+            "next": ("直接重试同一次 commit: DB 里的图若与本草稿一致会自动收敛 (200 reconciled);"
+                     " 若报 db_exists 且 db_url != draft_url, 说明草稿图已被别人换掉 →"
+                     " 用 replace-image-from-draft 决定线上图"),
+        }, status_code=409)
     except Exception as e:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
         return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)

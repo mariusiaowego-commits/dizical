@@ -362,3 +362,47 @@ def test_backfill_image_url_uploads_and_persists(local_dir, fake_cos, monkeypatc
     after = badge_draft.get_draft(d.draft_id)                   # 写回 COS 权威副本
     assert after.image["url"] == url and after.image["storage"] == "cos"
     assert badge_draft.backfill_image_url(after) is None         # 已有 url → 幂等空转
+
+
+# ─── 8. delete_object 契约: 不存在必须返 False (F3, audit 261014 / PR 366) ─────
+
+def test_delete_object_false_when_absent_true_when_present(monkeypatch):
+    """F3: COS/S3 的 DELETE 对不存在的 key 也返 204 不抛 → 修前本函数恒返 True.
+
+    修法: 先 head 定存在性. 断言两件事: 不存在 → False **且不发 DELETE**; 存在 → delete 一次 + True.
+    """
+    monkeypatch.setenv("COS_BUCKET", "b-1250000000")
+    monkeypatch.setenv("COS_SECRET_ID", "id")
+    monkeypatch.setenv("COS_SECRET_KEY", "key")
+    up = cos_client.CosUploader()
+
+    class Err404(Exception):
+        def get_status_code(self):
+            return 404
+
+    class FakeSDK:
+        """桩 SDK: DELETE 对缺失 key 也成功 (跟真 COS 一致) —— 逼代码用 head 判存在性."""
+
+        def __init__(self, present):
+            self.present = set(present)
+            self.calls: list[tuple[str, str]] = []
+
+        def head_object(self, **kw):
+            self.calls.append(("head", kw["Key"]))
+            if kw["Key"] not in self.present:
+                raise Err404("404")
+            return {}
+
+        def delete_object(self, **kw):
+            self.calls.append(("delete", kw["Key"]))
+            self.present.discard(kw["Key"])       # 真 COS 对缺失 key 也返 204 → 这里不报错
+            return {}
+
+    sdk = FakeSDK({"badges/here_v1.png"})
+    up._client = sdk                               # 直接注入桩, 绕开真客户端构造
+
+    assert up.delete_object("badges/gone_v1.png") is False
+    assert ("delete", "badges/gone_v1.png") not in sdk.calls, "缺失对象不该发 DELETE"
+    assert up.delete_object("badges/here_v1.png") is True
+    assert ("delete", "badges/here_v1.png") in sdk.calls
+    assert up.delete_object("badges/here_v1.png") is False   # 已删掉 → 再来一次 = False
