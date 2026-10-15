@@ -1,5 +1,33 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-15 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 返工 (CAS 时点 + 半落地收敛语义)
+**类型**: 🟡 部分兼容（老请求不变；新增 409 错误码与字段、以及"重复 commit 同一张图 → 200"这个**行为变更**。**无 DDL / 无数据迁移**）
+
+## 变更
+
+- **`POST /config/api/badge/commit-from-draft`**：CAS (revision 比对) **前置**到写三表/传 COS **之前**
+  （预检 ① 在任何副作用前、预检 ② 在事务前），并把"图一致 + meta 一致 → 只补草稿状态"做成**收敛**路径。
+- **重复 commit 同一张图现在返 200（行为变更）**：DB 里已有该 badge 且当前图与本草稿将要写的图一致、
+  且 meta 无差异 → `200 {"ok": true, "reconciled": true, "code": "already_committed_reconciled",
+  "db_written": false, "image_url": "<库里那条 url>"}`，草稿状态补齐为 `committed`（history 记 `commit_reconciled`）。
+  **修前**：一律 `409 {"error": "DB 已有 id='…' 的 badge, 不能重复 commit (V1.1 暂无删除 API)"}` —— 上次
+  "三表已写、草稿没来得及标 committed"的半落地现场重试会卡死，需要人工 SQL。收敛**只补草稿记账，不再写 DB**。
+- **`POST /config/api/badge/commit-from-draft` 的 409 分三个 code，都带处置线索**：
+  - `db_exists`：DB 已有该 id 但**图**不一致 → `{db_url, draft_urls[], meta_diff{}, db_written:false, next}`
+    （换图走 `POST /config/api/badge/replace-image-from-draft`）。
+  - `db_exists_meta_diff`：图一致但**草稿 meta** 与库里的值不同（`meta_diff` 给字段级 old/new）→ 不收敛，
+    避免静默丢掉新名字/新典故（本端点只负责新徽章入库，不覆盖老行 meta；`card_theme`/`card_stars`
+    可走 `POST /config/api/badge/card-appearance`，其余字段人工 SQL 或改用新 id 建草稿）。
+  - `revision_conflict_after_db_write`：预检之后仍有并发写落地（毫秒窗口）→ `{db_written: true, badge_id,
+    expected_revision, actual_revision, next}`。**此时三表已写**，直接重试同一次 commit 即按上面第一条收敛。
+- **推图侧 CAS 需客户端带请求头**：`POST /config/api/badge/draft/{id}/image` 的 `X-Draft-Revision` 仍是**可选**的
+  —— 不带 header = last-write-wins（后写覆盖，无 409 保护）。要防并发覆盖必须带上（现状见 audit N4，未改）。
+- **对 dizical-minip**：无需改代码（小程序不调这些端点；响应新增字段对老调用方透明）。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-14 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 草稿与图统一 COS
 **类型**: 🟡 部分兼容（老字段保留；新增 `storage` / `revision` 字段与一个可选请求头。**无 DDL / 无数据迁移**）
 
