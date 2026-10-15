@@ -424,11 +424,12 @@ def write_tmp_image(draft_id: str, version: int, data: bytes) -> Path:
     return dst
 
 
-def move_tmp_to_static(draft_id: str, version: int) -> Path:
+def move_tmp_to_static(draft_id: str, version: int, badge_id: str | None = None) -> Path:
     """skill 完成后, 把临时图复制到 static/badges/{id}_v{n}.png (dizical commit 时用).
 
     V3.0 (2026-08-24) sprint 26082401: 仅本地 fallback 路径使用. 生产环境 (CloudRun)
     应走 commit_to_cos_or_static() 走 COS 上传, 写完整 https URL.
+    badge_id 缺省取 draft.meta.id. replace 传入 DB 里的 id, 文件名跟写入的 url 一致.
     """
     import shutil
     src = tmp_path_for(draft_id, version)
@@ -439,52 +440,145 @@ def move_tmp_to_static(draft_id: str, version: int) -> Path:
     static_dir = project_root / "src" / "kid_app" / "static" / "badges"
     static_dir.mkdir(parents=True, exist_ok=True)
     # 从 draft_id 抽 badge id (e.g. "2026-06-12_grade-1_abc123" → "grade-1" 拿不到, 用 meta.id)
-    draft = get_draft(draft_id)
-    if draft is None:
-        raise FileNotFoundError(f"draft '{draft_id}' 不存在")
-    badge_id = draft.meta["id"]
+    if not badge_id:
+        draft = get_draft(draft_id)
+        if draft is None:
+            raise FileNotFoundError(f"draft '{draft_id}' 不存在")
+        badge_id = draft.meta["id"]
     dst = static_dir / f"{badge_id}_v{version}.png"
     shutil.copy2(src, dst)
     return dst
 
 
-def commit_image_from_draft(draft_id: str, version: int) -> dict[str, Any]:
-    """V3.1 / P0 (sprint-26101302, 2026-10-13): 把成品图落到最终位置, 返 {path, url, storage, key}.
+def badge_object_keys(badge_id: str, version: int) -> dict[str, str]:
+    """PNG 与两档 webp 共用同一个 stem ({id}_v{n}). 前端按 PNG 文件名改写, stem 必须一致."""
+    stem = f"{badge_id}_v{version}"
+    return {
+        "stem": stem,
+        "png": f"{COS_PREFIX_BADGE}{stem}.png",
+        "thumb": f"{COS_PREFIX_BADGE}thumbs/{stem}.webp",
+        "full": f"{COS_PREFIX_BADGE}full/{stem}.webp",
+    }
 
-    storage ∈ {"cos", "static"} —— 调用方拿它回话 (commit 响应的 prod_visibility 不再硬编码)。
+
+_WEBP_MOD: Any = None
+
+
+def _webp_script():
+    """加载 scripts/generate_badge_webp.py (scripts/ 不是包, 用文件路径)."""
+    global _WEBP_MOD
+    if _WEBP_MOD is None:
+        import importlib.util
+        path = Path(__file__).resolve().parent.parent.parent / "scripts" / "generate_badge_webp.py"
+        spec = importlib.util.spec_from_file_location("generate_badge_webp", path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"无法加载 webp 派生脚本: {path}")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _WEBP_MOD = mod
+    return _WEBP_MOD
+
+
+def _derive_webp(png_bytes: bytes, keys: dict[str, str]) -> tuple[bytes, bytes]:
+    try:
+        return _webp_script().webp_variants(png_bytes)
+    except Exception as e:
+        raise RuntimeError(
+            f"webp 派生失败 key={keys['thumb']} key={keys['full']}: {e}"
+        ) from e
+
+
+def _upload_object(uploader: Any, key: str, data: bytes, content_type: str) -> str:
+    try:
+        return uploader.upload(key, data, content_type=content_type)
+    except Exception as e:
+        raise RuntimeError(f"COS 上传失败 key={key}: {e}") from e
+
+
+def _static_badges_dir() -> Path:
+    return Path(__file__).resolve().parent.parent.parent / "src" / "kid_app" / "static" / "badges"
+
+
+def _write_static_webp(stem: str, thumb: bytes, full: bytes) -> None:
+    static_dir = _static_badges_dir()
+    for folder, data, key in (
+        ("thumbs", thumb, f"{COS_PREFIX_BADGE}thumbs/{stem}.webp"),
+        ("full", full, f"{COS_PREFIX_BADGE}full/{stem}.webp"),
+    ):
+        dest = static_dir / folder / f"{stem}.webp"
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(data)
+        except OSError as e:
+            raise RuntimeError(f"webp 落盘失败 key={key}: {e}") from e
+
+
+def commit_image_from_draft(
+    draft_id: str, version: int, badge_id: str | None = None,
+) -> dict[str, Any]:
+    """把成品图落到最终位置, 并在同一步写出两档 webp. 返 {path, url, storage, key}.
+
+    storage ∈ {"cos", "static"}. 调用方拿它回话.
+    PNG 与 webp 都成功才返回; 任一步失败抛错, 调用方不入库.
     规则:
-      - COS 可用 + .tmp 图在      → 上传 badges/{id}_v{n}.png (沿用现名)
-      - COS 可用 + .tmp 图不在    → 若 draft.image.url 已是 COS URL 直接复用 (回传端点/远端草稿)
-      - COS 不可用                → static/badges/ fallback (老行为, 需 PR+deploy 才可见)
+      - COS 可用 + .tmp 图在   → 上传 badges/{stem}.png + thumbs/full webp
+      - COS 可用 + .tmp 图不在 → image.url 已是 COS URL 时下载该 PNG 再补两档 webp
+      - COS 不可用             → static/badges/ PNG + thumbs/full webp
 
-    Raises:
-        FileNotFoundError: 临时图不存在且 draft.image.url 也不可用
-        RuntimeError: COS 上传失败 (Storage First, DB 零写入 → 抛回给 commit handler)
+    badge_id 缺省 draft.meta.id. replace-image 传入请求里的 badge_id, 与 DB url 同名.
     """
     draft = get_draft(draft_id)
     if draft is None:
         raise FileNotFoundError(f"draft '{draft_id}' 不存在")
-    badge_id = draft.meta["id"]
+    if not badge_id:
+        badge_id = draft.meta["id"]
+    if not badge_id:
+        raise ValueError(f"draft '{draft_id}' meta 缺 id")
+    keys = badge_object_keys(badge_id, version)
     src = tmp_path_for(draft_id, version)
 
     from src.kid_app.cos_client import cos_uploader
 
     if cos_uploader.is_available:
-        key = f"{COS_PREFIX_BADGE}{badge_id}_v{version}.png"
+        reused_url: str | None = None
         if src.exists():
-            url = cos_uploader.upload(key, src.read_bytes(), content_type="image/png")
-            return {"path": str(src), "url": url, "storage": "cos", "key": key}
-        existing_url = (draft.image or {}).get("url") if isinstance(draft.image, dict) else None
-        if is_cos_url(existing_url):
-            return {"path": None, "url": str(existing_url), "storage": "cos", "key": key}
-        raise FileNotFoundError(f"临时图 '{src}' 不存在, 且 draft.image.url 不是 COS URL")
+            png_bytes = src.read_bytes()
+        else:
+            existing_url = (draft.image or {}).get("url") if isinstance(draft.image, dict) else None
+            if not is_cos_url(existing_url):
+                raise FileNotFoundError(
+                    f"临时图 '{src}' 不存在, 且 draft.image.url 不是 COS URL"
+                )
+            try:
+                png_bytes = cos_uploader.download(keys["png"])
+            except Exception as e:
+                raise RuntimeError(f"COS 读取 PNG 失败 key={keys['png']}: {e}") from e
+            reused_url = str(existing_url)
+        thumb, full = _derive_webp(png_bytes, keys)
+        if reused_url is None:
+            url = _upload_object(cos_uploader, keys["png"], png_bytes, "image/png")
+        else:
+            url = reused_url
+        _upload_object(cos_uploader, keys["thumb"], thumb, "image/webp")
+        _upload_object(cos_uploader, keys["full"], full, "image/webp")
+        return {
+            "path": str(src) if src.exists() else None,
+            "url": url,
+            "storage": "cos",
+            "key": keys["png"],
+        }
 
-    local_static = move_tmp_to_static(draft_id, version)
+    if not src.exists():
+        raise FileNotFoundError(f"临时图 '{src}' 不存在")
+    png_bytes = src.read_bytes()
+    thumb, full = _derive_webp(png_bytes, keys)
+    local_static = move_tmp_to_static(draft_id, version, badge_id=badge_id)
+    _write_static_webp(keys["stem"], thumb, full)
     return {
         "path": str(local_static),
-        "url": f"/static/badges/{badge_id}_v{version}.png",
+        "url": f"/static/badges/{keys['stem']}.png",
         "storage": "static",
-        "key": f"{COS_PREFIX_BADGE}{badge_id}_v{version}.png",
+        "key": keys["png"],
     }
 
 

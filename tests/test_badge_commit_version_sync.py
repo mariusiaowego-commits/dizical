@@ -27,12 +27,16 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-# 1x1 透明 PNG
-PNG_1x1 = (
-    b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
-    b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xfa\xff'
-    b'\xff?\x00\x05\xfe\x02\xfe\xa3V\xbd\xf1\x00\x00\x00\x00IEND\xaeB`\x82'
-)
+def _valid_png() -> bytes:
+    """PIL 能完整 decode 的小 PNG. 手写 1x1 在当前 Pillow 上 load() 会报 broken stream."""
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+PNG_1x1 = _valid_png()
 
 
 # ── fixtures: 临时 db + 创表 + 替换 src.database.db 单例 ─────────
@@ -176,10 +180,13 @@ def _cleanup(draft_id, badge_id):
     draft_path = _project_root() / "data" / "lib" / "badge_data" / f"{draft_id}.json"
     if draft_path.exists():
         draft_path.unlink()
+    static = _project_root() / "src" / "kid_app" / "static" / "badges"
     for v in (1, 2, 3):
         for p in [
             _project_root() / "data" / "lib" / "badge_data" / ".tmp" / f"{draft_id}_v{v}.png",
-            _project_root() / "src" / "kid_app" / "static" / "badges" / f"{badge_id}_v{v}.png",
+            static / f"{badge_id}_v{v}.png",
+            static / "thumbs" / f"{badge_id}_v{v}.webp",
+            static / "full" / f"{badge_id}_v{v}.webp",
         ]:
             if p.exists():
                 p.unlink()

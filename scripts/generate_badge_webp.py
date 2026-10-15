@@ -18,6 +18,7 @@ sprint-26091603 P1 资产管线: PNG → WebP 双档生成
 """
 from __future__ import annotations
 
+import io
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -48,6 +49,32 @@ def iter_inputs() -> Iterable[Path]:
     return sorted(p for p in SRC_DIR.iterdir() if is_input_png(p))
 
 
+def _encode_webp(im: Image.Image, target_size: tuple[int, int], quality: int) -> bytes:
+    """等比缩进 target_size (不放大) 后编码 WebP. 不改调用方手里的那张图."""
+    frame = im.copy()
+    # thumbnail() 在 LANCZOS 下保持宽高比, 不放大 (若原图已小于目标则保留原尺寸)
+    frame.thumbnail(target_size, resample=Image.Resampling.LANCZOS)
+    if frame.mode != "RGBA":
+        frame = frame.convert("RGBA")
+    buf = io.BytesIO()
+    buf.name = "badge.webp"  # Pillow 靠扩展名选 WEBP encoder
+    frame.save(buf, "WEBP", quality=quality, method=WEBP_METHOD, lossless=False)
+    return buf.getvalue()
+
+
+def webp_variants(png_bytes: bytes) -> tuple[bytes, bytes]:
+    """从 PNG 字节派生两档 WebP, 不写盘.
+
+    返回 (thumbs, full): 320×320 q80 / 1024×1024 q90, method=6, RGBA.
+    commit / replace 用这一份, 不跑 main() 的全目录批处理.
+    """
+    with Image.open(io.BytesIO(png_bytes)) as im:
+        return (
+            _encode_webp(im, THUMB_SIZE, THUMB_QUALITY),
+            _encode_webp(im, FULL_SIZE, FULL_QUALITY),
+        )
+
+
 def convert_one(src: Path, dst_dir: Path, target_size: tuple[int, int], quality: int) -> tuple[Path, int, int]:
     """将单张 PNG 转为 WebP 写入 dst_dir/<stem>.webp。
 
@@ -55,13 +82,9 @@ def convert_one(src: Path, dst_dir: Path, target_size: tuple[int, int], quality:
     """
     src_bytes = src.stat().st_size
     with Image.open(src) as im:
-        # 保留透明: PNG 含 alpha 时保留, 否则落 RGB
-        # thumbnail() 在 LANCZOS 下保持宽高比, 不放大 (若原图已小于目标则保留原尺寸)
-        im.thumbnail(target_size, resample=Image.Resampling.LANCZOS)
-        if im.mode != "RGBA":
-            im = im.convert("RGBA")
-        out_path = dst_dir / (src.stem + ".webp")
-        im.save(out_path, "WEBP", quality=quality, method=WEBP_METHOD, lossless=False)
+        data = _encode_webp(im, target_size, quality)
+    out_path = dst_dir / (src.stem + ".webp")
+    out_path.write_bytes(data)
     return out_path, out_path.stat().st_size, src_bytes
 
 

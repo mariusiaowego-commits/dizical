@@ -51,31 +51,30 @@ def scan_badge_data_dir() -> list[dict[str, Any]]:
             is_committable = False
             conflict_reason = f"DB 已有 id='{badge_id}' 的 badge, 不能再 commit (V1.1 暂无删除 API, 手动 SQL 删)"
 
-        # image 路径: skill 写 draft 时是 .tmp/ 临时图, commit-from-draft 时
-        # 复制到 static/badges/{id}_v{n}.png. 前端需 web 路径才能渲染.
-        # commit 后: .tmp/ 已被 cleanup, draft.image["path"] 仍指向 .tmp/ 旧路径
-        # (status 已变 committed, 但 draft.json 没更新). V2.1 修: commit 时也更新 image.path.
-        # V2.1 修: discovery 优先返 commit 后的 static/badges/ 路径 (前端可渲染)
-        # V2.6 修: 待确认状态时, .tmp/ 图实际存在, 拼接 /static/badges/ 路径 404.
-        #          → fallback 到 /config/api/badge/draft-image 端点 (返 .tmp/ 真图).
-        #          端点本身有 path traversal 防御, 跟这里解耦.
+        # 待确认预览图. P2: 权威位置看 image.storage, 不先猜本地 static 文件.
+        # storage=cos (或标记缺失但 image.url 已是 COS URL) → 直接给浏览器那条 PNG.
+        # 标记说 cos 却没有 url → 不回落到本地路径.
+        # 其余 (local / static / 没标记) 保持 V2.6: 本地 static 文件在就用 web 路径,
+        # 否则 /config/api/badge/draft-image (端点只读本地 .tmp).
+        image = draft.image if isinstance(draft.image, dict) else {}
+        storage = str(image.get("storage") or "").strip().lower()
+        raw_url = image.get("url")
         image_url = None
         badge_id = draft.meta.get("id")
-        from pathlib import Path as _P
-        # 生产 static/badges/ 路径: 用 __file__ 推导项目根 (跟 badge_draft._badge_data_dir 同一来源).
-        # 不能依赖 data_dir 上溯 (测试 monkeypatch 后 data_dir 在 tmp, 上溯不到项目根).
-        _project_root = _P(__file__).resolve().parent.parent.parent
-        if badge_id:
+        if storage == "cos" or (not storage and badge_draft.is_cos_url(raw_url)):
+            image_url = raw_url or None
+        elif badge_id:
+            from pathlib import Path as _P
+            # 生产 static/badges/ 路径: 用 __file__ 推导项目根 (跟 badge_draft._badge_data_dir 同一来源).
+            # 不能依赖 data_dir 上溯 (测试 monkeypatch 后 data_dir 在 tmp, 上溯不到项目根).
+            _project_root = _P(__file__).resolve().parent.parent.parent
             commit_static_path = _project_root / "src" / "kid_app" / "static" / "badges" / f"{badge_id}_v{draft.version}.png"
             if commit_static_path.is_file():
-                # commit 后真存在 → 直接 web 路径 (走 StaticFiles mount, 高效)
                 image_url = f"/static/badges/{badge_id}_v{draft.version}.png"
             else:
-                # 待确认态: 图在 .tmp/, 走 draft-image 端点 (FileResponse)
                 image_url = f"/config/api/badge/draft-image?draft_id={draft.draft_id}"
-        elif draft.image.get("path"):
-            # fallback: 用 draft 写的路径 + strip /static/badges/ 前缀
-            image_url = draft.image["path"]
+        elif image.get("path"):
+            image_url = image["path"]
             if "/static/badges/" in image_url:
                 image_url = "/static/badges/" + image_url.split("/static/badges/")[-1]
 

@@ -96,6 +96,65 @@ class TestScanBadgeDataDir:
         finally:
             f.unlink(missing_ok=True)
 
+    def test_image_url_cos_storage_ignores_local_file(self, tmp_badge_data):
+        """P2: storage=cos 时预览用 image.url, 即使本地 static PNG 也在."""
+        meta = {
+            "id": "v2_test_cos_mark", "name": "x", "type": "突破", "category": "milestone",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
+        }
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        cos_url = "https://example-bucket.tcb.qcloud.la/badges/v2_test_cos_mark_v1.png"
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": "/tmp/not-here.png",
+            "url": cos_url,
+            "storage": "cos",
+            "version": 1,
+        })
+        import src.kid_app.badge_discovery as bd
+        real_static = Path(bd.__file__).parent / "static" / "badges"
+        real_static.mkdir(parents=True, exist_ok=True)
+        local = real_static / "v2_test_cos_mark_v1.png"
+        local.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 10)
+        try:
+            items = badge_discovery.scan_badge_data_dir()
+            assert items[0]["image_url"] == cos_url
+        finally:
+            local.unlink(missing_ok=True)
+
+    def test_image_url_cos_url_without_storage_marker(self, tmp_badge_data):
+        """P0 回传只写了 image.url、还没有 storage 字段 → 仍走 COS URL."""
+        meta = {
+            "id": "v2_test_cos_urlonly", "name": "x", "type": "突破", "category": "milestone",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
+        }
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        cos_url = "https://example-bucket.tcb.qcloud.la/badges/v2_test_cos_urlonly_v1.png"
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": "/tmp/not-here.png",
+            "url": cos_url,
+            "version": 1,
+        })
+        items = badge_discovery.scan_badge_data_dir()
+        assert items[0]["image_url"] == cos_url
+
+    def test_image_url_cos_storage_without_url_is_empty(self, tmp_badge_data):
+        """标记是 cos 但没有 url → 不猜本地路径."""
+        meta = {
+            "id": "v2_test_cos_nourl", "name": "x", "type": "突破", "category": "milestone",
+            "placeholder": "ph", "zh_story": "story", "cond_text": "V2.2.1 必填",
+        }
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        badge_draft.update_draft_image(d.draft_id, {
+            "path": "/tmp/not-here.png",
+            "storage": "cos",
+            "version": 1,
+        })
+        items = badge_discovery.scan_badge_data_dir()
+        assert items[0]["image_url"] is None
+
     def test_image_url_draft_endpoint_when_file_missing(self, tmp_badge_data):
         """V2.6: commit_static_path 文件不存在 → 走 draft-image 端点 (返 .tmp/ 真图, 防 404)."""
         meta = {
