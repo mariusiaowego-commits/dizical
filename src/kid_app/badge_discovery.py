@@ -56,24 +56,27 @@ def scan_badge_data_dir() -> list[dict[str, Any]]:
         # 标记说 cos 却没有 url → 不回落到本地路径.
         # 其余 (local / static / 没标记) 保持 V2.6: 本地 static 文件在就用 web 路径,
         # 否则 /config/api/badge/draft-image (端点只读本地 .tmp).
+        # P1 (2026-10-14) 并入: 草稿本身也可能只在 COS (storage=cos) —— 与上面分支同旨,
+        # 本地探测无意义时直接给 COS URL (P1 的 is_cos_url 判定保留给"无标记但已有 url"的老草稿).
         image = draft.image if isinstance(draft.image, dict) else {}
-        storage = str(image.get("storage") or "").strip().lower()
+        storage_mark = str(image.get("storage") or "").strip().lower()
         raw_url = image.get("url")
         image_url = None
         badge_id = draft.meta.get("id")
-        if storage == "cos" or (not storage and badge_draft.is_cos_url(raw_url)):
+        from pathlib import Path as _P
+        # 生产 static/badges/ 路径: 用 __file__ 推导项目根 (跟 badge_draft._badge_data_dir 同一来源).
+        # 不能依赖 data_dir 上溯 (测试 monkeypatch 后 data_dir 在 tmp, 上溯不到项目根).
+        _project_root = _P(__file__).resolve().parent.parent.parent
+        if storage_mark == "cos" or (not storage_mark and badge_draft.is_cos_url(raw_url)):
             image_url = raw_url or None
         elif badge_id:
-            from pathlib import Path as _P
-            # 生产 static/badges/ 路径: 用 __file__ 推导项目根 (跟 badge_draft._badge_data_dir 同一来源).
-            # 不能依赖 data_dir 上溯 (测试 monkeypatch 后 data_dir 在 tmp, 上溯不到项目根).
-            _project_root = _P(__file__).resolve().parent.parent.parent
             commit_static_path = _project_root / "src" / "kid_app" / "static" / "badges" / f"{badge_id}_v{draft.version}.png"
             if commit_static_path.is_file():
                 image_url = f"/static/badges/{badge_id}_v{draft.version}.png"
             else:
                 image_url = f"/config/api/badge/draft-image?draft_id={draft.draft_id}"
         elif image.get("path"):
+            # fallback: 用 draft 写的路径 + strip /static/badges/ 前缀
             image_url = image["path"]
             if "/static/badges/" in image_url:
                 image_url = "/static/badges/" + image_url.split("/static/badges/")[-1]
@@ -81,6 +84,8 @@ def scan_badge_data_dir() -> list[dict[str, Any]]:
         pending.append({
             "draft": draft.to_dict(),
             "image_url": image_url,
+            "storage": draft.storage,
+            "revision": draft.revision,
             "is_committable": is_committable,
             "db_status": db_status,
             "conflict_reason": conflict_reason,

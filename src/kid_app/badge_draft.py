@@ -18,6 +18,7 @@ schema_version=1 锁定, 未来改 schema 时 +1, 老 dizical 端只读 schema_v
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
@@ -25,6 +26,8 @@ import uuid
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Schema version. 改了 schema 字段时 +1, 老读端要 backward-compatible.
 SCHEMA_VERSION = 1
@@ -38,8 +41,18 @@ VALID_STATUSES = frozenset(
 # id 格式跟 V1 一样: ^[a-zA-Z0-9_]+$ (config-badge.html check-id 端点)
 ID_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 
-# draft_id 格式: 2026-06-12_grade-1_abc123 (日期_id_8字符hash)
-DRAFT_ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_[a-zA-Z0-9_-]+_[a-z0-9]{6,}$")
+# draft_id 唯一校验口径 (P1 返工 R1, 2026-10-14): 曾经有**两套**正则并存 ——
+#   DRAFT_ID_RE      = ^\d{4}-\d{2}-\d{2}_..._[a-z0-9]{6,}$  (读路径用, 更严)
+#   SAFE_DRAFT_ID_RE = ^[a-zA-Z0-9_-]+$                       (写路径用, 更松)
+# 后果: `2026-10-14_x_l3g7`（哈希段 <6 位）写得进（本地 json + .tmp + COS 都有），但读路径被
+# DRAFT_ID_RE 挡下 ⇒ get_draft_with_source 返 None ⇒ "写得进去读不回来"的静默失败（warden 实测）。
+# 现在**只剩一套语义**：字符白名单。它同时满足
+#   ① 本地文件名安全（无 / 无 . 无 ..） ② COS key 安全
+#   ③ 历史草稿兼容（老 id 有顺序号/短哈希，严格模式反而读不到已存在的草稿）
+DRAFT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+# 兼容别名: 指向**同一个** pattern → 语义必然一致（老 import 不必改）
+SAFE_DRAFT_ID_RE = DRAFT_ID_RE
 
 
 # ─── 路径解析 ────────────────────────────────────────────────────
@@ -63,8 +76,8 @@ COS_PREFIX_BADGE = "badges/"        # 沿用现名, 不动历史 key
 COS_PREFIX_DRAFT = "badge_drafts/"  # 草稿 JSON (读取走 SDK get_object, 不用 CDN)
 BADGE_STORE_ENV = "BADGE_STORE"
 
-# 真实草稿 id 是 YYYY-MM-DD_{id}_{6位hash}; DRAFT_ID_RE 偏严(▲历史注释), COS key 用白名单校验
-SAFE_DRAFT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+# 真实草稿 id 是 YYYY-MM-DD_{badge_id}_{6位hash}; 校验只看字符白名单 (见上方 DRAFT_ID_RE 注释)
+# (P1 返工 R1) 原先这里另立一个"更松"的正则 → 读写判定不一致; 现在同一个对象
 
 
 def storage_mode() -> str:
@@ -91,7 +104,7 @@ def cos_available() -> bool:
 
 def cos_draft_key(draft_id: str) -> str:
     """草稿 JSON 在 COS 上的 key. 非法 id 直接拒 (防 key 注入)."""
-    if not SAFE_DRAFT_ID_RE.match(draft_id or ""):
+    if not DRAFT_ID_RE.match(draft_id or ""):
         raise ValueError(f"draft_id 非法, 不能做 COS key: {draft_id!r}")
     return f"{COS_PREFIX_DRAFT}{draft_id}.json"
 
@@ -101,11 +114,31 @@ def is_cos_url(url: Any) -> bool:
     return isinstance(url, str) and url.startswith("https://") and ".tcb.qcloud.la/" in url
 
 
+# ─── 权威副本 + CAS (P1 sprint-261014, 2026-10-14) ─────────────────
+# PLAN v1.2 §2: 草稿 JSON 与徽章图统一走 COS; draft 内 `storage` 标记裁决权威副本,
+# `revision` 整数做写侧 CAS。本地文件退化为可选缓存。
+STORAGE_LOCAL = "local"
+STORAGE_COS = "cos"
+
+
+class RevisionConflict(RuntimeError):
+    """写侧 CAS 失败: 手里的 revision 不是最新的 (后写方拿 409, 不许静默覆盖)."""
+
+    def __init__(self, draft_id: str, expected: int, actual: int) -> None:
+        self.draft_id = draft_id
+        self.expected = expected
+        self.actual = actual
+        super().__init__(
+            f"draft '{draft_id}' revision 冲突: 手里={expected}, 存储上={actual} "
+            f"(有人先写过 → 重新读一次再写)"
+        )
+
+
 # ─── 数据类 ───────────────────────────────────────────────────────
 
 @dataclass
 class BadgeDraft:
-    """Draft JSON 顶层 schema (V2 schema_version=1)."""
+    """Draft JSON 顶层 schema (V2 schema_version=1)。"""
     schema_version: int
     draft_id: str
     created_at: str  # ISO 8601
@@ -115,6 +148,10 @@ class BadgeDraft:
     status: str  # draft_created / draft_awaiting_confirm / confirmed / committed / discarded
     updated_at: str  # ISO 8601
     history: list[dict[str, Any]]  # 状态变更历史 (audit)
+    # P1 (2026-10-14): 权威副本位置 + CAS 计数器。老 JSON 没这两个字段 → 读时给默认值
+    # (storage=local / revision=1); 从 COS 读到的老 JSON 会被规范化为 storage=cos。
+    storage: str = STORAGE_LOCAL
+    revision: int = 1
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -131,6 +168,8 @@ class BadgeDraft:
             status=d.get("status", "draft_created"),
             updated_at=d.get("updated_at", d["created_at"]),
             history=d.get("history", []),
+            storage=(d.get("storage") or STORAGE_LOCAL),
+            revision=int(d.get("revision") or 1),
         )
 
 
@@ -218,6 +257,7 @@ def create_draft(meta: dict[str, Any]) -> BadgeDraft:
 
     draft_id = _generate_draft_id(meta["id"])
     now = _now_iso()
+    # P1: 权威副本 = 当前存储模式 (COS 可用 → cos, 否则 local); revision 从 1 起
     draft = BadgeDraft(
         schema_version=SCHEMA_VERSION,
         draft_id=draft_id,
@@ -228,41 +268,144 @@ def create_draft(meta: dict[str, Any]) -> BadgeDraft:
         status="draft_created",
         updated_at=now,
         history=[{"at": now, "from": None, "to": "draft_created", "by": "dizical"}],
+        storage=storage_mode(),
+        revision=1,
     )
     return draft
 
 
-def save_draft(draft: BadgeDraft) -> Path:
-    """落盘 draft 到 lib/badge_data/{draft_id}.json (原子写)."""
-    path = _badge_data_dir() / f"{draft.draft_id}.json"
+def local_path_for(draft_id: str) -> Path:
+    """本地副本路径 (缓存 or 权威, 取决于该 draft 的 storage 标记)."""
+    return _badge_data_dir() / f"{draft_id}.json"
+
+
+def _read_local_json(draft_id: str) -> dict[str, Any] | None:
+    """读本地 json 原始 dict (不存在返 None)."""
+    path = local_path_for(draft_id)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _read_cos_json(draft_id: str) -> dict[str, Any] | None:
+    """读 COS 上的草稿 dict (不存在返 None). COS 读失败抛 (不许当成"不存在")."""
+    from src.kid_app.cos_client import cos_uploader
+
+    if not cos_uploader.is_available:
+        return None
+    try:
+        raw = cos_uploader.download(cos_draft_key(draft_id))
+    except FileNotFoundError:
+        return None
+    return json.loads(raw.decode("utf-8"))
+
+
+def save_draft(draft: BadgeDraft, expect_revision: int | None = None) -> Path | None:
+    """写**权威副本** (P1: storage 标记裁决), 带 CAS; 返本地缓存路径 (纯 COS 时 None).
+
+    规则:
+      - draft.storage == "cos" 且 storage_mode() == "cos" → 写 COS 的 badge_drafts/{id}.json
+        (**不写本地 json** —— 验收 a: 本机不出现新增本地 json); COS 写失败直接抛, 不回落本地冒充
+      - 否则 → 写本地 json (本地权威 / 老草稿 / COS 不可用)
+    CAS: expect_revision 与存储上的 revision 不符 → RevisionConflict (调用方转 409)。
+      写成功后 revision = 存储上 revision + 1 (单调递增)。
+    """
+    draft_id = draft.draft_id
+    if not DRAFT_ID_RE.match(draft_id or ""):
+        raise ValueError(f"draft_id 非法: {draft_id!r}")
+
+    want_cos = (draft.storage == STORAGE_COS) and storage_mode() == "cos"
+    stored = _read_cos_json(draft_id) if want_cos else _read_local_json(draft_id)
+
+    expected = expect_revision if expect_revision is not None else draft.revision
+    actual = int((stored or {}).get("revision") or 1)
+    if stored is not None and expected != actual:
+        raise RevisionConflict(draft_id, expected, actual)
+
+    draft.revision = (actual if stored is not None else 0) + 1
+    draft.updated_at = _now_iso()
+    payload = json.dumps(draft.to_dict(), ensure_ascii=False, indent=2).encode("utf-8")
+
+    if want_cos:
+        from src.kid_app.cos_client import cos_uploader
+
+        # fail loud: COS 可用却写失败 → 抛 (RuntimeError 透传到端点 5xx), 不静默回落本地
+        cos_uploader.upload(cos_draft_key(draft_id), payload, content_type="application/json")
+        return None
+
+    path = local_path_for(draft_id)
     _atomic_write_json(path, draft.to_dict())
     return path
+
+
+def _draft_from_raw(raw: dict[str, Any] | None, draft_id: str, source: str) -> BadgeDraft | None:
+    """raw dict → BadgeDraft; 不是一个草稿 JSON 时返 None (记 warning, 不当 500).
+
+    (P1 返工 R1) id 校验放宽成字符白名单后, 本地目录里"名字像 id 但不是草稿"的文件
+    (例: backup.json) 也会进到读路径 —— 这里必须软着陆, 不能把端点打成 500。
+    """
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return BadgeDraft.from_dict(raw)
+    except (KeyError, TypeError, ValueError) as e:
+        logger.warning("%s 副本不是合法草稿 (%s): %r", source, draft_id, e)
+        return None
 
 
 def get_draft_with_source(draft_id: str) -> tuple[BadgeDraft | None, str]:
     """读 draft, 返 (draft, 来源). 来源 ∈ {"local", "cos", "none"}.
 
-    P0 (sprint-26101302): 本地文件优先 (本地开发 / 老草稿), 本地没有才查 COS —— 生产容器
-    重建后草稿仍在 COS 上, 本地服务也能读到生产草稿 (2026-10-13 只能人工搬草稿的根修)。
+    **权威副本裁决 (P1)**: 看草稿自带的 `storage` 标记, 不看"哪份文件"。本地 json 若标着
+    storage=cos 就只是缓存 —— 绝不能拿它遮住 COS 上的新版本 (P0 audit 点名的坑)。
+
+      ① 本地有 json:
+         - 标记 == "cos" → 以 COS 为准 (本地只是缓存); COS 404 → 本地兜底 (来源记 "local",
+           调用方可据 draft.storage 与来源不一致识别出"读到的是旧缓存")
+         - 标记 != "cos" → 本地就是权威
+      ② 本地没有 → COS 读 (storage_mode()=="cos" 时); 老 JSON 规范化 storage=cos
+
+    id 校验与写侧**同一套语义** (DRAFT_ID_RE, 见文件头注释; P1 返工 R1)。
 
     Raises:
-        RuntimeError / json 异常: COS 可用但读失败 (网络/凭据) —— 不许静默当成"不存在"
+        RuntimeError: COS 可用但读失败 (网络/凭据) —— 不许静默当成"不存在"
     """
-    if not DRAFT_ID_RE.match(draft_id):
+    if not DRAFT_ID_RE.match(draft_id or ""):
         return None, "none"
-    path = _badge_data_dir() / f"{draft_id}.json"
-    if path.exists():
-        return BadgeDraft.from_dict(json.loads(path.read_text(encoding="utf-8"))), "local"
-    if storage_mode() != "cos":
-        return None, "none"
-
-    from src.kid_app.cos_client import cos_uploader
 
     try:
-        raw = cos_uploader.download(cos_draft_key(draft_id))
-    except FileNotFoundError:
-        return None, "none"
-    return BadgeDraft.from_dict(json.loads(raw.decode("utf-8"))), "cos"
+        local_raw = _read_local_json(draft_id)
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
+        logger.warning("本地草稿读不动, 当不存在: %s %r", draft_id, e)
+        local_raw = None
+    local_marks_cos = bool(local_raw) and (local_raw.get("storage") == STORAGE_COS)
+
+    if local_raw is not None and not local_marks_cos:
+        d = _draft_from_raw(local_raw, draft_id, "local")
+        return (d, "local") if d is not None else (None, "none")
+
+    if storage_mode() != "cos":
+        # BADGE_STORE=LOCAL 且本地只是"COS 的缓存" → 只能把缓存当最佳可得副本
+        if local_raw is None:
+            return None, "none"
+        d = _draft_from_raw(local_raw, draft_id, "local")
+        return (d, "local") if d is not None else (None, "none")
+
+    cos_raw = _read_cos_json(draft_id)          # 读失败会抛 (可见)
+    if cos_raw is not None:
+        d = _draft_from_raw(cos_raw, draft_id, "cos")
+        if d is not None:
+            d.storage = STORAGE_COS              # 从 COS 读到的 (含老 JSON) 一律规范化
+            return d, "cos"
+
+    if local_raw is not None:                    # 标记 cos 但 COS 上没了 → 缓存兜底
+        logger.warning(
+            "draft %s 标记 storage=cos 但 COS 上不存在, 退回本地缓存 (可能是旧副本)",
+            draft_id,
+        )
+        d = _draft_from_raw(local_raw, draft_id, "local")
+        return (d, "local") if d is not None else (None, "none")
+    return None, "none"
 
 
 def get_draft(draft_id: str) -> BadgeDraft | None:
@@ -271,33 +414,56 @@ def get_draft(draft_id: str) -> BadgeDraft | None:
 
 
 def list_drafts(status: str | None = None) -> list[BadgeDraft]:
-    """列所有 draft (可按 status 过滤). 读 lib/badge_data/ 扫所有 .json."""
+    """列所有 draft (可按 status 过滤). P1: COS 与本地**同源合并**, 按 storage 标记裁决。
+
+    - storage_mode()=="cos" → 列 COS 的 badge_drafts/ + 本地目录的老草稿 (COS list 失败 → 抛, 不静默)
+    - 否则 → 只扫本地目录 (离线/本地开发)
+    - 每份都走 get_draft_with_source 的标记裁决 (本地缓存不会遮住 COS 版本)
+    """
     if status is not None and status not in VALID_STATUSES:
         raise ValueError(f"status '{status}' 不在 {VALID_STATUSES}")
 
-    drafts = []
+    ids: list[str] = []
+    if storage_mode() == "cos":
+        from src.kid_app.cos_client import cos_uploader
+
+        # 失败直接抛: 只返回本地那部分会让人以为"草稿没了"(静默半盲)
+        for key in cos_uploader.list_keys(COS_PREFIX_DRAFT):
+            name = key[len(COS_PREFIX_DRAFT):] if key.startswith(COS_PREFIX_DRAFT) else key
+            if name.endswith(".json"):
+                ids.append(name[: -len(".json")])
     for path in _badge_data_dir().glob("*.json"):
+        ids.append(path.stem)
+
+    drafts: list[BadgeDraft] = []
+    for draft_id in sorted(set(ids)):
         try:
-            d = BadgeDraft.from_dict(json.loads(path.read_text(encoding="utf-8")))
+            d, _src = get_draft_with_source(draft_id)
         except (json.JSONDecodeError, KeyError) as e:
-            # 单个 draft 文件坏了不阻塞其他 draft
+            # 单个草稿坏了不阻塞其他 (跟老行为一致)
+            logger.warning("list_drafts: 跳过坏草稿 %s (%r)", draft_id, e)
+            continue
+        if d is None:
             continue
         if status is None or d.status == status:
             drafts.append(d)
     return sorted(drafts, key=lambda d: d.created_at, reverse=True)
 
 
-def update_draft_image(draft_id: str, image_info: dict[str, Any], by: str = "skill") -> BadgeDraft:
+def update_draft_image(draft_id: str, image_info: dict[str, Any], by: str = "skill",
+                       expect_revision: int | None = None) -> BadgeDraft:
     """STEP 2 skill 调: 写 image 字段 + 状态变 draft_awaiting_confirm.
 
     Args:
         draft_id: 草稿 ID
         image_info: {path, model, prompt_used, alpha_verified, version, ...}
         by: 操作者 (skill / dizical / user)
+        expect_revision: P1 CAS —— 调用方自己读过的 revision; 与存储上不符 → RevisionConflict
 
     Raises:
         FileNotFoundError: draft_id 不存在
         ValueError: 状态机非法 (例如从 committed → draft_awaiting_confirm)
+        RevisionConflict: 写侧 CAS 失败 (有人先写过)
     """
     draft = get_draft(draft_id)
     if draft is None:
@@ -320,7 +486,7 @@ def update_draft_image(draft_id: str, image_info: dict[str, Any], by: str = "ski
         "at": now, "from": old_status, "to": "draft_awaiting_confirm",
         "by": by, "event": "image_generated",
     })
-    save_draft(draft)
+    save_draft(draft, expect_revision=expect_revision if expect_revision is not None else draft.revision)
     return draft
 
 
@@ -360,18 +526,23 @@ def backfill_image_url(draft: BadgeDraft) -> str | None:
         "at": now, "from": draft.status, "to": draft.status,
         "by": "dizical", "event": "image_url_backfilled", "key": key,
     })
-    # P0: 草稿 JSON 仍写本地 (写侧远端化归 P1); status 不变
-    save_draft(draft)
+    # status 不变; 写回**权威副本** (P1: 标记 storage=cos 的草稿写 COS, 老本地草稿仍写本地)
+    save_draft(draft, expect_revision=draft.revision)
     return url
 
 
 def mark_draft_status(draft_id: str, new_status: str, by: str = "dizical",
-                      extra: dict[str, Any] | None = None) -> BadgeDraft:
+                      extra: dict[str, Any] | None = None,
+                      expect_revision: int | None = None) -> BadgeDraft:
     """通用状态机推进. extra 可加 event 描述.
 
     Args:
         new_status: 目标状态
         extra: 加到 history 末尾的额外字段 (e.g. {"event": "user_confirmed"})
+        expect_revision: P1 CAS —— 调用方自己读过的 revision; 不符 → RevisionConflict
+
+    Raises:
+        RevisionConflict: 写侧 CAS 失败 (有人先写过)
     """
     if new_status not in VALID_STATUSES:
         raise ValueError(f"new_status '{new_status}' 不在 {VALID_STATUSES}")
@@ -388,17 +559,28 @@ def mark_draft_status(draft_id: str, new_status: str, by: str = "dizical",
     if extra:
         history_entry.update(extra)
     draft.history.append(history_entry)
-    save_draft(draft)
+    save_draft(draft, expect_revision=expect_revision if expect_revision is not None else draft.revision)
     return draft
 
 
 def delete_draft(draft_id: str) -> bool:
-    """删 draft (idempotent). V1.1 末端 [放弃] 按钮用."""
-    path = _badge_data_dir() / f"{draft_id}.json"
+    """删 draft (idempotent). V1.1 末端 [放弃] 按钮用.
+
+    P1: 两份都删 —— COS 对象 (storage_mode()=="cos" 时) + 本地文件。任一份删掉返 True。
+    """
+    deleted = False
+    if storage_mode() == "cos":
+        from src.kid_app.cos_client import cos_uploader
+
+        try:
+            deleted = cos_uploader.delete_object(cos_draft_key(draft_id)) or deleted
+        except ValueError:      # 非法 id: 本地也没有对应文件, 直接按"没删到"处理
+            pass
+    path = local_path_for(draft_id)
     if path.exists():
         path.unlink()
-        return True
-    return False
+        deleted = True
+    return deleted
 
 
 # ─── 临时文件 helper (skill 写图, dizical 复制) ─────────────────────
@@ -414,7 +596,7 @@ def write_tmp_image(draft_id: str, version: int, data: bytes) -> Path:
     P0 (sprint-26101302): 回传端点用 —— 与 skill 生图落盘**同一路径约定**, 所以
     commit_to_cos_or_static / 前端预览不用改就能吃这张图。
     """
-    if not SAFE_DRAFT_ID_RE.match(draft_id or ""):
+    if not DRAFT_ID_RE.match(draft_id or ""):
         raise ValueError(f"draft_id 非法: {draft_id!r}")
     _tmp_dir().mkdir(parents=True, exist_ok=True)
     dst = tmp_path_for(draft_id, version)

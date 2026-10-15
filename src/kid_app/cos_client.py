@@ -179,7 +179,44 @@ class CosUploader:
                     return True
             except Exception:  # noqa: BLE001
                 pass
-        return "404" in str(e) or "NoSuchKey" in str(e)
+        return "404" in str(e) or "NoSuchKey" in str(e) or "NoSuchResource" in str(e)
+
+    def list_keys(self, prefix: str, max_keys: int = 200) -> list[str]:
+        """列对象 key (分页聚合). 读草稿列表用 —— 失败抛 (不许静默当成"空").
+
+        Raises:
+            RuntimeError: 未配置 / 网络或凭据错误
+        """
+        if not self.is_available:
+            raise RuntimeError("COS 未配置, 无法 list_objects")
+        keys: list[str] = []
+        marker = ""
+        try:
+            while True:
+                kw = {"Bucket": self.bucket, "Prefix": prefix, "MaxKeys": min(1000, max_keys)}
+                if marker:
+                    kw["Marker"] = marker
+                resp = self._cos_client.list_objects(**kw)  # type: ignore[union-attr]
+                contents = resp.get("Contents") or []
+                keys.extend(c["Key"] for c in contents)
+                if len(contents) < kw["MaxKeys"] or len(keys) >= max_keys:
+                    break
+                marker = contents[-1]["Key"]
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"COS list_objects 失败: {e}") from e
+        return keys[:max_keys]
+
+    def delete_object(self, filename: str) -> bool:
+        """删对象 (idempotent). 存在并删成功返 True; 本来不存在返 False; 其它失败抛."""
+        if not self.is_available:
+            raise RuntimeError("COS 未配置, 无法 delete_object")
+        try:
+            self._cos_client.delete_object(Bucket=self.bucket, Key=filename)  # type: ignore[union-attr]
+        except Exception as e:  # noqa: BLE001
+            if self._is_not_found(e):
+                return False
+            raise RuntimeError(f"COS delete_object 失败: {e}") from e
+        return True
 
 
 # 模块级单例 (与 app.py 里其他单例风格一致)

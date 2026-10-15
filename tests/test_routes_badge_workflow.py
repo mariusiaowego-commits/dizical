@@ -458,11 +458,76 @@ class TestUploadDraftImageAuth:
 
         r = _push_image(client, d.draft_id)
         assert r.status_code == 401, r.text
-        assert r.json()["ok"] is False
-        assert "未授权" in r.json()["error"]
+        # P1: 鉴权改挂路由依赖 → 401 body 是 FastAPI 的 {"detail": ...} (不再是 {"ok":false,...})
+        assert "未授权" in r.text
         assert tmp_png.read_bytes() == b"fake png content"      # 一个字节都没被覆盖
         # 草稿 image 仍是 helper 写的那份 (helper 不写 source 字段 → None 即"没被换成 api_upload")
         assert badge_draft.get_draft(d.draft_id).image.get("source") is None
+
+    def test_non_ascii_token_header_401_not_500(self, client, tmp_badge_data, monkeypatch):
+        """P0b audit 收口 c: 非 ASCII 的 token header 不许把端点打成 500 (compare_digest TypeError).
+
+        用**原始 bytes** 发 header (httpx 拒绝非 ASCII 的 str header) —— 服务端按 latin-1 解码
+        后就是非 ASCII str, 正是审计说的那条路径。
+        """
+        monkeypatch.setenv("BADGE_PUSH_TOKEN", "ascii-only-token")
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        d = _make_awaiting_draft(tmp_badge_data)
+
+        r = _push_image(client, d.draft_id, headers={"X-Badge-Push-Token": b"t\xf6ken-non-ascii"})
+        assert r.status_code == 401, f"期望 401 (非 ASCII 不等即拒), 实际 {r.status_code}: {r.text[:200]}"
+
+    def test_auth_wired_as_route_dependency(self):
+        """P0b audit 收口 a: 鉴权必须是**路由级依赖** —— 删 handler 里那行也不会静默重开."""
+        from src.kid_app.routes import badge_workflow as bw
+
+        route = next(
+            r for r in bw.router.routes
+            if getattr(r, "path", "") == "/config/api/badge/draft/{draft_id}/image"
+            and "POST" in (r.methods or set())
+        )
+        dep_calls = [d.call for d in route.dependant.dependencies]
+        assert bw.require_badge_push_auth in dep_calls, f"路由依赖里没有鉴权: {dep_calls}"
+
+    def test_stale_revision_409_no_silent_overwrite(self, client, tmp_badge_data, monkeypatch):
+        """P1 CAS: 带着过期 revision 推图 → 409, 且旧图/旧 revision 一字不动."""
+        import hashlib
+
+        monkeypatch.setenv("BADGE_PUSH_TOKEN", "cas-token")
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        meta = _make_valid_meta("cas_xyz")
+        d = badge_draft.create_draft(meta)
+        badge_draft.save_draft(d)
+        assert badge_draft.get_draft(d.draft_id).revision == 1
+
+        png1 = _rgba_png(color=(255, 0, 255, 255))
+        png2 = _rgba_png(color=(0, 255, 0, 255))
+        hdr = {"X-Badge-Push-Token": "cas-token"}
+
+        ok = _push_image(client, d.draft_id, png1, hdr)           # 用最新 revision (无 header) → 成功
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["revision"] == 2
+
+        stale = dict(hdr, **{"X-Draft-Revision": "1"})            # 手里还是 1 → 后写方
+        r = _push_image(client, d.draft_id, png2, stale)
+        assert r.status_code == 409, r.text
+        body = r.json()
+        assert body["code"] == "revision_conflict"
+        assert (body["expected_revision"], body["actual_revision"]) == (1, 2)
+
+        after = badge_draft.get_draft(d.draft_id)                 # 没被静默覆盖
+        assert after.revision == 2
+        assert after.image["sha256"] == hashlib.sha256(png1).hexdigest()
+        assert after.image["sha256"] != hashlib.sha256(png2).hexdigest()
+
+    def test_bad_revision_header_400(self, client, tmp_badge_data, monkeypatch):
+        monkeypatch.setenv("BADGE_PUSH_TOKEN", "cas-token")
+        monkeypatch.setenv("BADGE_STORE", "LOCAL")
+        d = _make_awaiting_draft(tmp_badge_data)
+        r = _push_image(client, d.draft_id,
+                        headers={"X-Badge-Push-Token": "cas-token", "X-Draft-Revision": "abc"})
+        assert r.status_code == 400, r.text
+        assert "X-Draft-Revision" in r.text
 
     def test_wrong_token_401(self, client, tmp_badge_data, monkeypatch):
         """② token 错 → 401."""
