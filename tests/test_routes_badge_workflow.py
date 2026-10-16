@@ -683,7 +683,9 @@ def clean_static_residue():
     yield
     for bid in ("v2_test_f1_pre_xyz", "v2_test_f1_conv_xyz", "v2_test_f1_conf_xyz",
                 "v2_test_e1_push_xyz", "v2_test_e2_skill_xyz", "v2_test_n2_meta_xyz",
-                "v2_test_r1_ui_xyz", "v2_test_r1_ctl_xyz"):
+                "v2_test_r1_ui_xyz", "v2_test_r1_ctl_xyz",
+                "v2_test_p31_thr_xyz", "v2_test_p31_ctl_xyz",
+                "v2_test_p35_ok_xyz", "v2_test_p35_cv_xyz"):
         _cleanup_static(bid)
 
 
@@ -692,20 +694,27 @@ def _insert_half_landed(draft, url: str | None, version: int = 1) -> None:
 
     N2 (audit 261015) 起必须这样造: 随手的假名字/假典故会让 meta 比对判成"草稿改了 meta",
     收敛被正确拒绝 (旧版 helper 写死 name="半落地"/description="test")。
+
+    P3-1: 数字列按 **DB 真值** 写 (threshold 列是 INTEGER → 库里读回来是 int), 不引用被测代码的
+    归一化, 避免"fixture 跟着被测逻辑一起错"的循环论证。
     """
     meta = dict(draft.meta)
     badge_id = meta.get("id")
     # achieved_at_override 按 commit 主路径口径归一化 ('' → NULL) —— 库里的真值就是 NULL
     override = (str(meta.get("achieved_at_override") or "").strip() or None)
+    # threshold: INTEGER 列 → 存进去就读回来是 int (草稿里给字符串 "300" 也一样)
+    threshold = None
+    if meta.get("threshold") not in (None, ""):
+        threshold = int(str(meta["threshold"]).strip())
     with badge_db.badge_write_tx() as conn:
         conn.execute(
             "INSERT INTO achievements (id, name, type, category, stat_logic, description, "
-            "display_format, placeholder, cond_text, unlock_strategy, achieved_at_override) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "display_format, placeholder, cond_text, unlock_strategy, achieved_at_override, threshold) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (badge_id, meta.get("name"), meta.get("type"), meta.get("category", "milestone"),
              "", meta.get("zh_story") or "无", meta.get("display_format", "icon"),
              meta.get("placeholder"), meta.get("cond_text"), meta.get("unlock_strategy", "calc"),
-             override),
+             override, threshold),
         )
         conn.execute(
             "INSERT INTO achievement_stats (achievement_id, achieved) VALUES (?, ?)",
@@ -953,6 +962,77 @@ class TestCommitReconvergence:
         assert body["meta_diff"]["name"] == [d.meta["name"], "换了名字"]
         assert "achieved_at_override" not in body["meta_diff"]     # 归一化后不再误报
         assert badge_draft.get_draft(d.draft_id).status == "draft_awaiting_confirm"
+
+    def test_p31_threshold_string_converges(self, client, tmp_badge_data, temp_db,
+                                            clean_static_residue):
+        """P3-1: 草稿里 threshold 是字符串 "300" (UI 目前不发, 一旦发), 库里是 INTEGER 300。
+
+        半落地重试必须收敛 200; 修前 (归一化只覆盖 achieved_at_override) 会 409
+        `meta_diff={"threshold": [300, "300"]}` —— 就是 audit 点的那类口径漂移。
+        """
+        meta = dict(_make_valid_meta("p31_thr_xyz"), achieved_at_override="", threshold="300")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_id = "v2_test_p31_thr_xyz"
+        _insert_half_landed(d, f"/static/badges/{badge_id}_v1.png")
+        stored = temp_db._get_connection().execute(
+            "SELECT threshold, typeof(threshold) FROM achievements WHERE id=?", (badge_id,)).fetchone()
+        assert (stored[0], stored[1]) == (300, "integer"), "库里应是整数 300"
+        assert badge_draft.get_draft(d.draft_id).meta["threshold"] == "300", "草稿侧仍是字符串"
+
+        r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["reconciled"] is True and body["code"] == "already_committed_reconciled"
+        assert badge_draft.get_draft(d.draft_id).status == "committed"
+
+    def test_p31_threshold_truly_different_still_409(self, client, tmp_badge_data, temp_db,
+                                                     clean_static_residue):
+        """P3-1 对照: 类型归一化不掩盖**真差异** —— 草稿 400 vs 库里 300 仍必须 409."""
+        meta = dict(_make_valid_meta("p31_ctl_xyz"), threshold="300")
+        d = _make_awaiting_draft(tmp_badge_data, meta=meta)
+        badge_id = "v2_test_p31_ctl_xyz"
+        _insert_half_landed(d, f"/static/badges/{badge_id}_v1.png")
+        cur = badge_draft.get_draft(d.draft_id)
+        cur.meta["threshold"] = "400"
+        badge_draft.save_draft(cur)
+
+        r = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d.draft_id})
+        assert r.status_code == 409, r.text
+        body = r.json()
+        assert body["code"] == "db_exists_meta_diff"
+        assert body["meta_diff"]["threshold"] == [300, 400]      # 数值化后再比
+        assert badge_draft.get_draft(d.draft_id).status == "draft_awaiting_confirm"
+
+    def test_p35_reconciled_response_matches_normal_shape(self, client, tmp_badge_data, temp_db,
+                                                          clean_static_residue):
+        """P3-5: 收敛 200 与正常 commit 200 **同形** (顶层键 ⊇, prod_visibility 子键相等)。"""
+        # ① 正常 commit (static 落点)
+        meta_ok = _make_valid_meta("p35_ok_xyz")
+        d_ok = _make_awaiting_draft(tmp_badge_data, meta=meta_ok)
+        badge_draft.write_tmp_image(d_ok.draft_id, 1, _rgba_png())
+        r_ok = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d_ok.draft_id})
+        assert r_ok.status_code == 200, r_ok.text
+        norm = r_ok.json()
+        assert norm.get("reconciled") is not True          # 这是正常路径, 不是收敛
+
+        # ② 收敛 (半落地 → 重试)
+        meta_cv = _make_valid_meta("p35_cv_xyz")
+        d_cv = _make_awaiting_draft(tmp_badge_data, meta=meta_cv)
+        _insert_half_landed(d_cv, f"/static/badges/v2_test_p35_cv_xyz_v1.png")
+        r_cv = client.post("/config/api/badge/commit-from-draft", json={"draft_id": d_cv.draft_id})
+        assert r_cv.status_code == 200, r_cv.text
+        rec = r_cv.json()
+        assert rec["reconciled"] is True
+
+        # 同形: 正常路径的每个顶层键都在收敛响应里; prod_visibility 子键/取值口径一致
+        assert set(norm) <= set(rec), f"收敛响应缺键: {set(norm) - set(rec)}"
+        assert set(norm["prod_visibility"]) == set(rec["prod_visibility"])
+        assert rec["image_storage"] == "static"
+        assert rec["prod_visibility"]["image_on"] == "local_static_only"
+        assert rec["prod_visibility"]["deployed"] is False
+        assert len(rec["prod_visibility"]["needs"]) == 5
+        assert rec["prod_visibility"]["image_url"] == rec["image_url"]
+        assert rec["prod_visibility"]["db_written"] is False    # 本次没写三表 (上次写的)
 
     def test_n2_meta_diff_blocks_convergence(self, client, tmp_badge_data, temp_db,
                                              clean_static_residue):

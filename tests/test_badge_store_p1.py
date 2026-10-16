@@ -406,3 +406,66 @@ def test_delete_object_false_when_absent_true_when_present(monkeypatch):
     assert up.delete_object("badges/here_v1.png") is True
     assert ("delete", "badges/here_v1.png") in sdk.calls
     assert up.delete_object("badges/here_v1.png") is False   # 已删掉 → 再来一次 = False
+
+
+# ─── 9. list_keys 分页拉全 / 不静默截断 (P3-3, audit 261016) ──────────────────
+
+def _cos_uploader_with_fake_sdk(monkeypatch, present: list[str], page_size: int):
+    """桩 SDK: 按 Marker 翻页返回 (每次最多 page_size 个), IsTruncated 如实给。"""
+    monkeypatch.setenv("COS_BUCKET", "b-1250000000")
+    monkeypatch.setenv("COS_SECRET_ID", "id")
+    monkeypatch.setenv("COS_SECRET_KEY", "key")
+    up = cos_client.CosUploader()
+
+    class FakeListSDK:
+        def __init__(self):
+            self.calls: list[dict] = []
+
+        def list_objects(self, **kw):
+            self.calls.append(kw)
+            prefix = kw["Prefix"]
+            after = kw.get("Marker") or ""
+            keys = [k for k in present if k.startswith(prefix) and k > after]
+            page = keys[:page_size]
+            out: dict = {"Contents": [{"Key": k} for k in page]}
+            if len(keys) > page_size:
+                out["IsTruncated"] = "true"
+            else:
+                out["IsTruncated"] = "false"
+            return out
+
+    sdk = FakeListSDK()
+    up._client = sdk
+    return up, sdk
+
+
+def test_list_keys_pages_through_everything(monkeypatch):
+    """P3-3: 250 个对象 → 全拿到 (旧版默认 max_keys=200 到此静默截断成 200 个)."""
+    present = [f"badge_drafts/d{i:03d}.json" for i in range(250)] + ["badges/x_v1.png"]
+    up, sdk = _cos_uploader_with_fake_sdk(monkeypatch, present, page_size=100)
+
+    keys = up.list_keys("badge_drafts/")
+
+    assert len(keys) == 250, f"应列全 250 个, 实得 {len(keys)} (静默截断?)"
+    assert keys == present[:250]                      # 顺序 = 字典序, 无重复无遗漏
+    assert len(sdk.calls) == 3                        # 100 + 100 + 50 三页
+    assert [c.get("Marker") for c in sdk.calls] == [None, "badge_drafts/d099.json",
+                                                   "badge_drafts/d199.json"]
+
+
+def test_list_keys_hard_cap_raises_not_silently_truncates(monkeypatch):
+    """P3-3: 够到硬上限 → **抛错** (不静默返回前 N 个); 正常量级不触发。"""
+    present = [f"badge_drafts/d{i:04d}.json" for i in range(300)]
+    up, _sdk = _cos_uploader_with_fake_sdk(monkeypatch, present, page_size=100)
+
+    assert len(up.list_keys("badge_drafts/", max_keys=500)) == 300        # 上限之内: 全量
+
+    with pytest.raises(RuntimeError, match="超过硬上限"):
+        up.list_keys("badge_drafts/", max_keys=250)                       # 超上限: fail loud
+
+
+def test_list_keys_single_page_no_extra_call(monkeypatch):
+    """P3-3 正控: 单页就拉完 → 只发 1 次请求, 不因为分页改造多发空翻页."""
+    up, sdk = _cos_uploader_with_fake_sdk(monkeypatch, ["badge_drafts/only.json"], page_size=100)
+    assert up.list_keys("badge_drafts/") == ["badge_drafts/only.json"]
+    assert len(sdk.calls) == 1
