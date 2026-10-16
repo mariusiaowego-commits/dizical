@@ -325,37 +325,117 @@ def _expected_badge_urls(draft, badge_id: str) -> list[str]:
     return candidates
 
 
-# R1 (audit 261015): 按 commit 主路径的口径归一化, 再比 —— 否则"自己上次写的那行"会被判成差异。
-#   ① achieved_at_override: commit 写库时 `meta.get(...).strip() or None`(路由 :656) ⇒
-#      UI 草稿恒发的 `''`(config-badge.html:614) 落到库里是 **NULL**。不归一化就会出现
-#      `meta_diff={"achieved_at_override": [null, ""]}` ⇒ 把 N1 的收敛对**任何 UI 草稿**又挡回去。
-#   ② 不归一的字段: cond_text 的空串是**故意**保留的(""≠None, 见路由注释), 保持原样比对。
-_META_NORMALIZE = {
-    "achieved_at_override": lambda v: (str(v).strip() or None) if isinstance(v, str) else v,
-}
+# P3-1 (audit 261016): 数字列 —— DB 侧是 BIGINT/INTEGER, 库里读回来是 int; 草稿里若是字符串
+# ("300") 就永远不相等 → 半落地重试被误判成 meta 差异。统一按"写进库的那个值"比。
+_NUMERIC_META_KEYS = ("threshold", "card_no", "card_stars")
+
+
+def _coerce_int(v):
+    """数字列的值 → int (还原 DB 读回来的形态). 非数字/None 原样返回 (让比对如实报差异)."""
+    if v is None or isinstance(v, bool):
+        return v
+    if isinstance(v, int):
+        return v
+    if isinstance(v, float):
+        return int(v) if v.is_integer() else v
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None            # 空串 → NULL (列 nullable)
+        try:
+            return int(s)
+        except ValueError:
+            try:
+                f = float(s)
+            except ValueError:
+                return v           # 不是数字: 原样
+            return int(f) if f.is_integer() else f
+    return v
+
+
+def _build_meta_for_db(draft) -> dict:
+    """把 draft.meta 编译成**将要写进 achievements 的那份** —— commit 侧唯一口径。
+
+    P3-1 (audit 261016): commit 主路径与收敛判定 (`_meta_diff`) **共用本函数**。之前收敛侧
+    自己维护一张 `_META_NORMALIZE` 表, 只覆盖 achieved_at_override; 一旦别的字段口径不一致
+    (典型: threshold/card_stars 这类 BIGINT 列, 草稿里可能是字符串 "300") 又会把"自己上次
+    写的那行"判成差异 → 半落地重试又被挡回去。口径一致现在由**构造**保证, 不靠第二张表。
+
+    Raises:
+        ValueError: unlock_strategy 非法 (调用方转 400, 文案与旧版一致)
+    """
+    meta_for_db = dict(draft.meta)
+    meta_for_db["description"] = meta_for_db.get("zh_story") or "无"
+    meta_for_db["stat_logic"] = ""      # calc 不靠它; 老行可能是 "无" —— 只写不读
+    # cond_text: 用户的空字符串**保留**为 "" (与 None 区分, 老行为不变); 缺字段 → None
+    if meta_for_db.get("cond_text") is None:
+        meta_for_db["cond_text"] = None
+    unlock_strategy = draft.meta.get("unlock_strategy", "calc")
+    if unlock_strategy not in ("immediate", "calc"):
+        raise ValueError(f"unlock_strategy 必须是 'immediate' 或 'calc', 收到: {unlock_strategy!r}")
+    meta_for_db["unlock_strategy"] = unlock_strategy
+    # 留空/空串 → None (DB nullable); 有值 → 原样 (TEXT YYYY-MM-DD)
+    meta_for_db["achieved_at_override"] = str(draft.meta.get("achieved_at_override") or "").strip() or None
+    for k in _NUMERIC_META_KEYS:
+        if k in meta_for_db:
+            meta_for_db[k] = _coerce_int(meta_for_db[k])
+    return meta_for_db
 
 
 def _meta_diff(draft, db_row: dict) -> dict[str, list]:
-    """草稿 meta (commit 会写进库的那几个字段) 与 DB 现有行的差异. 空 dict = 一致 (N2/N-R1)。
+    """草稿 meta (按 commit 口径编译后的那份) 与 DB 现有行的差异. 空 dict = 一致 (N2/N-R1/P3-1)。
 
     stat_logic 不比: commit 恒写 "", 老行可能是 "无" —— 不是操作者能感知的差异, 比了只会把
     "图一致但老行是 legacy"的收敛场景误判成冲突。sort_order / card_no 是入库时动态分配的,
-    也不比。返回的 new 值给的是**归一化后**的值 (即真正会写进库的那个), 方便操作者核对。
+    也不比。返回的 new 值 = **真正会写进库的那个值** (归一化/类型转换之后), 方便操作者核对。
+
+    Raises:
+        ValueError: draft.meta 非法 (unlock_strategy) —— 调用方转 400
     """
-    meta = dict(draft.meta)
-    meta["description"] = meta.get("zh_story") or "无"
-    meta.setdefault("unlock_strategy", "calc")
+    meta_for_db = _build_meta_for_db(draft)
     diff: dict[str, list] = {}
     for k in _META_COMPARE_KEYS:
-        if k not in db_row or k not in meta:
+        if k not in db_row or k not in meta_for_db:
             continue
-        want = meta.get(k)
-        norm = _META_NORMALIZE.get(k)
-        if norm is not None:
-            want = norm(want)
-        if db_row.get(k) != want:
-            diff[k] = [db_row.get(k), want]
+        if db_row.get(k) != meta_for_db.get(k):
+            diff[k] = [db_row.get(k), meta_for_db.get(k)]
     return diff
+
+
+def _prod_visibility(image_storage: str, badge_image_url: str, badge_id: str, image_version: int,
+                     db_written: bool = True) -> dict:
+    """按图片实际落点回话 (P0 sprint-26101302) —— 抽成函数供**正常 commit 与收敛路径共用** (P3-5)。
+
+    旧版固定写 needs=[git add/PR/deploy] 且 image_url 固定拼 /static/..., COS 上传成功时
+    也在说"要去 deploy" → 误导操作者 (2026-10-13 实测)。
+
+    image_storage ∈ {"cos", "static"}; db_written = **本次调用**有没有写三表
+    (收敛路径 = False: 三表上次就写好了, 本次只补草稿记账)。
+    """
+    stem = f"{badge_id}_v{image_version}"
+    if image_storage == "cos":
+        return {
+            "deployed": True,              # 图对象已在 COS 公开读 + 三表已指向它 → prod 立即可见
+            "db_written": db_written,
+            "image_on": "cos",
+            "image_url": badge_image_url,
+            "needs": [],
+            "hint": "图在 COS(公开读) 且三表已写 → 生产 kid-app 立即能看到, 不需要 git/PR/deploy。",
+        }
+    return {
+        "deployed": False,
+        "db_written": db_written,
+        "image_on": "local_static_only",
+        "image_url": badge_image_url,
+        "needs": [
+            f"git add src/kid_app/static/badges/{stem}.png",
+            f"git add src/kid_app/static/badges/thumbs/{stem}.webp",
+            f"git add src/kid_app/static/badges/full/{stem}.webp",
+            "git commit + push + PR + merge to main",
+            "CloudRun deploy (跟 hermes 说 'deploy badge' 或跑 dizical-cloudrun-deploy 5 步 SOP)",
+        ],
+        "hint": "本地已生效; 生产 kid-app 还需 git+deploy (约 10-15 分钟). 图片 URL 在 prod 生效前显示占位图.",
+    }
 
 
 @router.post("/api/badge/draft/{draft_id}/image",
@@ -541,7 +621,11 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         db_url = badge_db.fetch_badge_url(badge_id)
         expected_urls = _expected_badge_urls(draft, badge_id)
         db_row = badge_db.fetch_achievement_row(badge_id) or {}
-        meta_diff = _meta_diff(draft, db_row)
+        try:
+            meta_diff = _meta_diff(draft, db_row)
+        except ValueError as e:
+            # P3-1: draft.meta 本身非法 (unlock_strategy) —— 与 commit 主路径同码 400, 别在收敛分支 500
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
         image_matches = bool(db_url) and db_url in expected_urls
         if image_matches and not meta_diff:
             image_version_conv = (draft.image or {}).get("version", draft.version)
@@ -556,6 +640,7 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
                 badge_draft.cleanup_tmp(req.draft_id, image_version_conv)
             except badge_draft.RevisionConflict as e:
                 return _revision_conflict_response(e)
+            conv_storage = "cos" if badge_draft.is_cos_url(db_url) else "static"
             logger.warning("commit 收敛: DB 已有 %s 且图一致 (%s) → 只补草稿状态",
                            badge_id, db_url)
             return JSONResponse({
@@ -565,6 +650,11 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
                 "draft_id": req.draft_id,
                 "badge_id": badge_id,
                 "image_url": db_url,
+                "image_storage": conv_storage,
+                # P3-5 (audit 261016): 收敛路径也带 prod_visibility (与正常 commit **同形**) ——
+                # 修前缺这个字段, 前端 config-badge.html 会走错分支 (把"已上线"读成别的状态)。
+                "prod_visibility": _prod_visibility(
+                    conv_storage, str(db_url), badge_id, image_version_conv, db_written=False),
                 "db_written": False,
                 "note": "DB 三表原本就有这张图 (上次 commit 半落地), 本次只补草稿状态, 未再写 DB",
             })
@@ -635,39 +725,16 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         # (V2.1 calc 修法 1 走 git apply 写 achievement_definitions.py, 跟这里解耦)
         # Bug #4 修法 (2026-06-15): description 取 meta.zh_story (典故小故事),
         # 不是默认"无". stat_logic 改空字符串 (calc 不靠它, 留"无"是历史包袱).
-        meta_for_db = dict(draft.meta)
-        meta_for_db["description"] = meta_for_db.get("zh_story") or "无"
-        meta_for_db["stat_logic"] = ""
-        # feat/badge-cond-text (2026-06-15): cond_text 字段.
-        # - 用户填 / AI 生成 → 写
-        # - 缺 / 空 → 写 None (DB nullable) 走前端 fallback 到 desc
-        # 显式不 setdefault "" (老数据兼容, DB 允许 NULL)
-        if "cond_text" in meta_for_db and meta_for_db["cond_text"] is not None:
-            # 用户的空字符串保留为 "" (跟 None 区分)
-            pass
-        else:
-            # 缺字段 → None (DB 默认, 老 draft 不报错)
-            meta_for_db["cond_text"] = meta_for_db.get("cond_text")  # None
-
-        # feat/badge-unlock-strategy (2026-06-16): unlock_strategy 字段
-        # - 'immediate': commit 时直接 achieved='Y' + achieved_at=now (纪念章场景)
-        # - 'calc' (默认): 老行为, achieved='N', 走 calc 评估
-        # - 缺字段 → 默认 'calc' (老 data 兼容)
-        # - enum 校验: 拒绝 invalid 值
-        unlock_strategy = draft.meta.get("unlock_strategy", "calc")
-        if unlock_strategy not in ("immediate", "calc"):
-            return JSONResponse({
-                "ok": False,
-                "error": f"unlock_strategy 必须是 'immediate' 或 'calc', 收到: {unlock_strategy!r}",
-            }, status_code=400)
-        meta_for_db["unlock_strategy"] = unlock_strategy
-
-        # V2.6 (2026-06-16) feat/badge-achieved-at-override: 通用字段
-        # - grade 1-10 考出时间, 表彰型徽章 etc.
-        # - 用户填 → 写 db (TEXT YYYY-MM-DD, nullable)
-        # - 留空 → None
-        achieved_at_override = draft.meta.get("achieved_at_override", "").strip() or None
-        meta_for_db["achieved_at_override"] = achieved_at_override
+        # P3-1 (audit 261016): 构造抽出成 `_build_meta_for_db` —— 收敛判定 (_meta_diff) 与本处
+        # **共用同一口径** (含 achieved_at_override ''→NULL 与数字列 ''→NULL/字符串→int),
+        # 不再维护第二张归一化表。
+        try:
+            meta_for_db = _build_meta_for_db(draft)
+        except ValueError as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+        # 下面两处按编译后的值继续用 (口径同 meta_for_db, 不重新解析 draft.meta)
+        unlock_strategy = meta_for_db["unlock_strategy"]
+        achieved_at_override = meta_for_db["achieved_at_override"]
 
         # 立即解锁时 achieved_at = 当前 UTC ISO
         if unlock_strategy == "immediate":
@@ -734,36 +801,9 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
         logger.exception("commit_from_draft failed for %s", req.draft_id)
         return JSONResponse({"ok": False, "error": f"commit 失败: {e}"}, status_code=500)
 
-    # P0 (sprint-26101302, 2026-10-13): 去硬编码 —— 按实际走的存储回话。
-    # 旧版固定写 needs=[git add/PR/deploy] 且 image_url 固定拼 /static/..., COS 上传成功时
-    # 也在说"要去 deploy" → 误导操作者 (2026-10-13 实测)。
-    if image_storage == "cos":
-        prod_visibility = {
-            "deployed": True,              # 图对象已在 COS 公开读 + 三表已指向它 → prod 立即可见
-            "db_written": True,
-            "image_on": "cos",
-            "image_url": badge_image_url,
-            "needs": [],
-            "hint": "图在 COS(公开读) 且三表已写 → 生产 kid-app 立即能看到, 不需要 git/PR/deploy。",
-        }
-    else:
-        prod_visibility = {
-            "deployed": False,
-            "db_written": True,
-            "image_on": "local_static_only",
-            "image_url": badge_image_url,
-            "needs": [
-                "git add src/kid_app/static/badges/{stem}.png".format(
-                    stem=f"{badge_id}_v{image_version}"),
-                "git add src/kid_app/static/badges/thumbs/{stem}.webp".format(
-                    stem=f"{badge_id}_v{image_version}"),
-                "git add src/kid_app/static/badges/full/{stem}.webp".format(
-                    stem=f"{badge_id}_v{image_version}"),
-                "git commit + push + PR + merge to main",
-                "CloudRun deploy (跟 hermes 说 'deploy badge' 或跑 dizical-cloudrun-deploy 5 步 SOP)",
-            ],
-            "hint": "本地已生效; 生产 kid-app 还需 git+deploy (约 10-15 分钟). 图片 URL 在 prod 生效前显示占位图.",
-        }
+    # P0 (sprint-26101302, 2026-10-13) / P3-5: 去硬编码 —— 按实际走的存储回话 (抽成 _prod_visibility,
+    # 收敛路径复用同一函数, 保证两条 200 响应同形).
+    prod_visibility = _prod_visibility(image_storage, badge_image_url, badge_id, image_version)
     return JSONResponse({
         "ok": True,
         "badge_id": badge_id,

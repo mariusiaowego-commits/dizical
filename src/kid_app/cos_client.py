@@ -5,6 +5,7 @@
 - 无完整配置时 is_available=False, 调用方回落本地磁盘 (开发环境)
 - 上传失败 raise (fail loud), 不静默降级
 """
+import logging
 import os
 from typing import Optional
 
@@ -13,6 +14,14 @@ try:
 except ImportError:  # 依赖未装 (如纯测试环境) 时降级
     CosConfig = None
     CosS3Client = None
+
+logger = logging.getLogger(__name__)
+
+# P3-3 (audit 261016): 单页拉取上限 (SDK 侧 MaxKeys 上限 1000) 与硬上限。
+_LIST_KEYS_PAGE = 1000
+# 硬上限只是安全网: 正常前缀 (badge_drafts/) 下对象数是几十~几百。够到上限 = 前缀/桶异常,
+# 这时**抛错**而不是悄悄返回前 N 个 (旧版 max_keys=200 就是静默截断, "看得到/看不到"不可判)。
+LIST_KEYS_HARD_CAP = 5000
 
 
 def sdk_version() -> str:
@@ -181,11 +190,17 @@ class CosUploader:
                 pass
         return "404" in str(e) or "NoSuchKey" in str(e) or "NoSuchResource" in str(e)
 
-    def list_keys(self, prefix: str, max_keys: int = 200) -> list[str]:
-        """列对象 key (分页聚合). 读草稿列表用 —— 失败抛 (不许静默当成"空").
+    def list_keys(self, prefix: str, max_keys: int = LIST_KEYS_HARD_CAP) -> list[str]:
+        """列对象 key —— 按 Marker **翻页拉全**, 不静默截断. 读草稿列表用。
+
+        P3-3 (audit 261016): 旧版 `max_keys=200` 到顶就 `keys[:max_keys]` 返回 —— **静默截断**,
+        草稿数 >200 时"看得到/看不到"不可判。现在:
+          - 正常路径: 一直翻到 IsTruncated=false, 返回**全量** (调用方无需改);
+          - `max_keys` 降级为**硬上限安全网** (默认 LIST_KEYS_HARD_CAP): 够到上限说明该前缀下
+            对象异常多 (误前缀/垃圾数据) → **抛错** (fail loud), 而不是返回一部分让上层以为列全了。
 
         Raises:
-            RuntimeError: 未配置 / 网络或凭据错误
+            RuntimeError: 未配置 / 网络或凭据错误 / 超过硬上限
         """
         if not self.is_available:
             raise RuntimeError("COS 未配置, 无法 list_objects")
@@ -193,18 +208,34 @@ class CosUploader:
         marker = ""
         try:
             while True:
-                kw = {"Bucket": self.bucket, "Prefix": prefix, "MaxKeys": min(1000, max_keys)}
+                kw = {"Bucket": self.bucket, "Prefix": prefix, "MaxKeys": _LIST_KEYS_PAGE}
                 if marker:
                     kw["Marker"] = marker
                 resp = self._cos_client.list_objects(**kw)  # type: ignore[union-attr]
                 contents = resp.get("Contents") or []
                 keys.extend(c["Key"] for c in contents)
-                if len(contents) < kw["MaxKeys"] or len(keys) >= max_keys:
+                if len(keys) > max_keys:
+                    raise RuntimeError(
+                        f"COS list_objects 超过硬上限 {max_keys} (prefix={prefix!r}, 已列 {len(keys)} 个): "
+                        f"不静默截断 —— 请检查该前缀下是否有垃圾对象"
+                    )
+                if not contents:
                     break
-                marker = contents[-1]["Key"]
+                # 翻页判据: IsTruncated=true 继续; 服务端没给该字段时退回"整页 = 可能还有"
+                truncated = str(resp.get("IsTruncated", "")).lower() == "true"
+                if not truncated and len(contents) < kw["MaxKeys"]:
+                    break
+                last = contents[-1]["Key"]
+                if last == marker:          # 服务端没前进 (异常响应) → 别转圈
+                    logger.warning("COS list_objects 分页未前进 (prefix=%s, key=%s), 停止翻页",
+                                   prefix, last)
+                    break
+                marker = last
+        except RuntimeError:
+            raise
         except Exception as e:  # noqa: BLE001
             raise RuntimeError(f"COS list_objects 失败: {e}") from e
-        return keys[:max_keys]
+        return keys
 
     def delete_object(self, filename: str) -> bool:
         """删对象 (idempotent). 存在并删成功返 True; 本来不存在返 False; 其它失败抛.

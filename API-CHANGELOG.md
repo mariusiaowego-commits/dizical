@@ -1,6 +1,44 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-10-14 起草 / 2026-10-15 返工 (待上线, feat/newbadge-p1-261014) — sprint 26101401 P1 草稿与图统一 COS
+**日期**: 2026-10-16 (待上线, feat/newbadge-p3-261016) — sprint 26101401 P3 收尾（收敛判定口径 / list_keys 分页 / 收敛响应补齐）
+**类型**: 🟡 部分兼容（请求与既有字段不变；收敛 200 响应**新增** `image_storage` / `prod_visibility`；草稿列表在 >200 对象时不再静默截断。**无 DDL / 无数据迁移**）
+
+## 变更
+
+### P3-1 收敛判定与 commit 主路径**共用同一份 meta 口径**
+
+- `commit-from-draft` 的 `meta_for_db` 构造抽成单一函数（`_build_meta_for_db`），收敛判定直接比这份
+  编译结果 —— 不再维护第二张"归一化表"。除 `achieved_at_override` 的 `''`→NULL，`threshold` /
+  `card_no` / `card_stars` 这类 BIGINT 列也按 DB 真值归一（`"300"` → `300`，空串 → NULL）。
+  **修前**：草稿里 `threshold` 是字符串时，半落地重试会误报
+  `409 db_exists_meta_diff {"threshold":[300,"300"]}`，收敛被挡回去。
+- 不变项：`cond_text` 的空串仍**保留**为 `""`（与 NULL 区分）；`stat_logic` 仍恒写 `""`。
+
+### P3-3 草稿列表不再静默截断
+
+- `list_keys()` 改为按 Marker 翻页**拉全**；`max_keys` 降级为硬上限安全网（默认 5000）。
+  **修前**：单次 `max_keys=200` 到顶就返回前 200 个且**无任何标记** ⇒ 草稿数 >200 时"看得到/看不到"
+  不可判。超过硬上限（前缀下有垃圾对象）时**抛错**，不再返回一部分。调用方签名无变化。
+- 影响面：`list_drafts()` → `/config` 徽章草稿列表（COS 模式下）。
+
+### P3-5 收敛 200 与正常 commit 200 **同形**
+
+- 收敛响应（`code=already_committed_reconciled`）新增 `image_storage` 与 `prod_visibility`
+  （与正常 commit 共用 `_prod_visibility`，子键一致）；`prod_visibility.db_written=false` =
+  **本次未写三表**（三表上次就写好了）。**修前**缺这两个字段，前端 `config-badge.html` 会走错分支。
+
+## 已知缺口（沿用，本次仍不实现）
+
+- 老徽章改文案没有 API 路径（图一致 + meta 不同 → 409 `db_exists_meta_diff`；`card-appearance` 只管
+  `card_theme` / `card_stars`）。正解仍只有人工 SQL 或换新 id 建草稿。建议后续给受控 meta 更新端点。
+
+**云端**: 待部署（本版 merge 后由 hermes 补 DeployRun / DeployId 与镜像校验行）。
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-10-14 起草 / 2026-10-15 返工（**已上线** DeployRun #142, 2026-10-16；feat/newbadge-p1-261014）— sprint 26101401 P1 草稿与图统一 COS
 **类型**: 🟡 部分兼容（老字段保留；新增 `storage` / `revision` 字段、可选请求头 `X-Draft-Revision` 与 409 错误码/字段；「重复 commit 同一张图 → 200」是**行为变更**。**无 DDL / 无数据迁移**）
 
 ## 变更
@@ -26,6 +64,10 @@
 - **推图侧 CAS 需客户端带请求头**：`POST /config/api/badge/draft/{id}/image` 的 `X-Draft-Revision` 仍是**可选**的
   —— 不带 header = last-write-wins（后写覆盖，无 409 保护）。要防并发覆盖必须带上（现状见 audit N4，未改）。
 - **对 dizical-minip**：无需改代码（小程序不调这些端点；响应新增字段对老调用方透明）。
+- **云端**: **已上线**。DeployRun **#142**（2026-10-16）—— 本 sprint 四笔同批上线：
+  **#365**（P0：成品图回传端点 + 鉴权）、**#366**（P1：草稿与图统一 COS，含 CAS 时点与半落地收敛）、
+  **#368**（P2：webp 两档派生 + 前端取图）、**#367**（文案：47 条徽章文案改写，非本文件的 API 面）。
+  合并基线 `bc4645b`（#366 的 merge commit，= 当时 main）。**本批无 DDL / 无数据迁移**。
 
 ### 已知缺口（登记，本次不实现）
 
