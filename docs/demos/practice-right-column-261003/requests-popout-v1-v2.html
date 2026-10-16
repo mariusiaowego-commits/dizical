@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>D4 方案：老师要求卡 Pop-out 3D 卡片浏览 (3个交互变体)</title>
+  <style>
+    /* ══════ 全局色彩与包豪斯 Token ══════ */
+    :root {
+    --dash-vermilion: #FF5722;
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-vermilion-text: #A04217;
+    --dash-vermilion-solid: #B8531F;
+      --c-primary: var(--dash-coral);      /* 珊瑚红 (核心强调) */
+      --c-secondary: var(--dash-text);    /* 深蓝灰 (主信息) */
+      --c-bg: var(--dash-page);           /* 暖白 (全局底色) */
+      --c-surface: var(--dash-white);      /* 纯白卡片底色 */
+      --c-muted: var(--dash-text-soft);        /* 辅助中灰 */
+      --c-accent: var(--dash-accent);       /* 暖橙 */
+      --c-border: var(--dash-tray-inset);
+      --c-gold: var(--dash-gold);
+      --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+        --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: var(--dash-ink-a16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.55);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: var(--dash-ink-a12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+}
+  :root[data-skin="ink"] {
+    --dash-vermilion: #FF5722;
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-vermilion-text: #FF9E7A;
+    --dash-vermilion-solid: #B8531F;
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 248, 240, 0.45);
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+      /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+}
+
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: var(--font-base);
+      background: var(--c-bg);
+      color: var(--c-secondary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    /* ══════ 顶栏模拟 (仿 pk-top 40px) ══════ */
+    .pk-top {
+      max-width: 1133px;
+      width: 100%;
+      height: 48px;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 14px;
+      box-shadow: 0 2px 10px var(--dash-ink-a04);
+    }
+
+    .pk-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pk-brand {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--c-secondary);
+      letter-spacing: 0.5px;
+    }
+    .pk-brand span {
+      color: var(--c-primary);
+    }
+
+    .pk-sub-pill {
+      font-size: 13px;
+      color: var(--c-muted);
+      background: var(--dash-surface-2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .pk-req-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      border: 1.5px solid var(--c-accent);
+      background: var(--dash-accent-wash);
+      color: var(--c-secondary);
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .pk-req-btn:hover {
+      background: var(--c-accent);
+      color: var(--dash-white);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px var(--dash-accent-line);
+    }
+    .pk-req-btn .dot-alert {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--c-primary);
+      box-shadow: 0 0 6px var(--c-primary);
+      animation: pulse 2.2s infinite;   /* v2: 1.8 → 2.2，降频 */
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.18); opacity: 0.55; }
+    }
+
+    /* ══════ 页面说明面板 (供 Dad 评测审阅) ══════ */
+    .eval-panel {
+      max-width: 1133px;
+      width: 100%;
+      background: var(--dash-white);
+      border: 1px solid var(--c-border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13.5px;
+    }
+    .eval-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .eval-title {
+      font-weight: 700;
+      color: var(--c-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .variant-pills {
+      display: flex;
+      background: var(--dash-surface-2);
+      padding: 4px;
+      border-radius: 10px;
+      gap: 4px;
+    }
+    .v-pill {
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-muted);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    }
+    .v-pill.active {
+      background: var(--dash-white);
+      color: var(--c-primary);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    /* ══════ 模态弹窗蒙层与容器 (Pop-out Modal) ══════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--dash-ink-a42);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      width: 920px;
+      max-width: 94vw;
+      height: 640px;
+      max-height: 92vh;
+      background: var(--dash-surface-soft);
+      border: 1px solid var(--dash-ink-a16);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22), 0 2px 10px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: scale(0.96) translateY(12px);
+      /* v2: 退场走无过冲曲线（原来进出共用 1.56 过冲，关闭时会先撑大再缩） */
+      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal-overlay.open .modal-box {
+      transform: scale(1) translateY(0);
+      /* v2: 入场保留轻微弹性（1.56 → 1.28） */
+      transition: transform 0.36s cubic-bezier(0.34, 1.28, 0.64, 1);
+    }
+
+    /* 模态头 */
+    .m-header {
+      height: 62px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--c-border);
+      background: var(--dash-white);
+      flex-shrink: 0;
+    }
+    .m-title-group {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .m-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--c-secondary);
+      letter-spacing: 0.3px;
+    }
+    .m-subtitle {
+      font-size: 13px;
+      color: var(--c-muted);
+      font-weight: 500;
+    }
+    .m-close-btn {
+      width: 44px;   /* v2: 34 → 44，满足 44px 触控目标 */
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--c-border);
+      background: var(--dash-surface-2);
+      color: var(--c-secondary);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .m-close-btn:hover {
+      background: var(--dash-surface-3);
+      transform: scale(1.05);
+    }
+    .m-close-btn:active { transform: scale(0.94); }
+
+    /* 3D 舞台区域 (全屏透视) */
+    .m-stage-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      perspective: 1200px; /* 3D 景深核心 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 40%, var(--dash-page) 0%, var(--dash-surface-2) 100%);
+    }
+
+    /* 底部控制与导航条 */
+    .m-footer {
+      height: 64px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--c-border);
+      background: var(--dash-white);
+      flex-shrink: 0;
+    }
+    .m-footer-hint {
+      font-size: 12.5px;
+      color: var(--c-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .m-nav-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .m-nav-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--c-border);
+      background: var(--dash-white);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-secondary);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .m-nav-btn:hover:not(:disabled) {
+      background: var(--dash-surface-2);
+      border-color: var(--dash-ink-a25);
+    }
+    .m-nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ══════ 3D 卡片核心通用样式 (继承 DizicalCCG 拟物美学) ══════ */
+    .ccg-card-3d {
+      /* v2: 卡宽锁 420 同时不超过所在舞台，440 视口不再溢出弹窗 */
+      width: min(420px, calc(100% - 24px));
+      height: min(440px, calc(100% - 24px));
+      position: absolute;
+      transform-style: preserve-3d;
+      border-radius: 20px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+    .ccg-card-3d:active {
+      cursor: grabbing;
+    }
+
+    /* 卡片内外层 DOM */
+    .card-face {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: var(--dash-white);
+      border: 1.5px solid var(--dash-ink-a12);
+      box-shadow: 0 16px 36px var(--dash-ink-a12), 0 2px 8px var(--dash-ink-a04);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      overflow: hidden;
+    }
+
+    /* 顶部装饰金属金边微光 */
+    .card-face::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 19px;
+      border: 1px solid var(--dash-gold-a35);
+      pointer-events: none;
+    }
+
+    /* 卡面头部 */
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .card-subject {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--c-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-latest-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;   /* v2: 4 → 6，与徽章阶梯对齐 */
+      background: var(--c-primary);
+      color: var(--dash-white);
+      letter-spacing: 0.5px;
+    }
+    .card-date-badge {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--c-muted);
+      background: var(--dash-surface-2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+
+    /* 节拍器指示条 (BPM readout) */
+    .card-metronome-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--dash-notice-bg);
+      border: 1.5px solid var(--dash-coral-a25);
+      padding: 6px 14px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+    .card-metro-icon {
+      width: 18px;
+      height: 18px;
+      fill: var(--c-primary);
+    }
+    .card-metro-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--dash-coral-text);
+      letter-spacing: 0.5px;
+    }
+    .card-metro-label {
+      font-size: 12px;
+      color: var(--c-muted);
+      font-weight: 600;
+    }
+
+    /* 正文要求内容 (长文优雅滚动) */
+    .card-body-content {
+      flex: 1;
+      font-size: 14.5px;
+      line-height: 1.68;
+      color: var(--dash-text);
+      overflow-y: auto;
+      padding-right: 6px;
+      margin-bottom: 14px;
+      font-weight: 500;
+      touch-action: pan-y;   /* v2: 正文只走纵向滚动，不参与卡片拖拽 */
+      overscroll-behavior: contain;
+    }
+    .card-body-content::-webkit-scrollbar {
+      width: 4px;
+    }
+    .card-body-content::-webkit-scrollbar-thumb {
+      background: var(--dash-ink-a16);
+      border-radius: 4px;
+    }
+
+    /* 分段速度小标记 (segments) */
+    .card-segments {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .card-seg-chip {
+      font-size: 11.5px;
+      padding: 3px 8px;
+      border-radius: 6px;   /* v2: 5 → 6 */
+      background: var(--dash-surface-2);
+      color: var(--c-secondary);
+      font-weight: 600;
+    }
+
+    /* 卡底签名与编号 */
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px dashed var(--c-border);
+      padding-top: 12px;
+      font-size: 12px;
+      color: var(--c-muted);
+    }
+    .card-teacher-sig {
+      font-weight: 600;
+      color: var(--c-secondary);
+    }
+
+    /* 卡背 (针对变体 C 及翻面查看历史重点) */
+    .card-back {
+      transform: rotateY(180deg);
+      background: var(--dash-surface-soft);
+    }
+    .card-back-header {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--c-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-back-note {
+      background: var(--dash-white);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 13.5px;
+      color: var(--dash-text-soft);
+      line-height: 1.5;
+    }
+
+    /* ══════ 变体 A 专用：3D 卡叠样式 ══════ */
+    .variant-a-stage {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stack-indicator {
+      position: absolute;
+      bottom: 18px;
+      display: flex;
+      gap: 6px;
+      z-index: 100;
+    }
+    .stack-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--dash-ink-a16);
+      transition: background 0.3s, width 0.3s, border-radius 0.3s;
+    }
+    .stack-dot.active {
+      width: 24px;
+      border-radius: 4px;
+      background: var(--c-primary);
+    }
+
+    /* ══════ 变体 B 专用：3D 横向轨道 (Coverflow) ══════ */
+    .variant-b-stage {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+
+    /* ══════ 变体 C 专用：3D 单卡翻面与时间轴 ══════ */
+    .variant-c-stage {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .c-timeline-bar {
+      margin-top: 18px;
+      display: flex;
+      gap: 8px;
+      background: var(--dash-white);
+      padding: 6px 10px;
+      border-radius: 9999px;
+      border: 1px solid var(--c-border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      z-index: 50;
+    }
+    .c-time-chip {
+      border: none;
+      background: transparent;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--c-muted);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .c-time-chip.active {
+      background: var(--dash-ink);
+      color: var(--dash-white);
+    }
+  </style>
+  <!-- 本地 GSAP 依赖 (严禁新引 CDN) -->
+  <script src="../vendor/gsap.min.js"></script>
+</head>
+<body>
+
+  <!-- 顶栏模拟 (pk-top) -->
+  <header class="pk-top">
+    <div class="pk-left">
+      <div class="pk-brand">dizi<span>cal</span></div>
+      <div class="pk-sub-pill">今日科目：萨丽哈</div>
+    </div>
+    <button class="pk-req-btn" id="openReqBtn" onclick="openModal()">
+      <span class="dot-alert"></span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+      老师要求 (6)
+    </button>
+  </header>
+
+  <!-- 评测说明面板 -->
+  <div class="eval-panel">
+    <div class="eval-row">
+      <div class="eval-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        D4 老师要求卡 3D 浏览 · 3 个交互变体对照评测
+      </div>
+      <div class="variant-pills">
+        <button class="v-pill active" onclick="switchVariant('A')">变体 A: 3D 卡叠 (Deck)</button>
+        <button class="v-pill" onclick="switchVariant('B')">变体 B: 3D 弧形轨道 (Coverflow)</button>
+        <button class="v-pill" onclick="switchVariant('C')">变体 C: 3D 单卡翻面 (Flip)</button>
+      </div>
+    </div>
+    <div style="color: var(--c-muted); line-height: 1.5;" id="variantDesc">
+      <strong>当前变体 A 说明</strong>：多张卡片在 Z 轴纵深叠放。支持鼠标/手势拖拽划飞（Swipe Discard）换下一张，点击边缘或下方按钮切换。最符合物理纸牌/抽卡交互直觉。
+    </div>
+  </div>
+
+  <!-- Pop-out 模态弹窗 -->
+  <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+    <div class="modal-box" id="modalBox">
+      <!-- 模态头 -->
+      <div class="m-header">
+        <div class="m-title-group">
+          <div class="m-title">李老师 · 课后要求与历史备忘</div>
+          <div class="m-subtitle" id="mSubtitle">萨丽哈 · 共有 6 次课后指导</div>
+        </div>
+        <button class="m-close-btn" onclick="closeModal()" title="关闭 (Esc)" aria-label="关闭">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- 3D 舞台区域 -->
+      <div class="m-stage-wrap" id="stageContainer">
+        <!-- 动态挂载各变体 HTML -->
+      </div>
+
+      <!-- 模态底栏 -->
+      <div class="m-footer">
+        <div class="m-footer-hint" id="footerHint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          按住卡片拖拽划飞 · 点击卡背查看练习重点
+        </div>
+        <div class="m-nav-btns">
+          <button class="m-nav-btn" id="prevBtn" onclick="onNavPrev()">上一张</button>
+          <button class="m-nav-btn" id="nextBtn" onclick="onNavNext()">下一张</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ══════ 真实接口形状的 6 条萨丽哈历史假数据 ══════ */
+    const ASSIGNMENTS_DATA = [
+      {
+        id: "req_260928",
+        lesson_date: "2026-09-28",
+        is_latest: true,
+        subject: "萨丽哈",
+        metronome: "♩=82",
+        requirements: "第 1-32 小节快板段落注意双吐颗粒度，舌头放松，不要顶死。慢板引子部分长音气颤音要均匀，吸气饱满，换气点严格按气口记号。每天先在 ♩=76 慢练两遍，再提到 ♩=82。",
+        metronome_segments: [
+          { part: "引子散板", note: "♩", bpm: 60 },
+          { part: "慢板抒情", note: "♩", bpm: 72 },
+          { part: "快板双吐", note: "♩", bpm: 82 }
+        ],
+        teacher_note: "指法转换很熟练了，重点攻坚高音 double tonguing 清脆度！"
+      },
+      {
+        id: "req_260921",
+        lesson_date: "2026-09-21",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♩=76",
+        requirements: "重点练习小快板段落指法转换，尤其是高音 mi 到 so 的泛音指法切換。气流保持集中，速度稳定在 ♩=76。注意 17 小节切分音重音，休止符要停得干净利落。",
+        metronome_segments: [
+          { part: "小快板前段", note: "♩", bpm: 72 },
+          { part: "切分音段落", note: "♩", bpm: 76 }
+        ],
+        teacher_note: "气息稳定度有进步，注意休止符不要抢拍。"
+      },
+      {
+        id: "req_260914",
+        lesson_date: "2026-09-14",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♩=72",
+        requirements: "中板抒情段落气息下沉，揉音要柔和自然，不要过快。快板部分节拍器打 ♩=72，单吐、双吐交替练习，长音持续吹满 8 拍不晃动，音色保持明亮柔和。",
+        metronome_segments: [
+          { part: "中板抒情", note: "♩", bpm: 68 },
+          { part: "单双吐交替", note: "♩", bpm: 72 }
+        ],
+        teacher_note: "慢板新疆风味出来了，音色很有西域歌舞的画面感。"
+      },
+      {
+        id: "req_260907",
+        lesson_date: "2026-09-07",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♩=68",
+        requirements: "熟悉全曲骨干音与新疆舞曲切分节奏。引子散板自由但节拍框架要清晰。慢练 ♩=68，把音准控稳，特别是中音 fa 和高音 do，手指按压务必严实密合。",
+        metronome_segments: [
+          { part: "全曲慢练", note: "♩", bpm: 68 }
+        ],
+        teacher_note: "音孔按压要扎实密实，不要有漏气嘶嘶声。"
+      },
+      {
+        id: "req_260831",
+        lesson_date: "2026-08-31",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♪=120",
+        requirements: "分段精练：A 段引子与欢快小快板。单吐发音要如水滴般圆润干脆，手指抬起高度保持一指宽，切忌过大手型变形。节拍器以八分音符 ♪=120 对点练习。",
+        metronome_segments: [
+          { part: "A段引子", note: "♪", bpm: 100 },
+          { part: "欢快小快板", note: "♪", bpm: 120 }
+        ],
+        teacher_note: "手型保持放松圆拱，抬指动作要短促干脆。"
+      },
+      {
+        id: "req_260824",
+        lesson_date: "2026-08-24",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♪=110",
+        requirements: "新课初识萨丽哈。打拍读谱，唱准节奏。重点看降 7 和升 4 的指孔按压手法。基础慢练 ♪=110，每天吹 15 分钟基本功长音和气颤音练习。",
+        metronome_segments: [
+          { part: "唱谱与长音", note: "♪", bpm: 110 }
+        ],
+        teacher_note: "新曲目开篇，保持耐心，先慢后快打好基础！"
+      }
+    ];
+
+    let currentVariant = 'A';
+    let currentIndex = 0;
+    const stageContainer = document.getElementById('stageContainer');
+    const modalOverlay = document.getElementById('modalOverlay');
+
+    /* ══════ 模态开合控制 ══════ */
+    function openModal() {
+      modalOverlay.classList.add('open');
+      renderCurrentVariant();
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('open');
+    }
+
+    function handleOverlayClick(e) {
+      if (e.target === modalOverlay) closeModal();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      // v2: 弹窗关着的时候方向键不该翻卡（原来在外面按 ← → 也在切课次）
+      if (!modalOverlay.classList.contains('open')) return;
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'ArrowLeft') onNavPrev();
+      if (e.key === 'ArrowRight') onNavNext();
+    });
+
+    /* ══════ 变体切换 ══════ */
+    function switchVariant(v) {
+      currentVariant = v;
+      currentIndex = 0;
+      document.querySelectorAll('.v-pill').forEach((btn, idx) => {
+        btn.classList.toggle('active', ['A','B','C'][idx] === v);
+      });
+      const descEl = document.getElementById('variantDesc');
+      if (v === 'A') {
+        descEl.innerHTML = '<strong>当前变体 A 说明</strong>：多张卡片在 Z 轴纵深前后叠放。按住卡片左右滑拽飞走（Swipe Discard）换下一张，最符合物理桌面抽卡体验。';
+      } else if (v === 'B') {
+        descEl.innerHTML = '<strong>当前变体 B 说明</strong>：卡片沿 3D 弧形横向排布（Coverflow）。左右滑动带透视翻转，两侧卡片景深渐隐，历史课次一目了然。';
+      } else if (v === 'C') {
+        descEl.innerHTML = '<strong>当前变体 C 说明</strong>：专注单卡研读，点击卡面 3D 翻转（180°）查看练习重点与教师评语；底部时间轴胶囊快速直达任意历史课次。';
+      }
+      if (modalOverlay.classList.contains('open')) {
+        renderCurrentVariant();
+      }
+    }
+
+    /* ══════ 卡片 HTML 生成器 ══════ */
+    function createCardMarkup(item, index, canFlip = true) {
+      const segHtml = item.metronome_segments.map(s => 
+        `<span class="card-seg-chip">${s.part} · ${s.note}=${s.bpm}</span>`
+      ).join('');
+
+      return `
+        <div class="card-face card-front">
+          <div class="card-header">
+            <div class="card-subject">
+              ${item.subject}
+              ${item.is_latest ? '<span class="card-latest-tag">本周最新</span>' : ''}
+            </div>
+            <div class="card-date-badge">${item.lesson_date}</div>
+          </div>
+
+          <div class="card-metronome-pill">
+            <svg class="card-metro-icon" viewBox="0 0 24 24"><path d="M12 2L6 21h12L12 2zm0 4.5l3.8 12.5H8.2L12 6.5z"/></svg>
+            <span class="card-metro-val">${item.metronome}</span>
+            <span class="card-metro-label">老师指定速度</span>
+          </div>
+
+          <div class="card-segments">${segHtml}</div>
+
+          <div class="card-body-content">${item.requirements}</div>
+
+          <div class="card-footer">
+            <div class="card-teacher-sig">指导教师：李老师</div>
+            <div>${canFlip ? '点击翻面 ↻' : '第 ' + (ASSIGNMENTS_DATA.length - index) + ' 课'}</div>
+          </div>
+        </div>
+
+        <div class="card-face card-back">
+          <div class="card-back-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            上课重点与教师备忘
+          </div>
+          <div class="card-back-note">
+            <strong>课后叮嘱：</strong><br>
+            ${item.teacher_note}
+          </div>
+          <div class="card-back-note" style="margin-top: 8px;">
+            <strong>课次归档信息：</strong><br>
+            上课日期：${item.lesson_date}<br>
+            考核速度：${item.metronome}<br>
+            段落数量：${item.metronome_segments.length} 个重点分段
+          </div>
+          <div class="card-footer" style="margin-top: auto;">
+            <div class="card-teacher-sig">萨丽哈 · 教学档案</div>
+            <div>再次点击翻回 ↺</div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ══════ 渲染路由 ══════ */
+    function renderCurrentVariant() {
+      stageContainer.innerHTML = '';
+      updateNavButtons();
+      if (currentVariant === 'A') renderVariantA();
+      else if (currentVariant === 'B') renderVariantB();
+      else if (currentVariant === 'C') renderVariantC();
+    }
+
+    function updateNavButtons() {
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      prevBtn.disabled = (currentIndex === 0);
+      nextBtn.disabled = (currentIndex === ASSIGNMENTS_DATA.length - 1);
+    }
+
+    function onNavPrev() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderCurrentVariant();
+      }
+    }
+    function onNavNext() {
+      if (currentIndex < ASSIGNMENTS_DATA.length - 1) {
+        currentIndex++;
+        renderCurrentVariant();
+      }
+    }
+
+    /* ══════════════════════════════════════════════
+       变体 A：3D 卡叠 (3D Deck Stack + Drag Discard)
+       ══════════════════════════════════════════════ */
+    function renderVariantA() {
+      const stage = document.createElement('div');
+      stage.className = 'variant-a-stage';
+
+      // 仅渲染当前索引及后方的 4 张卡片（减少 DOM 压力）
+      const visibleCount = 4;
+      const cards = [];
+
+      for (let i = Math.min(ASSIGNMENTS_DATA.length - 1, currentIndex + visibleCount - 1); i >= currentIndex; i--) {
+        const item = ASSIGNMENTS_DATA[i];
+        const card = document.createElement('div');
+        card.className = 'ccg-card-3d';
+        card.innerHTML = createCardMarkup(item, i, false);
+        card.dataset.index = i;
+
+        const stackOffset = i - currentIndex; // 0 是最顶层
+        // Z 轴层叠参数
+        const z = -stackOffset * 48;
+        const y = stackOffset * 14;
+        const scale = 1 - stackOffset * 0.05;
+        const opacity = 1 - stackOffset * 0.18;
+
+        gsap.set(card, {
+          x: 0,
+          y: y,
+          z: z,
+          scale: scale,
+          opacity: opacity,
+          rotationZ: (stackOffset % 2 === 0 ? 1 : -1) * stackOffset * 1.2
+        });
+
+        // 绑定第一张卡的手势拖拽
+        if (stackOffset === 0) {
+          bindCardDrag(card);
+        }
+
+        stage.appendChild(card);
+        cards.push(card);
+      }
+
+      // 卡叠指示器点
+      const indicator = document.createElement('div');
+      indicator.className = 'stack-indicator';
+      ASSIGNMENTS_DATA.forEach((_, idx) => {
+        const dot = document.createElement('div');
+        dot.className = 'stack-dot' + (idx === currentIndex ? ' active' : '');
+        dot.onclick = () => { currentIndex = idx; renderCurrentVariant(); };
+        indicator.appendChild(dot);
+      });
+      stage.appendChild(indicator);
+
+      stageContainer.appendChild(stage);
+      document.getElementById('footerHint').textContent = '按住卡片向左或向右划飞查看历史 · 点击“下一张”';
+    }
+
+    // 变体 A 拖拽滑飞手势
+    function bindCardDrag(card) {
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let currentX = 0, currentY = 0;
+
+      const onPointerDown = (e) => {
+        // v2: 正文区域内的手势留给滚动，卡片不吃（原来滑文字会把卡划飞）
+        if (e.target.closest && e.target.closest('.card-body-content')) return;
+        isDragging = true;
+        startX = e.clientX || (e.touches && e.touches[0].clientX);
+        startY = e.clientY || (e.touches && e.touches[0].clientY);
+        card.setPointerCapture && card.setPointerCapture(e.pointerId);
+      };
+
+      const onPointerMove = (e) => {
+        if (!isDragging) return;
+        const x = e.clientX || (e.touches && e.touches[0].clientX);
+        const y = e.clientY || (e.touches && e.touches[0].clientY);
+        currentX = x - startX;
+        currentY = y - startY;
+
+        const rotZ = currentX * 0.07;
+        const rotY = currentX * 0.04;
+        gsap.to(card, {
+          x: currentX,
+          y: currentY,
+          rotationZ: rotZ,
+          rotationY: rotY,
+          duration: 0.1,
+          ease: "power1.out"
+        });
+      };
+
+      const onPointerUp = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        card.releasePointerCapture && card.releasePointerCapture(e.pointerId);
+
+        // 阈值判定：滑动超过 110px 则划走卡片
+        if (Math.abs(currentX) > 110 && currentIndex < ASSIGNMENTS_DATA.length - 1) {
+          const flyDirection = currentX > 0 ? 1 : -1;
+          gsap.to(card, {
+            x: flyDirection * 550,
+            y: currentY + 40,
+            rotationZ: flyDirection * 35,
+            opacity: 0,
+            duration: 0.35,
+            ease: "power2.in",
+            onComplete: () => {
+              currentIndex++;
+              renderCurrentVariant();
+            }
+          });
+        } else {
+          // 弹簧回位
+          gsap.to(card, {
+            x: 0,
+            y: 0,
+            rotationZ: 0,
+            rotationY: 0,
+            duration: 0.4,
+            ease: "power3.out"   // v2: 回位不该过冲（原 back.out(1.5) 会反向弹一下）
+          });
+        }
+      };
+
+      card.addEventListener('pointerdown', onPointerDown);
+      card.addEventListener('pointermove', onPointerMove);
+      card.addEventListener('pointerup', onPointerUp);
+      card.addEventListener('pointercancel', onPointerUp);
+    }
+
+    /* ══════════════════════════════════════════════
+       变体 B：3D 弧形横向轨道 (Curved Coverflow)
+       ══════════════════════════════════════════════ */
+    function renderVariantB() {
+      const stage = document.createElement('div');
+      stage.className = 'variant-b-stage';
+
+      ASSIGNMENTS_DATA.forEach((item, i) => {
+        const card = document.createElement('div');
+        card.className = 'ccg-card-3d';
+        card.innerHTML = createCardMarkup(item, i, false);
+        card.dataset.index = i;
+
+        const offset = i - currentIndex;
+        // v2: 步进随舞台宽度收窄，窄屏不再把侧卡甩出弹窗
+        const stepX = Math.max(150, Math.min(240, (stage.clientWidth || 920) * 0.52));
+        const x = offset * stepX;
+        const z = -Math.abs(offset) * 140;
+        const rotY = -Math.sign(offset) * Math.min(38, Math.abs(offset) * 32);
+        const scale = 1 - Math.min(0.25, Math.abs(offset) * 0.12);
+        const opacity = 1 - Math.min(0.65, Math.abs(offset) * 0.28);
+
+        gsap.set(card, {
+          x: x,
+          y: 0,
+          z: z,
+          rotationY: rotY,
+          scale: scale,
+          opacity: opacity,
+          zIndex: 100 - Math.abs(offset)
+        });
+
+        // 点击侧边卡直接激活
+        card.onclick = () => {
+          if (i !== currentIndex) {
+            currentIndex = i;
+            renderCurrentVariant();
+          }
+        };
+
+        stage.appendChild(card);
+      });
+
+      // 绑定横向滑动切换手势
+      let startX = 0;
+      stage.addEventListener('pointerdown', (e) => {
+        startX = e.clientX || (e.touches && e.touches[0].clientX);
+      });
+      stage.addEventListener('pointerup', (e) => {
+        const endX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+        const delta = endX - startX;
+        if (delta > 60 && currentIndex > 0) {
+          currentIndex--;
+          renderCurrentVariant();
+        } else if (delta < -60 && currentIndex < ASSIGNMENTS_DATA.length - 1) {
+          currentIndex++;
+          renderCurrentVariant();
+        }
+      });
+
+      stageContainer.appendChild(stage);
+      document.getElementById('footerHint').textContent = '点击两侧卡片或横向轻扫切换课次';
+    }
+
+    /* ══════════════════════════════════════════════
+       变体 C：3D 单卡翻面与时间轴胶囊 (Flip & Timeline)
+       ══════════════════════════════════════════════ */
+    let isFlippedC = false;
+    function renderVariantC() {
+      const stage = document.createElement('div');
+      stage.className = 'variant-c-stage';
+
+      const item = ASSIGNMENTS_DATA[currentIndex];
+      const card = document.createElement('div');
+      card.className = 'ccg-card-3d';
+      card.innerHTML = createCardMarkup(item, currentIndex, true);
+
+      // 单卡居中
+      gsap.set(card, { x: 0, y: -15, z: 0, rotationY: isFlippedC ? 180 : 0 });
+
+      // 点击翻面
+      card.onclick = () => {
+        isFlippedC = !isFlippedC;
+        gsap.to(card, {
+          rotationY: isFlippedC ? 180 : 0,
+          duration: 0.65,
+          ease: "power2.inOut"
+        });
+      };
+
+      // 陀螺仪 / 鼠标悬浮 3D 微倾斜跟随 (继承 DizicalCCG)
+      card.addEventListener('pointermove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        const baseRotY = isFlippedC ? 180 : 0;
+        gsap.to(card, {
+          rotationX: -py * 16,
+          rotationY: baseRotY + px * 16,
+          duration: 0.2,
+          ease: "power1.out"
+        });
+      });
+      card.addEventListener('pointerleave', () => {
+        gsap.to(card, {
+          rotationX: 0,
+          rotationY: isFlippedC ? 180 : 0,
+          duration: 0.4,
+          ease: "power3.out"   // v2: 同上
+        });
+      });
+
+      stage.appendChild(card);
+
+      // 底部课次胶囊时间轴
+      const timeline = document.createElement('div');
+      timeline.className = 'c-timeline-bar';
+      ASSIGNMENTS_DATA.forEach((d, idx) => {
+        const chip = document.createElement('button');
+        chip.className = 'c-time-chip' + (idx === currentIndex ? ' active' : '');
+        chip.textContent = d.lesson_date.slice(5) + (d.is_latest ? ' ★' : '');
+        chip.onclick = (e) => {
+          e.stopPropagation();
+          currentIndex = idx;
+          isFlippedC = false;
+          renderCurrentVariant();
+        };
+        timeline.appendChild(chip);
+      });
+      stage.appendChild(timeline);
+
+      stageContainer.appendChild(stage);
+      document.getElementById('footerHint').textContent = '点击卡面 3D 翻转查看评语 · 点击下方胶囊切换历史课次';
+    }
+
+    // 页面初次加载，自动弹开一次供验收
+    window.addEventListener('DOMContentLoaded', () => {
+      openModal();
+    });
+  </script>
+</body>
+</html>

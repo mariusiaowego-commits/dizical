@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>练习页布局 — 左计时右卡片</title>
+<meta name="description" content="贴近上线的一屏：左栏计时与尺子，右栏按契约宽度横排各卡。页面纵向滚动，卡不裁切。">
+<style>
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+      --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅底文字：压住 accent-wash ≥4.5 */
+    --dash-coral-text: #C93B3B;
+}
+
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+      --dash-hole-active: var(--dash-vermilion);
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: var(--dash-vermilion);
+    --dash-coral-text: #FF6B6B;
+}
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--dash-page); color: var(--dash-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  .bar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; background: var(--dash-white);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    font-size: 12px; color: var(--dash-text-soft);
+  }
+  .bar b { color: var(--dash-text); font-size: 13px; }
+  .bar .sp { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; overflow: hidden; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    font: inherit; padding: 5px 10px; cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; }
+  :root[data-skin="ink"] .seg button { color: var(--dash-page); }
+  .frozen {
+    font-size: 11px; color: var(--dash-text-soft);
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: 624px minmax(0, 1fr);
+    gap: 16px;
+    padding: 16px;
+    align-items: start;
+  }
+  .col-left, .col-right, .track { min-width: 0; }
+  .col-left { display: flex; gap: 16px; align-items: flex-start; }
+  .board.is-stack .col-left { flex-direction: column; }
+  .track {
+    display: flex; gap: 16px; align-items: flex-start;
+    overflow-x: auto; overflow-y: visible;
+    padding-bottom: 10px;
+  }
+  .slot {
+    flex: 0 0 auto;
+    border: 1px solid var(--dash-ink-a12);
+    border-radius: 20px;
+    background: var(--dash-white);
+    overflow: visible;
+  }
+  .slot iframe { display: block; width: 100%; border: 0; background: var(--dash-page); }
+  .board.is-stack { grid-template-columns: minmax(0, 1fr); }
+  .board.is-stack .track { flex-direction: column; overflow-x: hidden; }
+  .board.is-stack .slot { width: 100% !important; }
+  /* 组合1（dad 2610101121）：上 = 仪表盘单卡占满一行；下 = 今日练习卡 + 老师要求卡并排；
+     下两张合起来（含中间间距）与上面同一宽度 → 左右边缘对齐 */
+  .board.is-combo {
+    display: flex; flex-wrap: wrap; align-items: flex-start; align-content: flex-start;
+    justify-content: stretch; gap: var(--combo-gap, 16px);
+    width: var(--combo-w, 620px); max-width: 100%;
+    margin: 0 auto; overflow-x: hidden;
+  }
+  .board.is-combo .col-left,
+  .board.is-combo .col-right,
+  .board.is-combo .track { display: contents; }
+  .board.is-combo .slot { display: none; }
+  .board.is-combo .slot[data-combo="1"] {
+    display: block; width: auto !important; min-width: 0;
+  }
+  /* 第一行：仪表盘单卡占满整行 */
+  .board.is-combo .slot[data-card="card-practice-timer"] { flex: 0 0 100%; order: 1; }
+  /* 第二行：两张卡等分（各自 = (行宽 - 间距) / 2，合计含间距 = 行宽 = 上卡宽） */
+  .board.is-combo .slot[data-card="card-practice-duration"] { flex: 1 1 0; order: 2; }
+  .board.is-combo .slot[data-card="card-requests"] { flex: 1 1 0; order: 3; }
+  /* 组合1 窄槽降级（dad 2610102107 / brief-agy-compose-261010e.md）：
+     当容器宽度放不下两张卡并排（2 × minW + gap > 容器宽）时，降级为一行一张卡片，纵向堆叠 */
+  .board.is-combo.is-combo-stacked .slot[data-card="card-practice-duration"],
+  .board.is-combo.is-combo-stacked .slot[data-card="card-requests"] {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+  }
+  .board.is-combo.force-side .slot[data-card="card-practice-duration"],
+  .board.is-combo.force-side .slot[data-card="card-requests"] {
+    flex: 1 1 0 !important;
+    width: auto !important;
+  }
+  .board.is-stack.is-combo { flex-direction: column; }
+  .board.is-stack.is-combo .slot[data-combo="1"] { width: 100% !important; flex: 0 0 auto; }
+
+  .foot { padding: 4px 16px 22px; font-size: 12px; line-height: 1.7; color: var(--dash-text-soft); }
+  button:focus-visible { outline: 2px solid var(--dash-vermilion-text); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+</style>
+</head>
+<body>
+<div class="bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.5</b> · 卡 v3 · 2026-10-16</span>
+  <b>练习页</b>
+  <span>横排等高 · 手机纵排</span>
+  <span class="frozen">下方三块在左侧计时卡里。v2 对照页不进这条轨道</span>
+  <span class="sp"></span>
+  <div class="seg" id="skinSeg">
+    <button type="button" data-skin="light" class="is-on">浅银</button>
+    <button type="button" data-skin="ink">深墨</button>
+  </div>
+  <div class="seg" id="comboSeg">
+    <button type="button" data-combo="0" class="is-on">全部</button>
+    <button type="button" data-combo="1">组合1</button>
+  </div>
+  <div class="seg" id="comboWSeg" title="组合1 行宽：决定上面仪表盘与下面两张卡的宽度">
+    <button type="button" data-cw="460">460</button>
+    <button type="button" data-cw="620" class="is-on">620</button>
+    <button type="button" data-cw="820">820</button>
+  </div>
+  <div class="seg" id="vpSeg">
+    <button type="button" data-vp="1133" class="is-on">1133×744</button>
+    <button type="button" data-vp="744">744×1133</button>
+    <button type="button" data-vp="440">440×956</button>
+  </div>
+</div>
+<div class="board" id="board" data-vp="1133">
+  <div class="col-left">
+    <div class="slot" data-card="card-practice-timer" data-combo="1" data-w="460" data-min-w="380" style="width:460px">
+      <iframe src="dashboard-skin-01-v3.html" title="练习计时"></iframe>
+    </div>
+    <div class="slot" data-card="card-metronome-strip" data-w="148" data-min-w="148" style="width:148px">
+      <iframe src="metronome-02-strip.html" title="节拍器竖条"></iframe>
+    </div>
+  </div>
+  <div class="col-right">
+    <div class="track" id="track">
+      <div class="slot" data-card="card-metronome" data-w="420" data-min-w="340" style="width:420px">
+        <iframe src="metronome-01-v4.html" title="节拍器"></iframe>
+      </div>
+      <div class="slot" data-card="card-requests" data-combo="1" data-w="440" data-min-w="340" style="width:440px">
+        <iframe src="requests-card-01-v3.html" title="老师要求"></iframe>
+      </div>
+      <div class="slot" data-card="card-today-records" data-w="460" data-min-w="380" style="width:460px">
+        <iframe src="today-records-01.html" title="今日记录"></iframe>
+      </div>
+      <div class="slot" data-card="card-practice-duration" data-combo="1" data-w="380" data-min-w="300" style="width:380px">
+        <iframe src="practice-duration-card-01-v3.html" title="今日时长"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="foot">全部：横排时每张卡同一高度（1133 为 608px，744 为 740px，见卡片契约）。440 宽时全部纵排、等宽、不横滑。组合1：练习计时卡 + 今日练习时长卡 + 老师要求卡同排等高，1133 和 744 都塞进一屏，不往右滑。竖条是日常简单版，v4 是完整节拍器卡。</p>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var audit = qs.get('audit') === '1';
+  var board = document.getElementById('board');
+  var slots = [].slice.call(document.querySelectorAll('.slot'));
+  var frames = slots.map(function (s) { return s.querySelector('iframe'); });
+  var SCOPE = [
+    'html, body, .page { height: auto !important; min-height: 0 !important; overflow: visible !important; }',
+    '.frame { flex: 0 0 auto !important; height: auto !important; overflow: visible !important; align-items: flex-start !important; }',
+    '.console { height: auto !important; max-height: none !important; }',
+    '.scroller { overflow: visible !important; flex: 0 0 auto !important; height: auto !important; max-height: none !important; }',
+    '.dash { max-height: none !important; overflow: visible !important; height: auto !important; }',
+    '.stage-frame { width: 100% !important; max-width: 100% !important; position: relative !important; }',
+    '.dash-simulation-chassis, .dash-simulation-chassis .deck-row, .dash-simulation-chassis .speaker-block, .dash-simulation-chassis .ops-block, .dash-simulation-chassis .stand-block, .dash-simulation-chassis .sim-header { position: static !important; }',
+    'body { padding: 0 !important; }',
+    '.dbar, .chrome, .demo-bar, .audit-panel, .control-strip, .eval-panel { display: none !important; }',
+    '.card, .card-wrap, .req-card-chassis, .metro-card, .strip { max-width: 100% !important; }',
+    '#speakerBlock { left: 0 !important; }'
+  ].join('\n');
+  var SHRINK = '.card-wrap, .dash, .req-card-chassis, .metro-card, .strip { min-width: 0 !important; width: 100% !important; max-width: 100% !important; }';
+  var ROW_H = { '1133': 608, '744': 740 };
+
+  function contentHeight(doc) {
+    var e = doc.documentElement;
+    var b = doc.body;
+    return Math.max(e ? e.scrollHeight : 0, b ? b.scrollHeight : 0, b ? b.offsetHeight : 0);
+  }
+  function fit(iframe) {
+    var doc = iframe.contentDocument;
+    if (!doc || !doc.body) return 0;
+    var vp = board.dataset.vp || '1133';
+    var unified = board.classList.contains('is-stack') ? 0 : (ROW_H[vp] || 0);
+    var slot = iframe.parentElement;
+    iframe.style.height = '80px';
+    var h = contentHeight(doc);
+    var frame = h > 40 ? h + 2 : 80;
+    if (!unified) {
+      slot.style.height = '';
+      iframe.style.height = frame + 'px';
+      return h;
+    }
+    slot.style.height = Math.max(unified, frame) + 'px';
+    iframe.style.height = frame + 'px';
+    return h;
+  }
+  function applyInner(iframe, vp) {
+    var doc = iframe.contentDocument;
+    if (!doc || !doc.head) return;
+    var style = doc.getElementById('compose-scope');
+    if (!style) {
+      style = doc.createElement('style');
+      style.id = 'compose-scope';
+      doc.head.appendChild(style);
+    }
+    style.textContent = SCOPE + (board.classList.contains('is-combo') ? '\n' + SHRINK : '');
+    var dash = doc.querySelector('.dash');
+    var frame = doc.getElementById('frame');
+    var mode = vp === '440' ? '440x956' : (vp === '744' ? '744x1133' : '1133x744');
+    if (dash) dash.dataset.vp = mode;
+    if (frame) frame.dataset.vp = mode;
+    var win = doc.defaultView;
+    var stage = doc.getElementById('stageFrame');
+    if (stage && doc.getElementById('reqChassis')) {
+      var reqVp = vp === '440' ? '440x956' : '744x1133';
+      if (win && win.setViewport) win.setViewport(reqVp);
+      else stage.dataset.vp = reqVp;
+    }
+    if (win && win.setGrilleVariant) win.setGrilleVariant(2);
+    if (win && win.setOpsVariant) win.setOpsVariant('B');
+    if (win && win.setStandVariant) win.setStandVariant('B');
+    var skin = document.documentElement.dataset.skin || '';
+    if (skin) doc.documentElement.dataset.skin = skin;
+    else delete doc.documentElement.dataset.skin;
+    var open = doc.getElementById('btnOpen');
+    var fold = doc.getElementById('btnFold');
+    if (open && !open.dataset.fitBound) {
+      open.dataset.fitBound = '1';
+      open.addEventListener('click', function () { setTimeout(function () { fit(iframe); }, 30); });
+    }
+    if (fold && !fold.dataset.fitBound) {
+      fold.dataset.fitBound = '1';
+      fold.addEventListener('click', function () { setTimeout(function () { fit(iframe); }, 30); });
+    }
+  }
+  var CARD_MIN_W = {
+    'card-practice-timer': 380,
+    'card-metronome-strip': 148,
+    'card-metronome': 340,
+    'card-requests': 340,
+    'card-today-records': 380,
+    'card-practice-duration': 300
+  };
+
+  function getComboInnerWidth() {
+    var padL = parseFloat(getComputedStyle(board).paddingLeft) || 16;
+    var padR = parseFloat(getComputedStyle(board).paddingRight) || 16;
+    return board.clientWidth - padL - padR;
+  }
+
+  function updateComboLayout() {
+    if (!board.classList.contains('is-combo')) return { stacked: false, innerW: 0, neededW: 0 };
+    var innerW = getComboInnerWidth();
+    var minDur = CARD_MIN_W['card-practice-duration'] || 300;
+    var minReq = CARD_MIN_W['card-requests'] || 340;
+    var gap = parseFloat(getComputedStyle(board).gap) || 16;
+    var neededW = minDur + minReq + gap;
+    var forceSide = qs.get('forceSide') === '1' || !!window.__forceSideBySide;
+    var shouldStack = (innerW < neededW) && !forceSide;
+    board.classList.toggle('is-combo-stacked', shouldStack);
+    board.classList.toggle('force-side', forceSide);
+    board.dataset.comboLayout = shouldStack ? 'stacked' : 'side-by-side';
+    return {
+      innerW: Math.round(innerW),
+      neededW: Math.round(neededW),
+      stacked: shouldStack,
+      forceSide: forceSide
+    };
+  }
+
+  function setComboW(cw) {
+    board.style.setProperty('--combo-w', cw + 'px');
+    document.querySelectorAll('#comboWSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x.dataset.cw === String(cw));
+    });
+    updateComboLayout();
+    prepareAll();
+  }
+  window.setComboW = setComboW;
+
+  function prepareAll() {
+    var vp = board.dataset.vp || '1133';
+    updateComboLayout();
+    frames.forEach(function (f) { applyInner(f, vp); fit(f); });
+    // 组合1（dad 2610101121）：并排时两张卡等高对齐；降级为纵排堆叠时，各取自身自适应高度
+    if (board.classList.contains('is-combo')) {
+      var ids = ['card-practice-duration', 'card-requests'];
+      var frs = ids.map(function (id) {
+        return document.querySelector('[data-card="' + id + '"] iframe');
+      });
+      if (!board.classList.contains('is-combo-stacked')) {
+        var hs = frs.map(function (fr) { return fr ? fr.getBoundingClientRect().height : 0; });
+        var maxH = Math.max.apply(null, hs);
+        frs.forEach(function (fr) {
+          if (fr && maxH > 0) fr.style.height = Math.round(maxH) + 'px';
+        });
+      } else {
+        frs.forEach(function (fr) {
+          if (fr) fit(fr);
+        });
+      }
+    }
+  }
+  function setCombo(on) {
+    board.classList.toggle('is-combo', !!on);
+    document.querySelectorAll('#comboSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', (b.dataset.combo === '1') === !!on);
+    });
+    setMode(board.dataset.vp || '1133');
+  }
+  function setMode(vp) {
+    board.dataset.vp = vp;
+    board.classList.toggle('is-stack', vp === '440');
+    var combo = board.classList.contains('is-combo');
+    slots.forEach(function (s) {
+      if (vp === '440') s.style.width = '100%';
+      else if (combo) s.style.width = 'auto';
+      else s.style.width = s.dataset.w + 'px';
+      if (vp === '440') s.style.height = '';
+    });
+    document.querySelectorAll('#vpSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.vp === vp);
+    });
+    prepareAll();
+  }
+  frames.forEach(function (f) {
+    f.addEventListener('load', function () {
+      prepareAll();
+      var imgs = f.contentDocument ? f.contentDocument.images : [];
+      for (var i = 0; i < imgs.length; i++) imgs[i].addEventListener('load', function () { fit(f); });
+    });
+  });
+  var picked = false;
+  document.getElementById('comboSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    picked = true;
+    setCombo(b.dataset.combo === '1');
+    if (audit) runAudit();
+  });
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    picked = true;
+    setMode(b.dataset.vp);
+    if (audit) runAudit();
+  });
+  window.addEventListener('resize', function () {
+    if (picked) return;
+    var next = guessMode();
+    if (next !== board.dataset.vp) setMode(next);
+  });
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x === b);
+    });
+    prepareAll();
+  });
+
+  function overlapArea(doc) {
+    var sels = [
+      '.transport-main .c-left, .speaker-block, #speakerBlock',
+      '.transport-main .c-mid, .ops-block, #btnPrimary',
+      '.transport-main .c-right, .stand-block, #standBtn'
+    ];
+    var boxes = [];
+    sels.forEach(function (s) {
+      var el = doc.querySelector(s);
+      if (!el) return;
+      var r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return;
+      boxes.push({ s: s, l: r.left, t: r.top, r: r.right, b: r.bottom });
+    });
+    var area = 0;
+    for (var i = 0; i < boxes.length; i++) {
+      for (var j = i + 1; j < boxes.length; j++) {
+        var a = boxes[i], b = boxes[j];
+        var w = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+        var h = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+        if (w > 0.5 && h > 0.5) area += w * h;
+      }
+    }
+    return { area: Math.round(area), blocks: boxes.length };
+  }
+
+  function runAudit() {
+    prepareAll();
+    var fails = [];
+    var vp = board.dataset.vp;
+    var combo = board.classList.contains('is-combo');
+    var visibleSlots = slots.filter(function (s) { return s.getClientRects().length > 0; });
+    function spanOf(nums) {
+      if (!nums.length) return 0;
+      return Math.max.apply(null, nums) - Math.min.apply(null, nums);
+    }
+    var cards = visibleSlots.map(function (s) {
+      var f = s.querySelector('iframe');
+      var doc = f.contentDocument;
+      var contentH = doc ? contentHeight(doc) : 0;
+      var box = s.getBoundingClientRect();
+      var frameH = Math.round(f.getBoundingClientRect().height);
+      var clipped = contentH > 40 && frameH + 2 < contentH;
+      return {
+        id: s.dataset.card,
+        w: Math.round(box.width),
+        h: Math.round(box.height),
+        top: Math.round(box.top),
+        bottom: Math.round(box.bottom),
+        contentH: contentH,
+        clipped: clipped
+      };
+    });
+    if (!combo && vp !== '440') {
+      var want = {
+        'card-practice-timer': 460,
+        'card-metronome-strip': 148,
+        'card-metronome': 420,
+        'card-requests': 440,
+        'card-today-records': 460,
+        'card-practice-duration': 380
+      };
+      cards.forEach(function (c) {
+        if (Math.abs(c.w - want[c.id]) > 2) fails.push(c.id + ' width ' + c.w + ' want ' + want[c.id]);
+      });
+    }
+    cards.forEach(function (c) {
+      if (c.h < 80) fails.push(c.id + ' height ' + c.h + ' too small');
+      if (c.clipped) fails.push(c.id + ' clipped box ' + c.h + ' content ' + c.contentH);
+    });
+    var timer = cards.filter(function (c) { return c.id === 'card-practice-timer'; })[0];
+    if (timer && timer.h < 400) fails.push('timer height ' + timer.h + ' want >= 400');
+    if (vp !== '440' && !combo) {
+      var hSpan = spanOf(cards.map(function (c) { return c.h; }));
+      var topSpan = spanOf(cards.map(function (c) { return c.top; }));
+      var botSpan = spanOf(cards.map(function (c) { return c.bottom; }));
+      if (hSpan > 1) fails.push('height span ' + hSpan + ' want <= 1');
+      if (topSpan > 1) fails.push('top span ' + topSpan + ' want <= 1');
+      if (botSpan > 1) fails.push('bottom span ' + botSpan + ' want <= 1');
+      var declared = ROW_H[vp];
+      cards.forEach(function (c) {
+        if (declared && Math.abs(c.h - declared) > 1) fails.push(c.id + ' height ' + c.h + ' want ' + declared);
+      });
+    }
+    if (vp === '440') {
+      var wSpan = spanOf(cards.map(function (c) { return c.w; }));
+      if (wSpan > 1) fails.push('440 width span ' + wSpan);
+      var track = document.getElementById('track');
+      if (track && track.scrollWidth > track.clientWidth + 1) fails.push('440 track scroll ' + (track.scrollWidth - track.clientWidth));
+    }
+    var comboRows = null;
+    var narrowSlotAudit = null;
+    if (combo && vp !== '440') {
+      var ids = cards.map(function (c) { return c.id; });
+      ['card-practice-timer', 'card-practice-duration', 'card-requests'].forEach(function (id) {
+        if (ids.indexOf(id) < 0) fails.push('combo missing ' + id);
+      });
+      if (cards.length !== 3) fails.push('combo visible ' + cards.length + ' want 3');
+      if (board.scrollWidth > board.clientWidth + 1) fails.push('combo horizontal scroll ' + (board.scrollWidth - board.clientWidth));
+      // 组合1 布局断言（并排时：上仪表盘 + 下两张并排，下两张总宽 = 上卡宽；窄槽降级时：一行一张卡片，纵向堆叠）
+      var isStacked = board.classList.contains('is-combo-stacked');
+      var cTop = cards.filter(function (c) { return c.id === 'card-practice-timer'; })[0];
+      var botIds = ['card-practice-duration', 'card-requests'];
+      var rectOf = function (id) {
+        var f = document.querySelector('[data-card="' + id + '"] iframe');
+        return f ? f.getBoundingClientRect() : null;
+      };
+      var slotTop = rectOf('card-practice-timer');
+      var boxBot = botIds.map(function (id) { return rectOf(id); }).filter(Boolean);
+      var botLeft = Math.min.apply(null, boxBot.map(function (b) { return b.left; }));
+      var botRight = Math.max.apply(null, boxBot.map(function (b) { return b.right; }));
+      var botTop = Math.min.apply(null, boxBot.map(function (b) { return b.top; }));
+      var alignDiff = isStacked
+        ? Math.max.apply(null, boxBot.map(function (b) { return Math.abs(Math.round(b.width) - Math.round(slotTop.width)); }))
+        : Math.round(Math.abs((botRight - botLeft) - slotTop.width));
+
+      comboRows = {
+        layout: isStacked ? 'stacked' : 'side-by-side',
+        rows: isStacked ? 3 : 2,
+        topRowW: Math.round(slotTop.width),
+        bottomRowW: Math.round(botRight - botLeft),
+        topCardBottom: Math.round(slotTop.bottom),
+        bottomRowTop: Math.round(botTop),
+        twoRows: !isStacked ? (botTop >= Math.round(slotTop.bottom) - 1) : null,
+        threeRows: isStacked ? (boxBot.length === 2 && boxBot[0].top >= Math.round(slotTop.bottom) - 1 && boxBot[1].top >= Math.round(boxBot[0].bottom) - 1) : null,
+        alignDiff: Math.round(alignDiff),
+        bottomHeights: boxBot.map(function (b) { return Math.round(b.height); }),
+        bottomWidths: boxBot.map(function (b) { return Math.round(b.width); })
+      };
+
+      if (!isStacked) {
+        if (!comboRows.twoRows) fails.push('combo not two rows: bottom top ' + comboRows.bottomRowTop + ' < top bottom ' + comboRows.topCardBottom);
+        if (comboRows.alignDiff > 2) fails.push('combo bottom row width ' + comboRows.bottomRowW + ' vs top ' + comboRows.topRowW);
+        if (boxBot.length === 2) {
+          var bh = comboRows.bottomHeights[0] - comboRows.bottomHeights[1];
+          if (Math.abs(bh) > 1) fails.push('combo bottom heights differ by ' + bh);
+          var bw = Math.abs(comboRows.bottomWidths[0] - comboRows.bottomWidths[1]);
+          if (bw > 1) fails.push('combo bottom widths differ by ' + bw);
+        }
+      } else {
+        if (!comboRows.threeRows) {
+          fails.push('combo stacked rows not ordered: topBottom=' + comboRows.topCardBottom + ', card1Top=' + (boxBot[0] && Math.round(boxBot[0].top)) + ', card2Top=' + (boxBot[1] && Math.round(boxBot[1].top)));
+        }
+        if (comboRows.alignDiff > 2) {
+          fails.push('combo stacked card width mismatch: top=' + comboRows.topRowW + ' vs bottom widths ' + comboRows.bottomWidths.join(','));
+        }
+      }
+
+      // 窄槽降级专用审计 (brief-agy-compose-261010e.md §硬要求 1/2/4/5)
+      var minDur = CARD_MIN_W['card-practice-duration'] || 300;
+      var minReq = CARD_MIN_W['card-requests'] || 340;
+      var gap = 16;
+      var neededSide = minDur + minReq + gap; // 656
+      var testWidths = [820, 620, 460];
+      var slotChecks = [];
+      var origW = board.style.getPropertyValue('--combo-w') || '620px';
+      var forceSide = qs.get('forceSide') === '1' || !!window.__forceSideBySide;
+
+      testWidths.forEach(function (w) {
+        board.style.setProperty('--combo-w', w + 'px');
+        var info = updateComboLayout();
+        var innerW = info.innerW;
+        var canSide = innerW >= neededSide;
+        var expectedLayout = canSide ? 'side-by-side' : 'stacked';
+        var expectedRows = canSide ? 2 : 3;
+
+        var tSlot = document.querySelector('[data-card="card-practice-timer"]');
+        var dSlot = document.querySelector('[data-card="card-practice-duration"]');
+        var rSlot = document.querySelector('[data-card="card-requests"]');
+        var dBox = dSlot.getBoundingClientRect();
+        var rBox = rSlot.getBoundingClientRect();
+
+        var isSide = Math.abs(dBox.top - rBox.top) <= 2;
+        var actLayout = isSide ? 'side-by-side' : 'stacked';
+        var actRows = isSide ? 2 : 3;
+        var scrollX = board.scrollWidth - board.clientWidth;
+        var hasScroll = scrollX > 1;
+
+        var dFrame = dSlot.querySelector('iframe');
+        var rFrame = rSlot.querySelector('iframe');
+        var dDoc = dFrame && dFrame.contentDocument;
+        var rDoc = rFrame && rFrame.contentDocument;
+        var dOverflow = dDoc && (dDoc.documentElement.scrollWidth > dDoc.documentElement.clientWidth + 1);
+        var rOverflow = rDoc && (rDoc.documentElement.scrollWidth > rDoc.documentElement.clientWidth + 1);
+
+        var pass = (actLayout === expectedLayout) && !hasScroll && !dOverflow && !rOverflow;
+
+        if (forceSide && !canSide) {
+          fails.push('narrow slot ' + w + ' forced side-by-side: container width ' + innerW + 'px < needed width ' + neededSide + 'px (min ' + minDur + '+' + minReq + '+' + gap + '); bottom cards cannot fit');
+        } else if (!forceSide) {
+          if (actLayout !== expectedLayout) {
+            fails.push('narrow slot ' + w + ' layout got ' + actLayout + ' want ' + expectedLayout + ' (container ' + innerW + 'px vs needed ' + neededSide + 'px)');
+          }
+          if (hasScroll) {
+            fails.push('narrow slot ' + w + ' horizontal scroll ' + scrollX);
+          }
+          if (dOverflow) {
+            fails.push('narrow slot ' + w + ' duration card internal overflow');
+          }
+          if (rOverflow) {
+            fails.push('narrow slot ' + w + ' requests card internal overflow');
+          }
+        }
+
+        slotChecks.push({
+          cw: w,
+          containerInnerW: innerW,
+          neededSideBySide: neededSide,
+          expectedLayout: expectedLayout,
+          actualLayout: actLayout,
+          rows: actRows,
+          hasScrollX: hasScroll,
+          cardsOverflow: dOverflow || rOverflow,
+          pass: pass
+        });
+      });
+
+      board.style.setProperty('--combo-w', origW);
+      updateComboLayout();
+
+      narrowSlotAudit = {
+        neededSideBySide: neededSide,
+        minWidths: { duration: minDur, requests: minReq, gap: gap },
+        forceSide: forceSide,
+        results: slotChecks
+      };
+    }
+
+    var metroFrame = document.querySelector('[data-card="card-metronome"] iframe');
+    var metroDoc = metroFrame.contentDocument;
+    var metroCard = metroDoc && metroDoc.querySelector('.metro-card');
+    var ticks = metroCard ? metroCard.querySelectorAll('.tick').length : -1;
+    var wraps = metroCard ? metroCard.querySelectorAll('.ruler-wrap').length : -1;
+    if (ticks !== 0) fails.push('metro ticks ' + ticks + ' want 0');
+    if (wraps !== 0) fails.push('metro ruler-wrap ' + wraps + ' want 0');
+
+    var timerDoc = document.querySelector('[data-card="card-practice-timer"] iframe').contentDocument;
+    var timerDash = timerDoc && timerDoc.querySelector('.dash');
+    var chooser = timerDoc && timerDoc.getElementById('vGrille1');
+    var chooserHidden = !chooser || chooser.getClientRects().length === 0;
+    if (!chooserHidden) fails.push('variant chooser still visible');
+    var lowerBlocks = {
+      speaker: !!(timerDash && timerDash.querySelector('.speaker-block')),
+      ops: !!(timerDash && timerDash.querySelector('#btnPrimary')),
+      stand: !!(timerDash && timerDash.querySelector('#standBtn'))
+    };
+    if (!lowerBlocks.speaker || !lowerBlocks.ops || !lowerBlocks.stand) {
+      fails.push('timer lower blocks ' + JSON.stringify(lowerBlocks));
+    }
+    var overlap = timerDoc ? overlapArea(timerDoc) : { area: -1, blocks: 0 };
+    if (overlap.blocks < 3) fails.push('chassis blocks ' + overlap.blocks + ' want 3');
+    if (overlap.area !== 0) fails.push('overlap area ' + overlap.area + ' want 0');
+
+    var recFrame = document.querySelector('[data-card="card-today-records"] iframe');
+    var recDoc = recFrame.contentDocument;
+    var recSrc = recFrame.getAttribute('src') || '';
+    if (recSrc.indexOf('expand=1') >= 0) fails.push('records src uses expand param');
+    var beforeRows = recDoc ? recDoc.querySelectorAll('.rec-row').length : 0;
+    var openBtn = recDoc && recDoc.getElementById('btnOpen');
+    var foldBtn = recDoc && recDoc.getElementById('btnFold');
+    if (!openBtn || !foldBtn) fails.push('records buttons missing');
+    if (openBtn) openBtn.click();
+    prepareAll();
+    var openRows = recDoc ? recDoc.querySelectorAll('.rec-row').length : 0;
+    if (openRows <= beforeRows) fails.push('expand rows ' + openRows + ' not above ' + beforeRows);
+    if (foldBtn) foldBtn.click();
+    prepareAll();
+    var foldRows = recDoc ? recDoc.querySelectorAll('.rec-row').length : 0;
+    if (foldRows !== beforeRows) fails.push('fold rows ' + foldRows + ' want ' + beforeRows);
+
+    var stripSlot = document.querySelector('[data-card="card-metronome-strip"]');
+    var stripFrame = stripSlot && stripSlot.querySelector('iframe');
+    var stripDoc = stripFrame && stripFrame.contentDocument;
+    var stripEl = stripDoc && stripDoc.querySelector('.strip');
+    var gauge = stripDoc && stripDoc.getElementById('dashGauge');
+    var stripRatio = null;
+    var stripShown = stripSlot && stripSlot.getClientRects().length > 0;
+    if (stripShown && (!stripEl || !gauge)) fails.push('strip markup missing');
+    if (stripShown && stripEl && gauge) {
+      var sw = stripEl.getBoundingClientRect().width;
+      var gw = gauge.getBoundingClientRect().width;
+      var sh = stripEl.getBoundingClientRect().height;
+      stripRatio = gw ? Math.round((sw / gw) * 1000) / 1000 : 0;
+      if (Math.abs(sw / gw - 1 / 3) > 0.01) fails.push('strip ratio ' + stripRatio + ' want 0.333±0.01');
+      if (!(sh > sw)) fails.push('strip not portrait ' + Math.round(sh) + 'x' + Math.round(sw));
+      if (stripEl.scrollWidth > stripEl.clientWidth + 1) fails.push('strip horizontal overflow');
+    }
+
+    var pageOverflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    if (pageOverflow > 1) fails.push('page overflowX ' + pageOverflow);
+
+    var out = {
+      ok: fails.length === 0,
+      goal: '横排等高，440 纵排等宽，组合1 上仪表盘 + 下两张并排（下两张合计宽 = 上卡宽）不横滑',
+      vp: vp,
+      combo: combo,
+      comboRows: comboRows,
+      narrowSlotAudit: narrowSlotAudit,
+      rowHeight: ROW_H[vp] || null,
+      cards: cards,
+      ticks: ticks,
+      rulerWraps: wraps,
+      chooserHidden: chooserHidden,
+      lowerBlocks: lowerBlocks,
+      overlapArea: overlap.area,
+      stripRatio: stripRatio,
+      records: { src: recSrc, before: beforeRows, expanded: openRows, folded: foldRows },
+      pageOverflowX: pageOverflow,
+      failures: fails,
+      verdict: fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK'
+    };
+    var pre = document.getElementById('audit');
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:92vw;max-height:46vh;overflow:auto;background:rgba(0,0,0,0.85);color:#00ff00;font-size:11px;padding:8px;border-radius:6px;z-index:9999;white-space:pre-wrap;';
+      document.body.appendChild(pre);
+    }
+    pre.textContent = out.verdict + '\n' + JSON.stringify(out, null, 2);
+    return out;
+  }
+  window.__composeAudit = runAudit;
+
+  function guessMode() {
+    var w = window.innerWidth;
+    return w <= 520 ? '440' : (w <= 900 ? '744' : '1133');
+  }
+  function boot() {
+    var pending = frames.map(function (f) {
+      return new Promise(function (res) {
+        var doc = f.contentDocument;
+        if (doc && doc.readyState === 'complete' && doc.body && doc.body.childElementCount) res();
+        else f.addEventListener('load', function () { res(); }, { once: true });
+      });
+    });
+    Promise.all(pending).then(function () {
+      if (qs.get('combo') === '1') {
+        board.classList.add('is-combo');
+        document.querySelectorAll('#comboSeg button').forEach(function (b) {
+          b.classList.toggle('is-on', b.dataset.combo === '1');
+        });
+      }
+      setMode(guessMode());
+      setTimeout(function () {
+        prepareAll();
+        if (audit) runAudit();
+      }, 300);
+    });
+  }
+  boot();
+})();
+</script>
+<script>
+/* 组合1 行宽切换（dad 2610101121）：决定上面仪表盘与下面两张卡的宽度 */
+(function () {
+  var board = document.getElementById('board');
+  var seg = document.getElementById('comboWSeg');
+  if (!seg || !board) return;
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (window.setComboW) window.setComboW(b.dataset.cw);
+    else {
+      board.style.setProperty('--combo-w', b.dataset.cw + 'px');
+      seg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    }
+    setTimeout(function () { if (window.__composeAudit) window.__composeAudit(); }, 300);
+  });
+})();
+</script>
+</body>
+</html>

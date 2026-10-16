@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-skin="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D2 bottom-ops 变体对照 A/B/C · pixel 261009</title>
+<style>
+  /* ══════ Token：逐行复制自 metronome-01-v3.html（唯一视觉来源，不新增、不改名） ══════ */
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+  }
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: var(--font-base);
+    background: var(--dash-page);
+    color: var(--dash-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    overflow-x: auto;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+
+  /* ══════ 顶栏 ══════ */
+  .demo-bar {
+    max-width: 1133px; width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; background: var(--dash-white); border: 1px solid var(--dash-shell-inset);
+    border-radius: 12px; margin-bottom: 12px; font-size: 13px; gap: 8px; flex-wrap: wrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+  .demo-title { font-weight: 800; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--dash-text); }
+  .demo-title span.accent { color: var(--dash-coral); }
+  :root[data-skin="ink"] .demo-title span.accent { color: var(--dash-text); }
+  .demo-title small { font-size: 12px; font-weight: 650; color: var(--dash-text-soft); flex-basis: 100%; }
+  .demo-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill-group { display: flex; background: var(--dash-shell-hi); padding: 3px; border-radius: 8px; gap: 2px; }
+  .pill-btn {
+    border: 0; background: transparent; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: var(--dash-text-soft); cursor: pointer; font-family: inherit;
+  }
+  .pill-btn.active { background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  :root[data-skin="ink"] .pill-btn.active { color: var(--dash-page); }
+
+  /* ══════ 舞台 ══════ */
+  .stage-frame { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: none; }
+  .stage-frame[data-vp="v1133"] { width: 1133px; }
+  .stage-frame[data-vp="v744"]  { width: 744px; }
+  .stage-frame[data-vp="v440"]  { width: 440px; padding: 0 12px; }
+  .vp-note { font-size: 11px; font-weight: 700; color: var(--dash-text-soft); letter-spacing: .02em; }
+
+  /* ══════ 卡体（复制 v3 .metro-card，一字未改数值） ══════ */
+  .metro-card {
+    width: 100%; max-width: 420px;
+    background: linear-gradient(160deg, var(--dash-shell-hi), var(--dash-shell-lo) 70%);
+    border-radius: 28px; padding: 16px;
+    box-shadow: inset 0 1px 0 var(--dash-glint), inset 0 -2px 0 var(--dash-shell-inset), 0 12px 28px var(--dash-shell-shadow);
+    border: 1px solid var(--dash-shell-inset);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .stage-frame[data-vp="v440"] .metro-card { max-width: none; padding: 14px; }
+  .vcard { display: none; }
+  .vcard.on { display: flex; }
+  .v-claim {
+    font-size: 11.5px; font-weight: 700; line-height: 1.5; color: var(--dash-text);
+    background: var(--dash-ink-a04); border-radius: 8px; padding: 6px 9px;
+  }
+  .v-claim b { color: var(--dash-coral-text); }
+  :root[data-skin="ink"] .v-claim b { color: var(--dash-text); }
+
+  /* ══════ 上方主体（对照用：与 v3 同款，非本次设计对象） ══════ */
+  .upstream-caption { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: var(--dash-text-soft); }
+  .m-status-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 12px; font-weight: 700; color: var(--dash-text-soft); }
+  .m-term-badge { background: var(--dash-coral-solid); color: var(--dash-white); padding: 3px 9px; border-radius: 6px; font-size: 12px; font-weight: 800; letter-spacing: .5px; }
+  .m-accent-toggle {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset); color: var(--dash-text-soft); padding: 6px 12px; min-height: 36px;
+    border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 700;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .accent-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dash-shell-lo); display: inline-block; }
+  .led-row { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 10px 0 6px; }
+  .led-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .led-bulb { width: 18px; height: 18px; border-radius: 50%; background: var(--dash-btn-face-lo); border: 2px solid var(--dash-shell-lo); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+  .led-label { font-size: 11px; font-weight: 700; color: var(--dash-text-soft); }
+  .knob-section { position: relative; display: flex; align-items: center; justify-content: center; padding: 12px 0; }
+  .knob-row { display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 24px); }
+  .rotary-knob {
+    width: 168px; height: 168px; border-radius: 50%; position: relative;
+    background: linear-gradient(160deg, var(--dash-knob-hi), var(--dash-knob-lo) 62%);
+    box-shadow: inset 0 2px 0 var(--dash-btn-rim), inset 0 -12px 18px var(--dash-shell-inset), 0 12px 24px var(--dash-shell-shadow);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .knob-indicator { position: absolute; left: 50%; top: 10px; width: 4px; height: 22px; margin-left: -2px; border-radius: 2px; background: var(--dash-coral); box-shadow: 0 0 6px var(--dash-coral-glow); }
+  .knob-center-hub { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .bpm-hero-val { font-size: 42px; font-weight: 900; color: var(--dash-panel-text); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+  .bpm-hero-unit { font-size: 11px; font-weight: 800; color: var(--dash-accent); letter-spacing: .12em; margin-top: 2px; }
+  .knob-row .step-btn {
+    width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--dash-shell-inset);
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo)); color: var(--dash-btn-glyph);
+    font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 4px 8px var(--dash-shell-shadow);
+    font-family: inherit;
+  }
+  .hr-split { height: 1px; background: var(--dash-ink-a12); margin: 2px 0 4px; }
+
+  /* ══════ bottom-ops：共用骨架（三变体同一套骨架，只有皮肤/尺寸不同） ══════ */
+  .bottom-ops { display: flex; flex-direction: column; gap: 14px; }
+  .bo-params { display: flex; flex-direction: column; gap: 10px; }
+  .timbre-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .timbre-seg { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; }
+  .timbre-seg button {
+    position: relative; border: 0; background: transparent; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+    transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out;
+  }
+  .btn-preview {
+    position: relative; cursor: pointer; font-family: inherit; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out, border-color 120ms ease-out;
+  }
+  .btn-preview::before { content: ''; position: absolute; inset: 0; }
+  .preset-row { display: flex; gap: 8px; }
+  .preset-chip {
+    flex: 1 1 0; min-width: 0; position: relative; cursor: pointer; font-family: inherit; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 120ms ease-out;
+  }
+  .bottom-status { display: flex; align-items: center; white-space: nowrap; }
+  .st-anchor { display: inline-block; flex: none; margin-right: 8px; }
+  .primary-toggle-btn {
+    position: relative; border: 0; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color 150ms ease-out, box-shadow 150ms ease-out, transform 120ms ease-out;
+  }
+  .primary-toggle-btn .tg-icon { display: inline-flex; align-items: center; }
+  .primary-toggle-btn .tg-pause { display: none; }
+  .primary-toggle-btn.running .tg-play { display: none; }
+  .primary-toggle-btn.running .tg-pause { display: inline-flex; }
+  .btn-flash { animation: flash 320ms ease-out 1; }
+  @keyframes flash { from { box-shadow: 0 0 0 0 var(--dash-coral-glow); } to { box-shadow: 0 0 0 8px rgba(0,0,0,0); } }
+
+  /* ══════ 变体 A「甲板分级」 ══════ */
+  .vcard[data-v="A"] .primary-toggle-btn {
+    align-self: center; min-width: 200px; height: 52px; padding: 0 24px; gap: 8px;
+    border-radius: 14px; background: var(--dash-coral-solid); color: var(--dash-white);
+    font-size: 15px; font-weight: 800; letter-spacing: .5px;
+    box-shadow: 0 4px 12px var(--dash-coral-glow);
+  }
+  .vcard[data-v="A"] .primary-toggle-btn:hover { box-shadow: 0 6px 16px var(--dash-coral-glow); }
+  .vcard[data-v="A"] .primary-toggle-btn:active { transform: scale(.98); }
+  .vcard[data-v="A"] .primary-toggle-btn.running { background: var(--dash-panel); color: var(--dash-white); box-shadow: 0 2px 8px var(--dash-shell-shadow); }
+  .vcard[data-v="A"] .timbre-seg { background: var(--dash-ink-a04); border-radius: 12px; }
+  .vcard[data-v="A"] .timbre-seg button { height: 36px; padding: 0 10px; border-radius: 8px; color: var(--dash-text); font-size: 12.5px; font-weight: 650; }
+  .vcard[data-v="A"] .timbre-seg button::before { content: ''; position: absolute; inset: -4px 0; }
+  .vcard[data-v="A"] .timbre-seg button:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="A"] .timbre-seg button.is-on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; }
+  .vcard[data-v="A"] .btn-preview { height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--dash-ink-a16); background: var(--dash-surface-2); color: var(--dash-text); font-size: 13px; font-weight: 700; }
+  .vcard[data-v="A"] .btn-preview:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="A"] .btn-preview:active { transform: translateY(1px); }
+  .vcard[data-v="A"] .preset-chip { height: 32px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--dash-ink-a12); background: var(--dash-surface-soft); color: var(--dash-text-soft); font-size: 11.5px; font-weight: 700; }
+  .vcard[data-v="A"] .preset-chip::before { content: ''; position: absolute; inset: -6px 0; }
+  .vcard[data-v="A"] .preset-chip:hover { background: var(--dash-shell-hi); }
+  .vcard[data-v="A"] .preset-chip:active { transform: translateY(1px); }
+  .vcard[data-v="A"] .preset-chip.active { background: var(--dash-accent-solid); color: var(--dash-white); border-color: var(--dash-accent); }
+  .vcard[data-v="A"] .bottom-status { height: 24px; color: var(--dash-text); font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+
+  /* ══════ 变体 B「刻度队形」 ══════ */
+  .vcard[data-v="B"] .primary-toggle-btn {
+    align-self: center; min-width: 220px; height: 56px; padding: 0 26px; gap: 8px;
+    border-radius: 8px; background: var(--dash-coral-solid); color: var(--dash-white);
+    font-size: 15px; font-weight: 800; letter-spacing: .5px;
+    box-shadow: 0 4px 12px var(--dash-coral-glow), inset 0 1px 0 var(--dash-btn-rim);
+  }
+  .vcard[data-v="B"] .primary-toggle-btn:hover { box-shadow: 0 6px 16px var(--dash-coral-glow), inset 0 1px 0 var(--dash-btn-rim); }
+  .vcard[data-v="B"] .primary-toggle-btn:active { transform: scale(.985); }
+  .vcard[data-v="B"] .primary-toggle-btn.running { background: var(--dash-panel); color: var(--dash-white); box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 2px 8px var(--dash-shell-shadow); }
+  .vcard[data-v="B"] .timbre-seg { background: var(--dash-surface-soft); border: 1px solid var(--dash-shell-inset); border-radius: 4px; padding: 3px; }
+  .vcard[data-v="B"] .timbre-seg button { height: 40px; padding: 0 10px; border-radius: 2px; color: var(--dash-text); font-size: 13px; font-weight: 650; }
+  .vcard[data-v="B"] .timbre-seg button::before { content: ''; position: absolute; inset: -2px 0; }
+  .vcard[data-v="B"] .timbre-seg button:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="B"] .timbre-seg button.is-on { background: var(--dash-coral-solid); color: var(--dash-white); font-weight: 700; }
+  .vcard[data-v="B"] .btn-preview { height: 48px; padding: 0 18px; border-radius: 24px; border: 1px solid var(--dash-ink-a16); background: var(--dash-surface-2); color: var(--dash-text); font-size: 13px; font-weight: 700; }
+  .vcard[data-v="B"] .btn-preview:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="B"] .btn-preview:active { transform: translateY(1px); }
+  .vcard[data-v="B"] .preset-chip { height: 36px; padding: 0 6px; border: 0; border-bottom: 2px solid var(--dash-ink-a25); border-radius: 6px; background: transparent; color: var(--dash-text); font-size: 12px; font-weight: 700; }
+  .vcard[data-v="B"] .preset-chip::before { content: ''; position: absolute; inset: -4px 0; }
+  .vcard[data-v="B"] .preset-chip:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="B"] .preset-chip:active { transform: translateY(1px); }
+  .vcard[data-v="B"] .preset-chip.active { background: var(--dash-accent-solid); color: var(--dash-white); border-bottom-color: var(--dash-accent); }
+  .vcard[data-v="B"] .bottom-status { height: 28px; color: var(--dash-text); font-size: 11.5px; font-weight: 700; letter-spacing: .06em; }
+  .vcard[data-v="B"] .st-anchor { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--dash-coral); }
+
+  /* ══════ 变体 C「紧凑分级」 ══════ */
+  .vcard[data-v="C"] .primary-toggle-btn {
+    align-self: center; min-width: 180px; height: 48px; padding: 0 22px; gap: 8px;
+    border-radius: 999px; background: var(--dash-coral-solid); color: var(--dash-white);
+    font-size: 14px; font-weight: 800; letter-spacing: .5px;
+    box-shadow: 0 4px 12px var(--dash-coral-glow);
+  }
+  .vcard[data-v="C"] .primary-toggle-btn:hover { box-shadow: 0 6px 16px var(--dash-coral-glow); }
+  .vcard[data-v="C"] .primary-toggle-btn:active { transform: scale(.98); }
+  .vcard[data-v="C"] .primary-toggle-btn.running { background: var(--dash-panel); color: var(--dash-white); box-shadow: 0 2px 8px var(--dash-shell-shadow); }
+  .vcard[data-v="C"] .timbre-seg { background: var(--dash-pill-track); border-radius: 10px; }
+  .vcard[data-v="C"] .timbre-seg button { height: 36px; padding: 0 10px; border-radius: 6px; color: var(--dash-pill-idle); font-size: 12px; font-weight: 650; }
+  .vcard[data-v="C"] .timbre-seg button::before { content: ''; position: absolute; inset: -4px 0; }
+  .vcard[data-v="C"] .timbre-seg button:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="C"] .timbre-seg button.is-on { background: var(--dash-coral-solid); color: var(--dash-white); font-weight: 700; }
+  .vcard[data-v="C"] .btn-preview { height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--dash-ink-a16); background: var(--dash-surface-2); color: var(--dash-text); font-size: 12.5px; font-weight: 700; }
+  .vcard[data-v="C"] .btn-preview:hover { background: var(--dash-ink-a12); }
+  .vcard[data-v="C"] .btn-preview:active { transform: translateY(1px); }
+  .vcard[data-v="C"] .preset-chip { height: 32px; padding: 0 4px; border-radius: 4px; border: 1px solid var(--dash-ink-a12); background: var(--dash-surface-soft); color: var(--dash-text); font-size: 10.5px; font-weight: 700; }
+  .vcard[data-v="C"] .preset-chip::before { content: ''; position: absolute; inset: -6px 0; }
+  .vcard[data-v="C"] .preset-chip:hover { background: var(--dash-shell-hi); }
+  .vcard[data-v="C"] .preset-chip:active { transform: translateY(1px); }
+  .vcard[data-v="C"] .preset-chip.active { background: var(--dash-accent-solid); color: var(--dash-white); border-color: var(--dash-accent); }
+  .vcard[data-v="C"] .bottom-status { height: 22px; color: var(--dash-text); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; }
+  .vcard[data-v="C"] .st-anchor { width: 2px; height: 12px; background: var(--dash-coral); border-radius: 1px; }
+
+  /* ══════ 焦点 / 降级 ══════ */
+  .primary-toggle-btn:focus-visible, .timbre-seg button:focus-visible, .btn-preview:focus-visible,
+  .preset-chip:focus-visible, .pill-btn:focus-visible, .m-accent-toggle:focus-visible, .step-btn:focus-visible {
+    outline: 2px solid var(--dash-accent-text);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ══════ 自检面板 ══════ */
+  .audit-out {
+    width: 100%; max-width: 1133px; background: var(--dash-panel); color: var(--dash-panel-dim);
+    border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+    line-height: 1.55; white-space: pre-wrap; max-height: 60vh; overflow: auto;
+  }
+  .audit-out[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <div class="demo-title">
+    dizi<span class="accent">cal</span> · D2 <b>bottom-ops</b> 变体对照（pixel 261009）
+    <small>三个变体共用同一套 token 与骨架，只差层级语言。?audit=1 出自检；?v=A|B|C · ?skin=ink · ?vp=1133|744|440</small>
+  </div>
+  <div class="demo-controls">
+    <div class="pill-group" id="vPills">
+      <button class="pill-btn active" data-v="A">A 甲板分级</button>
+      <button class="pill-btn" data-v="B">B 刻度队形</button>
+      <button class="pill-btn" data-v="C">C 紧凑分级</button>
+    </div>
+    <div class="pill-group" id="vpPills">
+      <button class="pill-btn active" data-vp="v1133">1133×744</button>
+      <button class="pill-btn" data-vp="v744">744×1133</button>
+      <button class="pill-btn" data-vp="v440">440×956</button>
+    </div>
+    <div class="pill-group" id="skinPills">
+      <button class="pill-btn active" data-skin="light">浅银</button>
+      <button class="pill-btn" data-skin="ink">深墨</button>
+    </div>
+  </div>
+</div>
+
+<main class="stage-frame" id="stage" data-vp="v1133">
+
+  <section class="metro-card vcard on" data-v="A">
+    <p class="v-claim"><b>A 甲板分级</b>：主按钮是「沉头圆角矩形」（r14），音色是半透明<b>凹槽轨</b>（连续段），预设是贴在板面上的<b>弱底纸片</b>（r6·32px·无投影）。三层靠形态分，不靠颜色分。</p>
+    <div class="upstream"></div>
+    <div class="hr-split"></div>
+    <p class="upstream-caption">▼ 本次设计对象</p>
+    <button class="primary-toggle-btn" data-act="toggle">
+      <span class="tg-icon tg-play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg></span>
+      <span class="tg-icon tg-pause" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg></span>
+      <span class="tg-text">启动节拍器</span>
+    </button>
+    <div class="bottom-ops">
+      <div class="bo-params">
+        <div class="timbre-bar">
+          <div class="timbre-seg" role="radiogroup" aria-label="音色">
+            <button type="button" class="is-on" data-timbre="木鱼">木鱼</button>
+            <button type="button" data-timbre="电子滴答">电子滴答</button>
+            <button type="button" data-timbre="808 低鼓">808 低鼓</button>
+            <button type="button" data-timbre="鼓边">鼓边</button>
+            <button type="button" data-timbre="清脆 blip">清脆 blip</button>
+          </div>
+          <button type="button" class="btn-preview" data-act="preview">试听</button>
+        </div>
+        <div class="preset-row">
+          <button class="preset-chip" data-bpm="60"  data-term="慢板">慢板</button>
+          <button class="preset-chip" data-bpm="72"  data-term="中板">中板</button>
+          <button class="preset-chip active" data-bpm="82" data-term="萨丽哈★">萨丽哈★</button>
+          <button class="preset-chip" data-bpm="96"  data-term="小快板">小快板</button>
+          <button class="preset-chip" data-bpm="120" data-term="双吐">双吐</button>
+        </div>
+      </div>
+      <div class="bottom-status"><span class="st-anchor" hidden></span><span class="st-text"></span></div>
+    </div>
+  </section>
+
+  <section class="metro-card vcard" data-v="B">
+    <p class="v-claim"><b>B 刻度队形</b>：全用项目「刻度/沉头」语言，圆角收到 r2–r8，音色是<b>硬边槽</b>，预设是<b>底线刻度</b>（未选无底、只有一条 2px 底线；选中才落实心）。</p>
+    <div class="upstream"></div>
+    <div class="hr-split"></div>
+    <p class="upstream-caption">▼ 本次设计对象</p>
+    <button class="primary-toggle-btn" data-act="toggle">
+      <span class="tg-icon tg-play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg></span>
+      <span class="tg-icon tg-pause" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg></span>
+      <span class="tg-text">启动节拍器</span>
+    </button>
+    <div class="bottom-ops">
+      <div class="bo-params">
+        <div class="timbre-bar">
+          <div class="timbre-seg" role="radiogroup" aria-label="音色">
+            <button type="button" class="is-on" data-timbre="木鱼">木鱼</button>
+            <button type="button" data-timbre="电子滴答">电子滴答</button>
+            <button type="button" data-timbre="808 低鼓">808 低鼓</button>
+            <button type="button" data-timbre="鼓边">鼓边</button>
+            <button type="button" data-timbre="清脆 blip">清脆 blip</button>
+          </div>
+          <button type="button" class="btn-preview" data-act="preview">试听</button>
+        </div>
+        <div class="preset-row">
+          <button class="preset-chip" data-bpm="60"  data-term="慢板">慢板</button>
+          <button class="preset-chip" data-bpm="72"  data-term="中板">中板</button>
+          <button class="preset-chip active" data-bpm="82" data-term="萨丽哈★">萨丽哈★</button>
+          <button class="preset-chip" data-bpm="96"  data-term="小快板">小快板</button>
+          <button class="preset-chip" data-bpm="120" data-term="双吐">双吐</button>
+        </div>
+      </div>
+      <div class="bottom-status"><span class="st-anchor"></span><span class="st-text"></span></div>
+    </div>
+  </section>
+
+  <section class="metro-card vcard" data-v="C">
+    <p class="v-claim"><b>C 紧凑分级</b>：主按钮<b>只此一个胶囊</b>（r999），音色回<b>深色收音机槽</b>（pill-track 语言），预设回白底词牌但保留「82 萨丽哈★」<b>数值+名称</b>双信息（现状语义）。</p>
+    <div class="upstream"></div>
+    <div class="hr-split"></div>
+    <p class="upstream-caption">▼ 本次设计对象</p>
+    <button class="primary-toggle-btn" data-act="toggle">
+      <span class="tg-icon tg-play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg></span>
+      <span class="tg-icon tg-pause" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg></span>
+      <span class="tg-text">启动节拍器</span>
+    </button>
+    <div class="bottom-ops">
+      <div class="bo-params">
+        <div class="timbre-bar">
+          <div class="timbre-seg" role="radiogroup" aria-label="音色">
+            <button type="button" class="is-on" data-timbre="木鱼">木鱼</button>
+            <button type="button" data-timbre="电子滴答">电子滴答</button>
+            <button type="button" data-timbre="808 低鼓">808 低鼓</button>
+            <button type="button" data-timbre="鼓边">鼓边</button>
+            <button type="button" data-timbre="清脆 blip">清脆 blip</button>
+          </div>
+          <button type="button" class="btn-preview" data-act="preview">试听</button>
+        </div>
+        <div class="preset-row">
+          <button class="preset-chip" data-bpm="60"  data-term="60 慢板">60 慢板</button>
+          <button class="preset-chip" data-bpm="72"  data-term="72 中板">72 中板</button>
+          <button class="preset-chip active" data-bpm="82" data-term="82 萨丽哈★">82 萨丽哈★</button>
+          <button class="preset-chip" data-bpm="96"  data-term="96 小快板">96 小快板</button>
+          <button class="preset-chip" data-bpm="120" data-term="120 双吐">120 双吐</button>
+        </div>
+      </div>
+      <div class="bottom-status"><span class="st-anchor"></span><span class="st-text"></span></div>
+    </div>
+  </section>
+
+  <pre class="audit-out" id="auditOut" hidden></pre>
+</main>
+
+<template id="tplUpstream">
+  <div class="m-status-bar">
+    <span class="m-term-badge">快板 · 欢快活泼</span>
+    <button type="button" class="m-accent-toggle"><span class="accent-dot"></span><span>强弱拍：关</span></button>
+  </div>
+  <div class="led-row">
+    <div class="led-item"><div class="led-bulb"></div><span class="led-label">第 1 拍</span></div>
+    <div class="led-item"><div class="led-bulb"></div><span class="led-label">弱拍 2</span></div>
+    <div class="led-item"><div class="led-bulb"></div><span class="led-label">次强 3</span></div>
+    <div class="led-item"><div class="led-bulb"></div><span class="led-label">弱拍 4</span></div>
+  </div>
+  <div class="knob-section">
+    <div class="knob-row">
+      <button type="button" class="step-btn" aria-label="BPM -1">−</button>
+      <div class="rotary-knob">
+        <span class="knob-indicator"></span>
+        <div class="knob-center-hub">
+          <div class="bpm-hero-val" data-role="bpm">82</div>
+          <div class="bpm-hero-unit">BPM · 点击启停</div>
+        </div>
+      </div>
+      <button type="button" class="step-btn" aria-label="BPM +1">+</button>
+    </div>
+  </div>
+</template>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   1) 骨架注入 + 交互（无音频，纯视觉对照）
+   ══════════════════════════════════════════════════════════════ */
+var CARDS = ['A', 'B', 'C'];
+var state = { bpm: 82, term: '萨丽哈★', timbre: '木鱼' };
+
+function injectUpstream() {
+  var tpl = document.getElementById('tplUpstream');
+  var frag = tpl.content;
+  document.querySelectorAll('.vcard').forEach(function (card) {
+    var host = card.querySelector('.upstream');
+    if (host) host.appendChild(frag.cloneNode(true));
+  });
+}
+
+function render() {
+  document.querySelectorAll('.vcard').forEach(function (card) {
+    var text = card.querySelector('.st-text');
+    if (text) text.textContent = '当前 ' + state.bpm + ' BPM · ' + state.term + ' · ' + state.timbre + ' · 强弱拍 关';
+    var bpmEl = card.querySelector('.bpm-hero-val');
+    if (bpmEl) bpmEl.textContent = String(state.bpm);
+    var badge = card.querySelector('.m-term-badge');
+    if (badge) badge.textContent = '快板 · 欢快活泼';
+  });
+}
+
+function bindCards() {
+  document.querySelectorAll('.vcard').forEach(function (card) {
+    card.addEventListener('click', function (e) {
+      var t = e.target.closest('button');
+      if (!t) return;
+      var cardV = card.dataset.v;
+      if (t.dataset.act === 'toggle') {
+        var on = t.classList.toggle('running');
+        card.querySelector('.tg-text').textContent = on ? '暂停节拍器' : '启动节拍器';
+        return;
+      }
+      if (t.dataset.act === 'preview') {
+        t.classList.remove('btn-flash');
+        void t.offsetWidth;
+        t.classList.add('btn-flash');
+        return;
+      }
+      if (t.dataset.timbre) {
+        card.querySelectorAll('.timbre-seg button').forEach(function (b) { b.classList.toggle('is-on', b === t); });
+        state.timbre = t.dataset.timbre;
+        render();
+        return;
+      }
+      if (t.classList.contains('preset-chip')) {
+        card.querySelectorAll('.preset-chip').forEach(function (b) { b.classList.toggle('active', b === t); });
+        state.bpm = parseInt(t.dataset.bpm, 10);
+        state.term = t.dataset.term;
+        render();
+        return;
+      }
+      if (t.classList.contains('m-accent-toggle')) {
+        t.classList.toggle('active');
+        var lab = t.querySelector('span:last-child');
+        if (lab) lab.textContent = (lab.textContent.indexOf('开') > -1) ? '强弱拍：关' : '强弱拍：开';
+      }
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2) 测量 + 断言
+   ══════════════════════════════════════════════════════════════ */
+function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function measure(el) {
+  var cs = getComputedStyle(el);
+  var ps = getComputedStyle(el, '::before');
+  var hasPseudo = ps && ps.content !== 'none' && ps.position === 'absolute';
+  var ex = hasPseudo ? Math.abs(px(ps.top)) + Math.abs(px(ps.bottom)) : 0;
+  return {
+    h: el.offsetHeight,
+    expander: ex,
+    hit: el.offsetHeight + ex,
+    radius: px(cs.borderTopLeftRadius),
+    bg: cs.backgroundColor,
+    color: cs.color,
+    shadow: cs.boxShadow,
+    fs: parseFloat(cs.fontSize),
+    ws: cs.whiteSpace
+  };
+}
+function snapshot(card) {
+  var q = function (s) { return card.querySelector(s); };
+  var items = Array.prototype.slice.call(card.querySelectorAll('.timbre-seg button'));
+  var chips = Array.prototype.slice.call(card.querySelectorAll('.preset-chip'));
+  var wrapBad = Array.prototype.slice.call(card.querySelectorAll(
+    '.timbre-seg button, .preset-chip, .btn-preview, .primary-toggle-btn, .bottom-status'
+  )).filter(function (e) { return e.scrollWidth > e.clientWidth + 1; })
+    .map(function (e) { return (e.className || e.tagName) + ' ' + e.scrollWidth + '>' + e.clientWidth; });
+  var notNowrap = Array.prototype.slice.call(card.querySelectorAll('.timbre-seg button, .preset-chip, .btn-preview, .bottom-status'))
+    .filter(function (e) { return getComputedStyle(e).whiteSpace !== 'nowrap'; })
+    .map(function (e) { return e.className || e.tagName; });
+  return {
+    primary: measure(q('.primary-toggle-btn')),
+    preview: measure(q('.btn-preview')),
+    track: measure(q('.timbre-seg')),
+    item: measure(q('.timbre-seg button:not(.is-on)')),
+    itemOn: measure(q('.timbre-seg button.is-on')),
+    preset: measure(q('.preset-chip')),
+    status: measure(q('.bottom-status')),
+    cardContentW: card.clientWidth - px(getComputedStyle(card).paddingLeft) - px(getComputedStyle(card).paddingRight),
+    itemH: items.map(function (e) { return e.offsetHeight; }),
+    chipH: chips.map(function (e) { return e.offsetHeight; }),
+    chipW: chips.map(function (e) { return e.offsetWidth; }),
+    wrapBad: wrapBad,
+    notNowrap: notNowrap,
+    barRows: (function () {
+      var tb = q('.timbre-bar'), tr = q('.timbre-seg'), pv = q('.btn-preview');
+      if (!tb || !tr || !pv) return 0;
+      return pv.offsetTop === tr.offsetTop ? 1 : 2;
+    })(),
+    cardOverflow: card.scrollWidth > card.clientWidth + 1,
+    gapOps: px(getComputedStyle(q('.bottom-ops')).rowGap),
+    gapParams: px(getComputedStyle(q('.bo-params')).rowGap)
+  };
+}
+function distinctCount(a) { var seen = {}; a.forEach(function (x) { seen[String(x)] = 1; }); return Object.keys(seen).length; }
+function spread(a) { return Math.max.apply(null, a) - Math.min.apply(null, a); }
+
+function assertsFor(s) {
+  var f = [];
+  var hs = [s.primary.h, s.preview.h, s.item.h, s.preset.h, s.status.h];
+  var rs = [s.primary.radius, s.preview.radius, s.track.radius, s.item.radius, s.preset.radius, s.status.radius];
+  if (!(s.preset.h <= s.primary.h * 0.8)) f.push('A1  h_preset ' + s.preset.h + ' > h_main ' + s.primary.h + '×0.8=' + (s.primary.h * 0.8).toFixed(1));
+  if (!(s.preset.h < s.item.h)) f.push('A2  h_preset ' + s.preset.h + ' >= h_timbreItem ' + s.item.h);
+  if (!(s.primary.h >= 44 && s.primary.h <= 64 && s.primary.h === Math.max.apply(null, hs))) f.push('A3  h_main ' + s.primary.h + ' (max=' + Math.max.apply(null, hs) + ')');
+  if (distinctCount(hs) < 4) f.push('A4  height ladder distinct ' + distinctCount(hs) + ' [' + hs.join('/') + ']');
+  if (distinctCount(rs) < 3) f.push('A5  radius distinct ' + distinctCount(rs) + ' [' + rs.join('/') + ']');
+  if (!(s.primary.radius !== s.item.radius && s.item.radius !== s.preset.radius)) f.push('A6  radius clash ' + s.primary.radius + '/' + s.item.radius + '/' + s.preset.radius);
+  var shadowed = [['主按钮', s.primary], ['试听', s.preview], ['音色轨', s.track], ['音色项', s.item], ['预设', s.preset], ['状态', s.status]]
+    .filter(function (p) { return p[1].shadow && p[1].shadow !== 'none'; })
+    .map(function (p) { return p[0]; });
+  if (shadowed.length !== 1 || shadowed[0] !== '主按钮') f.push('A7  shadow layers [' + (shadowed.join(',') || 'none') + ']');
+  if (distinctCount([s.primary.bg, s.preview.bg, s.track.bg, s.preset.bg, s.status.bg]) < 3) f.push('A8  bg types ' + distinctCount([s.primary.bg, s.preview.bg, s.track.bg, s.preset.bg, s.status.bg]));
+  if (!(s.primary.hit >= 44 && s.preview.hit >= 44 && s.item.hit >= 44 && s.preset.hit >= 44)) {
+    f.push('A9  hit ' + s.primary.hit + '/' + s.preview.hit + '/' + s.item.hit + '/' + s.preset.hit);
+  }
+  if (s.preset.h < 28) f.push('A10 h_preset ' + s.preset.h + ' < 28');
+  if (spread(s.chipH) !== 0) f.push('A11 preset row height spread ' + spread(s.chipH));
+  if (spread(s.itemH) !== 0) f.push('A11 timbre row height spread ' + spread(s.itemH));
+  if (s.wrapBad.length) f.push('A12 wrap/overflow ' + s.wrapBad.join(' ; '));
+  if (s.notNowrap.length) f.push('A12 not nowrap ' + s.notNowrap.join(' ; '));
+  if (s.cardOverflow) f.push('A13 card horizontal overflow');
+  if (!(s.gapOps > s.gapParams)) f.push('A15 cluster gap ' + s.gapOps + ' !> group gap ' + s.gapParams);
+  return f;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3) 对比度（自算 WCAG，两个皮肤各跑一遍）
+   ══════════════════════════════════════════════════════════════ */
+function parseColor(str) {
+  str = String(str || '').trim();
+  var m;
+  if ((m = str.match(/^#([0-9a-f]{6})$/i))) { var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
+  if ((m = str.match(/^#([0-9a-f]{3})$/i))) { var s = m[1]; return [parseInt(s[0] + s[0], 16), parseInt(s[1] + s[1], 16), parseInt(s[2] + s[2], 16), 1]; }
+  if ((m = str.match(/^rgba?\(([^)]+)\)$/i))) { var p = m[1].split(',').map(function (x) { return parseFloat(x); }); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+  return null;
+}
+function comp(fg, bg) { var a = fg[3]; return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a), 1]; }
+function lum(c) {
+  var f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+}
+function ratio(a, b) { var L1 = lum(a), L2 = lum(b), hi = Math.max(L1, L2), lo = Math.min(L1, L2); return (hi + 0.05) / (lo + 0.05); }
+function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function tone(spec) {
+  if (Object.prototype.toString.call(spec) === '[object Array]') {
+    return comp(parseColor(tok(spec[0])), parseColor(tok(spec[1])));
+  }
+  return parseColor(tok(spec));
+}
+function rgbHex(c) { return '#' + [0, 1, 2].map(function (i) { return Math.round(c[i]).toString(16).padStart(2, '0'); }).join(''); }
+
+var CONTRAST = {
+  A: [
+    ['主按钮 白字/coral-solid', '--dash-white', '--dash-coral-solid'],
+    ['主按钮·running 白字/panel', '--dash-white', '--dash-panel'],
+    ['试听 字/surface-2', '--dash-text', '--dash-surface-2'],
+    ['音色选中 page/text', '--dash-page', '--dash-text'],
+    ['音色未选 字/凹槽⨯壳亮端', '--dash-text', ['--dash-ink-a04', '--dash-shell-hi']],
+    ['音色未选 字/凹槽⨯壳暗端', '--dash-text', ['--dash-ink-a04', '--dash-shell-lo']],
+    ['预设选中 白字/accent-solid', '--dash-white', '--dash-accent-solid'],
+    ['预设未选 soft字/surface-soft', '--dash-text-soft', '--dash-surface-soft'],
+    ['状态 字/壳亮端', '--dash-text', '--dash-shell-hi'],
+    ['状态 字/壳暗端', '--dash-text', '--dash-shell-lo']
+  ],
+  B: [
+    ['主按钮 白字/coral-solid', '--dash-white', '--dash-coral-solid'],
+    ['主按钮·running 白字/panel', '--dash-white', '--dash-panel'],
+    ['试听 字/surface-2', '--dash-text', '--dash-surface-2'],
+    ['音色选中 白字/coral-solid', '--dash-white', '--dash-coral-solid'],
+    ['音色未选 字/surface-soft', '--dash-text', '--dash-surface-soft'],
+    ['预设选中 白字/accent-solid', '--dash-white', '--dash-accent-solid'],
+    ['预设未选 字/壳亮端', '--dash-text', '--dash-shell-hi'],
+    ['预设未选 字/壳暗端', '--dash-text', '--dash-shell-lo'],
+    ['状态 字/壳亮端', '--dash-text', '--dash-shell-hi'],
+    ['状态 字/壳暗端', '--dash-text', '--dash-shell-lo']
+  ],
+  C: [
+    ['主按钮 白字/coral-solid', '--dash-white', '--dash-coral-solid'],
+    ['主按钮·running 白字/panel', '--dash-white', '--dash-panel'],
+    ['试听 字/surface-2', '--dash-text', '--dash-surface-2'],
+    ['音色选中 白字/coral-solid', '--dash-white', '--dash-coral-solid'],
+    ['音色未选 pill-idle/pill-track', '--dash-pill-idle', '--dash-pill-track'],
+    ['预设选中 白字/accent-solid', '--dash-white', '--dash-accent-solid'],
+    ['预设未选 字/surface-soft', '--dash-text', '--dash-surface-soft'],
+    ['状态 字/壳亮端', '--dash-text', '--dash-shell-hi'],
+    ['状态 字/壳暗端', '--dash-text', '--dash-shell-lo']
+  ]
+};
+
+function contrastFails(v) {
+  var out = [];
+  CONTRAST[v].forEach(function (row) {
+    var r = ratio(tone(row[1]), tone(row[2]));
+    out.push({ label: row[0], ratio: r, ok: r >= 4.5 });
+  });
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4) 审计主流程
+   ══════════════════════════════════════════════════════════════ */
+function applyVariant(v) { CARDS.forEach(function (k) { document.querySelector('.vcard[data-v="' + k + '"]').classList.toggle('on', k === v); }); }
+function applySkin(s) { document.documentElement.dataset.skin = (s === 'ink' ? 'ink' : ''); }
+function applyVp(v) { document.getElementById('stage').dataset.vp = v; }
+
+function runAudit() {
+  var keep = { v: currentV, vp: currentVp, skin: currentSkin };
+  var lines = [];
+  var fails = [];
+  var rec = {};
+
+  lines.push('=== d2-bottom-probe-pixel · ?audit=1 ===');
+  lines.push('probe: D2 bottom-ops 变体 A/B/C   窗口: ' + window.innerWidth + '×' + window.innerHeight);
+
+  /* --- ① 视口扫描：溢出 / 折行 --- */
+  lines.push('');
+  lines.push('--- ① 视口扫描（溢出 + 折行，9 格全过才算）---');
+  ['v1133', 'v744', 'v440'].forEach(function (vp) {
+    applyVp(vp);
+    CARDS.forEach(function (v) {
+      applyVariant(v);
+      var card = document.querySelector('.vcard[data-v="' + v + '"]');
+      void card.offsetWidth;
+      var s = snapshot(card);
+      var bad = [];
+      if (s.cardOverflow) bad.push('card 横溢 ' + card.scrollWidth + '>' + card.clientWidth);
+      if (s.wrapBad.length) bad.push('折行 ' + s.wrapBad.join(' ; '));
+      if (bad.length) fails.push('A13 ' + vp + '/' + v + ' ' + bad.join(' | '));
+      lines.push('  ' + vp + ' V=' + v + '  card.clientWidth ' + card.clientWidth + 'px  内容 ' + s.cardContentW +
+        'px  预设项宽 ' + s.chipW.join('/') + '  音色行行数 ' + s.barRows +
+        '  横溢=' + s.cardOverflow + '  折行=' + (s.wrapBad.length ? s.wrapBad.join(' ; ') : 'none'));
+      rec[vp + '/' + v] = { cardW: card.clientWidth, contentW: s.cardContentW, chipW: s.chipW, barRows: s.barRows, overflow: s.cardOverflow, wrap: s.wrapBad };
+    });
+  });
+
+  /* --- ② 皮肤 × 变体：尺寸/形态/命中区 + 断言 --- */
+  lines.push('');
+  lines.push('--- ② 尺寸 / 形态 / 命中区（两皮肤）---');
+  ['light', 'ink'].forEach(function (skin) {
+    applySkin(skin);
+    CARDS.forEach(function (v) {
+      applyVariant(v);
+      var card = document.querySelector('.vcard[data-v="' + v + '"]');
+      void card.offsetWidth;
+      var s = snapshot(card);
+      var f = assertsFor(s);
+      f.forEach(function (x) { fails.push('[' + skin + '][' + v + '] ' + x); });
+      var fmt = function (label, m) {
+        return '    ' + label.padEnd(10, ' ') + ' h=' + String(m.h).padStart(2) + '  命中=' + String(m.hit).padStart(2) +
+          '  扩=' + m.expander + 'px  圆角=' + String(m.radius).padStart(3) + '  字=' + m.fs +
+          '  bg=' + m.bg + '  color=' + m.color + '  shadow=' + (m.shadow === 'none' ? 'none' : m.shadow.replace(/\s+/g, ' '));
+      };
+      lines.push('  [' + skin + '] V=' + v + '  gaps: 簇间=' + s.gapOps + ' 组内=' + s.gapParams + '  内容宽=' + s.cardContentW + 'px');
+      lines.push(fmt('主按钮', s.primary));
+      lines.push(fmt('试听', s.preview));
+      lines.push(fmt('音色轨', s.track));
+      lines.push(fmt('音色项·未选', s.item));
+      lines.push(fmt('音色项·选中', s.itemOn));
+      lines.push(fmt('预设chip', s.preset));
+      lines.push(fmt('状态行', s.status));
+      lines.push('    同排极差: 音色 ' + spread(s.itemH) + ' / 预设 ' + spread(s.chipH) +
+        '    高度集 [' + [s.primary.h, s.preview.h, s.item.h, s.preset.h, s.status.h].join(',') + ']' +
+        '    圆角集 [' + [s.primary.radius, s.preview.radius, s.track.radius, s.item.radius, s.preset.radius, s.status.radius].join(',') + ']' +
+        '    投影层数 ' + [s.primary, s.preview, s.track, s.item, s.itemOn, s.preset, s.status].filter(function (m) { return m.shadow && m.shadow !== 'none'; }).length);
+      lines.push('    asserts: ' + (f.length ? 'FAIL → ' + f.join(' | ') : 'A1–A15 all ok'));
+      rec[skin + '/' + v] = {
+        h: { primary: s.primary.h, preview: s.preview.h, track: s.track.h, itemIdle: s.item.h, itemOn: s.itemOn.h, preset: s.preset.h, status: s.status.h },
+        hit: { primary: s.primary.hit, preview: s.preview.hit, item: s.item.hit, preset: s.preset.hit },
+        bg: { primary: s.primary.bg, preview: s.preview.bg, track: s.track.bg, itemIdle: s.item.bg, itemOn: s.itemOn.bg, preset: s.preset.bg, status: s.status.bg },
+        radius: [s.primary.radius, s.preview.radius, s.track.radius, s.item.radius, s.preset.radius, s.status.radius],
+        shadowLayers: [s.primary, s.preview, s.track, s.item, s.itemOn, s.preset, s.status].filter(function (m) { return m.shadow && m.shadow !== 'none'; }).length,
+        cardContentW: s.cardContentW,
+        fails: f
+      };
+    });
+  });
+
+  /* --- ③ 对比度（两皮肤） --- */
+  lines.push('');
+  lines.push('--- ③ 对比度（WCAG 自算，阈值 4.5:1）---');
+  ['light', 'ink'].forEach(function (skin) {
+    applySkin(skin);
+    CARDS.forEach(function (v) {
+      var rows = contrastFails(v);
+      rows.forEach(function (r) {
+        if (!r.ok) fails.push('A14 [' + skin + '][' + v + '] ' + r.label + ' = ' + r.ratio.toFixed(2) + ':1');
+      });
+      lines.push('  [' + skin + '] V=' + v + '  ' + rows.map(function (r) {
+        return r.label + '=' + r.ratio.toFixed(2) + (r.ok ? '' : ' ✗');
+      }).join('  '));
+      rec['contrast/' + skin + '/' + v] = rows;
+    });
+  });
+
+  /* --- ④ A16：零皮肤专属覆盖 --- */
+  var styleText = Array.prototype.slice.call(document.querySelectorAll('style')).map(function (s) { return s.textContent; }).join('\n');
+  var inkOverride = (styleText.match(/data-skin="ink"\]\s*\[data-v=/g) || []).length +
+    (styleText.match(/data-skin="ink"\]\s*\.vcard/g) || []).length +
+    (styleText.match(/data-skin="ink"\]\s*\.bottom-/g) || []).length;
+  if (inkOverride !== 0) fails.push('A16 变体带 ' + inkOverride + ' 条皮肤专属覆盖（应为 0，靠 token 逐名翻转）');
+  lines.push('');
+  lines.push('--- ④ A16 零皮肤专属覆盖 ---');
+  lines.push('  变体作用域内 data-skin="ink" 覆盖条数 = ' + inkOverride + (inkOverride ? ' ✗' : ' （仅 :root token 块翻转，合规）'));
+
+  applySkin(keep.skin);
+  applyVp(keep.vp);
+  applyVariant(keep.v);
+
+  lines.push('');
+  lines.push('fails[] = ' + JSON.stringify(fails));
+  lines.push('verdict = ' + (fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK'));
+  var text = lines.join('\n');
+  return { text: text, fails: fails, verdict: fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK', rec: rec };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5) 启动
+   ══════════════════════════════════════════════════════════════ */
+var currentV = 'A', currentVp = 'v1133', currentSkin = 'light';
+
+function setVariant(v) {
+  currentV = v;
+  CARDS.forEach(function (k) { var c = document.querySelector('.vcard[data-v="' + k + '"]'); if (c) c.classList.toggle('on', k === v); });
+  document.querySelectorAll('#vPills .pill-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.v === v); });
+}
+function setViewport(vp) {
+  currentVp = vp;
+  document.getElementById('stage').dataset.vp = vp;
+  document.querySelectorAll('#vpPills .pill-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vp === vp); });
+}
+function setSkin(s) {
+  currentSkin = s;
+  document.documentElement.dataset.skin = (s === 'ink' ? 'ink' : '');
+  document.querySelectorAll('#skinPills .pill-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.skin === s); });
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  injectUpstream();
+  bindCards();
+  render();
+
+  document.querySelectorAll('#vPills .pill-btn').forEach(function (b) { b.addEventListener('click', function () { setVariant(b.dataset.v); }); });
+  document.querySelectorAll('#vpPills .pill-btn').forEach(function (b) { b.addEventListener('click', function () { setViewport(b.dataset.vp); }); });
+  document.querySelectorAll('#skinPills .pill-btn').forEach(function (b) { b.addEventListener('click', function () { setSkin(b.dataset.skin); }); });
+
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('v') && CARDS.indexOf(params.get('v')) > -1) setVariant(params.get('v'));
+  if (params.get('skin') === 'ink') setSkin('ink');
+  var vpParam = params.get('vp');
+  if (vpParam === '1133') setViewport('v1133');
+  if (vpParam === '744') setViewport('v744');
+  if (vpParam === '440') setViewport('v440');
+
+  if (params.get('audit') === '1') {
+    var out = document.getElementById('auditOut');
+    out.hidden = false;
+    var res = runAudit();
+    out.textContent = res.text;
+    document.documentElement.dataset.audit = res.verdict;
+    window.__audit = res;
+    try { console.log(res.text); } catch (e) {}
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>practice 右栏卡片 — demo 总览（2026-10-04）</title>
+<meta name="description" content="所有右栏卡片的 demo 集合页：逐卡打开 + 现场预览 + 自检页 + 共享件与证据文档入口。">
+<style>
+  :root {
+    /* 集合页自己的中性色（不是产品 token，声明位写死不算硬编码） */
+    --h-page: #F5F2EE; --h-card: #FFFFFF; --h-ink: #2C3E50; --h-soft: #6B6B76;
+    --h-line: #E4DED6; --h-brand: #C93B3B; --h-ok: #0C8A60; --h-warn: #B8531F;
+    --shot-w: 1133px; --shot-h: 744px;   /* 预览用真机尺寸（写成声明，别散落硬编码） */
+  }
+  :root[data-skin="ink"] {
+    --h-page: #1A1E22; --h-card: #22262B; --h-ink: #FFF8F0; --h-soft: #A9A29B;
+    --h-line: #3A4046; --h-brand: #FF8C5A; --h-ok: #10B981; --h-warn: #FFA073;
+  }
+  .skinseg { display: inline-flex; border: 1px solid var(--h-line); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+  .skinseg button { border: 0; background: transparent; color: var(--h-soft); font: inherit; font-size: 11.5px; padding: 4px 10px; cursor: pointer; }
+  .skinseg button.on { background: var(--h-ink); color: var(--h-page); font-weight: 700; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 18px 60px; background: var(--h-page); color: var(--h-ink);
+         font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .2px; }
+  .sub { font-size: 12px; color: var(--h-soft); line-height: 1.9; margin-bottom: 18px; }
+  .sub code { background: var(--h-card); border: 1px solid var(--h-line); border-radius: 5px; padding: 1px 5px; }
+  h2 { font-size: 14px; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--h-line); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+  .tile { background: var(--h-card); border: 1px solid var(--h-line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .tile-hd { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px 8px; }
+  .tile-hd b { font-size: 14px; }
+  .tile-hd .name { font-size: 11px; color: var(--h-soft); font-family: ui-monospace, Menlo, monospace; }
+  .badge { margin-left: auto; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .b-ok { color: var(--h-ok); } .b-work { color: var(--h-warn); } .b-todo { color: var(--h-soft); }
+  .auth { font-size: 10.5px; color: var(--h-soft); border: 1px solid var(--h-line); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+  table.atable { border-collapse: collapse; width: 100%; font-size: 12px; background: var(--h-card); border: 1px solid var(--h-line); border-radius: 10px; overflow: hidden; }
+  table.atable th, table.atable td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--h-line); vertical-align: top; }
+  table.atable th { font-size: 11.5px; color: var(--h-soft); font-weight: 700; }
+  table.atable tr:last-child td { border-bottom: 0; }
+  table.atable td.a { color: var(--h-brand); font-weight: 700; white-space: nowrap; }
+  table.atable code { font-size: 11px; }
+  .tile-desc { padding: 0 14px 10px; font-size: 12px; line-height: 1.65; color: var(--h-soft); }
+  .shot { position: relative; width: 100%; height: 300px; background: var(--h-page); border-top: 1px solid var(--h-line); border-bottom: 1px solid var(--h-line); overflow: hidden; }
+  .shot iframe { position: absolute; top: 0; left: 0; width: var(--shot-w); height: var(--shot-h); border: 0;
+                 transform: scale(.42); transform-origin: top left; }
+  .shot.empty { display: grid; place-items: center; font-size: 12px; color: var(--h-soft); height: 120px; }
+  .tile-ft { display: flex; gap: 10px; padding: 10px 14px 14px; font-size: 12px; }
+  .tile-ft a { color: var(--h-brand); text-decoration: none; border-bottom: 1px solid currentColor; }
+  .tile-ft a.plain { color: var(--h-soft); border-bottom: 0; }
+  ul.docs { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; }
+  ul.docs li { background: var(--h-card); border: 1px solid var(--h-line); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.6; }
+  ul.docs a { color: var(--h-brand); text-decoration: none; }
+  ul.docs span { color: var(--h-soft); display: block; }
+  .note { font-size: 11.5px; color: var(--h-soft); line-height: 1.9; margin-top: 22px;
+          background: var(--h-card); border: 1px solid var(--h-line); border-radius: 12px; padding: 12px 14px; }
+  button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--h-brand);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  .verbar{margin:0 0 18px;padding:8px 14px;border-radius:10px;font-size:12px;
+    border:1px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.04)}
+  .verbar b{font-weight:700}
+  .verbar a{color:inherit;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="verbar">最新台账 <a href="交付台账-261016.md" target="_blank">交付台账-261016.md</a>　｜　<b>当前 demo 版本：demo v3.5</b> · 2026-10-16 · 八条整轮修复（A 卡错位/裁切根治·点环几何同心·缺口咬深=24px｜卡槽 18→50px｜记录弹窗 12 行明细·去 demo chrome｜R 卡 #161A1E｜744/440 内容驱动高度·S 横条 108px｜D 卡元素恢复）　｜　<b>★ 右栏并进真画布</b> <a href="canvas-01.html" target="_blank">canvas-01.html</a>　｜　逐条对账 <a href="对账-v3.4doc-x-v3.5-261016.md" target="_blank">对账-v3.4doc-x-v3.5-261016.md</a>　｜　走查 <a href="audit-pixel-261016.md" target="_blank">audit-pixel-261016.md</a>　｜　feed 规格 <a href="spec-agy-feed744-261016.md" target="_blank">spec-agy-feed744-261016.md</a>　｜　版本清单 <a href="VERSIONS.md" target="_blank">VERSIONS.md</a></div></div></div></div></div></div>
+
+<h1>practice 右栏卡片 — demo 总览</h1>
+<div class="skinseg" id="skinseg">
+  <button type="button" data-skin="light" class="on">浅银</button>
+  <button type="button" data-skin="ink">深墨</button>
+</div>
+<div class="sub">
+  分支 <code>feat/practice-ui-iter-260920</code> · 全部是 <b>demo</b>（只碰 <code>docs/demos/</code>，未动生产模板）·
+  每张卡自带 <code>?audit=1</code> 自报实测。<br>
+  本机 <code>http://localhost:8771/practice-right-column-261003/</code> ·
+  iPad <code>http://10.0.0.5:8771/practice-right-column-261003/</code> ·
+  Tailscale <code>http://100.67.215.121:8771/practice-right-column-261003/</code>
+</div>
+
+<h2>★ 本轮修订 v3（2610062214 反馈落地）— 先看这里</h2>
+<div class="grid">
+
+  <div class="tile">
+    <div class="tile-hd"><b>① 练习计时卡 v3</b><span class="name">card-practice-timer</span><span class="auth">作者 agy</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">对应你 8 条：<b>开始不再自动出声</b>（改由节拍器开关控制）· 计时中<b>花开 + 音符气泡</b>已出现（实测 5 秒运行态：气泡露头、花纹 0→6 朵随进度长）· arc 与 panel 弧<b>同圆心</b>、<b>1 点 = 1 步</b>（30 点）、指针 <b>20:00→4:00</b>（1 分钟/步，30 步）· ± 与 <code>panel-foot</code> 同列对齐 · 744 档改<b>纵向重排</b> · speaker <b>删外框</b> · <b>下方三块并入本卡下区</b> · 新增麦克风入口（面板顶 <code>MIC</code> 键）。对照 v2：<a class="plain" href="dashboard-skin-01-v2.html" target="_blank">v2</a></div>
+    <div class="shot"><iframe src="dashboard-skin-01-v3.html" loading="lazy" title="D1 v3 预览"></iframe></div>
+    <div class="tile-ft"><a href="dashboard-skin-01-v3.html" target="_blank">打开 v3</a><a class="plain" href="dashboard-skin-01-v3.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>⑥ 今日时长卡 v3</b><span class="name">card-practice-duration</span><span class="auth">作者 agy</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">按你重给的参考图重做：深炭底 + 大圆角 + 顶部日期/标题/空心大时钟 + 橙色总量 pill；<b>rail 改细长圆胶囊</b>（橙色带内细白线：实线=练习、点划=未完，线上小字时间）；<b>深墨逐元素对比度</b>；单摆摆正；<b>两个 icon 按你那 6 行 prompt 复刻</b>。对照 v2：<a class="plain" href="practice-duration-card-01.html" target="_blank">v2</a></div>
+    <div class="shot"><iframe src="practice-duration-card-01-v3.html" loading="lazy" title="D6 v3 预览"></iframe></div>
+    <div class="tile-ft"><a href="practice-duration-card-01-v3.html" target="_blank">打开 v3</a><a class="plain" href="practice-duration-card-01-v3.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>② 节拍器卡 v3</b><span class="name">card-metronome</span><span class="auth">作者 grok</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">对应你 2610101121 两条：<b>主按钮文案太啰嗦</b>（启动节拍器 5 字）→「<b>开始 / 暂停</b>」2 字、52×128 r14 · <b>音色入口要成胶囊放启动按钮右侧</b> → 44 高 / r999 胶囊挂主按钮同一排（中心差 0）、试听移进抽屉、甲板高 190→124。声音太闷 → <b>5 种音色</b>（木鱼 / 电子滴答 / 808 低鼓 / 鼓边 / 清脆 blip）+ 卡内<b>音色选择器 + 试听</b>（纯 Web Audio 零依赖，选存放 localStorage）。已<b>删掉卡里那把不该出现的刻度尺</b>。对照 v2：<a class="plain" href="metronome-01-v2.html" target="_blank">v2</a>　｜　<b>pixel 主按钮重设计规格 + 可点对照页</b>（布点 A/B/C 三变体、文案 3 方案、试听 2 处理 待你拍）：<a class="plain" href="spec-pixel-d2-primary-261010.md" target="_blank">规格</a> <a class="plain" href="d2-primary-probe-pixel.html" target="_blank">对照页</a></div>
+    <div class="shot"><iframe src="metronome-01-v3.html" loading="lazy" title="D2 v3 预览"></iframe></div>
+    <div class="tile-ft"><a href="metronome-01-v3.html" target="_blank">打开 v3</a><a class="plain" href="metronome-01-v3.html?audit=1" target="_blank">自检 ?audit=1</a><a class="plain" href="d2-primary-probe-pixel.html" target="_blank">主按钮对照页</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>④ 老师要求卡 v3</b><span class="name">card-requests</span><span class="auth">作者 agy</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">对应你 2 条：<b>三档视口卡宽真实不同</b>（1133→600 / 744→440 / 440→408，按钮上直接标了 px）+ <b>拖动重影/卡顿修掉</b>（实测 <code>dragLayerCount:1</code>、<code>ghostLayers:0</code>）。对照 v2：<a class="plain" href="requests-card-01.html" target="_blank">v2</a></div>
+    <div class="shot"><iframe src="requests-card-01-v3.html" loading="lazy" title="D4 v3 预览"></iframe></div>
+    <div class="tile-ft"><a href="requests-card-01-v3.html" target="_blank">打开 v3</a><a class="plain" href="requests-card-01-v3.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>组合视图 v2（重定义）</b><span class="name">compose-02</span><span class="auth">作者 grok</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">你说「一团乱、错得离谱」→ <b>重定义目标</b>：不再是卡片列车，改成<b>贴近真实上线的一屏布局</b>（左栏计时 + 右栏卡片，每卡按契约完整展示不裁切，页面纵向滚动）。已修：计时卡高度够用 / 节拍器卡不再长尺子 / 变体选择器按你已选固化 / 舞台样式不再叠盖 / 记录卡折叠展开真的能点。实测 6 卡 <code>clipped:false</code>、<code>overlapArea:0</code>、无横向溢出。对照 v1：<a class="plain" href="compose-01.html" target="_blank">compose-01</a></div>
+    <div class="shot"><iframe src="compose-02.html" loading="lazy" title="组合页 v2 预览"></iframe></div>
+    <div class="tile-ft"><a href="compose-02.html" target="_blank">打开</a><a class="plain" href="compose-02.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+</div>
+
+<h2>上一轮（v2）交付留档 — 对照用</h2>
+<div class="grid">
+
+  <div class="tile">
+    <div class="tile-hd"><b>① 练习计时卡</b><span class="name">card-practice-timer</span><span class="auth">作者 agy（本轮九条修正 + 接共享尺子）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">九条修正已落：断点 bug 修好（三档宽度真接线 420/480/390，中段列宽跟着变）、<code>lyric-col</code> 已移除、mid 圆弧收小、± 归位、deck 放下方三块、衬线走 DESIGN.md token。刻度尺已接<b>生产共享件</b>（实测 60 刻度 + 红针 + 卷草纹 + 22 个气泡槽）。<code>?audit=1</code>。</div>
+    <div class="shot"><iframe src="dashboard-skin-01-v2.html" loading="lazy" title="D1 预览"></iframe></div>
+    <div class="tile-ft"><a href="dashboard-skin-01-v2.html" target="_blank">打开</a><a class="plain" href="dashboard-skin-01-v2.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>② 节拍器卡</b><span class="name">card-metronome</span><span class="auth">作者 agy（本轮四条修正 + 接共享尺子）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">4 粒 beat 灯 + knob 点击启停 + 拍声引擎（纯 Web Audio + lookahead）。修正已落：强弱拍默认关、启动钮缩小、五档速度钮（60 慢板 / 72 中板 / 82 萨丽哈★ / 96 小快板 / 120 双吐）、ruler-input 接生产共享件。</div>
+    <div class="shot"><iframe src="metronome-01-v2.html" loading="lazy" title="D2 预览"></iframe></div>
+    <div class="tile-ft"><a href="metronome-01-v2.html" target="_blank">打开</a><span class="plain">自检：页内「开始自检」按钮</span></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>③ 下方三块卡</b><span class="name">card-transport-blocks</span><span class="auth">作者 agy（本轮五条修正，留 A/B 变体）</span><span class="badge b-work">已交付 · 待你挑变体</span></div>
+    <div class="tile-desc">修正已落，并各留 A/B 让你挑：孔阵（蜂窝脉冲 / 金属沉头）、按钮（拟物凹面 / 扁平胶囊）、谱架（实体键 / 胶囊钮）；麦克风改成「开启麦克风」主动入口（默认关）。页内可直接切 A/B 对比。</div>
+    <div class="shot"><iframe src="dashboard-bottom-blocks-01-v2.html" loading="lazy" title="D3 预览"></iframe></div>
+    <div class="tile-ft"><a href="dashboard-bottom-blocks-01-v2.html" target="_blank">打开</a><a class="plain" href="dashboard-bottom-blocks-01-v2.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>④ 老师要求卡</b><span class="name">card-requests</span><span class="auth">作者 agy（本轮改成独立卡片）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">已改成<b>独立卡片</b>：3D 卡叠 deck（指针拖动 = 位移 + 旋转 + 淡出抛飞，揭示下一张，徽标 1/6 → 2/6）+ B2 分段排版（标点智能分段、教师备忘独立边框、全文可见）。旧弹窗版留作对照。</div>
+    <div class="shot"><iframe src="requests-card-01.html" loading="lazy" title="老师要求卡预览"></iframe></div>
+    <div class="tile-ft"><a href="requests-card-01.html" target="_blank">打开</a><a class="plain" href="requests-card-01.html?audit=1" target="_blank">自检 ?audit=1</a><a class="plain" href="requests-popout-v1-v2.html" target="_blank">旧弹窗版对照</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>⑤ 今日练习记录卡</b><span class="name">card-today-records</span><span class="auth">作者 grok 实现 · agy 设计探针</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">折叠/展开双态 + 3 个 heroic 数 + 列表明细 + 占比微条；3.5 滚动渐进模糊用 GSAP 逐帧。两皮肤对比度实测 0 处不合格。</div>
+    <div class="shot"><iframe src="today-records-01.html" loading="lazy" title="D5 预览"></iframe></div>
+    <div class="tile-ft"><a href="today-records-01.html" target="_blank">打开</a><a class="plain" href="today-records-01.html?expand=1&audit=1" target="_blank">展开+自检</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>⑥ 今日练习时长卡</b><span class="name">card-practice-duration</span><span class="auth">作者 hermes（我）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">按 <code>widget_prompt_ui.md</code> 做：日期栏 + 大号时钟 + 橙色总时长胶囊（57M）+ 实线练习/虚线休息时间轴 + 左下最近一次科目时长 + 右下节拍器与皇冠（+27 分 → 点亮）。数据与 ⑤ 同源。<code>?audit=1</code> = ASSERT_OK（含负控）。</div>
+    <div class="shot"><iframe src="practice-duration-card-01.html" loading="lazy" title="时长卡预览"></iframe></div>
+    <div class="tile-ft"><a href="practice-duration-card-01.html" target="_blank">打开</a><a class="plain" href="practice-duration-card-01.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>组合页（放一起）</b><span class="name">compose-01</span><span class="auth">作者 hermes（我）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">把各张卡按契约宽度装进<b>同一条右栏轨道</b>（460/420/400/—/460/380），横向延伸 + 松手吸附 + 440 档纵向堆叠。`?audit=1` = ASSERT_OK（5 卡全载入 / 卡宽逐张对齐契约 / 440 转 column）。</div>
+    <div class="shot"><iframe src="compose-01.html" loading="lazy" title="组合页预览"></iframe></div>
+    <div class="tile-ft"><a href="compose-01.html" target="_blank">打开</a><a class="plain" href="compose-01.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+</div>
+
+<h2>骨架 / 共享件 / 自检</h2>
+<div class="grid">
+
+  <div class="tile">
+    <div class="tile-hd"><b>向右延伸卡片骨架</b><span class="name">card-dashboard-skeleton-01</span><span class="auth">作者 hermes（我）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">横向轨道 + 松手吸附 <code>scroll-snap</code> + ←/→ Home/End 切卡 + 440 档纵向堆叠。<code>?audit=1</code> = ASSERT_OK。</div>
+    <div class="shot"><iframe src="card-dashboard-skeleton-01.html" loading="lazy" title="骨架预览"></iframe></div>
+    <div class="tile-ft"><a href="card-dashboard-skeleton-01.html" target="_blank">打开</a><a class="plain" href="card-dashboard-skeleton-01.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+  <div class="tile">
+    <div class="tile-hd"><b>共享刻度尺自检</b><span class="name">ruler-shared-check</span><span class="auth">作者 hermes（我）</span><span class="badge b-ok">已交付</span></div>
+    <div class="tile-desc">生产刻度尺逐行切片（气泡池 60 格 / 卷草纹 / 开花 / 红针 / 拖拽 / 深墨覆盖）。<code>?audit=1</code> = ASSERT_OK。</div>
+    <div class="shot"><iframe src="ruler-shared-check.html" loading="lazy" title="共享尺子预览"></iframe></div>
+    <div class="tile-ft"><a href="ruler-shared-check.html" target="_blank">打开</a><a class="plain" href="ruler-shared-check.html?audit=1" target="_blank">自检 ?audit=1</a></div>
+  </div>
+
+</div>
+
+<h2>作者归属（按实际产出，不是计划分配）</h2>
+<table class="atable">
+  <tr><th>模块</th><th>文件</th><th>做了什么</th><th>作者</th></tr>
+  <tr><td>① 练习计时卡</td><td><code>dashboard-skin-01-v2.html</code></td><td>九条修正（断点 bug / 删 lyric-col / mid 圆弧 / ± 归位 / deck 位）+ 接生产共享刻度尺</td><td class="a">agy</td></tr>
+  <tr><td>② 节拍器卡</td><td><code>metronome-01-v2.html</code></td><td>四条修正（强弱拍默认关 / knob 启停 / 启动钮缩小 / 五档速度钮）+ 接共享刻度尺</td><td class="a">agy</td></tr>
+  <tr><td>③ 下方三块卡</td><td><code>dashboard-bottom-blocks-01-v2.html</code></td><td>五条修正（孔阵 / speaker 位置 / 扁平胶囊 / 谱架胶囊 b / 麦克风主动开启）+ 自引用 token 修复；留 A/B 变体</td><td class="a">agy</td></tr>
+  <tr><td>④ 老师要求卡</td><td><code>requests-card-01.html</code></td><td>从 pop-out 弹窗改成独立卡片 + 3D 卡叠 deck + B2 分段排版</td><td class="a">agy</td></tr>
+  <tr><td>⑤ 今日记录卡</td><td><code>today-records-01.html</code></td><td>折叠/展开双态 + heroic 数 + 占比微条 + 滚动渐进模糊</td><td class="a">grok</td></tr>
+  <tr><td>⑤ 的设计探针</td><td><code>d5-design-probe.html</code></td><td>折叠展开 × 模糊方案 × 载体的设计探索（给 grok 实现用）</td><td class="a">agy</td></tr>
+  <tr><td>⑥ 今日时长卡</td><td><code>practice-duration-card-01.html</code></td><td>新做（包豪斯暗黑 widget：时钟 / 橙色胶囊 / 练习-休息时间轴 / 皇冠）</td><td class="a">hermes</td></tr>
+  <tr><td>轨道骨架</td><td><code>card-dashboard-skeleton-01.html</code></td><td>向右延伸轨道 + 松手吸附 + 键盘切卡 + 440 纵向堆叠；卡片契约文档</td><td class="a">hermes</td></tr>
+  <tr><td>共享刻度尺</td><td><code>shared/ruler-production.{css,js}</code></td><td>从生产 <code>practice.html</code> 逐行切片（刻度/红针/气泡池/卷草纹/拖拽）+ 生成器 + 接入自检页</td><td class="a">hermes</td></tr>
+  <tr><td>总览页 / 组合页</td><td><code>index.html</code> · <code>compose-01.html</code></td><td>这一页 + 六卡装进同一条轨道</td><td class="a">hermes</td></tr>
+  <tr><td>门禁三把尺子</td><td><code>scripts/verify-demos.py</code> · <code>token-contrast.py</code> · <code>audit-contrast.js</code></td><td>静态八项 + token 契约 + 对比度配对门禁 + 浏览器实测</td><td class="a">hermes</td></tr>
+  <tr><td>对比度修复</td><td>六页 <code>--dash-*-text</code></td><td>浅银品牌色压深到 AA（修复脚本 + 证据链 <code>contrast-repair-log-261003.md</code>）；内联路由改造由 grok 做</td><td class="a">hermes + grok</td></tr>
+  <tr><td>v1→v2 皮肤与 token 语义化</td><td>六页 v2</td><td>换肤走 <code>--dash-*</code>、token 语义化、深墨皮肤对比度（轮 1–4）</td><td class="a">grok</td></tr>
+  <tr><td>旧弹窗三变体</td><td><code>requests-popout-v1-v2.html</code></td><td>D4 的 A/B/C 三种浏览变体（引子，现已被 ④ 取代）</td><td class="a">agy</td></tr>
+  <tr><td>codex</td><td>—</td><td>派出 1 小时 0 文件、会话中途重启、两次卡等确认 → 已关闭，无交付</td><td class="a">codex</td></tr>
+</table>
+<p class="note" style="margin-top:12px">
+  改派说明：本轮 plan（<code>sprints/sprint-26100401-card-dashboard-2026-10-04/plan-26100401.md</code>）里 W1/W3 初版写的是 grok，
+  实际因 grok 周额度只剩 5% → W1/W2/W3 转给 agy，W4/W5/W6 由 hermes（我）接，W7 给 agy；codex 试过一轮后关闭。
+</p>
+
+<h2>文档与证据</h2>
+<ul class="docs">
+  <li><a href="交付台账-261011.md" target="_blank">交付台账-261011.md</a><span>★ 最新（demo v3.0）：D1 三处修正实测 / 朱橙合作式融入核心 design / compose-03 组合自选台实测 + 负控 / 并入计划</span></li>
+  <li><a href="compose-03.html" target="_blank">compose-03.html</a><span>★ 组合自选台（demo v3.0）：5 预设 + 8 模块自由勾选 · 一屏单行 · 超宽右滑</span></li>
+  <li><a href="plan-merge-261010f.md" target="_blank">plan-merge-261010f.md</a><span>并入计划：左栏票根 × 右栏六卡 4 步走 + token 映射表 + 风险对策 + 里程碑</span></li>
+  <li><a href="spec-agy-d1b-261010f.md" target="_blank">spec-agy-d1b-261010f.md</a><span>D1 三处修正规格（谱架键中轴 / run 态单位 / 孔阵波纹）</span></li>
+  <li><a href="交付台账-261010e.md" target="_blank">交付台账-261010e.md</a><span>★ 最新（demo v2.9）：dad 追加 5 条 → 逐条实测（readout 分钟小字 / compose 窄槽降级 / 朱橙主色统一 / 后端沙盒）</span></li>
+  <li><a href="交付台账-261010d.md" target="_blank">交付台账-261010d.md</a><span>★ 最新（demo v2.8）：dad 2610102107 逐条 → 改前 → 改后实测（D1 三条 / D6 一条 / D2 四条 + 生图 + v5 对照卡）</span></li>
+  <li><a href="spec-agy-d2-261010d.md" target="_blank">spec-agy-d2-261010d.md</a><span>agy：D2 744 重构与三处交互修复规格（含改前根因表 + 自报实测）</span></li>
+  <li><a href="spec-pixel-d6-v5-261010d.md" target="_blank">spec-pixel-d6-v5-261010d.md</a><span>pixel：D6 贴近 dash + 细体 + 744 对照卡 v5</span></li>
+  <li><a href="交付台账-261010c.md" target="_blank">交付台账-261010c.md</a><span>★ 最新（demo v2.7）：dad 2610101554 逐条 → 改前诊断 → 改后实测（D1 四条 / D6 三条 / D2 三条）</span></li>
+  <li><a href="spec-pixel-a2a3-261010.md" target="_blank">spec-pixel-a2a3-261010.md</a><span>pixel：A2 谱架键重做 + A3 diag-card 单框重写（可点对照页 a2a3-probe-pixel.html，含基线负控、三档×两皮肤对比度矩阵）</span></li>
+  <li><a href="交付台账-261010b.md" target="_blank">交付台账-261010b.md</a><span>★ 最新（demo v2.6）：dad 2610101121 逐条 → 改前实测根因 → 改后实测值（D1 三条 / D6 三条 / D2 两条 / compose 一条）</span></li>
+  <li><a href="spec-pixel-d2-primary-261010.md" target="_blank">spec-pixel-d2-primary-261010.md</a><span>pixel 的 D2 主按钮重设计规格（含可点对照页 d2-primary-probe-pixel.html、布点 A/B/C、负控 3 遍）</span></li>
+  <li><a href="交付台账-261010.md" target="_blank">交付台账-261010.md</a><span>★ 最新（demo v2.5）：dad 2610100854 逐条 → 改前实测根因 → 改后实测值（D1 四条 / D6 两条 / D2 两条 + 10 点清单）</span></li>
+  <li><a href="plan-261010.md" target="_blank">plan-261010.md</a><span>本轮 plan：三方不同心/折角/点域差 88°/页脚溢出 的实测根因 + 每条改法与断言 + 分工</span></li>
+  <li><a href="交付台账-261009d.md" target="_blank">交付台账-261009d.md</a><span>demo v2.4 台账（上一轮：拱回到 mask / 点数与扫光回归 / A 甲板分级 + 音色抽屉）</span></li>
+  <li><a href="plan-261009c.md" target="_blank">plan-261009c.md</a><span>本轮 plan：拱根因（缺口顶点落进尺子行）+ 逐条改法与断言</span></li>
+  <li><a href="交付台账-261009b.md" target="_blank">交付台账-261009b.md</a><span>demo v2.3 台账（上一轮）</span></li>
+  <li><a href="交付台账-261009.md" target="_blank">交付台账-261009.md</a><span>demo v2.2 台账（上一轮）</span></li>
+  <li><a href="交付台账-261007.md" target="_blank">交付台账-261007.md</a><span>demo v2.0 台账（首版总表）</span></li>
+  <li><a href="plan-261006.md" target="_blank">plan-261006.md</a><span>本轮施工计划（问题→根因→方案→分工→验收标准）</span></li>
+  <li><a href="缺口清单-261006.md" target="_blank">缺口清单-261006.md</a><span>上一轮：去掉「做到」后只剩 4 组（等你拍板 / 要素材接口 / 已定不做 / 工程 backlog）</span></li>
+  <li><a href="review-agy-requirements-261005.md" target="_blank">review-agy-requirements-261005.md</a><span>需求逐条对照（54 项：做到 47 / 部分 5 / 未做 2 / 做不到 0），含旧对照表纠错</span></li>
+  <li><a href="review-agy-uiux-fixes-261005.md" target="_blank">review-agy-uiux-fixes-261005.md</a><span>六维审计 + 修复（13 项：已修 12 / 免修 1），含改前→改后实测数字</span></li>
+  <li><a href="card-contract.md" target="_blank">card-contract.md</a><span>卡片契约：6 张卡的 min/默认/max 宽、布局规则、分支口径、§5 共享刻度尺接法</span></li>
+  <li><a href="contrast-repair-log-261003.md" target="_blank">contrast-repair-log-261003.md</a><span>深墨对比度修复证据链（改前 60 处不合格 → 改后 0；含工具自身两次假报的修正）</span></li>
+  <li><a href="token-spec.md" target="_blank">token-spec.md</a><span>换肤 token 规格（浅银/深墨两套值）</span></li>
+  <li><a href="v2-changes.md" target="_blank">v2-changes.md</a><span>v1 → v2 改动清单</span></li>
+  <li><a href="需求对照表-261003.md" target="_blank">需求对照表-261003.md</a><span>需求逐条对照：实现 15 / 部分 4 / 未做 5</span></li>
+  <li><a href="d5-design-probe.html" target="_blank">d5-design-probe.html</a><span>D5 设计探针（折叠展开 × 模糊方案 × 载体对照）</span></li>
+</ul>
+
+<div class="note">
+  这是 demo 集合页，不是生产页面：<b>不改</b> <code>src/</code>、<b>不新增依赖</b>、未提交未推送（等你确认后再谈迁生产）。<br>
+  单卡顶部都能切「1133×744 / 744×1133 / 440×956」视口与「浅银 / 深墨」皮肤；<code>?audit=1</code> 会打印该卡的自报实测 JSON。
+</div>
+
+<script>
+document.getElementById('skinseg').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+  else delete document.documentElement.dataset.skin;
+  this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+});
+</script>
+</body>
+</html>

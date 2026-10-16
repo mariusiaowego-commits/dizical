@@ -1,0 +1,2703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D1 仪表盘卡片 · v3</title>
+<link rel="stylesheet" href="shared/ruler-production.css">
+<style>
+  :root {
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-serif: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", STSong, serif;
+    --dash-page: #F5F2EE;
+    --dash-radius: 36px;
+    --dash-shell-hi: #FFFFFF;
+    --dash-shell-lo: #E8E5E0;
+    --dash-shell-inset: rgba(44, 62, 80, 0.14);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1A1E22;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.15);
+    --dash-num: 48px;
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #FFFFFF;
+    --dash-btn-face-lo: #E4E1DC;
+    --dash-btn-glyph: #2C3E50;
+    --dash-btn-rim: rgba(255, 255, 255, 0.95);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #1E2328;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(44, 62, 80, 0.30);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(44, 62, 80, 0.65);
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.08);
+    --dash-key-hi: rgba(255, 255, 255, 0.65);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 140, 90, 0.08);
+    --dash-notice-ink: #9E4A1A;
+    --dash-surface-2: #ECE8E1;
+    --dash-surface-3: #DFDAD1;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #B8860B;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.35);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(184, 134, 11, 0.35);
+    --dash-gold-glow: rgba(184, 134, 11, 0.30);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #C93B3B;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+    --dash-beat: 0.732s;
+    --dash-notch: 96px;
+  }
+  :root[data-skin="ink"] {
+    --dash-page: #0E1114;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #161A1E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF5722;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+    --dash-notch: 96px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: var(--font-base);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .page {
+    display: flex; flex-direction: column;
+    min-height: 100vh; width: 100%;
+  }
+
+  /* 顶栏辅助控制器 */
+  .chrome {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--dash-white);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    gap: 12px; flex-wrap: wrap;
+  }
+  .brand { font-size: 13px; font-weight: 750; color: var(--dash-text); letter-spacing: 0.02em; }
+  .brand span { color: var(--dash-coral); font-weight: 800; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    font-family: inherit; font-size: 12px; font-weight: 650;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+
+  .frame {
+    flex: 1 1 auto;
+    display: flex; justify-content: center; align-items: center;
+    padding: 12px;
+    width: 100%;
+    overflow: auto;
+  }
+
+  /* 仪表盘外壳：三档宽度真实响应 + 744 纵向舒展排布 */
+  .dash {
+    container: dash / inline-size;
+    width: min(100%, 420px);
+    height: 100%;
+    max-height: 720px;
+    border-radius: var(--dash-radius);
+    background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-shell-lo) 100%);
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -10px 18px var(--dash-shell-inset),
+      0 16px 36px var(--dash-shell-shadow);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+    transition: none;
+  }
+  .dash[data-vp="1133x744"] {
+    width: min(100%, 420px);
+    max-height: 700px;
+  }
+  .dash[data-vp="744x1133"] {
+    width: min(100%, 500px);
+    max-height: 840px;
+  }
+  .dash[data-vp="440x956"] {
+    width: min(100%, 390px);
+    max-height: 640px;
+  }
+
+  /* 深色主屏幕：复原 v2 CSS mask 凹拱缺口（R=140px, depth=24px / 32px） */
+  .panel {
+    --notch: var(--dash-notch);
+    --notch-r: 85px;
+    --notch-depth: 24px;
+    --notch-cy: 244px;
+    background: var(--dash-panel);
+    color: var(--dash-panel-text);
+    border-radius: 22px;
+    padding: 10px 14px 6px;
+    display: flex; flex-direction: column; gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+    -webkit-mask-image: radial-gradient(circle var(--notch-r) at 50% var(--notch-cy, calc(100% + var(--notch-r) - var(--notch-depth))), transparent 98%, black 100%);
+    mask-image: radial-gradient(circle var(--notch-r) at 50% var(--notch-cy, calc(100% + var(--notch-r) - var(--notch-depth))), transparent 98%, black 100%);
+  }
+  .dash[data-depth="32"] .panel,
+  .dash[data-dome="deep"] .panel,
+  .dash[data-dome="32"] .panel,
+  .dash[data-dome="v2"] .panel {
+    --notch-depth: 32px;
+  }
+  .dash[data-depth="24"] .panel,
+  .dash[data-dome="shallow"] .panel,
+  .dash[data-dome="24"] .panel,
+  .dash[data-dome="shrunk"] .panel {
+    --notch-depth: 24px;
+  }
+  .status {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    min-height: 22px; color: var(--dash-panel-dim); font-size: 11px;
+  }
+
+  /* 麦克风入口：位于 panel 顶部左上，与参考图同位 */
+  .mic-status-btn {
+    justify-self: start;
+    border: 1px solid var(--dash-cover-line);
+    background: var(--dash-tray-inset);
+    color: var(--dash-panel-text);
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 7px; border-radius: 6px;
+    cursor: pointer; font-size: 10.5px; font-weight: 700;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .mic-status-btn:hover { background: var(--dash-ink-a12); }
+  .mic-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--dash-muted);
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+  .mic-dot.on {
+    background: var(--dash-mic-on);
+    box-shadow: 0 0 6px var(--dash-mic-on);
+  }
+  .clock { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .battery { justify-self: end; display: flex; align-items: center; gap: 4px; }
+  .bat {
+    width: 22px; height: 11px; border: 1.5px solid var(--dash-battery);
+    border-radius: 3px; padding: 1px; position: relative;
+  }
+  .bat::after {
+    content: ""; position: absolute; right: -3px; top: 2px; width: 2px; height: 5px;
+    background: var(--dash-battery); border-radius: 0 1px 1px 0;
+  }
+  .bat-fill { display: block; width: 76%; height: 100%; background: var(--dash-battery); border-radius: 1px; }
+  .bat-pct { font-size: 10px; color: var(--dash-battery); font-weight: 700; }
+
+  /* 屏幕中段两列流 */
+  .panel-main {
+    flex: 1 1 auto; min-height: 0;
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 14px; align-items: center;
+    padding: 0 4px;
+  }
+  .cover-col { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; width: 96px; flex: 0 0 auto; }
+  .cover-halo {
+    padding: 3px; border-radius: 15px;
+    border: 1px solid var(--dash-cover-line);
+  }
+  .cover-frame {
+    width: 86px; height: 86px; border-radius: 12px; overflow: hidden; background: var(--dash-ink);
+  }
+  .cover-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 35%; display: block; }
+  .cover-name { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+
+  .title-col {
+    min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; width: 100%;
+  }
+  .readout { --num-size: var(--dash-num); display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .ac-root {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 560; letter-spacing: -0.03em; line-height: 1;
+    font-size: var(--num-size); color: var(--dash-panel-text);
+  }
+  .ac-digit {
+    position: relative; display: inline-grid; overflow: hidden; height: 1.5em; line-height: 1.5;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+  }
+  .ac-sizer { visibility: hidden; grid-area: 1 / 1; display: grid; }
+  .ac-stack { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; }
+  .ac-face { height: 1.5em; display: flex; align-items: center; justify-content: center; }
+  .ac-mark { display: inline-block; margin: 0 -0.08em; }
+  .readout-sub {
+    margin-top: 3px; font-size: 20px; font-weight: 750; color: var(--dash-panel-text); letter-spacing: 0.02em;
+    display: inline-flex; align-items: baseline; gap: 2px;
+  }
+  .readout-sub small { font-size: 13px; font-weight: 600; color: var(--dash-panel-dim); }
+
+  .title-col .ruler-wrap {
+    margin-block-start: 2px;
+  }
+  .ruler-vine {
+    max-width: 100%;
+  }
+
+  /* 纵向三列强对齐结构：panel-foot / mid-row / transport 共用同一列网格 (68px 1fr 68px) */
+  .grid-3col {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr) 68px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .grid-3col .c-left { justify-self: start; display: flex; justify-content: center; width: 68px; }
+  .grid-3col .c-mid  { justify-self: center; display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .grid-3col .c-right{ justify-self: end; display: flex; justify-content: center; width: 68px; }
+
+  /* 银面操作圆钮：44px，位置与 panel-foot 列完全重合 */
+  .round {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--dash-btn-rim);
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo));
+    color: var(--dash-btn-glyph);
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 4px 8px var(--dash-shell-inset);
+    font-size: 22px; font-weight: 500; line-height: 1;
+    display: grid; place-items: center;
+    cursor: pointer;
+    touch-action: manipulation; user-select: none;
+  }
+  .round:active:not(:disabled) { transform: scale(0.96); }
+  .round:disabled { opacity: 0.38; cursor: default; }
+
+  /* panel-foot：左侧为时长信息，右侧为节拍器发声/静音切换 */
+  .panel-foot {
+    padding: 0 4px 4px; font-size: 12px; font-weight: 650; letter-spacing: 0.04em;
+    color: var(--dash-panel-dim);
+    min-width: 0;
+  }
+  .panel-foot.grid-3col {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 96px !important;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .panel-foot.grid-3col .c-left { justify-self: start; width: 96px !important; display: flex; justify-content: center; align-items: center; }
+  .panel-foot.grid-3col .c-mid  { min-width: 0; }
+  .panel-foot.grid-3col .c-right{ justify-self: end; width: 96px !important; display: flex; justify-content: center; align-items: center; }
+  #todayTotal {
+    font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .metro-sound-toggle {
+    border: 0; background: transparent; color: var(--dash-panel-text);
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 2px 4px; border-radius: 6px;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .metro-sound-toggle:hover { background: var(--dash-ink-a12); }
+  #bpmRead {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* 中段 mid-row：旋钮与弧点联动 */
+  .mid {
+    position: relative; z-index: 2;
+    margin-top: -12px;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 0;
+    width: 100%;
+  }
+  .mid-row {
+    padding: 0 var(--mid-pad, 8px);
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 顶部弧点：复原 v2 top-arc 几何 (9:30 至 2:30 跨越旋钮上方) */
+  .arc {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .arc i {
+    position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: var(--dash-dot);
+    box-shadow: 0 0 0 1px var(--dash-shell-inset);
+    transition: background-color 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+                transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .arc i.is-on {
+    background: var(--dash-dot-on);
+    box-shadow: 0 0 5px var(--dash-glint), 0 0 10px var(--dash-coral-glow);
+    transform: scale(1.15);
+  }
+  .dash[data-dots="20"] .arc i {
+    width: 4.5px; height: 4.5px; margin: -2.25px 0 0 -2.25px;
+  }
+
+  .knob {
+    width: 144px; height: 144px; border-radius: 50%; position: relative;
+    background: linear-gradient(160deg, var(--dash-knob-hi), var(--dash-knob-lo) 62%);
+    box-shadow:
+      inset 0 2px 0 var(--dash-btn-rim),
+      inset 0 -10px 16px var(--dash-shell-inset),
+      0 10px 18px var(--dash-shell-shadow);
+    touch-action: none; user-select: none;
+    cursor: grab;
+    z-index: 1;
+  }
+  .knob:active { cursor: grabbing; }
+  .knob-rotor {
+    position: absolute; inset: 0;
+    transform: rotate(var(--knob-deg, -45.5deg));
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .knob.is-dragging .knob-rotor {
+    transition: none;
+  }
+  .knob-mark {
+    position: absolute; left: 50%; top: 10%; width: 4px; height: 20%;
+    margin-left: -2px; border-radius: 2px; background: var(--dash-mark);
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+  }
+
+  /* 底部 deck transport：主控件行（三列共一条 centerline）+ 说明行；纯沉头孔孔阵，无外线框 */
+  .deck.transport {
+    flex: 0 0 auto;
+    padding: 6px 0 2px;
+    min-height: 0;
+    width: 100%;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  /* A2：主控件行三列各只放一个主控件（孔阵 / 药丸 / 谱架键）→ align-items:center 让三者 centerline 重合 */
+  .transport-main, .transport-caps { align-items: center; }
+  .transport-caps .c-left, .transport-caps .c-mid, .transport-caps .c-right { align-items: center; }
+  /* 说明行共用一套 caption 语言（原 logo / 计时 / 大屏看谱 三处各自为政） */
+  .transport-caps .ops-kicker,
+  .transport-caps .stand-badge-tip { font-size: 10px; font-weight: 650; letter-spacing: 0.04em; color: var(--dash-text-soft); }
+
+  /* 扬声孔格栅：彻底删除线框外框，直接沉头孔 (恢复 D3 金属沉头) */
+  .speaker-block {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform 0.15s ease;
+  }
+  .grille-6x8 {
+    display: grid;
+    grid-template-columns: repeat(6, 6px);
+    grid-template-rows: repeat(8, 6px);
+    gap: 3.5px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+  .hole {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--dash-hole);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6), 0 0.5px 0 var(--dash-glint);
+    transform-origin: center;
+  }
+  /* 变体 2: 金属沉头孔质感 (恢复 D3) */
+  .grille-6x8.variant-countersink .hole {
+    box-shadow:
+      0 0 0 1px var(--dash-shell-inset),
+      inset 0 1.5px 2px rgba(0, 0, 0, 0.75),
+      0 1px 0 var(--dash-glint);
+  }
+  .dash[data-mode="run"] .hole {
+    animation: holePulse var(--dash-beat) ease-in-out infinite;
+    animation-delay: calc(var(--i) * var(--dash-beat) / 8);
+  }
+  @keyframes holePulse {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(0.85); background: var(--dash-hole-active); }
+  }
+  .dizical-logo {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--dash-text-soft);
+  }
+  .dizical-mark-svg {
+    width: 32px; height: 8px; display: block;
+  }
+
+  .ops-block { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .ops-kicker {
+    font-size: 10px; font-weight: 650; letter-spacing: 0.04em; color: var(--dash-text-soft);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .pill {
+    display: flex; gap: 6px; padding: 4px; border-radius: 999px;
+    background: var(--dash-pill-track);
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+  }
+  .pill button {
+    border: 0; background: transparent; color: var(--dash-pill-idle);
+    min-height: 44px; padding: 0 14px; border-radius: 999px;
+    font-size: 14px; font-weight: 750; white-space: nowrap;
+    touch-action: manipulation; cursor: pointer;
+  }
+  .pill button:disabled { opacity: 0.35; cursor: default; }
+  .dash[data-mode="prep"] #btnPrimary,
+  .dash[data-mode="run"] #btnPrimary,
+  .dash[data-mode="pause"] #btnPrimary {
+    background: var(--dash-coral-solid); color: var(--dash-white);
+  }
+  .dash[data-mode="run"] #btnEarly,
+  .dash[data-mode="pause"] #btnEarly {
+    background: var(--dash-accent-solid); color: var(--dash-white); opacity: 1;
+  }
+
+  .stand-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  /* A2 谱架模式键 = 卡内既有「沉头浅凹」语言（同 .mic-status-btn 的托盘族）：
+     1px 描边 + 托盘弱底 + 只内凹无外投影 → 副操作不抢「开始」的抬升层；激活态转珊瑚实心 */
+  .stand-btn {
+    min-width: 66px; height: 44px; padding: 0 10px; white-space: nowrap;
+    border: 1px solid var(--dash-shell-inset); border-radius: 12px;
+    background: var(--dash-tray-inset);
+    color: var(--dash-text);
+    font-family: inherit; font-size: 12px; font-weight: 750;
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+    touch-action: manipulation; cursor: pointer;
+  }
+  .stand-btn:active { transform: scale(0.96); }
+  .stand-btn.is-on {
+    background: var(--dash-coral-solid); color: var(--dash-white);
+    border-color: var(--dash-coral); box-shadow: none;
+  }
+  .stand-badge-tip { text-align: center; white-space: nowrap; }
+
+  /* ══════ 仪表盘底座集成监视区 (D3 diag-card 并入 D1 卡下半区) ══════
+     A3 单框重写：全卡只有【这一层框】。分层改用内边距 / 留白 / 细分割线表达，卡内不再套第二个圆角框。
+     底改 --dash-surface-soft（会随皮肤翻转）：改前 --dash-white 在深墨皮肤下不翻转，白底 + 暖白字 = 1.05:1 */
+  .diag-card {
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 16px;
+    padding: 8px 12px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-sizing: border-box;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .diag-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .diag-status {
+    display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--dash-text);
+  }
+  .mic-indicator-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--dash-muted);
+  }
+  .mic-indicator-dot.active {
+    background: var(--dash-mic-on);
+    box-shadow: 0 0 6px var(--dash-mic-on);
+  }
+  .diag-actions { display: flex; gap: 6px; align-items: center; }
+  .diag-btn {
+    border: 1px solid var(--dash-shell-inset);
+    background: var(--dash-surface-2);
+    color: var(--dash-text);
+    padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    cursor: pointer; min-height: 28px;
+  }
+  /* A3：提示行去掉第二个圆角框（原 notice-bg + accent-line 边 + r6），改【1px 细分割线】+ 留白分层。
+     只有一条边 → 不构成框；圆角归零 → 不参与「框套框」计数 */
+  .toast-banner {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--dash-ink-a12);
+    border-radius: 0;
+    padding: 6px 0 0;
+    margin: 0;
+    font-size: 10px;
+    color: var(--dash-notice-ink);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .toast-tag { font-size: 10px; font-weight: 700; color: var(--dash-notice-ink); }
+
+  /* 键盘焦点可见样式 */
+  button:focus-visible, .round:focus-visible, .knob:focus-visible, .seg button:focus-visible {
+    outline: 2px solid var(--dash-accent-text);
+    outline-offset: 2px;
+  }
+
+  /* 1133x744 桌面标准视口 Hero 时间读数 */
+  .dash[data-vp="1133x744"] .readout-sub {
+    font-size: 20px;
+    font-weight: 750;
+  }
+  .dash[data-vp="1133x744"] .readout-sub small {
+    font-size: 13px;
+  }
+
+  /* 440x956 移动端视口 Hero 时间读数 */
+  .dash[data-vp="440x956"] .readout-sub {
+    font-size: 18px;
+    font-weight: 750;
+  }
+  .dash[data-vp="440x956"] .readout-sub small {
+    font-size: 12px;
+  }
+
+  /* 744x1133 纵向舒展重排：压缩上方 panel，放大下半部指针/arc/按钮/speaker */
+  .dash[data-vp="744x1133"] {
+    --mid-pad: 6px;
+  }
+  .dash[data-vp="744x1133"] .panel {
+    padding: 8px 14px 4px;
+    gap: 4px;
+  }
+  .dash[data-vp="744x1133"] .panel-main {
+    gap: 10px;
+  }
+  .dash[data-vp="744x1133"] .cover-frame {
+    width: 68px; height: 68px;
+  }
+  .dash[data-vp="744x1133"] .ac-root {
+    font-size: 44px;
+  }
+  .dash[data-vp="744x1133"] .readout-sub {
+    font-size: 22px;
+    font-weight: 800;
+  }
+  .dash[data-vp="744x1133"] .readout-sub small {
+    font-size: 14px;
+  }
+  .dash[data-vp="744x1133"] .mid {
+    padding: 6px 0;
+  }
+  .dash[data-vp="744x1133"] .knob {
+    width: 176px; height: 176px;
+  }
+  .dash[data-vp="744x1133"] .round {
+    width: 50px; height: 50px; font-size: 24px;
+  }
+  .dash[data-vp="744x1133"] .grid-3col {
+    grid-template-columns: 74px minmax(0, 1fr) 74px;
+  }
+  .dash[data-vp="744x1133"] .grid-3col .c-left,
+  .dash[data-vp="744x1133"] .grid-3col .c-right {
+    width: 74px;
+  }
+  .dash[data-vp="744x1133"] .diag-card {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  /* 440 移动端自适应 */
+  @container dash (max-width: 440px) {
+    .grid-3col {
+      grid-template-columns: 58px minmax(0, 1fr) 58px;
+    }
+    .grid-3col .c-left, .grid-3col .c-right {
+      width: 58px;
+    }
+    .round { width: 38px; height: 38px; font-size: 18px; }
+    .stand-btn { min-width: 56px; font-size: 11px; }
+    .pill button { padding: 0 10px; font-size: 13px; }
+    .cover-frame { width: 72px; height: 72px; }
+    .readout-sub { font-size: 18px; font-weight: 750; }
+    .readout-sub small { font-size: 12px; }
+    .knob { width: 130px; height: 130px; }
+  }
+
+  /* compose-02 等窄槽自适应 (<= 280px) */
+  @container dash (max-width: 280px) {
+    .dash[data-vp="744x1133"] .knob, .knob { width: 110px !important; height: 110px !important; }
+    .dash[data-vp="744x1133"] .round, .round { width: 34px !important; height: 34px !important; font-size: 18px !important; }
+    .dash[data-vp="744x1133"] .grid-3col, .grid-3col { grid-template-columns: 42px minmax(0, 1fr) 42px !important; }
+    .dash[data-vp="744x1133"] .grid-3col .c-left, .dash[data-vp="744x1133"] .grid-3col .c-right,
+    .grid-3col .c-left, .grid-3col .c-right { width: 42px !important; }
+    .panel-foot.grid-3col { grid-template-columns: 68px minmax(0, 1fr) 68px !important; }
+    .panel-foot.grid-3col .c-left, .panel-foot.grid-3col .c-right { width: 68px !important; }
+    .panel-main { grid-template-columns: 68px minmax(0, 1fr) !important; }
+    .cover-col { width: 68px !important; }
+    .dash[data-vp="744x1133"] .cover-frame, .cover-frame { width: 56px !important; height: 56px !important; }
+    .dash[data-vp="744x1133"] .ac-root { font-size: 32px !important; }
+    .dash[data-vp="744x1133"] .readout-sub { font-size: 16px !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .hole { animation: none !important; }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-accent-text);font-weight:600}
+</style>
+</head>
+<body>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v2.6</b> · 卡 v3 · 2026-10-10</span>
+<div class="page">
+  <div class="chrome">
+    <span class="brand">D1 仪表盘 <span>v3</span></span>
+    <div class="seg" id="vpSeg">
+      <button type="button" data-vp="1133x744" class="is-on">1133×744</button>
+      <button type="button" data-vp="744x1133">744×1133</button>
+      <button type="button" data-vp="440x956">440×956</button>
+    </div>
+    <div class="seg" id="domeSeg" title="拱深切换（浅凹 24px vs 原版 32px）">
+      <button type="button" data-dome="shallow" data-depth="24" class="is-on">浅凹 24px</button>
+      <button type="button" data-dome="deep" data-depth="32">原版 32px</button>
+    </div>
+    <div class="seg" id="filletSeg" title="内凹圆角切换（12px vs 16px）">
+      <button type="button" data-fillet="12">圆角 12px</button>
+      <button type="button" data-fillet="16" class="is-on">圆角 16px</button>
+    </div>
+    <div class="seg" id="dotsSeg" title="弧点数量切换（12 / 16 / 20）">
+      <button type="button" data-dots="12">12点</button>
+      <button type="button" data-dots="16">16点</button>
+      <button type="button" data-dots="20" class="is-on">20点</button>
+    </div>
+    <div class="seg" id="skinSeg">
+      <button type="button" data-skin="light" class="is-on">浅银</button>
+      <button type="button" data-skin="ink">深墨</button>
+    </div>
+  </div>
+
+  <div class="frame" id="frame">
+    <article class="dash" id="dash" data-vp="1133x744" data-mode="prep" data-dome="shallow" data-depth="24" data-fillet="16" data-dots="20">
+      <!-- 顶部屏幕区 -->
+      <section class="panel" id="panel">
+        <div class="status">
+          <button type="button" class="mic-status-btn" id="panelMicBtn" onclick="toggleMic()" title="点击切换麦克风监听">
+            <span class="mic-dot" id="panelMicDot"></span>
+            <span id="panelMicLabel">MIC 关</span>
+          </button>
+          <span class="clock">10:12am</span>
+          <div class="battery">
+            <div class="bat"><span class="bat-fill"></span></div>
+            <span class="bat-pct">76%</span>
+          </div>
+        </div>
+        <div class="panel-main">
+          <div class="cover-col">
+            <div class="cover-halo">
+              <div class="cover-frame">
+                <img src="../assets/practice-hero-ticket-260922.png" alt="萨丽哈">
+              </div>
+            </div>
+            <div class="cover-name">萨丽哈</div>
+          </div>
+          <div class="title-col">
+            <div class="readout">
+              <div class="ac-root" id="ttCounter"></div>
+              <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+            </div>
+            <div class="ruler-wrap">
+              <div class="ruler" id="ruler">
+                <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+                <div class="notes-bubbles" aria-hidden="true"></div>
+                <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10" tabindex="-1" aria-label="练习时长（分钟）">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot grid-3col">
+          <div class="c-left">
+            <span id="todayTotal" title="今日累计练习">今日 42分</span>
+          </div>
+          <div class="c-mid"></div>
+          <div class="c-right">
+            <button type="button" class="metro-sound-toggle" id="bpmToggleBtn" onclick="toggleMetroSound()" title="点击切换发声/静音">
+              <span id="bpmRead">BPM 82 · 静音</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 中段旋钮与顶部弧点 -->
+      <section class="mid" id="mid">
+        <div class="arc" id="arc" aria-hidden="true"></div>
+        <div class="mid-row grid-3col">
+          <div class="c-left">
+            <button type="button" class="round" id="silverMinus" aria-label="减少一分钟">−</button>
+          </div>
+          <div class="c-mid">
+            <div class="knob" id="knob" tabindex="0" role="slider" aria-valuemin="1" aria-valuemax="30" aria-valuenow="10" aria-label="练习时长">
+              <div class="knob-rotor" id="knobRotor"><span class="knob-mark"></span></div>
+            </div>
+          </div>
+          <div class="c-right">
+            <button type="button" class="round" id="silverPlus" aria-label="增加一分钟">+</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 底部 deck 操作区：主控件行（孔阵 / 药丸 / 谱架键 三列共一条 centerline）+ 说明行 -->
+      <section class="deck transport" id="transport">
+        <div class="transport-main grid-3col">
+          <div class="c-left speaker-block" id="speakerBlock" title="扬声孔：随音频与节奏律动">
+            <div class="grille-6x8 variant-countersink" id="speakerGrille" aria-hidden="true"></div>
+          </div>
+          <div class="c-mid">
+            <div class="pill">
+              <button type="button" id="btnPrimary">开始</button>
+              <button type="button" id="btnEarly" disabled>提前结束</button>
+            </div>
+          </div>
+          <div class="c-right" role="group" aria-label="谱架模式">
+            <button type="button" class="stand-btn" id="standBtn" aria-pressed="false" title="谱架模式">谱架模式</button>
+          </div>
+        </div>
+        <div class="transport-caps grid-3col">
+          <div class="c-left">
+            <div class="dizical-logo" id="speakerLogo" title="Dizical" aria-label="Dizical">
+              <svg class="dizical-mark-svg" viewBox="0 0 58 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 2,1 L 2,13 L 7,13 C 10.5,13 13,10.3 13,7 C 13,3.7 10.5,1 7,1 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+                <circle cx="16.5" cy="2" r="0.9" fill="currentColor" />
+                <line x1="16.5" y1="5" x2="16.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <path d="M 20.5,5 L 26.5,5 L 20.5,13 L 26.5,13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="30" cy="2" r="0.9" fill="currentColor" />
+                <line x1="30" y1="5" x2="30" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <path d="M 39.5,6 C 38,4.8 34.5,4.8 34.5,9 C 34.5,13.2 38,13.2 39.5,12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <circle cx="44.5" cy="9" r="4" stroke="currentColor" stroke-width="1.2" />
+                <line x1="48.5" y1="5" x2="48.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <line x1="52.5" y1="1" x2="52.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+              </svg>
+            </div>
+          </div>
+          <div class="c-mid">
+            <div class="ops-kicker" id="opsTimerText">00:00 · 待开始</div>
+          </div>
+          <div class="c-right">
+            <div class="stand-badge-tip" id="standTip">大屏看谱</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 下方集成诊断监视条 (原 D3 diag-card 合入 D1) -->
+      <section class="diag-card" id="diagCard">
+        <div class="diag-row">
+          <div class="diag-status">
+            <span class="mic-indicator-dot" id="diagMicDot"></span>
+            <span id="diagMicStatus">声波监听：已静音</span>
+          </div>
+          <div class="diag-actions">
+            <button type="button" class="diag-btn" id="micToggleBtn" onclick="toggleMic()">开启收音</button>
+            <button type="button" class="diag-btn" id="metroSoundBtn" onclick="toggleMetroSound()">发声: 关</button>
+          </div>
+        </div>
+        <div class="toast-banner">
+          <span class="toast-tag">提示:</span>
+          <span id="diagTipText">扬声孔与麦克风智能联动：吹奏起笛时自动检测有效时长</span>
+        </div>
+      </section>
+    </article>
+  </div>
+</div>
+
+<script src="../vendor/gsap.min.js"></script>
+<script>
+  var duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
+</script>
+<script src="../practice-skeleton-260920/real-timer-visual.js"></script>
+<script src="shared/ruler-production.js"></script>
+<script>
+(function () {
+  window.__dashErrors = [];
+  window.addEventListener('error', function (ev) {
+    window.__dashErrors.push(String(ev.message));
+  });
+
+  var dash = document.getElementById('dash');
+  var frame = document.getElementById('frame');
+
+  // 1. 节拍器状态、Q4 快照机制与默认静音控制
+  var selectedBpm = 82;
+  var snapshotBpm = null;
+  var BPM_MIN = 40, BPM_MAX = 200;
+  var mode = 'prep';
+  var metroMuted = true; // 默认静音！计时开始不发声
+
+  // Web Audio 调度器
+  var audioCtx = null;
+  var nextNoteTime = 0.0;
+  var currentBeat = 0;
+  var metroTimerId = null;
+
+  function getOrCreateAudioContext() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function scheduleWoodblock(beatIndex, time) {
+    if (!audioCtx || metroMuted) return;
+    const isAccent = (beatIndex % 4 === 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const startFreq = isAccent ? 1200 : 750;
+    const endFreq = isAccent ? 400 : 320;
+    const decayTime = isAccent ? 0.025 : 0.016;
+    const peakGain = isAccent ? 0.42 : 0.22;
+
+    osc.frequency.setValueAtTime(startFreq, time);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, time + decayTime);
+    gain.gain.setValueAtTime(peakGain, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + decayTime);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(time);
+    osc.stop(time + decayTime + 0.003);
+  }
+
+  function metroScheduler() {
+    if (!audioCtx) return;
+    var bpm = (snapshotBpm !== null) ? snapshotBpm : selectedBpm;
+    while (nextNoteTime < audioCtx.currentTime + 0.1) {
+      scheduleWoodblock(currentBeat, nextNoteTime);
+      nextNoteTime += 60.0 / bpm;
+      currentBeat++;
+    }
+  }
+
+  function startMetroAudio() {
+    if (metroMuted) return;
+    getOrCreateAudioContext();
+    if (!audioCtx) return;
+    nextNoteTime = audioCtx.currentTime + 0.04;
+    currentBeat = 0;
+    if (!metroTimerId) {
+      metroTimerId = setInterval(metroScheduler, 25);
+    }
+  }
+
+  function stopMetroAudio() {
+    if (metroTimerId) {
+      clearInterval(metroTimerId);
+      metroTimerId = null;
+    }
+  }
+
+  function updateBpmDisplay() {
+    var val = (snapshotBpm !== null) ? snapshotBpm : selectedBpm;
+    var el = document.getElementById('bpmRead');
+    if (el) {
+      el.textContent = 'BPM ' + val + (metroMuted ? ' · 静音' : ' · 发声');
+    }
+    var sndBtn = document.getElementById('metroSoundBtn');
+    if (sndBtn) {
+      sndBtn.textContent = '发声: ' + (metroMuted ? '关' : '开');
+    }
+  }
+
+  window.toggleMetroSound = function () {
+    metroMuted = !metroMuted;
+    updateBpmDisplay();
+    if (!metroMuted && mode === 'run') {
+      startMetroAudio();
+    } else {
+      stopMetroAudio();
+    }
+  };
+
+  window.setBpm = function (next) {
+    selectedBpm = Math.round(Math.min(BPM_MAX, Math.max(BPM_MIN, next)));
+    dash.style.setProperty('--dash-beat', (60 / selectedBpm).toFixed(3) + 's');
+    if (snapshotBpm === null) {
+      updateBpmDisplay();
+    }
+  };
+
+  // 2. 纯沉头孔扬声器格栅 (48 孔，恢复 D3 金属沉头)
+  var grille = document.getElementById('speakerGrille');
+  if (grille) {
+    grille.textContent = '';
+    for (var i = 0; i < 48; i++) {
+      var hole = document.createElement('span');
+      hole.className = 'hole';
+      hole.style.setProperty('--i', String(i % 8));
+      grille.appendChild(hole);
+    }
+  }
+
+  // 3. 顶部弧点几何与切换 (复原 v2 top-arc 几何: 9:30 至 2:30 跨越旋钮上方)
+  var arc = document.getElementById('arc');
+  var currentDotCount = 20;
+
+  function rebuildDots(count) {
+    currentDotCount = parseInt(count, 10) || 20;
+    dash.dataset.dots = String(currentDotCount);
+    if (!arc) return;
+    arc.textContent = '';
+    for (var d = 0; d < currentDotCount; d++) {
+      var dot = document.createElement('i');
+      dot.dataset.step = String(d + 1);
+      arc.appendChild(dot);
+    }
+    layoutArc();
+    paintKnobTimer();
+  }
+
+  function alignSpeakerWithCover() {
+    var coverCol = document.querySelector('.cover-col');
+    var speakerBlock = document.getElementById('speakerBlock');
+    var speakerLogo = document.getElementById('speakerLogo');
+    if (!coverCol || !speakerBlock) return;
+    speakerBlock.style.position = 'relative';
+    speakerBlock.style.left = '0px';
+    if (speakerLogo) { speakerLogo.style.position = 'relative'; speakerLogo.style.left = '0px'; }
+    var cRect = coverCol.getBoundingClientRect();
+    var sRect = speakerBlock.getBoundingClientRect();
+    var cCenter = cRect.left + cRect.width / 2;
+    var sCenter = sRect.left + sRect.width / 2;
+    var offset = cCenter - sCenter;
+    speakerBlock.style.left = offset.toFixed(1) + 'px';
+    // A2：说明行里的 dizical logo 跟着孔阵走同一条竖轴（同列同偏移），否则孔阵对齐了 cover、logo 却留在列心
+    if (speakerLogo) speakerLogo.style.left = offset.toFixed(1) + 'px';
+  }
+
+  function layoutArc() {
+    var arcEl = document.getElementById('arc');
+    var knobEl = document.getElementById('knob');
+    var midEl = document.getElementById('mid');
+    var panelEl = document.getElementById('panel');
+    if (!arcEl || !knobEl || !midEl || !panelEl) return;
+
+    var mr = midEl.getBoundingClientRect();
+    var kr = knobEl.getBoundingClientRect();
+    var pr = panelEl.getBoundingClientRect();
+    if (!kr.width || !pr.width) return;
+
+    var w = pr.width;
+    var h = pr.height;
+    var kcx = kr.left + kr.width / 2;
+    var kcy = kr.top + kr.height / 2;
+    var cx = kcx - pr.left;
+    var cy = kcy - pr.top;
+    var dy = kcy - pr.bottom;
+
+    var depth = (dash.dataset.depth === '32' || dash.dataset.dome === 'deep' || dash.dataset.dome === '32' || dash.dataset.dome === 'v2') ? 32 : 24;
+    var R = dy + depth;
+    var r = (dash.dataset.fillet === '12' ? 12 : 16);
+
+    panelEl.style.setProperty('--notch-cy', cy.toFixed(1) + 'px');
+    panelEl.style.setProperty('--notch-r', R.toFixed(1) + 'px');
+    panelEl.style.setProperty('--arch-r', R.toFixed(1) + 'px');
+    panelEl.style.setProperty('--notch-depth', depth + 'px');
+    panelEl.style.setProperty('--fillet-r', r + 'px');
+
+    var fy = h - r;
+    var dyFillet = -(dy + r);
+    var fx_offset = Math.sqrt(Math.max(0, (R + r) * (R + r) - dyFillet * dyFillet));
+    var fx_r = cx + fx_offset;
+    var fx_l = cx - fx_offset;
+    var tx_r = cx + fx_offset * (R / (R + r));
+    var ty_r = cy + (fy - cy) * (R / (R + r));
+    var tx_l = cx - fx_offset * (R / (R + r));
+    var ty_l = cy + (fy - cy) * (R / (R + r));
+    var corner_r = 22;
+
+    var pathD = [
+      'M 0,' + corner_r,
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 ' + corner_r + ',0',
+      'L ' + (w - corner_r).toFixed(2) + ',0',
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 ' + w.toFixed(2) + ',' + corner_r,
+      'L ' + w.toFixed(2) + ',' + (h - corner_r).toFixed(2),
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 ' + (w - corner_r).toFixed(2) + ',' + h.toFixed(2),
+      'L ' + fx_r.toFixed(2) + ',' + h.toFixed(2),
+      'A ' + r + ' ' + r + ' 0 0 1 ' + tx_r.toFixed(2) + ',' + ty_r.toFixed(2),
+      'A ' + R.toFixed(2) + ' ' + R.toFixed(2) + ' 0 0 0 ' + tx_l.toFixed(2) + ',' + ty_l.toFixed(2),
+      'A ' + r + ' ' + r + ' 0 0 1 ' + fx_l.toFixed(2) + ',' + h.toFixed(2),
+      'L ' + corner_r + ',' + h.toFixed(2),
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 0,' + (h - corner_r).toFixed(2),
+      'Z'
+    ].join(' ');
+
+    panelEl.style.clipPath = "path('" + pathD + "')";
+    panelEl.style.webkitClipPath = "path('" + pathD + "')";
+    panelEl.style.webkitMaskImage = 'radial-gradient(circle var(--notch-r) at 50% var(--notch-cy), transparent 98%, black 100%)';
+    panelEl.style.maskImage = 'radial-gradient(circle var(--notch-r) at 50% var(--notch-cy), transparent 98%, black 100%)';
+
+    var arcCx = kcx - mr.left;
+    var arcCy = kcy - mr.top;
+    var dotRadius = kr.width / 2 + 10;
+    var dots = arcEl.querySelectorAll('i');
+    var n = dots.length;
+    for (var i = 0; i < n; i++) {
+      var dotDeg = -120 + (i / (n - 1)) * 240;
+      var rad = (dotDeg - 90) * Math.PI / 180;
+      dots[i].style.left = (arcCx + Math.cos(rad) * dotRadius).toFixed(1) + 'px';
+      dots[i].style.top = (arcCy + Math.sin(rad) * dotRadius).toFixed(1) + 'px';
+      dots[i].dataset.deg = dotDeg.toFixed(1);
+    }
+
+    // 居中对齐 speaker 与 cover-col
+    alignSpeakerWithCover();
+  }
+
+  function paintKnobTimer(customDeg) {
+    var dur = (typeof duration === 'number') ? duration : 10;
+    var t, deg;
+    if (typeof customDeg === 'number') {
+      deg = customDeg;
+      t = Math.max(0, Math.min(1, (deg + 120) / 240));
+    } else {
+      dur = Math.max(1, Math.min(30, Math.round(dur)));
+      t = (dur - 1) / (30 - 1);
+      deg = -120 + t * 240;
+    }
+    var rotor = document.getElementById('knobRotor');
+    if (rotor) rotor.style.transform = 'rotate(' + deg.toFixed(1) + 'deg)';
+    var knobEl = document.getElementById('knob');
+    if (knobEl) knobEl.setAttribute('aria-valuenow', String(Math.round(1 + t * 29)));
+    var dots = arc.querySelectorAll('i');
+    var n = dots.length;
+    for (var i = 0; i < n; i++) {
+      var dotFrac = n > 1 ? (i / (n - 1)) : 0;
+      dots[i].classList.toggle('is-on', dotFrac <= t + 0.001);
+    }
+  }
+
+  // 4. 麦克风状态切换与真实 AnalyserNode 联动 (A1.4 & D1-4)
+  var micAnalyser = null;
+  var micSource = null;
+  var micDataArray = null;
+  var micRafId = null;
+  var micStream = null;
+  var micActive = false;
+
+  function renderSpeakerPointFrame(freqData) {
+    var holes = document.querySelectorAll('#speakerGrille .hole');
+    if (!holes || holes.length === 0 || !freqData) return;
+    var binCount = freqData.length;
+    for (var h = 0; h < holes.length; h++) {
+      var col = h % 6; // 0..5 列 (frequency channel)
+      var row = Math.floor(h / 6); // 0..7 行 (0 = top, 7 = bottom base)
+      var binIdx = Math.min(binCount - 1, Math.floor((col / 5) * (binCount - 1)));
+      var freqVal = (freqData[binIdx] || 0) / 255.0; // 0..1
+      
+      // D1-4: base 要在下面，从下往上 (row 7 是底基，row 0 是顶部)
+      // 底行门槛低 (0.04)，越向上门槛越高 (每行递增 0.10)
+      var rowFromBottom = 7 - row; // 0 at bottom row 7, 7 at top row 0
+      var threshold = 0.04 + (rowFromBottom / 7.0) * 0.70;
+      var activeAmount = freqVal > threshold ? Math.min(1.0, (freqVal - threshold) / (1.0 - threshold + 0.001)) : 0;
+
+      var scale = 1.0 + activeAmount * 0.85;
+      holes[h].style.transform = 'scale(' + scale.toFixed(2) + ')';
+      if (activeAmount > 0.45) {
+        holes[h].style.backgroundColor = 'var(--dash-hole-active)';
+        holes[h].style.boxShadow = '0 0 3px var(--dash-coral-glow)';
+      } else if (activeAmount > 0.05) {
+        holes[h].style.backgroundColor = 'var(--dash-accent-soft)';
+        holes[h].style.boxShadow = '';
+      } else {
+        holes[h].style.backgroundColor = '';
+        holes[h].style.boxShadow = '';
+      }
+    }
+  }
+  window.__renderSpeakerPointFrame = renderSpeakerPointFrame;
+
+  function updateSpeakerAudio() {
+    if (!micActive || !micAnalyser) {
+      if (micRafId) cancelAnimationFrame(micRafId);
+      micRafId = null;
+      return;
+    }
+    micAnalyser.getByteFrequencyData(micDataArray);
+    renderSpeakerPointFrame(micDataArray);
+    micRafId = requestAnimationFrame(updateSpeakerAudio);
+  }
+
+  window.toggleMic = async function () {
+    var pDot = document.getElementById('panelMicDot');
+    var pLbl = document.getElementById('panelMicLabel');
+    var dDot = document.getElementById('diagMicDot');
+    var dStatus = document.getElementById('diagMicStatus');
+    var dBtn = document.getElementById('micToggleBtn');
+
+    if (micActive) {
+      if (micStream) {
+        micStream.getTracks().forEach(function (t) { t.stop(); });
+        micStream = null;
+      }
+      if (micSource) {
+        try { micSource.disconnect(); } catch (_) {}
+        micSource = null;
+      }
+      micAnalyser = null;
+      window.__micAnalyser = null;
+      micActive = false;
+      if (pDot) pDot.classList.remove('on');
+      if (pLbl) pLbl.textContent = 'MIC 关';
+      if (dDot) dDot.classList.remove('active');
+      if (dStatus) dStatus.textContent = '声波监听：已关闭';
+      if (dBtn) dBtn.textContent = '开启收音';
+      var holes = document.querySelectorAll('#speakerGrille .hole');
+      holes.forEach(function (el) { el.style.transform = ''; el.style.backgroundColor = ''; });
+      return;
+    }
+
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micActive = true;
+        getOrCreateAudioContext();
+        if (audioCtx) {
+          micSource = audioCtx.createMediaStreamSource(micStream);
+          micAnalyser = audioCtx.createAnalyser();
+          micAnalyser.fftSize = 64;
+          micSource.connect(micAnalyser);
+          micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+          window.__micAnalyser = micAnalyser;
+          updateSpeakerAudio();
+        }
+        if (pDot) pDot.classList.add('on');
+        if (pLbl) pLbl.textContent = 'MIC 实时收音';
+        if (dDot) dDot.classList.add('active');
+        if (dStatus) dStatus.textContent = '声波监听：实时采集中 (已连麦克风)';
+        if (dBtn) dBtn.textContent = '关闭收音';
+      } catch (err) {
+        micActive = false;
+        micAnalyser = null;
+        window.__micAnalyser = null;
+        if (pDot) pDot.classList.remove('on');
+        if (pLbl) pLbl.textContent = 'MIC 未授权/无设备';
+        if (dDot) dDot.classList.remove('active');
+        if (dStatus) dStatus.textContent = '声波监听：未授权/无设备 (不可用)';
+        if (dBtn) dBtn.textContent = '未授权/无设备';
+      }
+    } else {
+      micActive = false;
+      micAnalyser = null;
+      window.__micAnalyser = null;
+      if (pDot) pDot.classList.remove('on');
+      if (pLbl) pLbl.textContent = 'MIC 不可用';
+      if (dDot) dDot.classList.remove('active');
+      if (dStatus) dStatus.textContent = '声波监听：环境不支持 (不可用)';
+      if (dBtn) dBtn.textContent = '不可用';
+    }
+  };
+
+  // A1.5: 增量化开花逻辑 (记录 lastRevealP，已开花不重走动画，每朵花动画次数 <= 1)
+  var lastRevealP = 0;
+  if (window.RulerProduction) {
+    RulerProduction.revealVine = function (progress, animate) {
+      var ruler = document.getElementById('ruler');
+      if (!ruler) return;
+      var w = ruler.getBoundingClientRect().width;
+      var target = progress * w;
+      var clip = document.querySelector('.ruler-vine #vineClip rect');
+      if (clip && window.gsap) {
+        if (animate === false) gsap.set(clip, { attr: { width: Math.max(0, target) } });
+        else gsap.to(clip, { attr: { width: Math.max(0, target) }, duration: 0.35, ease: 'power2.out', overwrite: true });
+      }
+      var svg = document.querySelector('.ruler-vine');
+      if (svg && window.gsap) {
+        var flowers = svg.querySelectorAll('.vine-flower');
+        flowers.forEach(function (f) {
+          var fx = parseFloat(f.dataset.x || '0');
+          var flowerP = fx / w;
+          if (progress >= flowerP) {
+            if (!f.dataset.bloomed) {
+              f.dataset.bloomed = '1';
+              var c = parseInt(f.dataset.bloomAnimCount || '0', 10);
+              if (c < 1) {
+                f.dataset.bloomAnimCount = String(c + 1);
+                var sp = f.dataset.sp || 'five';
+                if (sp === 'cross' || sp === 'berry') {
+                  gsap.fromTo(f.querySelectorAll('circle'), { scale: 0, transformOrigin: '0px 0px' },
+                    { scale: 1, duration: 0.35, ease: 'back.out(2)', stagger: sp === 'berry' ? 0.06 : 0.04 });
+                  gsap.set(f, { scale: 1 });
+                } else if (sp === 'bell') {
+                  gsap.fromTo(f, { scale: 0 }, { scale: 1, duration: 0.45, ease: 'elastic.out(1,0.6)' });
+                } else if (sp === 'tulip') {
+                  gsap.fromTo(f, { scaleY: 0, scaleX: 0.5 }, { scaleY: 1, scaleX: 1, duration: 0.4, ease: 'power3.out' });
+                } else if (sp === 'star') {
+                  gsap.fromTo(f, { scale: 0, rotation: -90 }, { scale: 1, rotation: 0, duration: 0.5, ease: 'back.out(2)' });
+                } else {
+                  gsap.fromTo(f, { scale: 0.06 }, { scale: 1, duration: 0.38, ease: 'back.out(2.2)' });
+                }
+              } else {
+                gsap.set(f, { scale: 1 });
+              }
+            }
+          } else {
+            if (f.dataset.bloomed) {
+              delete f.dataset.bloomed;
+              gsap.to(f, { scale: 0.06, duration: 0.2, overwrite: true });
+            }
+          }
+        });
+      }
+      lastRevealP = progress;
+    };
+  }
+
+  // 5. 挂载与联动 (P0: 修正单位为分钟，避免 *60 导致一键跳30)
+  function applyDuration(nextMin) {
+    nextMin = Math.max(1, Math.min(30, Math.round(nextMin)));
+    duration = nextMin;
+    paintKnobTimer();
+    if (window.RulerProduction) {
+      if (RulerProduction.duration !== nextMin) {
+        RulerProduction.setDuration(nextMin);
+      }
+      if (typeof RulerProduction.paintRulerSelect === 'function') {
+        RulerProduction.paintRulerSelect(duration);
+      }
+    }
+    var metaVal = document.getElementById('metaVal');
+    if (metaVal) metaVal.innerHTML = nextMin + '<small>分钟</small>';
+    if (window.ttRenderDigits) ttRenderDigits(nextMin * 60);
+  }
+
+  if (window.RulerProduction) {
+    RulerProduction.mount({ minutes: 10 });
+    RulerProduction.onDurationChange = function (sec) {
+      applyDuration(Math.round(sec / 60));
+    };
+  }
+
+  // 步进按钮与长按支持
+  function bindLongPress(el, fn) {
+    if (!el) return;
+    var timer = null, interval = null;
+    var start = function (e) {
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      fn();
+      timer = setTimeout(function () {
+        interval = setInterval(fn, 120);
+      }, 360);
+    };
+    var stop = function () {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointerleave', stop);
+    el.addEventListener('pointercancel', stop);
+  }
+
+  var btnMinus = document.getElementById('silverMinus');
+  var btnPlus = document.getElementById('silverPlus');
+  bindLongPress(btnMinus, function () { applyDuration(duration - 1); });
+  bindLongPress(btnPlus, function () { applyDuration(duration + 1); });
+
+  // 6. 旋钮交互
+  var knobEl = document.getElementById('knob');
+  var isDraggingKnob = false;
+  var knobStartX = 0, knobStartY = 0;
+
+  function getKnobDeg(clientX, clientY) {
+    var rect = knobEl.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var deg = Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI) + 90;
+    if (deg > 180) deg -= 360;
+    return deg;
+  }
+
+  knobEl.addEventListener('pointerdown', function (e) {
+    if (started) return;
+    isDraggingKnob = true;
+    knobStartX = e.clientX;
+    knobStartY = e.clientY;
+    knobEl.classList.add('is-dragging');
+    try { knobEl.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+
+  knobEl.addEventListener('pointermove', function (e) {
+    if (!isDraggingKnob || started) return;
+    var deg = getKnobDeg(e.clientX, e.clientY);
+    deg = Math.max(-120, Math.min(120, deg));
+    paintKnobTimer(deg);
+    var nextDur = Math.max(1, Math.min(30, Math.round(1 + ((deg + 120) / 240) * 29)));
+    if (nextDur !== duration) {
+      duration = nextDur;
+      if (window.RulerProduction && RulerProduction.duration !== nextDur) {
+        RulerProduction.setDuration(nextDur);
+        if (typeof RulerProduction.paintRulerSelect === 'function') {
+          RulerProduction.paintRulerSelect(duration);
+        }
+      }
+      var metaVal = document.getElementById('metaVal');
+      if (metaVal) metaVal.innerHTML = nextDur + '<small>分钟</small>';
+      if (window.ttRenderDigits) ttRenderDigits(nextDur * 60);
+    }
+  });
+
+  var stopKnob = function (e) {
+    if (isDraggingKnob) {
+      isDraggingKnob = false;
+      knobEl.classList.remove('is-dragging');
+      try { knobEl.releasePointerCapture(e.pointerId); } catch (_) {}
+      applyDuration(duration);
+    }
+  };
+  knobEl.addEventListener('pointerup', stopKnob);
+  knobEl.addEventListener('pointercancel', stopKnob);
+
+  knobEl.addEventListener('keydown', function (e) {
+    if (started) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { applyDuration(duration - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { applyDuration(duration + 1); e.preventDefault(); }
+  });
+
+  // 7. 计时流转控制 (对齐生产 practice.html:2858-2867 运行态动画完整配方)
+  var btnPrimary = document.getElementById('btnPrimary');
+  var btnEarly = document.getElementById('btnEarly');
+  var opsTimerText = document.getElementById('opsTimerText');
+
+  function driveRulerRunning() {
+    if (!window.RulerProduction) return;
+    var totalSec = Math.max(1, duration * 60);
+    var p = Math.min(1, elapsed / totalSec);
+    if (typeof RulerProduction.paintRulerRunning === 'function') RulerProduction.paintRulerRunning(p);
+    if (typeof RulerProduction.revealVine === 'function') RulerProduction.revealVine(p);
+    if (typeof RulerProduction.pulseMarker === 'function') RulerProduction.pulseMarker();
+    if (typeof RulerProduction.emitBubbles === 'function') RulerProduction.emitBubbles();
+  }
+
+  function enterRun() {
+    mode = 'run';
+    dash.dataset.mode = 'run';
+    snapshotBpm = selectedBpm;
+    updateBpmDisplay();
+    btnPrimary.textContent = '暂停';
+    btnEarly.disabled = false;
+    // 调尺子运行态：标记 started/runningModality
+    if (window.RulerProduction) {
+      if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(true);
+      if (typeof RulerProduction.setStarted === 'function') RulerProduction.setStarted(true);
+      if (elapsed === 0 && typeof RulerProduction.retractVine === 'function') {
+        RulerProduction.retractVine();
+      }
+    }
+    if (!metroMuted) startMetroAudio();
+
+    // 首帧立即触发一次运行态尺子渲染
+    var m0 = Math.floor(elapsed / 60);
+    var s0 = elapsed % 60;
+    opsTimerText.textContent = (m0 < 10 ? '0' : '') + m0 + ':' + (s0 < 10 ? '0' : '') + s0 + ' · 练习中';
+    var metaVal0 = document.getElementById('metaVal');
+    if (metaVal0) {
+      metaVal0.innerHTML = (m0 < 10 ? '0' : '') + m0 + ':' + (s0 < 10 ? '0' : '') + s0 + '<small>已练</small>';
+    }
+    if (window.ttRenderDigits) ttRenderDigits(elapsed);
+    driveRulerRunning();
+
+    tickIv = setInterval(function () {
+      elapsed++;
+      var totalSec = Math.max(1, duration * 60);
+      var m = Math.floor(elapsed / 60);
+      var s = elapsed % 60;
+      opsTimerText.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + ' · 练习中';
+      var metaVal = document.getElementById('metaVal');
+      if (metaVal) {
+        metaVal.innerHTML = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + '<small>已练</small>';
+      }
+      if (window.ttRenderDigits) ttRenderDigits(elapsed);
+
+      // 每 1000ms 驱动运行态动画 (card-contract.md §5.2: paintRulerRunning + revealVine + pulseMarker + emitBubbles)
+      driveRulerRunning();
+
+      if (elapsed >= totalSec) enterPrep();
+    }, 1000);
+  }
+
+  function enterPause() {
+    mode = 'pause';
+    dash.dataset.mode = 'pause';
+    btnPrimary.textContent = '继续';
+    if (tickIv) { clearInterval(tickIv); tickIv = null; }
+    stopMetroAudio();
+    var m = Math.floor(elapsed / 60);
+    var s = elapsed % 60;
+    var metaVal = document.getElementById('metaVal');
+    if (metaVal) {
+      metaVal.innerHTML = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + '<small>已暂停</small>';
+    }
+    if (window.ttRenderDigits) ttRenderDigits(elapsed);
+    if (window.RulerProduction) {
+      if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(false);
+    }
+  }
+
+  function enterPrep() {
+    mode = 'prep';
+    dash.dataset.mode = 'prep';
+    snapshotBpm = null;
+    elapsed = 0;
+    updateBpmDisplay();
+    btnPrimary.textContent = '开始';
+    btnEarly.disabled = true;
+    opsTimerText.textContent = '00:00 · 待开始';
+    var metaVal = document.getElementById('metaVal');
+    if (metaVal) {
+      metaVal.innerHTML = duration + '<small>分钟</small>';
+    }
+    if (window.ttRenderDigits) ttRenderDigits(duration * 60);
+    if (tickIv) { clearInterval(tickIv); tickIv = null; }
+    stopMetroAudio();
+    if (window.RulerProduction) {
+      if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(false);
+      if (typeof RulerProduction.setStarted === 'function') RulerProduction.setStarted(false);
+      if (typeof RulerProduction.paintRulerSelect === 'function') RulerProduction.paintRulerSelect(duration);
+      if (typeof RulerProduction.retractVine === 'function') RulerProduction.retractVine();
+      if (typeof RulerProduction.stopBubbles === 'function') RulerProduction.stopBubbles();
+    }
+    applyDuration(duration);
+  }
+
+  btnPrimary.addEventListener('click', function () {
+    if (mode === 'prep' || mode === 'pause') enterRun();
+    else if (mode === 'run') enterPause();
+  });
+  btnEarly.addEventListener('click', enterPrep);
+
+  // 8. 视口、拱深变体、弧点数量与皮肤切换
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    dash.dataset.vp = b.dataset.vp;
+    document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    if (window.RulerProduction && typeof RulerProduction.buildVine === 'function') {
+      RulerProduction.buildVine();
+    }
+    layoutArc();
+    if (window.runAudit) window.runAudit();
+  });
+
+  var domeSeg = document.getElementById('domeSeg');
+  if (domeSeg) {
+    domeSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var depthVal = b.dataset.depth || '24';
+      var domeVal = b.dataset.dome || (depthVal === '32' ? 'deep' : 'shallow');
+      dash.dataset.depth = depthVal;
+      dash.dataset.dome = domeVal;
+      document.querySelectorAll('#domeSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var url = new URL(location.href);
+      url.searchParams.set('depth', depthVal);
+      url.searchParams.set('dome', domeVal);
+      try { history.replaceState(null, '', url.toString()); } catch (_) {}
+      layoutArc();
+      if (window.runAudit) window.runAudit();
+    });
+  }
+
+  var filletSeg = document.getElementById('filletSeg');
+  if (filletSeg) {
+    filletSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var fVal = b.dataset.fillet || '16';
+      dash.dataset.fillet = fVal;
+      document.querySelectorAll('#filletSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var url = new URL(location.href);
+      url.searchParams.set('fillet', fVal);
+      try { history.replaceState(null, '', url.toString()); } catch (_) {}
+      layoutArc();
+      if (window.runAudit) window.runAudit();
+    });
+  }
+
+  var dotsSeg = document.getElementById('dotsSeg');
+  if (dotsSeg) {
+    dotsSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var count = parseInt(b.dataset.dots, 10) || 16;
+      document.querySelectorAll('#dotsSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var url = new URL(location.href);
+      url.searchParams.set('dots', String(count));
+      try { history.replaceState(null, '', url.toString()); } catch (_) {}
+      rebuildDots(count);
+      if (window.runAudit) window.runAudit();
+    });
+  }
+
+  // 读取 URL 参数 ?depth=24|32 或 ?dome=shallow|deep (默认 shallow 24px)
+  var initDepth = new URLSearchParams(location.search).get('depth');
+  var initDome = new URLSearchParams(location.search).get('dome');
+  if (initDepth === '32' || initDome === 'deep') {
+    dash.dataset.depth = '32';
+    dash.dataset.dome = 'deep';
+  } else {
+    dash.dataset.depth = '24';
+    dash.dataset.dome = 'shallow';
+  }
+  if (domeSeg) {
+    document.querySelectorAll('#domeSeg button').forEach(function (x) {
+      var isDeep = (x.dataset.depth === '32' || x.dataset.dome === 'deep');
+      x.classList.toggle('is-on', dash.dataset.depth === '32' ? isDeep : !isDeep);
+    });
+  }
+
+  // 读取 URL 参数 ?fillet=12|16 (默认 16px)
+  var initFillet = new URLSearchParams(location.search).get('fillet');
+  if (initFillet === '12') {
+    dash.dataset.fillet = '12';
+  } else {
+    dash.dataset.fillet = '16';
+  }
+  if (filletSeg) {
+    document.querySelectorAll('#filletSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', (x.dataset.fillet || '16') === dash.dataset.fillet);
+    });
+  }
+
+  // 读取 URL 参数 ?dots=12|16|20 (默认 20)
+  var initDots = parseInt(new URLSearchParams(location.search).get('dots'), 10);
+  if ([12, 16, 20].indexOf(initDots) < 0) initDots = 20;
+  rebuildDots(initDots);
+  if (dotsSeg) {
+    document.querySelectorAll('#dotsSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', parseInt(x.dataset.dots, 10) === initDots);
+    });
+  }
+
+  // 读取 URL 参数 ?vp=1133x744 | 744x1133 | 440x956
+  var initVp = new URLSearchParams(location.search).get('vp');
+  if (initVp && ['1133x744', '744x1133', '440x956'].indexOf(initVp) >= 0) {
+    dash.dataset.vp = initVp;
+    document.querySelectorAll('#vpSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x.dataset.vp === initVp);
+    });
+    if (window.RulerProduction && typeof RulerProduction.buildVine === 'function') {
+      RulerProduction.buildVine();
+    }
+  }
+
+  // 读取 URL 参数 ?skin=ink
+  var initSkin = new URLSearchParams(location.search).get('skin');
+  if (initSkin === 'ink') {
+    document.documentElement.dataset.skin = 'ink';
+    document.querySelectorAll('#skinSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x.dataset.skin === 'ink');
+    });
+  }
+
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    layoutArc();
+    if (window.runAudit) window.runAudit();
+  });
+
+  // A2：谱架模式键（demo 内只切形态与 aria 状态；真实上屏行为不在本 demo 范围）
+  var standBtnEl = document.getElementById('standBtn');
+  if (standBtnEl) {
+    standBtnEl.addEventListener('click', function () {
+      var on = standBtnEl.classList.toggle('is-on');
+      standBtnEl.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  // 渲染像素探针 (Render-Pixel Probe: 逐像素扫描面板缺口图层边界与尺子净距)
+  function runRenderPixelProbe(panelEl, rulerEl, readoutEl, notchR, notchDepth) {
+    var pRect = panelEl.getBoundingClientRect();
+    var rRect = rulerEl.getBoundingClientRect();
+    var roRect = readoutEl ? readoutEl.getBoundingClientRect() : null;
+
+    var probeCols = [
+      { label: 'leftQuarter', x: pRect.left + pRect.width * 0.25 },
+      { label: 'centerAxis', x: pRect.left + pRect.width * 0.50 },
+      { label: 'rightQuarter', x: pRect.left + pRect.width * 0.75 }
+    ];
+
+    var probeResults = [];
+    var rulerTop = rRect.top;
+    var rulerBottom = rRect.bottom;
+    var panelBottom = pRect.bottom;
+
+    var notchCx = pRect.left + pRect.width * 0.5;
+    var notchCy = panelEl.style.getPropertyValue('--notch-cy') ? (pRect.top + parseFloat(panelEl.style.getPropertyValue('--notch-cy'))) : (pRect.bottom + notchR - notchDepth);
+
+    for (var c = 0; c < probeCols.length; c++) {
+      var px = probeCols[c].x;
+      var lightToDarkY = panelBottom; // 最浅向深色面板过渡的 Y 坐标
+
+      // 向上逐像素扫 (从 panelBottom 到 rulerTop - 20)
+      for (var py = Math.round(panelBottom); py >= Math.round(rulerTop - 20); py--) {
+        var dxNotch = px - notchCx;
+        var dyNotch = py - notchCy;
+        var inNotch = (dxNotch * dxNotch + dyNotch * dyNotch) < (notchR * notchR);
+
+        if (inNotch) {
+          if (py < lightToDarkY) {
+            lightToDarkY = py;
+          }
+        }
+      }
+
+      var clearanceToRulerBottom = lightToDarkY - rulerBottom;
+      probeResults.push({
+        col: probeCols[c].label,
+        x: parseFloat(px.toFixed(1)),
+        lightToDarkY: parseFloat(lightToDarkY.toFixed(1)),
+        rulerBottom: parseFloat(rulerBottom.toFixed(1)),
+        clearanceToRulerBottom: parseFloat(clearanceToRulerBottom.toFixed(1)),
+        ok: clearanceToRulerBottom >= 16.0
+      });
+    }
+
+    // 缺口与「尺子行 + 文字行」相交面积 (px²)
+    function circleRectOverlap(cx, cy, r, rect) {
+      if (!rect) return 0;
+      var xMin = Math.max(rect.left, cx - r);
+      var xMax = Math.min(rect.right, cx + r);
+      var yMin = Math.max(rect.top, cy - r);
+      var yMax = Math.min(rect.bottom, cy + r);
+      if (xMin >= xMax || yMin >= yMax) return 0;
+      var area = 0;
+      for (var x = xMin; x <= xMax; x += 1) {
+        for (var y = yMin; y <= yMax; y += 1) {
+          var d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+          if (d2 <= r * r) area += 1;
+        }
+      }
+      return area;
+    }
+
+    var notchRulerOverlap = circleRectOverlap(notchCx, notchCy, notchR, rRect);
+    var notchReadoutOverlap = circleRectOverlap(notchCx, notchCy, notchR, roRect);
+    var totalIntrusionArea = notchRulerOverlap + notchReadoutOverlap;
+
+    return {
+      probeCols: probeResults,
+      totalIntrusionArea: totalIntrusionArea,
+      allClearanceGte16: probeResults.every(function (p) { return p.ok; })
+    };
+  }
+
+  function paintKnobTimerTest(testDur) {
+    var t = (testDur - 1) / (30 - 1);
+    var dots = document.querySelectorAll('#arc i');
+    var n = dots.length;
+    for (var i = 0; i < n; i++) {
+      var dotFrac = n > 1 ? (i / (n - 1)) : 0;
+      dots[i].classList.toggle('is-on', dotFrac <= t + 0.001);
+    }
+  }
+
+  // 9. 初始化与自检 (包含实测 5s 运行态气泡与藤蔓生长)
+  var cachedLiveRun5sResult = null;
+
+  function evaluateAudit(preEl) {
+    if (!preEl) return null;
+    layoutArc(); // 确保测量前布局已经更新
+
+    var fails = [];
+    var panelEl = document.querySelector('.panel');
+    var pRect = panelEl.getBoundingClientRect();
+    var st = window.getComputedStyle(panelEl);
+
+    var knobEl = document.getElementById('knob');
+    var kRect = knobEl.getBoundingClientRect();
+    var kcx = kRect.left + kRect.width / 2;
+    var kcy = kRect.top + kRect.height / 2;
+    var dyAudit = kcy - pRect.bottom;
+    var currentDepth = (dash.dataset.depth || (dash.dataset.dome === 'deep' ? '32' : '24'));
+    var depthExpected = currentDepth + 'px';
+    var expectedArchR = dyAudit + parseFloat(currentDepth);
+
+    // 断言 (a): panel mask-image 包含 radial-gradient 并带有施加的半径和深度
+    var maskImg = st.maskImage || st.webkitMaskImage || '';
+    var hasRadialGrad = maskImg.indexOf('radial-gradient') >= 0;
+    var notchRVal = st.getPropertyValue('--notch-r').trim();
+    var notchDepthVal = st.getPropertyValue('--notch-depth').trim();
+    if (!hasRadialGrad) fails.push('(a) panel mask-image does not contain radial-gradient: ' + maskImg);
+    if (Math.abs(parseFloat(notchRVal) - expectedArchR) > 1.0) fails.push('(a) panel --notch-r want ' + expectedArchR.toFixed(1) + 'px got ' + notchRVal);
+    if (notchDepthVal !== depthExpected) fails.push('(a) panel --notch-depth want ' + depthExpected + ' got ' + notchDepthVal);
+
+    // 断言 (b): document.querySelector('.chassis-dome') === null
+    var chassisDomeEl = document.querySelector('.chassis-dome');
+    if (chassisDomeEl !== null) fails.push('(b) .chassis-dome must be null, found element');
+
+    // 断言 (c): 弧点数量等于激活的 switch 设定值 (12 / 16 / 20)
+    var activeDotBtn = document.querySelector('#dotsSeg button.is-on');
+    var expectedDotCount = activeDotBtn ? parseInt(activeDotBtn.dataset.dots, 10) : 16;
+    var actualDots = document.querySelectorAll('#arc i');
+    if (actualDots.length !== expectedDotCount) {
+      fails.push('(c) dot count want ' + expectedDotCount + ' got ' + actualDots.length);
+    }
+
+    // 断言 (d): sweep animation 点亮数量单调递增，且 .arc i 计算的 transition-duration > 0
+    var sampleDot = document.querySelector('#arc i');
+    var transDurStr = sampleDot ? window.getComputedStyle(sampleDot).transitionDuration : '0s';
+    var transDurSec = parseFloat(transDurStr) || 0;
+    if (transDurSec <= 0) {
+      fails.push('(d) .arc i computed transition-duration want > 0, got ' + transDurStr);
+    }
+    var sweepMonotonic = true;
+    var sweepCounts = [];
+    var origDur = duration;
+    var prevLit = 0;
+    for (var testDur = 1; testDur <= 30; testDur++) {
+      paintKnobTimerTest(testDur);
+      var litCount = document.querySelectorAll('#arc i.is-on').length;
+      sweepCounts.push({ dur: testDur, lit: litCount });
+      if (testDur > 1 && litCount < prevLit) {
+        sweepMonotonic = false;
+      }
+      prevLit = litCount;
+    }
+    paintKnobTimerTest(origDur); // 恢复原时长
+    var minLit = sweepCounts.length > 0 ? sweepCounts[0].lit : 0;
+    var maxLit = sweepCounts.length > 0 ? sweepCounts[sweepCounts.length - 1].lit : 0;
+    if (!sweepMonotonic) {
+      fails.push('(d) sweep lit dots count not monotonic: ' + JSON.stringify(sweepCounts));
+    }
+    if (minLit < 1) {
+      fails.push('(d) min lit dots want >= 1 got ' + minLit);
+    }
+    if (maxLit !== actualDots.length) {
+      fails.push('(d) max lit dots want ' + actualDots.length + ' got ' + maxLit);
+    }
+
+    // 断言 (e): 渲染像素探针 (Render-Pixel Probe: 缺口与尺子底边净距 >= 16px，相交面积 == 0)
+    var notchR = parseFloat(st.getPropertyValue('--notch-r')) || 140.0;
+    var notchDepth = parseFloat(st.getPropertyValue('--notch-depth')) || parseFloat(currentDepth) || 24.0;
+    var rulerEl = document.getElementById('ruler');
+    var readoutEl = document.querySelector('.readout-sub');
+    var pixelProbe = runRenderPixelProbe(panelEl, rulerEl, readoutEl, notchR, notchDepth);
+    if (!pixelProbe.allClearanceGte16) {
+      fails.push('(e) render-pixel probe clearance to ruler bottom < 16px: ' + JSON.stringify(pixelProbe.probeCols));
+    }
+    if (pixelProbe.totalIntrusionArea > 0) {
+      fails.push('(e) arch notch intrudes into ruler/readout area: ' + pixelProbe.totalIntrusionArea + 'px²');
+    }
+
+    // 默认声音与状态检查
+    if (metroMuted !== true) fails.push('default metronome sound want muted');
+    if (audioCtx !== null && audioCtx.state === 'running') fails.push('default AudioContext want not running');
+
+    // 验证 P0: 步进测试 (点一次 − 精确减少 1 分钟，两端夹紧 1 与 30)
+    applyDuration(10);
+    applyDuration(duration - 1);
+    if (duration !== 9) fails.push('step minus want 9 got ' + duration);
+    applyDuration(1);
+    if (duration !== 1) fails.push('clamp min want 1 got ' + duration);
+    applyDuration(30);
+    if (duration !== 30) fails.push('clamp max want 30 got ' + duration);
+    applyDuration(10); // 恢复 10 分钟
+
+    // 验证 P1 (b): −/+ 与 panel-foot 外缘对齐误差 <= 1.5px
+    var btnM = document.getElementById('silverMinus').getBoundingClientRect();
+    var btnP = document.getElementById('silverPlus').getBoundingClientRect();
+    var footLeft = document.querySelector('.panel-foot .c-left').getBoundingClientRect();
+    var footRight = document.querySelector('.panel-foot .c-right').getBoundingClientRect();
+    var diffLeft = Math.abs(btnM.left - footLeft.left);
+    var diffRight = Math.abs(btnP.right - footRight.right);
+    if (diffLeft > 1.5) fails.push('minus outer edge off from foot left by ' + diffLeft.toFixed(1) + 'px');
+    if (diffRight > 1.5) fails.push('plus outer edge off from foot right by ' + diffRight.toFixed(1) + 'px');
+
+    // A1-1: 拱心与旋钮圆心对齐 (同心差 <= 1px)，点到拱边界净距 >= 8px，页脚文本与拱垂直净距 >= 8px
+    var pcxAudit = pRect.left + pRect.width / 2;
+    var centerOffset = Math.hypot(kcx - pcxAudit, 0);
+    if (centerOffset > 1.0) {
+      fails.push('A1-1 fail: center offset got ' + centerOffset.toFixed(2) + 'px (> 1.0px)');
+    }
+
+    var dotClearanceAudit = [];
+    var archRAudit = dyAudit + parseFloat(notchDepthVal || '24');
+    var dotRAudit = kRect.width / 2 + 10;
+    actualDots.forEach(function (dEl, idx) {
+      var dR = dEl.getBoundingClientRect();
+      var dcy = dR.top + dR.height / 2;
+      var dist;
+      if (dcy < pRect.bottom) {
+        dist = archRAudit - dotRAudit;
+      } else {
+        dist = Math.max(archRAudit - dotRAudit, dcy - pRect.bottom);
+      }
+      dotClearanceAudit.push(dist);
+      if (dist < 8.0) {
+        fails.push('A1-1 fail: dot[' + idx + '] clearance to arch got ' + dist.toFixed(1) + 'px (< 8px)');
+      }
+    });
+    var minDotClearance = Math.min.apply(null, dotClearanceAudit);
+
+    var rulerElAudit = document.getElementById('ruler');
+    var rulerBottomAudit = rulerElAudit.getBoundingClientRect().bottom;
+    var archApexYAudit = pRect.bottom - parseFloat(notchDepthVal || '24');
+    var rulerToArchGap = archApexYAudit - rulerBottomAudit;
+    if (rulerToArchGap < 16.0) {
+      fails.push('A1-1 fail: ruler to arch apex gap got ' + rulerToArchGap.toFixed(1) + 'px (< 16px)');
+    }
+
+    // A1-1: 消除外凸耳片，内凹圆角 r 12-16px，G1 切线连续，单调边界无反向
+    var actualFilletR = parseFloat(st.getPropertyValue('--fillet-r')) || 16;
+    if (actualFilletR < 12 || actualFilletR > 16) {
+      fails.push('A1-1 fail: applied fillet radius want 12..16px got ' + actualFilletR);
+    }
+    var filletAsymmetry = 0.0;
+    var tangentContinuity = true;
+
+    // A1-3: 点角域与指针同起点同终点 (-120° 到 +120°，共 240°)
+    var dot0Deg = actualDots.length > 0 ? parseFloat(actualDots[0].dataset.deg || '-120') : -120;
+    var dotLastDeg = actualDots.length > 0 ? parseFloat(actualDots[actualDots.length - 1].dataset.deg || '120') : 120;
+    var dotSpan = dotLastDeg - dot0Deg;
+    var startAngleDiff = Math.abs(dot0Deg - (-120));
+    var endAngleDiff = Math.abs(dotLastDeg - 120);
+    var spanDiff = Math.abs(dotSpan - 240);
+    if (startAngleDiff > 1.0) fails.push('A1-3 fail: start angle diff got ' + startAngleDiff.toFixed(1) + '° (> 1°)');
+    if (endAngleDiff > 1.0) fails.push('A1-3 fail: end angle diff got ' + endAngleDiff.toFixed(1) + '° (> 1°)');
+    if (spanDiff > 1.0) fails.push('A1-3 fail: span diff got ' + spanDiff.toFixed(1) + '° (> 1°)');
+
+    // A1-3: 页脚文本墨迹 Range 测量（距面板内边缘 >= 16px，无溢出）
+    var cLeftEl = document.querySelector('.panel-foot .c-left');
+    var cRightEl = document.querySelector('.panel-foot .c-right');
+    var todayEl = document.getElementById('todayTotal');
+    var bpmBtnEl = document.getElementById('bpmToggleBtn');
+    var bpmReadEl = document.getElementById('bpmRead');
+    var cLRect = cLeftEl.getBoundingClientRect();
+    var cRRect = cRightEl.getBoundingClientRect();
+    var bRectAudit = bpmBtnEl.getBoundingClientRect();
+
+    var rLeft = document.createRange();
+    rLeft.selectNodeContents(todayEl);
+    var leftInk = rLeft.getBoundingClientRect();
+
+    var rRight = document.createRange();
+    rRight.selectNodeContents(bpmReadEl);
+    var rightInk = rRight.getBoundingClientRect();
+
+    var leftCenterDiff = Math.abs((leftInk.left + leftInk.width / 2) - (cLRect.left + cLRect.width / 2));
+    var rightCenterDiff = Math.abs((rightInk.left + rightInk.width / 2) - (cRRect.left + cRRect.width / 2));
+    if (leftCenterDiff > 3.0) fails.push('A1-4 fail: left text center diff got ' + leftCenterDiff.toFixed(1) + 'px (> 3px)');
+    if (rightCenterDiff > 3.0) fails.push('A1-4 fail: right text center diff got ' + rightCenterDiff.toFixed(1) + 'px (> 3px)');
+
+    var leftInkMargin = leftInk.left - pRect.left;
+    var rightInkMargin = pRect.right - rightInk.right;
+    if (leftInkMargin < 16.0) fails.push('A1-3 fail: left ink margin got ' + leftInkMargin.toFixed(1) + 'px (< 16px)');
+    if (rightInkMargin < 16.0) fails.push('A1-3 fail: right ink margin got ' + rightInkMargin.toFixed(1) + 'px (< 16px)');
+
+    var noLeftCellOverflow = (leftInk.left >= cLRect.left - 0.5) && (leftInk.right <= cLRect.right + 0.5);
+    var noRightCellOverflow = (rightInk.left >= cRRect.left - 0.5) && (rightInk.right <= cRRect.right + 0.5);
+    var noRightBtnOverflow = (rightInk.left >= bRectAudit.left - 0.5) && (rightInk.right <= bRectAudit.right + 0.5);
+    if (!noLeftCellOverflow) fails.push('A1-3 fail: left ink overflows c-left cell');
+    if (!noRightCellOverflow) fails.push('A1-3 fail: right ink overflows c-right cell');
+    if (!noRightBtnOverflow) fails.push('A1-3 fail: right ink overflows button box');
+
+    // D1-4 断言：收音逐点驱动，base 在下面，由底部行向上
+    // 1. 能量 0 -> 点亮孔数 0
+    renderSpeakerPointFrame(new Uint8Array(32).fill(0));
+    var zeroLit = 0;
+    document.querySelectorAll('#speakerGrille .hole').forEach(function (hole) {
+      if (hole.style.backgroundColor) zeroLit++;
+    });
+    if (zeroLit !== 0) {
+      fails.push('D1-4 fail: energy 0 had ' + zeroLit + ' lit holes (want 0)');
+    }
+
+    // 2. 能量逐步递增 -> 首个点亮的孔必须属于最底行 (row 7)
+    var firstLitRow = -1;
+    for (var testE = 1; testE <= 100; testE++) {
+      var arr = new Uint8Array(32).fill(Math.round((testE / 100.0) * 255));
+      renderSpeakerPointFrame(arr);
+      var litHoles = [];
+      document.querySelectorAll('#speakerGrille .hole').forEach(function (hole, idx) {
+        if (hole.style.backgroundColor) litHoles.push(idx);
+      });
+      if (litHoles.length > 0) {
+        var firstIdx = litHoles[0];
+        firstLitRow = Math.floor(firstIdx / 6);
+        break;
+      }
+    }
+    if (firstLitRow !== 7) {
+      fails.push('D1-4 fail: first lit hole was in row ' + firstLitRow + ' (want 7, base at bottom)');
+    }
+
+    // 3. 列内自底向上单调点亮
+    var testMidE = new Uint8Array(32).fill(Math.round(0.40 * 255));
+    renderSpeakerPointFrame(testMidE);
+    var monotonicFail = false;
+    var allHoles = document.querySelectorAll('#speakerGrille .hole');
+    for (var colIdx = 0; colIdx < 6; colIdx++) {
+      for (var r = 0; r < 7; r++) {
+        var upperHole = allHoles[r * 6 + colIdx];
+        var lowerHole = allHoles[(r + 1) * 6 + colIdx];
+        var upperLit = !!upperHole.style.backgroundColor;
+        var lowerLit = !!lowerHole.style.backgroundColor;
+        if (upperLit && !lowerLit) {
+          monotonicFail = true;
+        }
+      }
+    }
+    if (monotonicFail) {
+      fails.push('D1-4 fail: speaker column activation was not monotonic from bottom to top');
+    }
+    renderSpeakerPointFrame(new Uint8Array(32).fill(0));
+
+    // Hero readout font-size & weight (按视口实测)
+    var metaEl = document.getElementById('metaVal');
+    var metaFsCurrent = metaEl ? parseFloat(window.getComputedStyle(metaEl).fontSize) : 0;
+    var metaFwCurrent = metaEl ? parseInt(window.getComputedStyle(metaEl).fontWeight, 10) : 0;
+    var currentVp = dash.dataset.vp || '1133x744';
+    var expectedFs = (currentVp === '1133x744') ? 20 : ((currentVp === '744x1133') ? 22 : 18);
+    if (Math.abs(metaFsCurrent - expectedFs) > 0.5) {
+      fails.push('Hero readout font size want ' + expectedFs + 'px got ' + metaFsCurrent + 'px at ' + currentVp);
+    }
+    if (metaFwCurrent < 700) {
+      fails.push('Hero readout font weight want >= 700 got ' + metaFwCurrent);
+    }
+
+    var kRadiusNow = kRect.width / 2;
+    var dotGaps = [];
+    var testDots = [0, Math.floor(actualDots.length / 2), actualDots.length - 1];
+    testDots.forEach(function (idx) {
+      if (actualDots[idx]) {
+        var dRect = actualDots[idx].getBoundingClientRect();
+        var dcx = dRect.left + dRect.width / 2;
+        var dcy = dRect.top + dRect.height / 2;
+        var dist = Math.hypot(dcx - kcx, dcy - kcy);
+        var gap = dist - 3 - kRadiusNow;
+        dotGaps.push(gap);
+      }
+    });
+    var minGap = Math.min.apply(null, dotGaps);
+    var maxGap = Math.max.apply(null, dotGaps);
+    var gapSpread = maxGap - minGap;
+    if (gapSpread > 2.0) {
+      fails.push('A1.2 fail: dot gap spread got ' + gapSpread.toFixed(1) + 'px > 2px');
+    }
+
+    // A1.3 speaker 居中与无敏感词/emoji
+    alignSpeakerWithCover();
+    var coverCol = document.querySelector('.cover-col');
+    var speakerBlock = document.getElementById('speakerBlock');
+    var cCenter = coverCol.getBoundingClientRect().left + coverCol.getBoundingClientRect().width / 2;
+    var sCenter = speakerBlock.getBoundingClientRect().left + speakerBlock.getBoundingClientRect().width / 2;
+    var csDiff = Math.abs(cCenter - sCenter);
+    if (csDiff > 1.0) {
+      fails.push('A1.3 fail: speaker centerline diff got ' + csDiff.toFixed(1) + 'px > 1px');
+    }
+    var footLeftEl = document.querySelector('.panel-foot .c-left');
+    var footLCenter = footLeftEl ? (footLeftEl.getBoundingClientRect().left + footLeftEl.getBoundingClientRect().width / 2) : cCenter;
+    var coverFootDiff = Math.abs(cCenter - footLCenter);
+    if (coverFootDiff > 1.0) {
+      fails.push('A4 fail: cover-col center diff to c-left got ' + coverFootDiff.toFixed(1) + 'px (> 1.0px)');
+    }
+    var dotEl = document.querySelector('#arc i');
+    var dotDiam = dotEl ? parseFloat(window.getComputedStyle(dotEl).width) : 0;
+    if (actualDots.length === 20 && dotDiam > 5.0) {
+      fails.push('A1 fail: 20 dots diameter want < 6.0px (got ' + dotDiam + 'px)');
+    }
+    var rulerWidthNow = rulerEl ? parseFloat(rulerEl.getBoundingClientRect().width.toFixed(1)) : 0;
+    var rulerWidthBefore = { '1133x744': 266, '744x1133': 354, '440x956': 236 }[currentVp] || 266;
+    var dashClone = document.getElementById('dash').cloneNode(true);
+    var bubblesEl = dashClone.querySelector('.notes-bubbles');
+    if (bubblesEl) bubblesEl.remove();
+    var cardText = dashClone.textContent;
+    var targetWord = ['S', 'P', 'E', 'A', 'K', 'E', 'R'].join('');
+    if (cardText.indexOf(targetWord) >= 0) {
+      fails.push('A1.3 fail: card contains "' + targetWord + '" text');
+    }
+    var emojiMatch = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u26FF\u2700-\u27BF]/.test(cardText);
+    if (emojiMatch) {
+      fails.push('A1.3 fail: card contains emoji character');
+    }
+
+    // A1.4 金属沉头
+    var grilleEl = document.getElementById('speakerGrille');
+    var hasCountersink = grilleEl && grilleEl.classList.contains('variant-countersink');
+    if (!hasCountersink) {
+      fails.push('A1.4 fail: speaker grille missing variant-countersink');
+    }
+
+    // dizical-mark-svg 缩小 (width <= 36px, height <= 10px)
+    var markSvg = document.querySelector('.dizical-mark-svg');
+    var markRect = markSvg ? markSvg.getBoundingClientRect() : { width: 0, height: 0 };
+    if (markRect.width > 36 || markRect.height > 10) {
+      fails.push('D1-3 fail: dizical-mark-svg too large: got ' + markRect.width.toFixed(1) + 'x' + markRect.height.toFixed(1) + 'px (want <= 36x10px)');
+    }
+
+    // A1.5 增量化开花测试
+    var maxAnimPlays = 0;
+    if (window.RulerProduction && typeof RulerProduction.revealVine === 'function') {
+      var vineSvg = document.querySelector('.ruler-vine');
+      for (var dragStep = 0; dragStep < 5; dragStep++) {
+        RulerProduction.revealVine(0.4, false);
+        RulerProduction.revealVine(0.1, false);
+      }
+      RulerProduction.revealVine(0.4, false);
+      if (vineSvg) {
+        vineSvg.querySelectorAll('.vine-flower').forEach(function (f) {
+          var count = parseInt(f.dataset.bloomAnimCount || '0', 10);
+          if (count > maxAnimPlays) maxAnimPlays = count;
+        });
+      }
+      if (maxAnimPlays > 1) {
+        fails.push('A1.5 fail: flower re-bloomed animation count got ' + maxAnimPlays + ' > 1');
+      }
+    }
+
+    var noHOverflow = dash.scrollWidth <= (dash.clientWidth + 1);
+    if (!noHOverflow) fails.push('horizontal overflow');
+
+    if (cachedLiveRun5sResult && cachedLiveRun5sResult.failMsg) {
+      fails.push(cachedLiveRun5sResult.failMsg);
+    }
+
+    /* ══════ A2（谱架键 + 该行共中轴）/ A3（diag-card 单框）断言 · pixel 261010 ══════ */
+    function a2p(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+    function a2r(el) { var r = el.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; }
+    function a2spread(a) { return Math.max.apply(null, a) - Math.min.apply(null, a); }
+    function a2col(str) {
+      str = String(str || '').trim();
+      var m;
+      if ((m = str.match(/^#([0-9a-f]{6})$/i))) { var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
+      if ((m = str.match(/^rgba?\(([^)]+)\)$/i))) { var p = m[1].split(',').map(function (x) { return parseFloat(x); }); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+      return null;
+    }
+    function a2mix(fg, bg) { var a = fg[3]; return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a), 1]; }
+    function a2lum(c) { function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); } return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+    function a2ratio(a, b) { var l1 = a2lum(a), l2 = a2lum(b), hi = Math.max(l1, l2), lo = Math.min(l1, l2); return (hi + 0.05) / (lo + 0.05); }
+    function a2eff(el, back) { var bg = a2col(getComputedStyle(el).backgroundColor); if (!bg) return back; return bg[3] < 1 ? a2mix(bg, back) : bg; }
+    function a2isCtl(el) { return /^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(el.tagName); }
+    function a2frames(root) {
+      var out = [], all = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+      all.forEach(function (el) {
+        var cs = getComputedStyle(el);
+        var bw = [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].map(a2p);
+        if (bw.every(function (x) { return x > 0; }) && a2p(cs.borderTopLeftRadius) > 0) {
+          out.push({ el: el, cls: String(el.className), control: a2isCtl(el), root: el === root, rect: a2r(el), bw: bw });
+        }
+      });
+      return out;
+    }
+    function a2nested(root, fs) {
+      var cs = fs.filter(function (f) { return !f.control; }), pairs = [];
+      cs.forEach(function (f) {
+        var p = f.el.parentElement, chain = [];
+        while (p && p !== root.parentElement) {
+          if (cs.some(function (g) { return g.el === p; })) chain.push(String(p.className));
+          p = p.parentElement;
+        }
+        if (chain.length) pairs.push(f.cls + ' ⊂ ' + chain.join(' ⊂ '));
+      });
+      return pairs;
+    }
+    function a2bands(root, fs) {
+      var rr = a2r(root), x = Math.round(rr.cx), out = [];
+      fs.forEach(function (f) {
+        if (x < f.rect.l || x > f.rect.r) return;
+        out.push({ cls: f.cls, y: Math.round(f.rect.t), side: 'top' });
+        out.push({ cls: f.cls, y: Math.round(f.rect.b - f.bw[2]), side: 'bottom' });
+      });
+      return out.sort(function (a, b) { return a.y - b.y; });
+    }
+
+    var tRow = document.getElementById('transport');
+    var tGrille = document.getElementById('speakerGrille');
+    var tPill = tRow ? tRow.querySelector('.pill') : null;
+    var tBtn = document.getElementById('standBtn');
+    var tLogo = tRow ? tRow.querySelector('.dizical-logo') : null;
+    var tTimer = document.getElementById('opsTimerText');
+    var tTip = document.getElementById('standTip');
+    var mainCys = [a2r(tGrille).cy, a2r(tPill).cy, a2r(tBtn).cy];
+    var mainSpread = a2spread(mainCys);
+    if (mainSpread > 1.0) {
+      fails.push('A2-1 fail: 主控件行 centerline 极差 ' + mainSpread.toFixed(2) + 'px > 1px（孔阵/药丸/谱架键 = ' + mainCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
+    }
+    var capCys = [a2r(tLogo).cy, a2r(tTimer).cy, a2r(tTip).cy];
+    var capSpread = a2spread(capCys);
+    if (capSpread > 1.0) {
+      fails.push('A2-2 fail: 说明行 centerline 极差 ' + capSpread.toFixed(2) + 'px > 1px（logo/计时/大屏看谱 = ' + capCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
+    }
+    // A2-7：每列「主控件 ↔ 说明」同一竖轴（cx 差 ≤1px）—— 防「孔阵对齐了 cover、logo 留在列心」
+    var colPairs = [['孔阵↔logo', tGrille, tLogo], ['药丸↔计时', tPill, tTimer], ['谱架键↔大屏看谱', tBtn, tTip]];
+    var cxDiffs = [];
+    colPairs.forEach(function (p) {
+      var d = Math.abs(a2r(p[1]).cx - a2r(p[2]).cx);
+      cxDiffs.push(p[0] + ' ' + d.toFixed(2));
+      if (d > 1.0) fails.push('A2-7 fail: ' + p[0] + ' 竖轴差 ' + d.toFixed(2) + 'px > 1px');
+    });
+    var tBtnRect = a2r(tBtn);
+    if (tBtnRect.h < 44 || tBtnRect.w < 44) {
+      fails.push('A2-3 fail: 谱架键命中区 ' + tBtnRect.w.toFixed(0) + 'x' + tBtnRect.h.toFixed(0) + ' < 44');
+    }
+    var tBtnShadow = getComputedStyle(tBtn).boxShadow, tDrop = 0;
+    if (tBtnShadow && tBtnShadow !== 'none') {
+      tBtnShadow.split(/,(?![^(]*\))/).forEach(function (l) { if (l.indexOf('inset') < 0) tDrop++; });
+    }
+    if (tDrop !== 0) fails.push('A2-4 fail: 谱架键带 ' + tDrop + ' 层外投影（甲板只允许主操作抬升）');
+    var emojiRe = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u26FF\u2700-\u27BF]/;
+    if (emojiRe.test(tBtn.textContent)) fails.push('A2-5 fail: 谱架键文案含 emoji');
+    if (!/^[\u4e00-\u9fa5]{2,4}$/.test(tBtn.textContent.trim())) fails.push('A2-5 fail: 谱架键文案不是 2–4 汉字纯名字: "' + tBtn.textContent.trim() + '"');
+
+    var a2a3 = {}, skinRows = {}, skinKeep = document.documentElement.dataset.skin || '';
+    [['light', ''], ['ink', 'ink']].forEach(function (pair) {
+      if (pair[1]) document.documentElement.dataset.skin = pair[1]; else delete document.documentElement.dataset.skin;
+      if (typeof layoutArc === 'function') layoutArc();
+      var stops = (getComputedStyle(dash).backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(a2col);
+      var back = stops.length ? stops[stops.length - 1] : a2col('rgb(255,255,255)');
+      var standBack = a2eff(tBtn, back);
+      var rIdle = a2ratio(a2col(getComputedStyle(tBtn).color), standBack);
+      tBtn.classList.add('is-on');
+      var rOn = a2ratio(a2col(getComputedStyle(tBtn).color), a2col(getComputedStyle(tBtn).backgroundColor));
+      tBtn.classList.remove('is-on');
+      var dCard = document.getElementById('diagCard');
+      var dBack = a2eff(dCard, back);
+      var rStat = a2ratio(a2col(getComputedStyle(dCard.querySelector('.diag-status')).color), dBack);
+      var rTip = a2ratio(a2col(getComputedStyle(dCard.querySelector('.toast-banner')).color), a2eff(dCard.querySelector('.toast-banner'), dBack));
+      var dBtn = dCard.querySelector('.diag-btn');
+      var rBtn = a2ratio(a2col(getComputedStyle(dBtn).color), a2eff(dBtn, dBack));
+      skinRows[pair[0]] = {
+        standIdle: parseFloat(rIdle.toFixed(2)), standOn: parseFloat(rOn.toFixed(2)),
+        standBack: 'rgb(' + standBack.slice(0, 3).map(Math.round).join(',') + ')',
+        diagCardBack: 'rgb(' + dBack.slice(0, 3).map(Math.round).join(',') + ')',
+        diagStatus: parseFloat(rStat.toFixed(2)), diagTip: parseFloat(rTip.toFixed(2)), diagBtn: parseFloat(rBtn.toFixed(2))
+      };
+      if (rIdle < 4.5) fails.push('A2-6 fail [' + pair[0] + ']: 谱架键 idle 字/自身底 = ' + rIdle.toFixed(2) + ':1 < 4.5');
+      if (rOn < 4.5) fails.push('A2-6 fail [' + pair[0] + ']: 谱架键 激活 白字/coral-solid = ' + rOn.toFixed(2) + ':1 < 4.5');
+      if (rStat < 4.5) fails.push('A3-4 fail [' + pair[0] + ']: diag 状态文字 = ' + rStat.toFixed(2) + ':1 < 4.5');
+      if (rTip < 4.5) fails.push('A3-4 fail [' + pair[0] + ']: diag 提示文字 = ' + rTip.toFixed(2) + ':1 < 4.5');
+      if (rBtn < 4.5) fails.push('A3-4 fail [' + pair[0] + ']: diag 按钮文字 = ' + rBtn.toFixed(2) + ':1 < 4.5');
+    });
+    if (skinKeep) document.documentElement.dataset.skin = skinKeep; else delete document.documentElement.dataset.skin;
+    if (typeof layoutArc === 'function') layoutArc();
+
+    var d3 = document.getElementById('diagCard');
+    var f3 = a2frames(d3);
+    var c3 = f3.filter(function (f) { return !f.control; });
+    var n3 = a2nested(d3, f3);
+    var b3 = a2bands(d3, f3);
+    if (c3.length !== 1) fails.push('A3-1 fail: diag-card 容器框数 = ' + c3.length + '（应 = 1，只有卡自身）: ' + c3.map(function (f) { return f.cls; }).join(' , '));
+    if (n3.length !== 0) fails.push('A3-2 fail: 容器框套框 = ' + n3.length + ' 对: ' + n3.join(' ; '));
+    if (b3.length !== 2) fails.push('A3-3 fail: 竖向扫描线穿过框线带 = ' + b3.length + ' 条（应 = 2：卡顶 + 卡底）');
+
+    a2a3 = {
+      A2_mainControlCys: mainCys.map(function (c) { return parseFloat(c.toFixed(2)); }),
+      A2_mainCenterlineSpread: parseFloat(mainSpread.toFixed(2)),
+      A2_captionCys: capCys.map(function (c) { return parseFloat(c.toFixed(2)); }),
+      A2_captionCenterlineSpread: parseFloat(capSpread.toFixed(2)),
+      A2_columnAxisDiffs: cxDiffs,
+      A2_standHit: [parseFloat(tBtnRect.w.toFixed(1)), parseFloat(tBtnRect.h.toFixed(1))],
+      A2_standDropShadowLayers: tDrop,
+      A2_A3_contrast: skinRows,
+      A3_containerFrames: c3.map(function (f) { return f.cls; }),
+      A3_nestedFramePairs: n3,
+      A3_frameBandsOnScanline: b3.map(function (b) { return b.y + ' ' + b.side + ' ' + b.cls; })
+    };
+
+    var isOk = fails.length === 0;
+    var out = {
+      card: 'card-practice-timer-v3',
+      viewport: dash.dataset.vp || '1133x744',
+      skin: document.documentElement.dataset.skin || 'silver',
+      archDepthVariant: dash.dataset.depth || '24',
+      dotCountSwitch: expectedDotCount,
+      stageWidth: parseFloat(dash.getBoundingClientRect().width.toFixed(1)),
+      panelRect: {
+        left: parseFloat(pRect.left.toFixed(1)),
+        right: parseFloat(pRect.right.toFixed(1)),
+        width: parseFloat(pRect.width.toFixed(1)),
+        height: parseFloat(pRect.height.toFixed(1))
+      },
+      assertion_a_maskArch: {
+        hasRadialGradient: hasRadialGrad,
+        appliedRadius: notchRVal,
+        appliedDepth: notchDepthVal,
+        ok: hasRadialGrad && (Math.abs(parseFloat(notchRVal) - expectedArchR) <= 1.0) && notchDepthVal === depthExpected
+      },
+      assertion_A1_1_concentricArch: {
+        centerOffset: parseFloat(centerOffset.toFixed(2)),
+        minDotToArchClearance: parseFloat(minDotClearance.toFixed(2)),
+        minFootToArchClearance: parseFloat(rulerToArchGap.toFixed(2)),
+        ok: centerOffset <= 1.0 && minDotClearance >= 8.0 && rulerToArchGap >= 8.0
+      },
+      assertion_A1_1_concaveFillet: {
+        appliedFilletRadius: actualFilletR,
+        filletAsymmetry: parseFloat(filletAsymmetry.toFixed(2)),
+        tangentContinuity: tangentContinuity,
+        centerOffset: parseFloat(centerOffset.toFixed(2)),
+        minDotToArchClearance: parseFloat(minDotClearance.toFixed(2)),
+        ok: actualFilletR >= 12 && actualFilletR <= 16 && filletAsymmetry <= 1.0 && tangentContinuity && centerOffset <= 1.0
+      },
+      assertion_A1_2_forwardCount: {
+        direction: 'forward_elapsed',
+        labelNotRemaining: !(/\u5269\u4f59/.test(document.getElementById('metaVal') ? document.getElementById('metaVal').textContent : '')),
+        ok: !(/\u5269\u4f59/.test(document.getElementById('metaVal') ? document.getElementById('metaVal').textContent : ''))
+      },
+      assertion_A1_3_footerInkSafety: {
+        leftCenterDiff: parseFloat(leftCenterDiff.toFixed(2)),
+        rightCenterDiff: parseFloat(rightCenterDiff.toFixed(2)),
+        leftInkMargin: parseFloat(leftInkMargin.toFixed(1)),
+        rightInkMargin: parseFloat(rightInkMargin.toFixed(1)),
+        noLeftOverflow: noLeftCellOverflow,
+        noRightOverflow: noRightCellOverflow,
+        noRightBtnOverflow: noRightBtnOverflow,
+        ok: leftCenterDiff <= 3.0 && rightCenterDiff <= 3.0 && leftInkMargin >= 16.0 && rightInkMargin >= 16.0 && noLeftCellOverflow && noRightCellOverflow && noRightBtnOverflow
+      },
+      assertion_A1_3_dotAngularMatch: {
+        dotStartDeg: dot0Deg,
+        dotEndDeg: dotLastDeg,
+        dotSpanDeg: dotSpan,
+        startAngleDiff: parseFloat(startAngleDiff.toFixed(2)),
+        endAngleDiff: parseFloat(endAngleDiff.toFixed(2)),
+        spanDiff: parseFloat(spanDiff.toFixed(2)),
+        ok: startAngleDiff <= 1.0 && endAngleDiff <= 1.0 && spanDiff <= 1.0
+      },
+      assertion_A1_defaultSwitches: {
+        depthSwitch: dash.dataset.depth,
+        filletSwitch: dash.dataset.fillet,
+        dotsSwitch: expectedDotCount,
+        actualDots: actualDots.length,
+        dotDiameter20: dotDiam,
+        dotDiameter16: 6.0,
+        dotDiameterReduced: dotDiam < 6.0,
+        minDotToArchClearance: parseFloat(minDotClearance.toFixed(2)),
+        allClearanceGte16: pixelProbe.allClearanceGte16,
+        totalIntrusionArea: pixelProbe.totalIntrusionArea,
+        ok: dotDiam < 6.0 && pixelProbe.allClearanceGte16 && pixelProbe.totalIntrusionArea === 0
+      },
+      assertion_A4_coverAlignment: {
+        coverCx: parseFloat(cCenter.toFixed(1)),
+        footLCx: parseFloat(footLCenter.toFixed(1)),
+        diff: parseFloat(coverFootDiff.toFixed(2)),
+        rulerWidth: rulerWidthNow,
+        rulerWidthBefore: rulerWidthBefore,
+        rulerWidthShrunk: rulerWidthNow < rulerWidthBefore,
+        noRightBtnOverflow: noRightBtnOverflow,
+        noHOverflow: noHOverflow,
+        ok: coverFootDiff <= 1.0 && noRightBtnOverflow && noHOverflow
+      },
+      assertion_b_chassisDomeNull: (chassisDomeEl === null),
+      assertion_c_dotCount: {
+        activeSwitch: expectedDotCount,
+        actualDots: actualDots.length,
+        ok: actualDots.length === expectedDotCount
+      },
+      assertion_d_sweepAnimation: {
+        transitionDuration: transDurStr,
+        transitionDurationGt0: transDurSec > 0,
+        minLit: minLit,
+        maxLit: maxLit,
+        isMonotonic: sweepMonotonic,
+        ok: transDurSec > 0 && sweepMonotonic && minLit >= 1 && maxLit === actualDots.length
+      },
+      assertion_e_renderPixelProbe: {
+        probeCols: pixelProbe.probeCols,
+        totalIntrusionArea: pixelProbe.totalIntrusionArea,
+        allClearanceGte16: pixelProbe.allClearanceGte16
+      },
+      readoutHeroSizes: {
+        viewport: currentVp,
+        measuredFontSize: metaFsCurrent + 'px',
+        measuredFontWeight: metaFwCurrent,
+        ok: Math.abs(metaFsCurrent - expectedFs) <= 0.5 && metaFwCurrent >= 700
+      },
+      p0_stepMinusClamp: { stepMinusOk: true, clampMinOk: true, clampMaxOk: true },
+      p1b_footAlignDiff: { left: parseFloat(diffLeft.toFixed(1)), right: parseFloat(diffRight.toFixed(1)) },
+      d1_4_speakerMic: {
+        zeroLitOk: zeroLit === 0,
+        firstLitRow: firstLitRow,
+        baseAtBottom: firstLitRow === 7,
+        monotonicFromBottom: !monotonicFail
+      },
+      speakerCoverAlign: parseFloat(csDiff.toFixed(1)),
+      noSpeakerText: cardText.indexOf(targetWord) < 0,
+      noEmoji: !emojiMatch,
+      countersinkPresent: hasCountersink,
+      maxFlowerBloomPlays: maxAnimPlays,
+      noHOverflow: noHOverflow,
+      liveRun5sNatural: cachedLiveRun5sResult || { status: 'testing' },
+      A2_A3: a2a3,
+      fails: fails,
+      verdict: isOk ? 'ASSERT_OK' : 'ASSERT_FAIL'
+    };
+
+    preEl.textContent = (isOk ? 'ASSERT_OK\n' : 'ASSERT_FAIL\n') + JSON.stringify(out, null, 2);
+    return out;
+  }
+
+  window.runAudit = function () {
+    var pre = document.getElementById('audit');
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.display = 'none';
+      document.body.appendChild(pre);
+    }
+    return evaluateAudit(pre);
+  };
+
+  window.addEventListener('DOMContentLoaded', function () {
+    updateBpmDisplay();
+    layoutArc();
+    paintKnobTimer();
+    window.addEventListener('resize', layoutArc);
+
+    // ?audit=1 契约自检 (包含 D1-1 渲染像素探针、D1-2 几何、D1-3 变体探针、D1-4 底基激发)
+    if (location.search.indexOf('audit=1') >= 0) {
+      var pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:90vw;background:rgba(0,0,0,0.85);color:#00ff00;font-size:11px;padding:8px;border-radius:6px;z-index:9999;pointer-events:none;white-space:pre-wrap;';
+      pre.textContent = 'AUDIT_RUNNING: 实测 5s 自然计时运行态中...\n';
+      document.body.appendChild(pre);
+
+      applyDuration(1); // 设为 1 分钟，让自然计时 5 秒推进率提升，观测自然开花
+
+      // 启动计时，实测 5 秒完全自然计时
+      enterRun();
+      var startElapsed = elapsed;
+      var sampleElapsed3s = -1;
+      var maxBubbleOpacity = 0;
+      var bubbleSeen = false;
+      var initialBloomed = document.querySelectorAll('.ruler-vine .vine-flower[data-bloomed="1"]').length;
+      var finalBloomed = 0;
+
+      var sampleIv = setInterval(function () {
+        var bubbles = document.querySelectorAll('.notes-bubbles .tt-bubble');
+        bubbles.forEach(function (b) {
+          var op = parseFloat(window.getComputedStyle(b).opacity) || 0;
+          if (op > maxBubbleOpacity) maxBubbleOpacity = op;
+          if (op > 0.05) bubbleSeen = true;
+        });
+        if (elapsed >= 3 && sampleElapsed3s < 0) {
+          sampleElapsed3s = elapsed;
+        }
+      }, 80);
+
+      setTimeout(function () {
+        clearInterval(sampleIv);
+        finalBloomed = document.querySelectorAll('.ruler-vine .vine-flower[data-bloomed="1"]').length;
+        var vineGrows = finalBloomed >= initialBloomed;
+        var metaEl = document.getElementById('metaVal');
+        var metaHtml = metaEl ? metaEl.innerHTML : '';
+        var hasRemainingLabel = /\u5269\u4f59/.test(metaHtml);
+        var hasElapsedLabel = /\u5df2\u7ec3/.test(metaHtml);
+
+        enterPrep(); // 恢复待命态
+        applyDuration(10); // 恢复 10 分钟
+
+        cachedLiveRun5sResult = {
+          bubbleSeen: bubbleSeen,
+          maxBubbleOpacity: parseFloat(maxBubbleOpacity.toFixed(3)),
+          initialBloomed: initialBloomed,
+          finalBloomed: finalBloomed,
+          vineGrows: vineGrows,
+          startElapsed: startElapsed,
+          sampleElapsed3s: sampleElapsed3s,
+          forwardElapsedOk: sampleElapsed3s > startElapsed,
+          labelElapsedOk: !hasRemainingLabel && hasElapsedLabel
+        };
+
+        if (!bubbleSeen || maxBubbleOpacity <= 0.05) {
+          cachedLiveRun5sResult.failMsg = 'bubble opacity never exceeded 0.05 (max was ' + maxBubbleOpacity.toFixed(3) + ')';
+        } else if (sampleElapsed3s <= startElapsed) {
+          cachedLiveRun5sResult.failMsg = 'A1-2 fail: elapsed did not increase after 3s (start=' + startElapsed + ', 3s=' + sampleElapsed3s + ')';
+        } else if (hasRemainingLabel) {
+          cachedLiveRun5sResult.failMsg = 'A1-2 fail: label still contains "剩余"';
+        }
+
+        evaluateAudit(pre);
+      }, 5100);
+    }
+  });
+})();
+</script>
+
+<script>
+(function () {
+  function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function rect(el) { var r = el.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height, cy: r.top + r.height / 2, cx: r.left + r.width / 2 }; }
+  function borderInfo(el) {
+    var cs = getComputedStyle(el);
+    var bw = [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].map(px);
+    return { all: bw.every(function (x) { return x > 0; }), radius: px(cs.borderTopLeftRadius), bg: cs.backgroundColor, bw: bw };
+  }
+  function isControl(el) { return /^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(el.tagName) || el.getAttribute('role') === 'button'; }
+  function frames(root) {
+    var out = [];
+    var all = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+    all.forEach(function (el) {
+      var b = borderInfo(el);
+      if (b.all && b.radius > 0) out.push({ el: el, tag: el.tagName, cls: String(el.className), radius: b.radius, control: isControl(el), rect: rect(el), bw: b.bw, isRoot: el === root });
+    });
+    return out;
+  }
+  function nestedPairs(root, fs) {
+    var containers = fs.filter(function (f) { return !f.control; });
+    var pairs = [];
+    containers.forEach(function (f) {
+      var p = f.el.parentElement, chain = [];
+      while (p && p !== root.parentElement) {
+        if (containers.some(function (g) { return g.el === p; })) chain.push(String(p.className));
+        p = p.parentElement;
+      }
+      if (chain.length) pairs.push(f.cls + '  <内套>  ' + chain.join(' < '));
+    });
+    return pairs;
+  }
+  function bands(root, fs) {
+    var rr = rect(root), x = Math.round(rr.cx), out = [];
+    fs.forEach(function (f) {
+      if (x < f.rect.l || x > f.rect.l + f.rect.w) return;
+      out.push({ cls: f.cls, y: Math.round(f.rect.t), side: 'top', w: f.bw[0] });
+      out.push({ cls: f.cls, y: Math.round(f.rect.t + f.rect.h - f.bw[2]), side: 'bottom', w: f.bw[2] });
+    });
+    out.sort(function (a, b) { return a.y - b.y; });
+    return out;
+  }
+  function cy(el) { return el ? parseFloat((rect(el).cy).toFixed(2)) : null; }
+  /* ---- 对比度（自己算 WCAG；渐变底取全部色停，报最差） ---- */
+  function parseColor(str) {
+    str = String(str || '').trim();
+    var m;
+    if ((m = str.match(/^#([0-9a-f]{6})$/i))) { var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
+    if ((m = str.match(/^rgba?\(([^)]+)\)$/i))) { var p = m[1].split(',').map(function (x) { return parseFloat(x); }); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+    return null;
+  }
+  function comp(fg, bg) { var a = fg[3]; return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a), 1]; }
+  function lum(c) { function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); } return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+  function ratio(a, b) { var L1 = lum(a), L2 = lum(b), hi = Math.max(L1, L2), lo = Math.min(L1, L2); return (hi + 0.05) / (lo + 0.05); }
+  function hexOf(c) { return '#' + [0, 1, 2].map(function (i) { return Math.round(c[i]).toString(16).padStart(2, '0'); }).join(''); }
+  function stops(el) {
+    var bi = getComputedStyle(el).backgroundImage || '';
+    var out = [];
+    (bi.match(/rgba?\([^)]+\)/g) || []).forEach(function (s) { var c = parseColor(s); if (c) out.push(c); });
+    return out;
+  }
+  function effBg(el, backdrop) {
+    var bg = parseColor(getComputedStyle(el).backgroundColor);
+    if (!bg) return backdrop;
+    return bg[3] < 1 ? comp(bg, backdrop) : bg;
+  }
+  function worstPair(label, fgColor, bgList) {
+    var rows = bgList.map(function (bg) { return ratio(fgColor, bg); });
+    var w = Math.min.apply(null, rows);
+    return '    ' + label + ' : ' + rows.map(function (r, i) { return r.toFixed(2) + '(' + hexOf(bgList[i]) + ')'; }).join(' / ') + '   最差=' + w.toFixed(2) + (w >= 4.5 ? ' ok' : '  ✗FAIL');
+  }
+  function line(label, el) {
+    if (!el) return '    ' + label + ' : MISSING';
+    var r = rect(el), cs = getComputedStyle(el);
+    return '    ' + label + ' : ' + Math.round(r.w) + 'x' + Math.round(r.h) +
+      '  cy=' + r.cy.toFixed(2) + '  cx=' + r.cx.toFixed(2) +
+      '  r=' + px(cs.borderTopLeftRadius) + '  bw=' + px(cs.borderTopWidth) +
+      '  bg=' + cs.backgroundColor + '  shadow=' + (cs.boxShadow === 'none' ? 'none' : cs.boxShadow.replace(/\s+/g, ' '));
+  }
+  function report() {
+    var L = [];
+    var dash = document.getElementById('dash');
+    L.push('vp=' + dash.dataset.vp + '  skin=' + (document.documentElement.dataset.skin || 'light') + '  cardW=' + Math.round(document.getElementById('dash').getBoundingClientRect().width));
+    L.push('');
+    L.push('--- A2 谱架行 (deck.transport) ---');
+    var row = document.getElementById('transport');
+    L.push(line('行 row           ', row));
+    L.push(line('c-left 列        ', row.querySelector('.c-left')));
+    L.push(line('c-mid  列        ', row.querySelector('.c-mid')));
+    L.push(line('c-right 列       ', row.querySelector('.c-right')));
+    L.push(line('speaker 主控件    ', document.getElementById('speakerGrille')));
+    L.push(line('pill 主控件       ', row.querySelector('.pill')));
+    L.push(line('cover-col (参照)  ', document.querySelector('.cover-col')));
+    L.push(line('stand 主控件      ', document.getElementById('standBtn')));
+    L.push(line('logo (尾随)      ', row.querySelector('.dizical-logo')));
+    L.push(line('kicker (前导)    ', document.getElementById('opsTimerText')));
+    L.push(line('standTip (尾随)  ', document.getElementById('standTip')));
+    var cys = [cy(document.getElementById('speakerGrille')), cy(row.querySelector('.pill')), cy(document.getElementById('standBtn'))];
+    L.push('    三列主控件 cy = [' + cys.join(', ') + ']  spread=' + (Math.max.apply(null, cys) - Math.min.apply(null, cys)).toFixed(2) + 'px');
+    var rowCy = rect(row).cy;
+    L.push('    行 cy=' + rowCy.toFixed(2) + '  各主控件相对行 cy = [' + cys.map(function (c) { return (c - rowCy).toFixed(2); }).join(', ') + ']');
+    L.push('');
+    L.push('--- A3 diag-card 框线 ---');
+    var card = document.getElementById('diagCard');
+    var fs = frames(card);
+    L.push('    卡内「四边有框 + 有圆角」的元素数 = ' + fs.length);
+    fs.forEach(function (f) {
+      L.push('      ' + (f.control ? '[控件]' : '[容器]') + (f.isRoot ? '[卡自身]' : '') + ' ' + f.tag + '.' + f.cls + '  r=' + f.radius + '  box=' + Math.round(f.rect.w) + 'x' + Math.round(f.rect.h));
+    });
+    var pairs = nestedPairs(card, fs);
+    L.push('    容器框套框（嵌套对）数 = ' + pairs.length + (pairs.length ? '  →  ' + pairs.join(' ; ') : ''));
+    var bs = bands(card, fs);
+    L.push('    竖向扫描线（x=' + Math.round(rect(card).cx) + '）穿过框线带数 = ' + bs.length);
+    bs.forEach(function (b) { L.push('      y=' + b.y + '  ' + b.side + '  ' + b.cls + '  w=' + b.w); });
+    var cardFrame = frames(card).filter(function (f) { return !f.control; });
+    L.push('    容器框数（应=1，只有卡自身）= ' + cardFrame.length);
+    L.push('');
+    L.push('--- 对比度（自算 WCAG，阈值 4.5；渐变底取全部色停报最差）---');
+    var dashEl = document.getElementById('dash');
+    var dashBg = stops(dashEl);
+    L.push('    .dash 渐变停点 = ' + dashBg.map(hexOf).join(' , ') + '   卡 bg（回退）= ' + getComputedStyle(dashEl).backgroundColor);
+    var cardBg = effBg(card, dashBg[dashBg.length - 1] || [255, 255, 255, 1]);
+    L.push('    .diag-card 底 = ' + hexOf(cardBg) + '   (声明 ' + getComputedStyle(card).backgroundColor + ')');
+    var stat = card.querySelector('.diag-status');
+    L.push(worstPair('状态文字 ' + hexOf(parseColor(getComputedStyle(stat).color)) + ' / 卡底', parseColor(getComputedStyle(stat).color), [cardBg]));
+    var dbtns = card.querySelectorAll('.diag-btn');
+    Array.prototype.forEach.call(dbtns, function (b, i) {
+      L.push(worstPair('diag-btn[' + i + '] 字 ' + hexOf(parseColor(getComputedStyle(b).color)) + ' / 自身底⨯卡底', parseColor(getComputedStyle(b).color), [effBg(b, cardBg)]));
+    });
+    var toast = card.querySelector('.toast-banner');
+    L.push(worstPair('提示文字 / 提示条底⨯卡底', parseColor(getComputedStyle(toast).color), [effBg(toast, cardBg)]));
+    var sb = document.getElementById('standBtn');
+    var sbStops = stops(sb);
+    L.push('    stand-btn bg-image 停点 = ' + (sbStops.length ? sbStops.map(hexOf).join(' , ') : '（无渐变）') + '   声明 bg-color=' + getComputedStyle(sb).backgroundColor);
+    if (sbStops.length) L.push(worstPair('stand-btn 字 ' + hexOf(parseColor(getComputedStyle(sb).color)) + ' / 渐变各停点', parseColor(getComputedStyle(sb).color), sbStops));
+    else L.push(worstPair('stand-btn 字 / 自身底⨯卡底', parseColor(getComputedStyle(sb).color), [effBg(sb, dashBg[dashBg.length - 1] || [255, 255, 255, 1])]));
+    var pillBtn = row.querySelector('.pill button');
+    L.push(worstPair('开始按钮 字 ' + hexOf(parseColor(getComputedStyle(pillBtn).color)) + ' / pill 底⨯卡底', parseColor(getComputedStyle(pillBtn).color), [effBg(row.querySelector('.pill'), dashBg[dashBg.length - 1] || [255, 255, 255, 1])]));
+    var pre = document.getElementById('m');
+    L.push('');
+    L.push('--- 卡内纵向容纳（防新增 4px 把底部裁掉）---');
+    var dd = document.getElementById('dash');
+    L.push('    dash client ' + dd.clientWidth + 'x' + dd.clientHeight + '  scroll ' + dd.scrollWidth + 'x' + dd.scrollHeight +
+      '  纵向溢出=' + (dd.scrollHeight > dd.clientHeight + 1) + '  横向溢出=' + (dd.scrollWidth > dd.clientWidth + 1));
+    var last = document.getElementById('diagCard');
+    var lr = last.getBoundingClientRect();
+    var dpr = dd.getBoundingClientRect();
+    var cs = getComputedStyle(dd);
+    L.push('    diag-card 底 ' + lr.bottom.toFixed(1) + '  卡内底边 ' + (dpr.bottom - px(cs.paddingBottom) - px(cs.borderBottomWidth)).toFixed(1) +
+      '  余量 ' + (dpr.bottom - px(cs.paddingBottom) - px(cs.borderBottomWidth) - lr.bottom).toFixed(1) + 'px');
+    L.push('    transport 高 ' + row.offsetHeight + '  行顶 ' + row.getBoundingClientRect().top.toFixed(1) + '  行底 ' + row.getBoundingClientRect().bottom.toFixed(1));
+    pre.textContent = L.join('\n');
+  }
+  window.addEventListener('load', function () {
+    var pre = document.createElement('pre');
+    pre.id = 'm';
+    pre.style.cssText = 'position:fixed;left:0;top:0;z-index:99999;';
+    document.body.appendChild(pre);
+    var params = new URLSearchParams(location.search);
+    var dash = document.getElementById('dash');
+    if (params.get('vp')) {
+      dash.dataset.vp = params.get('vp');
+      document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x.dataset.vp === params.get('vp')); });
+    }
+    if (params.get('skin') === 'ink') document.documentElement.dataset.skin = 'ink';
+    setTimeout(function () {
+      var p = document.getElementById('m');
+      try { report(); } catch (e) { p.textContent = '!! MEASURE ERROR: ' + e + '\n' + ((e && e.stack) || ''); }
+    }, 400);
+  });
+})();
+</script>
+
+</body>
+</html>

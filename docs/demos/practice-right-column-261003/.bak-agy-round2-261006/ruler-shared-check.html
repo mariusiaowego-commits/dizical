@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>共享刻度尺接入自检 — 生产那套 ruler + 气泡 + 卷草纹</title>
+<meta name="description" content="验证共享件 mount 后刻度数、卷草纹、气泡池、步进与拖拽都来自生产实现。">
+<link rel="stylesheet" href="shared/ruler-production.css">
+<style>
+  /* ── token 契约：从 dashboard-skin-01-v2.html 原样抽取（勿手改，改契约要全文件同步） ── */
+
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+
+    /* 非 token 内部变量：视口宽高与 DESIGN.md 衬线字族 token */
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  }
+:root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; font-family: -apple-system, "PingFang SC", sans-serif; background: var(--dash-page); color: var(--dash-text); }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12px; margin-bottom: 14px; max-width: 560px; width: 100%; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--dash-text-soft); font: inherit; padding: 5px 10px; cursor: pointer; min-height: 32px; }
+  .seg button.on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; }
+  .seg button.on span { color: var(--dash-page); }
+  .card { max-width: 560px; width: 100%; border: 1px solid var(--dash-ink-a12); border-radius: 16px; padding: 18px 16px 22px; background: var(--dash-white); overflow: hidden; }
+  .readout { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .readout b { font-size: 34px; font-weight: 800; }
+  .note { font-size: 11.5px; color: var(--dash-text-soft); margin-top: 16px; line-height: 1.7; }
+  button:focus-visible { outline: 2px solid var(--dash-accent-text); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <b>共享刻度尺接入自检</b>
+  <div class="seg" id="skinSeg">
+    <button type="button" data-skin="light" class="on">浅银</button>
+    <button type="button" data-skin="ink">深墨</button>
+  </div>
+  <button type="button" id="btnStepMinus" class="step-btn" aria-label="减少一分钟">−</button>
+  <button type="button" id="btnStepPlus" class="step-btn" aria-label="增加一分钟">+</button>
+  <button type="button" id="btnBubble">冒一次气泡</button>
+</div>
+
+<div class="card">
+  <div class="readout"><b id="durText">10</b><span>分钟</span></div>
+  <!-- 生产同名 markup（practice.html:1712-1721 原样，只把 onclick 指到共享件 API） -->
+  <div class="ruler-wrap">
+    <button class="step-btn minus" id="ttStepMinus" aria-label="减少一分钟">−</button>
+    <div class="ruler" id="ruler">
+      <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+      <div class="notes-bubbles" aria-hidden="true"></div>
+      <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10"
+             tabindex="-1" aria-label="练习时长（分钟）">
+    </div>
+    <button class="step-btn plus" id="ttStepPlus" aria-label="增加一分钟">+</button>
+  </div>
+  <p class="note">
+    尺子/气泡/卷草纹全部来自 <code>../shared/ruler-production.js</code>（逐行切片自 practice.html）；
+    本页只做接线与自检，不含任何自造刻度实现。
+  </p>
+</div>
+
+<script src="../vendor/gsap.min.js"></script>
+<script src="shared/ruler-production.js"></script>
+<script>
+(function () {
+  const audit = new URLSearchParams(location.search).has('audit');
+  const R = window.RulerProduction;
+  const mountInfo = R.mount({ minutes: 10 });
+
+  const durText = document.getElementById('durText');
+  const sync = () => { durText.textContent = R.duration; };
+  sync();
+
+  document.getElementById('btnStepPlus').addEventListener('click', () => { R.step(1); sync(); });
+  document.getElementById('btnStepMinus').addEventListener('click', () => { R.step(-1); sync(); });
+  document.getElementById('ttStepPlus').addEventListener('click', () => { R.step(1); sync(); });
+  document.getElementById('ttStepMinus').addEventListener('click', () => { R.step(-1); sync(); });
+  document.getElementById('ttStepPlus') && document.getElementById('ttStepPlus')
+    .addEventListener('click', () => { R.step(1); sync(); });
+  document.getElementById('btnBubble').addEventListener('click', () => { R.emitBubbles(); });
+  // step 后同步读数（无论从哪触发）
+  document.getElementById('rulerInput').addEventListener('input', sync);
+
+  document.getElementById('skinSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(x => x.classList.toggle('on', x === b));
+  });
+
+  if (!audit) return;
+
+  const fails = [];
+  const out = { mount: mountInfo };
+
+  // 断言 1：刻度数 = 生产 TICKS(60)
+  out.tickCount = R.tickCount;
+  if (R.tickCount !== 60) fails.push(`tickCount got ${R.tickCount} want 60`);
+
+  // 断言 2：卷草纹 SVG 存在（有 gsap 时必须建出来）
+  out.vine = !!document.querySelector('.ruler-vine');
+  if (window.gsap && !out.vine) fails.push('vine got false want true (gsap present)');
+
+  // 断言 3：气泡池 = 22（生产 buildBubbles 的池子大小）
+  out.bubblePool = mountInfo.bubbles;
+  if (mountInfo.bubbles !== 22) fails.push(`bubblePool got ${mountInfo.bubbles} want 22`);
+
+  // 断言 4：步进 +1 真的改时长，且当前针跟着走
+  const d0 = R.duration;
+  const idx0 = [...document.querySelectorAll('.tick')].indexOf(document.querySelector('.tick.cur'));
+  document.getElementById('btnStepPlus').click();
+  const d1 = R.duration;
+  const idx1 = [...document.querySelectorAll('.tick')].indexOf(document.querySelector('.tick.cur'));
+  out.step = { before: d0, after: d1, markerBefore: idx0, markerAfter: idx1 };
+  if (d1 !== d0 + 1) fails.push(`stepPlus got ${d1} want ${d0 + 1}`);
+  if (idx1 === idx0) fails.push(`marker moved got idx ${idx1} same as ${idx0}`);
+
+  // 断言 5：合成拖拽（按下→移动 40px→松手）真的改时长，且 .is-dragging 挂上又摘掉
+  const ri = document.getElementById('rulerInput');
+  const rulerEl = document.getElementById('ruler');
+  const w = rulerEl.getBoundingClientRect().width;
+  const pd = (type, x) => ri.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: 10, bubbles: true, pointerId: 1, button: 0, isPrimary: true }));
+  const dB = R.duration;
+  pd('pointerdown', 100);
+  const draggedFlag = rulerEl.classList.contains('is-dragging');
+  pd('pointermove', 100 + Math.round((w / 29) * 2));   // 往右拖 ≈ +2 分钟
+  pd('pointerup', 100 + Math.round((w / 29) * 2));
+  const dA = R.duration;
+  const clearedFlag = !rulerEl.classList.contains('is-dragging');
+  out.drag = { before: dB, after: dA, dragFlagOn: draggedFlag, dragFlagCleared: clearedFlag, rulerW: Math.round(w) };
+  if (!draggedFlag) fails.push('is-dragging not set on pointerdown');
+  if (!clearedFlag) fails.push('is-dragging not cleared on pointerup');
+  if (dA <= dB) fails.push(`drag got dur ${dA} want > ${dB}`);
+
+  // 断言 6：emitBubbles 真的写了符到气泡里
+  R.emitBubbles();
+  const live = [...document.querySelectorAll('.tt-bubble')].filter(b => b.textContent.trim().length);
+  out.bubblesEmitted = live.length;
+  if (!live.length) fails.push('emitBubbles wrote nothing');
+
+  // 断言 7：深墨皮肤下刻度色确实换了
+  // ⚠️ 不能读元素的 computed backgroundColor —— .tick 挂着 200ms background-color 过渡,
+  //    切肤瞬间读到的是过渡起始值（浅银）→ 假红。改读 :root 上的变量本身, 不经过过渡。
+  const lightVar = getComputedStyle(document.documentElement).getPropertyValue('--ruler-tick-major-future').trim();
+  document.querySelector('#skinSeg button[data-skin="ink"]').click();
+  const inkVar = getComputedStyle(document.documentElement).getPropertyValue('--ruler-tick-major-future').trim();
+  const inkRailVar = getComputedStyle(document.documentElement).getPropertyValue('--ruler-rail-line').trim();
+  out.ink = { lightVar, inkVar, inkRailVar };
+  if (inkVar === lightVar) fails.push(`ink var unchanged (${inkVar})`);
+  if (!/255, 248, 240/.test(inkVar)) fails.push(`ink var looks light-themed: ${inkVar}`);
+
+  out.fails = fails;
+  out.verdict = fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK';
+  console.log(JSON.stringify(out, null, 1));
+  document.title = (fails.length ? 'FAIL ' : 'OK ') + '共享刻度尺自检';
+})();
+</script>
+</body>
+</html>

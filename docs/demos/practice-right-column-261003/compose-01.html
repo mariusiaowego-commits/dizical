@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>右栏组合页 — 卡片装进同一条轨道（demo）</title>
+<meta name="description" content="把各张卡片按契约宽度装进同一条右栏轨道：横向延伸 + 松手吸附 + 440 档纵向堆叠。">
+<style>
+  /* ================= 右栏组合页（compose-01）=================
+     dad：所有 demo 做出来放一起给他确认。
+     做法：轨道 = 生产的右栏；每张卡 = 独立页面，用 iframe 装进来（卡自带视口/皮肤开关）。
+     宽度取 card-contract.md 的「默认宽」；高度由卡内容自己撑（same-origin 读 scrollHeight）。
+     =========================================================== */
+  /* ── token 契约：从 dashboard-skin-01-v2.html 原样抽取（勿手改，改契约要全文件同步） ── */
+
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+
+    /* 非 token 内部变量：视口宽高与 DESIGN.md 衬线字族 token */
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  }
+:root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--dash-page); color: var(--dash-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  .bar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; background: var(--dash-white);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    font-size: 12px; color: var(--dash-text-soft);
+  }
+  .bar b { color: var(--dash-text); font-size: 13px; }
+  .bar .sp { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--dash-text-soft); font: inherit; padding: 5px 10px; cursor: pointer; }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; }
+
+  /* 轨道：向右延伸 + 松手吸附 */
+  .rail {
+    display: flex; gap: 16px; padding: 16px;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 16px;
+    align-items: flex-start;
+    height: calc(100vh - 45px);
+  }
+  .rail::-webkit-scrollbar { height: 10px; }
+  .rail::-webkit-scrollbar-thumb { background: var(--dash-ink-a16); border-radius: 999px; }
+  .slot {
+    scroll-snap-align: start; flex: 0 0 auto;
+    border: 1px solid var(--dash-ink-a12); border-radius: 26px; overflow: hidden;
+    background: var(--dash-white); display: flex; flex-direction: column;
+    box-shadow: 0 10px 26px var(--dash-ink-a04);
+  }
+  .slot-hd {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid var(--dash-ink-a12);
+    font-size: 11.5px; color: var(--dash-coral-text);
+  }
+  .slot-hd b { font-size: 12.5px; color: var(--dash-text); }
+  .slot-hd .n { color: var(--dash-text-soft); font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; }
+  .slot-hd .auth { margin-left: auto; font-size: 10.5px; color: var(--dash-coral-text); border: 1px solid var(--dash-ink-a16); border-radius: 999px; padding: 1px 7px; }
+  .slot iframe { display: block; width: 100%; border: 0; background: var(--dash-page); }
+  .slot.pending { width: 340px; border-style: dashed; }
+  .slot.pending .ph { padding: 18px 14px; font-size: 12px; line-height: 1.8; color: var(--dash-text-soft); }
+
+  /* 440 档：轨道改纵向堆叠（宽度不变，往下排） */
+  .rail.is-narrow { flex-direction: column; overflow-x: hidden; overflow-y: auto; scroll-snap-type: y mandatory; height: auto; }
+  .rail.is-narrow .slot { width: 100%; }
+
+  .foot { padding: 10px 16px 18px; font-size: 11.5px; line-height: 1.9; color: var(--dash-text-soft); }
+  code { background: var(--dash-white); border: 1px solid var(--dash-ink-a12); border-radius: 5px; padding: 1px 5px; }
+
+  button:focus-visible {
+    outline: 2px solid var(--dash-accent-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-accent-text);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.5</b> · 卡 v1 · 2026-10-16</span>
+  <b>右栏组合页</b>
+  <span>横向延伸 · 松手吸附 · 每卡自带开关</span>
+  <span class="sp"></span>
+  <div class="seg" id="vpSeg">
+    <button type="button" data-vp="1133">1133×744</button>
+    <button type="button" data-vp="744">744×1133</button>
+    <button type="button" data-vp="440">440×956</button>
+  </div>
+</div>
+
+<div class="rail" id="rail">
+  <div class="slot" data-card="card-practice-timer" style="width:460px">
+    <div class="slot-hd"><b>① 练习计时卡</b><span class="n">card-practice-timer</span><span class="auth">agy</span></div>
+    <iframe src="dashboard-skin-01-v2.html" title="练习计时卡"></iframe>
+  </div>
+  <div class="slot" data-card="card-metronome" style="width:420px">
+    <div class="slot-hd"><b>② 节拍器卡</b><span class="n">card-metronome</span><span class="auth">agy</span></div>
+    <iframe src="metronome-01-v2.html" title="节拍器卡"></iframe>
+  </div>
+  <div class="slot" data-card="card-transport-blocks" style="width:400px">
+    <div class="slot-hd"><b>③ 下方三块卡</b><span class="n">card-transport-blocks</span><span class="auth">agy</span></div>
+    <iframe src="dashboard-bottom-blocks-01-v2.html" title="下方三块卡"></iframe>
+  </div>
+  <div class="slot" data-card="card-requests" style="width:440px">
+    <div class="slot-hd"><b>④ 老师要求卡</b><span class="n">card-requests</span><span class="auth">agy</span></div>
+    <iframe src="requests-card-01.html" title="老师要求卡"></iframe>
+  </div>
+  <div class="slot" data-card="card-today-records" style="width:460px">
+    <div class="slot-hd"><b>⑤ 今日练习记录卡</b><span class="n">card-today-records</span><span class="auth">grok</span></div>
+    <iframe src="today-records-01.html" title="今日练习记录卡"></iframe>
+  </div>
+  <div class="slot" data-card="card-practice-duration" style="width:380px">
+    <div class="slot-hd"><b>⑥ 今日练习时长卡</b><span class="n">card-practice-duration</span><span class="auth">hermes</span></div>
+    <iframe src="practice-duration-card-01.html" title="今日练习时长卡"></iframe>
+  </div>
+</div>
+
+<div class="foot">
+  说明：每张卡是<b>独立页面</b>，卡顶那条开关（视口 / 皮肤）在卡里就能切；这一页只管把它们排到同一条轨道上。
+  宽度用的是 <code>card-contract.md</code> 的「默认宽」（460 / 420 / 400 / — / 460 / 380）。
+  <br>滑动方式：直接横向拖 / 触控板横扫；松手会吸附到最近的卡。440 档自动改成纵向往下排。
+</div>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var audit = qs.has('audit');
+  var rail = document.getElementById('rail');
+  var slots = [].slice.call(document.querySelectorAll('.slot'));
+
+  /* 卡高由内容自己撑（same-origin 才读得到） */
+  function fit(iframe) {
+    try {
+      var d = iframe.contentDocument;
+      if (!d) return false;
+      var h = Math.max(d.documentElement.scrollHeight, d.body ? d.body.scrollHeight : 0);
+      if (h > 60) { iframe.style.height = (h + 2) + 'px'; return true; }
+    } catch (e) { return false; }
+    return false;
+  }
+  var frames = [].slice.call(document.querySelectorAll('.slot iframe'));
+  frames.forEach(function (f) {
+    f.addEventListener('load', function () { fit(f); setTimeout(function () { fit(f); }, 400); });
+    fit(f);
+  });
+  window.addEventListener('resize', function () { frames.forEach(fit); });
+
+  /* 视口切换：440 档轨道改纵向 */
+  var stageOf = { 1133: [1133, 744], 744: [744, 1133], 440: [440, 956] };
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var vp = b.dataset.vp, wh = stageOf[vp];
+    rail.classList.toggle('is-narrow', vp === '440');
+    document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    document.body.style.width = Math.min(wh[0], window.innerWidth) + 'px';
+    if (vp === '440') { slots.forEach(function (s) { s.style.width = ''; }); }
+    else { slots[0].style.width = '460px'; slots[1].style.width = '420px'; slots[2].style.width = '400px'; slots[3].style.width = '440px'; slots[4].style.width = '460px'; slots[5].style.width = '380px'; }
+    rail.dataset.vp = vp;
+    frames.forEach(function (f) { setTimeout(function () { fit(f); }, 60); });
+  });
+  document.querySelector('#vpSeg button[data-vp="1133"]').classList.add('is-on');
+
+  if (!audit) return;
+
+  var fails = [], out = {};
+  out.slots = slots.length;
+  out.frames = frames.length;
+  out.loaded = frames.filter(function (f) { try { return !!f.contentDocument && !!f.contentDocument.querySelector('.card, article, main, body'); } catch (e) { return false; } }).length;
+  if (out.frames !== 6) fails.push('iframes got ' + out.frames + ' want 6');
+  if (out.loaded !== 6) fails.push('loaded iframes got ' + out.loaded + ' want 6');
+
+  var cs = getComputedStyle(rail);
+  out.snapX = cs.scrollSnapType;
+  out.dir = cs.flexDirection;
+  out.scrollW = rail.scrollWidth; out.clientW = rail.clientWidth;
+  if (out.snapX.indexOf('x mandatory') < 0 && out.snapX.indexOf('both') < 0) fails.push('rail snap got ' + out.snapX);
+  if (out.scrollW <= out.clientW) fails.push('rail not scrollable: scrollW ' + out.scrollW + ' <= clientW ' + out.clientW);
+
+  // 卡宽 = 契约默认宽
+  var want = { 'card-practice-timer': 460, 'card-metronome': 420, 'card-transport-blocks': 400, 'card-requests': 440, 'card-today-records': 460, 'card-practice-duration': 380 };
+  out.widths = {};
+  slots.forEach(function (s) {
+    if (!want[s.dataset.card]) return;
+    var w = Math.round(s.getBoundingClientRect().width);
+    out.widths[s.dataset.card] = w;
+    if (Math.abs(w - want[s.dataset.card]) > 2) fails.push(s.dataset.card + ' got ' + w + ' want ' + want[s.dataset.card]);
+  });
+
+  // 合成页自身无横向溢出
+  out.bodyOverflowX = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
+  if (out.bodyOverflowX) fails.push('compose page horizontal overflow');
+
+  // 440 档：轨道转纵向 + 卡占满
+  document.querySelector('#vpSeg button[data-vp="440"]').click();
+  var cs2 = getComputedStyle(rail);
+  out.narrowDir = cs2.flexDirection;
+  out.narrowCardW = Math.round(slots[5].getBoundingClientRect().width);
+  out.narrowRailW = Math.round(rail.getBoundingClientRect().width);
+  if (cs2.flexDirection !== 'column') fails.push('440 dir got ' + cs2.flexDirection + ' want column');
+  if (Math.abs(out.narrowCardW - (out.narrowRailW - 32)) > 3) fails.push('440 card width got ' + out.narrowCardW + ' want ~' + (out.narrowRailW - 32));
+  out.fails = fails;
+  out.verdict = fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK';
+  console.log(JSON.stringify(out, null, 1));
+  document.title = (fails.length ? 'FAIL ' : 'OK ') + '右栏组合页';
+  var pre = document.createElement('pre');
+  pre.id = 'audit';
+  pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:90vw;background:rgba(0,0,0,0.85);color:#00ff00;font-size:11px;padding:8px;border-radius:6px;z-index:9999;pointer-events:none;white-space:pre-wrap;';
+  pre.textContent = out.verdict + '\n' + JSON.stringify(out, null, 2);
+  document.body.appendChild(pre);
+})();
+</script>
+</body>
+</html>

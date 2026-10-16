@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D1 仪表盘默认皮肤 — practice 右栏</title>
+<link rel="stylesheet" href="shared/ruler-production.css">
+<style>
+  /* ── default skin. 组件里只引用这些变量。 */
+  /* 第二套皮肤（深墨）：由顶栏「浅银/深墨」切换器写 <html data-skin="ink"> 生效 */
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+  }
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+
+    /* 非 token 内部变量：视口宽高与 DESIGN.md 衬线字族 token */
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: "PingFang SC", "Heiti SC", system-ui, sans-serif;
+  }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; }
+  .page { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .chrome {
+    flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 6px 10px; color: var(--dash-text);
+  }
+  .brand {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
+    font-family: var(--font-serif);
+  }
+  .seg { display: flex; gap: 4px; background: var(--dash-white); border-radius: 999px; padding: 3px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    border-radius: 999px; min-height: 28px; padding: 0 10px; font-size: 12px; font-weight: 650;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .seg button { color: var(--dash-page); }
+
+  /* 视口舞台外框 */
+  .frame {
+    flex: 1 1 auto; min-height: 0; min-width: 0;
+    display: flex; justify-content: center; align-items: center;
+    padding: 8px 12px 12px;
+    width: 100%;
+    overflow: auto;
+  }
+
+  /* 仪表盘外壳：便携仪器比例，三档宽度响应 */
+  .dash {
+    container: dash / inline-size;
+    width: min(100%, 420px);
+    height: 100%;
+    max-height: 660px;
+    border-radius: var(--dash-radius);
+    background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-shell-lo) 100%);
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -10px 18px var(--dash-shell-inset),
+      0 16px 36px var(--dash-shell-shadow);
+    padding: 14px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .dash[data-vp="1133x744"] {
+    width: min(100%, 420px);
+    max-height: 660px;
+  }
+  .dash[data-vp="744x1133"] {
+    width: min(100%, 480px);
+    max-height: 720px;
+  }
+  .dash[data-vp="440x956"] {
+    width: min(100%, 390px);
+    max-height: 620px;
+  }
+
+  /* 深色主屏幕：收小收平圆弧缺口（R=140px, depth=32px） */
+  .panel {
+    --notch-r: 140px;
+    --notch-depth: 32px;
+    background: var(--dash-panel);
+    color: var(--dash-panel-text);
+    border-radius: 22px;   /* 外壳 36 - 内边距 14 = 22，同心 */
+    padding: 10px 14px 6px;
+    display: flex; flex-direction: column; gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+    -webkit-mask-image: radial-gradient(circle var(--notch-r) at 50% calc(100% + var(--notch-r) - var(--notch-depth)), transparent 98%, black 100%);
+    mask-image: radial-gradient(circle var(--notch-r) at 50% calc(100% + var(--notch-r) - var(--notch-depth)), transparent 98%, black 100%);
+  }
+  .status {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    min-height: 18px; color: var(--dash-panel-dim); font-size: 11px;
+  }
+  .mic { justify-self: start; width: 14px; height: 14px; display: block; }
+  .mic svg { width: 14px; height: 14px; display: block; }
+  .clock { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .battery { justify-self: end; display: flex; align-items: center; gap: 4px; }
+  .bat {
+    width: 22px; height: 11px; border: 1.5px solid var(--dash-battery);
+    border-radius: 3px; padding: 1px; position: relative;
+  }
+  .bat::after {
+    content: ""; position: absolute; right: -3px; top: 2px; width: 2px; height: 5px;
+    background: var(--dash-battery); border-radius: 0 1px 1px 0;
+  }
+  .bat-fill { display: block; width: 76%; height: 100%; background: var(--dash-battery); border-radius: 1px; }
+  .bat-pct { font-size: 10px; color: var(--dash-battery); font-weight: 700; }
+
+  /* 移除 lyric-col 后：cover-col 与 title-col 两列平衡重排，左右占比不变 */
+  .panel-main {
+    flex: 1 1 auto; min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px; align-items: center;
+  }
+  .cover-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; flex: 0 0 auto; }
+  .cover-halo {
+    padding: 3px; border-radius: 15px;
+    border: 1px solid var(--dash-cover-line);
+  }
+  .cover-frame {
+    width: 86px; height: 86px; border-radius: 12px; overflow: hidden; background: var(--dash-ink);
+  }
+  .cover-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 35%; display: block; }
+  .cover-name { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+
+  .title-col {
+    min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; width: 100%;
+  }
+  .readout { --num-size: var(--dash-num); display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .ac-root {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 560; letter-spacing: -0.03em; line-height: 1;
+    font-size: var(--num-size); color: var(--dash-panel-text);
+  }
+  .ac-digit {
+    position: relative; display: inline-grid; overflow: hidden; height: 1.5em; line-height: 1.5;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+  }
+  .ac-sizer { visibility: hidden; grid-area: 1 / 1; display: grid; }
+  .ac-stack { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; }
+  .ac-face { height: 1.5em; display: flex; align-items: center; justify-content: center; }
+  .ac-mark { display: inline-block; margin: 0 -0.08em; }
+  .readout-sub {
+    margin-top: -2px; font-size: 12px; font-weight: 600; color: var(--dash-panel-dim); letter-spacing: 0.02em;
+  }
+  .readout-sub small { font-size: 11px; font-weight: 600; }
+
+  /* 生产共享刻度尺在 title-col 内的微调（尺寸/几何/动效由 shared/ruler-production.css 接管） */
+  .title-col .ruler-wrap {
+    margin-block-start: 2px;
+  }
+
+  /* 银面操作圆钮：44px，位置下移，与 panel-foot 绝不相交 */
+  .round {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--dash-btn-rim);
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo));
+    color: var(--dash-btn-glyph);
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 4px 8px var(--dash-shell-inset);
+    font-size: 22px; font-weight: 500; line-height: 1;
+    display: grid; place-items: center;
+    touch-action: manipulation; user-select: none;
+  }
+  .round:active:not(:disabled) { transform: scale(0.96); }
+  .round:disabled { opacity: 0.38; cursor: default; }
+
+  /* panel-foot：节拍文字只保留「♩=82」，绝对不溢出 (scrollWidth <= clientWidth) */
+  .panel-foot {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 0 4px 4px; font-size: 13px; font-weight: 650; letter-spacing: 0.04em;
+    color: var(--dash-panel-dim);
+    min-width: 0;
+    overflow: hidden;
+  }
+  #bpmRead {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums; color: var(--dash-panel-text); font-size: 14.5px;
+    white-space: nowrap;
+  }
+  #todayTotal {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 中段 mid-row：缺口浅收后，knob 往下探入，左右 +/- 保持绝对间隙不压 panel-foot */
+  .mid {
+    position: relative; z-index: 2;
+    margin-top: -24px;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 0;
+  }
+  .arc { position: absolute; inset: 0; pointer-events: none; }
+  .arc i {
+    position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%; background: var(--dash-dot);
+    box-shadow: 0 0 0 1px var(--dash-shell-inset);
+  }
+  .arc i.is-on { background: var(--dash-dot-on); }
+  .mid-row {
+    display: flex; align-items: center; justify-content: center; gap: clamp(20px, 6cqw, 48px);
+    padding-top: 18px;
+  }
+  .knob {
+    width: 144px; height: 144px; border-radius: 50%; position: relative;
+    background: linear-gradient(160deg, var(--dash-knob-hi), var(--dash-knob-lo) 62%);
+    box-shadow:
+      inset 0 2px 0 var(--dash-btn-rim),
+      inset 0 -10px 16px var(--dash-shell-inset),
+      0 10px 18px var(--dash-shell-shadow);
+    touch-action: none; user-select: none;
+  }
+  .knob-rotor { position: absolute; inset: 0; transform: rotate(var(--knob-deg, -45deg)); }
+  .knob-mark {
+    position: absolute; left: 50%; top: 14%; width: 4px; height: 18%;
+    margin-left: -2px; border-radius: 2px; background: var(--dash-mark);
+  }
+
+  /* ══════ 底部 deck transport (移植自 D3 规范) ══════ */
+  .deck.transport {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr) 74px;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 8px 2px;
+    min-height: 0;
+    width: 100%;
+  }
+  .speaker-block {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto;
+  }
+  .grille-6x8 {
+    display: grid;
+    grid-template-columns: repeat(6, 6px);
+    grid-template-rows: repeat(8, 6px);
+    gap: 3.5px;
+    padding: 3px;
+    background: var(--dash-tray-inset);
+    border-radius: 6px;
+    border: 1px solid var(--dash-shell-inset);
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+  }
+  .hole {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--dash-hole);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5), 0 0.5px 0 var(--dash-glint);
+    transform-origin: center;
+  }
+  .dash[data-mode="run"] .hole {
+    animation: holePulse var(--dash-beat) ease-in-out infinite;
+    animation-delay: calc(var(--i) * var(--dash-beat) / 8);
+  }
+  @keyframes holePulse {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(0.9); }
+  }
+  .speaker-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: var(--dash-text-soft);
+    font-family: var(--font-serif);
+  }
+
+  .ops-block { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .ops-kicker {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--dash-kicker);
+    font-family: var(--font-serif); white-space: nowrap;
+  }
+  .pill {
+    display: flex; gap: 6px; padding: 4px; border-radius: 999px;
+    background: var(--dash-pill-track);
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+  }
+  .pill button {
+    border: 0; background: transparent; color: var(--dash-pill-idle);
+    min-height: 42px; padding: 0 14px; border-radius: 999px;
+    font-size: 14px; font-weight: 750; white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .pill button:disabled { opacity: 0.35; cursor: default; }
+  .dash[data-mode="prep"] #btnPrimary,
+  .dash[data-mode="run"] #btnPrimary,
+  .dash[data-mode="pause"] #btnPrimary {
+    background: var(--dash-coral); color: var(--dash-white);
+  }
+  .dash[data-mode="run"] #btnEarly,
+  .dash[data-mode="pause"] #btnEarly {
+    background: var(--dash-accent); color: var(--dash-white); opacity: 1;
+  }
+
+  .stand-block { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .stand-btn {
+    width: 74px; min-height: 46px; padding: 0 8px; white-space: nowrap; border-radius: 14px; border: 0;
+    background: linear-gradient(180deg, var(--dash-accent), var(--dash-coral));
+    color: var(--dash-white);
+    font-size: 12.5px; font-weight: 750;
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 4px 8px var(--dash-shell-inset);
+    touch-action: manipulation;
+  }
+  .stand-btn:active { transform: scale(0.96); }
+  .stand-badge-tip { font-size: 9.5px; color: var(--dash-text-soft); text-align: center; white-space: nowrap; }
+
+  /* 视口与容器级断点响应 */
+  .dash[data-vp="1133x744"] .deck.transport {
+    grid-template-columns: 62px minmax(0, 1fr) 74px;
+    gap: 16px;
+  }
+  .dash[data-vp="744x1133"] .deck.transport {
+    grid-template-columns: 62px minmax(0, 1fr) 74px;
+    gap: 14px;
+  }
+  .dash[data-vp="440x956"] .deck.transport {
+    grid-template-columns: 56px minmax(0, 1fr) 68px;
+    gap: 8px;
+  }
+  @container dash (max-width: 440px) {
+    .deck.transport {
+      grid-template-columns: 56px minmax(0, 1fr) 68px;
+      gap: 8px;
+    }
+  }
+
+  @container dash (max-width: 560px) {
+    .cover-frame { width: 72px; height: 72px; }
+    .knob { width: 130px; height: 130px; }
+    .dash { --dash-num: 42px; }
+    .round { width: 42px; height: 42px; font-size: 20px; }
+    .stand-btn { width: 68px; min-height: 42px; font-size: 12px; }
+    .pill button { padding: 0 11px; font-size: 13px; min-height: 40px; }
+    .panel-foot { font-size: 12px; }
+  }
+  @container dash (max-height: 640px) {
+    .dash { --dash-num: 40px; }
+    .cover-frame { width: 68px; height: 68px; }
+    .knob { width: 120px; height: 120px; }
+    .grille-6x8 {
+      grid-template-columns: repeat(6, 5px); grid-template-rows: repeat(8, 5px); gap: 2.5px;
+    }
+    .hole { width: 5px; height: 5px; }
+    .deck.transport { gap: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hole { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <span class="brand">D1 仪表盘</span>
+    <div class="seg" id="vpSeg">
+      <button type="button" data-vp="1133x744" class="is-on">1133×744</button>
+      <button type="button" data-vp="744x1133">744×1133</button>
+      <button type="button" data-vp="440x956">440×956</button>
+    </div>
+    <div class="seg" id="skinSeg">
+      <button type="button" data-skin="light" class="is-on">浅银</button>
+      <button type="button" data-skin="ink">深墨</button>
+    </div>
+    <div class="seg" id="modeSeg">
+      <button type="button" data-mode="prep" class="is-on">准备态</button>
+      <button type="button" data-mode="run">计时中</button>
+    </div>
+  </div>
+  <div class="frame" id="frame" data-vp="1133x744">
+    <article class="dash" id="dash" data-mode="prep" data-vp="1133x744">
+      <section class="panel">
+        <div class="status">
+          <span class="mic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+              <path d="M6 11a6 6 0 0 0 12 0"></path>
+              <path d="M12 17v3"></path>
+            </svg>
+          </span>
+          <span class="clock" id="clock">--:--</span>
+          <span class="battery" aria-hidden="true"><span class="bat-pct">76%</span><span class="bat"><span class="bat-fill"></span></span></span>
+        </div>
+        <div class="panel-main">
+          <div class="cover-col">
+            <div class="cover-halo">
+              <div class="cover-frame">
+                <img src="../assets/practice-hero-ticket-260922.png" alt="">
+              </div>
+            </div>
+            <div class="cover-name">萨丽哈</div>
+          </div>
+          <div class="title-col">
+            <div class="readout">
+              <div class="ac-root" id="ttCounter"></div>
+              <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+            </div>
+            <div class="ruler-wrap">
+              <div class="ruler" id="ruler">
+                <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+                <div class="notes-bubbles" aria-hidden="true"></div>
+                <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10" tabindex="-1" aria-label="练习时长（分钟）">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot">
+          <div id="bpmRead">♩=82</div>
+          <div id="todayTotal" data-placeholder="1" title="占位：生产接今日累计练习时长">今日 42分</div>
+        </div>
+      </section>
+
+      <section class="mid" id="mid">
+        <div class="arc" id="arc" aria-hidden="true"></div>
+        <div class="mid-row">
+          <button type="button" class="round" id="silverMinus" data-mirror aria-label="减少一分钟">−</button>
+          <div class="knob" id="knob" tabindex="0" role="slider" aria-valuemin="1" aria-valuemax="30" aria-valuenow="10" aria-label="练习时长">
+            <div class="knob-rotor" id="knobRotor"><span class="knob-mark"></span></div>
+          </div>
+          <button type="button" class="round" id="silverPlus" data-mirror aria-label="增加一分钟">+</button>
+        </div>
+      </section>
+
+      <section class="deck transport" id="transport">
+        <div class="speaker-block" title="随麦克风声音/节奏震动">
+          <div class="grille-6x8" id="speakerGrille" aria-hidden="true"></div>
+          <div class="speaker-label">SPEAKER</div>
+        </div>
+        <div class="ops-block">
+          <div class="ops-kicker" id="opsTimerText">00:00 · 待开始</div>
+          <div class="pill">
+            <button type="button" id="btnPrimary">开始</button>
+            <button type="button" id="btnEarly" disabled>提前结束</button>
+          </div>
+        </div>
+        <div class="stand-block" role="group" aria-label="谱架模式入口">
+          <button type="button" class="stand-btn accent" id="standBtn" aria-disabled="true"
+                  title="谱架模式：本期只出样式，点击无效果">谱架模式</button>
+          <div class="stand-badge-tip" id="standTip">本期仅样式</div>
+        </div>
+      </section>
+    </article>
+  </div>
+</div>
+
+<script src="../vendor/gsap.min.js"></script>
+<script>
+  var duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
+</script>
+<script src="../practice-skeleton-260920/real-timer-visual.js"></script>
+<script src="shared/ruler-production.js"></script>
+<script>
+(function () {
+  window.__dashErrors = [];
+  window.addEventListener('error', function (ev) {
+    window.__dashErrors.push(String(ev.message));
+  });
+  var dash = document.getElementById('dash');
+  var frame = document.getElementById('frame');
+
+  // 节拍器状态与 Q4 快照机制
+  var selectedBpm = 82;
+  var snapshotBpm = null;
+  var BPM_MIN = 40, BPM_MAX = 200;
+  var mode = 'prep';
+  var tickIv = null;
+
+  function updateBpmDisplay() {
+    var val = (snapshotBpm !== null) ? snapshotBpm : selectedBpm;
+    var el = document.getElementById('bpmRead');
+    if (el) el.textContent = '♩=' + val;
+  }
+
+  window.setBpm = function (next) {
+    selectedBpm = Math.round(Math.min(BPM_MAX, Math.max(BPM_MIN, next)));
+    dash.style.setProperty('--dash-beat', (60 / selectedBpm).toFixed(3) + 's');
+    // Q4 规则：计时开始那一刻取快照，运行/暂停期间节拍器变动不影响面板显示
+    if (snapshotBpm === null) {
+      updateBpmDisplay();
+    }
+  };
+
+  // 生成 6×8 扬声格栅孔
+  var grille = document.getElementById('speakerGrille') || document.getElementById('grille');
+  if (grille) {
+    grille.textContent = '';
+    for (var i = 0; i < 48; i++) {
+      var hole = document.createElement('span');
+      hole.className = 'hole';
+      hole.style.setProperty('--i', String(i % 8));
+      grille.appendChild(hole);
+    }
+  }
+
+  // 弧点渲染与联动
+  var arc = document.getElementById('arc');
+  var ARC_N = 27;
+  for (var d = 0; d < ARC_N; d++) {
+    var dot = document.createElement('i');
+    arc.appendChild(dot);
+  }
+
+  function layoutArc() {
+    var mid = document.getElementById('mid');
+    var knob = document.getElementById('knob');
+    if (!mid || !knob) return;
+    var mr = mid.getBoundingClientRect();
+    var kr = knob.getBoundingClientRect();
+    if (!kr.width) return;
+    var cx = kr.left + kr.width / 2 - mr.left;
+    var cy = kr.top + kr.height / 2 - mr.top;
+    var radius = kr.width / 2 + 14;
+    var dots = arc.querySelectorAll('i');
+    for (var i = 0; i < dots.length; i++) {
+      var u = 0.08 + (i / (dots.length - 1)) * 0.84;
+      var a = Math.PI * (1 + u);
+      dots[i].style.left = (cx + Math.cos(a) * radius) + 'px';
+      dots[i].style.top = (cy + Math.sin(a) * radius) + 'px';
+    }
+  }
+
+  // mid-row 旋钮及圆弧联动计时器分钟数 (1–30 min)
+  function paintKnobTimer() {
+    var dur = (typeof duration === 'number') ? duration : 10;
+    var t = (dur - 1) / (30 - 1);
+    var deg = -120 + t * 240;
+    var rotor = document.getElementById('knobRotor');
+    if (rotor) rotor.style.transform = 'rotate(' + deg + 'deg)';
+    var knobEl = document.getElementById('knob');
+    if (knobEl) knobEl.setAttribute('aria-valuenow', String(dur));
+    var dots = arc.querySelectorAll('i');
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle('is-on', i / (dots.length - 1) <= t + 0.001);
+    }
+  }
+
+  // 包装生产接线层 ttSetDuration，确保分钟变动时同步旋钮角度与弧点
+  // 包装 ttSetDuration 与 ttStepMin，统一交由生产共享件 RulerProduction 接管
+  ttSetDuration = function (v, skipVine) {
+    if (window.RulerProduction) RulerProduction.setDuration(v, skipVine);
+  };
+  ttStepMin = function (delta) {
+    if (window.RulerProduction) RulerProduction.step(delta);
+  };
+
+  // 旋钮旋转手势交互（驱动计时器加减）
+  var knob = document.getElementById('knob');
+  var dragging = false, lastAng = 0, dragAccum = 0;
+  function angOf(e) {
+    var r = knob.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+  }
+  knob.addEventListener('pointerdown', function (e) {
+    if (started) return;
+    dragging = true;
+    lastAng = angOf(e);
+    dragAccum = 0;
+    try { knob.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  knob.addEventListener('pointermove', function (e) {
+    if (!dragging || started) return;
+    var a = angOf(e);
+    var delta = a - lastAng;
+    if (delta > Math.PI) delta -= Math.PI * 2;
+    if (delta < -Math.PI) delta += Math.PI * 2;
+    lastAng = a;
+    dragAccum += delta * (180 / Math.PI);
+    var stepAngle = 8.28; // 240度 / 29格 ≈ 8.28度/分
+    if (Math.abs(dragAccum) >= stepAngle) {
+      var steps = Math.trunc(dragAccum / stepAngle);
+      dragAccum -= steps * stepAngle;
+      ttStepMin(steps);
+    }
+  });
+  function endDrag() { dragging = false; }
+  knob.addEventListener('pointerup', endDrag);
+  knob.addEventListener('pointercancel', endDrag);
+  knob.addEventListener('keydown', function (e) {
+    if (started) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { ttStepMin(-1); e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { ttStepMin(1); e.preventDefault(); }
+  });
+
+  // mid-row 左右银面圆钮绑定计时器加减
+  var _setEnabled = ttSetControlsEnabled;
+  ttSetControlsEnabled = function (on) {
+    if (window.RulerProduction) RulerProduction.setStarted(!on);
+    if (typeof _setEnabled === 'function') _setEnabled(on);
+    document.querySelectorAll('[data-mirror]').forEach(function (b) { b.disabled = !on; });
+    if (!on) {
+      knob.setAttribute('aria-disabled', 'true');
+      knob.style.pointerEvents = 'none';
+    } else {
+      knob.removeAttribute('aria-disabled');
+      knob.style.pointerEvents = '';
+    }
+  };
+  document.getElementById('silverMinus').addEventListener('click', function () {
+    if (window.RulerProduction) RulerProduction.step(-1);
+  });
+  document.getElementById('silverPlus').addEventListener('click', function () {
+    if (window.RulerProduction) RulerProduction.step(1);
+  });
+
+  function stopTick() { clearInterval(tickIv); tickIv = null; }
+  function startTick() {
+    stopTick();
+    tickIv = setInterval(function () {
+      elapsed += 1;
+      ttRenderDigits(elapsed);
+      if (window.RulerProduction) RulerProduction.paintRulerRunning(Math.min(1, elapsed / (duration * 60)));
+      var opsText = document.getElementById('opsTimerText');
+      if (opsText) opsText.textContent = fmt(elapsed) + ' · 计时中';
+      if (elapsed >= duration * 60) stopTick();
+    }, 1000);
+  }
+
+  function renderMode() {
+    dash.dataset.mode = mode;
+    var primary = document.getElementById('btnPrimary');
+    var early = document.getElementById('btnEarly');
+    var opsText = document.getElementById('opsTimerText');
+    document.querySelectorAll('#modeSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', (mode === 'prep' && b.dataset.mode === 'prep') || (mode !== 'prep' && b.dataset.mode === 'run'));
+    });
+    if (mode === 'prep') {
+      primary.textContent = '开始';
+      early.disabled = true;
+      if (opsText) opsText.textContent = '00:00 · 待开始';
+    } else if (mode === 'run') {
+      primary.textContent = '暂停';
+      early.disabled = false;
+      if (opsText) opsText.textContent = fmt(elapsed) + ' · 计时中';
+    } else {
+      primary.textContent = '继续';
+      early.disabled = false;
+      if (opsText) opsText.textContent = fmt(elapsed) + ' · 已暂停';
+    }
+  }
+
+  function enterPrep() {
+    stopTick();
+    if (typeof secFlickerIv !== 'undefined') { clearInterval(secFlickerIv); secFlickerIv = null; }
+    started = false; timerRunning = false; paused = false; elapsed = 0;
+    snapshotBpm = null;
+    updateBpmDisplay();
+    ttOnExit();
+    mode = 'prep';
+    renderMode();
+  }
+
+  function enterRun(keepElapsed) {
+    if (!keepElapsed) elapsed = 0;
+    started = true; timerRunning = true; paused = false;
+    // Q4 规则快照：开始计时那一刻拷贝 BPM，中途变动不跟随
+    if (snapshotBpm === null) {
+      snapshotBpm = selectedBpm;
+    }
+    updateBpmDisplay();
+    if (typeof secFlickerIv !== 'undefined') { clearInterval(secFlickerIv); secFlickerIv = null; }
+    ttSetControlsEnabled(false);
+    ttPauseLabel(false);
+    setRunningModality();
+    ttRenderDigits(elapsed);
+    paintRulerRunning(Math.min(1, elapsed / (duration * 60)));
+    startTick();
+    mode = 'run';
+    renderMode();
+  }
+
+  function enterPause() {
+    stopTick();
+    paused = true; timerRunning = false; started = true;
+    ttPauseLabel(true);
+    mode = 'pause';
+    renderMode();
+  }
+
+  document.getElementById('btnPrimary').addEventListener('click', function () {
+    if (mode === 'prep') enterRun(false);
+    else if (mode === 'run') enterPause();
+    else enterRun(true);
+  });
+  document.getElementById('btnEarly').addEventListener('click', function () {
+    if (mode === 'prep') return;
+    enterPrep();
+  });
+  document.getElementById('modeSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.mode === 'prep') enterPrep();
+    else enterRun(false);
+  });
+
+  // ① 视口按钮点击修复：真实写入样式并挂载属性选择器
+  var VP = { '1133x744': [1133, 744], '744x1133': [744, 1133], '440x956': [440, 956] };
+  function applyVp(vpKey) {
+    var pair = VP[vpKey];
+    if (!pair) return;
+    document.documentElement.style.setProperty('--vp-w', pair[0] + 'px');
+    document.documentElement.style.setProperty('--vp-h', pair[1] + 'px');
+    document.documentElement.dataset.vp = vpKey;
+    frame.dataset.vp = vpKey;
+    dash.dataset.vp = vpKey;
+    document.querySelectorAll('#vpSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x.dataset.vp === vpKey);
+    });
+    requestAnimationFrame(layoutArc);
+  }
+
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    applyVp(b.dataset.vp);
+  });
+
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else document.documentElement.removeAttribute('data-skin');
+    document.querySelectorAll('#skinSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+  });
+
+  function paintClock() {
+    var n = new Date();
+    var h = n.getHours();
+    var m = String(n.getMinutes()).padStart(2, '0');
+    var ap = h >= 12 ? 'pm' : 'am';
+    var h12 = h % 12 || 12;
+    document.getElementById('clock').textContent = h12 + ':' + m + ap;
+  }
+  paintClock();
+  setInterval(paintClock, 1000);
+
+  // 初始化计时器数字滚轮与生产共享刻度尺
+  var counterRoot = document.getElementById('ttCounter');
+  if (counterRoot && typeof makeCounter === 'function') {
+    counter = makeCounter(counterRoot);
+    ttRenderDigits(duration * 60, true);
+  }
+  if (window.RulerProduction) {
+    RulerProduction.mount({ minutes: duration });
+    RulerProduction.onDurationChange = function (totalSec) {
+      duration = RulerProduction.duration;
+      if (typeof ttRenderDigits === 'function') ttRenderDigits(totalSec);
+      paintKnobTimer();
+      var metaVal = document.getElementById('metaVal');
+      if (metaVal) metaVal.innerHTML = duration + '<small>分钟</small>';
+    };
+  }
+  paintKnobTimer();
+  updateBpmDisplay();
+  renderMode();
+  requestAnimationFrame(function () {
+    layoutArc();
+    if (location.search.indexOf('run=1') >= 0) enterRun(false);
+  });
+  window.addEventListener('resize', layoutArc);
+
+  if (location.search.indexOf('audit=1') >= 0) {
+    setTimeout(function () {
+      var dashEl = document.getElementById('dash');
+      var page = document.documentElement;
+      var kids = ['panel', 'mid', 'deck', 'knob', 'ruler', 'ttCounter', 'transport'].map(function (sel) {
+        var el = document.querySelector('.' + sel) || document.getElementById(sel);
+        if (!el) return sel + ':missing';
+        var r = el.getBoundingClientRect();
+        var pr = dashEl.getBoundingClientRect();
+        var outside = r.left < pr.left - 1 || r.right > pr.right + 1 || r.top < pr.top - 1 || r.bottom > pr.bottom + 1;
+        return sel + ':' + Math.round(r.width) + 'x' + Math.round(r.height) + (outside ? ':OUT' : ':in');
+      });
+      var pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.textContent = JSON.stringify({
+        vp: [window.innerWidth, window.innerHeight],
+        pageOverflow: [page.scrollWidth - page.clientWidth, page.scrollHeight - page.clientHeight],
+        dashOverflow: [dashEl.scrollWidth - dashEl.clientWidth, dashEl.scrollHeight - dashEl.clientHeight],
+        ticks: document.querySelectorAll('.tick').length,
+        digits: document.querySelectorAll('#ttCounter .ac-digit').length,
+        holes: document.querySelectorAll('.hole').length,
+        dots: document.querySelectorAll('.arc i').length,
+        bpm: document.getElementById('bpmRead').textContent,
+        mode: dashEl.dataset.mode,
+        primary: document.getElementById('btnPrimary').textContent,
+        errors: window.__dashErrors || [],
+        kids: kids
+      });
+      document.body.appendChild(pre);
+    }, 500);
+  }
+})();
+</script>
+</body>
+</html>

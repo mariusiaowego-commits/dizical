@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>卡片 dashboard 骨架 v1 — 向右延伸 + 吸附对齐 + ←/→ 切卡</title>
+<meta name="description" content="卡片 dashboard 骨架：验证向右延伸、吸附对齐、键盘切卡与 440 纵向堆叠。">
+<style>
+/* ===================== dashboard 卡片骨架 v1 =====================
+   用途：验证「向右延伸 + 吸附对齐 + ←/→ 切卡 + 440 纵向堆叠」四件事。
+   卡片本体是占位壳（真卡在各自文件里，逐个接入），本页只管轨道与切卡。
+   契约见 card-contract.md。
+   ================================================================= */
+  /* ── token 契约：从 dashboard-skin-01-v2.html 原样抽取（勿手改，改契约要六文件同步） ── */
+
+  :root {
+    --dash-vermilion: #FF5722;
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-vermilion-text: #A04217;
+    --dash-vermilion-solid: #B8531F;
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+
+    /* 非 token 内部变量：视口宽高与 DESIGN.md 衬线字族 token */
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  }
+:root[data-skin="ink"] {
+    --dash-vermilion: #FF5722;
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-vermilion-text: #FF9E7A;
+    --dash-vermilion-solid: #B8531F;
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 14px;
+  }
+
+  /* ---------- demo 控制条（脚手架，不属于产品 UI） ---------- */
+  .demo-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 12px; font-size: 12px; color: var(--dash-coral);
+  }
+  .demo-bar b { font-weight: 800; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; overflow: hidden; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    font: inherit; padding: 5px 10px; cursor: pointer;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; }
+  .seg button:focus-visible { outline: 2px solid var(--dash-accent-text); outline-offset: -2px; }
+  .hint { color: var(--dash-text-soft); }
+
+  /* ---------- 视口仿真框 ---------- */
+  .stage {
+    width: var(--vp-w); height: var(--vp-h);
+    max-width: 100%;
+    border: 1px dashed var(--dash-ink-a25);
+    border-radius: 18px;
+    background: var(--dash-surface-soft);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .stage::after {
+    content: "视口仿真框 " attr(data-vp);
+    position: absolute; right: 8px; bottom: 6px;
+    font-size: 10px; color: var(--dash-text-soft); opacity: .7; pointer-events: none;
+  }
+  /* 顶部 .nav（生产里真实存在的顶部导航，占 ~53px） */
+  .mocknav { display: flex; gap: 8px; padding: 8px 16px 0; }
+  .mocknav span {
+    flex: 1; min-width: 60px; padding: 10px 8px; text-align: center;
+    background: var(--dash-white); border: 1px solid var(--dash-ink-a12);
+    border-radius: 12px; font-size: 12px; color: var(--dash-text-soft);
+  }
+
+  /* ---------- 轨道 ---------- */
+  .rail {
+    display: flex; gap: 16px;
+    padding: 14px 16px calc(14px + 4px);
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 16px;
+    scroll-behavior: smooth;
+    flex: 1; min-height: 0;
+    align-items: stretch;
+  }
+  .rail:focus-visible { outline: 2px solid var(--dash-accent-text); outline-offset: -3px; }
+  @media (prefers-reduced-motion: reduce) { .rail { scroll-behavior: auto; } }
+
+  /* ---------- 卡壳（占位） ---------- */
+  .card-shell {
+    flex: 0 0 auto;
+    width: var(--cw);
+    min-width: var(--cwmin); max-width: var(--cwmax);
+    scroll-snap-align: start;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-ink-a12);
+    border-radius: var(--dash-radius);
+    padding: 16px 16px 14px;
+    display: flex; flex-direction: column; gap: 8px;
+    max-height: calc(var(--vp-h) - 77px);
+    overflow: auto;
+  }
+  .card-shell h3 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
+  .card-shell p { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--dash-text-soft); }
+  .card-shell .meta { font-size: 11px; color: var(--dash-text-soft); font-variant-numeric: tabular-nums; }
+  .card-shell .status {
+    margin-top: auto; font-size: 11px; font-weight: 700;
+    color: var(--dash-accent-text);
+    border-top: 1px solid var(--dash-ink-a12); padding-top: 8px;
+  }
+  .card-shell.idx::before {
+    content: attr(data-idx); font-size: 11px; font-weight: 800;
+    color: var(--dash-ink-a42); letter-spacing: .5px;
+  }
+
+  /* ---------- 底部指示 ---------- */
+  .foot {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 8px 16px 12px;
+    font-size: 11.5px; color: var(--dash-text-soft);
+    border-top: 1px solid var(--dash-ink-a12);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--dash-ink-a25); display: block;
+  }
+  .dots i.on { background: var(--dash-accent); width: 16px; border-radius: 3px; }
+  .count { font-variant-numeric: tabular-nums; }
+
+  /* ---------- 440：不再横滑，卡 100% 纵向堆叠 ---------- */
+  .stage[data-vp="440"] .rail {
+    flex-direction: column; overflow-x: visible; overflow-y: auto;
+    scroll-snap-type: y proximity;
+  }
+  .stage[data-vp="440"] .card-shell {
+    width: 100%; max-width: none; min-width: 0;
+    max-height: none; scroll-snap-align: start;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--dash-accent-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-accent-text);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.5</b> · 卡 v1 · 2026-10-16</span>
+  <b>卡片 dashboard 骨架 v1</b>
+  <div class="seg" id="vpSeg">
+    <button type="button" data-vp="1133">1133×744</button>
+    <button type="button" data-vp="744">744×1133</button>
+    <button type="button" data-vp="440">440×956</button>
+  </div>
+  <div class="seg" id="skinSeg">
+    <button type="button" data-skin="light">浅银</button>
+    <button type="button" data-skin="ink">深墨</button>
+  </div>
+  <span class="hint">← → 切卡 · Home/End 首末 · 触屏左右滑 · 松手自动吸附</span>
+</div>
+
+<div class="stage" id="stage" data-vp="1133">
+  <div class="mocknav"><span>今日练习</span><span>准备</span><span>成就</span></div>
+
+  <div class="rail" id="rail" tabindex="0" role="listbox" aria-label="练习卡片轨道" aria-orientation="horizontal">
+    <section class="card-shell idx" role="option" aria-selected="true" data-name="card-practice-timer" data-idx="01 · 练习计时" style="--cw:460px; --cwmin:380px; --cwmax:620px">
+      <h3>练习计时卡</h3>
+      <p>计时时间 + 刻度尺 + 节拍取值（快照）。中段 knob 与 ± 控制加减。</p>
+      <span class="meta">min 380 / 默认 460 / max 620</span>
+      <span class="status">已交付 · 卡内已接生产共享刻度尺（气泡 + 卷草纹）</span>
+    </section>
+    <section class="card-shell idx" role="option" aria-selected="false" data-name="card-metronome" data-idx="02 · 节拍器" style="--cw:420px; --cwmin:340px; --cwmax:560px">
+      <h3>节拍器卡</h3>
+      <p>4 粒 beat 灯 + knob 点击启停 + 拍声引擎。强弱拍开关默认关。</p>
+      <span class="meta">min 340 / 默认 420 / max 560</span>
+      <span class="status">已交付 · 强弱拍默认关 / knob 启停 / ruler 已接共享件</span>
+    </section>
+    <section class="card-shell idx" role="option" aria-selected="false" data-name="card-transport-blocks" data-idx="03 · 下方三块" style="--cw:400px; --cwmin:320px; --cwmax:520px">
+      <h3>下方三块卡</h3>
+      <p>按钮组 / 扬声孔（金属沉头）/ 谱架（胶囊 b）。麦克风需主动开启。</p>
+      <span class="meta">min 320 / 默认 400 / max 520</span>
+      <span class="status">已交付 · 孔阵/按钮/谱架各留 A/B 变体（页内可切）</span>
+    </section>
+    <section class="card-shell idx" role="option" aria-selected="false" data-name="card-requests" data-idx="04 · 老师要求" style="--cw:440px; --cwmin:340px; --cwmax:600px">
+      <h3>老师要求卡</h3>
+      <p>独立卡、与仪表盘同层级、练习计时中也能看到（不再是 pop-out）。</p>
+      <span class="meta">min 340 / 默认 440 / max 600</span>
+      <span class="status">已交付 · 独立卡片 + 3D 卡叠 deck（拖动/上一张/下一张）</span>
+    </section>
+    <section class="card-shell idx" role="option" aria-selected="false" data-name="card-today-records" data-idx="05 · 今日记录" style="--cw:460px; --cwmin:380px; --cwmax:620px">
+      <h3>今日练习记录卡</h3>
+      <p>折叠/展开 + 滚动渐进模糊（GSAP 逐帧）。占比微条 48×4。</p>
+      <span class="meta">min 380 / 默认 460 / max 620</span>
+      <span class="status">已交付 · 折叠/展开 + 占比微条 + 滚动渐进模糊</span>
+    </section>
+    <section class="card-shell idx" role="option" aria-selected="false" data-name="card-practice-duration" data-idx="06 · 今日时长" style="--cw:380px; --cwmin:300px; --cwmax:480px">
+      <h3>今日练习时长卡</h3>
+      <p>依 widget_prompt_ui.md + 参考图。排位后定。</p>
+      <span class="meta">min 300 / 默认 380 / max 480</span>
+      <span class="status">已交付 · 包豪斯暗黑 widget（时钟 + 橙色胶囊 + 练习/休息时间轴）</span>
+    </section>
+  </div>
+
+  <div class="foot">
+    <div class="dots" id="dots"></div>
+    <div class="count" id="count">第 1 / 6 张</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const stage = document.getElementById('stage');
+  const rail  = document.getElementById('rail');
+  const dots  = document.getElementById('dots');
+  const count = document.getElementById('count');
+  const cards = Array.from(rail.querySelectorAll('.card-shell'));
+  const audit = new URLSearchParams(location.search).has('audit');
+  let idx = 0;
+
+  cards.forEach((_, i) => { const d = document.createElement('i'); if (!i) d.className = 'on'; dots.appendChild(d); });
+
+  function setIdx(i) {
+    idx = Math.max(0, Math.min(cards.length - 1, i));
+    cards.forEach((c, n) => c.setAttribute('aria-selected', n === idx ? 'true' : 'false'));
+    Array.from(dots.children).forEach((d, n) => d.className = n === idx ? 'on' : '');
+    count.textContent = `第 ${idx + 1} / ${cards.length} 张`;
+  }
+
+  let gotoLock = 0;   // 主动切卡期间屏蔽滚动同步（否则 scroll 事件会把索引按当前位置压回去）
+
+  function goto(i, smooth) {
+    const i2 = Math.max(0, Math.min(cards.length - 1, i));
+    const c = cards[i2];
+    const vertical = stage.dataset.vp === '440';
+    gotoLock = Date.now() + (smooth ? 700 : 120);
+    rail.scrollTo({ [vertical ? 'top' : 'left']: vertical ? c.offsetTop - rail.offsetTop : c.offsetLeft - rail.offsetLeft, behavior: smooth ? 'smooth' : 'auto' });
+    setIdx(i2);
+  }
+
+  // ← → / Home / End（焦点在卡内输入控件时不抢键）
+  rail.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t !== rail && /INPUT|TEXTAREA|SELECT|BUTTON/.test(t.tagName)) return;
+    const map = { ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: cards.length - 1, PageDown: idx + 2, PageUp: idx - 2 };
+    if (!(e.key in map)) return;
+    e.preventDefault();
+    const vertical = stage.dataset.vp === '440';
+    if (vertical && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) return;   // 纵向堆叠时左右键不切卡
+    goto(map[e.key], true);
+  });
+
+  // 滚轮：shift+滚轮 或 触控板横向 → 交给原生；点击卡也切
+  cards.forEach((c, i) => c.addEventListener('click', () => goto(i, true)));
+  // 滚动时同步指示（原生滑动/吸附后）
+  rail.addEventListener('scroll', () => {
+    if (Date.now() < gotoLock) return;   // 主动切卡还没停稳，别按当前位置覆盖索引
+    const vertical = stage.dataset.vp === '440';
+    const pos = vertical ? rail.scrollTop : rail.scrollLeft;
+    let best = 0, bestD = Infinity;
+    cards.forEach((c, i) => {
+      const d = Math.abs((vertical ? c.offsetTop - rail.offsetTop : c.offsetLeft - rail.offsetLeft) - pos);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    setIdx(best);
+  }, { passive: true });
+
+  // 视口切换
+  const stageOf = { 1133: [1133, 744], 744: [744, 1133], 440: [440, 956] };
+  document.getElementById('vpSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const [w, h] = stageOf[b.dataset.vp];
+    stage.dataset.vp = b.dataset.vp;
+    stage.style.setProperty('--vp-w', w + 'px');
+    stage.style.setProperty('--vp-h', h + 'px');
+    document.querySelectorAll('#vpSeg button').forEach(x => x.classList.toggle('is-on', x === b));
+    setIdx(0); goto(0, false);
+  });
+
+  // 皮肤切换
+  document.getElementById('skinSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(x => x.classList.toggle('is-on', x === b));
+  });
+
+  // 初值：1133
+  stage.style.setProperty('--vp-w', '1133px');
+  stage.style.setProperty('--vp-h', '744px');
+  document.querySelector('#vpSeg button[data-vp="1133"]').classList.add('is-on');
+  document.querySelector('#skinSeg button[data-skin="light"]').classList.add('is-on');
+  setIdx(0);
+
+  if (audit) {
+    const cs = getComputedStyle(rail);
+    const out = {
+      cardCount: cards.length,
+      widthExpect: cards.map(c => Math.round(c.getBoundingClientRect().width)),
+      railScrollable: rail.scrollWidth > rail.clientWidth,
+      railOverflowX: cs.overflowX,
+      snap: cs.scrollSnapType,
+      gap: cs.gap,
+      backstageNote: '占位壳，宽度为契约声明值'
+    };
+    // 断言 1：卡数 6
+    const fails = [];
+    if (cards.length !== 6) fails.push(`cardCount got ${cards.length} want 6`);
+    // 断言 2：1133 档必须可横滑（向右延伸）
+    if (!(rail.scrollWidth > rail.clientWidth)) fails.push('railScrollable got false want true');
+    // 断言 3：吸附真的开着
+    if (!/x\s+mandatory/.test(cs.scrollSnapType)) fails.push(`snap got "${cs.scrollSnapType}" want x mandatory`);
+    // 断言 4：键盘真的能切卡（合成事件）
+    const before = idx;
+    rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    setTimeout(() => {
+      if (idx === before) fails.push(`keyboardArrow got idx ${idx} want ${before + 1}`);
+      out.keyboardOk = idx !== before;
+      out.idxAfterArrow = idx;
+      // 断言 5：440 档改为纵向堆叠（不再横滑）
+      document.querySelector('#vpSeg button[data-vp="440"]').click();
+      setTimeout(() => {
+        const cs2 = getComputedStyle(rail);
+        const cardW = Math.round(cards[0].getBoundingClientRect().width);
+        const railW = rail.clientWidth - 32;
+        out.vp440 = { flexDirection: cs2.flexDirection, snap: cs2.scrollSnapType, railScrollableX: rail.scrollWidth > rail.clientWidth, cardW, railInnerW: railW };
+        // overflow-x 在 overflow-y:auto 时会被浏览器算成 auto（互斥规则），所以不拿 overflow 当判据，改成判「纵向堆叠 + 不可横滑 + 卡占满」
+        if (cs2.flexDirection !== 'column') fails.push(`vp440 flexDirection got ${cs2.flexDirection} want column`);
+        if (!/\by\b/.test(cs2.scrollSnapType)) fails.push(`vp440 snap got "${cs2.scrollSnapType}" want y`);
+        if (rail.scrollWidth > rail.clientWidth) fails.push('vp440 railScrollableX got true want false');
+        if (Math.abs(cardW - railW) > 2) fails.push(`vp440 cardW got ${cardW} want ~${railW}`);
+        document.querySelector('#vpSeg button[data-vp="1133"]').click();
+        out.fails = fails;
+        out.verdict = fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK';
+        console.log(JSON.stringify(out, null, 1));
+        document.title = (fails.length ? 'FAIL ' : 'OK ') + '骨架 v1';
+        var pre = document.createElement('pre');
+        pre.id = 'audit';
+        pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:90vw;background:rgba(0,0,0,0.85);color:#00ff00;font-size:11px;padding:8px;border-radius:6px;z-index:9999;pointer-events:none;white-space:pre-wrap;';
+        pre.textContent = out.verdict + '\n' + JSON.stringify(out, null, 2);
+        document.body.appendChild(pre);
+      }, 260);
+    }, 320);
+  }
+})();
+</script>
+</body>
+</html>

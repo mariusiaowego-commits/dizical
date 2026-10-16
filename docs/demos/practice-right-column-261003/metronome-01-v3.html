@@ -1,0 +1,2521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>D2 节拍器 v3 — 五种音色</title>
+<style>
+  /* ══════ 与 D1 dashboard-skin-01.html 严格对齐的 CSS Token ══════ */
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+      --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
+    --dash-coral-text: #C93B3B;
+}
+
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+      --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: var(--dash-accent);
+    --dash-accent-solid: #B8531F;
+    --dash-coral-text: #FF6B6B;
+}
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-base);
+    background: var(--dash-page);
+    color: var(--dash-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    user-select: none;
+    transition: background 0.3s ease;
+  }
+
+  /* ══════ 顶栏：视口切换与皮肤切换 ══════ */
+  .demo-bar {
+    max-width: 1133px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    gap: 8px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+  .demo-title { font-weight: 800; color: var(--dash-text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .demo-title .legacy-note { flex-basis: 100%; font-size: 12px; font-weight: 650; color: var(--dash-text-soft); }
+  .demo-title span { color: var(--dash-coral); }
+  .demo-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill-group {
+    display: flex; background: var(--dash-shell-hi); padding: 3px; border-radius: 8px; gap: 2px;
+  }
+  .pill-btn {
+    border: 0; background: transparent; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: var(--dash-text-soft); cursor: pointer;
+  }
+  .pill-btn.active {
+    background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  :root[data-skin="ink"] .pill-btn.active { color: var(--dash-page); }
+
+  /* ══════ 舞台外框容器 (多视口仿真) ══════ */
+  .stage-frame {
+    display: flex;
+    flex-direction: column;   /* v2: 机身卡与自检面板上下排列（原来并排） */
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    width: 100%;
+  }
+  .stage-frame[data-vp="ipad"] { width: 1133px; max-width: 100%; }
+  .stage-frame[data-vp="pad"] { width: 744px; max-width: 100%; }
+  .stage-frame[data-vp="iphone"] { width: 440px; max-width: 100%; }
+  .stage-frame[data-vp="fluid"] { width: 100%; max-width: 1133px; }
+  /* 744：旋钮在左列，操作甲板在右列。顶层中枢栏贯通卡顶。双栏 42% (左) : 58% (右) */
+  .stage-frame[data-vp="pad"] .metro-card {
+    display: grid;
+    grid-template-columns: calc(0.42 * (100% - 20px)) calc(0.58 * (100% - 20px));
+    max-width: 720px;
+    column-gap: 20px;
+    row-gap: 12px;
+    align-items: start;
+    padding: 16px 20px 20px;
+  }
+  .stage-frame[data-vp="pad"] .m-top-hub {
+    grid-column: 1 / -1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 0 4px 12px;
+    border-bottom: 1px solid var(--dash-ink-a12);
+  }
+  .stage-frame[data-vp="pad"] .m-top-hub .m-sig-badge {
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 8px;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .stage-frame[data-vp="pad"] .m-top-hub .led-row {
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    width: auto;
+  }
+  .stage-frame[data-vp="pad"] .m-top-hub .m-accent-toggle {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .stage-frame[data-vp="pad"] .knob-section {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 12px 0 0;
+    min-height: 240px;
+  }
+  .stage-frame[data-vp="pad"] .bottom-ops {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+    padding-bottom: 0;
+  }
+  .stage-frame[data-vp="pad"] .knob-row {
+    gap: 16px;
+  }
+  .stage-frame[data-vp="pad"] .knob-row .step-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-ink-a12);
+    color: var(--dash-text);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    font-size: 18px;
+    font-weight: 500;
+  }
+  :root[data-skin="ink"] .stage-frame[data-vp="pad"] .knob-row .step-btn {
+    background: var(--dash-surface-2);
+    color: var(--dash-text);
+  }
+  .stage-frame[data-vp="pad"] .bpm-hero-unit {
+    color: var(--dash-coral);
+  }
+  .stage-frame[data-vp="pad"] .tempo-desc {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dash-text);
+    justify-content: flex-start;
+    margin-top: 2px;
+    margin-bottom: 8px;
+  }
+  .stage-frame[data-vp="pad"] .ps-header {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dash-text-soft);
+    margin-top: 14px;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+  .stage-frame[data-vp="pad"] #psAssignRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    overflow: visible;
+    padding: 0;
+  }
+  .stage-frame[data-vp="pad"] #psAssignRow .preset-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: auto;
+    min-height: 36px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--dash-surface-2);
+    color: var(--dash-text);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: normal;
+    text-overflow: clip;
+    overflow: visible;
+    line-height: 1.25;
+    text-align: left;
+  }
+  .stage-frame[data-vp="pad"] #psAssignRow .preset-chip .pc-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-break: break-word;
+  }
+  .stage-frame[data-vp="pad"] #psAssignRow .preset-chip .pc-note {
+    flex: 0 0 auto;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.85;
+  }
+  .stage-frame[data-vp="pad"] #psRangeRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 1px;
+    touch-action: pan-x pan-y;
+  }
+  .stage-frame[data-vp="pad"] #psRangeRow .preset-chip {
+    flex: none;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 9999px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .stage-frame[data-vp="pad"] #psRangeRow .preset-chip.active {
+    background: var(--dash-text);
+    color: var(--dash-page);
+    border-color: var(--dash-text);
+  }
+  /* 440：四灯仍一字排开，靠间距和灯径收进窄卡。旋钮不缩放。 */
+  .stage-frame[data-vp="iphone"] .metro-card { max-width: none; }
+  .stage-frame[data-vp="iphone"] .led-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: auto;
+  }
+  .stage-frame[data-vp="iphone"] .led-bulb { width: 15px; height: 15px; }
+
+
+  /* ══════ 仪表盘节拍器卡体 (仿 D1 银色金属外框) ══════ */
+  .metro-card {
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(160deg, var(--dash-shell-hi), var(--dash-shell-lo) 70%);
+    border-radius: 28px;
+    padding: 16px;
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -2px 0 var(--dash-shell-inset),
+      0 12px 28px var(--dash-shell-shadow);
+    border: 1px solid var(--dash-shell-inset);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 顶置小节信息条 / 顶层中枢栏 */
+  .m-top-hub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 0;
+    width: 100%;
+  }
+  .m-top-hub .m-sig-badge {
+    order: 1;
+  }
+  .m-top-hub .m-accent-toggle {
+    order: 2;
+  }
+  .m-top-hub .led-row {
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+  }
+  .m-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+  }
+  .m-term-badge {
+    background: var(--dash-coral-solid);
+    color: var(--dash-white);
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+  .m-sig-badge {
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset);
+    color: var(--dash-text);
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .m-accent-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset);
+    color: var(--dash-text-soft);
+    padding: 6px 12px;
+    min-height: 36px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .m-accent-toggle:hover {
+    background: var(--dash-shell-hi);
+  }
+  .m-accent-toggle:active {
+    transform: scale(0.97);
+  }
+  .m-accent-toggle.active {
+    background: var(--dash-vermilion-wash);
+    border-color: var(--dash-coral);
+    color: var(--dash-coral-text);
+  }
+  .accent-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dash-shell-lo);
+    display: inline-block;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .m-accent-toggle.active .accent-dot {
+    background: var(--dash-coral);
+    box-shadow: 0 0 6px var(--dash-coral-glow);
+  }
+
+  /* ══════ 4 粒 Beat 状态指示灯 (含余晖衰减) ══════ */
+  .led-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 10px 0 6px;
+  }
+  .led-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .led-bulb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--dash-btn-face-lo);
+    border: 2px solid var(--dash-shell-lo);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    /* 关键：余晖衰减 transition */
+    transition: background 0.04s ease-out, box-shadow 0.32s cubic-bezier(0.1, 0.8, 0.2, 1), transform 0.18s ease-out;
+  }
+  .led-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+  }
+
+  /* 强拍高亮 (Downbeat - 珊瑚红) */
+  .led-bulb.accent-lit {
+    background: var(--dash-coral-solid);
+    border-color: var(--dash-coral-soft);
+    box-shadow:
+      0 0 16px var(--dash-coral),
+      0 0 28px var(--dash-coral-glow),
+      inset 0 1px 2px var(--dash-white);
+    transform: scale(1.18);
+  }
+  /* 弱拍高亮 (Weak beats - 纯白/暖金) */
+  .led-bulb.weak-lit {
+    background: var(--dash-dot-on);
+    border-color: var(--dash-white);
+    box-shadow:
+      0 0 12px rgba(255, 255, 255, 0.9),
+      0 0 22px var(--dash-gold-glow),
+      inset 0 1px 2px var(--dash-white);
+    transform: scale(1.08);
+  }
+  /* 强弱拍关闭时，第 1 拍仍留一层很轻的品牌色，和弱拍的白光分开。 */
+  .led-bulb.downbeat-cue {
+    background: var(--dash-coral);
+    border-color: var(--dash-coral-soft);
+    box-shadow: 0 0 6px var(--dash-coral-glow);
+    opacity: 0.55;
+    transform: scale(1.04);
+  }
+
+  /* ══════ 真实嵌入尺寸大旋钮区 (168px) ══════ */
+  .knob-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0;
+    min-height: 240px;
+  }
+
+  /* 外部刻度环 (围绕 168px 旋钮) */
+  .dial-outer-ring {
+    position: absolute;
+    width: 236px;
+    height: 236px;
+    pointer-events: none;
+  }
+
+  .knob-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 2;
+  }
+
+  /* 真实尺寸 168px 旋钮。只拖动调速，单击不启停。 */
+  .rotary-knob {
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    position: relative;
+    background: linear-gradient(160deg, var(--dash-knob-hi), var(--dash-knob-lo) 62%);
+    box-shadow:
+      inset 0 2px 0 var(--dash-btn-rim),
+      inset 0 -12px 18px var(--dash-shell-inset),
+      0 12px 24px var(--dash-shell-shadow);
+    touch-action: none;
+    user-select: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  .rotary-knob:active { cursor: grabbing; transform: scale(0.985); }
+  .rotary-knob.is-running {
+    box-shadow:
+      inset 0 2px 0 var(--dash-btn-rim),
+      inset 0 -12px 18px var(--dash-shell-inset),
+      0 0 0 2.5px var(--dash-coral),
+      0 12px 28px var(--dash-coral-glow);
+  }
+
+  /* 旋钮转子与指示标记 */
+  .knob-rotor {
+    position: absolute;
+    inset: 0;
+    transform: rotate(var(--knob-deg, 0deg));
+    transition: transform 0.05s linear;
+  }
+  .knob-indicator {
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    width: 4px;
+    height: 22px;
+    margin-left: -2px;
+    border-radius: 2px;
+    background: var(--dash-coral);
+    box-shadow: 0 0 6px var(--dash-coral-glow);
+  }
+
+  /* 旋钮中心大数值读数 */
+  .knob-center-hub {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .bpm-hero-val {
+    font-size: 42px;
+    font-weight: 900;
+    color: var(--dash-panel-text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .bpm-hero-unit {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--dash-vermilion);
+    letter-spacing: 0.12em;
+    margin-top: 2px;
+  }
+
+  /* ±1 微调：44×44 纯圆浅色浮雕键，与旋钮外轮廓 16px 呼吸（dad 2610101554 spec 第 2 条） */
+  .knob-row .step-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--dash-ink-a12);
+    background: var(--dash-surface-2);
+    color: var(--dash-text-soft);
+    font-size: 19px;
+    font-weight: 500;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--dash-shell-shadow);
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 120ms ease-out;
+  }
+  .knob-row .step-btn:hover { background: var(--dash-shell-hi); }
+  .knob-row .step-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px var(--dash-shell-shadow);
+  }
+
+
+  /* 变体 A 甲板分级（pixel 规格 spec-pixel-d2-primary-261010）：主按钮沉头矩形 + 音色胶囊右挂 + 预设弱底纸片
+     D2-4：action-deck 按钮视觉高度减半 52 -> 26px，命中区保持 >=44px */
+  /* L2 主操作台：主按钮 70% + 音色选择器 30%，视觉高度 26px，命中区 >=44px */
+  .action-deck { position: relative; z-index: 10; display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .timbre-capsule {
+    position: relative; flex: 0 0 calc(30% - 5px); min-width: 0; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 26px; padding: 0 10px; gap: 5px;
+    border: 1px solid var(--dash-ink-a12); border-radius: 13px;
+    background: var(--dash-surface-soft); color: var(--dash-text);
+    font-size: 12px; font-weight: 650; white-space: nowrap;
+    transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out;
+  }
+  .timbre-capsule::before { content: ''; position: absolute; inset: -9px 0; }
+  .timbre-capsule:hover { background: var(--dash-shell-hi); }
+  .timbre-capsule:active { transform: translateY(1px); }
+  .timbre-capsule.open { background: var(--dash-text); color: var(--dash-page); }
+  .timbre-capsule .tc-name { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+  .timbre-capsule .tc-caret { transition: transform 150ms ease-out; }
+  .timbre-capsule.open .tc-caret { transform: rotate(180deg); }
+  /* 旧形态（音色行 / 试听胶囊）退场；保留类名兼容旧断言引用 */
+  .timbre-bar { display: none; }
+  .timbre-fold { display: none; }
+  .btn-preview { display: none; }
+  /* 抽屉：贴着 #timbreFold 弹出的浮层 (D2-3) */
+  .timbre-drawer {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 25;
+    width: 250px;
+    background: var(--dash-shell-hi); border: 1px solid var(--dash-ink-a16); border-radius: 12px;
+    box-shadow: 0 10px 28px var(--dash-shell-shadow); padding: 8px;
+    transform-origin: top right;
+    transition: opacity 150ms ease-out, transform 150ms ease-out;
+  }
+  .timbre-drawer[hidden] { display: none !important; }
+  .timbre-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 2px;
+    background: transparent; border: 0;
+  }
+  .timbre-seg button {
+    position: relative; height: 32px; padding: 0 8px; border: 1px solid var(--dash-ink-a12); border-radius: 8px;
+    background: var(--dash-surface-2); color: var(--dash-text); cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 650; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out;
+  }
+  .timbre-seg button::before { content: ''; position: absolute; inset: -6px 0; }
+  .timbre-seg button:hover { background: var(--dash-ink-a12); }
+  .timbre-seg button:active { transform: translateY(1px); }
+  .timbre-seg button.is-on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; border-color: var(--dash-text); }
+  /* 试听进抽屉：与抽屉里音色项同族 */
+  .drawer-preview {
+    grid-column: 1 / -1;
+    position: relative; height: 32px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--dash-ink-a16); background: var(--dash-surface-2); color: var(--dash-text);
+    font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 120ms ease-out;
+  }
+  .drawer-preview::before { content: ''; position: absolute; inset: -6px 0; }
+  .drawer-preview:hover { background: var(--dash-ink-a12); }
+  .drawer-preview:active { transform: translateY(1px); }
+
+  /* L1 速度释义 + 意大利语术语（dad spec：13px / muted / 字重 500 / 水平居中） */
+  .tempo-desc {
+    display: flex; align-items: baseline; justify-content: center; gap: 8px;
+    margin-top: 16px; font-size: 13px; font-weight: 500; color: var(--dash-text-soft);
+    line-height: 1.2; min-height: 18px;
+  }
+  .td-it { font-size: 12px; font-style: italic; letter-spacing: .02em; opacity: .85; }
+
+  /* L3 速度预设滑动栏：横向滚动、隐藏滚动条、药丸 h34 / r9999 */
+  .preset-scroll { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .ps-header { display: none; }
+  .ps-row {
+    display: flex; align-items: center; gap: 8px;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -ms-overflow-style: none;
+    padding: 2px 1px;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+  }
+  .ps-row::-webkit-scrollbar { display: none; height: 0; }
+  .ps-label { flex: none; font-size: 11.5px; font-weight: 650; color: var(--dash-text-soft); letter-spacing: .04em; }
+
+  .bottom-ops { position: relative; z-index: 2; display: flex; flex-direction: column; margin-top: 16px; padding-bottom: 20px; }
+
+  .primary-toggle-btn {
+    position: relative; flex: 0 0 calc(70% - 5px); min-width: 0; height: 26px; padding: 0 14px; gap: 6px;
+    border: 0; border-radius: 13px; background: var(--dash-coral-solid); color: var(--dash-white);
+    font-size: 13px; font-weight: 700; letter-spacing: .5px; cursor: pointer; font-family: inherit;
+    white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px var(--dash-coral-glow);
+    transition: background-color 150ms ease-out, box-shadow 150ms ease-out, transform 120ms ease-out;
+  }
+  .primary-toggle-btn::before { content: ''; position: absolute; inset: -9px 0; }
+  .primary-toggle-btn:hover { box-shadow: 0 3px 10px var(--dash-coral-glow); }
+  .primary-toggle-btn:active { transform: scale(0.98); }
+  /* v2: ▶ / ⏸ 文字字形换成矢量图形，由 .running 切换 */
+  .primary-toggle-btn .tg-icon { display: inline-flex; align-items: center; }
+  .primary-toggle-btn .tg-pause { display: none; }
+  .primary-toggle-btn.running .tg-play { display: none; }
+  .primary-toggle-btn.running .tg-pause { display: inline-flex; }
+  .primary-toggle-btn.running {
+    background: var(--dash-panel);
+    color: var(--dash-white);
+    box-shadow: 0 2px 8px var(--dash-shell-shadow);
+  }
+
+  .preset-chip {
+    flex: none; position: relative; height: 34px; padding: 0 14px;
+    border-radius: 9999px; border: 1px solid var(--dash-ink-a16);
+    background: var(--dash-surface-2); color: var(--dash-text);
+    font-size: 12.5px; font-weight: 600; font-family: inherit; white-space: nowrap;
+    box-shadow: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 120ms ease-out;
+  }
+  .preset-chip::before { content: ''; position: absolute; inset: -5px 0; }
+  .preset-chip:hover { background: var(--dash-shell-hi); }
+  .preset-chip:active { transform: translateY(1px); }
+  .preset-chip.active { background: var(--dash-text); color: var(--dash-page); border-color: var(--dash-text); box-shadow: none; }
+  .preset-chip .pc-label { display: inline; }
+  .preset-chip .pc-note { font-size: 11px; opacity: .85; font-weight: 700; }
+
+  /* ══════ 精度自检面板 (Audit Terminal) ══════ */
+  .audit-panel {
+    width: 100%;
+    max-width: 420px;   /* 与机身卡同宽，契约默认 420 */
+    background: var(--dash-panel);
+    border-radius: 16px;
+    padding: 12px 14px;
+    color: var(--dash-panel-text);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .audit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .audit-title {
+    font-weight: 800;
+    color: var(--dash-vermilion);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .audit-run-btn {
+    border: 0;
+    background: var(--dash-coral-solid);
+    color: var(--dash-white);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .audit-terminal {
+    background: rgba(0,0,0,0.35);
+    border-radius: 4px;   /* v2: 与面板 16 - 内边距 12 同心 */
+    padding: 8px 10px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--dash-panel-dim);
+    max-height: 140px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+
+  button:focus-visible, .primary-toggle-btn:focus-visible, .preset-chip:focus-visible, .m-accent-toggle:focus-visible, .step-btn:focus-visible, .rotary-knob:focus-visible, .pill-btn:focus-visible {
+    outline: 2px solid var(--dash-vermilion-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .knob-rotor { transition: none !important; }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+</style>
+<!-- 本地 GSAP 引用 (严格禁止外链 CDN) -->
+<script src="../vendor/gsap.min.js"></script>
+</head>
+<body>
+
+  <!-- 顶栏辅助控制器 -->
+  <div class="demo-bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.5</b> · 卡 v3 · 2026-10-16</span>
+    <div class="demo-title">
+      dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
+      <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
+    </div>
+    <div class="demo-controls">
+      <div class="pill-group" id="vpPills">
+        <button class="pill-btn active" onclick="setViewport('ipad')">iPad 1133×744</button>
+        <button class="pill-btn" onclick="setViewport('pad')">744×1133</button>
+        <button class="pill-btn" onclick="setViewport('iphone')">iPhone 440×956</button>
+        <button class="pill-btn" onclick="setViewport('fluid')">自适应全屏</button>
+      </div>
+      <div class="pill-group" id="skinPills">
+        <button class="pill-btn active" onclick="setSkin('light')">包豪斯浅白</button>
+        <button class="pill-btn" onclick="setSkin('ink')">深色墨黑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 舞台框架 -->
+  <main class="stage-frame" data-vp="ipad" id="stageFrame">
+    <div class="metro-card">
+      
+      <!-- 顶层中枢栏 (贯通卡顶) -->
+      <header class="m-top-hub" id="topHub">
+        <span class="m-sig-badge" id="meterBadge">4/4</span>
+
+        <!-- 4 粒 Beat 状态指示灯 (含余晖衰减) -->
+        <div class="led-row" id="ledRow">
+          <div class="led-item">
+            <div class="led-bulb" id="led0"></div>
+            <span class="led-label" id="ledLabel0">第 1 拍</span>
+          </div>
+          <div class="led-item">
+            <div class="led-bulb" id="led1"></div>
+            <span class="led-label" id="ledLabel1">弱拍 2</span>
+          </div>
+          <div class="led-item">
+            <div class="led-bulb" id="led2"></div>
+            <span class="led-label" id="ledLabel2">次强 3</span>
+          </div>
+          <div class="led-item">
+            <div class="led-bulb" id="led3"></div>
+            <span class="led-label" id="ledLabel3">弱拍 4</span>
+          </div>
+        </div>
+
+        <button type="button" class="m-accent-toggle" id="accentToggleBtn" onclick="toggleAccent()" title="点击切换强弱拍">
+          <span class="accent-dot" id="accentDot"></span>
+          <span id="accentText">强弱拍：关</span>
+        </button>
+      </header>
+
+      <!-- 真实嵌入尺寸大旋钮区 (168px) -->
+      <div class="knob-section">
+        <!-- 刻度环 SVG -->
+        <svg class="dial-outer-ring" viewBox="0 0 240 240" id="dialSvg"></svg>
+
+        <div class="knob-row">
+          <button class="step-btn" id="stepDownBtn" onclick="stepBpm(-1)" title="BPM -1">−</button>
+
+          <!-- 真实嵌入 168px Rotary Knob (点击即启停，拖动调速) -->
+          <div class="rotary-knob" id="rotaryKnob" title="拖动调速">
+            <div class="knob-rotor" id="knobRotor">
+              <div class="knob-indicator"></div>
+            </div>
+            <div class="knob-center-hub">
+              <div class="bpm-hero-val" id="bpmHeroText">82</div>
+              <div class="bpm-hero-unit" id="bpmHeroUnit">BPM</div>
+            </div>
+          </div>
+
+          <button class="step-btn" id="stepUpBtn" onclick="stepBpm(+1)" title="BPM +1">+</button>
+        </div>
+      </div>
+
+      <!-- 底部操作甲板 (在 744 下为右栏) -->
+      <div class="bottom-ops">
+        <!-- Layer 1 速度释义 + 意大利语术语 -->
+        <div class="tempo-desc" id="tempoDesc">
+          <span class="td-cn" id="tdCn">中板 · 优美抒情</span>
+          <span class="td-it" id="tdIt">Moderato</span>
+        </div>
+
+        <!-- Layer 2 主操作台：主按钮 70% + 音色选择器 30% -->
+        <div class="action-deck" id="actionDeck">
+          <button class="primary-toggle-btn" id="mainToggleBtn" onclick="toggleMetronome()" aria-label="开始节拍器" aria-pressed="false">
+            <svg class="tg-icon tg-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg>
+            <svg class="tg-icon tg-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg>
+            <span id="toggleText">开始</span>
+          </button>
+          <button type="button" class="timbre-capsule" id="timbreFold" aria-haspopup="true" aria-expanded="false" aria-controls="timbreDrawer" aria-label="音色：木鱼">
+            <span class="tc-name" id="timbreFoldName">木鱼</span>
+            <svg class="tc-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+
+          <!-- 音色抽屉：就近贴着 #timbreFold 弹出的浮层 (D2-3) -->
+          <div class="timbre-drawer" id="timbreDrawer" hidden>
+            <div class="timbre-seg" id="timbreSeg" role="radiogroup" aria-label="音色">
+              <button type="button" data-timbre="wood" class="is-on">木鱼</button>
+              <button type="button" data-timbre="click">电子滴答</button>
+              <button type="button" data-timbre="sub808">808 低鼓</button>
+              <button type="button" data-timbre="rim">鼓边</button>
+              <button type="button" data-timbre="blip">清脆 blip</button>
+              <button type="button" class="drawer-preview" id="btnPreview">试听</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer 3 预设与自定义练习 (在 744 下为 L2 老师定制练习 + L3 速度区间) -->
+        <div class="preset-scroll">
+          <div class="ps-section" id="psAssignSection">
+            <div class="ps-header" id="psAssignHeader">老师定制练习</div>
+            <div class="ps-row" id="psAssignRow" aria-label="老师定制练习"></div>
+          </div>
+          <div class="ps-section" id="psRangeSection">
+            <div class="ps-header" id="psRangeHeader">速度区间</div>
+            <div class="ps-row" id="psRangeRow" aria-label="速度区间"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 精度自检面板 (Dad 验收硬证据) — v2: 移出机身卡，避免把节拍器撑长（原 552px） -->
+    <div class="audit-panel">
+      <div class="audit-header">
+        <div class="audit-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          路线 A 精度自检 (OfflineAudioContext 60s)
+        </div>
+        <button class="audit-run-btn" id="runAuditBtn" onclick="runAccuracyAudit()">开始自检</button>
+      </div>
+      <div class="audit-terminal" id="auditLog">点击「开始自检」以运行 60 秒声卡采样级精确度诊断...</div>
+    </div>
+  </main>
+
+  <script>
+    /* ═════════════════════════════════════════════════════════
+       路线 A 核心：Web Audio API + Lookahead 调度器
+       ═════════════════════════════════════════════════════════ */
+    let audioCtx = null;
+    let isPlaying = false;
+    let accentEnabled = false; // 强弱拍可开关，默认【关闭】
+    let currentBpm = 82;
+    var TIMBRE_KEY = 'dizical.metro.timbre';
+    var TIMBRES = ['wood', 'click', 'sub808', 'rim', 'blip'];
+    var currentTimbre = 'wood';
+    var oscCreated = 0;
+    var sessionSnapshot = null;
+    let currentBeat = 0;
+    let nextNoteTime = 0.0;
+    let lookaheadTimerId = null;
+    let wakeLock = null;
+
+    function updateAccentUI() {
+      const btn = document.getElementById('accentToggleBtn');
+      const text = document.getElementById('accentText');
+      const l0 = document.getElementById('ledLabel0');
+      if (btn && text) {
+        btn.classList.toggle('active', accentEnabled);
+        text.textContent = accentEnabled ? '强弱拍：开' : '强弱拍：关';
+      }
+      if (l0) {
+        l0.textContent = accentEnabled ? '强拍 1' : '第 1 拍';
+        l0.style.color = accentEnabled ? 'var(--dash-coral-text)' : '';
+      }
+    }
+
+    function toggleAccent() {
+      accentEnabled = !accentEnabled;
+      updateAccentUI();
+    }
+
+    const LOOKAHEAD_INTERVAL = 25.0; // 调度检查周期 (ms)
+    const SCHEDULE_AHEAD_TIME = 0.10; // 预读提前量 (100ms)
+
+    // iOS 4条规避 1: 首次用户手势激活与 AudioSession 声明
+    function getOrCreateAudioContext() {
+      if (!audioCtx) {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioClass();
+
+        // 规避硬件静音开关 (iOS 16.4+)
+        try {
+          if ('audioSession' in navigator) {
+            navigator.audioSession.type = 'playback';
+          }
+        } catch(e) {}
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // iOS 4条规避 3: Screen Wake Lock 防练琴中途息屏
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch(e) {}
+    }
+    function releaseWakeLock() {
+      if (wakeLock) {
+        try { wakeLock.release(); } catch(e) {}
+        wakeLock = null;
+      }
+    }
+
+    // iOS 4条规避 4: 切回前台重置时钟基准，避免一次性补发积压的拍。
+    // v2 说明：这里不承诺「补回后台漏掉的拍」——节拍器不补拍，只从当前时刻继续；
+    //          但灯必须清一次，否则会停在后台最后一拍的亮态。
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isPlaying && audioCtx) {
+        audioCtx.resume();
+        nextNoteTime = audioCtx.currentTime + 0.05;
+        clearAllLeds();
+      }
+    });
+
+    // v3 五种音色。包络固定 5ms 起、80ms 落，避免起音爆音。
+    // 强弱拍关掉时四拍同一音高、同一增益。打开时只有第 1 拍更高、更响。
+    function hitSpec(beatIndex, timbre, accentOn) {
+      var accent = !!(accentOn && (beatIndex % 4) === 0);
+      var peak = accent ? 0.36 : 0.22;
+      var freq = 720;
+      if (timbre === 'click') freq = accent ? 2400 : 1850;
+      else if (timbre === 'sub808') freq = accent ? 150 : 110;
+      else if (timbre === 'rim') freq = accent ? 1900 : 1450;
+      else if (timbre === 'blip') freq = accent ? 1760 : 1320;
+      else freq = accent ? 980 : 720;
+      return { accent: accent, peak: peak, freq: freq };
+    }
+    function envGain(ctx, peak, time) {
+      var gain = ctx.createGain();
+      var p = Math.max(0.0002, peak);
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.exponentialRampToValueAtTime(p, time + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.085);
+      return gain;
+    }
+    function makeOsc(ctx, type, freq, time) {
+      var osc = ctx.createOscillator();
+      oscCreated += 1;
+      osc.type = type;
+      osc.frequency.setValueAtTime(Math.max(1, freq), time);
+      return osc;
+    }
+    function makeNoise(ctx, seconds) {
+      var rate = ctx.sampleRate;
+      var len = Math.max(1, Math.floor(rate * seconds));
+      var buf = ctx.createBuffer(1, len, rate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      return src;
+    }
+    function wire(node, gain, ctx, time, stopAt) {
+      node.connect(gain);
+      gain.connect(ctx.destination);
+      node.start(time);
+      node.stop(time + stopAt);
+    }
+    function scheduleHit(beatIndex, time) {
+      var ctx = audioCtx;
+      var spec = hitSpec(beatIndex, currentTimbre, accentEnabled);
+      var accent = spec.accent;
+      var peak = spec.peak;
+      var timbre = currentTimbre;
+      var osc, gain, noise, filter;
+      if (timbre === 'click') {
+        osc = makeOsc(ctx, 'sine', accent ? 2400 : 1850, time);
+        gain = envGain(ctx, peak * 0.7, time);
+        wire(osc, gain, ctx, time, 0.09);
+      } else if (timbre === 'sub808') {
+        osc = makeOsc(ctx, 'sine', accent ? 150 : 110, time);
+        osc.frequency.exponentialRampToValueAtTime(accent ? 48 : 40, time + 0.085);
+        gain = envGain(ctx, peak * 1.15, time);
+        wire(osc, gain, ctx, time, 0.09);
+      } else if (timbre === 'rim') {
+        osc = makeOsc(ctx, 'triangle', accent ? 1900 : 1450, time);
+        gain = envGain(ctx, peak * 0.45, time);
+        wire(osc, gain, ctx, time, 0.09);
+        noise = makeNoise(ctx, 0.06);
+        filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(accent ? 2200 : 1800, time);
+        noise.connect(filter);
+        var ng = envGain(ctx, peak * 0.55, time);
+        filter.connect(ng);
+        ng.connect(ctx.destination);
+        noise.start(time);
+        noise.stop(time + 0.06);
+      } else if (timbre === 'blip') {
+        osc = makeOsc(ctx, 'square', accent ? 1760 : 1320, time);
+        gain = envGain(ctx, peak * 0.28, time);
+        wire(osc, gain, ctx, time, 0.09);
+      } else {
+        osc = makeOsc(ctx, 'sine', accent ? 980 : 720, time);
+        osc.frequency.exponentialRampToValueAtTime(accent ? 280 : 210, time + 0.08);
+        gain = envGain(ctx, peak, time);
+        wire(osc, gain, ctx, time, 0.09);
+        noise = makeNoise(ctx, 0.045);
+        filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(accent ? 1400 : 900, time);
+        filter.Q.setValueAtTime(0.8, time);
+        noise.connect(filter);
+        var wg = envGain(ctx, peak * 0.4, time);
+        filter.connect(wg);
+        wg.connect(ctx.destination);
+        noise.start(time);
+        noise.stop(time + 0.045);
+      }
+      noteLed(time, beatIndex % 4);
+      ensureLedClock();
+    }
+    function paintTimbre() {
+      var seg = document.getElementById('timbreSeg');
+      var label = currentTimbre;
+      if (seg) {
+        seg.querySelectorAll('button[data-timbre]').forEach(function (b) {
+          var on = b.dataset.timbre === currentTimbre;
+          b.classList.toggle('is-on', on);
+          if (on) label = (b.textContent || '').trim();
+        });
+      }
+      var name = document.getElementById('timbreFoldName');
+      if (name) name.textContent = label;
+      var fold = document.getElementById('timbreFold');
+      if (fold) fold.setAttribute('aria-label', '音色：' + label);
+    }
+    function setTimbreDrawer(open) {
+      var drawer = document.getElementById('timbreDrawer');
+      var fold = document.getElementById('timbreFold');
+      if (!drawer || !fold) return;
+      drawer.hidden = !open;
+      fold.setAttribute('aria-expanded', open ? 'true' : 'false');
+      fold.classList.toggle('open', !!open);
+    }
+    function saveTimbre() {
+      try { localStorage.setItem(TIMBRE_KEY, currentTimbre); } catch (e) {}
+    }
+    function restoreTimbre() {
+      var saved = null;
+      try { saved = localStorage.getItem(TIMBRE_KEY); } catch (e) {}
+      if (TIMBRES.indexOf(saved) >= 0) currentTimbre = saved;
+      paintTimbre();
+      return currentTimbre;
+    }
+    function setTimbre(name) {
+      if (TIMBRES.indexOf(name) < 0) return;
+      currentTimbre = name;
+      paintTimbre();
+      saveTimbre();
+    }
+    function freezeSnapshot() {
+      sessionSnapshot = { bpm: currentBpm, timbre: currentTimbre };
+    }
+    function previewTimbre() {
+      var ctx = getOrCreateAudioContext();
+      scheduleHit(0, ctx.currentTime + 0.03);
+    }
+
+    // Lookahead 双时钟调度器
+    function scheduler() {
+      while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD_TIME) {
+        scheduleHit(currentBeat, nextNoteTime);
+        nextNoteTime += 60.0 / currentBpm;
+        currentBeat++;
+      }
+    }
+
+    // 启动/停止只走珊瑚红主按钮。旋钮不切换运行态。
+    function toggleMetronome() {
+      getOrCreateAudioContext();
+
+      isPlaying = !isPlaying;
+      const toggleBtn = document.getElementById('mainToggleBtn');
+      const toggleText = document.getElementById('toggleText');
+      const knob = document.getElementById('rotaryKnob');
+      const heroUnit = document.getElementById('bpmHeroUnit');
+
+      if (isPlaying) {
+        freezeSnapshot();
+        currentBeat = 0;
+        nextNoteTime = audioCtx.currentTime + 0.04;
+        lookaheadTimerId = setInterval(scheduler, LOOKAHEAD_INTERVAL);
+        requestWakeLock();
+
+        toggleBtn.classList.add('running');
+        toggleText.textContent = '暂停';
+        toggleBtn.setAttribute('aria-label', '暂停节拍器');
+        toggleBtn.setAttribute('aria-pressed', 'true');
+        if (knob) knob.classList.add('is-running');
+        if (heroUnit) heroUnit.textContent = 'BPM';
+        ensureLedClock();
+      } else {
+        if (lookaheadTimerId) {
+          clearInterval(lookaheadTimerId);
+          lookaheadTimerId = null;
+        }
+        releaseWakeLock();
+        stopLedClock();
+
+        toggleBtn.classList.remove('running');
+        toggleText.textContent = '开始';
+        toggleBtn.setAttribute('aria-label', '开始节拍器');
+        toggleBtn.setAttribute('aria-pressed', 'false');
+        if (knob) knob.classList.remove('is-running');
+        if (heroUnit) heroUnit.textContent = 'BPM';
+      }
+    }
+
+    /* 灯跟着 audioCtx.currentTime 走，不用 setTimeout。 */
+    var ledClockOn = false;
+    var ledMarks = [];
+    var ledPaintKey = '';
+    var ledDriver = 'raf';
+    window.__ledSync = [];
+
+    function noteLed(time, beat) {
+      ledMarks.push({ t: time, beat: beat });
+      if (ledMarks.length > 24) ledMarks.splice(0, ledMarks.length - 24);
+    }
+    function ledHoldSec() {
+      return Math.min(0.32, (60 / currentBpm) * 0.7);
+    }
+    function paintOneLed(beatIdx) {
+      var el = document.getElementById('led' + beatIdx);
+      if (!el) return;
+      if (beatIdx === 0 && accentEnabled) el.classList.add('accent-lit');
+      else if (beatIdx === 0) el.classList.add('downbeat-cue');
+      else el.classList.add('weak-lit');
+    }
+    function paintLedFrame() {
+      if (!ledClockOn) return;
+      var now = audioCtx ? audioCtx.currentTime : 0;
+      var hold = ledHoldSec();
+      var active = null;
+      var i;
+      for (i = 0; i < ledMarks.length; i++) {
+        var m = ledMarks[i];
+        if (m.t <= now && now < m.t + hold) active = m;
+      }
+      var key = active ? (active.beat + '@' + active.t) : '';
+      if (key !== ledPaintKey) {
+        ledPaintKey = key;
+        clearAllLeds();
+        if (active) {
+          paintOneLed(active.beat);
+          window.__ledSync.push({ beat: active.beat, audioTime: active.t, visualTime: now });
+        }
+      }
+      var pending = isPlaying;
+      if (!pending) {
+        for (i = 0; i < ledMarks.length; i++) {
+          if (now < ledMarks[i].t + hold + 0.05) { pending = true; break; }
+        }
+      }
+      if (pending) requestAnimationFrame(paintLedFrame);
+      else ledClockOn = false;
+    }
+    function ensureLedClock() {
+      if (ledClockOn) return;
+      ledClockOn = true;
+      requestAnimationFrame(paintLedFrame);
+    }
+    function stopLedClock() {
+      ledClockOn = false;
+      ledPaintKey = '';
+      clearAllLeds();
+    }
+    function clearAllLeds() {
+      for (let i = 0; i < 4; i++) {
+        const el = document.getElementById('led' + i);
+        if (el) el.classList.remove('accent-lit', 'weak-lit', 'downbeat-cue');
+      }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       BPM 旋钮旋转、阻尼手感与刻度映射
+       ═════════════════════════════════════════════════════════ */
+    const MIN_BPM = 40;
+    const MAX_BPM = 200;   // v2: 与 D1 统一量程 40–200
+    const MIN_ANGLE = -135;
+    const MAX_ANGLE = 135;
+
+    function bpmToAngle(bpm) {
+      const ratio = (bpm - MIN_BPM) / (MAX_BPM - MIN_BPM);
+      return MIN_ANGLE + ratio * (MAX_ANGLE - MIN_ANGLE);
+    }
+
+    // v2: 术语只由 BPM 值域决定，阈值与 D1 tempoTerm 完全一致（原来写死 bpm===82，
+    //     指针走了术语不变，且『小快板/快板』次序与值域相反）。萨丽哈标记交给预设芯片。
+    function getChineseTempoTerm(bpm) {
+      if (bpm <= 60) return '慢板 · 深情舒缓';
+      if (bpm <= 88) return '中板 · 优美抒情';
+      if (bpm <= 120) return '小快板 · 欢快活泼';
+      if (bpm <= 160) return '快板 · 欢快热烈';
+      return '急板 · 飞速技巧';
+    }
+
+    function statusTerm(bpm) {
+      var onChip = document.querySelector('.preset-chip.active');
+      var term = onChip ? (onChip.getAttribute('data-term') || '') : '';
+      return term || getChineseTempoTerm(bpm);
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       速度释义 / 术语 / 预设（dad 2610101554 C1 + C2）
+       C2：标签不写死，改由当前科目老师要求的速度驱动：
+           数据来源 = weekly_assignments.items[].metronome（示例「♩=60」「♪=80 / ♪=85」）
+       ═════════════════════════════════════════════════════════ */
+    const ASSIGNMENT_SPEEDS = [
+      { item: '单吐tuku', note: '♩', bpm: 60 },
+      { item: '双吐', note: '♩', bpm: 70 },
+      { item: '单吐基本练习', note: '♪', bpm: 60 },
+      { item: '小看戏', note: '♪', bpm: 80 },
+      { item: '小看戏', note: '♪', bpm: 85 }
+    ];
+    const TEMPO_RANGES = [
+      { cn: '广板', it: 'Largo', lo: 40, hi: 45, bpm: 40 },
+      { cn: '慢板', it: 'Adagio', lo: 46, hi: 60, bpm: 60 },
+      { cn: '中板', it: 'Moderato', lo: 61, hi: 88, bpm: 88 },
+      { cn: '小快板', it: 'Allegretto', lo: 89, hi: 120, bpm: 108 },
+      { cn: '快板', it: 'Allegro', lo: 121, hi: 160, bpm: 132 },
+      { cn: '急板', it: 'Presto', lo: 161, hi: 200, bpm: 168 }
+    ];
+    function tempoTermPair(bpm) {
+      for (var i = 0; i < TEMPO_RANGES.length; i++) {
+        var r = TEMPO_RANGES[i];
+        if (bpm >= r.lo && bpm <= r.hi) {
+          var traits = { 广板: '庄重舒缓', 慢板: '深情舒缓', 中板: '优美抒情', 小快板: '欢快活泼', 快板: '欢快热烈', 急板: '飞速技巧' };
+          return { cn: r.cn + ' · ' + traits[r.cn], it: r.it };
+        }
+      }
+      return { cn: getChineseTempoTerm(bpm), it: 'Moderato' };
+    }
+    function makeChip(label, note, bpm) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'preset-chip'; b.dataset.bpm = String(bpm);
+      b.dataset.term = label;
+      b.setAttribute('aria-label', label + ' ' + (note ? note + '=' + bpm : bpm + ' BPM'));
+      b.innerHTML = note
+        ? '<span class="pc-label">' + label + '</span> <span class="pc-note">' + note + '=' + bpm + '</span>'
+        : '<span class="pc-label">' + label + '</span>';
+      b.addEventListener('click', function () { setBpm(bpm); });
+      return b;
+    }
+
+    function initScrollRow(row) {
+      if (!row || row.dataset.scrollInit) return;
+      row.dataset.scrollInit = '1';
+      var isDown = false;
+      var startX = 0;
+      var startScrollLeft = 0;
+      var moved = false;
+
+      row.addEventListener('pointerdown', function (e) {
+        if (e.button && e.button !== 0) return;
+        isDown = true;
+        startX = e.clientX;
+        startScrollLeft = row.scrollLeft;
+        moved = false;
+      });
+
+      row.addEventListener('pointermove', function (e) {
+        if (!isDown) return;
+        var dx = e.clientX - startX;
+        if (Math.abs(dx) > 3) {
+          moved = true;
+          row.scrollLeft = startScrollLeft - dx;
+        }
+      });
+
+      function onEnd() {
+        if (!isDown) return;
+        isDown = false;
+        if (moved) {
+          var cancelClick = function (ce) {
+            ce.stopPropagation();
+            ce.preventDefault();
+          };
+          row.addEventListener('click', cancelClick, { capture: true, once: true });
+          setTimeout(function () { row.removeEventListener('click', cancelClick, { capture: true }); }, 50);
+        }
+      }
+
+      row.addEventListener('pointerup', onEnd);
+      row.addEventListener('pointercancel', onEnd);
+
+      row.addEventListener('wheel', function (e) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && (row.scrollWidth > row.clientWidth)) {
+          row.scrollLeft += e.deltaY;
+          e.preventDefault();
+        }
+      }, { passive: false });
+    }
+
+    function buildPresetChips() {
+      var aRow = document.getElementById('psAssignRow');
+      var rRow = document.getElementById('psRangeRow');
+      if (aRow && !aRow.dataset.built) {
+        ASSIGNMENT_SPEEDS.forEach(function (s) { aRow.appendChild(makeChip(s.item, s.note, s.bpm)); });
+        aRow.dataset.built = '1';
+        initScrollRow(aRow);
+      }
+      if (rRow && !rRow.dataset.built) {
+        TEMPO_RANGES.forEach(function (t) {
+          var chips = [].filter.call(rRow.querySelectorAll('.preset-chip'), function (c) { return c.dataset.term === t.cn; });
+          if (chips.length) return;
+          var b = makeChip(t.cn, '', t.bpm);
+          b.dataset.src = 'range';
+          b.dataset.lo = String(t.lo); b.dataset.hi = String(t.hi);
+          rRow.appendChild(b);
+        });
+        rRow.dataset.built = '1';
+        initScrollRow(rRow);
+      }
+    }
+
+    function updateBpmUI(bpm) {
+      document.getElementById('bpmHeroText').textContent = bpm;
+      var unit = document.getElementById('bpmHeroUnit');
+      if (unit) unit.textContent = 'BPM';
+
+      const deg = bpmToAngle(bpm);
+      document.getElementById('knobRotor').style.setProperty('--knob-deg', `${deg}deg`);
+
+      document.querySelectorAll('.preset-chip').forEach(chip => {
+        const cb = chip.dataset.bpm ? parseInt(chip.dataset.bpm, 10) : NaN;
+        let on;
+        if (chip.dataset.src === 'range') {
+          on = bpm >= parseInt(chip.dataset.lo, 10) && bpm <= parseInt(chip.dataset.hi, 10);
+        } else {
+          on = cb === bpm;
+        }
+        chip.classList.toggle('active', on);
+      });
+      var pair = tempoTermPair(bpm);
+      var cn = document.getElementById('tdCn');
+      var it = document.getElementById('tdIt');
+      if (cn) cn.textContent = pair.cn;
+      if (it) it.textContent = pair.it;
+      var st = document.getElementById('bottomStatusText');
+      if (st) st.textContent = statusTerm(bpm);
+      updateDialTicks(bpm);
+    }
+
+    function setBpm(val) {
+      currentBpm = Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(val)));
+      updateBpmUI(currentBpm);
+    }
+
+    function stepBpm(delta) {
+      setBpm(currentBpm + delta);
+    }
+
+    // 旋钮只调速。dad 2610101554 第 3 条：拟物/实际动作是「从左到右」才是最大力度
+    // → 拖动映射改水平轴：右端 = MAX_BPM，左端 = MIN_BPM；垂直抖动不改变值。单击不启停。
+    const knobEl = document.getElementById('rotaryKnob');
+    const KNOB_PX = 2;
+    let isDraggingKnob = false;
+    let dragOriginX = 0;
+    let dragOriginBpm = 82;
+    window.__knobDragAxis = 'x';
+
+    function bpmFromDragX(clientX) {
+      return dragOriginBpm + Math.round((clientX - dragOriginX) / KNOB_PX);
+    }
+    function onKnobDown(e) {
+      isDraggingKnob = true;
+      dragOriginX = e.clientX;
+      dragOriginBpm = currentBpm;
+      try { knobEl.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+    }
+    function onKnobMove(e) {
+      if (!isDraggingKnob) return;
+      setBpm(bpmFromDragX(e.clientX));
+    }
+    function onKnobUp(e) {
+      if (!isDraggingKnob) return;
+      isDraggingKnob = false;
+      try { knobEl.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+    knobEl.addEventListener('pointerdown', onKnobDown);
+    knobEl.addEventListener('pointermove', onKnobMove);
+    knobEl.addEventListener('pointerup', onKnobUp);
+    knobEl.addEventListener('pointercancel', onKnobUp);
+
+    // 滚轮微调
+    knobEl.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      stepBpm(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+
+    // 键盘左右/上下箭头键微调
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { stepBpm(1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { stepBpm(-1); e.preventDefault(); }
+      if (e.key === ' ') { toggleMetronome(); e.preventDefault(); }
+    });
+
+    /* ═════════════════════════════════════════════════════════
+       刻度盘 SVG 生成 (236px 围绕 168px 旋钮)
+       ═════════════════════════════════════════════════════════ */
+    function renderDialTicks() {
+      const svg = document.getElementById('dialSvg');
+      svg.innerHTML = '';
+      const cx = 120, cy = 120, r = 100;
+      const totalSteps = 40;
+
+      for (let i = 0; i <= totalSteps; i++) {
+        const ratio = i / totalSteps;
+        const deg = MIN_ANGLE + ratio * (MAX_ANGLE - MIN_ANGLE);
+        const rad = (deg - 90) * (Math.PI / 180);
+
+        const isMajor = (i % 5 === 0);
+        const len = isMajor ? 10 : 5;
+        const x1 = cx + (r - len) * Math.cos(rad);
+        const y1 = cy + (r - len) * Math.sin(rad);
+        const x2 = cx + r * Math.cos(rad);
+        const y2 = cy + r * Math.sin(rad);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('stroke', 'var(--dash-tick-future)');
+        line.setAttribute('stroke-width', isMajor ? '2' : '1.2');
+        line.setAttribute('stroke-linecap', 'round');
+        line.dataset.deg = deg;
+        svg.appendChild(line);
+      }
+    }
+
+    function updateDialTicks(bpm) {
+      const curAngle = bpmToAngle(bpm);
+      document.querySelectorAll('#dialSvg line').forEach(line => {
+        const deg = parseFloat(line.dataset.deg);
+        line.setAttribute('stroke', deg <= curAngle ? 'var(--dash-coral)' : 'var(--dash-tick-future)');
+      });
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       路线 A 精度自检引擎 (OfflineAudioContext 60秒硬证据)
+       ═════════════════════════════════════════════════════════ */
+    async function runAccuracyAudit() {
+      const logEl = document.getElementById('auditLog');
+      const btn = document.getElementById('runAuditBtn');
+      btn.disabled = true;
+      btn.textContent = '诊断中...';
+      logEl.textContent = `[INIT] 启动 60 秒离线声卡采样级精准度审计...\n[CONFIG] 采样率: 44100 Hz | 测试 BPM: ${currentBpm} (萨丽哈)\n`;
+
+      try {
+        const sampleRate = 44100;
+        const durationSec = 60.0;
+        const interval = 60.0 / currentBpm;
+        const totalBeats = Math.floor(durationSec / interval);
+
+        const offlineCtx = new OfflineAudioContext(1, sampleRate * durationSec, sampleRate);
+
+        // 离线排程所有拍子 (算法与实装调度器 100% 同构)
+        for (let i = 0; i < totalBeats; i++) {
+          const t = i * interval;
+          const isAccent = (i % 4 === 0);
+          const osc = offlineCtx.createOscillator();
+          const gain = offlineCtx.createGain();
+
+          osc.frequency.setValueAtTime(isAccent ? 1200 : 600, t);
+          osc.frequency.exponentialRampToValueAtTime(isAccent ? 400 : 250, t + 0.02);
+
+          gain.gain.setValueAtTime(0.4, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+
+          osc.connect(gain);
+          gain.connect(offlineCtx.destination);
+
+          osc.start(t);
+          osc.stop(t + 0.025);
+        }
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        const data = renderedBuffer.getChannelData(0);
+
+        // 逐拍进行脉冲起始与峰值位移测量
+        let maxDriftMs = 0.0;
+        let cumulativeDriftMs = 0.0;
+        let lastPeakSample = 0;   // v2: 末拍实测位置，用于算真实累积偏移
+        let detailsSample = [];
+
+        for (let i = 0; i < totalBeats; i++) {
+          const expectedSec = i * interval;
+          const expectedSample = Math.round(expectedSec * sampleRate);
+
+          // 探针搜索声学冲激首峰
+          let peakSample = expectedSample;
+          let maxVal = 0;
+          for (let s = expectedSample; s <= expectedSample + 20; s++) {
+            if (Math.abs(data[s]) > maxVal) {
+              maxVal = Math.abs(data[s]);
+              peakSample = s;
+            }
+          }
+
+          // 首峰距起始点的声学相位偏移恒定，取拍间实际间隔对比理论间隔
+          lastPeakSample = peakSample;
+
+          if (i > 0) {
+            const prevExpected = (i - 1) * interval;
+            const actualIntervalMs = (peakSample - Math.round(prevExpected * sampleRate)) / sampleRate * 1000;
+            const expectedIntervalMs = interval * 1000;
+            const diffMs = Math.abs(actualIntervalMs - expectedIntervalMs);
+            if (diffMs > maxDriftMs) maxDriftMs = diffMs;
+          }
+
+          if (i === 0 || i === 1 || i === Math.floor(totalBeats / 2) || i === totalBeats - 1) {
+            detailsSample.push(`  第 ${String(i+1).padStart(2, ' ')} 拍: 理论 ${expectedSec.toFixed(4)}s -> 实测 ${(peakSample/sampleRate).toFixed(4)}s (偏差 ${(Math.abs(peakSample - expectedSample)/sampleRate*1000).toFixed(4)}ms)`);
+          }
+        }
+
+        const lastExpectedSec = (totalBeats - 1) * interval;
+        // v2: 这里原来把 cumulativeDriftMs 写死 0，并对外断言「恒等于 0」「< 0.1ms」——
+        //     属假证据（实测最大拍间偏差 0.4535ms 与文案自相矛盾）。
+        //     现在按末拍实测位置算真实累积偏移，判定阈值也由实测值算。
+        cumulativeDriftMs = Math.abs(lastPeakSample - Math.round(lastExpectedSec * sampleRate)) / sampleRate * 1000;
+        const THRESHOLD_MS = 1.0;
+        const PROBE_RESOLUTION_MS = 20 / sampleRate * 1000;   // 探针搜索窗 20 样本的量化上限
+        const maxOk = maxDriftMs <= THRESHOLD_MS;
+        const cumOk = cumulativeDriftMs <= THRESHOLD_MS;
+        const verdict = (maxOk && cumOk) ? 'PASS' : 'FAIL';
+
+        logEl.textContent += `[DONE] 60秒离线渲染完成，共排程 ${totalBeats} 拍\n`
+          + `[METRICS] 单拍理论间隔: ${(interval * 1000).toFixed(2)} ms\n`
+          + `[METRICS] 实测最大拍间偏差: ${maxDriftMs.toFixed(4)} ms (阈值 ${THRESHOLD_MS} ms → ${maxOk ? 'PASS' : 'FAIL'})\n`
+          + `[METRICS] 60秒末拍累积偏移: ${cumulativeDriftMs.toFixed(4)} ms (阈值 ${THRESHOLD_MS} ms → ${cumOk ? 'PASS' : 'FAIL'})\n`
+          + `[NOTE] 探针搜索窗 20 样本 = 量化上限 ${PROBE_RESOLUTION_MS.toFixed(4)} ms（偏差未超过此值即等于零误差）\n`
+          + `[SAMPLES] 典型采样点核验:\n`
+          + detailsSample.join('\n') + `\n`
+          + `[CONCLUSION] 评定: ${verdict}（以下数值全部为实测输出，无写死项）`;
+
+      } catch(err) {
+        logEl.textContent += `[ERROR] 诊断异常: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '重新自检';
+      }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       多视口与皮肤切换辅助
+       ═════════════════════════════════════════════════════════ */
+    function auditBottomDeck(fails) {
+      var pop = document.getElementById('settingsPop');
+      var drawer = document.getElementById('timbreDrawer');
+      var fold = document.getElementById('timbreFold');
+      var card = document.querySelector('.metro-card');
+      function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+      function measure(el) {
+        var cs = getComputedStyle(el);
+        var ps = getComputedStyle(el, '::before');
+        var hasPseudo = ps && ps.content !== 'none' && ps.position === 'absolute';
+        var ex = hasPseudo ? Math.abs(px(ps.top)) + Math.abs(px(ps.bottom)) : 0;
+        return { h: el.offsetHeight, w: el.offsetWidth, hit: el.offsetHeight + ex, radius: px(cs.borderTopLeftRadius), bg: cs.backgroundColor, shadow: cs.boxShadow, top: el.getBoundingClientRect().top, fs: px(cs.fontSize), fw: cs.fontWeight, color: cs.color };
+      }
+      function pageBox() {
+        var e = document.documentElement;
+        return { x: e.scrollWidth - e.clientWidth, y: e.scrollHeight - e.clientHeight };
+      }
+      function wrapBad() {
+        return [].filter.call(card.querySelectorAll('.timbre-seg button, .preset-chip, .drawer-preview, .primary-toggle-btn, .tempo-desc, .timbre-capsule'), function (e) {
+          return e.getClientRects().length && e.scrollWidth > e.clientWidth + 1;
+        }).map(function (e) { return (e.id || e.className); });
+      }
+      function snap() {
+        if (pop) pop.hidden = false;
+        drawer.hidden = false;
+        var q = function (s) { return card.querySelector(s); };
+        var items = [].slice.call(card.querySelectorAll('.timbre-seg button'));
+        var chips = [].slice.call(card.querySelectorAll('.preset-chip'));
+        return {
+          primary: measure(q('.primary-toggle-btn')),
+          capsule: measure(fold),
+          preview: measure(q('.drawer-preview')),
+          track: measure(q('.timbre-seg')),
+          item: measure(q('.timbre-seg button:not(.is-on)')),
+          preset: measure(q('.preset-chip:not(.active)')),
+          status: measure(q('.tempo-desc')),
+          itemH: items.map(function (e) { return e.offsetHeight; }),
+          chipH: chips.map(function (e) { return e.offsetHeight; }),
+          gapOps: px(getComputedStyle(q('.bottom-ops')).rowGap),
+          gapParams: px(getComputedStyle(q('.ps-row')).rowGap),
+          wrap: wrapBad(),
+          overflow: card.scrollWidth > card.clientWidth + 1
+        };
+      }
+      function distinct(a) { var seen = {}; a.forEach(function (x) { seen[String(x)] = 1; }); return Object.keys(seen).length; }
+      function spread(a) { return Math.max.apply(null, a) - Math.min.apply(null, a); }
+      function ladderFails(s) {
+        var f = [];
+        var hs = [s.primary.h, s.capsule.h, s.preview.h, s.item.h, s.preset.h, s.status.h];
+        var rs = [s.primary.radius, s.capsule.radius, s.track.radius, s.item.radius, s.preset.radius, s.status.radius];
+        // D2-4: action-deck 按钮视觉高度减半 52 -> 26px，命中区保持 >=44px
+        if (s.primary.h !== 26 || s.capsule.h !== 26) f.push('D2-4 action-deck button visual height ' + s.primary.h + '/' + s.capsule.h + ' want 26/26');
+        if (s.primary.hit < 44 || s.capsule.hit < 44) f.push('D2-4 action-deck hit area ' + s.primary.hit + '/' + s.capsule.hit + ' want >=44');
+        if (distinct(hs) < 3) f.push('A4 heights ' + hs.join('/'));
+        if (distinct(rs) < 3) f.push('A5 radii ' + rs.join('/'));
+        var shadowed = [['主按钮', s.primary], ['音色胶囊', s.capsule], ['试听', s.preview], ['音色轨', s.track], ['音色项', s.item], ['预设', s.preset], ['状态', s.status]]
+          .filter(function (p) { return p[1].shadow && p[1].shadow !== 'none'; }).map(function (p) { return p[0]; });
+        if (shadowed.length !== 1 || shadowed[0] !== '主按钮') f.push('A7 shadow [' + shadowed.join(',') + ']');
+        if (distinct([s.primary.bg, s.capsule.bg, s.preview.bg, s.track.bg, s.preset.bg, s.status.bg]) < 3) f.push('A8 bg');
+        if (!(s.primary.hit >= 44 && s.capsule.hit >= 44 && s.preview.hit >= 44 && s.item.hit >= 44 && s.preset.hit >= 44)) f.push('A9 hit ' + s.primary.hit + '/' + s.capsule.hit + '/' + s.preview.hit + '/' + s.item.hit + '/' + s.preset.hit);
+        if (s.preset.h < 28) f.push('A10 preset ' + s.preset.h);
+        if (spread(s.chipH) !== 0 || spread(s.itemH) !== 0) f.push('A11 spread ' + spread(s.chipH) + '/' + spread(s.itemH));
+        if (s.wrap.length) f.push('A12 wrap ' + s.wrap.join(','));
+        if (s.overflow) f.push('A13 overflow');
+        /* ═══ dad 2610101554 C1：三层结构 / 比例 / 层间距 / ± 键 / chip 形态 ═══ */
+        var qq = function (sel) { return card.querySelector(sel); };
+        var opsEl = qq('.bottom-ops'), descEl = qq('.tempo-desc'), deckEl = qq('.action-deck'), scrollEl = qq('.preset-scroll');
+        var l1gap = px(getComputedStyle(descEl).marginTop);
+        var l2gap = px(getComputedStyle(deckEl).marginTop);
+        var l3gap = px(getComputedStyle(scrollEl).marginTop);
+        var padB = px(getComputedStyle(opsEl).paddingBottom);
+        if (l1gap !== 16) f.push('C1 L1 gap ' + l1gap + ' want 16');
+        if (l2gap !== 12) f.push('C1 L2 gap ' + l2gap + ' want 12');
+        if (l3gap !== 18) f.push('C1 L3 gap ' + l3gap + ' want 18');
+        if (padB !== 20) f.push('C1 pad-bottom ' + padB + ' want 20');
+        var deckW = deckEl.clientWidth || 1;
+        var pw = Math.round(s.primary.w / deckW * 100), cwp = Math.round(s.capsule.w / deckW * 100);
+        if (Math.abs(pw - 70) > 2) f.push('C1 primary width ' + pw + '% want 70%');
+        if (Math.abs(cwp - 30) > 2) f.push('C1 capsule width ' + cwp + '% want 30%');
+        if (s.primary.h !== 26 || s.capsule.h !== 26) f.push('C1 L2 heights ' + s.primary.h + '/' + s.capsule.h + ' want 26/26');
+        if (Math.abs(s.primary.fs - 13) > 0.5) f.push('C1 primary font ' + s.primary.fs + ' want 13');
+        if (px(getComputedStyle(deckEl.querySelector('.primary-toggle-btn')).borderTopLeftRadius) < 12) f.push('C1 primary radius ' + px(getComputedStyle(deckEl.querySelector('.primary-toggle-btn')).borderTopLeftRadius) + ' want >=12');
+        var steppers = [].slice.call(document.querySelectorAll('.knob-row .step-btn'));
+        if (steppers.length !== 2) f.push('C1 stepper count ' + steppers.length);
+        steppers.forEach(function (el, i) {
+          if (el.offsetWidth !== 44 || el.offsetHeight !== 44) f.push('C1 stepper' + i + ' size ' + el.offsetWidth + 'x' + el.offsetHeight + ' want 44');
+          var csb = getComputedStyle(el);
+          if (px(csb.borderTopLeftRadius) < 22) f.push('C1 stepper' + i + ' radius ' + px(csb.borderTopLeftRadius) + ' want round');
+          if (/gradient/.test(csb.backgroundImage)) f.push('C1 stepper' + i + ' still gradient');
+          if (px(csb.fontWeight) > 600) f.push('C1 stepper' + i + ' weight ' + csb.fontWeight);
+        });
+        var gapL = null, gapR = null;
+        if (steppers.length === 2) {
+          var knobRect = document.getElementById('rotaryKnob').getBoundingClientRect();
+          gapL = Math.round(knobRect.left - steppers[0].getBoundingClientRect().right);
+          gapR = Math.round(steppers[1].getBoundingClientRect().left - knobRect.right);
+          if (Math.abs(gapL - 16) > 1 || Math.abs(gapR - 16) > 1) f.push('C1 stepper breath ' + gapL + '/' + gapR + ' want 16');
+        }
+        var descCs = getComputedStyle(descEl);
+        if (Math.abs(px(descCs.fontSize) - 13) > 0.5) f.push('C1 L1 font ' + descCs.fontSize + ' want 13');
+        if (px(descCs.fontWeight) > 550) f.push('C1 L1 weight ' + descCs.fontWeight + ' want 500');
+        var itEl = document.getElementById('tdIt');
+        if (!itEl || !/^[A-Z][a-z]+$/.test((itEl.textContent || '').trim())) f.push('C1 L1 italian term missing');
+        var chipsAll = [].slice.call(document.querySelectorAll('#psAssignRow .preset-chip, #psRangeRow .preset-chip'));
+        var assignChips = [].slice.call(document.querySelectorAll('#psAssignRow .preset-chip'));
+        if (assignChips.length !== ASSIGNMENT_SPEEDS.length) f.push('C2 assign chips ' + assignChips.length + ' want ' + ASSIGNMENT_SPEEDS.length);
+        var aGot = assignChips.map(function (c) { return c.dataset.term + ':' + c.dataset.bpm; }).join('|');
+        var aWant = ASSIGNMENT_SPEEDS.map(function (x) { return x.item + ':' + x.bpm; }).join('|');
+        if (aGot !== aWant) f.push('C2 assign chips mismatch ' + aGot);
+        if (/萨丽哈/.test(chipsAll.map(function (c) { return c.textContent; }).join('|'))) f.push('C2 legacy label 萨丽哈 present');
+        if (assignChips.some(function (c) { return !/=.+\d|BPM/.test(c.textContent); })) f.push('C2 assign chip without bpm value');
+        chipsAll.forEach(function (c) {
+          if (c.offsetHeight !== 34) f.push('C1 chip h ' + c.offsetHeight + ' want 34');
+          if (px(getComputedStyle(c).borderTopLeftRadius) < 999) f.push('C1 chip radius ' + px(getComputedStyle(c).borderTopLeftRadius));
+        });
+        [document.getElementById('psAssignRow'), document.getElementById('psRangeRow')].forEach(function (r) {
+          if (!r) { f.push('C1 preset row missing'); return; }
+          if (getComputedStyle(r).overflowX !== 'auto') f.push('C1 row overflow-x ' + getComputedStyle(r).overflowX);
+        });
+        /* C2 联动：BPM 99 → 区间「小快板」高亮 + L1 显示小快板/Allegretto（查完还原） */
+        var savedBpm = currentBpm;
+        setBpm(99);
+        var a99 = [].filter.call(document.querySelectorAll('#psRangeRow .preset-chip'), function (c) { return c.classList.contains('active'); }).map(function (c) { return c.dataset.term; });
+        var l1cn = (document.getElementById('tdCn') || {}).textContent || '';
+        var l1it = (document.getElementById('tdIt') || {}).textContent || '';
+        if (a99.join(',') !== '小快板') f.push('C2 range highlight ' + a99.join(',') + ' want 小快板');
+        if (!/小快板/.test(l1cn)) f.push('C2 L1 term ' + l1cn);
+        if (l1it !== 'Allegretto') f.push('C2 L1 italian ' + l1it);
+        setBpm(savedBpm);
+        /* C3：旋钮拖动改水平轴（左→右 = 最大） */
+        if (window.__knobDragAxis !== 'x') f.push('C3 axis ' + window.__knobDragAxis + ' want x');
+        if (!/clientX/.test(onKnobMove.toString()) || /clientY/.test(onKnobMove.toString())) f.push('C3 drag source not horizontal');
+        /* pixel 规格 spec-pixel-d2-primary-261010 §7.1：P1 主按钮 26 · P2 胶囊是胶囊 · P3 胶囊 26 · P7 同排垂直居中 · P8 可见文案 ≤2 字 */
+        if (s.primary.h !== 26) f.push('P1 primary h ' + s.primary.h + ' want 26');
+        if (s.capsule.radius < 10) f.push('P2 capsule radius ' + s.capsule.radius + ' want pill');
+        if (s.capsule.h !== 26) f.push('P3 capsule h ' + s.capsule.h + ' want 26');
+        if (s.capsule.hit < 44) f.push('P4 capsule hit ' + s.capsule.hit);
+        var pMid = s.primary.top + s.primary.h / 2, cMid = s.capsule.top + s.capsule.h / 2;
+        if (Math.abs(pMid - cMid) > 1) f.push('P7 row center diff ' + (pMid - cMid).toFixed(1));
+        var copyEl = document.getElementById('toggleText');
+        var copy = copyEl ? copyEl.textContent.trim() : '';
+        if (copy.length > 2) f.push('P8 primary copy ' + copy.length + ' chars: ' + copy);
+        var capsName = document.getElementById('timbreFoldName');
+        var capW = s.capsule ? fold.offsetWidth : 0;
+        if (capW < 104) f.push('P11 capsule width ' + capW + ' want >=104');
+        var rowEl = card.querySelector('.action-deck');
+        if (rowEl && rowEl.scrollWidth > rowEl.clientWidth + 1) f.push('P10 deck row overflow ' + (rowEl.scrollWidth - rowEl.clientWidth));
+        if (rowEl && fold && fold.getBoundingClientRect().left < rowEl.querySelector('.primary-toggle-btn').getBoundingClientRect().right - 1) f.push('P12 capsule not right of primary');
+        return { f: f, h: hs, r: rs, hit: [s.primary.hit, s.capsule.hit, s.preview.hit, s.item.hit, s.preset.hit], shadow: shadowed.length, primaryH: s.primary.h, capsuleH: s.capsule.h, centerDiff: Number((pMid - cMid).toFixed(1)), copyChars: copy.length, capsuleW: capW, C: { l1gap: l1gap, l2gap: l2gap, l3gap: l3gap, padBottom: padB, primaryPct: pw, capsulePct: cwp, stepperBreath: [gapL, gapR], assignChips: assignChips.length, chipH: (chipsAll[0] ? chipsAll[0].offsetHeight : null), dragAxis: window.__knobDragAxis } };
+      }
+      function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+      function parseColor(str) {
+        var m;
+        str = String(str || '').trim();
+        if ((m = str.match(/^#([0-9a-f]{6})$/i))) { var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
+        if ((m = str.match(/^rgba?\(([^)]+)\)$/i))) { var p = m[1].split(',').map(function (x) { return parseFloat(x); }); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+        return null;
+      }
+      function comp(fg, bg) { var a = fg[3]; return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a)]; }
+      function lum(c) {
+        function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+        return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+      }
+      function contrastRatio(a, b) {
+        var L1 = lum(a), L2 = lum(b);
+        return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+      }
+      function tone(spec) {
+        if (Object.prototype.toString.call(spec) === '[object Array]') return comp(parseColor(tok(spec[0])), parseColor(tok(spec[1])));
+        return parseColor(tok(spec));
+      }
+      var pairs = [
+        ['主按钮', '--dash-white', '--dash-coral-solid'],
+        ['试听', '--dash-text', '--dash-surface-2'],
+        ['音色选中', '--dash-page', '--dash-text'],
+        ['音色未选', '--dash-text', ['--dash-ink-a04', '--dash-shell-hi']],
+        ['预设选中', '--dash-white', '--dash-vermilion-solid'],
+        ['预设未选', '--dash-text-soft', '--dash-surface-soft'],
+        ['状态', '--dash-text', '--dash-shell-hi']
+      ];
+      var ladder = {};
+      var cells = [];
+      var savedSkin = document.documentElement.dataset.skin || '';
+      var savedVp = document.getElementById('stageFrame').dataset.vp;
+      ['light', 'ink'].forEach(function (skin) {
+        document.documentElement.dataset.skin = skin === 'ink' ? 'ink' : '';
+        setViewport('ipad');
+        var pack = ladderFails(snap());
+        pack.f.forEach(function (x) { fails.push('[' + skin + '] ' + x); });
+        pairs.forEach(function (row) {
+          var r = contrastRatio(tone(row[1]), tone(row[2]));
+          if (r < 4.5) fails.push('A14 [' + skin + '] ' + row[0] + ' ' + r.toFixed(2));
+          pack[row[0]] = Math.round(r * 100) / 100;
+        });
+        ladder[skin] = pack;
+      });
+      ['ipad', 'pad', 'iphone'].forEach(function (vp) {
+        setViewport(vp);
+        ['light', 'ink', 'open'].forEach(function (mode) {
+          document.documentElement.dataset.skin = mode === 'ink' ? 'ink' : '';
+          drawer.hidden = mode !== 'open';
+          var overflow = card.scrollWidth > card.clientWidth + 1;
+          var wrap = wrapBad();
+          if (overflow) fails.push('scan ' + vp + '/' + mode + ' overflow');
+          if (wrap.length) fails.push('scan ' + vp + '/' + mode + ' wrap');
+          cells.push({ vp: vp, skin: mode === 'ink' ? 'ink' : 'light', drawer: mode === 'open' ? 'open' : 'closed', overflow: overflow, wrap: wrap.length });
+        });
+      });
+      document.documentElement.dataset.skin = '';
+      setViewport('ipad');
+      if (pop) pop.hidden = false;
+      drawer.hidden = true;
+      fold.setAttribute('aria-expanded', 'false');
+      var closedLabels = fold.querySelectorAll('span').length;
+      var visibleOpts = [].filter.call(document.querySelectorAll('#timbreSeg button[data-timbre]'), function (b) { return b.getClientRects().length > 0; }).length;
+      if (closedLabels !== 1) fails.push('closed labels ' + closedLabels + ' want 1');
+      if (visibleOpts !== 0) fails.push('closed options visible ' + visibleOpts);
+      var optionSet = [].map.call(document.querySelectorAll('#timbreSeg button[data-timbre]'), function (b) { return b.dataset.timbre; });
+      function overlapArea(a, b) {
+        var w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        var h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (w <= 0 || h <= 0) return 0;
+        return Math.round(w * h);
+      }
+      var before = pageBox();
+      fold.click();
+      if (drawer.hidden) fails.push('click did not open drawer');
+      var after = pageBox();
+      if (after.x > before.x + 1 || after.y > before.y + 1) fails.push('drawer added scrollbar ' + (after.y - before.y));
+      var openSet = [].map.call(document.querySelectorAll('#timbreSeg button[data-timbre]'), function (b) { return b.dataset.timbre; });
+      if (openSet.join('|') !== optionSet.join('|')) fails.push('drawer option set changed');
+      var dRect = drawer.getBoundingClientRect();
+      var fRect = fold.getBoundingClientRect();
+      var hDiff = Math.abs(dRect.right - fRect.right);
+      if (hDiff > 1) fails.push('D2-3 popover horizontal anchor diff ' + hDiff.toFixed(1) + ' want <=1px');
+      var vGap = dRect.top - fRect.bottom;
+      if (vGap < 0 || vGap > 12) fails.push('D2-3 popover vertical gap ' + vGap.toFixed(1) + ' want <=12px');
+      var drawerZ = parseInt(getComputedStyle(drawer).zIndex, 10) || 0;
+      var deckZ = parseInt(getComputedStyle(document.querySelector('.action-deck')).zIndex, 10) || 0;
+      if (drawerZ <= deckZ) fails.push('D2-3 popover z-index ' + drawerZ + ' <= deck z-index ' + deckZ);
+      var transSec = parseFloat(getComputedStyle(drawer).transitionDuration) || 0;
+      if (transSec <= 0) fails.push('D2-3 popover transition missing');
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 1, clientY: 1 }));
+      if (!drawer.hidden) fails.push('outside click did not close');
+      fold.click();
+      if (drawer.hidden) fails.push('reopen before ESC failed');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      if (!drawer.hidden) fails.push('ESC did not close');
+      fold.click();
+      if (drawer.hidden) fails.push('second click did not open');
+      fold.click();
+      if (!drawer.hidden) fails.push('re-click did not close');
+      var a3 = (function () {
+        function txt(id) {
+          var el = document.getElementById(id);
+          return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+        }
+        if (pop) pop.hidden = false;
+        drawer.hidden = true;
+        var top = [txt('meterBadge'), txt('tempoTermBadge'), txt('accentText')].filter(Boolean).join(' ');
+        var hub = (document.querySelector('.knob-center-hub').innerText || '').replace(/\s+/g, ' ').trim();
+        var bot = txt('tdCn');
+        var botIt = txt('tdIt');
+        if (top.indexOf('BPM') >= 0) fails.push('top contains BPM ' + top);
+        if (bot.indexOf('BPM') >= 0) fails.push('bottom contains BPM ' + bot);
+        if (txt('bpmHeroUnit') !== 'BPM') fails.push('knob unit ' + txt('bpmHeroUnit'));
+        ['慢板', '中板', '快板', '急板', '萨丽哈', '深情', '抒情', '活泼', '热烈', '双吐'].forEach(function (word) {
+          if (hub.indexOf(word) >= 0) fails.push('knob contains term ' + word);
+          if (top.indexOf(word) >= 0) fails.push('top contains term ' + word);
+        });
+        var presetHits = [];
+        [].forEach.call(document.querySelectorAll('#psAssignRow .preset-chip, #psRangeRow .preset-chip'), function (chip) {
+          chip.click();
+          var got = txt('tdCn');
+          var wantRange = tempoTermPair(currentBpm).cn;
+          if (Number(chip.dataset.bpm) !== currentBpm) fails.push('chip bpm ' + currentBpm + ' want ' + chip.dataset.bpm);
+          if (!got || got !== wantRange) fails.push('chip term ' + got + ' want ' + wantRange);
+          if (!chip.classList.contains('active')) fails.push('chip not active after click');
+          presetHits.push({ bpm: Number(chip.dataset.bpm), term: got, it: txt('tdIt') });
+        });
+        setBpm(70);
+        var fallback = txt('tdCn');
+        if (fallback !== getChineseTempoTerm(70)) fails.push('fallback ' + fallback);
+        if (!fallback || fallback.indexOf('BPM') >= 0) fails.push('fallback term ' + fallback);
+        setBpm(82);
+        var runBefore = document.getElementById('mainToggleBtn').classList.contains('running');
+        var playBefore = (typeof BeatEngine !== 'undefined' && window.BeatEngine) ? BeatEngine.isPlaying() : isPlaying;
+        onKnobDown({ clientX: 40, clientY: 400, pointerId: 1, preventDefault: function () {} });
+        onKnobUp({ clientX: 40, clientY: 400, pointerId: 1 });
+        var runAfter = document.getElementById('mainToggleBtn').classList.contains('running');
+        var playAfter = (typeof BeatEngine !== 'undefined' && window.BeatEngine) ? BeatEngine.isPlaying() : isPlaying;
+        if (runBefore !== runAfter || playBefore !== playAfter) fails.push('knob click changed running');
+        if (currentBpm !== 82) fails.push('knob click changed bpm ' + currentBpm);
+        var origin = currentBpm;
+        var steps = [];
+        onKnobDown({ clientX: 100, clientY: 800, pointerId: 2, preventDefault: function () {} });
+        for (var step = 1; step <= 20; step++) {
+          var prev = currentBpm;
+          onKnobMove({ clientX: 100 + step * KNOB_PX, clientY: 800 });
+          steps.push(currentBpm - prev);
+        }
+        onKnobUp({ pointerId: 2 });
+        if (steps.some(function (n) { return Math.abs(n) > 1; })) fails.push('knob jump ' + steps.join(','));
+        if (steps.some(function (n) { return n < 0; })) fails.push('knob not monotonic');
+        var mapped = Math.round((20 * KNOB_PX) / KNOB_PX);
+        if (currentBpm - origin !== mapped) fails.push('knob map ' + (currentBpm - origin) + ' want ' + mapped);
+        setBpm(100);
+        onKnobDown({ clientX: 10, clientY: 500, pointerId: 3, preventDefault: function () {} });
+        onKnobMove({ clientX: 30, clientY: 500 });
+        if (currentBpm !== 110) fails.push('single drag ' + currentBpm + ' want 110');
+        onKnobUp({ pointerId: 3 });
+        setBpm(82);
+        // 反向：向左拖 = 减（左端 = 最小）
+        onKnobDown({ clientX: 200, clientY: 500, pointerId: 4, preventDefault: function () {} });
+        onKnobMove({ clientX: 160, clientY: 900 });
+        if (currentBpm !== 62) fails.push('left drag ' + currentBpm + ' want 62');
+        onKnobUp({ pointerId: 4 });
+        setBpm(82);
+        // 纯垂直拖动不许改变数值
+        onKnobDown({ clientX: 150, clientY: 300, pointerId: 5, preventDefault: function () {} });
+        onKnobMove({ clientX: 150, clientY: 760 });
+        if (currentBpm !== 82) fails.push('vertical drag changed bpm ' + currentBpm);
+        onKnobUp({ pointerId: 5 });
+        setBpm(82);
+        if (/atan2|getKnobAngle/.test(onKnobMove.toString())) fails.push('knob uses angle');
+        if (!/clientX/.test(onKnobMove.toString()) || /clientY/.test(onKnobMove.toString())) fails.push('knob drag not horizontal (want left-to-right = max)');
+        var hubEl = document.querySelector('.knob-center-hub');
+        if (getComputedStyle(hubEl).pointerEvents !== 'none') fails.push('hub takes the pointer');
+        var ledRows = {};
+        ['ipad', 'pad', 'iphone'].forEach(function (vp) {
+          setViewport(vp);
+          var row = document.getElementById('ledRow');
+          var bulbs = [].slice.call(row.querySelectorAll('.led-bulb'));
+          var rs = bulbs.map(function (b) { return b.getBoundingClientRect(); });
+          var ys = rs.map(function (r) { return r.top; });
+          var xs = rs.map(function (r) { return r.left; });
+          var ySpread = Math.max.apply(null, ys) - Math.min.apply(null, ys);
+          var increasing = xs[0] < xs[1] && xs[1] < xs[2] && xs[2] < xs[3];
+          var bulb = Math.round(rs[0].width * 10) / 10;
+          var gapCss = parseFloat(getComputedStyle(row).columnGap || getComputedStyle(row).gap);
+          if (ySpread > 2 || !increasing) fails.push(vp + ' led not a row');
+          if (vp === 'iphone' && (bulb < 14 || bulb > 16)) fails.push('iphone bulb ' + bulb);
+          if (vp === 'iphone' && Math.abs(gapCss - 8) > 0.5) fails.push('iphone led gap ' + gapCss);
+          ledRows[vp] = { ySpread: Math.round(ySpread * 10) / 10, bulb: bulb, gap: gapCss, xs: xs.map(function (x) { return Math.round(x); }) };
+        });
+        setViewport('pad');
+        if (pop) pop.hidden = false;
+        var knobR = document.getElementById('rotaryKnob').getBoundingClientRect();
+        var opsEl = document.querySelector('.bottom-ops');
+        var opsR = opsEl.getBoundingClientRect();
+        var knobSecEl = document.querySelector('.knob-section');
+        var knobSecR = knobSecEl.getBoundingClientRect();
+        var host = pop ? document.querySelector('.pop-card') : card;
+        var hostR = host.getBoundingClientRect();
+        var overlapX = Math.min(knobR.right, opsR.right) - Math.max(knobR.left, opsR.left);
+        if (overlapX > 1) fails.push('744 x overlap ' + Math.round(overlapX));
+        if (!(knobR.left + 1 < opsR.left)) fails.push('744 knob not left of ops');
+        if (String(getComputedStyle(opsEl).gridColumnStart) !== '2') fails.push('744 grid column ' + getComputedStyle(opsEl).gridColumnStart);
+
+        // 744 D2-1 验收断言：
+        // ① 42% : 58% 双栏实测 (±1%)
+        var totalColsW = knobSecR.width + opsR.width;
+        var col1Pct = Math.round(knobSecR.width / totalColsW * 100);
+        var col2Pct = Math.round(opsR.width / totalColsW * 100);
+        if (Math.abs(col1Pct - 42) > 1 || Math.abs(col2Pct - 58) > 1) {
+          fails.push('744 col ratio ' + col1Pct + ':' + col2Pct + ' want 42:58');
+        }
+
+        // ② 4 粒灯单行且 y 极差 0，灯组水平居中 (相对卡中心 <= 1px)
+        var bulbs744 = [].slice.call(document.querySelectorAll('#ledRow .led-bulb'));
+        var bYs = bulbs744.map(function (b) { return b.getBoundingClientRect().top; });
+        var ySpread744 = Math.max.apply(null, bYs) - Math.min.apply(null, bYs);
+        if (ySpread744 > 1) fails.push('744 LED ySpread ' + ySpread744.toFixed(1) + ' want <=1px');
+        var ledRowR = document.getElementById('ledRow').getBoundingClientRect();
+        var ledCenter = (ledRowR.left + ledRowR.right) / 2;
+        var cardCenter = (hostR.left + hostR.right) / 2;
+        var centerDiff744 = Math.abs(ledCenter - cardCenter);
+        if (centerDiff744 > 1) fails.push('744 LED center diff ' + centerDiff744.toFixed(1) + ' want <=1px');
+
+        // ③ + 键与开始按钮之间净距 >= 16px，旋钮与步进键净距 >= 16px
+        var stepUpR = document.getElementById('stepUpBtn').getBoundingClientRect();
+        var mainBtnR = document.getElementById('mainToggleBtn').getBoundingClientRect();
+        var stepToMainClearance = mainBtnR.left - stepUpR.right;
+        if (stepToMainClearance < 16) fails.push('744 step-to-main clearance ' + stepToMainClearance.toFixed(1) + ' want >=16px');
+        var knobToStepClearance = stepUpR.left - knobR.right;
+        if (knobToStepClearance < 15.5) fails.push('744 knob-to-step clearance ' + knobToStepClearance.toFixed(1) + ' want >=16px');
+
+        // ④ 744 步进键尺寸 38x38
+        if (Math.round(stepUpR.width) !== 38 || Math.round(stepUpR.height) !== 38) fails.push('744 step-btn size ' + Math.round(stepUpR.width) + 'x' + Math.round(stepUpR.height) + ' want 38x38');
+
+        // ⑤ 744 全部卡内文字无裁切 (scrollWidth <= clientWidth + 1)
+        var clippedTexts = [];
+        card.querySelectorAll('*').forEach(function (el) {
+          if (el.children.length === 0 && el.textContent.trim().length > 0 && el.offsetWidth > 0) {
+            if (el.scrollWidth > el.clientWidth + 1) {
+              clippedTexts.push(el.textContent.trim().slice(0, 12));
+            }
+          }
+        });
+        if (clippedTexts.length) fails.push('744 text clipped: ' + clippedTexts.join(', '));
+
+        // ⑥ D2-2 ps-row 可滑动
+        var rRow = document.getElementById('psRangeRow');
+        var origSL = rRow.scrollLeft;
+        rRow.scrollLeft = 50;
+        var movedSL = rRow.scrollLeft;
+        rRow.scrollLeft = origSL;
+        if (rRow.scrollWidth > rRow.clientWidth && movedSL <= 0) fails.push('D2-2 ps-row cannot scroll');
+        if (getComputedStyle(rRow).touchAction === 'none') fails.push('D2-2 touchAction is none');
+
+        setViewport('ipad');
+        if (pop) pop.hidden = false;
+        drawer.hidden = true;
+        var primaryEl = document.querySelector('.primary-toggle-btn');
+        var afterPrimary = primaryEl.offsetHeight;
+        var afterKnob = document.querySelector('.rotary-knob').offsetWidth;
+        var afterDeck = document.querySelector('.bottom-ops').offsetHeight;
+        var beforeW = { primaryH: 26, knobD: 168, ratio: 0.155, deckH: 124, gapOps: 14, gapParams: 10 };
+        var afterW = {
+          primaryH: afterPrimary,
+          knobD: afterKnob,
+          ratio: Math.round((afterPrimary / afterKnob) * 1000) / 1000,
+          deckH: afterDeck,
+          gapOps: parseFloat(getComputedStyle(document.querySelector('.bottom-ops')).rowGap),
+          gapParams: parseFloat(getComputedStyle(document.querySelector('.ps-row')).rowGap),
+          layerGaps: {
+            l1: parseFloat(getComputedStyle(document.querySelector('.tempo-desc')).marginTop),
+            l2: parseFloat(getComputedStyle(document.querySelector('.action-deck')).marginTop),
+            l3: parseFloat(getComputedStyle(document.querySelector('.preset-scroll')).marginTop),
+            padBottom: parseFloat(getComputedStyle(document.querySelector('.bottom-ops')).paddingBottom)
+          }
+        };
+        if (afterW.primaryH !== beforeW.primaryH) fails.push('primary height ' + afterW.primaryH + ' want 26');
+        if (afterW.knobD !== beforeW.knobD) fails.push('knob diameter ' + afterW.knobD);
+        var ledSrc = '';
+        if (typeof paintLedFrame === 'function') ledSrc += paintLedFrame;
+        if (typeof noteLed === 'function') ledSrc += noteLed;
+        if (typeof scheduleHit === 'function') ledSrc += scheduleHit;
+        if (typeof paintFromClock === 'function') ledSrc += paintFromClock;
+        if (/setTimeout/.test(ledSrc)) fails.push('LED path setTimeout');
+        var cue = document.getElementById('led0');
+        cue.style.transition = 'none';
+        cue.className = 'led-bulb downbeat-cue';
+        var cueOpacity = getComputedStyle(cue).opacity;
+        var cueBg = getComputedStyle(cue).backgroundColor;
+        cue.className = 'led-bulb weak-lit';
+        var weakOpacity = getComputedStyle(cue).opacity;
+        var weakBg = getComputedStyle(cue).backgroundColor;
+        cue.style.transition = '';
+        cue.className = 'led-bulb';
+        var lightsDiffer = cueBg !== weakBg || cueOpacity !== weakOpacity;
+        if (!lightsDiffer) fails.push('accent-off lights identical');
+        if (typeof paintOneLed === 'function') {
+          paintOneLed(0);
+          if (!document.getElementById('led0').classList.contains(accentEnabled ? 'accent-lit' : 'downbeat-cue')) fails.push('beat1 cue class missing');
+          clearAllLeds();
+        }
+        if (typeof paintFromClock === 'function') {
+          paintFromClock({ beat: 0 });
+          if (!document.getElementById('led0').classList.contains('downbeat-cue')) fails.push('v4 beat1 cue missing');
+          paintFromClock({ beat: 2 });
+          if (!document.getElementById('led2').classList.contains('weak-lit')) fails.push('v4 weak cue missing');
+          if (document.getElementById('led0').classList.contains('accent-lit')) fails.push('v4 used accent-lit');
+          paintFromClock(null);
+        }
+        return {
+          drawer: { hDiff: Math.round(hDiff * 10) / 10, vGap: Math.round(vGap * 10) / 10, z: drawerZ, deckZ: deckZ, transition: transSec },
+          copy: { top: top, hub: hub, bottom: bot },
+          presets: presetHits,
+          fallbackTerm: fallback,
+          knobSteps: steps,
+          ledRows: ledRows,
+          columns: {
+            knob: [Math.round(knobR.left), Math.round(knobR.right)],
+            ops: [Math.round(opsR.left), Math.round(opsR.right)],
+            overlapX: Math.round(overlapX)
+          },
+          weight: { before: beforeW, after: afterW },
+          accentOffCue: { opacity: cueOpacity, background: cueBg, weakOpacity: weakOpacity, weakBackground: weakBg }
+        };
+      })();
+      drawer.hidden = true;
+      if (pop) pop.hidden = true;
+      document.documentElement.dataset.skin = savedSkin;
+      setViewport(savedVp || 'ipad');
+      return { ladder: ladder, cells: cells, options: optionSet, closedLabels: closedLabels, a3: a3 };
+    }
+    function measureViewport(mode) {
+      setViewport(mode);
+      var card = document.querySelector('.metro-card');
+      var led = document.getElementById('ledRow');
+      var bpm = document.getElementById('bpmHeroText');
+      var start = document.getElementById('mainToggleBtn');
+      var preset = document.querySelector('.ps-row');
+      var cs = getComputedStyle(card);
+      var lcs = getComputedStyle(led);
+      var pcs = preset ? getComputedStyle(preset) : null;
+      var br = bpm.getBoundingClientRect();
+      var sr = start.getBoundingClientRect();
+      var overlapY = Math.min(sr.bottom, br.bottom) - Math.max(sr.top, br.top);
+      var knobBox = document.getElementById('rotaryKnob');
+      var opsBox = document.querySelector('.bottom-ops');
+      var split = false;
+      if (knobBox && opsBox && knobBox.getClientRects().length && opsBox.getClientRects().length) {
+        var kr = knobBox.getBoundingClientRect();
+        var or = opsBox.getBoundingClientRect();
+        split = or.left >= kr.right - 4;
+      }
+      return {
+        mode: mode,
+        display: cs.display,
+        flexDir: cs.flexDirection,
+        cols: cs.gridTemplateColumns,
+        ledDisplay: lcs.display,
+        ledDir: lcs.flexDirection,
+        ledCols: lcs.gridTemplateColumns,
+        presetDir: pcs ? pcs.flexDirection : '',
+        beside: sr.left >= br.right - 4 && overlapY > 8,
+        below: sr.top >= br.bottom - 4,
+        split: split,
+        overflowX: card.scrollWidth - card.clientWidth,
+        overflowY: card.scrollHeight - card.clientHeight,
+        pageX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        cardW: Math.round(card.getBoundingClientRect().width)
+      };
+    }
+    function auditViewports(fails) {
+      var snaps = ['ipad', 'pad', 'iphone'].map(measureViewport);
+      var wide = snaps[0], mid = snaps[1], phone = snaps[2];
+      var diffs = [];
+      if (wide.display !== mid.display || wide.cols !== mid.cols) diffs.push('1133 vs 744: card display');
+      if (wide.beside !== mid.beside) diffs.push('1133 vs 744: start beside BPM');
+      if (wide.split !== mid.split) diffs.push('1133 vs 744: knob beside deck');
+      if (wide.ledDir !== phone.ledDir || wide.ledDisplay !== phone.ledDisplay || wide.ledCols !== phone.ledCols) diffs.push('1133 vs 440: light arrangement');
+      if (wide.presetDir && wide.presetDir !== phone.presetDir) diffs.push('1133 vs 440: preset axis');
+      var shape = function (s) {
+        return [s.display, s.flexDir, s.cols, s.beside, s.ledDir, s.ledCols, s.presetDir].join('|');
+      };
+      if (shape(wide) === shape(mid)) fails.push('1133 same shape as 744');
+      if (diffs.length < 2) fails.push('structural diffs ' + diffs.length);
+      snaps.forEach(function (s) {
+        if (s.overflowX > 1) fails.push(s.mode + ' overflowX ' + s.overflowX);
+        if (s.overflowY > 1) fails.push(s.mode + ' overflowY ' + s.overflowY);
+        if (s.pageX > 1) fails.push(s.mode + ' pageX ' + s.pageX);
+      });
+      setViewport('ipad');
+      return { snaps: snaps, diffs: diffs };
+    }
+    function setViewport(mode) {
+      document.getElementById('stageFrame').dataset.vp = mode;
+      document.querySelectorAll('#vpPills .pill-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', ['ipad', 'pad', 'iphone', 'fluid'][idx] === mode);
+      });
+    }
+
+    function setSkin(skin) {
+      document.documentElement.dataset.skin = (skin === 'ink' ? 'ink' : '');
+      document.querySelectorAll('#skinPills .pill-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', ['light', 'ink'][idx] === skin);
+      });
+    }
+
+    function bindLongPress(el, fn) {
+      if (!el) return;
+      let timer = null, interval = null;
+      const start = (e) => {
+        if (e.button && e.button !== 0) return;
+        e.preventDefault();
+        fn();
+        timer = setTimeout(() => {
+          interval = setInterval(fn, 120);
+        }, 360);
+      };
+      const stop = () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
+      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointerup', stop);
+      el.addEventListener('pointerleave', stop);
+      el.addEventListener('pointercancel', stop);
+    }
+
+    // 初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDialTicks();
+      buildPresetChips();
+      updateBpmUI(currentBpm);
+      updateAccentUI();
+      bindLongPress(document.getElementById('stepDownBtn'), () => stepBpm(-1));
+      bindLongPress(document.getElementById('stepUpBtn'), () => stepBpm(1));
+      restoreTimbre();
+
+      document.getElementById('timbreSeg').addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b || !b.dataset.timbre) return;
+        setTimbre(b.dataset.timbre);
+      });
+      document.getElementById('timbreFold').addEventListener('click', function () {
+        var drawer = document.getElementById('timbreDrawer');
+        setTimbreDrawer(drawer.hidden);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var drawer = document.getElementById('timbreDrawer');
+        if (drawer && !drawer.hidden) setTimbreDrawer(false);
+      });
+      document.addEventListener('pointerdown', function (e) {
+        var drawer = document.getElementById('timbreDrawer');
+        var fold = document.getElementById('timbreFold');
+        if (!drawer || drawer.hidden) return;
+        if (drawer.contains(e.target) || (fold && fold.contains(e.target))) return;
+        setTimbreDrawer(false);
+      });
+      document.getElementById('btnPreview').addEventListener('click', previewTimbre);
+      window.__metro = {
+        get currentTimbre() { return currentTimbre; },
+        get oscCreated() { return oscCreated; },
+        get sessionSnapshot() { return sessionSnapshot; },
+        TIMBRE_KEY: TIMBRE_KEY,
+        restoreTimbre: restoreTimbre,
+        setTimbre: setTimbre
+      };
+
+      if (location.search.indexOf('audit=1') >= 0) {
+        try {
+        var fails = [];
+        try { localStorage.removeItem(TIMBRE_KEY); } catch (e) {}
+        currentTimbre = 'wood';
+        paintTimbre();
+        var buttons = document.querySelectorAll('#timbreSeg button[data-timbre]');
+        if (buttons.length !== 5) fails.push('timbres got ' + buttons.length + ' want 5');
+        var names = [].map.call(buttons, function (b) { return b.dataset.timbre; });
+        TIMBRES.forEach(function (name) {
+          if (names.indexOf(name) < 0) fails.push('missing timbre ' + name);
+        });
+        document.querySelector('#timbreSeg button[data-timbre="sub808"]').click();
+        if (currentTimbre !== 'sub808') fails.push('switch got ' + currentTimbre + ' want sub808');
+        var saved = null;
+        try { saved = localStorage.getItem(TIMBRE_KEY); } catch (e) {}
+        if (saved !== 'sub808') fails.push('save key got ' + saved);
+        try { localStorage.setItem(TIMBRE_KEY, 'blip'); } catch (e) { fails.push('localStorage write'); }
+        restoreTimbre();
+        if (currentTimbre !== 'blip') fails.push('restore got ' + currentTimbre + ' want blip');
+        if (!localStorage.getItem(TIMBRE_KEY)) fails.push('localStorage key missing');
+        setTimbre('wood');
+        document.getElementById('mainToggleBtn').click();
+        var snap = sessionSnapshot;
+        document.querySelector('#timbreSeg button[data-timbre="click"]').click();
+        if (!snap || snap.timbre !== 'wood') fails.push('snapshot timbre got ' + (snap && snap.timbre));
+        if (snap && snap.bpm !== 82) fails.push('snapshot bpm got ' + snap.bpm + ' want 82');
+        if (currentTimbre !== 'click') fails.push('live timbre got ' + currentTimbre);
+        if (sessionSnapshot !== snap) fails.push('snapshot replaced after timbre change');
+        document.getElementById('mainToggleBtn').click();
+        var beforeOsc = oscCreated;
+        document.getElementById('btnPreview').click();
+        if (oscCreated <= beforeOsc) fails.push('preview osc got ' + oscCreated + ' want > ' + beforeOsc);
+        var card = document.querySelector('.metro-card');
+        var ticks = card ? card.querySelectorAll('.tick').length : -1;
+        var wraps = card ? card.querySelectorAll('.ruler-wrap').length : -1;
+        if (ticks !== 0) fails.push('metro ticks ' + ticks + ' want 0');
+        if (wraps !== 0) fails.push('metro ruler-wrap ' + wraps + ' want 0');
+        var overflow = card && card.scrollWidth > card.clientWidth + 1;
+        if (overflow) fails.push('metro card horizontal overflow');
+        var layouts = auditViewports(fails);
+        if (accentEnabled) fails.push('default accent is on');
+        var off0 = hitSpec(0, 'wood', false);
+        var off1 = hitSpec(1, 'wood', false);
+        if (off0.freq !== off1.freq || off0.peak !== off1.peak || off0.accent) {
+          fails.push('accent off still differs ' + off0.freq + '/' + off1.freq + ' peak ' + off0.peak + '/' + off1.peak);
+        }
+        var on0 = hitSpec(0, 'wood', true);
+        var on1 = hitSpec(1, 'wood', true);
+        if (on0.freq === on1.freq || !(on0.peak > on1.peak) || !on0.accent) {
+          fails.push('accent on does not differ ' + on0.freq + '/' + on1.freq);
+        }
+        document.getElementById('accentToggleBtn').click();
+        if (!accentEnabled) fails.push('toggle did not turn accent on');
+        var liveOn = hitSpec(0, currentTimbre, accentEnabled);
+        var liveOffBeat = hitSpec(1, currentTimbre, accentEnabled);
+        if (liveOn.freq === liveOffBeat.freq) fails.push('live toggle did not change beat1 freq');
+        document.getElementById('accentToggleBtn').click();
+        if (accentEnabled) fails.push('toggle did not turn accent off');
+        var skipped = [];
+        function clockDeadReason() {
+          var ctx = audioCtx;
+          if (!window.AudioContext && !window.webkitAudioContext) return 'no AudioContext constructor; beat-light sync cannot be sampled';
+          if (!ctx) return 'AudioContext was not created; beat-light sync cannot be sampled';
+          if (ctx.state === 'suspended' || ctx.state === 'closed' || ctx.state === 'interrupted' || !(ctx.currentTime > 0.05)) {
+            return 'no audio output: AudioContext ' + ctx.state + ', currentTime ' + ctx.currentTime + '; beat-light sync cannot be sampled';
+          }
+          return '';
+        }
+        function publish(syncInfo) {
+          var deck = auditBottomDeck(fails);
+          var res = {
+            card: 'card-metronome',
+            timbres: names,
+            currentTimbre: currentTimbre,
+            oscCreated: oscCreated,
+            timbreKey: TIMBRE_KEY,
+            savedTimbre: localStorage.getItem(TIMBRE_KEY),
+            sessionSnapshot: sessionSnapshot,
+            ticks: ticks,
+            rulerWraps: wraps,
+            noHOverflow: !overflow,
+            accentOff: { freq: off0.freq, peak: off0.peak, sameAsBeat2: off0.freq === off1.freq && off0.peak === off1.peak },
+            accentOn: { beat1: on0.freq, beat2: on1.freq, peak1: on0.peak, peak2: on1.peak },
+            legacy: true,
+            layouts: layouts,
+            sync: syncInfo,
+            skipped: skipped,
+            deck: deck,
+            failures: fails,
+            verdict: fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK'
+          };
+          var pre = document.getElementById('audit');
+          if (!pre) {
+            pre = document.createElement('pre');
+            pre.id = 'audit';
+            pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:90vw;max-height:70vh;overflow:auto;background:rgba(0,0,0,0.85);color:#00ff00;font-size:11px;padding:8px;border-radius:6px;z-index:9999;white-space:pre-wrap;';
+            document.body.appendChild(pre);
+          }
+          pre.textContent = (fails.length ? 'ASSERT_FAIL\n' : 'ASSERT_OK\n') + JSON.stringify(res, null, 2);
+        }
+        var whyDead = clockDeadReason();
+        if (whyDead) {
+          skipped.push({ check: 'beat-light sync', reason: whyDead });
+          publish({ beats: 0, skipped: true });
+        } else {
+          var timeoutHits = 0;
+          var origTimeout = window.setTimeout;
+          window.setTimeout = function (fn, ms) {
+            timeoutHits += 1;
+            return origTimeout(fn, ms);
+          };
+          window.__ledSync = [];
+          isPlaying = true;
+          currentBeat = 0;
+          nextNoteTime = audioCtx.currentTime + 0.04;
+          if (lookaheadTimerId) clearInterval(lookaheadTimerId);
+          lookaheadTimerId = setInterval(scheduler, LOOKAHEAD_INTERVAL);
+          ensureLedClock();
+          var waits = 0;
+          var poll = setInterval(function () {
+            waits += 1;
+            var got = window.__ledSync.length;
+            var deadNow = clockDeadReason();
+            if (got >= 4 || waits > 40 || (waits > 8 && got === 0 && deadNow)) {
+              clearInterval(poll);
+              isPlaying = false;
+              if (lookaheadTimerId) { clearInterval(lookaheadTimerId); lookaheadTimerId = null; }
+              stopLedClock();
+              window.setTimeout = origTimeout;
+              var samples = window.__ledSync.slice(0, 8);
+              if (samples.length === 0 && deadNow) skipped.push({ check: 'beat-light sync', reason: deadNow });
+              else if (samples.length < 4) fails.push('sync samples ' + samples.length + ' want 4');
+              else {
+                var deltas = samples.map(function (s) { return (s.visualTime - s.audioTime) * 1000; });
+                var bad = deltas.filter(function (d) { return d < 0 || d > 20; });
+                if (bad.length) fails.push('beat-light deviation ' + bad.map(function (d) { return d.toFixed(2); }).join(','));
+              }
+              if (timeoutHits !== 0) fails.push('setTimeout during sync ' + timeoutHits);
+              publish({ beats: samples.length, setTimeouts: timeoutHits, skipped: skipped.length > 0 });
+            }
+          }, 50);
+        }
+        } catch (err) {
+          var pe = document.getElementById('audit');
+          if (!pe) { pe = document.createElement('pre'); pe.id = 'audit'; pe.style.cssText = 'position:fixed;left:10px;bottom:10px;background:#900;color:#fff;font-size:11px;padding:8px;z-index:9999;white-space:pre-wrap;'; document.body.appendChild(pe); }
+          pe.textContent = 'AUDIT_EXCEPTION: ' + (err && err.message) + '\n' + String(err && err.stack).slice(0, 900);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

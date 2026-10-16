@@ -1,0 +1,817 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>probe</title></head><body>
+<iframe id="bySrc" src="metronome-02-strip.html" style="width:200px;height:400px;border:0"></iframe>
+<iframe id="bySrcdoc" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;zh-CN&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+&lt;title&gt;D2 节拍器竖条 — 最常用&lt;/title&gt;
+&lt;style&gt;
+:root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --font-base: -apple-system, BlinkMacSystemFont, &quot;PingFang SC&quot;, &quot;Segoe UI&quot;, Roboto, sans-serif;
+      --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
+    --dash-coral-text: #C93B3B;
+}
+
+  :root[data-skin=&quot;ink&quot;] {
+    --dash-page: #0E1114;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #161A1E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+      --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: var(--dash-accent);
+    --dash-accent-solid: #B8531F;
+    --dash-coral-text: #FF6B6B;
+    --dash-notch: 96px;
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+}
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: var(--font-base);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+  }
+  .demo-bar {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .demo-ver {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px;
+    border: 1px solid var(--dash-ink-a16); color: var(--dash-text-soft);
+    background: var(--dash-surface-soft);
+  }
+  .demo-ver b { color: var(--dash-vermilion-text); font-weight: 600; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; padding: 2px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    font: inherit; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+
+  #gaugeHost {
+    position: absolute; left: 0; top: 0;
+    width: 0; height: 0; overflow: hidden;
+  }
+  #dashGauge { width: 420px; height: 1px; }
+
+  .strip {
+    width: 140px;
+    min-height: 468px;
+    background: var(--dash-surface-soft);
+    color: var(--dash-text);
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 10px 14px;
+    gap: 10px;
+  }
+  .top, .mid, .bot { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .top { gap: 10px; }
+  .mid { gap: 8px; flex: 1; justify-content: center; }
+  .name {
+    width: 100%;
+    height: 36px;
+    border-radius: 18px;
+    border: 1px solid var(--dash-ink-a16);
+    background: transparent;
+    color: var(--dash-text);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 36px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .leds { display: flex; gap: 8px; }
+  .led {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--dash-btn-face-lo);
+    border: 2px solid var(--dash-shell-lo);
+    transition: background 0.04s ease-out, box-shadow 0.32s ease-out;
+  }
+  .led.weak-lit {
+    background: var(--dash-dot-on);
+    border-color: var(--dash-white);
+    box-shadow: 0 0 8px var(--dash-gold-glow);
+  }
+  .nudge {
+    width: 36px; height: 36px; border-radius: 18px; cursor: pointer;
+    border: 1px solid var(--dash-shell-inset);
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo));
+    color: var(--dash-btn-glyph);
+    font-size: 18px; font-weight: 700;
+    line-height: 1;
+  }
+  .bpm {
+    font-size: 48px; font-weight: 800; line-height: 0.9;
+    color: var(--dash-text); font-variant-numeric: tabular-nums;
+  }
+  .unit { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--dash-text-soft); }
+  .go {
+    width: 100%; height: 36px; border: 0; border-radius: 18px; cursor: pointer;
+    background: var(--dash-vermilion); color: var(--dash-page);
+    font-size: 14px; font-weight: 800; line-height: 36px; white-space: nowrap;
+  }
+  .go.running { background: var(--dash-panel); color: var(--dash-text); }
+  .pop[hidden] { display: none !important; }
+  .pop {
+    position: fixed; inset: 0; z-index: 5;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 6px; background: var(--dash-ink-a42);
+    overflow: hidden;
+  }
+  .pop-card {
+    width: 140px;
+    overflow: hidden;
+    background: var(--dash-surface-soft); color: var(--dash-text);
+    border-radius: 22px; padding: 8px;
+    border: 1px solid var(--dash-ink-a12);
+  }
+  .pop-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; flex-wrap: nowrap; margin-bottom: 8px;
+  }
+  .pop-title { font-size: 14px; font-weight: 800; white-space: nowrap; line-height: 1.2; }
+  .speed-row {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    margin: 6px 0 8px;
+  }
+  .bpm-label { flex: 1 1 auto; font-size: 13px; font-weight: 800; color: var(--dash-text); white-space: nowrap; line-height: 1.2; }
+  .bpm-arrow {
+    width: 22px; height: 22px; padding: 0; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--dash-ink-a16); background: transparent;
+    color: var(--dash-text); font-size: 16px; font-weight: 700; line-height: 1;
+  }
+  .timbre-col { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+  .timbre-opt {
+    height: 28px; border-radius: 14px; padding: 0 8px; cursor: pointer;
+    border: 0; background: var(--dash-white); color: var(--dash-text);
+    font-size: 12px; font-weight: 700; line-height: 28px; white-space: nowrap;
+  }
+  .timbre-opt.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin=&quot;ink&quot;] .timbre-opt { color: var(--dash-page); }
+  :root[data-skin=&quot;ink&quot;] .timbre-opt.is-on { background: var(--dash-text); color: var(--dash-page); }
+  .note { margin: 0; font-size: 11px; line-height: 1.2; color: var(--dash-text-soft); white-space: nowrap; }
+  .pop-close {
+    height: 24px; padding: 0 8px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--dash-ink-a16); background: transparent;
+    color: var(--dash-text); font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  button:focus-visible { outline: 2px solid var(--dash-vermilion-text); outline-offset: 2px; }
+  @media (max-width: 480px) {
+    .strip { width: 140px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+&lt;/style&gt;
+&lt;script src=&quot;shared/beat-engine.js&quot;&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;gaugeHost&quot; aria-hidden=&quot;true&quot;&gt;&lt;div id=&quot;dashGauge&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;div class=&quot;demo-bar&quot;&gt;
+  &lt;span class=&quot;demo-ver&quot; title=&quot;demo 版本（工具自动盖，勿手改）&quot;&gt;&lt;b&gt;demo v3.0&lt;/b&gt; · 卡 v1 · 2026-10-10&lt;/span&gt;
+  &lt;div class=&quot;seg&quot; id=&quot;skinSeg&quot;&gt;
+    &lt;button type=&quot;button&quot; data-skin=&quot;light&quot; class=&quot;is-on&quot;&gt;浅色&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-skin=&quot;ink&quot;&gt;深色&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;strip&quot; id=&quot;strip&quot;&gt;
+  &lt;div class=&quot;top&quot;&gt;
+    &lt;button type=&quot;button&quot; class=&quot;name face-setting&quot; id=&quot;btnTimbre&quot;&gt;经典&lt;/button&gt;
+    &lt;div class=&quot;leds&quot; id=&quot;ledRow&quot;&gt;
+      &lt;div class=&quot;led&quot; id=&quot;led0&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;led&quot; id=&quot;led1&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;led&quot; id=&quot;led2&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;led&quot; id=&quot;led3&quot;&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;mid&quot;&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nudge face-setting&quot; id=&quot;stepUpBtn&quot;&gt;+&lt;/button&gt;
+    &lt;div class=&quot;bpm&quot; id=&quot;bpmFace&quot;&gt;82&lt;/div&gt;
+    &lt;div class=&quot;unit&quot; id=&quot;tempoTerm&quot;&gt;中板&lt;/div&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nudge face-setting&quot; id=&quot;stepDownBtn&quot;&gt;−&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;bot&quot;&gt;
+    &lt;button type=&quot;button&quot; class=&quot;go face-setting&quot; id=&quot;mainToggleBtn&quot;&gt;&lt;span id=&quot;toggleText&quot;&gt;启动&lt;/span&gt;&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;pop&quot; id=&quot;settingsPop&quot; hidden&gt;
+  &lt;div class=&quot;pop-card&quot; role=&quot;dialog&quot; aria-labelledby=&quot;popTitle&quot;&gt;
+    &lt;div class=&quot;pop-head&quot;&gt;
+      &lt;div class=&quot;pop-title&quot; id=&quot;popTitle&quot;&gt;设置&lt;/div&gt;
+      &lt;button type=&quot;button&quot; class=&quot;pop-close&quot; id=&quot;btnPopClose&quot;&gt;关闭&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;p class=&quot;note&quot;&gt;四拍同声 · 4/4&lt;/p&gt;
+    &lt;div class=&quot;speed-row&quot; id=&quot;speedRow&quot;&gt;
+      &lt;div class=&quot;bpm-label&quot; id=&quot;bpmLabel&quot;&gt;BPM 82&lt;/div&gt;
+      &lt;button type=&quot;button&quot; class=&quot;bpm-arrow&quot; id=&quot;bpmDown&quot; aria-label=&quot;BPM 减 1&quot;&gt;‹&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;bpm-arrow&quot; id=&quot;bpmUp&quot; aria-label=&quot;BPM 加 1&quot;&gt;›&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;timbre-col&quot; id=&quot;timbreSeg&quot;&gt;
+      &lt;button type=&quot;button&quot; class=&quot;timbre-opt is-on&quot; data-timbre=&quot;classic&quot;&gt;经典&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;timbre-opt&quot; data-timbre=&quot;wood&quot;&gt;木鱼&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;timbre-opt&quot; data-timbre=&quot;beep&quot;&gt;电子滴答&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;timbre-opt&quot; data-timbre=&quot;cowbell&quot;&gt;牛铃&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;timbre-opt&quot; data-timbre=&quot;sticks&quot;&gt;鼓槌&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;timbre-opt&quot; id=&quot;btnPreview&quot;&gt;试听&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;script&gt;
+(function () {
+  var TIMBRE_KEY = &#x27;dizical.metro.timbre&#x27;;
+  var TIMBRES = [&#x27;classic&#x27;, &#x27;wood&#x27;, &#x27;beep&#x27;, &#x27;cowbell&#x27;, &#x27;sticks&#x27;];
+  var LEGACY = { click: &#x27;wood&#x27;, sub808: &#x27;wood&#x27;, rim: &#x27;wood&#x27;, blip: &#x27;wood&#x27; };
+  var currentTimbre = &#x27;classic&#x27;;
+  var currentBpm = 82;
+  var MIN_BPM = 40;
+  var MAX_BPM = 200;
+
+  function term(bpm) {
+    if (bpm &lt;= 60) return &#x27;慢板&#x27;;
+    if (bpm &lt;= 88) return &#x27;中板&#x27;;
+    if (bpm &lt;= 120) return &#x27;小快板&#x27;;
+    if (bpm &lt;= 160) return &#x27;快板&#x27;;
+    return &#x27;急板&#x27;;
+  }
+  function paintTimbre() {
+    var label = currentTimbre;
+    document.querySelectorAll(&#x27;#timbreSeg button&#x27;).forEach(function (b) {
+      var on = b.dataset.timbre === currentTimbre;
+      b.classList.toggle(&#x27;is-on&#x27;, on);
+      if (on) label = (b.textContent || &#x27;&#x27;).trim();
+    });
+    var face = document.getElementById(&#x27;btnTimbre&#x27;);
+    if (face) face.textContent = label;
+  }
+  function saveTimbre() {
+    try { localStorage.setItem(TIMBRE_KEY, currentTimbre); } catch (e) {}
+  }
+  function restoreTimbre() {
+    var saved = null;
+    try { saved = localStorage.getItem(TIMBRE_KEY); } catch (e) {}
+    if (LEGACY[saved]) saved = LEGACY[saved];
+    currentTimbre = TIMBRES.indexOf(saved) &gt;= 0 ? saved : &#x27;classic&#x27;;
+    try { localStorage.setItem(TIMBRE_KEY, currentTimbre); } catch (e) {}
+    paintTimbre();
+    if (window.BeatEngine) BeatEngine.setTimbre(currentTimbre);
+  }
+  function setTimbre(name) {
+    if (TIMBRES.indexOf(name) &lt; 0) return;
+    currentTimbre = name;
+    paintTimbre();
+    saveTimbre();
+    if (window.BeatEngine) BeatEngine.setTimbre(name);
+  }
+  function updateBpmUI(bpm) {
+    document.getElementById(&#x27;bpmFace&#x27;).textContent = bpm;
+    document.getElementById(&#x27;tempoTerm&#x27;).textContent = term(bpm);
+    var label = document.getElementById(&#x27;bpmLabel&#x27;);
+    if (label) label.textContent = &#x27;BPM &#x27; + bpm;
+    document.querySelectorAll(&#x27;.preset&#x27;).forEach(function (chip) {
+      chip.classList.toggle(&#x27;active&#x27;, Number(chip.dataset.bpm) === bpm);
+    });
+  }
+  function setBpm(val) {
+    currentBpm = Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(val)));
+    updateBpmUI(currentBpm);
+    if (window.BeatEngine) BeatEngine.setBpm(currentBpm);
+  }
+  function clearLeds() {
+    for (var i = 0; i &lt; 4; i++) {
+      var el = document.getElementById(&#x27;led&#x27; + i);
+      if (el) el.classList.remove(&#x27;weak-lit&#x27;, &#x27;accent-lit&#x27;);
+    }
+  }
+  function paintFromClock(ev) {
+    clearLeds();
+    if (!ev) return;
+    var el = document.getElementById(&#x27;led&#x27; + ev.beat);
+    if (el) el.classList.add(&#x27;weak-lit&#x27;);
+  }
+  function toggleMetronome() {
+    var starting = !BeatEngine.isPlaying();
+    var btn = document.getElementById(&#x27;mainToggleBtn&#x27;);
+    var text = document.getElementById(&#x27;toggleText&#x27;);
+    if (starting) {
+      BeatEngine.setBpm(currentBpm);
+      BeatEngine.setTimbre(currentTimbre);
+      BeatEngine.setOnVisual(paintFromClock);
+      BeatEngine.start();
+      btn.classList.add(&#x27;running&#x27;);
+      text.textContent = &#x27;暂停&#x27;;
+    } else {
+      BeatEngine.stop();
+      clearLeds();
+      btn.classList.remove(&#x27;running&#x27;);
+      text.textContent = &#x27;启动&#x27;;
+    }
+  }
+  function setSkin(skin) {
+    if (skin === &#x27;ink&#x27;) document.documentElement.dataset.skin = &#x27;ink&#x27;;
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll(&#x27;#skinSeg button&#x27;).forEach(function (b) {
+      b.classList.toggle(&#x27;is-on&#x27;, (b.dataset.skin || &#x27;light&#x27;) === (skin === &#x27;ink&#x27; ? &#x27;ink&#x27; : &#x27;light&#x27;));
+    });
+  }
+  function faceCount() {
+    return [].filter.call(document.querySelectorAll(&#x27;.strip .face-setting&#x27;), function (el) {
+      return el.getClientRects().length &gt; 0;
+    }).length;
+  }
+  function parseCss(cs) {
+    var m = String(cs || &#x27;&#x27;).match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    var p = m[1].split(&#x27;,&#x27;).map(function (x) { return parseFloat(x); });
+    return { rgb: [p[0], p[1], p[2]], a: p.length &gt; 3 ? p[3] : 1 };
+  }
+  function relChan(c) {
+    c = c / 255;
+    return c &lt;= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  function lum(rgb) {
+    return 0.2126 * relChan(rgb[0]) + 0.7152 * relChan(rgb[1]) + 0.0722 * relChan(rgb[2]);
+  }
+  function contrast(fg, bg) {
+    var L1 = lum(fg), L2 = lum(bg);
+    return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+  }
+  function bgOf(el) {
+    var node = el;
+    while (node) {
+      var bg = parseCss(getComputedStyle(node).backgroundColor);
+      if (bg &amp;&amp; bg.a &gt;= 0.98) return bg.rgb;
+      node = node.parentElement;
+    }
+    return [14, 17, 20];
+  }
+  function fgOf(el) {
+    var fg = parseCss(getComputedStyle(el).color);
+    var bg = bgOf(el);
+    if (!fg) return bg;
+    if (fg.a &gt;= 0.99) return fg.rgb;
+    var a = fg.a;
+    return [
+      fg.rgb[0] * a + bg[0] * (1 - a),
+      fg.rgb[1] * a + bg[1] * (1 - a),
+      fg.rgb[2] * a + bg[2] * (1 - a)
+    ];
+  }
+  function inkMap(text) {
+    var m = text.match(/:root\[data-skin=&quot;ink&quot;\]\s*\{/);
+    if (!m) return {};
+    var i = text.indexOf(&#x27;{&#x27;, m.index);
+    var depth = 0, j = i;
+    for (; j &lt; text.length; j++) {
+      if (text[j] === &#x27;{&#x27;) depth += 1;
+      else if (text[j] === &#x27;}&#x27;) {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    var body = text.slice(i + 1, j).replace(/\/\*[\s\S]*?\*\//g, &#x27;&#x27;);
+    var props = {};
+    body.split(&#x27;;&#x27;).forEach(function (part) {
+      var line = part.trim();
+      if (line.indexOf(&#x27;--&#x27;) !== 0) return;
+      var cut = line.indexOf(&#x27;:&#x27;);
+      if (cut &lt; 0) return;
+      props[line.slice(0, cut).trim()] = line.slice(cut + 1).trim();
+    });
+    return props;
+  }
+
+  document.getElementById(&#x27;skinSeg&#x27;).addEventListener(&#x27;click&#x27;, function (e) {
+    var b = e.target.closest(&#x27;button&#x27;);
+    if (!b) return;
+    setSkin(b.dataset.skin);
+  });
+  document.getElementById(&#x27;stepUpBtn&#x27;).addEventListener(&#x27;click&#x27;, function () { setBpm(currentBpm + 1); });
+  document.getElementById(&#x27;stepDownBtn&#x27;).addEventListener(&#x27;click&#x27;, function () { setBpm(currentBpm - 1); });
+  document.getElementById(&#x27;mainToggleBtn&#x27;).addEventListener(&#x27;click&#x27;, toggleMetronome);
+  document.getElementById(&#x27;btnTimbre&#x27;).addEventListener(&#x27;click&#x27;, function () {
+    document.getElementById(&#x27;settingsPop&#x27;).hidden = false;
+  });
+  document.getElementById(&#x27;btnPopClose&#x27;).addEventListener(&#x27;click&#x27;, function () {
+    document.getElementById(&#x27;settingsPop&#x27;).hidden = true;
+  });
+  document.getElementById(&#x27;settingsPop&#x27;).addEventListener(&#x27;click&#x27;, function (e) {
+    if (e.target.id === &#x27;settingsPop&#x27;) e.currentTarget.hidden = true;
+  });
+  document.getElementById(&#x27;timbreSeg&#x27;).addEventListener(&#x27;click&#x27;, function (e) {
+    var b = e.target.closest(&#x27;button&#x27;);
+    if (!b || !b.dataset.timbre) return;
+    setTimbre(b.dataset.timbre);
+  });
+  document.getElementById(&#x27;bpmDown&#x27;).addEventListener(&#x27;click&#x27;, function () { setBpm(currentBpm - 1); });
+  document.getElementById(&#x27;bpmUp&#x27;).addEventListener(&#x27;click&#x27;, function () { setBpm(currentBpm + 1); });
+  document.getElementById(&#x27;btnPreview&#x27;).addEventListener(&#x27;click&#x27;, function () {
+    BeatEngine.preview(currentTimbre);
+  });
+
+  restoreTimbre();
+  updateBpmUI(currentBpm);
+  BeatEngine.setOnVisual(paintFromClock);
+
+  if (location.search.indexOf(&#x27;audit=1&#x27;) &lt; 0) return;
+  var fails = [];
+  try { localStorage.removeItem(TIMBRE_KEY); } catch (e) {}
+  restoreTimbre();
+  if (currentTimbre !== &#x27;classic&#x27;) fails.push(&#x27;default timbre &#x27; + currentTimbre);
+  var buttons = document.querySelectorAll(&#x27;#timbreSeg button[data-timbre]&#x27;);
+  if (buttons.length !== 5) fails.push(&#x27;timbres &#x27; + buttons.length + &#x27; want 5&#x27;);
+  var measured = {};
+  var classicInfo = null;
+  TIMBRES.forEach(function (name) {
+    var info = BeatEngine.preview(name);
+    measured[name] = info &amp;&amp; info.peak;
+    if (name === &#x27;classic&#x27;) classicInfo = info;
+    if (!info || info.accent) fails.push(name + &#x27; accent&#x27;);
+  });
+  TIMBRES.forEach(function (name) {
+    if (name !== &#x27;classic&#x27; &amp;&amp; !(measured.classic &gt; measured[name])) {
+      fails.push(&#x27;classic peak &#x27; + measured.classic + &#x27; not above &#x27; + name);
+    }
+  });
+  var ratioHz = classicInfo &amp;&amp; classicInfo.freq ? classicInfo.freq2 / classicInfo.freq : 0;
+  if (Math.abs(ratioHz - 2.7) &gt; 0.02) fails.push(&#x27;classic ratio &#x27; + ratioHz);
+  var card = document.getElementById(&#x27;strip&#x27;);
+  var gauge = document.getElementById(&#x27;dashGauge&#x27;);
+  var sw = card.getBoundingClientRect().width;
+  var sh = card.getBoundingClientRect().height;
+  var gw = gauge.getBoundingClientRect().width;
+  var ratio = gw ? sw / gw : 0;
+  if (Math.abs(ratio - 1 / 3) &gt; 0.01) fails.push(&#x27;width ratio &#x27; + ratio.toFixed(3) + &#x27; want 0.333±0.01&#x27;);
+  if (!(sh &gt; sw)) fails.push(&#x27;portrait &#x27; + Math.round(sh) + &#x27;x&#x27; + Math.round(sw));
+  if (card.scrollWidth &gt; card.clientWidth + 1) fails.push(&#x27;card overflow&#x27;);
+  var pageOverflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+  if (pageOverflow &gt; 1) fails.push(&#x27;page overflow &#x27; + pageOverflow);
+  var pop = document.getElementById(&#x27;settingsPop&#x27;);
+  if (pop.hidden !== true) fails.push(&#x27;popup starts open&#x27;);
+  var faceClosed = faceCount();
+  if (faceClosed &gt; 5) fails.push(&#x27;face settings &#x27; + faceClosed);
+  document.getElementById(&#x27;btnTimbre&#x27;).click();
+  var popupOpened = pop.hidden === false;
+  if (!popupOpened) fails.push(&#x27;popup did not open&#x27;);
+  document.getElementById(&#x27;btnPopClose&#x27;).click();
+  var popupClosed = pop.hidden === true;
+  if (!popupClosed) fails.push(&#x27;popup did not close&#x27;);
+  setSkin(&#x27;ink&#x27;);
+  BeatEngine.setBpm(120);
+  BeatEngine.setTimbre(&#x27;classic&#x27;);
+  BeatEngine.armSync();
+  BeatEngine.start();
+  var waits = 0;
+  var skipped = [];
+  function syncSkipReason() {
+    var ctx = null;
+    try { ctx = BeatEngine.context(); } catch (e) {
+      return &#x27;no AudioContext (&#x27; + (e &amp;&amp; e.message) + &#x27;); beat-light sync cannot be sampled&#x27;;
+    }
+    if (!window.AudioContext &amp;&amp; !window.webkitAudioContext) {
+      return &#x27;no AudioContext constructor; beat-light sync cannot be sampled&#x27;;
+    }
+    if (!ctx) return &#x27;AudioContext was not created; beat-light sync cannot be sampled&#x27;;
+    if (ctx.state === &#x27;suspended&#x27; || ctx.state === &#x27;closed&#x27; || ctx.state === &#x27;interrupted&#x27; || !(ctx.currentTime &gt; 0.05)) {
+      return &#x27;no audio output: AudioContext &#x27; + ctx.state + &#x27;, currentTime &#x27; + ctx.currentTime + &#x27;; beat-light sync cannot be sampled&#x27;;
+    }
+    return &#x27;&#x27;;
+  }
+  var poll = setInterval(function () {
+    waits += 1;
+    var ctxNow = null;
+    try { ctxNow = BeatEngine.context(); } catch (e) {}
+    var clockDead = !ctxNow || ctxNow.state === &#x27;suspended&#x27; || ctxNow.state === &#x27;closed&#x27; || !(ctxNow.currentTime &gt; 0.05);
+    if (BeatEngine.syncSamples().length &gt;= 4 || waits &gt; 40 || (waits &gt; 8 &amp;&amp; clockDead)) {
+      clearInterval(poll);
+      BeatEngine.stop();
+      var samples = BeatEngine.syncSamples().slice(0, 4);
+      var accents = samples.filter(function (s) { return s.accent; }).length;
+      if (samples.length &lt; 4) {
+        var why = samples.length === 0 ? syncSkipReason() : &#x27;&#x27;;
+        if (why) skipped.push({ check: &#x27;sync samples&#x27;, reason: why });
+        else fails.push(&#x27;sync samples &#x27; + samples.length + &#x27; want 4&#x27;);
+      }
+      if (accents !== 0) fails.push(&#x27;accent flags &#x27; + accents);
+      var peaks = samples.map(function (s) { return s.peak; });
+      var freqs = samples.map(function (s) { return s.freq; });
+      if (peaks.length &amp;&amp; Math.max.apply(null, peaks) - Math.min.apply(null, peaks) &gt; 0.0001) {
+        fails.push(&#x27;peak span&#x27;);
+      }
+      if (freqs.length &amp;&amp; Math.max.apply(null, freqs) - Math.min.apply(null, freqs) &gt; 0.01) {
+        fails.push(&#x27;freq span&#x27;);
+      }
+      if (document.getElementById(&#x27;led0&#x27;).classList.contains(&#x27;accent-lit&#x27;)) fails.push(&#x27;accent-lit&#x27;);
+      document.getElementById(&#x27;settingsPop&#x27;).hidden = false;
+      var popEl = document.getElementById(&#x27;settingsPop&#x27;);
+      var menu = popEl.querySelector(&#x27;.pop-card&#x27;);
+      function scrollDelta(el) {
+        return {
+          y: el.scrollHeight - el.clientHeight,
+          x: el.scrollWidth - el.clientWidth
+        };
+      }
+      var menuScroll = scrollDelta(menu);
+      var popScroll = scrollDelta(popEl);
+      if (menuScroll.y &gt; 0 || menuScroll.x &gt; 0) fails.push(&#x27;menu scroll &#x27; + menuScroll.y + &#x27;/&#x27; + menuScroll.x);
+      if (popScroll.y &gt; 0 || popScroll.x &gt; 0) fails.push(&#x27;pop scroll &#x27; + popScroll.y + &#x27;/&#x27; + popScroll.x);
+      if (document.querySelector(&#x27;input[type=&quot;range&quot;], .bpm-slider&#x27;)) fails.push(&#x27;speed slider still present&#x27;);
+      var label = document.getElementById(&#x27;bpmLabel&#x27;);
+      var arrows = [].slice.call(document.querySelectorAll(&#x27;#speedRow .bpm-arrow&#x27;));
+      var labelBox = label.getBoundingClientRect();
+      var arrowsRight = arrows.filter(function (el) { return el.getBoundingClientRect().left &gt;= labelBox.right - 1; });
+      if (arrows.length !== 2 || arrowsRight.length !== 2) fails.push(&#x27;bpm arrows &#x27; + arrows.length + &#x27; right &#x27; + arrowsRight.length);
+      var bpmText = (label.textContent || &#x27;&#x27;).trim();
+      if (!/^BPM \d+$/.test(bpmText)) fails.push(&#x27;bpm label &#x27; + bpmText);
+      var tone = document.querySelector(&#x27;#timbreSeg .timbre-opt&#x27;);
+      var arrow = arrows[0];
+      var toneCs = tone ? getComputedStyle(tone) : null;
+      var arrowCs = arrow ? getComputedStyle(arrow) : null;
+      var shapeDiffs = [];
+      if (toneCs &amp;&amp; arrowCs) {
+        if (Math.abs(parseFloat(toneCs.height) - parseFloat(arrowCs.height)) &gt; 1) shapeDiffs.push(&#x27;height&#x27;);
+        if (Math.abs(parseFloat(toneCs.borderRadius) - parseFloat(arrowCs.borderRadius)) &gt; 1) shapeDiffs.push(&#x27;radius&#x27;);
+        if (toneCs.backgroundColor !== arrowCs.backgroundColor) shapeDiffs.push(&#x27;background&#x27;);
+      }
+      if (shapeDiffs.length &lt; 2) fails.push(&#x27;speed/timbre shape diffs &#x27; + shapeDiffs.join(&#x27;,&#x27;));
+      var menuBox = menu.getBoundingClientRect();
+      var clipped = false;
+      [].forEach.call(menu.querySelectorAll(&#x27;button, .bpm-label, .note&#x27;), function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.width &lt; 1 || r.height &lt; 1) return;
+        if (r.top &lt; menuBox.top - 1 || r.bottom &gt; menuBox.bottom + 1 || r.left &lt; menuBox.left - 1 || r.right &gt; menuBox.right + 1) clipped = true;
+      });
+      if (clipped) fails.push(&#x27;menu content clipped&#x27;);
+      if (menuBox.height &gt; 420) fails.push(&#x27;menu height &#x27; + Math.round(menuBox.height) + &#x27; want &lt;= 420&#x27;);
+      document.getElementById(&#x27;settingsPop&#x27;).hidden = true;
+      var menuReport = {
+        scrollY: menuScroll.y,
+        scrollX: menuScroll.x,
+        clipped: clipped,
+        height: Math.round(menuBox.height),
+        arrows: arrowsRight.length,
+        label: bpmText,
+        shapeDiffs: shapeDiffs
+      };
+      var contrastRows = [];
+      var minContrast = 99;
+      [].forEach.call(document.querySelectorAll(&#x27;.strip *&#x27;), function (el) {
+        var hasText = [].some.call(el.childNodes, function (n) {
+          return n.nodeType === 3 &amp;&amp; n.textContent.trim();
+        });
+        if (!hasText || !el.getClientRects().length) return;
+        var rowRatio = Math.round(contrast(fgOf(el), bgOf(el)) * 100) / 100;
+        contrastRows.push({ id: el.id || el.className, ratio: rowRatio });
+        if (rowRatio &lt; minContrast) minContrast = rowRatio;
+        if (rowRatio &lt; 4.5) fails.push(&#x27;ink contrast &#x27; + (el.id || el.className) + &#x27; &#x27; + rowRatio);
+      });
+      var mineInk = inkMap(document.querySelector(&#x27;style&#x27;).textContent);
+      fetch(&#x27;practice-duration-card-01-v3.html&#x27;).then(function (r) { return r.text(); }).then(function (html) {
+        var d6 = inkMap(html);
+        var mismatch = 0;
+        Object.keys(d6).forEach(function (k) {
+          if (mineInk[k] !== d6[k]) {
+            mismatch += 1;
+            fails.push(&#x27;ink token &#x27; + k);
+          }
+        });
+        var res = {
+          card: &#x27;metronome-02-strip&#x27;,
+          width: Math.round(sw * 100) / 100,
+          height: Math.round(sh * 100) / 100,
+          gauge: Math.round(gw * 100) / 100,
+          ratio: Math.round(ratio * 1000) / 1000,
+          portrait: sh &gt; sw,
+          pageOverflow: pageOverflow,
+          faceSettings: faceCount(),
+          popup: { opened: popupOpened, closed: popupClosed },
+          menu: menuReport,
+          measuredPeaks: measured,
+          accentFlags: accents,
+          inkMismatch: mismatch,
+          inkContrastMin: minContrast,
+          inkContrast: contrastRows,
+          skipped: skipped,
+          failures: fails,
+          verdict: fails.length ? &#x27;ASSERT_FAIL&#x27; : &#x27;ASSERT_OK&#x27;
+        };
+        var pre = document.getElementById(&#x27;audit&#x27;);
+        if (!pre) {
+          pre = document.createElement(&#x27;pre&#x27;);
+          pre.id = &#x27;audit&#x27;;
+          pre.style.cssText = &#x27;position:fixed;left:8px;bottom:8px;max-width:92vw;max-height:46vh;overflow:auto;background:rgba(0,0,0,0.85);color:#00ff00;font:11px/1.4 ui-monospace,monospace;padding:8px;z-index:9;white-space:pre-wrap;&#x27;;
+          document.body.appendChild(pre);
+        }
+        pre.textContent = res.verdict + &#x27;\n&#x27; + JSON.stringify(res, null, 2);
+      }).catch(function (err) {
+        var pre = document.getElementById(&#x27;audit&#x27;);
+        if (!pre) {
+          pre = document.createElement(&#x27;pre&#x27;);
+          pre.id = &#x27;audit&#x27;;
+          document.body.appendChild(pre);
+        }
+        pre.textContent = &#x27;ASSERT_FAIL\n&#x27; + (err &amp;&amp; err.message);
+      });
+    }
+  }, 200);
+})();
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+" style="width:200px;height:400px;border:0"></iframe>
+<pre id="out"></pre>
+<script>
+window.addEventListener('load', function () {
+  setTimeout(function () {
+    var L = [];
+    ['bySrc', 'bySrcdoc'].forEach(function (id) {
+      var f = document.getElementById(id);
+      var line = id + ': ';
+      try {
+        var d = f.contentDocument;
+        line += 'doc=' + (d ? 'YES' : 'null');
+        if (d && d.body) {
+          line += ' bodyChildren=' + d.body.children.length + ' title=' + (d.title || '-');
+          try {
+            d.body.setAttribute('data-probe', '1');
+            line += ' writeOK=' + (d.body.getAttribute('data-probe') === '1');
+          } catch (e2) { line += ' writeERR=' + e2.name; }
+        }
+      } catch (e) { line += 'ERR ' + e.name + ': ' + e.message; }
+      L.push(line);
+    });
+    document.getElementById('out').textContent = L.join('\n');
+  }, 800);
+});
+</script></body></html>

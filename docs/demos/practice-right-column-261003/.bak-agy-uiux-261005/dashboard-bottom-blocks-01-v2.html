@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>D3 仪表盘下方三块 — 扬声孔 / 按钮组 / 谱架入口</title>
+<style>
+  /* ══════ 与 D1 dashboard-skin-01.html 严格一致的 Token ══════ */
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-beat: 0.73s;
+
+    /* D3 新增微交互增强 Token (均有合理兜底) */
+    --dash-hole-active: #FF6B6B;               /* 发声时格栅孔心微光 */
+    --dash-tray-inset: rgba(44, 62, 80, 0.12); /* 拟物按键托盘凹槽 */
+    --dash-key-hi: #FFFFFF;                    /* 拟物按键高光顶边 */
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+      --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-num: 52px;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+}
+
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+      --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+}
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-base);
+    background: var(--dash-page);
+    color: var(--dash-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    user-select: none;
+    transition: background 0.3s ease;
+  }
+
+  /* ══════ 顶栏总控（视口切换、皮肤切换、模块变体切换） ══════ */
+  .control-strip {
+    max-width: 1133px;
+    width: 100%;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 14px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .strip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .strip-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--dash-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .strip-title span { color: var(--dash-coral); }
+
+  .pill-cluster {
+    display: flex;
+    background: var(--dash-shell-hi);
+    padding: 3px;
+    border-radius: 8px;
+    gap: 3px;
+  }
+  .p-btn {
+    border: 0;
+    background: transparent;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dash-text-soft);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .p-btn.active {
+    background: var(--dash-white);
+    color: var(--dash-text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* ══════ 舞台外框容器 ══════ */
+  .stage-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    transition: width 0.3s ease;
+  }
+  .stage-frame[data-vp="ipad-land"] { width: 1133px; max-width: 100%; }
+  .stage-frame[data-vp="ipad-port"] { width: 744px; max-width: 100%; }
+  .stage-frame[data-vp="iphone"]    { width: 440px; max-width: 100%; }
+
+  /* v2: 440 视口下键帽留白收紧，避免两钮挤到贴边 */
+  @media (max-width: 480px) {
+    .keypad-tactile { gap: 10px; }
+    .tactile-key { padding: 0 10px; font-size: 13.5px; }
+    .pill-btn-core { padding: 0 11px; font-size: 13px; }
+  }
+
+  /* ══════ 仪表盘卡壳模型 (仿 D1 银色控制区底板) ══════ */
+  .dash-simulation-chassis {
+    width: 100%;
+    max-width: 520px;
+    background: linear-gradient(160deg, var(--dash-shell-hi), var(--dash-shell-lo) 70%);
+    border-radius: 28px;
+    padding: 20px 18px;
+    border: 1px solid var(--dash-shell-inset);
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -2px 0 var(--dash-shell-inset),
+      0 12px 28px var(--dash-shell-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sim-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+    letter-spacing: 0.5px;
+    border-bottom: 1px dashed var(--dash-shell-inset);
+    padding-bottom: 8px;
+  }
+
+  /* ══════ D1 对齐的核心 DECK (1.5.1-1.5.3 生产真实排版) ══════ */
+  /* 行高/间距严格对齐 D1 行 306-309 */
+  .deck-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 18px;
+    min-height: 88px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    border: 1px solid var(--dash-shell-inset);
+  }
+
+  /* ══════ 左块：6×8 扬声孔格栅 (D1 行 311-320 对齐) ══════ */
+  .speaker-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .speaker-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--dash-text-soft);
+  }
+
+  /* 6×8 孔阵：7px 孔径，4px 间距，总宽 62px，总高 84px */
+  .grille-6x8 {
+    display: grid;
+    grid-template-columns: repeat(6, 7px);
+    grid-template-rows: repeat(8, 7px);
+    gap: 4px;
+    padding: 3px;
+    background: var(--dash-tray-inset);
+    border-radius: 8px;
+    border: 1px solid var(--dash-shell-inset);
+    box-shadow: inset 0 1px 3px var(--dash-shell-inset);
+  }
+
+  /* 金属沉头孔质感：外圈深色环 + 内孔更深 + 下沿内高光 */
+  .grille-hole {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dash-hole);
+    transform-origin: center;
+    box-shadow:
+      0 0 0 1px var(--dash-shell-inset),
+      inset 0 1.5px 2px rgba(0, 0, 0, 0.75),
+      0 1px 0 var(--dash-glint);
+    transition: transform 0.08s ease-out, background-color 0.12s ease-out, box-shadow 0.12s ease-out;
+  }
+
+  /* 变体 1: 蜂窝脉冲平孔 (对比用) */
+  .grille-6x8.variant-flat .grille-hole {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 变体 2: 金属沉头孔质感 (默认激活) */
+  .grille-6x8.variant-countersink .grille-hole {
+    box-shadow:
+      0 0 0 1px var(--dash-shell-inset),
+      inset 0 1.5px 2px rgba(0, 0, 0, 0.75),
+      0 1px 0 var(--dash-glint);
+  }
+
+  /* 发声振动高亮态 */
+  .grille-hole.vibrating {
+    background: var(--dash-hole-active);
+    box-shadow: 0 0 6px var(--dash-coral), inset 0 1px 2px var(--dash-white);
+  }
+
+  /* ══════ 中块：操作按钮区 (开始/暂停/继续/提前结束) ══════ */
+  .ops-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+  .ops-kicker {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--dash-kicker);
+    height: 16px;
+    line-height: 16px;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .ops-sub-tip {
+    font-size: 9.5px;
+    height: 14px;
+    line-height: 14px;
+    margin: 0;
+    visibility: hidden;
+  }
+
+  /* 变体 A: 拟物凹面按键 (参考图 1 & 2 Braun / Teenage Engineering) */
+  .keypad-tactile {
+    display: flex;
+    gap: 12px;
+    background: var(--dash-tray-inset);
+    padding: 4px;
+    border-radius: 14px;
+    border: 1px solid var(--dash-shell-inset);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+  }
+
+  .tactile-key {
+    border: 0;
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 14.5px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(180deg, var(--dash-shell-hi), var(--dash-shell-lo));
+    color: var(--dash-text);
+    box-shadow:
+      inset 0 1px 0 var(--dash-key-hi),
+      0 3px 6px var(--dash-shell-shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+    white-space: nowrap;
+  }
+  .tactile-key:active {
+    transform: translateY(2px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  .tactile-key.primary-start {
+    background: linear-gradient(180deg, var(--dash-coral-soft), var(--dash-coral));
+    color: var(--dash-white);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 4px 10px var(--dash-coral-glow);
+  }
+  .tactile-key.primary-pause {
+    background: linear-gradient(180deg, var(--dash-knob-hi), var(--dash-ink));
+    color: var(--dash-white);
+  }
+  .tactile-key.early-finish {
+    background: linear-gradient(180deg, var(--dash-accent-soft), var(--dash-accent));
+    color: var(--dash-white);
+  }
+  .tactile-key:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none !important;
+  }
+
+  /* 变体 B: 扁平化胶囊 (纯色/浅描边，去掉立体厚度/重阴影) */
+  .pill-flat {
+    display: flex;
+    gap: 8px;
+    padding: 0;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+  }
+  .pill-btn-core {
+    border: 1px solid var(--dash-shell-inset);
+    background: var(--dash-pill-track);
+    color: var(--dash-pill-idle);
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 750;
+    white-space: nowrap;
+    cursor: pointer;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: none;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .pill-btn-core.primary-active {
+    background: var(--dash-coral);
+    color: var(--dash-white);
+    border-color: var(--dash-coral);
+    box-shadow: none;
+  }
+  .pill-btn-core.primary-pause {
+    background: var(--dash-ink);
+    color: var(--dash-white);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .pill-btn-core.early-active {
+    background: var(--dash-accent);
+    color: var(--dash-white);
+    border-color: var(--dash-accent);
+    box-shadow: none;
+  }
+  .pill-btn-core:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: var(--dash-surface-2);
+    color: var(--dash-text-soft);
+    border-color: var(--dash-shell-inset);
+    box-shadow: none;
+  }
+
+  /* ══════ 右块：谱架模式入口按钮 (本期仅样式) ══════ */
+  .stand-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .stand-kicker {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--dash-kicker);
+    height: 16px;
+    line-height: 16px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  /* 变体 A: D1 同款实体键 (74px × 48px) */
+  .stand-btn-d1 {
+    width: 74px;
+    min-height: 48px;
+    border-radius: 16px;
+    border: 0;
+    background: var(--dash-stand);
+    color: var(--dash-stand-text);
+    font-size: 12.5px;
+    font-weight: 750;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    box-shadow:
+      inset 0 1px 0 var(--dash-btn-rim),
+      0 6px 12px var(--dash-shell-inset);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .stand-btn-d1:hover { transform: translateY(-1px); }
+  .stand-btn-d1:active {
+    transform: translateY(2px) scale(0.97);
+    box-shadow: inset 0 2px 5px var(--dash-ink-a25);
+  }
+
+  /* 变体 B: 极简图标胶囊钮 (上 icon + 下文字，高度 44px 与中间按键严格对齐) */
+  .stand-btn-pill {
+    min-width: 62px;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid var(--dash-accent);
+    background: var(--dash-accent-wash);
+    color: var(--dash-text);
+    font-size: 11px;
+    font-weight: 750;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    box-sizing: border-box;
+    padding: 2px 10px;
+    box-shadow: none;
+    transition: background-color 0.12s, border-color 0.12s;
+  }
+  .stand-btn-pill:hover {
+    background: var(--dash-accent-line);
+  }
+  .stand-btn-pill:active {
+    transform: scale(0.96);
+  }
+
+  .stand-badge-tip {
+    font-size: 9.5px;
+    color: var(--dash-accent);
+    font-weight: 700;
+    height: 14px;
+    line-height: 14px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  /* ══════ 状态监控与麦克风诊断条 ══════ */
+  .diag-card {
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 16px;
+    padding: 12px 16px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12.5px;
+  }
+  .diag-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .diag-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .mic-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dash-muted);
+  }
+  .mic-indicator-dot.off {
+    background: var(--dash-text-soft);
+    opacity: 0.6;
+  }
+  .mic-indicator-dot.active {
+    background: var(--dash-mic-on);
+    box-shadow: 0 0 8px var(--dash-mic-on);
+    opacity: 1;
+  }
+  .mic-indicator-dot.demo {
+    background: transparent;
+    border: 1.5px dashed var(--dash-accent);
+    opacity: 1;
+  }
+
+  .diag-actions { display: flex; gap: 8px; }
+  .mic-toggle-btn {
+    border: 1px solid var(--dash-shell-inset);
+    background: var(--dash-shell-hi);
+    color: var(--dash-text);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* 提示框 */
+  .toast-banner {
+    background: var(--dash-notice-bg);
+    border: 1px solid var(--dash-accent-line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    color: var(--dash-notice-ink);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+</style>
+<!-- 本地 GSAP 依赖 -->
+<script src="../vendor/gsap.min.js"></script>
+</head>
+<body>
+
+  <!-- 顶栏总控 -->
+  <div class="control-strip">
+    <div class="strip-row">
+      <div class="strip-title">
+        dizi<span>cal</span> · D3 仪表盘下方三块 <span>[扬声孔 · 按钮组 · 谱架]</span>
+      </div>
+      <div class="pill-cluster" id="vpCluster">
+        <button class="p-btn active" onclick="setVp('ipad-land')">iPad 横屏 1133</button>
+        <button class="p-btn" onclick="setVp('ipad-port')">iPad 竖屏 744</button>
+        <button class="p-btn" onclick="setVp('iphone')">iPhone 440</button>
+      </div>
+    </div>
+
+    <!-- 变体切换行 -->
+    <div class="strip-row">
+      <div style="font-size: 12px; font-weight: 700; color: var(--dash-text-soft);">变体配置：</div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <!-- 左扬声孔变体 -->
+        <div class="pill-cluster">
+          <button class="p-btn active" id="vGrille1" onclick="setGrilleVariant(1)">孔阵1: 蜂窝脉冲</button>
+          <button class="p-btn" id="vGrille2" onclick="setGrilleVariant(2)">孔阵2: 金属沉头</button>
+        </div>
+        <!-- 中按钮组变体 -->
+        <div class="pill-cluster">
+          <button class="p-btn active" id="vOpsA" onclick="setOpsVariant('A')">按钮A: 拟物凹面</button>
+          <button class="p-btn" id="vOpsB" onclick="setOpsVariant('B')">按钮B: 扁平胶囊</button>
+        </div>
+        <!-- 右谱架变体 -->
+        <div class="pill-cluster">
+          <button class="p-btn active" id="vStandA" onclick="setStandVariant('A')">谱架A: 实体键</button>
+          <button class="p-btn" id="vStandB" onclick="setStandVariant('B')">谱架B: 胶囊钮</button>
+        </div>
+        <!-- 换肤 -->
+        <div class="pill-cluster">
+          <button class="p-btn active" id="skinLight" onclick="setSkin('light')">浅白</button>
+          <button class="p-btn" id="skinInk" onclick="setSkin('ink')">墨黑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主舞台 -->
+  <main class="stage-frame" data-vp="ipad-land" id="stageFrame">
+    
+    <!-- 仪表盘卡壳仿真 (嵌进 D1 的真实环境) -->
+    <div class="dash-simulation-chassis">
+      
+      <div class="sim-header">
+        <span>SILVER-CONTROL-AREA · BOTTOM ROW PREVIEW</span>
+        <span id="stateName">当前状态：准备态 (prep)</span>
+      </div>
+
+      <!-- ══════ 核心三块组合排版 (.deck-row 对齐 D1 行 306-360) ══════ -->
+      <div class="deck-row">
+
+        <!-- 左：6×8 扬声孔格栅 (1.5.1) -->
+        <div class="speaker-block" title="随麦克风声音/节奏震动">
+          <div class="grille-6x8" id="speakerGrille">
+            <!-- 48 粒圆孔由 JS 生成 -->
+          </div>
+          <div class="speaker-label">SPEAKER</div>
+        </div>
+
+        <!-- 中：操作按钮区 (1.5.2) -->
+        <div class="ops-block">
+          <div class="ops-kicker" id="opsTimerText">00:00 · 待开始</div>
+          
+          <!-- 变体容器 (由 JS 切换渲染 A 或 B) -->
+          <div id="opsContainer"></div>
+          <div class="ops-sub-tip">&nbsp;</div>
+        </div>
+
+        <!-- 右：谱架模式入口按钮 (1.5.3) -->
+        <div class="stand-block">
+          <div class="stand-kicker" id="standKicker">谱架 · 模式</div>
+          <div id="standContainer"></div>
+          <div class="stand-badge-tip" id="standTip">本期仅样式</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 麦克风与诊断控制台 -->
+    <div class="diag-card">
+      <div class="diag-row">
+        <div class="diag-status">
+          <div class="mic-indicator-dot off" id="micDot"></div>
+          <span id="micStatusText">麦克风状态：已关闭（需点击「开启麦克风」主动授权采集）</span>
+        </div>
+        <div class="diag-actions">
+          <button class="mic-toggle-btn" id="animBtn" onclick="toggleBeatDemo()">节拍示意：关</button>
+          <button class="mic-toggle-btn" id="micBtn" onclick="toggleMicrophone()">开启麦克风</button>
+        </div>
+      </div>
+
+      <div class="toast-banner" id="toastNotice">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <span>安全提示：麦克风默认关闭，关闭态不采集任何声音。点击「开启麦克风」可授权拾取竹笛现场吹奏。</span>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /* ═════════════════════════════════════════════════════════
+       状态机（严格保留生产语义：prep -> run -> pause）
+       ═════════════════════════════════════════════════════════ */
+    let currentMode = 'prep'; // 'prep' | 'run' | 'pause'
+    let timerSeconds = 0;
+    let timerTicker = null;
+
+    let grilleVariant = 2; // 1: 蜂窝脉冲, 2: 金属沉头 (默认 2)
+    let opsVariant = 'B';  // 'A': 拟物凹面按键, 'B': 扁平胶囊 (默认 B)
+    let standVariant = 'B';// 'A': 实体键, 'B': 胶囊钮 (默认 B)
+
+    function onPrimaryClick() {
+      if (currentMode === 'prep') {
+        currentMode = 'run';
+        startTimer();
+      } else if (currentMode === 'run') {
+        currentMode = 'pause';
+        stopTimer();
+      } else if (currentMode === 'pause') {
+        currentMode = 'run';
+        startTimer();
+      }
+      renderOps();
+      updateStatusHeader();
+    }
+
+    function onEarlyFinishClick() {
+      if (currentMode === 'prep') return;
+      currentMode = 'prep';
+      stopTimer();
+      timerSeconds = 0;
+      updateTimerDisplay();
+      renderOps();
+      updateStatusHeader();
+    }
+
+    function startTimer() {
+      animOn = true;
+      if (timerTicker) clearInterval(timerTicker);
+      timerTicker = setInterval(() => {
+        timerSeconds++;
+        updateTimerDisplay();
+      }, 1000);
+    }
+    function stopTimer() {
+      if (timerTicker) { clearInterval(timerTicker); timerTicker = null; }
+      if (!isMicActive) { animOn = false; resetHoles(); }
+    }
+
+    function updateTimerDisplay() {
+      const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+      const s = String(timerSeconds % 60).padStart(2, '0');
+      const label = currentMode === 'prep' ? '待开始' : (currentMode === 'run' ? '练习中' : '已暂停');
+      document.getElementById('opsTimerText').textContent = `${m}:${s} · ${label}`;
+    }
+
+    function toggleBeatDemo() {
+      if (isMicActive) return;
+      animOn = !animOn;
+      if (!animOn) resetHoles();
+      document.getElementById('animBtn').textContent = '节拍示意：' + (animOn ? '开' : '关');
+    }
+
+    function updateStatusHeader() {
+      const names = { prep: '准备态 (prep)', run: '运行中 (run)', pause: '已暂停 (pause)' };
+      document.getElementById('stateName').textContent = `当前状态：${names[currentMode]}`;
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       操作按钮区渲染 (变体 A vs 变体 B)
+       ═════════════════════════════════════════════════════════ */
+    function renderOps() {
+      const container = document.getElementById('opsContainer');
+      const primaryText = currentMode === 'prep' ? '开始' : (currentMode === 'run' ? '暂停' : '继续');
+      const isEarlyDisabled = (currentMode === 'prep');
+
+      if (opsVariant === 'A') {
+        // 变体 A: 拟物凹面按键
+        const primaryClass = currentMode === 'prep' ? 'primary-start' : (currentMode === 'run' ? 'primary-pause' : 'primary-start');
+        container.innerHTML = `
+          <div class="keypad-tactile">
+            <button class="tactile-key ${primaryClass}" id="btnPrimary" onclick="onPrimaryClick()">
+              ${currentMode === 'run'
+                ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg>'
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg>'}
+              <span>${primaryText}</span>
+            </button>
+            <button class="tactile-key early-finish" id="btnEarly" ${isEarlyDisabled ? 'disabled' : ''} onclick="onEarlyFinishClick()">
+              提前结束
+            </button>
+          </div>
+        `;
+      } else {
+        // 变体 B: 扁平胶囊 (纯色/浅描边，去掉立体厚度/重阴影)
+        const primaryClass = currentMode === 'prep' ? 'primary-active' : (currentMode === 'run' ? 'primary-pause' : 'primary-active');
+        const earlyClass = isEarlyDisabled ? '' : 'early-active';
+        container.innerHTML = `
+          <div class="pill-flat">
+            <button class="pill-btn-core ${primaryClass}" id="btnPrimary" onclick="onPrimaryClick()">
+              ${currentMode === 'run'
+                ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg>'
+                : '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg>'}
+              <span>${primaryText}</span>
+            </button>
+            <button class="pill-btn-core ${earlyClass}" id="btnEarly" ${isEarlyDisabled ? 'disabled' : ''} onclick="onEarlyFinishClick()">
+              提前结束
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       谱架模式按钮渲染 (变体 A vs 变体 B)
+       ═════════════════════════════════════════════════════════ */
+    function renderStand() {
+      const container = document.getElementById('standContainer');
+      if (standVariant === 'A') {
+        // 变体 A: 实体键
+        container.innerHTML = `
+          <button class="stand-btn-d1" id="standBtn" onclick="onStandClick()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            <span>谱架</span>
+          </button>
+        `;
+      } else {
+        // 变体 B: 极简胶囊钮 (上 icon + 下文字，高度与中间排按钮一致)
+        container.innerHTML = `
+          <button class="stand-btn-pill" id="standBtn" onclick="onStandClick()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            <span>谱架</span>
+          </button>
+        `;
+      }
+    }
+
+    let standTipTimer = null;
+    function onStandClick() {
+      const tip = document.getElementById('standTip');
+      tip.textContent = 'Phase 3 单独立项';
+      tip.style.color = 'var(--dash-text)';
+      if (standTipTimer) clearTimeout(standTipTimer);
+      standTipTimer = setTimeout(() => {
+        tip.textContent = '本期仅样式';
+        tip.style.color = '';
+      }, 2500);
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       左块：6×8 扬声孔格栅生成与动效链路
+       ═════════════════════════════════════════════════════════ */
+    const TOTAL_COLS = 6;
+    const TOTAL_ROWS = 8;
+    const TOTAL_HOLES = TOTAL_COLS * TOTAL_ROWS; // 48 孔
+    const holes = [];
+
+    function initGrille() {
+      const grille = document.getElementById('speakerGrille');
+      grille.innerHTML = '';
+      holes.length = 0;
+
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        for (let c = 0; c < TOTAL_COLS; c++) {
+          const dot = document.createElement('div');
+          dot.className = 'grille-hole';
+          const distToCenter = Math.sqrt(Math.pow(c - 2.5, 2) + Math.pow(r - 3.5, 2));
+          dot.dataset.dist = distToCenter;
+          grille.appendChild(dot);
+          holes.push(dot);
+        }
+      }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       音频动效驱动引擎 (真实麦克风 + 演示节奏两条链路)
+       ═════════════════════════════════════════════════════════ */
+    let audioCtx = null;
+    let micStream = null;
+    let micAnalyser = null;
+    let isMicActive = false;
+    let smoothEnergy = 0.0;
+
+    const BPM = 82;
+    const BEAT_MS = (60 / BPM) * 1000;
+    let lastBeatTimestamp = 0;
+
+    let animOn = false;   // 默认关闭，关闭态不许自动采集
+
+    function resetHoles() {
+      holes.forEach(dot => {
+        dot.style.transform = 'scale(1)';
+        dot.classList.remove('vibrating');
+      });
+    }
+
+    function animLoop(timestamp) {
+      if (!animOn) {
+        requestAnimationFrame(animLoop);
+        return;
+      }
+      let targetEnergy = 0.0;
+
+      if (isMicActive && micAnalyser) {
+        const data = new Uint8Array(micAnalyser.fftSize);
+        micAnalyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        targetEnergy = Math.min(1.0, rms * 4.5);
+      } else {
+        const elapsed = (timestamp - lastBeatTimestamp);
+        if (elapsed >= BEAT_MS) {
+          lastBeatTimestamp = timestamp;
+        }
+        const progress = (timestamp - lastBeatTimestamp) / BEAT_MS;
+        targetEnergy = Math.max(0, Math.exp(-progress * 5.0) * 0.95);
+      }
+
+      smoothEnergy += (targetEnergy - smoothEnergy) * 0.28;
+
+      const threshold = 0.12;
+      for (let i = 0; i < holes.length; i++) {
+        const dot = holes[i];
+        const dist = parseFloat(dot.dataset.dist);
+        const holeScale = 1.0 + Math.max(0, (smoothEnergy - dist * 0.12) * 0.55);
+        dot.style.transform = `scale(${holeScale.toFixed(2)})`;
+
+        if (smoothEnergy > threshold && (smoothEnergy - dist * 0.15) > 0.08) {
+          dot.classList.add('vibrating');
+        } else {
+          dot.classList.remove('vibrating');
+        }
+      }
+
+      requestAnimationFrame(animLoop);
+    }
+
+    // 麦克风必须【用户主动开启】：默认关闭；关闭态不许自动采集
+    async function toggleMicrophone() {
+      const btn = document.getElementById('micBtn');
+      const dot = document.getElementById('micDot');
+      const statusText = document.getElementById('micStatusText');
+
+      if (isMicActive) {
+        // 用户主动关闭麦克风
+        if (micStream) {
+          micStream.getTracks().forEach(t => t.stop());
+          micStream = null;
+        }
+        isMicActive = false;
+        animOn = false;
+        resetHoles();
+        btn.textContent = '开启麦克风';
+        dot.className = 'mic-indicator-dot off';
+        statusText.textContent = '麦克风状态：已关闭（需点击「开启麦克风」主动授权采集）';
+        document.getElementById('animBtn').textContent = '节拍示意：关';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '授权中...';
+
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('浏览器不支持麦克风访问');
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        micStream = stream;
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+        const src = audioCtx.createMediaStreamSource(stream);
+        micAnalyser = audioCtx.createAnalyser();
+        micAnalyser.fftSize = 128;
+        src.connect(micAnalyser);
+
+        isMicActive = true;
+        animOn = true;
+        btn.textContent = '关闭麦克风';
+        dot.className = 'mic-indicator-dot active';
+        statusText.textContent = '麦克风状态：实时拾音中（已连接真实环境声音）';
+      } catch (err) {
+        isMicActive = false;
+        animOn = false;
+        resetHoles();
+        btn.textContent = '开启麦克风';
+        dot.className = 'mic-indicator-dot off';
+        statusText.textContent = '麦克风状态：已关闭（授权未开启或浏览器不支持）';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       变体与视口控制交互
+       ═════════════════════════════════════════════════════════ */
+    function setVp(vp) {
+      document.getElementById('stageFrame').dataset.vp = vp;
+      document.querySelectorAll('#vpCluster .p-btn').forEach((b, idx) => {
+        b.classList.toggle('active', ['ipad-land', 'ipad-port', 'iphone'][idx] === vp);
+      });
+    }
+
+    function setSkin(skin) {
+      document.documentElement.dataset.skin = (skin === 'ink' ? 'ink' : '');
+      document.getElementById('skinLight').classList.toggle('active', skin === 'light');
+      document.getElementById('skinInk').classList.toggle('active', skin === 'ink');
+    }
+
+    function setGrilleVariant(v) {
+      grilleVariant = v;
+      document.getElementById('vGrille1').classList.toggle('active', v === 1);
+      document.getElementById('vGrille2').classList.toggle('active', v === 2);
+      const g = document.getElementById('speakerGrille');
+      if (g) {
+        g.classList.toggle('variant-flat', v === 1);
+        g.classList.toggle('variant-countersink', v === 2);
+      }
+    }
+
+    function setOpsVariant(v) {
+      opsVariant = v;
+      document.getElementById('vOpsA').classList.toggle('active', v === 'A');
+      document.getElementById('vOpsB').classList.toggle('active', v === 'B');
+      renderOps();
+    }
+
+    function setStandVariant(v) {
+      standVariant = v;
+      document.getElementById('vStandA').classList.toggle('active', v === 'A');
+      document.getElementById('vStandB').classList.toggle('active', v === 'B');
+      renderStand();
+    }
+
+    // 初始化：默认孔阵 2 (金属沉头)、按钮 B (扁平胶囊)、谱架 B (胶囊钮)
+    window.addEventListener('DOMContentLoaded', () => {
+      initGrille();
+      setGrilleVariant(2);
+      setOpsVariant('B');
+      setStandVariant('B');
+      updateTimerDisplay();
+      requestAnimationFrame(animLoop);
+    });
+  </script>
+</body>
+</html>

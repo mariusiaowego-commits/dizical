@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dizical · D2 节拍器 744 布局 · pixel 独立版 v5</title>
+<style>
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+      --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+}
+
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+      --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+}
+
+  /* ══════════════════════════════════════════════════════════
+     D2 节拍器 · 744 布局（pixel 独立解读版 v5，对照 agy 的 v3）
+     口径：只走 --dash-* token；不加依赖；不改 v3
+     ══════════════════════════════════════════════════════════ */
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* ── 顶栏辅助控制器（与目录内其它卡同款） ── */
+  .demo-bar {
+    max-width: 1133px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 12px;
+    font-size: 13px;
+    gap: 8px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  }
+  .demo-title { font-weight: 800; color: var(--dash-text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .demo-title .legacy-note { flex-basis: 100%; font-size: 12px; font-weight: 650; color: var(--dash-text-soft); }
+  .demo-title b { color: var(--dash-coral); }
+  .demo-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill-group { display: flex; background: var(--dash-shell-hi); padding: 3px; border-radius: 8px; gap: 2px; }
+  .pill-btn {
+    border: 0; background: transparent; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: var(--dash-text-soft); cursor: pointer; font-family: inherit;
+  }
+  .pill-btn.active { background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+  :root[data-skin="ink"] .pill-btn.active { color: var(--dash-page); }
+
+  /* ── 舞台外框 ── */
+  .stage-frame {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 14px; width: 100%;
+    container-type: inline-size;   /* 卡的双栏由舞台宽决定：容器查询不能作用于容器自身 */
+    container-name: mstage;
+  }
+  .stage-frame[data-vp="ipad"] { width: 1133px; max-width: 100%; }
+  .stage-frame[data-vp="pad"] { width: 744px; max-width: 100%; }
+  .stage-frame[data-vp="iphone"] { width: 440px; max-width: 100%; }
+
+  /* ══════ 卡本体 ══════ */
+  .metro-card {
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(160deg, var(--dash-shell-hi), var(--dash-shell-lo) 70%);
+    border-radius: 28px;
+    padding: 16px;
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -2px 0 var(--dash-shell-inset),
+      0 12px 28px var(--dash-shell-shadow);
+    border: 1px solid var(--dash-shell-inset);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+  }
+  .stage-frame[data-vp="pad"] .metro-card { max-width: 744px; }
+  .stage-frame[data-vp="ipad"] .metro-card { max-width: 960px; }
+
+  /* ── ≥620：双栏 + 中枢栏贯通卡顶（42 : 58） ── */
+  @container mstage (min-width: 620px) {
+    .metro-card {
+      display: grid;
+      grid-template-columns: 42fr 58fr;
+      column-gap: 24px;
+      row-gap: 6px;
+      align-items: start;
+      padding: 18px 22px 22px;
+    }
+    .m-top-hub { grid-column: 1 / -1; }
+    .knob-section { grid-column: 1; grid-row: 2; padding-top: 14px; }
+    .m-right { grid-column: 2; grid-row: 2; padding-top: 14px; }
+  }
+
+  /* ══════ 顶层中枢栏：4/4 徽标 · 4 粒灯单行居中 · 强弱拍胶囊 · 1px 分割线 ══════ */
+  .m-top-hub {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 2px 0 10px;
+    border-bottom: 1px solid var(--dash-ink-a12);
+  }
+  .m-sig-badge {
+    justify-self: start;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset);
+    color: var(--dash-text);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .led-row {
+    justify-self: center;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 14px;
+  }
+  .led-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .led-bulb {
+    display: block;
+    width: 17px; height: 17px;
+    border-radius: 50%;
+    background: var(--dash-shell-lo);
+    border: 1px solid var(--dash-ink-a16);
+    transition: background 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+  .led-bulb.is-first { background: var(--dash-coral); border-color: var(--dash-coral); box-shadow: 0 0 0 3px var(--dash-coral-a25); }
+  .led-bulb.is-hit { background: var(--dash-accent); border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+  .led-bulb.is-first.is-hit { background: var(--dash-coral); border-color: var(--dash-coral); box-shadow: 0 0 0 4px var(--dash-coral-glow); }
+  .led-cap {
+    font-style: normal; font-size: 10px; font-weight: 650; line-height: 1;
+    /* 灯编号 10px 小字：卡身渐变两端都过 AA（浅 9.4:1 / 墨 5.3:1），弱化只靠字号不靠降对比 */
+    color: var(--dash-text); font-variant-numeric: tabular-nums;
+  }
+  .m-accent {
+    justify-self: end;
+    position: relative;
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 12px;
+    border-radius: 9999px;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-ink-a12);
+    color: var(--dash-text-soft);
+    font-family: inherit; font-size: 12px; font-weight: 650;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .m-accent::after { content: ""; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; border-radius: inherit; }
+  .m-accent:hover { background: var(--dash-shell-hi); }
+  .m-accent.is-on { background: var(--dash-coral-solid); border-color: var(--dash-coral-solid); color: var(--dash-white); }
+  .accent-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dash-ink-a25); display: block; }
+  .m-accent.is-on .accent-dot { background: var(--dash-white); box-shadow: 0 0 6px var(--dash-white); }
+
+  /* ══════ 左栏：旋钮居中 + 两侧 − / + 圆形白键 ══════ */
+  .knob-section { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+  .knob-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .step-key {
+    position: relative;
+    flex: 0 0 auto;
+    width: 38px; height: 38px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-ink-a12);
+    color: var(--dash-text);
+    font-family: inherit; font-size: 17px; font-weight: 500; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px var(--dash-shell-shadow);
+    transition: background 0.12s ease, transform 0.08s ease;
+  }
+  .step-key::after { content: ""; position: absolute; inset: -3px; border-radius: inherit; }
+  :root[data-skin="ink"] .step-key { background: var(--dash-surface-2); color: var(--dash-text); border-color: var(--dash-ink-a16); }
+  .step-key:hover { background: var(--dash-shell-hi); }
+  :root[data-skin="ink"] .step-key:hover { background: var(--dash-surface-3); }
+  .step-key:active { transform: scale(0.94); }
+
+  .knob-dial { position: relative; flex: 0 0 auto; width: 160px; height: 160px; }
+  .dial-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .knob-rotor {
+    position: absolute; inset: 15px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 26%, var(--dash-knob-hi), var(--dash-knob-lo) 72%);
+    box-shadow: 0 6px 14px var(--dash-shell-shadow), inset 0 1px 0 var(--dash-key-hi);
+  }
+  .rotor-mark {
+    position: absolute; left: 50%; top: 6px;
+    width: 2px; height: 16px; margin-left: -1px;
+    border-radius: 2px;
+    background: var(--dash-coral);
+    transform-origin: 50% 59px;
+    transform: rotate(var(--knob-deg, 0deg));
+  }
+  .knob-face {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    pointer-events: none;
+  }
+  .knob-bpm {
+    font-size: var(--dash-num); font-weight: 800; line-height: 0.92;
+    color: var(--dash-mark); letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .knob-unit { font-size: 11px; font-weight: 750; letter-spacing: 0.16em; color: var(--dash-coral); }
+
+  /* ══════ 右栏三层 ══════ */
+  .m-right { display: flex; flex-direction: column; width: 100%; }
+  .m-desc { margin: 0 0 10px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .md-cn { font-size: 13px; font-weight: 600; color: var(--dash-text); }
+  .md-it { font-size: 12px; font-weight: 650; color: var(--dash-text-soft); }
+
+  .m-actions { display: grid; grid-template-columns: 7fr 3fr; gap: 10px; align-items: stretch; }
+  .m-start {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 50px;
+    border: 0; border-radius: 14px;
+    background: var(--dash-coral-solid);
+    color: var(--dash-white);
+    font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 0.02em;
+    cursor: pointer; white-space: nowrap;
+    box-shadow: 0 4px 12px var(--dash-coral-glow);
+    transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
+  }
+  .m-start:hover { box-shadow: 0 6px 16px var(--dash-coral-glow); }
+  .m-start:active { transform: scale(0.98); }
+  .m-start .ms-ic { width: 16px; height: 16px; flex: 0 0 auto; }
+  .m-start .ms-pause { display: none; }
+  .m-start.is-running { background: var(--dash-panel); color: var(--dash-panel-text); box-shadow: 0 2px 8px var(--dash-shell-shadow); }
+  .m-start.is-running .ms-play { display: none; }
+  .m-start.is-running .ms-pause { display: block; }
+
+  .m-timbre {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 50px;
+    padding: 0 14px;
+    border-radius: 9999px;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-ink-a12);
+    color: var(--dash-text);
+    font-family: inherit; font-size: 13px; font-weight: 650;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .m-timbre:hover { background: var(--dash-shell-hi); }
+  .m-timbre .mt-name { overflow: hidden; text-overflow: ellipsis; }
+  .mt-caret { width: 10px; height: 10px; flex: 0 0 auto; transition: transform 0.16s ease; }
+  .m-timbre[aria-expanded="true"] { background: var(--dash-text); color: var(--dash-page); }
+  .m-timbre[aria-expanded="true"] .mt-caret { transform: rotate(180deg); }
+  .m-timbre-list {
+    position: absolute;
+    z-index: 30;
+    min-width: 120px;
+    padding: 6px;
+    border-radius: 12px;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    box-shadow: 0 10px 24px var(--dash-shell-shadow);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .m-timbre-list[hidden] { display: none; }
+  .m-timbre-list button {
+    border: 0; background: transparent; text-align: left;
+    padding: 8px 10px; border-radius: 8px;
+    font-family: inherit; font-size: 13px; font-weight: 650; color: var(--dash-text);
+    cursor: pointer;
+  }
+  .m-timbre-list button:hover { background: var(--dash-surface-2); }
+  .m-timbre-list button[aria-selected="true"] { background: var(--dash-text); color: var(--dash-page); }
+
+  .m-group-title {
+    margin: 14px 0 6px;
+    font-size: 12px; font-weight: 650; line-height: 1.2;
+    /* 卡身 shell-hi→shell-lo 渐变，组标题落在偏暗区：#666 实测 4.02:1、kicker(0.72) 3.93:1 均 <AA
+       → 组标题走 --dash-text（局部实测 ≥5.7:1），层级交给字号/字重（12px/650 vs 正文 13px/600） */
+    color: var(--dash-text);
+  }
+  .m-assign-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
+  .m-assign {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-ink-a12);
+  }
+  .ma-label {
+    font-size: 12px; font-weight: 650; line-height: 1.3;
+    color: var(--dash-text);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .ma-speed {
+    font-size: 11px; font-weight: 700; line-height: 1;
+    color: var(--dash-text-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-range-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .range-pill {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 32px; padding: 0 14px;
+    border-radius: 9999px;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-ink-a12);
+    color: var(--dash-text);
+    font-family: inherit; font-size: 12px; font-weight: 650;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .range-pill::after { content: ""; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; border-radius: inherit; }
+  .range-pill:hover { background: var(--dash-shell-hi); }
+  .range-pill.is-on { background: var(--dash-text); color: var(--dash-page); border-color: var(--dash-text); }
+  .rp-bpm { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.75; }
+
+  /* ── 量值面板（页内可见，非审计模式也给数） ── */
+  .probe-panel {
+    max-width: 744px; width: 100%;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px; line-height: 1.6;
+    color: var(--dash-text);
+    white-space: pre-wrap;
+  }
+  /* 审计期间冻结过渡：量值必须是终态，不是过渡起点（换肤后 0.12s 内取色会读到上一皮肤的值） */
+  .audit-nofx, .audit-nofx * { transition-duration: 0s !important; animation-duration: 0s !important; }
+
+  .audit-out {
+    max-width: 744px; width: 100%;
+    background: var(--dash-panel); color: var(--dash-page);
+    border-radius: 10px; padding: 10px 12px; font-size: 11px; line-height: 1.5;
+    white-space: pre-wrap; margin: 0;
+  }
+</style>
+<script src="../vendor/gsap.min.js"></script>
+<style>.ma-label{white-space:nowrap !important; font-size:22px !important;}</style>
+</head>
+<body>
+
+  <div class="demo-bar">
+    <div class="demo-title">
+      dizical · D2 节拍器 <b>744 布局 · pixel 独立版 v5</b>
+      <span class="legacy-note">对照卡：同一份 dad 规格，pixel 的独立解读（agy 的实现在 metronome-01-v3.html）。换肤只走 --dash-*，无 emoji，不引新依赖。</span>
+    </div>
+    <div class="demo-controls">
+      <div class="pill-group" id="vpPills">
+        <button class="pill-btn" onclick="setViewport('ipad')">iPad 1133</button>
+        <button class="pill-btn active" onclick="setViewport('pad')">744×1133</button>
+        <button class="pill-btn" onclick="setViewport('iphone')">iPhone 440</button>
+      </div>
+      <div class="pill-group" id="skinPills">
+        <button class="pill-btn active" onclick="setSkin('light')">包豪斯浅白</button>
+        <button class="pill-btn" onclick="setSkin('ink')">深色墨黑</button>
+      </div>
+      <div class="pill-group">
+        <button class="pill-btn" id="demoRunBtn" onclick="toggleDemoRun()">跑动演示</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="stage-frame" data-vp="pad" id="stageFrame">
+    <div class="metro-card" id="metroCard">
+
+      <!-- ① 顶层中枢栏：贯通卡顶 -->
+      <header class="m-top-hub" id="topHub">
+        <span class="m-sig-badge" id="meterBadge">4/4</span>
+
+        <div class="led-row" id="ledRow" role="group" aria-label="拍位指示（4/4，第 1 拍为强拍）">
+          <span class="led-item"><i class="led-bulb is-first" id="led0"></i><em class="led-cap">1</em></span>
+          <span class="led-item"><i class="led-bulb" id="led1"></i><em class="led-cap">2</em></span>
+          <span class="led-item"><i class="led-bulb" id="led2"></i><em class="led-cap">3</em></span>
+          <span class="led-item"><i class="led-bulb" id="led3"></i><em class="led-cap">4</em></span>
+        </div>
+
+        <button type="button" class="m-accent" id="accentBtn" aria-pressed="false" aria-label="强弱拍开关">
+          <i class="accent-dot"></i><span id="accentText">强弱拍：关</span>
+        </button>
+      </header>
+
+      <!-- ② 左栏：旋钮 + 两侧 − / + -->
+      <section class="knob-section" id="knobSection">
+        <div class="knob-row">
+          <button type="button" class="step-key" id="stepDown" aria-label="BPM 减一">−</button>
+
+          <div class="knob-dial" id="knobDial" title="上下拖动调速">
+            <svg class="dial-ring" id="dialRing" viewBox="0 0 160 160" aria-hidden="true"></svg>
+            <div class="knob-rotor" id="knobRotor">
+              <i class="rotor-mark" id="rotorMark"></i>
+              <div class="knob-face">
+                <span class="knob-bpm" id="bpmVal">82</span>
+                <span class="knob-unit">BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="step-key" id="stepUp" aria-label="BPM 加一">+</button>
+        </div>
+      </section>
+
+      <!-- ③ 右栏：L1 释义 + 7:3 操作行 / L2 老师定制练习 / L3 速度区间 -->
+      <section class="m-right" id="mRight">
+
+        <p class="m-desc" id="mDesc">
+          <span class="md-cn" id="descCn">中板 · 优美抒情</span>
+          <span class="md-it" id="descIt">Moderato</span>
+        </p>
+
+        <div class="m-actions">
+          <button type="button" class="m-start" id="startBtn" aria-label="开始节拍器" aria-pressed="false">
+            <svg class="ms-ic ms-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="7 4 21 12 7 20 7 4"></polygon></svg>
+            <svg class="ms-ic ms-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.2"></rect><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"></rect></svg>
+            <span id="startText">开始</span>
+          </button>
+
+          <button type="button" class="m-timbre" id="timbreBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="timbreList" aria-label="音色：木鱼">
+            <span class="mt-name" id="timbreName">木鱼</span>
+            <svg class="mt-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+
+          <div class="m-timbre-list" id="timbreList" role="listbox" aria-label="音色" hidden>
+            <button type="button" role="option" aria-selected="true">木鱼</button>
+            <button type="button" role="option" aria-selected="false">节拍器</button>
+            <button type="button" role="option" aria-selected="false">电子音</button>
+            <button type="button" role="option" aria-selected="false">木鱼 + 铃</button>
+          </div>
+        </div>
+
+        <h3 class="m-group-title">老师定制练习</h3>
+        <div class="m-assign-grid" id="assignGrid">
+          <div class="m-assign"><span class="ma-label">长音练习 · 每音 8 拍</span><span class="ma-speed">60</span></div>
+          <div class="m-assign"><span class="ma-label">吐音练习（单吐 / 双吐）</span><span class="ma-speed">92</span></div>
+          <div class="m-assign"><span class="ma-label">音阶上下行 · G 大调两个八度</span><span class="ma-speed">72</span></div>
+          <div class="m-assign"><span class="ma-label">《小放牛》第一段 16 小节</span><span class="ma-speed">76</span></div>
+        </div>
+
+        <h3 class="m-group-title">速度区间</h3>
+        <div class="m-range-row" id="rangeRow">
+          <button type="button" class="range-pill" data-bpm="60">慢练 <span class="rp-bpm">60</span></button>
+          <button type="button" class="range-pill" data-bpm="72">稳练 <span class="rp-bpm">72</span></button>
+          <button type="button" class="range-pill is-on" data-bpm="82">原速 <span class="rp-bpm">82</span></button>
+          <button type="button" class="range-pill" data-bpm="96">提速 <span class="rp-bpm">96</span></button>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <aside class="probe-panel" id="probePanel">量值面板加载中…</aside>
+  <pre class="audit-out" id="audit" hidden></pre>
+
+<script>
+(function () {
+  'use strict';
+
+  var MIN_BPM = 40, MAX_BPM = 208;
+  var state = { bpm: 82, running: false, beat: 0, accent: false, skin: 'light', vp: 'pad' };
+
+  var card = document.getElementById('metroCard');
+  var stage = document.getElementById('stageFrame');
+  var bpmVal = document.getElementById('bpmVal');
+  var descCn = document.getElementById('descCn');
+  var descIt = document.getElementById('descIt');
+  var startBtn = document.getElementById('startBtn');
+  var startText = document.getElementById('startText');
+  var timbreBtn = document.getElementById('timbreBtn');
+  var timbreName = document.getElementById('timbreName');
+  var timbreList = document.getElementById('timbreList');
+  var accentBtn = document.getElementById('accentBtn');
+  var accentText = document.getElementById('accentText');
+  var rotorMark = document.getElementById('rotorMark');
+  var rangeRow = document.getElementById('rangeRow');
+
+  /* ── 刻度环：60 格（每 5 格加长），已走过部分珊瑚色 ── */
+  var RING = { r1: 62, r2: 69, r3: 70, r4: 76 };
+  function buildRing(bpm) {
+    var svg = document.getElementById('dialRing');
+    var NS = 'http://www.w3.org/2000/svg';
+    while (svg.firstChild) { svg.removeChild(svg.firstChild); }
+    var ratio = (clamp(bpm) - MIN_BPM) / (MAX_BPM - MIN_BPM);
+    var lit = Math.round(ratio * 59);
+    for (var i = 0; i < 60; i++) {
+      var major = (i % 5 === 0);
+      var a = (Math.PI * 2 * i / 60) - Math.PI / 2;
+      var ln = document.createElementNS(NS, 'line');
+      var inner = major ? RING.r1 : RING.r2;
+      ln.setAttribute('x1', (80 + Math.cos(a) * inner).toFixed(2));
+      ln.setAttribute('y1', (80 + Math.sin(a) * inner).toFixed(2));
+      ln.setAttribute('x2', (80 + Math.cos(a) * RING.r4).toFixed(2));
+      ln.setAttribute('y2', (80 + Math.sin(a) * RING.r4).toFixed(2));
+      ln.setAttribute('stroke', i <= lit ? 'var(--dash-coral)' : (major ? 'var(--dash-ink-a25)' : 'var(--dash-ink-a16)'));
+      ln.setAttribute('stroke-width', major ? '2' : '1');
+      ln.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(ln);
+    }
+  }
+  function clamp(v) { return Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(v))); }
+  function degFor(bpm) { return (-135 + ((clamp(bpm) - MIN_BPM) / (MAX_BPM - MIN_BPM)) * 270).toFixed(2) + 'deg'; }
+
+  var TEMPO = [
+    [0, '慢板 · 沉稳舒展', 'Adagio'],
+    [60, '行板 · 从容行走', 'Andante'],
+    [76, '中板 · 优美抒情', 'Moderato'],
+    [108, '小快板 · 轻快流畅', 'Allegretto'],
+    [120, '快板 · 明快有力', 'Allegro'],
+    [168, '急板 · 热烈急促', 'Presto']
+  ];
+  function tempoOf(bpm) {
+    var hit = TEMPO[0];
+    for (var i = 0; i < TEMPO.length; i++) { if (bpm >= TEMPO[i][0]) { hit = TEMPO[i]; } }
+    return hit;
+  }
+
+  function renderBpm() {
+    bpmVal.textContent = state.bpm;
+    rotorMark.style.setProperty('--knob-deg', degFor(state.bpm));
+    buildRing(state.bpm);
+    var t = tempoOf(state.bpm);
+    descCn.textContent = t[1];
+    descIt.textContent = t[2];
+    var pills = rangeRow.querySelectorAll('.range-pill');
+    for (var i = 0; i < pills.length; i++) {
+      pills[i].classList.toggle('is-on', Number(pills[i].getAttribute('data-bpm')) === state.bpm);
+    }
+  }
+  function setBpm(v) { state.bpm = clamp(v); renderBpm(); scheduleBeat(); }
+
+  /* ── 拍灯 ── */
+  function clearLeds() {
+    for (var i = 0; i < 4; i++) { document.getElementById('led' + i).classList.remove('is-hit'); }
+  }
+  function hitLed(i) {
+    clearLeds();
+    document.getElementById('led' + i).classList.add('is-hit');
+  }
+  var timer = null;
+  function scheduleBeat() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (!state.running) { clearLeds(); return; }
+    hitLed(state.beat);
+    timer = setInterval(function () {
+      state.beat = (state.beat + 1) % 4;
+      hitLed(state.beat);
+    }, Math.round(60000 / state.bpm));
+  }
+  function setRunning(on) {
+    state.running = !!on;
+    startBtn.classList.toggle('is-running', state.running);
+    startBtn.setAttribute('aria-pressed', state.running ? 'true' : 'false');
+    startBtn.setAttribute('aria-label', state.running ? '暂停节拍器' : '开始节拍器');
+    startText.textContent = state.running ? '暂停' : '开始';
+    if (!state.running) { state.beat = 0; }
+    scheduleBeat();
+  }
+
+  /* ── 交互 ── */
+  startBtn.addEventListener('click', function () { setRunning(!state.running); });
+  document.getElementById('stepDown').addEventListener('click', function () { setBpm(state.bpm - 1); });
+  document.getElementById('stepUp').addEventListener('click', function () { setBpm(state.bpm + 1); });
+  accentBtn.addEventListener('click', function () {
+    state.accent = !state.accent;
+    accentBtn.classList.toggle('is-on', state.accent);
+    accentBtn.setAttribute('aria-pressed', state.accent ? 'true' : 'false');
+    accentText.textContent = state.accent ? '强弱拍：开' : '强弱拍：关';
+  });
+
+  rangeRow.addEventListener('click', function (e) {
+    var b = e.target.closest('.range-pill');
+    if (b) { setBpm(Number(b.getAttribute('data-bpm'))); }
+  });
+
+  /* 旋钮拖动调速（上下拖动） */
+  var drag = null;
+  document.getElementById('knobDial').addEventListener('pointerdown', function (e) {
+    drag = { y: e.clientY, bpm: state.bpm };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  });
+  document.getElementById('knobDial').addEventListener('pointermove', function (e) {
+    if (!drag) { return; }
+    setBpm(drag.bpm + Math.round((drag.y - e.clientY) / 4));
+  });
+  document.getElementById('knobDial').addEventListener('pointerup', function () { drag = null; });
+
+  /* 音色下拉 */
+  function closeTimbre() {
+    timbreList.hidden = true;
+    timbreBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openTimbre() {
+    var r = timbreBtn.getBoundingClientRect();
+    var cr = card.getBoundingClientRect();
+    timbreList.style.left = 'auto';
+    timbreList.style.right = Math.max(0, cr.right - r.right) + 'px';
+    timbreList.style.top = (r.bottom - cr.top + 6) + 'px';
+    timbreList.hidden = false;
+    timbreBtn.setAttribute('aria-expanded', 'true');
+  }
+  timbreBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (timbreList.hidden) { openTimbre(); } else { closeTimbre(); }
+  });
+  timbreList.addEventListener('click', function (e) {
+    var b = e.target.closest('button[role="option"]');
+    if (!b) { return; }
+    var opts = timbreList.querySelectorAll('button[role="option"]');
+    for (var i = 0; i < opts.length; i++) { opts[i].setAttribute('aria-selected', opts[i] === b ? 'true' : 'false'); }
+    timbreName.textContent = b.textContent;
+    timbreBtn.setAttribute('aria-label', '音色：' + b.textContent);
+    closeTimbre();
+    e.stopPropagation();
+  });
+  document.addEventListener('click', function () { if (!timbreList.hidden) { closeTimbre(); } });
+
+  /* ── 演示跑动 ── */
+  function toggleDemoRun() {
+    setRunning(!state.running);
+    document.getElementById('demoRunBtn').classList.toggle('active', state.running);
+  }
+
+  /* ── 视口 / 皮肤 ── */
+  function setViewport(vp) {
+    state.vp = vp;
+    stage.setAttribute('data-vp', vp);
+    var bs = document.getElementById('vpPills').querySelectorAll('.pill-btn');
+    var names = ['ipad', 'pad', 'iphone'];
+    for (var i = 0; i < bs.length; i++) { bs[i].classList.toggle('active', names[i] === vp); }
+    paintProbe();
+  }
+  function setSkin(sk) {
+    state.skin = sk;
+    document.documentElement.classList.add('audit-nofx');
+    if (sk === 'ink') { document.documentElement.setAttribute('data-skin', 'ink'); }
+    else { document.documentElement.removeAttribute('data-skin'); }
+    var bs = document.getElementById('skinPills').querySelectorAll('.pill-btn');
+    for (var i = 0; i < bs.length; i++) { bs[i].classList.toggle('active', (i === 0) === (sk === 'light')); }
+    void card.offsetWidth;
+    paintProbe();
+    document.documentElement.classList.remove('audit-nofx');
+  }
+  window.setViewport = setViewport;
+  window.setSkin = setSkin;
+  window.toggleDemoRun = toggleDemoRun;
+
+  /* ══════ 自检 ══════ */
+  function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function rect(el) { return el.getBoundingClientRect(); }
+  function inkWidth(el) {
+    var r = document.createRange();
+    r.selectNodeContents(el);
+    var rs = r.getClientRects();
+    if (!rs.length) { return 0; }
+    var l = Infinity, rr = -Infinity;
+    for (var i = 0; i < rs.length; i++) { l = Math.min(l, rs[i].left); rr = Math.max(rr, rs[i].right); }
+    return rr - l;
+  }
+  function leafTexts(root) {
+    var out = [];
+    var all = root.querySelectorAll('*');
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (el.children.length === 0 && (el.textContent || '').trim()) { out.push(el); }
+    }
+    return out;
+  }
+  function mapColor(s) {
+    var m = String(s).match(/rgba?\(([^)]+)\)/);
+    if (!m) { return null; }
+    var p = m[1].split(',').map(parseFloat);
+    return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+  }
+  /* 渐变底：按元素中心在渐变线上的位置取【局部】色（比"取最暗色停"更贴近真渲染） */
+  function gradAt(el, boxEl) {
+    var cs = getComputedStyle(boxEl);
+    var img = cs.backgroundImage;
+    if (img.indexOf('gradient') < 0) { return null; }
+    var stops = [];
+    var re = /(rgba?\([^)]+\))\s*([\d.]+%)?/g;
+    var m;
+    while ((m = re.exec(img))) { stops.push({ c: mapColor(m[1]), pos: m[2] ? parseFloat(m[2]) / 100 : null }); }
+    if (stops.length < 2) { return null; }
+    var am = img.match(/([\d.]+)deg/);
+    var ang = am ? parseFloat(am[1]) : 180;
+    var rad = ang * Math.PI / 180;
+    var W = boxEl.clientWidth, H = boxEl.clientHeight;
+    var len = Math.abs(W * Math.sin(rad)) + Math.abs(H * Math.cos(rad));
+    if (len < 1) { return stops[0].c; }
+    var br = boxEl.getBoundingClientRect(), er = el.getBoundingClientRect();
+    var dx = Math.sin(rad), dy = -Math.cos(rad);
+    var t = 0.5 + (((er.left + er.width / 2) - br.left - W / 2) * dx + ((er.top + er.height / 2) - br.top - H / 2) * dy) / len;
+    t = Math.max(0, Math.min(1, t));
+    var pos = stops.map(function (s, i) { return s.pos === null ? i / (stops.length - 1) : s.pos; });
+    var i2 = 0;
+    while (i2 < pos.length - 1 && t > pos[i2 + 1]) { i2++; }
+    if (i2 >= pos.length - 1) { return stops[stops.length - 1].c; }
+    var span = pos[i2 + 1] - pos[i2];
+    var f = span <= 0 ? 0 : (t - pos[i2]) / span;
+    var a = stops[i2].c, b = stops[i2 + 1].c;
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, 1];
+  }
+  function effBg(el, stop) {
+    var cur = el;
+    var acc = null;
+    while (cur && cur !== stop) {
+      var cs = getComputedStyle(cur);
+      if (cs.backgroundImage.indexOf('gradient') >= 0) {
+        return { c: gradAt(el, cur), grad: true };
+      }
+      var bg = mapColor(cs.backgroundColor);
+      if (bg && bg[3] > 0) {
+        acc = acc ? over(acc, bg) : bg;
+        if (bg[3] >= 1) { return { c: acc, grad: false }; }
+      }
+      cur = cur.parentElement;
+    }
+    return { c: acc || (mapColor(getComputedStyle(document.body).backgroundColor) || [255, 255, 255, 1]), grad: false };
+  }
+  function lum(c) {
+    function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+  function over(fg, bg) {
+    var a = fg[3];
+    return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a), 1];
+  }
+  function ratio(fg, bg) {
+    var a = lum(over(fg, bg)), b = lum(bg);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }
+
+  function measure() {
+    /* 关过渡由调用方负责（runAudit / setSkin 外层加 .audit-nofx）：
+       否则每次 measure 结束时摘掉，下一次换肤又会启动新的过渡，读到的还是上一皮肤的值 */
+    void card.offsetWidth;
+    var o = {};
+    var cr = rect(card);
+    o.viewportWidth = window.innerWidth;
+    o.vp = state.vp;
+    o.skin = state.skin;
+    o.cardW = +cr.width.toFixed(2);
+
+    /* 1) 文字无裁切（dad 指定：scrollWidth ≤ clientWidth+1；另加真实墨迹宽复核）
+       注：带命中区扩边（::after 负 inset）的控件，scrollWidth 会多出扩边量 → 按扩边量豁免 */
+    var clip = [];
+    var texts = leafTexts(card);
+    for (var i = 0; i < texts.length; i++) {
+      var el = texts[i];
+      var sw = el.scrollWidth, cw = el.clientWidth;
+      var iw = inkWidth(el);
+      var pa = getComputedStyle(el, '::after');
+      var ring = 0;
+      if (pa && pa.content !== 'none') {
+        ring = Math.max(0, -px(pa.left), -px(pa.right));
+      }
+      var bad = (sw > cw + 1 + ring);
+      var badInk = (iw > cw + 1.2);
+      if (bad || badInk) {
+        clip.push({ t: (el.textContent || '').trim().slice(0, 14), sw: sw, cw: cw, ink: +iw.toFixed(1), ring: ring, why: bad ? 'scroll' : 'ink' });
+      }
+    }
+    o.textCount = texts.length;
+    o.clipped = clip;
+
+    /* 2) 灯单行 + 灯组居中 */
+    var tops = [], leds = [];
+    for (var k = 0; k < 4; k++) {
+      var lr = rect(document.getElementById('led' + k));
+      leds.push(lr);
+      tops.push(lr.top);
+    }
+    o.ledTops = tops.map(function (t) { return +t.toFixed(2); });
+    o.ledYSpread = +(Math.max.apply(null, tops) - Math.min.apply(null, tops)).toFixed(2);
+    var ledRow = rect(document.getElementById('ledRow'));
+    o.ledCenter = +(ledRow.left + ledRow.width / 2).toFixed(2);
+    o.cardCenter = +(cr.left + cr.width / 2).toFixed(2);
+    o.ledCenterOffset = +Math.abs(o.ledCenter - o.cardCenter).toFixed(2);
+    o.ledRowH = +ledRow.height.toFixed(2);
+    o.ledBulb = { w: +leds[0].width.toFixed(2), h: +leds[0].height.toFixed(2) };
+
+    /* 3) 步进键：与旋钮 / 主按钮净距 + 命中区 */
+    var down = rect(document.getElementById('stepDown'));
+    var up = rect(document.getElementById('stepUp'));
+    var dial = rect(document.getElementById('knobDial'));
+    var start = rect(startBtn);
+    o.stepKey = { w: +down.width.toFixed(2), h: +down.height.toFixed(2) };
+    o.keyToDialGap = +Math.min(dial.left - down.right, up.left - dial.right).toFixed(2);
+    o.keyToStartGap = +(start.left - up.right).toFixed(2);
+    o.vertGapKnobStart = +(start.top - rect(document.getElementById('knobSection')).bottom).toFixed(2);
+    var pseudo = getComputedStyle(document.getElementById('stepUp'), '::after');
+    o.stepHitH = +(down.height + Math.abs(px(pseudo.top)) * 2).toFixed(2);
+    o.stepHitW = +(down.width + Math.abs(px(pseudo.left)) * 2).toFixed(2);
+
+    /* 4) 42 : 58 双栏 */
+    var knobSec = rect(document.getElementById('knobSection'));
+    var rightSec = rect(document.getElementById('mRight'));
+    var twoCol = Math.abs(knobSec.top - rightSec.top) < 2 && rightSec.left > knobSec.right;
+    o.twoCol = twoCol;
+    if (twoCol) {
+      var sum = knobSec.width + rightSec.width;
+      o.leftPct = +(knobSec.width / sum * 100).toFixed(2);
+      o.rightPct = +(rightSec.width / sum * 100).toFixed(2);
+      o.gapBetweenCols = +(rightSec.left - knobSec.right).toFixed(2);
+    } else {
+      o.leftPct = null; o.rightPct = null;
+    }
+
+    /* 5) 操作行 7:3 + 等高 */
+    var tb = rect(timbreBtn);
+    o.startH = +start.height.toFixed(2);
+    o.timbreH = +tb.height.toFixed(2);
+    o.timbreW = +tb.width.toFixed(2);
+    var actW = start.width + tb.width + px(getComputedStyle(document.querySelector('.m-actions')).gap);
+    o.actionRatioStart = +(start.width / actW * 100).toFixed(2);
+    o.actionRatioTimbre = +(tb.width / actW * 100).toFixed(2);
+
+    /* 6) 药丸 h32 + 命中区 + 组标题字号 */
+    var pills = document.querySelectorAll('.range-pill');
+    var ph = [], pw = [];
+    for (var p = 0; p < pills.length; p++) { ph.push(+rect(pills[p]).height.toFixed(2)); }
+    o.pillHeights = ph;
+    var pp = getComputedStyle(pills[0], '::after');
+    o.pillHitH = +(ph[0] + Math.abs(px(pp.top)) * 2).toFixed(2);
+    o.pillRadius = getComputedStyle(pills[0]).borderRadius;
+    o.groupTitleSize = px(getComputedStyle(document.querySelector('.m-group-title')).fontSize);
+    o.groupTitleColor = getComputedStyle(document.querySelector('.m-group-title')).color;
+
+    /* 7) 定制练习卡：双列 + 不截断 */
+    var cards = document.querySelectorAll('.m-assign');
+    var rows = {};
+    for (var q = 0; q < cards.length; q++) {
+      var r2 = rect(cards[q]);
+      var key = Math.round(r2.top);
+      rows[key] = (rows[key] || 0) + 1;
+    }
+    o.assignRows = Object.keys(rows).map(function (k) { return rows[k]; });
+    o.assignGridCols = getComputedStyle(document.getElementById('assignGrid')).gridTemplateColumns;
+    var speeds = document.querySelectorAll('.ma-speed');
+    o.speedSplitOK = true;
+    for (var s = 0; s < speeds.length; s++) {
+      var lbl = speeds[s].parentElement.querySelector('.ma-label');
+      if (rect(speeds[s]).left < rect(lbl).right - 1) { o.speedSplitOK = false; }
+    }
+
+    /* 8) 色：文字 token × 承接面 */
+    var rows2 = [];
+    var probes = [
+      ['释义', document.getElementById('descCn')],
+      ['组标题', document.querySelector('.m-group-title')],
+      ['定制练习名', document.querySelector('.ma-label')],
+      ['速度数', document.querySelector('.ma-speed')],
+      ['药丸(闲)', document.querySelector('.range-pill:not(.is-on)')],
+      ['药丸(活)', document.querySelector('.range-pill.is-on')],
+      ['开始键(闲)', startBtn],
+      ['音色胶囊', timbreBtn],
+      ['强弱拍胶囊', accentBtn],
+      ['节拍号', document.getElementById('meterBadge')],
+      ['旋钮数字', document.getElementById('bpmVal')],
+      ['旋钮单位', document.querySelector('.knob-unit')],
+      ['灯编号', document.querySelector('.led-cap')]
+    ];
+    var worst = 99, worstName = '';
+    for (var w = 0; w < probes.length; w++) {
+      var el2 = probes[w][1];
+      var fg = mapColor(getComputedStyle(el2).color);
+      var bg = effBg(el2, card.parentElement);
+      var rr = ratio(fg, bg.c);
+      rows2.push({ name: probes[w][0], color: getComputedStyle(el2).color, bg: bg.c.map(function (v) { return Math.round(v); }).join(','), ratio: +rr.toFixed(2), grad: bg.grad });
+      if (rr < worst) { worst = rr; worstName = probes[w][0]; }
+    }
+    o.contrast = rows2;
+    o.worstContrast = +worst.toFixed(2);
+    o.worstContrastName = worstName;
+
+    /* 9) 卡内不溢出（744 档） */
+    var inside = [];
+    for (var z = 0; z < texts.length; z++) {
+      var tr = rect(texts[z]);
+      if (tr.width === 0 && tr.height === 0) { continue; }   /* display:none（下拉收起）不算越界 */
+      if (tr.left < cr.left - 1 || tr.right > cr.right + 1) {
+        inside.push((texts[z].className || texts[z].tagName) + ':' + (texts[z].textContent || '').trim().slice(0, 12) +
+          '@' + tr.left.toFixed(0) + '..' + tr.right.toFixed(0) + '/卡' + cr.left.toFixed(0) + '..' + cr.right.toFixed(0));
+      }
+    }
+    o.outOfCard = inside.length;
+    o.outOfCardList = inside.slice(0, 6);
+    return o;
+  }
+
+  var VP = ['pad', 'ipad', 'iphone'];
+  var SKIN = ['light', 'ink'];
+  function runAudit() {
+    var fails = [];
+    var all = {};
+    var prevVp = state.vp, prevSkin = state.skin;
+    /* 先冻过渡再换肤：0.12s 过渡在跑的时候，computedStyle 读到的是上一皮肤的中间值 */
+    document.documentElement.classList.add('audit-nofx');
+    void card.offsetWidth;
+    for (var v = 0; v < VP.length; v++) {
+      for (var s = 0; s < SKIN.length; s++) {
+        stage.setAttribute('data-vp', VP[v]);
+        if (SKIN[s] === 'ink') { document.documentElement.setAttribute('data-skin', 'ink'); }
+        else { document.documentElement.removeAttribute('data-skin'); }
+        state.vp = VP[v]; state.skin = SKIN[s];
+        void card.offsetWidth;
+        var key = VP[v] + '/' + SKIN[s];
+        var o = measure();
+        all[key] = o;
+        if (o.clipped.length) { fails.push('A1 fail [' + key + '] 文字裁切 ' + JSON.stringify(o.clipped)); }
+        if (o.outOfCard) { fails.push('A1 fail [' + key + '] 越出卡外元素数 ' + o.outOfCard + ' ' + JSON.stringify(o.outOfCardList)); }
+        if (VP[v] !== 'iphone' && !o.twoCol) { fails.push('A0 fail [' + key + '] 双栏未生效（容器查询未命中）'); }
+        if (o.ledYSpread !== 0) { fails.push('A2 fail [' + key + '] 4 粒灯非单行 y 极差 ' + o.ledYSpread + 'px'); }
+        if (o.ledCenterOffset > 1) { fails.push('A3 fail [' + key + '] 灯组未居中 偏 ' + o.ledCenterOffset + 'px'); }
+        if (o.twoCol && o.keyToStartGap < 16) { fails.push('A4 fail [' + key + '] 步进键↔主按钮净距 ' + o.keyToStartGap + 'px < 16'); }
+        if (!o.twoCol && o.vertGapKnobStart < 16) { fails.push('A4 fail [' + key + '] 单栏时旋钮区↔主按钮竖向净距 ' + o.vertGapKnobStart + 'px < 16'); }
+        if (o.keyToDialGap < 16) { fails.push('A5 fail [' + key + '] 步进键↔旋钮净距 ' + o.keyToDialGap + 'px < 16'); }
+        if (o.stepHitH < 44 || o.stepHitW < 44) { fails.push('A6 fail [' + key + '] 步进键命中区 ' + o.stepHitW + '×' + o.stepHitH + ' < 44'); }
+        if (VP[v] !== 'iphone') {
+          if (Math.abs(o.leftPct - 42) > 1) { fails.push('A7 fail [' + key + '] 左栏 ' + o.leftPct + '% ≠ 42±1'); }
+          if (Math.abs(o.rightPct - 58) > 1) { fails.push('A8 fail [' + key + '] 右栏 ' + o.rightPct + '% ≠ 58±1'); }
+          if (Math.abs(o.startH - o.timbreH) > 0.5) { fails.push('A9 fail [' + key + '] 下拉 ' + o.timbreH + ' ≠ 主按钮 ' + o.startH); }
+        }
+        for (var p = 0; p < o.pillHeights.length; p++) {
+          if (Math.abs(o.pillHeights[p] - 32) > 0.5) { fails.push('A10 fail [' + key + '] 药丸高 ' + o.pillHeights[p] + ' ≠ 32'); }
+        }
+        if (o.pillHitH < 44) { fails.push('A11 fail [' + key + '] 药丸命中区高 ' + o.pillHitH + ' < 44'); }
+        if (o.groupTitleSize !== 12) { fails.push('A12 fail [' + key + '] 组标题字号 ' + o.groupTitleSize + ' ≠ 12'); }
+        if (o.worstContrast < 4.5) { fails.push('A13 fail [' + key + '] 最低对比 ' + o.worstContrast + ' (' + o.worstContrastName + ') < 4.5'); }
+      }
+    }
+    stage.setAttribute('data-vp', prevVp);
+    if (prevSkin === 'ink') { document.documentElement.setAttribute('data-skin', 'ink'); }
+    else { document.documentElement.removeAttribute('data-skin'); }
+    state.vp = prevVp; state.skin = prevSkin;
+    void card.offsetWidth;
+    document.documentElement.classList.remove('audit-nofx');
+    return { failures: fails, measurements: all };
+  }
+  window.runAudit = runAudit;
+
+  /* ── 可见量值面板 ── */
+  function paintProbe() {
+    var o = measure();
+    var L = [];
+    L.push('视口 ' + o.vp + ' · 皮肤 ' + o.skin + ' · 卡宽 ' + o.cardW + 'px');
+    L.push('双栏 ' + (o.twoCol ? '左 ' + o.leftPct + '% : 右 ' + o.rightPct + '%（列距 ' + o.gapBetweenCols + 'px）' : '单栏（窄档）'));
+    L.push('灯 y 极差 ' + o.ledYSpread + 'px · 灯组偏卡心 ' + o.ledCenterOffset + 'px · 灯 ' + o.ledBulb.w + '×' + o.ledBulb.h);
+    L.push('步进键 ' + o.stepKey.w + '×' + o.stepKey.h + '（命中 ' + o.stepHitW + '×' + o.stepHitH + '）· 距旋钮 ' + o.keyToDialGap + 'px · 距主按钮 ' + o.keyToStartGap + 'px');
+    L.push('操作行 开始 ' + o.actionRatioStart + '% : 音色 ' + o.actionRatioTimbre + '% · 高 ' + o.startH + '/' + o.timbreH + 'px');
+    L.push('药丸高 ' + o.pillHeights.join('/') + '（命中高 ' + o.pillHitH + '）· 圆角 ' + o.pillRadius);
+    L.push('定制练习每行卡数 ' + o.assignRows.join('/') + ' · 文字裁切 ' + o.clipped.length + ' · 越出卡外 ' + o.outOfCard);
+    L.push('最低对比 ' + o.worstContrast + ':1（' + o.worstContrastName + '）');
+    document.getElementById('probePanel').textContent = L.join('\n');
+  }
+
+  renderBpm();
+  paintProbe();
+
+  if (/[?&]audit=1/.test(location.search)) {
+    var pre = document.getElementById('audit');
+    pre.hidden = false;
+    var res = runAudit();
+    pre.textContent = (res.failures.length ? 'ASSERT_FAIL\n' : 'ASSERT_OK\n') + JSON.stringify(res, null, 1);
+  }
+  window.addEventListener('resize', function () { if (!document.getElementById('audit').hidden) { return; } paintProbe(); });
+})();
+</script>
+</body>
+</html>

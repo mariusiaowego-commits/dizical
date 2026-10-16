@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日练习时长卡 — 包豪斯暗黑 widget（demo）</title>
+<meta name="description" content="今日练习时长卡 demo：日期栏 + 大号数字时钟 + 橙色总时长胶囊 + 实线练习/虚线休息时间轴 + 最近一次科目时长 + 节拍器与皇冠图标。">
+<style>
+  /* ================= 今日练习时长卡（card-practice-duration）=================
+     依据 dad 给的 widget_prompt_ui.md：包豪斯极简 / 大号几何数字 / 橙色胶囊总时长
+     / 实线=练习 虚线=休息 的时间轴 / 左下最近一次科目时长 / 右下节拍器 + 皇冠
+     颜色只走 --dash-*（浅银 / 深墨两套）
+     数据：与 D5 今日记录同一份样本（9 段；示例数据 started_at 互相重叠 →
+           时间轴按「练习顺序铺排 + 每段间隔 60s 休息」画，卡内已标注）
+     ======================================================================= */
+  /* ── token 契约：从 dashboard-skin-01-v2.html 原样抽取（勿手改，改契约要全文件同步） ── */
+
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+
+    /* 非 token 内部变量：视口宽高与 DESIGN.md 衬线字族 token */
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --font-serif: "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  }
+:root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 14px;
+    background: var(--dash-page); color: var(--dash-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .dbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--dash-coral); margin-bottom: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--dash-text-soft); font: inherit; padding: 5px 10px; cursor: pointer; }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); font-weight: 700; }
+
+  /* 卡片本体 */
+  .card {
+    width: 380px; min-width: 300px; max-width: 480px;
+    border: 1px solid var(--dash-ink-a12); border-radius: var(--dash-radius, 36px);
+    background: var(--dash-white); padding: 20px 20px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .date-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .date-row .d { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--dash-text); }
+  .date-row .w { font-size: 11.5px; color: var(--dash-text-soft); }
+
+  /* 大号数字时钟：等宽 + 镂空感（用 tabular + 细字重的大字号） */
+  .clock { display: flex; align-items: flex-start; gap: 8px; margin-top: 2px; }
+  .clock .hm {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 62px; font-weight: 300; line-height: .92; letter-spacing: -2px;
+    color: var(--dash-text); font-variant-numeric: tabular-nums;
+  }
+  .clock .sec {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 18px; font-weight: 300; color: var(--dash-text-soft);
+    font-variant-numeric: tabular-nums; margin-top: 6px;
+  }
+  .clock-cap { font-size: 10.5px; color: var(--dash-text-soft); letter-spacing: .4px; margin-top: -6px; }
+
+  /* 段标题 + 总时长胶囊 */
+  .sec-head { display: flex; align-items: center; justify-content: space-between; }
+  .sec-head .t { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+  .pill {
+    display: inline-flex; align-items: baseline; gap: 2px;
+    background: var(--dash-accent); color: var(--dash-page);
+    border-radius: 999px; padding: 5px 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; font-weight: 700; letter-spacing: .5px;
+  }
+  .pill small { font-size: 10px; font-weight: 600; opacity: .85; }
+
+  /* 核心可视化：橙色胶囊 + 实线练习段 + 虚线休息段 + 微刻度 */
+  .hero { display: flex; flex-direction: column; gap: 6px; }
+  .ends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dash-text-soft);
+          font-variant-numeric: tabular-nums; }
+  .rail {
+    position: relative; height: 54px; border-radius: 999px; overflow: hidden;
+    background: var(--dash-accent);
+    background-image: repeating-linear-gradient(90deg,
+      var(--dash-ink-a25) 0 1px, transparent 1px 7px);   /* 密集微刻度线 */
+  }
+  .seg-practice { position: absolute; top: 10px; bottom: 10px; border-radius: 3px; background: var(--dash-page); }
+  .seg-rest { position: absolute; top: 50%; height: 0; border-top: 2px dashed var(--dash-ink-a42); }
+  .labels { position: relative; height: 14px; }
+  .labels span { position: absolute; transform: translateX(-50%); font-size: 10px; color: var(--dash-text-soft); white-space: nowrap; }
+  .hero-cap { font-size: 10.5px; color: var(--dash-text-soft); line-height: 1.5; }
+  .legend { display: flex; gap: 12px; font-size: 10.5px; color: var(--dash-text-soft); align-items: center; }
+  .legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; background: var(--dash-text); margin-right: 4px; vertical-align: middle; }
+  .legend i.dash { height: 0; border-top: 2px dashed var(--dash-ink-a42); border-radius: 0; }
+
+  /* 底部状态栏 */
+  .status { display: flex; align-items: flex-end; justify-content: space-between; border-top: 1px solid var(--dash-ink-a12); padding-top: 12px; }
+  .last { font-size: 13px; font-weight: 600; }
+  .last b { font-weight: 800; }
+  .last .meta { display: block; font-size: 10.5px; color: var(--dash-text-soft); font-weight: 400; margin-top: 3px; }
+  .icons { display: flex; gap: 12px; align-items: center; }
+  .icons svg { display: block; }
+  .icons .ic-off { opacity: .32; }
+  .icons .ic-on { color: var(--dash-accent-text); }
+  .crown-note { font-size: 10px; color: var(--dash-text-soft); }
+</style>
+</head>
+<body>
+
+<div class="dbar">
+  <b>今日练习时长卡</b>
+  <div class="seg" id="vpSeg">
+    <button type="button" data-vp="1133">1133×744</button>
+    <button type="button" data-vp="744">744×1133</button>
+    <button type="button" data-vp="440">440×956</button>
+  </div>
+  <div class="seg" id="skinSeg">
+    <button type="button" data-skin="light">浅银</button>
+    <button type="button" data-skin="ink">深墨</button>
+  </div>
+</div>
+
+<article class="card" id="card">
+  <div class="date-row">
+    <span class="d" id="dateText">10月3日</span>
+    <span class="w" id="weekText">周六</span>
+  </div>
+
+  <div>
+    <div class="clock">
+      <span class="hm" id="clkHM">--:--</span>
+      <span class="sec" id="clkSS">00</span>
+    </div>
+    <div class="clock-cap">当前时间</div>
+  </div>
+
+  <div class="sec-head">
+    <span class="t">练习</span>
+    <span class="pill" id="totalPill"><span id="pillVal">0M</span></span>
+  </div>
+
+  <div class="hero">
+    <div class="ends"><span id="endStart">—</span><span id="endEnd">—</span></div>
+    <div class="rail" id="rail" aria-hidden="true"></div>
+    <div class="labels" id="labels" aria-hidden="true"></div>
+    <div class="legend"><span><i></i>练习</span><span><i class="dash"></i>休息</span><span id="segCount"></span></div>
+    <p class="hero-cap" id="heroCap">—</p>
+  </div>
+
+  <div class="status">
+    <div class="last">
+      <b id="lastName">—</b>
+      <span id="lastDur"></span>
+      <span class="meta" id="lastMeta"></span>
+    </div>
+    <div class="icons" id="icons">
+      <!-- 极简三角机械节拍器：三角轮廓 + 倾斜摆杆 + 摆锤 -->
+      <svg class="ic-metronome" width="22" height="26" viewBox="0 0 22 26" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+        <path d="M11 3.2 L20 23 H2 Z" />
+        <path d="M11 6.5 L15.6 17.4" />
+        <circle cx="15.6" cy="18.4" r="1.8" fill="currentColor" stroke="none" />
+        <path d="M6.2 23 h9.6" />
+      </svg>
+      <!-- 极简皇冠：今日超过昨日时点亮 -->
+      <svg class="crown" id="crown" width="24" height="22" viewBox="0 0 24 22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M2 18 V7 L7 12 L12 5 L17 12 L22 7 V18 Z" />
+      </svg>
+    </div>
+  </div>
+</article>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var audit = qs.has('audit');
+
+  /* 与 D5 同一份样本数据 */
+  var SUMMARY = { span_minutes: 96, yesterday_seconds: 1800, date_label: '10月3日', week_label: '周六' };
+  var SESSIONS = [
+    { item_name: '萨丽哈', duration_seconds: 600, tempo_bpm: 82, reps: 3 },
+    { item_name: '长音',   duration_seconds: 480, tempo_bpm: 60, reps: 4 },
+    { item_name: '吐音',   duration_seconds: 180, tempo_bpm: 96, reps: 5 },
+    { item_name: '长音',   duration_seconds: 360, tempo_bpm: 60, reps: 2 },
+    { item_name: '萨丽哈', duration_seconds: 900, tempo_bpm: 76, reps: 2 },
+    { item_name: '吐音',   duration_seconds: 150, tempo_bpm: 100, reps: 4 },
+    { item_name: '长音',   duration_seconds: 240, tempo_bpm: 66, reps: 2 },
+    { item_name: '萨丽哈', duration_seconds: 420, tempo_bpm: 82, reps: 1 },
+    { item_name: '吐音',   duration_seconds: 90,  tempo_bpm: 100, reps: 2 }
+  ];
+  var REST_S = 60;                      // 示例：每段之间 60s 休息（拍板：真实数据接上后改由后端给间隔）
+  var START_LABEL = '19:10', END_LABEL = '19:52';
+
+  var totalS = SESSIONS.reduce(function (s, x) { return s + x.duration_seconds; }, 0);
+  var spanS = totalS + REST_S * (SESSIONS.length - 1);
+
+  /* 顶部日期 */
+  document.getElementById('dateText').textContent = SUMMARY.date_label;
+  document.getElementById('weekText').textContent = SUMMARY.week_label;
+
+  /* 总时长胶囊：超过 1 小时用 H/M */
+  var hh = Math.floor(totalS / 3600), mm = Math.round((totalS % 3600) / 60);
+  document.getElementById('pillVal').textContent = (hh ? hh + 'H ' : '') + mm + 'M';
+
+  /* 时间轴：练习段实心 + 休息段虚线 + 科目名对齐 */
+  var rail = document.getElementById('rail');
+  var labels = document.getElementById('labels');
+  var t = 0;
+  SESSIONS.forEach(function (s, i) {
+    var leftPct = (t / spanS) * 100, wPct = (s.duration_seconds / spanS) * 100;
+    var seg = document.createElement('div');
+    seg.className = 'seg-practice';
+    seg.style.left = leftPct + '%';
+    seg.style.width = wPct + '%';
+    rail.appendChild(seg);
+
+    var lb = document.createElement('span');
+    lb.textContent = s.item_name;
+    lb.style.left = (leftPct + wPct / 2) + '%';
+    labels.appendChild(lb);
+
+    t += s.duration_seconds;
+    if (i < SESSIONS.length - 1) {
+      var rest = document.createElement('div');
+      rest.className = 'seg-rest';
+      rest.style.left = (t / spanS) * 100 + '%';
+      rest.style.width = (REST_S / spanS) * 100 + '%';
+      rail.appendChild(rest);
+      t += REST_S;
+    }
+  });
+  document.getElementById('endStart').textContent = START_LABEL;
+  document.getElementById('endEnd').textContent = END_LABEL;
+  document.getElementById('segCount').textContent = SESSIONS.length + ' 段练习 · 每段间隔 ' + REST_S + 's';
+  document.getElementById('heroCap').textContent =
+    '实线=练习（' + Math.round(totalS / 60) + ' 分）· 虚线=休息间隔；时间轴按练习顺序铺排（示例数据的时间戳互相重叠，接上真数据后按真实起点画）';
+
+  /* 左下：最近一次科目时长 */
+  var last = SESSIONS[SESSIONS.length - 1];
+  var lm = Math.floor(last.duration_seconds / 60), ls = last.duration_seconds % 60;
+  document.getElementById('lastName').textContent = last.item_name;
+  document.getElementById('lastDur').textContent = lm + ' 分 ' + ls + ' 秒';
+  document.getElementById('lastMeta').textContent = '最近一次 · ♩=' + last.tempo_bpm + ' · ' + last.reps + ' 次';
+
+  /* 右下：皇冠 = 今日是否超过昨日 */
+  var delta = totalS - SUMMARY.yesterday_seconds;
+  var crown = document.getElementById('crown');
+  crown.setAttribute('class', 'crown ' + (delta > 0 ? 'ic-on' : 'ic-off'));
+
+  /* 大号时钟：真实时间 */
+  function tick() {
+    var d = new Date();
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    document.getElementById('clkHM').textContent = p(d.getHours()) + ':' + p(d.getMinutes());
+    document.getElementById('clkSS').textContent = p(d.getSeconds());
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* 视口 / 皮肤 */
+  var stageOf = { 1133: [1133, 744], 744: [744, 1133], 440: [440, 956] };
+  var card = document.getElementById('card');
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var wh = stageOf[b.dataset.vp];
+    card.style.width = (b.dataset.vp === '440' ? wh[0] - 28 : b.dataset.vp === '744' ? 420 : 380) + 'px';
+    card.dataset.vp = b.dataset.vp;
+    document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+  });
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+  });
+  document.querySelector('#vpSeg button[data-vp="1133"]').classList.add('is-on');
+  document.querySelector('#skinSeg button[data-skin="light"]').classList.add('is-on');
+
+  if (!audit) return;
+
+  /* ?audit=1 自报实测 */
+  var fails = [];
+  var out = {};
+  out.railH = Math.round(rail.getBoundingClientRect().height);
+  out.cardW = Math.round(card.getBoundingClientRect().width);
+  out.practice = SESSIONS.length;
+  out.segPractice = document.querySelectorAll('.seg-practice').length;
+  out.segRest = document.querySelectorAll('.seg-rest').length;
+  out.totalMin = Math.round(totalS / 60);
+  out.pill = document.getElementById('pillVal').textContent;
+  out.crown = crown.getAttribute('class');
+  out.deltaMin = Math.round(delta / 60);
+
+  if (out.segPractice !== SESSIONS.length) fails.push('segPractice got ' + out.segPractice + ' want ' + SESSIONS.length);
+  if (out.segRest !== SESSIONS.length - 1) fails.push('segRest got ' + out.segRest + ' want ' + (SESSIONS.length - 1));
+
+  // 段宽之和 ≈ 轨道宽 × 练习占比
+  var railW = rail.getBoundingClientRect().width;
+  var sumW = [].reduce.call(document.querySelectorAll('.seg-practice'), function (s, el) { return s + el.getBoundingClientRect().width; }, 0);
+  out.railW = Math.round(railW); out.sumPracticeW = Math.round(sumW);
+  out.expectW = Math.round(railW * (totalS / spanS));
+  if (Math.abs(sumW - railW * (totalS / spanS)) > 3) fails.push('practice width got ' + Math.round(sumW) + ' want ~' + out.expectW);
+
+  // 无横向溢出
+  out.overflowX = document.documentElement.scrollWidth > document.documentElement.clientWidth;
+  if (out.overflowX) fails.push('horizontal overflow');
+
+  // 胶囊与真实总时长一致（57 分 → 0H 57M → 应显示 57M）
+  if (out.pill !== (Math.round(totalS / 60) + 'M')) fails.push('pill got ' + out.pill + ' want ' + Math.round(totalS / 60) + 'M');
+
+  // 皇冠点亮 = 今日超过昨日
+  var wantCrown = (delta > 0 ? 'ic-on' : 'ic-off');
+  if (out.crown.indexOf(wantCrown) < 0) fails.push('crown got ' + out.crown + ' want ' + wantCrown);
+
+  // 时钟真的在走
+  var a = document.getElementById('clkSS').textContent;
+  setTimeout(function () {
+    var b = document.getElementById('clkSS').textContent;
+    out.clockTicked = a !== b;
+    if (a === b) fails.push('clock did not tick');
+    // 深墨：读 :root 变量（不读元素颜色，避开过渡假值）
+    document.querySelector('#skinSeg button[data-skin="ink"]').click();
+    var inkVar = getComputedStyle(document.documentElement).getPropertyValue('--dash-text').trim();
+    out.inkText = inkVar;
+    if (inkVar !== '#FFF8F0') fails.push('ink --dash-text got ' + inkVar + ' want #FFF8F0');
+    out.fails = fails;
+    out.verdict = fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK';
+    console.log(JSON.stringify(out, null, 1));
+    document.title = (fails.length ? 'FAIL ' : 'OK ') + '今日练习时长卡';
+  }, 1200);
+})();
+</script>
+</body>
+</html>

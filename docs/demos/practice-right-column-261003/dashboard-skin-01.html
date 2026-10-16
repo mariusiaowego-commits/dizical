@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D1 仪表盘默认皮肤 — practice 右栏</title>
+<style>
+  /* ── default skin. 组件里只引用这些变量。
+     第二套（换肤示范，默认不启用）：把下面整段注释打开，并给 <html data-skin="ink">。
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 248, 240, 0.45);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+      --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+}
+  */
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.55);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+      --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+}
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--dash-page);
+    color: var(--dash-ink);
+    font-family: "PingFang SC", "Heiti SC", system-ui, sans-serif;
+  }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; }
+  .page { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .chrome {
+    flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 6px 10px; color: var(--dash-ink);
+  }
+  .brand { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+  .seg { display: flex; gap: 4px; background: var(--dash-white); border-radius: 999px; padding: 3px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-muted);
+    border-radius: 999px; min-height: 28px; padding: 0 10px; font-size: 12px; font-weight: 650;
+  }
+  .seg button.is-on { background: var(--dash-ink); color: var(--dash-page); }
+  .frame {
+    flex: 1 1 auto; min-height: 0; min-width: 0;
+    display: flex; justify-content: center; align-items: stretch;
+    padding: 8px 12px 12px;
+  }
+  .dash {
+    container: dash / size;
+    width: min(100%, var(--vp-w));
+    height: 100%;
+    max-height: var(--vp-h);
+    border-radius: var(--dash-radius);
+    background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-shell-lo) 100%);
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -10px 18px var(--dash-shell-inset),
+      0 16px 36px var(--dash-shell-shadow);
+    padding: 14px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .panel {
+    --notch: var(--dash-notch);
+    background: var(--dash-panel);
+    color: var(--dash-panel-text);
+    border-radius: 28px;
+    padding: 10px 14px 8px;
+    display: flex; flex-direction: column; gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+    -webkit-mask-image: radial-gradient(circle var(--notch) at 50% calc(100% + 6px), transparent 97%, black 100%);
+    mask-image: radial-gradient(circle var(--notch) at 50% calc(100% + 6px), transparent 97%, black 100%);
+  }
+  .status {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    min-height: 18px; color: var(--dash-panel-dim); font-size: 11px;
+  }
+  .mic { justify-self: start; width: 14px; height: 14px; display: block; }
+  .mic svg { width: 14px; height: 14px; display: block; }
+  .clock { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .battery { justify-self: end; display: flex; align-items: center; gap: 4px; }
+  .bat {
+    width: 22px; height: 11px; border: 1.5px solid var(--dash-battery);
+    border-radius: 3px; padding: 1px; position: relative;
+  }
+  .bat::after {
+    content: ""; position: absolute; right: -3px; top: 2px; width: 2px; height: 5px;
+    background: var(--dash-battery); border-radius: 0 1px 1px 0;
+  }
+  .bat-fill { display: block; width: 76%; height: 100%; background: var(--dash-battery); border-radius: 1px; }
+  .bat-pct { font-size: 10px; color: var(--dash-battery); font-weight: 700; }
+
+  .panel-main {
+    flex: 1 1 auto; min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(108px, 26%);
+    gap: 12px; align-items: center;
+  }
+  .cover-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+  .cover-halo {
+    padding: 3px; border-radius: 16px;
+    border: 1px solid var(--dash-cover-line);
+  }
+  .cover-frame {
+    width: 92px; height: 92px; border-radius: 12px; overflow: hidden; background: var(--dash-ink);
+  }
+  .cover-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 35%; display: block; }
+  .cover-name { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+
+  .title-col { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .readout { --num-size: var(--dash-num); display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .ac-root {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 560; letter-spacing: -0.03em; line-height: 1;
+    font-size: var(--num-size); color: var(--dash-panel-text);
+  }
+  .ac-digit {
+    position: relative; display: inline-grid; overflow: hidden; height: 1.5em; line-height: 1.5;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+  }
+  .ac-sizer { visibility: hidden; grid-area: 1 / 1; display: grid; }
+  .ac-stack { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; }
+  .ac-face { height: 1.5em; display: flex; align-items: center; justify-content: center; }
+  .ac-mark { display: inline-block; margin: 0 -0.08em; }
+  .readout-sub {
+    margin-top: -2px; font-size: 12px; font-weight: 600; color: var(--dash-panel-dim); letter-spacing: 0.02em;
+  }
+  .readout-sub small { font-size: 11px; font-weight: 600; }
+
+  .ruler-wrap {
+    display: flex; align-items: center; gap: 8px; width: 100%; max-width: 460px; margin-top: 2px;
+  }
+  .ruler { position: relative; flex: 1 1 auto; min-width: 0; height: 32px; }
+  .ruler-row {
+    display: flex; height: 26px; align-items: flex-end; justify-content: space-between;
+    border-bottom: 1.5px solid var(--dash-tick-rail); padding-bottom: 2px;
+  }
+  .tick { width: 1.5px; border-radius: 999px; transition: height 200ms ease, background-color 200ms ease; }
+  .tick.minor { width: 1px; }
+  .tick.major.future { height: 11px; background: var(--dash-tick-future); }
+  .tick.major.past { height: 16px; background: var(--dash-tick-past); }
+  .tick.minor.future { height: 7px; background: var(--dash-tick-future); }
+  .tick.minor.past { height: 10px; background: var(--dash-tick-past); }
+  .tick.cur {
+    width: 3px; height: 22px; margin: 0 -0.5px; background: var(--dash-coral); border-radius: 999px;
+  }
+  .ruler.is-dragging .tick.cur { transform: scaleY(1.2); filter: brightness(1.15); transition: none; }
+  .ruler-input {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: grab;
+    appearance: none; background: transparent; border: 0; margin: 0; touch-action: none;
+  }
+  .ruler-input:disabled { cursor: default; }
+  .ruler-vine, .notes-bubbles { display: none !important; }
+
+  .round {
+    flex: 0 0 auto; width: 58px; height: 58px; border-radius: 50%;
+    border: 1px solid var(--dash-btn-rim);
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo));
+    color: var(--dash-btn-glyph);
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 6px 10px var(--dash-shell-inset);
+    font-size: 26px; font-weight: 500; line-height: 1;
+    display: grid; place-items: center;
+    touch-action: manipulation; user-select: none;
+  }
+  .round.mini { width: 32px; height: 32px; font-size: 18px; box-shadow: inset 0 1px 0 var(--dash-btn-rim); }
+  .round:active:not(:disabled) { transform: scale(0.96); }
+  .round:disabled { opacity: 0.38; cursor: default; }
+
+  .lyric-col { min-width: 0; align-self: stretch; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+  .lyric-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--dash-panel-dim); }
+  .lyric-view {
+    height: 4.6em; font-size: 12.5px; overflow: hidden; cursor: pointer; position: relative;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
+  }
+  .lyric-track {
+    line-height: 1.55; color: var(--dash-panel-text);
+    animation: lyricScroll 16s linear infinite;
+  }
+  .lyric-track p { margin: 0; min-height: 5.4em; }
+  .lyric-view.is-paused .lyric-track { animation-play-state: paused; }
+  @keyframes lyricScroll {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+  }
+
+  .panel-foot {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 0 4px 10px; font-size: 13px; font-weight: 650; letter-spacing: 0.04em;
+    color: var(--dash-panel-dim);
+  }
+  #bpmRead {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums; color: var(--dash-panel-text); font-size: 15px;
+  }
+
+  .mid {
+    position: relative; z-index: 2;
+    margin-top: calc(var(--dash-notch) * -0.72);
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 0;
+  }
+  .arc { position: absolute; inset: 0; pointer-events: none; }
+  .arc i {
+    position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%; background: var(--dash-dot);
+    box-shadow: 0 0 0 1px var(--dash-shell-inset);
+  }
+  .arc i.is-on { background: var(--dash-dot-on); }
+  .mid-row {
+    display: flex; align-items: center; justify-content: center; gap: clamp(18px, 6cqw, 64px);
+    padding-top: 8px;
+  }
+  .knob {
+    width: 168px; height: 168px; border-radius: 50%; position: relative;
+    background: linear-gradient(160deg, var(--dash-knob-hi), var(--dash-knob-lo) 62%);
+    box-shadow:
+      inset 0 2px 0 var(--dash-btn-rim),
+      inset 0 -12px 18px var(--dash-shell-inset),
+      0 12px 20px var(--dash-shell-shadow);
+    touch-action: none; user-select: none;
+  }
+  .knob-rotor { position: absolute; inset: 0; transform: rotate(var(--knob-deg, -30deg)); }
+  .knob-mark {
+    position: absolute; left: 50%; top: 14%; width: 4px; height: 18%;
+    margin-left: -2px; border-radius: 2px; background: var(--dash-mark);
+  }
+
+  .deck {
+    flex: 0 0 auto;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center; gap: 16px; padding: 6px 8px 2px; min-height: 0;
+  }
+  .grille {
+    display: grid; grid-template-columns: repeat(6, 7px); grid-template-rows: repeat(8, 7px);
+    gap: 4px;
+  }
+  .hole {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--dash-hole);
+    transform-origin: center;
+    animation: holePulse var(--dash-beat) ease-in-out infinite;
+    animation-delay: calc(var(--i) * var(--dash-beat) / 8);
+  }
+  @keyframes holePulse {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(0.55); }
+  }
+  .ops { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .ops-kicker {
+    font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: var(--dash-kicker);
+  }
+  .ops-sub { font-size: 12px; color: var(--dash-muted); }
+  .pill {
+    display: flex; gap: 4px; padding: 4px; border-radius: 999px;
+    background: var(--dash-pill-track);
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+  }
+  .pill button {
+    border: 0; background: transparent; color: var(--dash-pill-idle);
+    min-height: 44px; padding: 0 16px; border-radius: 999px;
+    font-size: 15px; font-weight: 750; white-space: nowrap;
+  }
+  .pill button:disabled { opacity: 0.35; cursor: default; }
+  .dash[data-mode="prep"] #btnPrimary,
+  .dash[data-mode="run"] #btnPrimary,
+  .dash[data-mode="pause"] #btnPrimary {
+    background: var(--dash-coral-solid); color: var(--dash-white);
+  }
+  .dash[data-mode="run"] #btnEarly,
+  .dash[data-mode="pause"] #btnEarly {
+    background: var(--dash-accent-solid); color: var(--dash-white); opacity: 1;
+  }
+  .stand { display: flex; flex-direction: column; gap: 8px; }
+  .stand-btn {
+    width: 74px; min-height: 48px; border-radius: 16px; border: 0;
+    background: var(--dash-stand); color: var(--dash-stand-text);
+    font-size: 13px; font-weight: 750;
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 6px 12px var(--dash-shell-inset);
+  }
+  .stand-btn.accent {
+    background: linear-gradient(180deg, var(--dash-accent), var(--dash-coral));
+    color: var(--dash-white);
+  }
+
+  @container dash (max-width: 560px) {
+    .panel-main { grid-template-columns: 76px minmax(0, 1fr); grid-template-rows: auto auto; }
+    .lyric-col { grid-column: 1 / -1; height: 58px; }
+    .cover-frame { width: 72px; height: 72px; }
+    .knob { width: 132px; height: 132px; }
+    .dash { --dash-notch: 78px; --dash-num: 42px; }
+    .round { width: 48px; height: 48px; font-size: 22px; }
+    .stand-btn { width: 58px; min-height: 40px; font-size: 12px; }
+    .pill button { padding: 0 10px; font-size: 13px; min-height: 40px; }
+    .round.mini { width: 28px; height: 28px; font-size: 16px; }
+    .panel-foot { font-size: 12px; padding-bottom: 6px; }
+  }
+  @container dash (max-height: 640px) {
+    .dash { --dash-num: 40px; --dash-notch: 72px; }
+    .cover-frame { width: 68px; height: 68px; }
+    .knob { width: 120px; height: 120px; }
+    .grille { grid-template-columns: repeat(6, 5px); grid-template-rows: repeat(8, 5px); gap: 3px; }
+    .hole { width: 5px; height: 5px; }
+    .deck { gap: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lyric-track, .hole { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <span class="brand">D1 仪表盘</span>
+    <div class="seg" id="vpSeg">
+      <button type="button" data-vp="1133x744" class="is-on">1133×744</button>
+      <button type="button" data-vp="744x1133">744×1133</button>
+      <button type="button" data-vp="440x956">440×956</button>
+    </div>
+    <div class="seg" id="modeSeg">
+      <button type="button" data-mode="prep" class="is-on">准备态</button>
+      <button type="button" data-mode="run">计时中</button>
+    </div>
+  </div>
+  <div class="frame" id="frame">
+    <article class="dash" id="dash" data-mode="prep">
+      <section class="panel">
+        <div class="status">
+          <span class="mic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+              <path d="M6 11a6 6 0 0 0 12 0"></path>
+              <path d="M12 17v3"></path>
+            </svg>
+          </span>
+          <span class="clock" id="clock">--:--</span>
+          <span class="battery" aria-hidden="true"><span class="bat-pct">76%</span><span class="bat"><span class="bat-fill"></span></span></span>
+        </div>
+        <div class="panel-main">
+          <div class="cover-col">
+            <div class="cover-halo">
+              <div class="cover-frame">
+                <img src="../assets/practice-hero-ticket-260922.png" alt="">
+              </div>
+            </div>
+            <div class="cover-name">萨丽哈</div>
+          </div>
+          <div class="title-col">
+            <div class="readout">
+              <div class="ac-root" id="ttCounter"></div>
+              <div class="readout-sub" id="metaVal">10<small>分钟</small></div>
+            </div>
+            <div class="ruler-wrap">
+              <button type="button" class="round mini" id="ttStepMinus" aria-label="减少一分钟">−</button>
+              <div class="ruler" id="ruler">
+                <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+                <div class="notes-bubbles" aria-hidden="true"></div>
+                <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10" tabindex="-1" aria-label="练习时长（分钟）">
+              </div>
+              <button type="button" class="round mini" id="ttStepPlus" aria-label="增加一分钟">+</button>
+            </div>
+          </div>
+          <div class="lyric-col">
+            <div class="lyric-kicker">老师要求</div>
+            <div class="lyric-view" id="lyricView" title="点一下暂停或继续滚动">
+              <div class="lyric-track" id="lyricTrack"></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot">
+          <div id="bpmRead">♩ = 82</div>
+          <div>今日 42分</div>
+        </div>
+      </section>
+
+      <section class="mid" id="mid">
+        <div class="arc" id="arc" aria-hidden="true"></div>
+        <div class="mid-row">
+          <button type="button" class="round" id="silverMinus" data-mirror aria-label="减少一分钟">−</button>
+          <div class="knob" id="knob" tabindex="0" role="slider" aria-valuemin="40" aria-valuemax="150" aria-valuenow="82" aria-label="速度">
+            <div class="knob-rotor" id="knobRotor"><span class="knob-mark"></span></div>
+          </div>
+          <button type="button" class="round" id="silverPlus" data-mirror aria-label="增加一分钟">+</button>
+        </div>
+      </section>
+
+      <section class="deck">
+        <div class="grille" id="grille" aria-hidden="true"></div>
+        <div class="ops">
+          <div class="ops-kicker">练习</div>
+          <div class="ops-sub" id="opsSub">点按开始</div>
+          <div class="pill">
+            <button type="button" id="btnPrimary">开始</button>
+            <button type="button" id="btnEarly" disabled>提前结束</button>
+          </div>
+        </div>
+        <div class="stand" role="group" aria-label="谱架模式">
+          <button type="button" class="stand-btn">谱架</button>
+          <button type="button" class="stand-btn accent">模式</button>
+        </div>
+      </section>
+    </article>
+  </div>
+</div>
+
+<script src="../vendor/gsap.min.js"></script>
+<script>
+  var duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
+</script>
+<script src="../practice-skeleton-260920/real-timer-visual.js"></script>
+<script>
+(function () {
+  window.__dashErrors = [];
+  window.addEventListener('error', function (ev) {
+    window.__dashErrors.push(String(ev.message));
+  });
+  var dash = document.getElementById('dash');
+  var frame = document.getElementById('frame');
+  var bpm = 82;
+  var BPM_MIN = 40, BPM_MAX = 150;
+  var mode = 'prep';
+  var tickIv = null;
+  var lyric = '占位要求：♩=82。先慢后原速，分句连起来。正文在这里循环滚动，点一下就暂停。';
+
+  var track = document.getElementById('lyricTrack');
+  track.textContent = '';
+  [0, 1].forEach(function () {
+    var p = document.createElement('p');
+    p.textContent = lyric;
+    track.appendChild(p);
+  });
+  document.getElementById('lyricView').addEventListener('click', function () {
+    this.classList.toggle('is-paused');
+  });
+
+  var grille = document.getElementById('grille');
+  for (var i = 0; i < 48; i++) {
+    var hole = document.createElement('span');
+    hole.className = 'hole';
+    hole.style.setProperty('--i', String(i % 8));
+    grille.appendChild(hole);
+  }
+
+  var arc = document.getElementById('arc');
+  var ARC_N = 27;
+  for (var d = 0; d < ARC_N; d++) {
+    var dot = document.createElement('i');
+    arc.appendChild(dot);
+  }
+
+  function layoutArc() {
+    var mid = document.getElementById('mid');
+    var knob = document.getElementById('knob');
+    var mr = mid.getBoundingClientRect();
+    var kr = knob.getBoundingClientRect();
+    if (!kr.width) return;
+    var cx = kr.left + kr.width / 2 - mr.left;
+    var cy = kr.top + kr.height / 2 - mr.top;
+    var radius = kr.width / 2 + 16;
+    var dots = arc.querySelectorAll('i');
+    for (var i = 0; i < dots.length; i++) {
+      var u = 0.08 + (i / (dots.length - 1)) * 0.84;
+      var a = Math.PI * (1 + u);
+      dots[i].style.left = (cx + Math.cos(a) * radius) + 'px';
+      dots[i].style.top = (cy + Math.sin(a) * radius) + 'px';
+    }
+  }
+
+  function paintArc() {
+    var t = (bpm - BPM_MIN) / (BPM_MAX - BPM_MIN);
+    var dots = arc.querySelectorAll('i');
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle('is-on', i / (dots.length - 1) <= t + 0.001);
+    }
+  }
+
+  function setBpm(next) {
+    bpm = Math.round(Math.min(BPM_MAX, Math.max(BPM_MIN, next)));
+    document.getElementById('bpmRead').textContent = '♩ = ' + bpm;
+    var t = (bpm - BPM_MIN) / (BPM_MAX - BPM_MIN);
+    var deg = -120 + t * 240;
+    document.getElementById('knobRotor').style.transform = 'rotate(' + deg + 'deg)';
+    document.getElementById('knob').setAttribute('aria-valuenow', String(bpm));
+    dash.style.setProperty('--dash-beat', (60 / bpm).toFixed(3) + 's');
+    paintArc();
+  }
+
+  var knob = document.getElementById('knob');
+  var dragging = false, lastAng = 0;
+  function angOf(e) {
+    var r = knob.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+  }
+  knob.addEventListener('pointerdown', function (e) {
+    dragging = true;
+    lastAng = angOf(e);
+    try { knob.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  knob.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    var a = angOf(e);
+    var delta = a - lastAng;
+    if (delta > Math.PI) delta -= Math.PI * 2;
+    if (delta < -Math.PI) delta += Math.PI * 2;
+    lastAng = a;
+    // 屏幕坐标顺时针 atan2 变小。顺时针（往右）加大 BPM。0.42 bpm/度。
+    setBpm(bpm - delta * (180 / Math.PI) * 0.42);
+  });
+  function endDrag() { dragging = false; }
+  knob.addEventListener('pointerup', endDrag);
+  knob.addEventListener('pointercancel', endDrag);
+  knob.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { setBpm(bpm - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { setBpm(bpm + 1); e.preventDefault(); }
+  });
+
+  var _setEnabled = ttSetControlsEnabled;
+  ttSetControlsEnabled = function (on) {
+    _setEnabled(on);
+    document.querySelectorAll('[data-mirror]').forEach(function (b) { b.disabled = !on; });
+  };
+  document.getElementById('ttStepMinus').addEventListener('click', function () { ttStepMin(-1); });
+  document.getElementById('ttStepPlus').addEventListener('click', function () { ttStepMin(1); });
+  document.getElementById('silverMinus').addEventListener('click', function () { ttStepMin(-1); });
+  document.getElementById('silverPlus').addEventListener('click', function () { ttStepMin(1); });
+
+  function stopTick() { clearInterval(tickIv); tickIv = null; }
+  function startTick() {
+    stopTick();
+    tickIv = setInterval(function () {
+      elapsed += 1;
+      ttRenderDigits(elapsed);
+      paintRulerRunning(Math.min(1, elapsed / (duration * 60)));
+      if (elapsed >= duration * 60) stopTick();
+    }, 1000);
+  }
+  function renderMode() {
+    dash.dataset.mode = mode;
+    var primary = document.getElementById('btnPrimary');
+    var early = document.getElementById('btnEarly');
+    var sub = document.getElementById('opsSub');
+    document.querySelectorAll('#modeSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', (mode === 'prep' && b.dataset.mode === 'prep') || (mode !== 'prep' && b.dataset.mode === 'run'));
+    });
+    if (mode === 'prep') {
+      primary.textContent = '开始';
+      early.disabled = true;
+      sub.textContent = '点按开始';
+    } else if (mode === 'run') {
+      primary.textContent = '暂停';
+      early.disabled = false;
+      sub.textContent = '计时中';
+    } else {
+      primary.textContent = '继续';
+      early.disabled = false;
+      sub.textContent = '已暂停';
+    }
+  }
+  function enterPrep() {
+    stopTick();
+    if (typeof secFlickerIv !== 'undefined') { clearInterval(secFlickerIv); secFlickerIv = null; }
+    started = false; timerRunning = false; paused = false; elapsed = 0;
+    ttOnExit();
+    mode = 'prep';
+    renderMode();
+  }
+  function enterRun(keepElapsed) {
+    if (!keepElapsed) elapsed = 0;
+    started = true; timerRunning = true; paused = false;
+    if (typeof secFlickerIv !== 'undefined') { clearInterval(secFlickerIv); secFlickerIv = null; }
+    ttSetControlsEnabled(false);
+    ttPauseLabel(false);
+    setRunningModality();
+    ttRenderDigits(elapsed);
+    paintRulerRunning(Math.min(1, elapsed / (duration * 60)));
+    startTick();
+    mode = 'run';
+    renderMode();
+  }
+  function enterPause() {
+    stopTick();
+    paused = true; timerRunning = false; started = true;
+    ttPauseLabel(true);
+    mode = 'pause';
+    renderMode();
+  }
+
+  document.getElementById('btnPrimary').addEventListener('click', function () {
+    if (mode === 'prep') enterRun(false);
+    else if (mode === 'run') enterPause();
+    else enterRun(true);
+  });
+  document.getElementById('btnEarly').addEventListener('click', function () {
+    if (mode === 'prep') return;
+    enterPrep();
+  });
+  document.getElementById('modeSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.mode === 'prep') enterPrep();
+    else enterRun(false);
+  });
+
+  var VP = { '1133x744': [1133, 744], '744x1133': [744, 1133], '440x956': [440, 956] };
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var pair = VP[b.dataset.vp];
+    document.documentElement.style.setProperty('--vp-w', pair[0] + 'px');
+    document.documentElement.style.setProperty('--vp-h', pair[1] + 'px');
+    document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    requestAnimationFrame(layoutArc);
+  });
+
+  function paintClock() {
+    var n = new Date();
+    var h = n.getHours();
+    var m = String(n.getMinutes()).padStart(2, '0');
+    var ap = h >= 12 ? 'pm' : 'am';
+    var h12 = h % 12 || 12;
+    document.getElementById('clock').textContent = h12 + ':' + m + ap;
+  }
+  paintClock();
+  setInterval(paintClock, 1000);
+
+  ttInitTimer();
+  setBpm(82);
+  renderMode();
+  requestAnimationFrame(function () {
+    layoutArc();
+    if (location.search.indexOf('run=1') >= 0) enterRun(false);
+  });
+  window.addEventListener('resize', layoutArc);
+
+  if (location.search.indexOf('audit=1') >= 0) {
+    setTimeout(function () {
+      var dashEl = document.getElementById('dash');
+      var page = document.documentElement;
+      var kids = ['panel', 'mid', 'deck', 'knob', 'ruler', 'ttCounter'].map(function (sel) {
+        var el = document.querySelector('.' + sel) || document.getElementById(sel);
+        if (!el) return sel + ':missing';
+        var r = el.getBoundingClientRect();
+        var pr = dashEl.getBoundingClientRect();
+        var outside = r.left < pr.left - 1 || r.right > pr.right + 1 || r.top < pr.top - 1 || r.bottom > pr.bottom + 1;
+        return sel + ':' + Math.round(r.width) + 'x' + Math.round(r.height) + (outside ? ':OUT' : ':in');
+      });
+      var pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.textContent = JSON.stringify({
+        vp: [window.innerWidth, window.innerHeight],
+        pageOverflow: [page.scrollWidth - page.clientWidth, page.scrollHeight - page.clientHeight],
+        dashOverflow: [dashEl.scrollWidth - dashEl.clientWidth, dashEl.scrollHeight - dashEl.clientHeight],
+        ticks: document.querySelectorAll('.tick').length,
+        digits: document.querySelectorAll('#ttCounter .ac-digit').length,
+        holes: document.querySelectorAll('.hole').length,
+        dots: document.querySelectorAll('.arc i').length,
+        bpm: document.getElementById('bpmRead').textContent,
+        mode: dashEl.dataset.mode,
+        primary: document.getElementById('btnPrimary').textContent,
+        errors: window.__dashErrors || [],
+        kids: kids
+      });
+      document.body.appendChild(pre);
+    }, 500);
+  }
+})();
+</script>
+</body>
+</html>

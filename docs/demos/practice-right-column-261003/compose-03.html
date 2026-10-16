@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>练习页组合选择 — 一屏横滑自选台</title>
+<meta name="description" content="练习页组合选择页：预设组合与自由勾选，单行横排一屏展示，超宽横向滚动，所有模块等高对齐。">
+<style>
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+    --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217;
+    --dash-coral-text: #C93B3B;
+  }
+
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+    --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: var(--dash-vermilion);
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: var(--dash-vermilion);
+    --dash-coral-text: #FF6B6B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100vh; }
+  body {
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+  }
+
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    background: var(--dash-white);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    font-size: 12px;
+    color: var(--dash-text-soft);
+  }
+  :root[data-skin="ink"] .bar {
+    background: var(--dash-panel);
+    border-bottom-color: var(--dash-ink-a16);
+  }
+  .bar b { color: var(--dash-text); font-size: 13px; }
+  .bar .sp { flex: 1; }
+
+  .demo-ver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--dash-ink-a16);
+    color: var(--dash-text-soft);
+    background: var(--dash-surface-soft);
+  }
+  .demo-ver b { color: var(--dash-vermilion-text); font-weight: 600; }
+
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--dash-ink-a16);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--dash-surface-soft);
+  }
+  .seg button {
+    border: 0;
+    background: transparent;
+    color: var(--dash-text-soft);
+    font: inherit;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+  .seg button.is-on {
+    background: var(--dash-text);
+    color: var(--dash-page);
+    font-weight: 700;
+  }
+  :root[data-skin="ink"] .seg button { color: var(--dash-text-soft); }
+  :root[data-skin="ink"] .seg button.is-on {
+    background: var(--dash-page);
+    color: var(--dash-panel);
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--dash-ink-a16);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--dash-text-soft);
+    font: inherit;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
+  }
+  .btn-ghost:hover {
+    color: var(--dash-vermilion-text);
+    border-color: var(--dash-vermilion-line);
+  }
+  .btn-ghost.is-danger {
+    color: var(--dash-delta-up);
+    border-color: var(--dash-coral-glow);
+  }
+
+  /* 自由勾选托盘 */
+  .tray {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px 16px;
+    background: var(--dash-surface-soft);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    font-size: 12px;
+    color: var(--dash-text-soft);
+  }
+  :root[data-skin="ink"] .tray {
+    background: var(--dash-stand);
+    border-bottom-color: var(--dash-ink-a16);
+  }
+  .tray-label { font-weight: 600; color: var(--dash-text); }
+  .tray-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--dash-text);
+  }
+  .tray-item input[type="checkbox"] {
+    accent-color: var(--dash-vermilion);
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
+  .tray-stat {
+    font-size: 11px;
+    color: var(--dash-vermilion-text);
+    font-weight: 600;
+  }
+  /* 261012c 第 4 条：R 的正式形态（小入口 + popout）在 canvas-01.html；本页只留一行对照说明 */
+  .r-note { margin: 4px 0 0; font-size: 11px; font-weight: 600; color: var(--dash-text-soft); }
+
+  .tray-go {
+    margin-left: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--dash-coral);
+    background: var(--dash-accent-wash);
+    color: var(--dash-text);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .tray-go:hover { background: var(--dash-accent-soft); }
+  :root[data-skin="ink"] .tray-go { color: var(--dash-text); }
+
+  /* 轨道外壳：支持模拟视口宽度约束 */
+  .viewport-shell {
+    width: 100%;
+    margin: 0 auto;
+    transition: max-width 180ms ease-out;
+  }
+  .viewport-shell[data-vp="1133"] { max-width: 1133px; }
+  .viewport-shell[data-vp="744"] { max-width: 744px; }
+  .viewport-shell[data-vp="440"] { max-width: 440px; }
+
+  .track-wrap {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 关键硬约束：只允许一行，flex-wrap: nowrap !important */
+  .track {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap !important;
+    align-items: stretch;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 16px;
+    box-sizing: border-box;
+    width: 100%;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 负控分支（测试专用）：关闭横滑、强制折行 */
+  .track.is-negctl {
+    flex-wrap: wrap !important;
+    overflow-x: hidden !important;
+  }
+
+  /* 滚动条美化（可见且轻巧） */
+  .track::-webkit-scrollbar {
+    height: 8px;
+  }
+  .track::-webkit-scrollbar-track {
+    background: var(--dash-surface-2);
+    border-radius: 4px;
+  }
+  .track::-webkit-scrollbar-thumb {
+    background: var(--dash-ink-a25);
+    border-radius: 4px;
+  }
+  .track::-webkit-scrollbar-thumb:hover {
+    background: var(--dash-ink-a42);
+  }
+
+  /* 模块槽位：只做布局占位，不做可见壳（dad 2026-10-11：卡片外面再加一个外框很丑）
+     卡片自己的样式就是唯一可见的框 → 这里 border / radius / 底色 / 阴影 全部去掉 */
+  .slot {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    transition: width 140ms ease-out;
+  }
+  .slot iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  /* 右滑指示器（几何语言：细线 + 直角三角形，严禁 emoji） */
+  .scroll-hint {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-ink-a16);
+    box-shadow: 0 4px 16px var(--dash-shell-shadow);
+    color: var(--dash-vermilion-text);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+    transition: opacity 180ms ease-out, transform 180ms ease-out;
+  }
+  :root[data-skin="ink"] .scroll-hint {
+    background: var(--dash-stand);
+    border-color: var(--dash-ink-a25);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  .scroll-hint.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .scroll-hint svg {
+    display: block;
+  }
+
+  .foot {
+    padding: 10px 16px 28px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--dash-text-soft);
+  }
+  .foot code {
+    background: var(--dash-surface-2);
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+  }
+  button:focus-visible { outline: 2px solid var(--dash-vermilion-text); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-accent-text);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.5</b> · 卡 v1 · 2026-10-16</span>
+  <b>练习页组合选择</b>
+  <span>一屏单行 · 超宽右滑</span>
+  <span class="sp"></span>
+
+  <div class="seg" id="skinSeg" title="浅银 / 深墨 翻转">
+    <button type="button" data-skin="light" class="is-on">浅银</button>
+    <button type="button" data-skin="ink">深墨</button>
+  </div>
+
+  <div class="seg" id="presetSeg" title="预设组合切换">
+    <button type="button" data-preset="1" class="is-on">① L+A+S</button>
+    <button type="button" data-preset="2">② L+A+D+Q</button>
+    <button type="button" data-preset="3">③ L+A+B+S+R+Q</button>
+    <button type="button" data-preset="4">④ 全部8个</button>
+    <button type="button" data-preset="5">⑤ 仅右栏六卡</button>
+  </div>
+
+  <div class="seg" id="wModeSeg" title="卡片宽度档位（默认按最大展示，窄视口按最小）">
+    <button type="button" data-wmode="max" class="is-on">最大宽</button>
+    <button type="button" data-wmode="def">默认宽</button>
+    <button type="button" data-wmode="min">紧凑宽</button>
+  </div>
+
+  <div class="seg" id="vpSeg" title="视口容器模拟">
+    <button type="button" data-vp="1133" class="is-on">1133×744</button>
+    <button type="button" data-vp="744">744×1133</button>
+    <button type="button" data-vp="440">440×956</button>
+  </div>
+
+  <button type="button" class="btn-ghost" id="negctlBtn" title="负控测试：关掉横滑并强制换行，验证预设③报红">负控测试</button>
+</div>
+
+<div class="tray" id="tray">
+  <span class="tray-label">自选模块：</span>
+  <label class="tray-item"><input type="checkbox" value="L"> <span>L 票卡</span></label>
+  <label class="tray-item"><input type="checkbox" value="A"> <span>A 仪表盘</span></label>
+  <label class="tray-item"><input type="checkbox" value="B"> <span>B 节拍器</span></label>
+  <label class="tray-item"><input type="checkbox" value="S"> <span>S 竖条</span></label>
+  <label class="tray-item"><input type="checkbox" value="D"> <span>D 时长</span></label>
+  <label class="tray-item"><input type="checkbox" value="R"> <span>R 记录</span></label>
+  <label class="tray-item"><input type="checkbox" value="Q"> <span>Q 要求</span></label>
+  <label class="tray-item"><input type="checkbox" value="X"> <span>X 底部</span></label>
+  <span class="sp"></span>
+  <span class="tray-stat" id="trayStat">已选 3 个模块</span>
+  <a class="tray-go" href="canvas-01.html">→ 并进真画布版：canvas-01.html（右栏模块顶替 pk-main-col，无外框）</a>
+</div>
+
+<div class="viewport-shell" id="viewportShell" data-vp="1133">
+  <div class="track-wrap">
+    <div class="track" id="track">
+      <!-- 模块 L: 左栏票卡 -->
+      <div class="slot" data-mod="L" data-card="card-ticket" data-min-w="320" data-def-w="380" data-max-w="390" style="width:390px">
+        <iframe id="frame-L" src="../practice-ticket-v4-260920.html" title="L 左栏票卡" loading="eager"></iframe>
+      </div>
+
+      <!-- 模块 A: 右栏仪表盘 -->
+      <div class="slot" data-mod="A" data-card="card-practice-timer" data-min-w="380" data-def-w="420" data-max-w="460" style="width:460px">
+        <iframe id="frame-A" src="dashboard-skin-01-v3.html" title="A 右栏仪表盘" loading="eager"></iframe>
+      </div>
+
+      <!-- 模块 B: 节拍器卡 -->
+      <div class="slot" data-mod="B" data-card="card-metronome" data-min-w="340" data-def-w="380" data-max-w="420" style="width:420px">
+        <iframe id="frame-B" src="metronome-01-v3.html" title="B 节拍器卡" loading="eager"></iframe>
+      </div>
+
+      <!-- 模块 S: 竖条节拍器 -->
+      <div class="slot" data-mod="S" data-card="card-metronome-strip" data-min-w="148" data-def-w="148" data-max-w="160" style="width:160px">
+        <iframe id="frame-S" src="metronome-02-strip.html" title="S 竖条节拍器" loading="eager"></iframe>
+      </div>
+
+      <!-- 模块 D: 今日练习时长卡 -->
+      <div class="slot" data-mod="D" data-card="card-practice-duration" data-min-w="300" data-def-w="340" data-max-w="380" style="width:380px">
+        <iframe id="frame-D" src="practice-duration-card-01-v3.html" title="D 今日练习时长卡" loading="eager"></iframe>
+      </div>
+
+      <!-- 模块 R: 今日记录（261012c 第 4 条：正式形态 = 小入口 + popout，已在 canvas-01.html 落地；本页沿用旧整卡对照） -->
+      <div class="slot" data-mod="R" data-card="card-today-records" data-min-w="340" data-def-w="380" data-max-w="460" style="width:460px">
+        <iframe id="frame-R" src="today-records-01.html" title="R 今日记录" loading="eager"></iframe>
+      </div>
+      <p class="r-note">R 的正式形态已改为「小入口 + popout」，实现在 canvas-01.html（本页保留旧整卡作对照）</p>
+
+      <!-- 模块 Q: 老师要求卡 -->
+      <div class="slot" data-mod="Q" data-card="card-requests" data-min-w="340" data-def-w="380" data-max-w="440" style="width:440px">
+        <iframe id="frame-Q" src="requests-card-01-v3.html" title="Q 老师要求卡" loading="eager"></iframe>
+      </div>
+
+      <!-- 模块 X: 底部块 -->
+      <div class="slot" data-mod="X" data-card="card-bottom-blocks" data-min-w="320" data-def-w="360" data-max-w="400" style="width:400px">
+        <iframe id="frame-X" src="dashboard-bottom-blocks-01-v2.html" title="X 底部三块" loading="eager"></iframe>
+      </div>
+    </div>
+
+    <!-- 非 emoji 右滑指示器（线 + 直角三角形） -->
+    <div class="scroll-hint" id="scrollHint" aria-hidden="true">
+      <span>右滑查看</span>
+      <svg width="24" height="10" viewBox="0 0 24 10" fill="none">
+        <path d="M0 5H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M14 1.5L18.5 5L14 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<p class="foot">
+  <b>本页定位</b>：并排比对（每个模块一个槽位，槽位已去壳 —— 2026-10-11 按 dad 意见删掉 border/radius/底色/阴影，卡片自己的样式是唯一可见的框）。<br>
+  <b>要看并进真画布</b>（右栏模块<b>顶替 pk-main-col</b>：原画布的入卡槽说明行 / 计时大框 / 检票按钮 / 老师要求板块被搬到隐藏宿主，模块列挂进 pk-main-col 内部，含插入卡槽动画）：<a href="canvas-01.html">canvas-01.html</a>。<br>
+  <b>一屏单行自选规范</b>：所有选中模块强制排在同一行（<code>rows === 1</code>，禁止折行），一行内所有模块等高对齐（实测统一高度）。宽度超出视口时支持横向平滑滚动，右下角提供非 emoji 几何指示器。支持自由勾选与 5 组预设（① L+A+S, ② L+A+D+Q, ③ L+A+B+S+R+Q, ④ 全部8个, ⑤ 仅右栏六卡），选择自动保存至 <code>localStorage</code>。
+</p>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var audit = qs.get('audit') === '1';
+  var isNegCtl = qs.get('negctl') === '1';
+
+  var track = document.getElementById('track');
+  var shell = document.getElementById('viewportShell');
+  var slots = [].slice.call(document.querySelectorAll('.slot'));
+  var frames = slots.map(function (s) { return s.querySelector('iframe'); });
+  var scrollHint = document.getElementById('scrollHint');
+  var tray = document.getElementById('tray');
+  var trayStat = document.getElementById('trayStat');
+
+  var CANONICAL = ['L', 'A', 'B', 'S', 'D', 'R', 'Q', 'X'];
+
+  var PRESETS = {
+    '1': ['L', 'A', 'S'],
+    '2': ['L', 'A', 'D', 'Q'],
+    '3': ['L', 'A', 'B', 'S', 'R', 'Q'],
+    '4': ['L', 'A', 'B', 'S', 'D', 'R', 'Q', 'X'],
+    '5': ['A', 'B', 'S', 'D', 'R', 'Q']
+  };
+
+  var ROW_H = { '1133': 608, '744': 740, '440': 608 };
+
+  var SCOPE = [
+    'html, body, .page { height: auto !important; min-height: 0 !important; overflow: visible !important; }',
+    '.frame { flex: 0 0 auto !important; height: auto !important; overflow: visible !important; align-items: flex-start !important; }',
+    '.console { height: auto !important; max-height: none !important; }',
+    '.scroller { overflow: visible !important; flex: 0 0 auto !important; height: auto !important; max-height: none !important; }',
+    '.dash { max-height: none !important; overflow: visible !important; height: auto !important; }',
+    '.stage-frame { width: 100% !important; max-width: 100% !important; position: relative !important; }',
+    '.dash-simulation-chassis, .dash-simulation-chassis .deck-row, .dash-simulation-chassis .speaker-block, .dash-simulation-chassis .ops-block, .dash-simulation-chassis .stand-block, .dash-simulation-chassis .sim-header { position: static !important; }',
+    'body { padding: 0 !important; }',
+    '.dbar, .chrome, .demo-bar, .audit-panel, .control-strip, .eval-panel { display: none !important; }',
+    '.card, .card-wrap, .req-card-chassis, .metro-card, .strip { max-width: 100% !important; }',
+    '#speakerBlock { left: 0 !important; }',
+    '/* L 票卡 scope */',
+    '.pk-top, .pk-main-col, .pk-drawer-overlay, .pk-drawer, .pk-demo-notes-fold, .pk-demo-notes-text { display: none !important; }',
+    '#practiceStage { min-height: 0 !important; }',
+    '.pk-stage-wrap { display: block !important; padding: 0 !important; margin: 0 !important; }',
+    '.pk-left-col { width: 100% !important; margin: 0 !important; }',
+    '.pk-ticket { max-width: 100% !important; margin: 0 !important; }',
+    '/* X 底部块 scope */',
+    '.dash-simulation-chassis { margin: 0 auto !important; }'
+  ].join('\n');
+
+  function contentHeight(doc) {
+    if (!doc || !doc.body) return 0;
+    var e = doc.documentElement;
+    var b = doc.body;
+    return Math.max(e ? e.scrollHeight : 0, b ? b.scrollHeight : 0, b ? b.offsetHeight : 0);
+  }
+
+  function getActiveModules() {
+    var cbs = [].slice.call(tray.querySelectorAll('input[type="checkbox"]:checked'));
+    var set = cbs.map(function (cb) { return cb.value; });
+    return CANONICAL.filter(function (k) { return set.indexOf(k) >= 0; });
+  }
+
+  function setActiveModules(mods, save) {
+    if (!mods || !mods.length) mods = PRESETS['1'];
+    var set = {};
+    mods.forEach(function (m) { set[m] = true; });
+
+    var cbs = [].slice.call(tray.querySelectorAll('input[type="checkbox"]'));
+    cbs.forEach(function (cb) {
+      cb.checked = !!set[cb.value];
+    });
+
+    slots.forEach(function (s) {
+      var isAct = !!set[s.dataset.mod];
+      s.style.display = isAct ? '' : 'none';
+    });
+
+    var pKey = null;
+    Object.keys(PRESETS).forEach(function (k) {
+      var p = PRESETS[k];
+      if (p.length === mods.length && p.every(function (m, idx) { return m === mods[idx]; })) {
+        pKey = k;
+      }
+    });
+
+    document.querySelectorAll('#presetSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.preset === pKey);
+    });
+
+    if (trayStat) {
+      trayStat.textContent = '已选 ' + mods.length + ' 个模块' + (pKey ? '（预设 ' + pKey + '）' : '（自选组合）');
+    }
+
+    if (save !== false) {
+      try { localStorage.setItem('compose03_modules', JSON.stringify(mods)); } catch (e) {}
+    }
+
+    applyWidths();
+    prepareAll();
+  }
+
+  function applyInner(iframe, vp) {
+    var doc = iframe.contentDocument;
+    if (!doc || !doc.head) return;
+    var style = doc.getElementById('compose-scope');
+    if (!style) {
+      style = doc.createElement('style');
+      style.id = 'compose-scope';
+      doc.head.appendChild(style);
+    }
+    style.textContent = SCOPE;
+
+    var skin = document.documentElement.dataset.skin || '';
+    if (skin) doc.documentElement.dataset.skin = skin;
+    else delete doc.documentElement.dataset.skin;
+
+    var mode = vp === '440' ? '440x956' : (vp === '744' ? '744x1133' : '1133x744');
+    var dash = doc.querySelector('.dash');
+    var frame = doc.getElementById('frame');
+    if (dash) dash.dataset.vp = mode;
+    if (frame) frame.dataset.vp = mode;
+
+    var win = doc.defaultView;
+    var stage = doc.getElementById('stageFrame');
+    if (stage && doc.getElementById('reqChassis')) {
+      var reqVp = vp === '440' ? '440x956' : '744x1133';
+      if (win && win.setViewport) win.setViewport(reqVp);
+      else stage.dataset.vp = reqVp;
+    }
+    if (win && win.setGrilleVariant) win.setGrilleVariant(2);
+    if (win && win.setOpsVariant) win.setOpsVariant('B');
+    if (win && win.setStandVariant) win.setStandVariant('B');
+
+    var open = doc.getElementById('btnOpen');
+    var fold = doc.getElementById('btnFold');
+    if (open && !open.dataset.fitBound) {
+      open.dataset.fitBound = '1';
+      open.addEventListener('click', function () { setTimeout(prepareAll, 40); });
+    }
+    if (fold && !fold.dataset.fitBound) {
+      fold.dataset.fitBound = '1';
+      fold.addEventListener('click', function () { setTimeout(prepareAll, 40); });
+    }
+  }
+
+  function getCurrentWidthMode() {
+    var btn = document.querySelector('#wModeSeg button.is-on');
+    return btn ? btn.dataset.wmode : 'max';
+  }
+
+  function setWidthMode(mode) {
+    document.querySelectorAll('#wModeSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.wmode === mode);
+    });
+    applyWidths();
+    prepareAll();
+  }
+
+  function applyWidths() {
+    var mode = getCurrentWidthMode();
+    slots.forEach(function (s) {
+      var w = mode === 'min' ? s.dataset.minW : (mode === 'def' ? s.dataset.defW : s.dataset.maxW);
+      s.style.width = w + 'px';
+    });
+  }
+
+  function updateScrollHint() {
+    if (!scrollHint || !track) return;
+    var hasOverflow = track.scrollWidth > track.clientWidth + 1;
+    var hasMoreRight = track.scrollWidth - track.clientWidth - track.scrollLeft > 10;
+    scrollHint.classList.toggle('is-visible', hasOverflow && hasMoreRight);
+  }
+
+  function equalizeHeights() {
+    var vp = shell.dataset.vp || '1133';
+    var visibleSlots = slots.filter(function (s) {
+      return s.style.display !== 'none' && s.getClientRects().length > 0;
+    });
+    if (!visibleSlots.length) return;
+
+    var baseH = ROW_H[vp] || 608;
+    var maxContentH = baseH;
+
+    visibleSlots.forEach(function (s) {
+      var iframe = s.querySelector('iframe');
+      if (!iframe || !iframe.contentDocument || !iframe.contentDocument.body) return;
+      iframe.style.height = '80px';
+      var h = contentHeight(iframe.contentDocument);
+      if (h > maxContentH) {
+        maxContentH = h;
+      }
+    });
+
+    var targetH = Math.ceil(maxContentH);
+    visibleSlots.forEach(function (s) {
+      var iframe = s.querySelector('iframe');
+      s.style.height = targetH + 'px';
+      if (iframe) {
+        iframe.style.height = targetH + 'px';
+      }
+    });
+
+    updateScrollHint();
+  }
+
+  function prepareAll() {
+    var vp = shell.dataset.vp || '1133';
+    frames.forEach(function (f) { applyInner(f, vp); });
+    equalizeHeights();
+  }
+
+  function setViewport(vp) {
+    shell.dataset.vp = vp;
+    document.querySelectorAll('#vpSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.vp === vp);
+    });
+    var nextWMode = vp === '440' ? 'min' : (vp === '744' ? 'def' : 'max');
+    setWidthMode(nextWMode);
+  }
+
+  function setSkin(skin) {
+    if (skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+
+    document.querySelectorAll('#skinSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.skin === (skin || 'light'));
+    });
+    prepareAll();
+  }
+
+  function setNegCtl(on) {
+    isNegCtl = !!on;
+    track.classList.toggle('is-negctl', isNegCtl);
+    var btn = document.getElementById('negctlBtn');
+    if (btn) {
+      btn.classList.toggle('is-danger', isNegCtl);
+      btn.textContent = isNegCtl ? '负控激活中（强制折行）' : '负控测试';
+    }
+    prepareAll();
+  }
+
+  // 绑定事件
+  track.addEventListener('scroll', updateScrollHint, { passive: true });
+
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    setSkin(b.dataset.skin);
+    try { localStorage.setItem('compose03_skin', b.dataset.skin); } catch (err) {}
+  });
+
+  document.getElementById('presetSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var p = PRESETS[b.dataset.preset];
+    if (p) setActiveModules(p, true);
+    if (audit) runAudit();
+  });
+
+  document.getElementById('wModeSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    setWidthMode(b.dataset.wmode);
+    if (audit) runAudit();
+  });
+
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    setViewport(b.dataset.vp);
+    if (audit) runAudit();
+  });
+
+  document.getElementById('negctlBtn').addEventListener('click', function () {
+    setNegCtl(!isNegCtl);
+    if (audit) runAudit();
+  });
+
+  tray.addEventListener('change', function (e) {
+    if (e.target.type === 'checkbox') {
+      var act = getActiveModules();
+      if (!act.length) {
+        e.target.checked = true;
+        act = [e.target.value];
+      }
+      setActiveModules(act, true);
+      if (audit) runAudit();
+    }
+  });
+
+  frames.forEach(function (f) {
+    f.addEventListener('load', function () {
+      prepareAll();
+      var imgs = f.contentDocument ? f.contentDocument.images : [];
+      for (var i = 0; i < imgs.length; i++) {
+        imgs[i].addEventListener('load', prepareAll);
+      }
+    });
+  });
+
+  window.addEventListener('resize', function () {
+    updateScrollHint();
+  });
+
+  // ════════════ 自动化审计引擎 ════════════
+  function runAudit() {
+    prepareAll();
+    var fails = [];
+    var presetReports = {};
+
+    var origMods = getActiveModules();
+    var origScroll = track.scrollLeft;
+    var origWMode = getCurrentWidthMode();
+
+    var presetKeys = ['1', '2', '3', '4', '5'];
+    presetKeys.forEach(function (pk) {
+      var shouldForceWrap = isNegCtl && pk === '3';
+      track.classList.toggle('is-negctl', shouldForceWrap);
+      var expectedMods = PRESETS[pk];
+      setActiveModules(expectedMods, false);
+      prepareAll();
+
+      var visibleSlots = slots.filter(function (s) {
+        return s.style.display !== 'none' && s.getClientRects().length > 0;
+      });
+
+      var modKeys = visibleSlots.map(function (s) { return s.dataset.mod; });
+
+      // 1. 验证模块顺序（按清单顺序排列，L 在最左）
+      var orderOk = true;
+      for (var mi = 0; mi < modKeys.length - 1; mi++) {
+        if (CANONICAL.indexOf(modKeys[mi]) >= CANONICAL.indexOf(modKeys[mi + 1])) {
+          orderOk = false;
+        }
+      }
+      if (modKeys.indexOf('L') >= 0 && modKeys[0] !== 'L') {
+        orderOk = false;
+      }
+      if (!orderOk) {
+        fails.push('预设 ' + pk + ' 模块顺序未按清单排列: ' + modKeys.join(','));
+      }
+
+      // 2. 测量每一张卡片的盒模型与内容高
+      var eachWidth = {};
+      var heights = [];
+      var tops = [];
+      var clippedList = [];
+
+      visibleSlots.forEach(function (s) {
+        var f = s.querySelector('iframe');
+        var doc = f ? f.contentDocument : null;
+        var box = s.getBoundingClientRect();
+        var ch = doc ? contentHeight(doc) : 0;
+        var isClipped = ch > 40 && Math.round(box.height) + 2 < ch;
+
+        var m = s.dataset.mod;
+        eachWidth[m] = Math.round(box.width);
+        heights.push(Math.round(box.height));
+        tops.push(Math.round(box.top));
+        if (isClipped) clippedList.push(m + '(box=' + Math.round(box.height) + ',content=' + ch + ')');
+      });
+
+      var sumCardsW = 0;
+      Object.keys(eachWidth).forEach(function (k) { sumCardsW += eachWidth[k]; });
+      var gapW = (modKeys.length - 1) * 16;
+      var padW = 32;
+      var totalNeededW = sumCardsW + gapW + padW;
+
+      var rowSpan = tops.length ? (Math.max.apply(null, tops) - Math.min.apply(null, tops)) : 0;
+      var actRows = rowSpan <= 2 ? 1 : (new Set(tops).size);
+
+      var heightSpan = heights.length ? (Math.max.apply(null, heights) - Math.min.apply(null, heights)) : 0;
+      var rowHeight = heights.length ? heights[0] : 0;
+
+      var containerW = Math.round(track.clientWidth);
+      var contentW = track.classList.contains('is-negctl') ? totalNeededW : Math.round(track.scrollWidth);
+      var hasScrollX = contentW > containerW + 1;
+      var isClippedAll = clippedList.length > 0;
+
+      // 3. 横滑可用性测试（能滚且松手后仍在同一行）
+      var canScroll = false;
+      var scrolledRows = null;
+      if (hasScrollX && !track.classList.contains('is-negctl')) {
+        var oldBehavior = track.style.scrollBehavior;
+        track.style.scrollBehavior = 'auto';
+        track.scrollLeft = 90;
+        canScroll = track.scrollLeft > 0;
+        var scrolledTops = visibleSlots.map(function (s) { return Math.round(s.getBoundingClientRect().top); });
+        var scrolledSpan = scrolledTops.length ? (Math.max.apply(null, scrolledTops) - Math.min.apply(null, scrolledTops)) : 0;
+        scrolledRows = scrolledSpan <= 2 ? 1 : 2;
+        track.scrollLeft = 0;
+        track.style.scrollBehavior = oldBehavior;
+      } else {
+        canScroll = true; // 自身能塞进容器，无需右滑
+        scrolledRows = 1;
+      }
+
+      // 4. 断言判定
+      if (track.classList.contains('is-negctl') && pk === '3') {
+        // 负控故意触发分支：预设3在强制折行下必须报红
+        if (actRows <= 1) {
+          fails.push('负控未触发：预设 3 在 is-negctl 下未能折行');
+        } else {
+          fails.push('[负控报红] 预设③ 在 flex-wrap:wrap 下行数超标: 测得 rows = ' + actRows + ' (want 1) · content 总宽 ' + contentW + 'px vs 容器宽 ' + containerW + 'px · 卡片已折至第二行');
+        }
+      } else {
+        if (actRows !== 1) {
+          fails.push('预设 ' + pk + ' rows = ' + actRows + ' want 1 (top span ' + rowSpan + 'px)');
+        }
+        if (heightSpan > 1) {
+          fails.push('预设 ' + pk + ' height span = ' + heightSpan + ' want <= 1');
+        }
+        if (isClippedAll) {
+          fails.push('预设 ' + pk + ' 卡片裁切: ' + clippedList.join(', '));
+        }
+        if (!canScroll) {
+          fails.push('预设 ' + pk + ' 超宽时 scrollLeft 无法滚动');
+        }
+        if (scrolledRows !== 1) {
+          fails.push('预设 ' + pk + ' 滚动后不在同一行: ' + scrolledRows);
+        }
+      }
+
+      presetReports['preset_' + pk] = {
+        modules: modKeys,
+        rows: actRows,
+        orderOk: orderOk,
+        eachWidth: eachWidth,
+        rowHeight: rowHeight,
+        heightSpan: heightSpan,
+        containerW: containerW,
+        contentW: contentW,
+        hasScrollX: hasScrollX,
+        clipped: isClippedAll,
+        canScroll: canScroll,
+        scrolledRows: scrolledRows
+      };
+    });
+
+    // 恢复测试前用户选中的模块与状态
+    track.classList.toggle('is-negctl', isNegCtl);
+    setActiveModules(origMods, false);
+    track.scrollLeft = origScroll;
+    prepareAll();
+
+    var out = {
+      verdict: fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK',
+      ok: fails.length === 0,
+      timestamp: '2026-10-11',
+      negctlActive: isNegCtl,
+      presets: presetReports,
+      failures: fails
+    };
+
+    var pre = document.getElementById('audit');
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:92vw;max-height:46vh;overflow:auto;background:rgba(0,0,0,0.88);color:#00ff66;font-size:11px;padding:8px 12px;border-radius:6px;z-index:9999;white-space:pre-wrap;border:1px solid #00aa44;';
+      document.body.appendChild(pre);
+    }
+    if (out.ok) {
+      pre.style.color = '#00ff66';
+      pre.style.borderColor = '#00aa44';
+    } else {
+      pre.style.color = '#ff5555';
+      pre.style.borderColor = '#cc2222';
+    }
+    pre.textContent = out.verdict + '\n' + JSON.stringify(out, null, 2);
+    return out;
+  }
+  window.__composeAudit = runAudit;
+
+  function boot() {
+    // 读取持久化偏好
+    var savedSkin = null;
+    var savedMods = null;
+    try {
+      savedSkin = localStorage.getItem('compose03_skin');
+      var raw = localStorage.getItem('compose03_modules');
+      if (raw) savedMods = JSON.parse(raw);
+    } catch (e) {}
+
+    if (savedSkin) setSkin(savedSkin);
+    if (isNegCtl) setNegCtl(true);
+
+    var initPreset = qs.get('preset');
+    if (initPreset && PRESETS[initPreset]) {
+      setActiveModules(PRESETS[initPreset], false);
+    } else if (Array.isArray(savedMods) && savedMods.length) {
+      setActiveModules(savedMods, false);
+    } else {
+      setActiveModules(PRESETS['1'], false);
+    }
+
+    var pending = frames.map(function (f) {
+      return new Promise(function (res) {
+        var doc = f.contentDocument;
+        if (doc && doc.readyState === 'complete' && doc.body && doc.body.childElementCount) res();
+        else f.addEventListener('load', function () { res(); }, { once: true });
+      });
+    });
+
+    Promise.all(pending).then(function () {
+      setViewport(shell.dataset.vp || '1133');
+      setTimeout(function () {
+        prepareAll();
+        if (audit) runAudit();
+      }, 350);
+    });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>D5 今日练习记录 — 设计与边缘模糊探针</title>
+<style>
+  /* ════════════════════════════════════════════════════════════
+     契约 Tokens: token-spec.md 浅银 (64) / 深墨 (50)
+     严格遵循 verify-v2b 规范：非中性色严禁字面量，全走 --dash-*
+     ════════════════════════════════════════════════════════════ */
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF8C5A;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+      --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-accent-text: #FF8C5A;
+    --dash-coral-text: #FF6B6B;
+}
+
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+    --dash-accent: #FF8C5A;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+      --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-accent-text: #B8531F;
+    --dash-coral-text: #C93B3B;
+}
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+    background: var(--dash-page);
+    color: var(--dash-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    user-select: none;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* ══════ 顶部总控条 ══════ */
+  .demo-bar {
+    max-width: 1133px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    gap: 10px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 8px var(--dash-ink-a04);
+  }
+
+  .demo-title {
+    font-weight: 800;
+    color: var(--dash-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .demo-title span { color: var(--dash-coral); }
+
+  .demo-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    background: var(--dash-surface-2);
+    padding: 2px;
+    border-radius: 8px;
+    gap: 2px;
+  }
+
+  .ctrl-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+    padding: 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .ctrl-btn {
+    border: 0;
+    background: transparent;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--dash-text-soft);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .ctrl-btn.active {
+    background: var(--dash-white);
+    color: var(--dash-text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  :root[data-skin="ink"] .ctrl-btn.active { color: var(--dash-page); }
+
+  /* ══════ 舞台外框容器 (多视口切换) ══════ */
+  .stage-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    transition: max-width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .stage-frame[data-vp="1133x744"] { max-width: 1133px; }
+  .stage-frame[data-vp="744x1133"] { max-width: 744px; }
+  .stage-frame[data-vp="440x956"]  { max-width: 440px; }
+
+  /* ══════ D5 今日练习记录卡片 (High-resolution Console 风) ══════ */
+  .d5-card {
+    width: 100%;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 20px;
+    box-shadow: 0 8px 24px var(--dash-ink-a04);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    transition: background-color 0.25s, border-color 0.25s, box-shadow 0.25s;
+  }
+
+  :root[data-skin="ink"] .d5-card {
+    background: var(--dash-panel);
+    border-color: var(--dash-shell-inset);
+    box-shadow: 0 12px 32px var(--dash-shell-shadow);
+  }
+
+  /* 3.1 & 3.2 头部通栏 */
+  .d5-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--dash-ink-a12);
+    gap: 12px;
+  }
+
+  .d5-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--dash-text);
+    letter-spacing: -0.01em;
+  }
+  :root[data-skin="ink"] .d5-header-title {
+    color: var(--dash-panel-text);
+  }
+
+  .d5-icon-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--dash-accent-wash);
+    border: 1px solid var(--dash-accent-line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dash-accent);
+    flex-shrink: 0;
+  }
+
+  .d5-date-tag {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dash-text-soft);
+    background: var(--dash-surface-2);
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  :root[data-skin="ink"] .d5-date-tag {
+    color: var(--dash-panel-dim);
+    background: var(--dash-surface-2);
+  }
+
+  /* 3.2 折叠/展开 双态按钮 (High-res Console 胶囊) */
+  .mode-toggle-group {
+    display: flex;
+    align-items: center;
+    background: var(--dash-surface-2);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--dash-ink-a12);
+  }
+
+  .mode-toggle-btn {
+    border: 0;
+    background: transparent;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  :root[data-skin="ink"] .mode-toggle-btn {
+    color: var(--dash-panel-dim);
+  }
+  .mode-toggle-btn.active {
+    background: var(--dash-white);
+    color: var(--dash-text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  :root[data-skin="ink"] .mode-toggle-btn.active {
+    background: var(--dash-btn-face-hi);
+    color: var(--dash-panel-text);
+  }
+
+  /* ══════ 3.3 通栏下 3 个 Heroic 区 ══════ */
+  .heroic-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    background: var(--dash-surface-soft);
+  }
+  :root[data-skin="ink"] .heroic-strip {
+    background: var(--dash-surface-soft);
+  }
+
+  .heroic-cell {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-right: 1px solid var(--dash-ink-a12);
+    position: relative;
+  }
+  .heroic-cell:last-child {
+    border-right: 0;
+  }
+
+  .hero-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  :root[data-skin="ink"] .hero-label {
+    color: var(--dash-panel-dim);
+  }
+
+  .hero-val-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .hero-num {
+    font-size: 28px;
+    font-weight: 850;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .hero-unit {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+  }
+
+  .hero-sub {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--dash-text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 3.3 三数强调色契约 */
+  .heroic-cell.c-span .hero-num {
+    color: var(--dash-text);
+  }
+  :root[data-skin="ink"] .heroic-cell.c-span .hero-num {
+    color: var(--dash-panel-text);
+  }
+
+  .heroic-cell.c-practice .hero-num {
+    color: var(--dash-accent);
+  }
+
+  .heroic-cell.c-delta .hero-num.delta-pos {
+    color: var(--dash-delta-up); /* 多练 = 红色 */
+  }
+  .heroic-cell.c-delta .hero-num.delta-neg {
+    color: var(--dash-delta-down); /* 少练 = 绿色 */
+  }
+
+  /* ══════ 3.4 列表表头与行 ══════ */
+  .table-header {
+    display: grid;
+    grid-template-columns: 2.2fr 1.1fr 1fr 1.2fr 3.2fr 1.3fr;
+    padding: 10px 18px;
+    font-size: 11.5px;
+    font-weight: 750;
+    color: var(--dash-text-soft);
+    background: var(--dash-surface-2);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  :root[data-skin="ink"] .table-header {
+    background: var(--dash-panel);
+    color: var(--dash-panel-dim);
+  }
+
+  .th-col { display: flex; align-items: center; gap: 4px; }
+  .th-right { justify-content: flex-end; }
+  .th-center { justify-content: center; }
+
+  /* 3.5 滚动列表容器 */
+  .list-viewport {
+    position: relative;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 3.5 方案 1: CSS mask-image 逐层渐进遮罩 */
+  .list-viewport.blur-mode-css {
+    mask-image: linear-gradient(to bottom,
+      black 0%,
+      black calc(100% - 64px),
+      rgba(0, 0, 0, 0.45) calc(100% - 24px),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(to bottom,
+      black 0%,
+      black calc(100% - 64px),
+      rgba(0, 0, 0, 0.45) calc(100% - 24px),
+      transparent 100%
+    );
+  }
+
+  /* 3.5 方案 1 补充：底部边缘轻量毛玻璃层 */
+  .bottom-fade-shim {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    pointer-events: none;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    mask-image: linear-gradient(to top, black 25%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to top, black 25%, transparent 100%);
+    z-index: 10;
+  }
+  .list-viewport.blur-mode-css + .bottom-fade-shim {
+    display: block;
+  }
+
+  /* 列表行排版 */
+  .record-row {
+    display: grid;
+    grid-template-columns: 2.2fr 1.1fr 1fr 1.2fr 3.2fr 1.3fr;
+    padding: 12px 18px;
+    align-items: center;
+    border-bottom: 1px solid var(--dash-ink-a04);
+    font-size: 13px;
+    color: var(--dash-text);
+    transition: background-color 0.12s;
+  }
+  :root[data-skin="ink"] .record-row {
+    color: var(--dash-panel-text);
+    border-bottom-color: var(--dash-ink-a12);
+  }
+
+  .record-row:hover {
+    background: var(--dash-ink-a04);
+  }
+  :root[data-skin="ink"] .record-row:hover {
+    background: var(--dash-ink-a12);
+  }
+
+  /* 科目行 (折叠态或展开态的组头) */
+  .record-row.subject-master {
+    background: var(--dash-surface-soft);
+    font-weight: 700;
+  }
+
+  .col-subject {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .sub-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dash-coral);
+    flex-shrink: 0;
+  }
+  .sub-name {
+    font-weight: 750;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .session-indent {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 12px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--dash-surface-2);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dash-text-soft);
+  }
+
+  .col-num {
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+  }
+
+  .col-tempo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--dash-surface-2);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--dash-accent);
+    width: fit-content;
+  }
+  :root[data-skin="ink"] .col-tempo {
+    background: var(--dash-surface-2);
+  }
+
+  .col-reps {
+    font-size: 12px;
+    color: var(--dash-text-soft);
+  }
+  :root[data-skin="ink"] .col-reps {
+    color: var(--dash-panel-dim);
+  }
+
+  .col-detail {
+    font-size: 12px;
+    color: var(--dash-text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 10px;
+  }
+  :root[data-skin="ink"] .col-detail {
+    color: var(--dash-panel-dim);
+  }
+
+  .col-ratio {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .ratio-text {
+    font-size: 12px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ratio-bar-bg {
+    width: 100%;
+    max-width: 60px;
+    height: 4px;
+    background: var(--dash-ink-a12);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .ratio-bar-fill {
+    height: 100%;
+    background: var(--dash-coral);
+    border-radius: 999px;
+  }
+
+  /* ══════ 3.5 弹出层 (Pop-out Modal) 对照版 ══════ */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.open {
+    display: flex;
+  }
+
+  .modal-card-box {
+    width: min(720px, 94vw);
+    max-height: 82vh;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 20px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  :root[data-skin="ink"] .modal-card-box {
+    background: var(--dash-panel);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--dash-ink-a12);
+  }
+  .modal-close-btn {
+    border: 0;
+    background: var(--dash-surface-2);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: var(--dash-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    transition: background-color 0.15s, transform 0.1s;
+  }
+  :root[data-skin="ink"] .modal-close-btn {
+    color: var(--dash-panel-text);
+  }
+  .modal-close-btn:active {
+    transform: scale(0.96);
+  }
+
+  /* ══════ 实测审计面板 (Audit Telemetry Drawer) ══════ */
+  .audit-drawer {
+    margin-top: 14px;
+    width: 100%;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--dash-text);
+    box-shadow: 0 2px 8px var(--dash-ink-a04);
+  }
+  :root[data-skin="ink"] .audit-drawer {
+    background: var(--dash-panel);
+    color: var(--dash-panel-text);
+  }
+
+  .audit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 750;
+    color: var(--dash-accent);
+  }
+
+  .audit-code {
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-ink-a12);
+    border-radius: 8px;
+    padding: 8px 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+
+  /* ══════ 移动端降级与响应式适配 (440px / 744px) ══════ */
+  @media (max-width: 768px) {
+    .table-header,
+    .record-row {
+      grid-template-columns: 2fr 1fr 1fr 1fr 0fr 1fr;
+    }
+    .th-detail,
+    .col-detail {
+      display: none; /* 744 紧凑视口下隐藏过长明细 */
+    }
+    .heroic-cell {
+      padding: 10px 12px;
+    }
+    .hero-num {
+      font-size: 24px;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .heroic-strip {
+      grid-template-columns: 1fr;
+    }
+    .heroic-cell {
+      border-right: 0;
+      border-bottom: 1px solid var(--dash-ink-a12);
+      padding: 10px 14px;
+    }
+    .heroic-cell:last-child {
+      border-bottom: 0;
+    }
+    .table-header {
+      display: none; /* 440px 手机端采用紧凑高密度卡片网格降级 */
+    }
+    .record-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "subject duration"
+        "tempo ratio"
+        "detail detail";
+      row-gap: 6px;
+      column-gap: 12px;
+      padding: 12px 14px;
+      align-items: center;
+    }
+    .col-subject { grid-area: subject; }
+    .col-num     { grid-area: duration; text-align: right; }
+    .col-tempo   { grid-area: tempo; justify-self: start; }
+    .col-reps    { display: none; }
+    .col-ratio   { grid-area: ratio; align-items: flex-end; }
+    .col-detail  {
+      grid-area: detail;
+      width: 100%;
+      white-space: normal;
+      font-size: 11.5px;
+      line-height: 1.4;
+      padding-right: 0;
+      color: var(--dash-text-soft);
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ══════ 顶栏总控 ══════ -->
+  <header class="demo-bar">
+    <div class="demo-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      <span>D5</span> 今日练习记录 · 视觉与边缘模糊探针
+    </div>
+
+    <div class="demo-controls">
+      <!-- 视口切换 -->
+      <div class="ctrl-group">
+        <span class="ctrl-label">视口</span>
+        <button class="ctrl-btn active" data-vp="1133x744" onclick="setViewport('1133x744')">1133</button>
+        <button class="ctrl-btn" data-vp="744x1133" onclick="setViewport('744x1133')">744</button>
+        <button class="ctrl-btn" data-vp="440x956" onclick="setViewport('440x956')">440</button>
+      </div>
+
+      <!-- 皮肤切换 -->
+      <div class="ctrl-group">
+        <span class="ctrl-label">皮肤</span>
+        <button class="ctrl-btn active" id="skinLightBtn" onclick="setSkin('light')">浅银</button>
+        <button class="ctrl-btn" id="skinDarkBtn" onclick="setSkin('ink')">深墨</button>
+      </div>
+
+      <!-- 3.2 折叠/展开 -->
+      <div class="ctrl-group">
+        <span class="ctrl-label">层级</span>
+        <button class="ctrl-btn" id="modeFoldBtn" onclick="toggleExpand(false)">折叠(科目)</button>
+        <button class="ctrl-btn active" id="modeExpandBtn" onclick="toggleExpand(true)">展开(Session)</button>
+      </div>
+
+      <!-- 3.5 模糊方案切换 -->
+      <div class="ctrl-group">
+        <span class="ctrl-label">3.5模糊</span>
+        <button class="ctrl-btn active" id="blurCssBtn" onclick="setBlurMode('css')">方案1(CSS遮罩)</button>
+        <button class="ctrl-btn" id="blurGsapBtn" onclick="setBlurMode('gsap')">方案2(GSAP逐帧)</button>
+        <button class="ctrl-btn" id="blurOffBtn" onclick="setBlurMode('off')">关闭</button>
+      </div>
+
+      <!-- 3.5 归属对照切换 (卡片 vs 弹窗) -->
+      <div class="ctrl-group">
+        <span class="ctrl-label">载体</span>
+        <button class="ctrl-btn active" id="targetCardBtn" onclick="setContainerTarget('card')">卡片列表</button>
+        <button class="ctrl-btn" id="targetModalBtn" onclick="setContainerTarget('modal')">Pop-out弹窗</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════ 舞台容器 ══════ -->
+  <main class="stage-frame" id="stageFrame" data-vp="1133x744">
+
+    <!-- D5 卡片主实现 -->
+    <article class="d5-card" id="d5Card">
+
+      <!-- 3.1 & 3.2 头部通栏 -->
+      <header class="d5-header">
+        <div class="d5-header-title">
+          <div class="d5-icon-badge">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <span>今日练习记录</span>
+          <span class="d5-date-tag">2026-10-03 今日</span>
+        </div>
+
+        <div class="mode-toggle-group">
+          <button class="mode-toggle-btn" id="cardFoldBtn" onclick="toggleExpand(false)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline></svg>
+            折叠
+          </button>
+          <button class="mode-toggle-btn active" id="cardExpandBtn" onclick="toggleExpand(true)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            展开
+          </button>
+        </div>
+      </header>
+
+      <!-- 3.3 通栏下 3 个 Heroic 区 -->
+      <section class="heroic-strip">
+        <!-- 1. 总时长 (自然总跨度) -->
+        <div class="heroic-cell c-span">
+          <div class="hero-label">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            总时长 (自然跨度)
+          </div>
+          <div class="hero-val-wrap">
+            <span class="hero-num" id="heroSpan">96</span>
+            <span class="hero-unit">min</span>
+          </div>
+          <div class="hero-sub" id="heroSpanSub">今日首练 19:08 ~ 至今</div>
+        </div>
+
+        <!-- 2. 练习时长 (纯练习累计) -->
+        <div class="heroic-cell c-practice">
+          <div class="hero-label">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            练习时长 (有效)
+          </div>
+          <div class="hero-val-wrap">
+            <span class="hero-num" id="heroPractice">57</span>
+            <span class="hero-unit">min</span>
+          </div>
+          <div class="hero-sub" id="heroPracticeSub">累计练习 3420 秒 · 专注度 59%</div>
+        </div>
+
+        <!-- 3. 相比昨日 (多=红 / 少=绿) -->
+        <div class="heroic-cell c-delta">
+          <div class="hero-label">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            相比昨日
+          </div>
+          <div class="hero-val-wrap">
+            <span class="hero-num delta-pos" id="heroDelta">+27</span>
+            <span class="hero-unit">min</span>
+          </div>
+          <div class="hero-sub" id="heroDeltaSub">昨日 30 分钟 (1800s) · 多练 +90%</div>
+        </div>
+      </section>
+
+      <!-- 3.4 列表表头 -->
+      <div class="table-header">
+        <div class="th-col">科目</div>
+        <div class="th-col">总时长</div>
+        <div class="th-col th-center">速度</div>
+        <div class="th-col">单次</div>
+        <div class="th-col th-detail">明细 (Session)</div>
+        <div class="th-col th-right">占比</div>
+      </div>
+
+      <!-- 3.5 滚动列表容器 (挂载渐进模糊) -->
+      <div class="list-viewport blur-mode-css" id="listViewport" onscroll="handleScroll(this)">
+        <div id="tableBody">
+          <!-- 动态注入行 -->
+        </div>
+      </div>
+      <!-- 方案 1 渐进毛玻璃层 (挂载在容器底部) -->
+      <div class="bottom-fade-shim" id="fadeShim"></div>
+
+    </article>
+
+    <!-- ══════ 3.5 Pop-out Modal 对照弹窗 ══════ -->
+    <div class="modal-overlay" id="modalOverlay" onclick="handleModalOverlayClick(event)">
+      <div class="modal-card-box">
+        <header class="modal-header">
+          <div class="d5-header-title">
+            <div class="d5-icon-badge">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <span>今日练习明细 · 弹层视图</span>
+          </div>
+          <button class="modal-close-btn" onclick="setContainerTarget('card')">✕</button>
+        </header>
+
+        <div class="table-header">
+          <div class="th-col">科目</div>
+          <div class="th-col">总时长</div>
+          <div class="th-col th-center">速度</div>
+          <div class="th-col">单次</div>
+          <div class="th-col th-detail">明细 (Session)</div>
+          <div class="th-col th-right">占比</div>
+        </div>
+
+        <div class="list-viewport blur-mode-css" id="modalViewport" onscroll="handleScroll(this)">
+          <div id="modalTableBody"></div>
+        </div>
+        <div class="bottom-fade-shim"></div>
+      </div>
+    </div>
+
+    <!-- ══════ 动态实测审计数据条 (提供给自动化校验) ══════ -->
+    <section class="audit-drawer" id="auditDrawer">
+      <div class="audit-header">
+        <span>⚡ 实时运行与模糊探针遥测数据 (?audit=1)</span>
+        <span id="telemetryStatus">ACTIVE · 60FPS</span>
+      </div>
+      <pre class="audit-code" id="auditOutput">正在计算探针数据...</pre>
+    </section>
+
+  </main>
+
+  <!-- 引入项目本地 GSAP 库 -->
+  <script src="../vendor/gsap.min.js"></script>
+  <script>
+    /* ════════════════════════════════════════════════════════════
+       冻结数据源 (严格对齐 plan §2 规范)
+       ════════════════════════════════════════════════════════════ */
+    const PRACTICE_DATA = {
+      "items": [
+        { "item_id": 1, "item_name": "萨丽哈", "seconds": 2100 },
+        { "item_id": 2, "item_name": "基本功·长音与气震音", "seconds": 720 },
+        { "item_id": 3, "item_name": "姑苏行·慢板", "seconds": 600 }
+      ],
+      "total_minutes": 57,
+      "total_seconds": 3420,
+      "sessions": [
+        { "item_id": 1, "item_name": "萨丽哈", "duration_seconds": 600, "tempo_bpm": 82, "content": "重点练习第3-4乐句双吐连音与指颤音", "reps": 3, "started_at": "19:10" },
+        { "item_id": 1, "item_name": "萨丽哈", "duration_seconds": 700, "tempo_bpm": 82, "content": "快板提速测试，第5乐句连音平稳度", "reps": 2, "started_at": "19:25" },
+        { "item_id": 1, "item_name": "萨丽哈", "duration_seconds": 800, "tempo_bpm": 84, "content": "全曲通走配伴奏，修正尾音俯仰", "reps": 1, "started_at": "19:50" },
+        { "item_id": 2, "item_name": "基本功·长音与气震音", "duration_seconds": 360, "tempo_bpm": 60, "content": "低音5与中音1纯净度保持10秒", "reps": 4, "started_at": "20:20" },
+        { "item_id": 2, "item_name": "基本功·长音与气震音", "duration_seconds": 360, "tempo_bpm": 60, "content": "气震音均匀度波形练习", "reps": 3, "started_at": "20:32" },
+        { "item_id": 3, "item_name": "姑苏行·慢板", "duration_seconds": 300, "tempo_bpm": 66, "content": "引子揉音与叠音细腻度", "reps": 2, "started_at": "20:45" },
+        { "item_id": 3, "item_name": "姑苏行·慢板", "duration_seconds": 300, "tempo_bpm": 68, "content": "慢板第一段连线呼吸换气点控制", "reps": 2, "started_at": "20:55" }
+      ],
+      "behavior_log": [
+        { "enter_time": "2026-10-03 19:08:12" }
+      ]
+    };
+
+    const HERO_STATS = {
+      "span_minutes": 96,
+      "practice_seconds": 3420,
+      "yesterday_seconds": 1800,
+      "delta_seconds": 1620
+    };
+
+    // 运行态配置
+    let isExpanded = true;
+    let currentBlurMode = 'css'; // 'css' | 'gsap' | 'off'
+    let currentTarget = 'card';   // 'card' | 'modal'
+    let currentViewport = '1133x744';
+    let currentSkin = 'light';
+
+    /* ══════ 格式化工具 ══════ */
+    function fmtDuration(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return s > 0 ? `${m}m ${s}s` : `${m}m 00s`;
+    }
+
+    /* ══════ 列表渲染引擎 ══════ */
+    function renderList() {
+      const container = document.getElementById(currentTarget === 'card' ? 'tableBody' : 'modalTableBody');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const totalSec = PRACTICE_DATA.total_seconds || 1;
+
+      if (!isExpanded) {
+        // 【折叠态】：只展示科目级聚合行
+        PRACTICE_DATA.items.forEach((item) => {
+          const ratio = Math.round((item.seconds / totalSec) * 100);
+          const sessions = PRACTICE_DATA.sessions.filter(s => s.item_id === item.item_id);
+          const avgBpm = sessions.length ? Math.round(sessions.reduce((acc, c) => acc + c.tempo_bpm, 0) / sessions.length) : '--';
+          const lastContent = sessions.length ? sessions[sessions.length - 1].content : '无练习说明';
+
+          const row = document.createElement('div');
+          row.className = 'record-row subject-master';
+          row.dataset.rowType = 'subject';
+          row.innerHTML = `
+            <div class="col-subject">
+              <span class="sub-dot"></span>
+              <span class="sub-name">${item.item_name}</span>
+            </div>
+            <div class="col-num">${fmtDuration(item.seconds)}</div>
+            <div class="col-tempo">♩ = ${avgBpm}</div>
+            <div class="col-reps">${sessions.length} 轮次</div>
+            <div class="col-detail" title="${lastContent}">最近：${lastContent}</div>
+            <div class="col-ratio">
+              <span class="ratio-text">${ratio}%</span>
+              <div class="ratio-bar-bg"><div class="ratio-bar-fill" style="width: ${ratio}%"></div></div>
+            </div>
+          `;
+          container.appendChild(row);
+        });
+      } else {
+        // 【展开态】：科目下平铺展示 Session 行
+        PRACTICE_DATA.items.forEach((item) => {
+          const ratio = Math.round((item.seconds / totalSec) * 100);
+          const sessions = PRACTICE_DATA.sessions.filter(s => s.item_id === item.item_id);
+
+          // 科目总计条
+          const masterRow = document.createElement('div');
+          masterRow.className = 'record-row subject-master';
+          masterRow.dataset.rowType = 'subject-header';
+          masterRow.innerHTML = `
+            <div class="col-subject">
+              <span class="sub-dot"></span>
+              <span class="sub-name">${item.item_name}</span>
+              <span class="session-indent">${sessions.length} sessions</span>
+            </div>
+            <div class="col-num">${fmtDuration(item.seconds)}</div>
+            <div class="col-tempo">♩ = ${sessions[0]?.tempo_bpm || 80}</div>
+            <div class="col-reps">累计汇总</div>
+            <div class="col-detail">包含 ${sessions.length} 个训练分段</div>
+            <div class="col-ratio">
+              <span class="ratio-text">${ratio}%</span>
+              <div class="ratio-bar-bg"><div class="ratio-bar-fill" style="width: ${ratio}%"></div></div>
+            </div>
+          `;
+          container.appendChild(masterRow);
+
+          // 单个 Session 明细条
+          sessions.forEach((s, idx) => {
+            const sRow = document.createElement('div');
+            sRow.className = 'record-row session-row';
+            sRow.dataset.rowType = 'session';
+            const sRatio = Math.round((s.duration_seconds / item.seconds) * 100);
+
+            sRow.innerHTML = `
+              <div class="col-subject">
+                <span style="display:inline-block; width: 14px;"></span>
+                <span class="session-indent">S${idx + 1} · ${s.started_at}</span>
+              </div>
+              <div class="col-num">${fmtDuration(s.duration_seconds)}</div>
+              <div class="col-tempo">♩ = ${s.tempo_bpm}</div>
+              <div class="col-reps">${s.reps} 遍</div>
+              <div class="col-detail" title="${s.content}">${s.content}</div>
+              <div class="col-ratio">
+                <span class="ratio-text" style="color: var(--dash-text-soft); font-size:11px;">${sRatio}%</span>
+                <div class="ratio-bar-bg"><div class="ratio-bar-fill" style="width: ${sRatio}%; background: var(--dash-accent);"></div></div>
+              </div>
+            `;
+            container.appendChild(sRow);
+          });
+        });
+      }
+
+      // 渲染后立即更新模糊与审计
+      triggerBlurUpdate();
+      updateTelemetry();
+    }
+
+    /* ══════ 3.5 边缘模糊调度引擎 ══════ */
+    function setBlurMode(mode) {
+      currentBlurMode = mode;
+      document.querySelectorAll('#blurCssBtn, #blurGsapBtn, #blurOffBtn').forEach(b => b.classList.remove('active'));
+      if (mode === 'css') document.getElementById('blurCssBtn').classList.add('active');
+      else if (mode === 'gsap') document.getElementById('blurGsapBtn').classList.add('active');
+      else document.getElementById('blurOffBtn').classList.add('active');
+
+      const vp = document.getElementById(currentTarget === 'card' ? 'listViewport' : 'modalViewport');
+      const shim = document.getElementById('fadeShim');
+
+      if (mode === 'css') {
+        vp.classList.add('blur-mode-css');
+        if (shim) shim.style.display = 'block';
+        clearGsapBlur(vp);
+      } else if (mode === 'gsap') {
+        vp.classList.remove('blur-mode-css');
+        if (shim) shim.style.display = 'none';
+        applyGsapBlur(vp);
+      } else {
+        vp.classList.remove('blur-mode-css');
+        if (shim) shim.style.display = 'none';
+        clearGsapBlur(vp);
+      }
+
+      updateTelemetry();
+    }
+
+    function clearGsapBlur(vp) {
+      if (!vp) return;
+      vp.querySelectorAll('.record-row').forEach(row => {
+        gsap.killTweensOf(row);
+        row.style.filter = '';
+        row.style.opacity = '';
+      });
+    }
+
+    // 方案 2: GSAP 逐帧/按滚动位置驱动行模糊
+    function applyGsapBlur(vp) {
+      if (!vp || currentBlurMode !== 'gsap') return;
+      const vpRect = vp.getBoundingClientRect();
+      const bottomThreshold = vpRect.bottom - 60; // 距底部 60px 开始产生虚化
+
+      vp.querySelectorAll('.record-row').forEach(row => {
+        const rowRect = row.getBoundingClientRect();
+        const distToBottom = vpRect.bottom - rowRect.top;
+
+        if (distToBottom < 60 && distToBottom > -20) {
+          // 靠近边缘：计算模糊半径与透明度衰减
+          const factor = Math.max(0, Math.min(1, 1 - (distToBottom / 60)));
+          const blurPx = (factor * 7.5).toFixed(1);
+          const opacity = (1 - factor * 0.65).toFixed(2);
+
+          gsap.to(row, {
+            filter: `blur(${blurPx}px)`,
+            opacity: opacity,
+            duration: 0.12,
+            ease: "power1.out",
+            overwrite: "auto"
+          });
+          row.dataset.currentBlur = `${blurPx}px`;
+        } else {
+          // 离开边缘快速恢复清晰
+          if (row.dataset.currentBlur) {
+            gsap.to(row, {
+              filter: 'blur(0px)',
+              opacity: 1,
+              duration: 0.18,
+              ease: "power2.out",
+              overwrite: "auto"
+            });
+            delete row.dataset.currentBlur;
+          }
+        }
+      });
+    }
+
+    function handleScroll(targetEl) {
+      if (currentBlurMode === 'gsap') {
+        applyGsapBlur(targetEl);
+      }
+      updateTelemetry();
+    }
+
+    function triggerBlurUpdate() {
+      const vp = document.getElementById(currentTarget === 'card' ? 'listViewport' : 'modalViewport');
+      if (currentBlurMode === 'gsap') applyGsapBlur(vp);
+    }
+
+    /* ══════ 控制器与状态交互 ══════ */
+    function toggleExpand(expand) {
+      isExpanded = expand;
+      document.getElementById('cardFoldBtn').classList.toggle('active', !expand);
+      document.getElementById('cardExpandBtn').classList.toggle('active', expand);
+      document.getElementById('modeFoldBtn').classList.toggle('active', !expand);
+      document.getElementById('modeExpandBtn').classList.toggle('active', expand);
+
+      // GSAP 弹性缓动过渡
+      const container = document.getElementById(currentTarget === 'card' ? 'tableBody' : 'modalTableBody');
+      gsap.fromTo(container, { opacity: 0.7, y: expand ? 4 : -4 }, { opacity: 1, y: 0, duration: 0.22, ease: "power2.out" });
+
+      renderList();
+    }
+
+    function setViewport(vp) {
+      currentViewport = vp;
+      document.querySelectorAll('[data-vp]').forEach(b => b.classList.toggle('active', b.dataset.vp === vp));
+      document.getElementById('stageFrame').dataset.vp = vp;
+      updateTelemetry();
+    }
+
+    function setSkin(skin) {
+      currentSkin = skin;
+      document.documentElement.dataset.skin = skin;
+      document.getElementById('skinLightBtn').classList.toggle('active', skin === 'light');
+      document.getElementById('skinDarkBtn').classList.toggle('active', skin === 'ink');
+      updateTelemetry();
+    }
+
+    function setContainerTarget(target) {
+      currentTarget = target;
+      document.getElementById('targetCardBtn').classList.toggle('active', target === 'card');
+      document.getElementById('targetModalBtn').classList.toggle('active', target === 'modal');
+
+      const modal = document.getElementById('modalOverlay');
+      if (target === 'modal') {
+        modal.classList.add('open');
+        renderList();
+        setBlurMode(currentBlurMode);
+      } else {
+        modal.classList.remove('open');
+        renderList();
+        setBlurMode(currentBlurMode);
+      }
+      updateTelemetry();
+    }
+
+    function handleModalOverlayClick(e) {
+      if (e.target.id === 'modalOverlay') {
+        setContainerTarget('card');
+      }
+    }
+
+    /* ══════ 动态探针遥测数据生成器 (支持 ?audit=1) ══════ */
+    function updateTelemetry() {
+      const activeVp = document.getElementById(currentTarget === 'card' ? 'listViewport' : 'modalViewport');
+      const scrollTop = activeVp ? activeVp.scrollTop : 0;
+      const scrollHeight = activeVp ? activeVp.scrollHeight : 0;
+      const clientHeight = activeVp ? activeVp.clientHeight : 0;
+      const maxScroll = scrollHeight - clientHeight;
+      const rows = activeVp ? activeVp.querySelectorAll('.record-row').length : 0;
+
+      // 探测边缘最后两行的真实位移与模糊度
+      let edgeProbe = [];
+      if (activeVp) {
+        const rowEls = activeVp.querySelectorAll('.record-row');
+        rowEls.forEach((r, idx) => {
+          const rect = r.getBoundingClientRect();
+          const vpRect = activeVp.getBoundingClientRect();
+          const distBottom = (vpRect.bottom - rect.bottom).toFixed(1);
+          if (distBottom < 70 && distBottom > -50) {
+            edgeProbe.push({
+              index: idx,
+              type: r.dataset.rowType,
+              distToBottomPx: parseFloat(distBottom),
+              computedFilter: window.getComputedStyle(r).filter || 'none',
+              computedOpacity: parseFloat(window.getComputedStyle(r).opacity || '1')
+            });
+          }
+        });
+      }
+
+      const auditData = {
+        "timestamp": new Date().toISOString(),
+        "probe": "d5-today-records-probe",
+        "viewport": {
+          "mode": currentViewport,
+          "windowInner": `${window.innerWidth}x${window.innerHeight}`
+        },
+        "skin": currentSkin,
+        "hierarchyState": isExpanded ? "expanded_session_level" : "folded_subject_level",
+        "blurImplementation": {
+          "mode": currentBlurMode,
+          "maskApplied": activeVp ? activeVp.classList.contains('blur-mode-css') : false,
+          "shimVisible": currentBlurMode === 'css',
+          "scrollZone": {
+            "scrollTop": Math.round(scrollTop),
+            "clientHeight": clientHeight,
+            "scrollHeight": scrollHeight,
+            "canScroll": scrollHeight > clientHeight,
+            "scrollProgress": maxScroll > 0 ? (scrollTop / maxScroll).toFixed(3) : 0
+          }
+        },
+        "edgeBlurDynamicProbe": edgeProbe,
+        "rowsRendered": rows,
+        "heroicMetrics": HERO_STATS
+      };
+
+      const outEl = document.getElementById('auditOutput');
+      if (outEl) {
+        outEl.textContent = JSON.stringify(auditData, null, 2);
+      }
+    }
+
+    // 页面初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      // 检查 URL 是否带参数
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('audit') === '1') {
+        document.getElementById('auditDrawer').style.border = '2px solid var(--dash-accent)';
+      }
+      if (urlParams.get('skin') === 'ink') {
+        setSkin('ink');
+      }
+      if (urlParams.get('vp')) {
+        setViewport(urlParams.get('vp'));
+      }
+      if (urlParams.get('expand') === '0') {
+        toggleExpand(false);
+      } else {
+        toggleExpand(true);
+      }
+
+      renderList();
+      setBlurMode('css');
+    });
+  </script>
+</body>
+</html>
