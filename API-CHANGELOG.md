@@ -32,7 +32,7 @@
 - 老徽章改文案没有 API 路径（图一致 + meta 不同 → 409 `db_exists_meta_diff`；`card-appearance` 只管
   `card_theme` / `card_stars`）。正解仍只有人工 SQL 或换新 id 建草稿。建议后续给受控 meta 更新端点。
 
-**云端**: 待部署（本版 merge 后由 hermes 补 DeployRun / DeployId 与镜像校验行）。
+**云端**: **已上线**。DeployRun **#143**（2026-10-16 13:11 CST，buildId `2608784204`，runId `multi_tenant_1xHaDs4oobsujC`，镜像 `dizical-prod-143-20261016131126`），FlowRatio 100；merge commit `aae4937`（PR #369）。上线后复验：`/health` `cos_ok=true` / `badge_store=cos` / `database=ok`；`POST /config/api/badge/draft/x/image` 匿名 401；`/static/badges/soccer_seven_v1.png` 200。**本批无 DDL / 无数据迁移**。
 
 ---
 
