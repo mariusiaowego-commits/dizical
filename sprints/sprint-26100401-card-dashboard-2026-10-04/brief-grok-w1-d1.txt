@@ -1,0 +1,48 @@
+# BRIEF — grok · W1：D1 仪表盘修正（9 条）
+
+文件：`docs/demos/practice-right-column-261003/dashboard-skin-01-v2.html`
+只改这一个文件。前一轮（第四轮 D5/占比条）如果还没收尾，先收尾再来。
+
+## 严格按这个顺序打
+
+### ① 硬 bug：三个宽度按钮点了下面 UI 没变化（最高优先）
+现状：顶栏有「1133×744 / 744×1133 / 440×956」三档，点了下面布局没反应。
+要查：按钮 click 是否真的写了 `--vp-w/--vp-h` 或容器宽度？断点 CSS 是否挂在正确的类/属性选择器上？有没有 `.vp` 变量名拼错？
+交付：三档各一张实测数字 —— 容器宽高、`.transport` 的 `grid-template-columns`、是否有横向溢出（`scrollWidth > clientWidth`）。
+
+### ② 中段 layout（原文 6/8）
+- 「+ / −」位置不对
+- 圆弧**太圆**了 → 按参考图把弧收小、更平；弧收小后 knob 要能往下探
+- 弧收小后左右 +/- **不许压到 panel-foot**（实测两者矩形不许相交）
+- **mid-row 的 knob 与 +/- 控制「计时器加减」**；ruler-wrap 里原来那套 +/- **去掉**
+- title-col 内部重排（与 cover-col 配合），**左右占比不变**
+实测交付：弧的 `border-radius`/半径值、knob 与 +/- 的矩形无相交、ruler 内已无 step 钮。
+
+### ③ panel-foot 节拍文字溢出（原文 5）
+- 只留「几分音符 + 速度」（如 `♩=68`），删掉溢出文案
+- 取值：选了节拍器 → 关联节拍器选择；没选 → 关联老师要求
+- **Q4 拍板：取「计时开始那一刻」的快照**，中途改节拍器不影响本段记录 → 实现为开始计时时拷贝一份显示值，运行中不跟随
+实测交付：panel-foot `scrollWidth <= clientWidth`（无溢出）+ 改节拍器后 panel-foot 数字不变的截图/实测值。
+
+### ④ lyric-col 老师要求移除（原文 4）
+移除这一列，**下面模块顶上来**；空出来的横向空间按参考图重新分配；不许留空槽。
+
+### ⑤ deck 位置（原文 7）
+把 D3（下方三块）的 UI 搬到 deck 的位置（先做静态摆放，D3 本体在 agy 那条 lane 里改）。
+
+### ⑥ 英文字符用衬线字体（3.2）
+先 `search_files` 查项目规范（`DESIGN.md` / designrepo `dizicute`）有没有衬线字体 token；
+有就用；没有 → **只在 demo 内**定义一个系统衬线栈（如 `Georgia, "Times New Roman", serif`），并记进 notes 标「待回填 designrepo 候选」，**不许改 designrepo**。
+
+## 下一轮才做（本轮先不动，我会给你共享件）
+- ruler-wrap 换成生产那套（`practice.html:583` + `:585 notes-bubbles` + `:616 ruler-vine` + `buildBubbles`/vine 开花）
+- 融合 ruler 的「dragging」动效
+我正在把这套抽成 `shared/ruler-production.{html,css,js}`，抽好喊你，你只管替换接入，**不要自己重造一份**。
+
+## 硬约束
+只改 `dashboard-skin-01-v2.html`；不动 `src/`；不新增依赖；颜色只走 `--dash-*`；禁 `transition: all`；不做 git 写操作。
+
+## 交付
+1. 上述每条的实测数字（不是文字断言）
+2. 六文件 `python3 scripts/verify-demos.py` 契约行（应 68 名一致）
+3. 一句话结论 + 你没做/做不了的

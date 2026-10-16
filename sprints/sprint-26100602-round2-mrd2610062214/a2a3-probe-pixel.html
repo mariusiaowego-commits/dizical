@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-skin="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A2 谱架键 + A3 diag 单框 · 候选对照 · pixel 261010</title>
+<style>
+  /* ══════ Token：逐行取自 dashboard-skin-01-v3.html（唯一视觉来源，不新增、不改名） ══════ */
+    :root {
+  --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-serif: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", STSong, serif;
+  --dash-page: #F5F2EE;
+  --dash-radius: 36px;
+  --dash-shell-hi: #FFFFFF;
+  --dash-shell-lo: #E8E5E0;
+  --dash-shell-inset: rgba(44, 62, 80, 0.14);
+  --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+  --dash-glint: rgba(255, 255, 255, 0.85);
+  --dash-panel: #1A1E22;
+  --dash-panel-text: #FFF8F0;
+  --dash-panel-dim: rgba(255, 248, 240, 0.62);
+  --dash-cover-line: rgba(255, 255, 255, 0.15);
+  --dash-num: 48px;
+  --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+  --dash-accent: #FF8C5A;
+  --dash-accent-solid: #B8531F;
+  --dash-white: #FFFFFF;
+  --dash-ink: #2C3E50;
+  --dash-muted: #666666;
+  --dash-tick-future: rgba(255, 248, 240, 0.28);
+  --dash-tick-past: rgba(255, 248, 240, 0.72);
+  --dash-tick-rail: rgba(255, 248, 240, 0.35);
+  --dash-btn-face-hi: #FFFFFF;
+  --dash-btn-face-lo: #E4E1DC;
+  --dash-btn-glyph: #2C3E50;
+  --dash-btn-rim: rgba(255, 255, 255, 0.95);
+  --dash-knob-hi: #4A5058;
+  --dash-knob-lo: #1E2328;
+  --dash-mark: #FFF8F0;
+  --dash-dot: rgba(44, 62, 80, 0.30);
+  --dash-dot-on: #FFFFFF;
+  --dash-hole: #2C3E50;
+  --dash-pill-track: #1A1E22;
+  --dash-pill-idle: rgba(255, 248, 240, 0.55);
+  --dash-stand: #1A1E22;
+  --dash-stand-text: #FFF8F0;
+  --dash-battery: #7BC96F;
+  --dash-kicker: rgba(44, 62, 80, 0.65);
+  --dash-hole-active: #FF8C5A;
+  --dash-tray-inset: rgba(0, 0, 0, 0.08);
+  --dash-key-hi: rgba(255, 255, 255, 0.65);
+  --dash-coral-soft: #FFA5A5;
+  --dash-mic-on: #34D399;
+  --dash-notice-bg: rgba(255, 140, 90, 0.08);
+  --dash-notice-ink: #9E4A1A;
+  --dash-surface-2: #ECE8E1;
+  --dash-surface-3: #DFDAD1;
+  --dash-surface-soft: #FFFDFB;
+  --dash-gold: #B8860B;
+  --dash-ink-a04: rgba(44, 62, 80, 0.04);
+  --dash-ink-a12: rgba(44, 62, 80, 0.12);
+  --dash-ink-a16: rgba(44, 62, 80, 0.16);
+  --dash-ink-a25: rgba(44, 62, 80, 0.25);
+  --dash-ink-a42: rgba(44, 62, 80, 0.42);
+  --dash-coral-glow: rgba(255, 107, 107, 0.35);
+  --dash-coral-a25: rgba(255, 107, 107, 0.25);
+  --dash-accent-soft: #FFA073;
+  --dash-accent-wash: rgba(255, 140, 90, 0.08);
+  --dash-accent-line: rgba(255, 140, 90, 0.30);
+  --dash-accent-glow: rgba(255, 140, 90, 0.35);
+  --dash-gold-a35: rgba(184, 134, 11, 0.35);
+  --dash-gold-glow: rgba(184, 134, 11, 0.30);
+  --dash-text: #2C3E50;
+  --dash-text-soft: #666666;
+  --dash-delta-up: #C93B3B;
+  --dash-delta-down: #0C8A60;
+  --dash-accent-text: #B8531F;
+  --dash-coral-text: #C93B3B;
+  --dash-beat: 0.732s;
+  --dash-notch: 96px;
+  }
+  :root[data-skin="ink"] {
+  --dash-page: #0E1114;
+  --dash-shell-hi: #2E343B;
+  --dash-shell-lo: #161A1E;
+  --dash-shell-inset: rgba(44, 62, 80, 0.45);
+  --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+  --dash-glint: rgba(255, 255, 255, 0.28);
+  --dash-panel: #14181C;
+  --dash-panel-text: #FFF8F0;
+  --dash-panel-dim: rgba(255, 248, 240, 0.62);
+  --dash-cover-line: rgba(255, 255, 255, 0.10);
+  --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+  --dash-accent: #FF5722;
+  --dash-accent-solid: #B8531F;
+  --dash-white: #FFFFFF;
+  --dash-ink: #2C3E50;
+  --dash-muted: #666666;
+  --dash-tick-future: rgba(255, 248, 240, 0.28);
+  --dash-tick-past: rgba(255, 248, 240, 0.72);
+  --dash-tick-rail: rgba(255, 248, 240, 0.35);
+  --dash-btn-face-hi: #2A3036;
+  --dash-btn-face-lo: #101316;
+  --dash-btn-glyph: #FFF8F0;
+  --dash-btn-rim: rgba(255, 255, 255, 0.18);
+  --dash-knob-hi: #3A4148;
+  --dash-knob-lo: #0E1114;
+  --dash-mark: #FFF8F0;
+  --dash-dot: rgba(255, 248, 240, 0.38);
+  --dash-dot-on: #FFFFFF;
+  --dash-hole: #2C3E50;
+  --dash-pill-track: #1A1E22;
+  --dash-pill-idle: rgba(255, 248, 240, 0.55);
+  --dash-stand: #1A1E22;
+  --dash-stand-text: #FFF8F0;
+  --dash-battery: #7BC96F;
+  --dash-kicker: rgba(255, 248, 240, 0.72);
+  --dash-hole-active: #FF8C5A;
+  --dash-tray-inset: rgba(0, 0, 0, 0.35);
+  --dash-key-hi: rgba(255, 255, 255, 0.22);
+  --dash-coral-soft: #FFA5A5;
+  --dash-mic-on: #34D399;
+  --dash-notice-bg: rgba(255, 248, 240, 0.10);
+  --dash-notice-ink: #FFD9A0;
+  --dash-surface-2: #3E474E;
+  --dash-surface-3: #4A5058;
+  --dash-surface-soft: #1A1E22;
+  --dash-gold: #D4AF37;
+  --dash-ink-a04: rgba(255, 248, 240, 0.04);
+  --dash-ink-a12: rgba(255, 248, 240, 0.10);
+  --dash-ink-a16: rgba(255, 248, 240, 0.14);
+  --dash-ink-a25: rgba(255, 248, 240, 0.22);
+  --dash-ink-a42: rgba(0, 0, 0, 0.45);
+  --dash-coral-glow: rgba(255, 107, 107, 0.45);
+  --dash-coral-a25: rgba(255, 107, 107, 0.25);
+  --dash-accent-soft: #FFA073;
+  --dash-accent-wash: rgba(255, 140, 90, 0.08);
+  --dash-accent-line: rgba(255, 140, 90, 0.30);
+  --dash-accent-glow: rgba(255, 140, 90, 0.35);
+  --dash-gold-a35: rgba(212, 175, 55, 0.35);
+  --dash-gold-glow: rgba(255, 210, 100, 0.60);
+  --dash-text: #FFF8F0;
+  --dash-text-soft: rgba(255, 248, 240, 0.68);
+  --dash-delta-up: #FF6B6B;
+  --dash-delta-down: #10B981;
+  --dash-accent-text: #FF8C5A;
+  --dash-coral-text: #FF6B6B;
+  --dash-notch: 96px;
+  }
+
+  /* ══════ 真卡既有规则：逐字抽取自 dashboard-skin-01-v3.html（不是重画） ══════ */
+    .dash {
+  container: dash / inline-size;
+  width: min(100%, 420px);
+  height: 100%;
+  max-height: 720px;
+  border-radius: var(--dash-radius);
+  background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-shell-lo) 100%);
+  box-shadow:
+  inset 0 1px 0 var(--dash-glint),
+  inset 0 -10px 18px var(--dash-shell-inset),
+  0 16px 36px var(--dash-shell-shadow);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  transition: none;
+  }
+  .deck.transport {
+  flex: 0 0 auto;
+  padding: 6px 0 2px;
+  min-height: 0;
+  width: 100%;
+  }
+  .speaker-block {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: transform 0.15s ease;
+  }
+  .grille-6x8 {
+  display: grid;
+  grid-template-columns: repeat(6, 6px);
+  grid-template-rows: repeat(8, 6px);
+  gap: 3.5px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  }
+  .hole {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--dash-hole);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6), 0 0.5px 0 var(--dash-glint);
+  transform-origin: center;
+  }
+  .grille-6x8.variant-countersink .hole {
+  box-shadow:
+  0 0 0 1px var(--dash-shell-inset),
+  inset 0 1.5px 2px rgba(0, 0, 0, 0.75),
+  0 1px 0 var(--dash-glint);
+  }
+  .dizical-logo {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--dash-text-soft);
+  margin-top: 2px;
+  }
+  .dizical-mark-svg {
+  width: 32px; height: 8px; display: block;
+  }
+  .ops-block { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .ops-kicker {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--dash-kicker);
+  font-family: var(--font-serif); white-space: nowrap;
+  }
+  .pill {
+  display: flex; gap: 6px; padding: 4px; border-radius: 999px;
+  background: var(--dash-pill-track);
+  box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+  }
+  .pill button {
+  border: 0; background: transparent; color: var(--dash-pill-idle);
+  min-height: 44px; padding: 0 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 750; white-space: nowrap;
+  touch-action: manipulation; cursor: pointer;
+  }
+  .stand-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .stand-btn {
+  width: 66px; min-height: 44px; padding: 0 6px; white-space: nowrap; border-radius: 12px; border: 0;
+  background: linear-gradient(180deg, var(--dash-accent), var(--dash-coral));
+  color: var(--dash-white);
+  font-size: 12px; font-weight: 750;
+  box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 4px 8px var(--dash-shell-inset);
+  touch-action: manipulation; cursor: pointer;
+  }
+  .stand-badge-tip { font-size: 9px; color: var(--dash-text-soft); text-align: center; white-space: nowrap; }
+  .diag-card {
+  background: var(--dash-white);
+  border: 1px solid var(--dash-shell-inset);
+  border-radius: 16px;
+  padding: 8px 12px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  font-size: 11px;
+  margin-top: 2px;
+  }
+  .diag-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .diag-status {
+  display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--dash-text);
+  }
+  .mic-indicator-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--dash-muted);
+  }
+  .diag-actions { display: flex; gap: 6px; align-items: center; }
+  .diag-btn {
+  border: 1px solid var(--dash-shell-inset);
+  background: var(--dash-surface-2);
+  color: var(--dash-text);
+  padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  cursor: pointer; min-height: 28px;
+  }
+  .toast-banner {
+  background: var(--dash-notice-bg);
+  border: 1px solid var(--dash-accent-line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--dash-notice-ink);
+  display: flex; align-items: center; gap: 6px;
+  }
+  .toast-tag { font-size: 10px; font-weight: 700; color: var(--dash-notice-ink); }
+  .grid-3col {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) 68px;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  }
+  .grid-3col .c-left { justify-self: start; display: flex; justify-content: center; width: 68px; }
+  .grid-3col .c-mid { justify-self: center; display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .grid-3col .c-right { justify-self: end; display: flex; justify-content: center; width: 68px; }
+  .dash[data-vp="744x1133"] .diag-card {
+  padding: 12px 14px;
+  gap: 8px;
+  }
+
+
+  /* ══════ 真卡 @container 块：逐字抽取（卡宽 ≤440 时列宽 68→58、键字号 12→11） ══════ */
+    @container dash (max-width: 440px) {
+  .grid-3col {
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  }
+  .grid-3col .c-left, .grid-3col .c-right {
+  width: 58px;
+  }
+  .round { width: 38px; height: 38px; font-size: 18px; }
+  .stand-btn { min-width: 56px; font-size: 11px; }
+  .pill button { padding: 0 10px; font-size: 13px; }
+  .cover-frame { width: 72px; height: 72px; }
+  .readout-sub { font-size: 18px; font-weight: 750; }
+  .readout-sub small { font-size: 12px; }
+  .knob { width: 130px; height: 130px; }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; padding: 12px 12px 40px;
+    background: var(--dash-page); color: var(--dash-text);
+    font-family: var(--font-base); -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+
+  /* ── 探针顶栏 ── */
+  .demo-bar {
+    width: 100%; max-width: 1133px; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px; padding: 8px 14px; background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset); border-radius: 12px; font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  }
+  .demo-title { font-weight: 800; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .demo-title small { flex-basis: 100%; font-size: 12px; font-weight: 600; color: var(--dash-text-soft); }
+  .demo-title .accent { color: var(--dash-coral); }
+  .demo-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ctl-label { font-size: 11px; font-weight: 700; color: var(--dash-text-soft); letter-spacing: .04em; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; padding: 2px; gap: 2px; background: var(--dash-shell-hi); }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft); font-family: inherit;
+    font-size: 12px; font-weight: 650; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+  .seg button .rec { font-weight: 800; }
+
+  /* ── 分区与变体块 ── */
+  main { width: 100%; max-width: 1133px; display: flex; flex-direction: column; gap: 18px; }
+  .grp { display: flex; flex-direction: column; gap: 12px; }
+  .grp-title { font-size: 14px; font-weight: 800; margin: 0; }
+  .grp-title span { font-weight: 600; color: var(--dash-text-soft); }
+  .blk { display: flex; flex-direction: column; gap: 6px; }
+  .blk-label { font-size: 12px; font-weight: 750; margin: 0; }
+  .blk-label span { font-weight: 600; color: var(--dash-text-soft); }
+  .blk-label .tag { display: inline-block; padding: 1px 6px; border-radius: 999px; background: var(--dash-ink-a12); font-size: 10px; font-weight: 700; }
+  /* 隔离：只显示被选中的变体块（A2 / A3 两组各自独立隔离） */
+  body[data-iso-a2] .blk[data-kind="a2"] { display: none; }
+  body[data-iso-a2="a2old"] .blk[data-v="a2old"],
+  body[data-iso-a2="a21"] .blk[data-v="a21"],
+  body[data-iso-a2="a22"] .blk[data-v="a22"] { display: flex; }
+  body[data-iso-a3] .blk[data-kind="a3"] { display: none; }
+  body[data-iso-a3="a3old"] .blk[data-v="a3old"],
+  body[data-iso-a3="a31"] .blk[data-v="a31"],
+  body[data-iso-a3="a32"] .blk[data-v="a32"] { display: flex; }
+
+  /* ── 卡壳：与真卡 .dash 同款底/圆角/投影/内边距（三档卡宽对齐真卡 420 / 500 / 390） ── */
+  .card {
+    container: dash / inline-size;
+    width: min(100%, 420px);
+    border-radius: var(--dash-radius);
+    background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-shell-lo) 100%);
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -10px 18px var(--dash-shell-inset),
+      0 16px 36px var(--dash-shell-shadow);
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative; overflow: hidden;
+    box-sizing: border-box;
+  }
+  .card[data-w="500"] { width: min(100%, 500px); }
+  .card[data-w="390"] { width: min(100%, 390px); }
+
+  /* ══════ 候选覆盖：A2 行结构 + 按钮形态 ══════ */
+  /* a21 / a22：主控件行（三列主控件共 centerline）+ 说明行 */
+  .blk[data-v="a21"] .deck.transport,
+  .blk[data-v="a22"] .deck.transport { display: flex; flex-direction: column; gap: 4px; }
+  .blk[data-v="a21"] .transport-main, .blk[data-v="a21"] .transport-caps,
+  .blk[data-v="a22"] .transport-main, .blk[data-v="a22"] .transport-caps { align-items: center; }
+  .blk[data-v="a21"] .transport-caps .c-left, .blk[data-v="a21"] .transport-caps .c-mid, .blk[data-v="a21"] .transport-caps .c-right,
+  .blk[data-v="a22"] .transport-caps .c-left, .blk[data-v="a22"] .transport-caps .c-mid, .blk[data-v="a22"] .transport-caps .c-right { align-items: center; }
+  .blk[data-v="a21"] .transport-caps .ops-kicker,
+  .blk[data-v="a21"] .transport-caps .stand-badge-tip,
+  .blk[data-v="a22"] .transport-caps .ops-kicker,
+  .blk[data-v="a22"] .transport-caps .stand-badge-tip {
+    font-size: 10px; font-weight: 650; letter-spacing: 0.04em; color: var(--dash-text-soft);
+  }
+  /* A2-1 沉头浅凹键（与卡内实现一致：托盘弱底 + 1px 描边 + 只内凹，无外投影） */
+  .blk[data-v="a21"] .stand-btn {
+    min-width: 66px; height: 44px; padding: 0 10px; white-space: nowrap;
+    border: 1px solid var(--dash-shell-inset); border-radius: 12px;
+    background: var(--dash-tray-inset); color: var(--dash-text);
+    font-family: inherit; font-size: 12px; font-weight: 750;
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+    touch-action: manipulation; cursor: pointer;
+  }
+  .blk[data-v="a21"] .stand-btn:active { transform: scale(0.96); }
+  .blk[data-v="a21"] .stand-btn.is-on { background: var(--dash-coral-solid); color: var(--dash-white); border-color: var(--dash-coral); box-shadow: none; }
+  /* A2-2 银面浮雕键（与 .round ± 同族：3D 纸片渐变 + 顶部高光 + 外投影） */
+  .blk[data-v="a22"] .stand-btn {
+    min-width: 66px; height: 44px; padding: 0 10px; white-space: nowrap;
+    border: 1px solid var(--dash-shell-inset); border-radius: 12px;
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo));
+    color: var(--dash-btn-glyph);
+    font-family: inherit; font-size: 12px; font-weight: 750;
+    box-shadow: inset 0 1px 0 var(--dash-btn-rim), 0 4px 8px var(--dash-shell-inset);
+    touch-action: manipulation; cursor: pointer;
+  }
+  .blk[data-v="a22"] .stand-btn:active { transform: scale(0.96); }
+  .blk[data-v="a22"] .stand-btn.is-on {
+    background: var(--dash-coral-solid); color: var(--dash-white);
+    border-color: var(--dash-coral); box-shadow: inset 0 1px 0 var(--dash-btn-rim);
+  }
+  /* 说明行 caption 收尾（真卡里 .dizical-logo 的 margin-top 已归零） */
+  .blk[data-v="a21"] .dizical-logo, .blk[data-v="a22"] .dizical-logo { margin-top: 0; }
+  /* 候选键在卡宽 ≤440 容器下必须跟着真卡的容器规则收窄（否则 66 > 58 列宽 → 撑破甲板） */
+  @container dash (max-width: 440px) {
+    .blk[data-v="a21"] .stand-btn, .blk[data-v="a22"] .stand-btn { min-width: 56px; font-size: 11px; }
+    /* 基线块用「改前」的容器值（width:56px），否则拿改后的 min-width 规则套旧 width:66px 会凭空多出溢出 */
+    .blk[data-v="a2old"] .stand-btn { width: 56px; font-size: 11px; }
+  }
+
+  /* ══════ 候选覆盖：A3 单框分层 ══════ */
+  .blk[data-v="a31"] .diag-card,
+  .blk[data-v="a32"] .diag-card { background: var(--dash-surface-soft); }
+  /* A3-1 细分割线：提示行只留 1px 上分割线（单边 → 不构成框），底/边/圆角全撤 */
+  .blk[data-v="a31"] .toast-banner {
+    background: transparent; border: 0; border-top: 1px solid var(--dash-ink-a12);
+    border-radius: 0; padding: 6px 0 0; margin: 0;
+  }
+  /* A3-2 弱底带：提示行做成满血弱底带（被卡圆角裁掉），行内自己补左右内边距 */
+  .blk[data-v="a32"] .diag-card { padding: 8px 0 0; overflow: hidden; }
+  .blk[data-v="a32"] .diag-row { padding: 0 12px; }
+  .blk[data-v="a32"] .toast-banner {
+    background: var(--dash-ink-a04); border: 0; border-radius: 0; margin: 0; padding: 6px 12px;
+  }
+
+  /* ── 审计输出 ── */
+  .audit-out {
+    width: 100%; max-width: 1133px; white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace;
+    font-size: 11.5px; line-height: 1.5; padding: 12px; border-radius: 10px;
+    background: var(--dash-panel); color: var(--dash-panel-text); border: 1px solid var(--dash-shell-inset);
+  }
+  .audit-out[hidden] { display: none; }
+
+  /* 审计期间禁过渡：否则 getComputedStyle 读到过渡起点 */
+  .audit-nofx *, .audit-nofx *::before { transition-duration: 0s !important; animation-duration: 0s !important; }
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <div class="demo-title">
+    dizi<span class="accent">cal</span> · <b>A2 谱架键 + A3 diag 单框</b> 候选对照（pixel 261010）
+    <small>复用 dashboard-skin-01-v3.html 真卡代码（token / 甲板 / diag 规则逐字抽取，不是重画）。?audit=1 出自检；?skin=ink · ?w=420|500|390 · ?iso=a21…</small>
+  </div>
+  <div class="demo-controls">
+    <span class="ctl-label">A2</span>
+    <div class="seg" id="pA2">
+      <button type="button" data-iso="" class="is-on">全部</button>
+      <button type="button" data-iso="a2old">现状</button>
+      <button type="button" data-iso="a21">A2-1 沉头浅凹 <span class="rec">★</span></button>
+      <button type="button" data-iso="a22">A2-2 银面浮雕</button>
+    </div>
+    <span class="ctl-label">A3</span>
+    <div class="seg" id="pA3">
+      <button type="button" data-iso="" class="is-on">全部</button>
+      <button type="button" data-iso="a3old">现状</button>
+      <button type="button" data-iso="a31">A3-1 细分割线 <span class="rec">★</span></button>
+      <button type="button" data-iso="a32">A3-2 弱底带</button>
+    </div>
+    <span class="ctl-label">卡宽</span>
+    <div class="seg" id="pW">
+      <button type="button" data-w="420" class="is-on">420 · 1133×744</button>
+      <button type="button" data-w="500">500 · 744×1133</button>
+      <button type="button" data-w="390">390 · 440×956</button>
+    </div>
+    <span class="ctl-label">皮肤</span>
+    <div class="seg" id="pSkin">
+      <button type="button" data-skin="light" class="is-on">浅银</button>
+      <button type="button" data-skin="ink">深墨</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="grp" id="grpA2">
+    <h2 class="grp-title">A2 · 谱架模式键 UI + 该行共中轴 <span>（主控件行三列 = 孔阵 / 开始药丸 / 谱架键；说明行三列 = logo / 计时 / 大屏看谱）</span></h2>
+    <div class="blk" data-kind="a2" data-v="a2old" data-baseline="1">
+      <p class="blk-label">A2 现状 <span class="tag">基线·应当红</span> <span>橙→珊瑚渐变键 + 计时在上、大屏看谱在下 → 三列主控件不同轴</span></p>
+      <div class="card" data-w="420"><div class="host"></div></div>
+    </div>
+    <div class="blk" data-kind="a2" data-v="a21">
+      <p class="blk-label">A2-1 沉头浅凹键 <span class="tag">推荐</span> <span>托盘弱底 + 1px 描边 + 只内凹（无外投影）；激活转珊瑚实心；行结构改「主控件行 + 说明行」</span></p>
+      <div class="card" data-w="420"><div class="host"></div></div>
+    </div>
+    <div class="blk" data-kind="a2" data-v="a22" data-known-cost="A2-4">
+      <p class="blk-label">A2-2 银面浮雕键 <span class="tag">候选·带代价</span> <span>与 .round ± 同族的 3D 纸片渐变 + 顶部高光 + 外投影 → 代价 = 甲板上多出第 2 层外投影</span></p>
+      <div class="card" data-w="420"><div class="host"></div></div>
+    </div>
+  </section>
+
+  <section class="grp" id="grpA3">
+    <h2 class="grp-title">A3 · diag-card 框线重写 <span>（容器框 = 四边都有 border 且有圆角的非控件元素；嵌套对 = 容器框套容器框）</span></h2>
+    <div class="blk" data-kind="a3" data-v="a3old" data-baseline="1">
+      <p class="blk-label">A3 现状 <span class="tag">基线·应当红</span> <span>卡自身 1px 框 + 提示条 1px 框 = 两层圆角框；且卡底 --dash-white 不随皮肤翻转（深墨下白底暖白字）</span></p>
+      <div class="card" data-w="420"><div class="host"></div></div>
+    </div>
+    <div class="blk" data-kind="a3" data-v="a31">
+      <p class="blk-label">A3-1 细分割线 <span class="tag">推荐</span> <span>只有卡这一层框；提示行改 1px 上分割线 + 留白分层；卡底改 --dash-surface-soft（随皮肤翻转）</span></p>
+      <div class="card" data-w="420"><div class="host"></div></div>
+    </div>
+    <div class="blk" data-kind="a3" data-v="a32">
+      <p class="blk-label">A3-2 弱底带 <span class="tag">候选</span> <span>同样只有卡这一层框；提示行做成满血 --dash-ink-a04 弱底带，被卡圆角裁掉 → 分组感更强</span></p>
+      <div class="card" data-w="420"><div class="host"></div></div>
+    </div>
+  </section>
+</main>
+
+<pre class="audit-out" id="auditOut" hidden></pre>
+
+<template id="tplDeckOld">
+  <section class="deck transport grid-3col">
+    <div class="c-left speaker-block" title="扬声孔：随音频与节奏律动">
+      <div class="grille-6x8 variant-countersink" aria-hidden="true"></div>
+      <div class="dizical-logo" title="Dizical" aria-label="Dizical">
+        <svg class="dizical-mark-svg" viewBox="0 0 58 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 2,1 L 2,13 L 7,13 C 10.5,13 13,10.3 13,7 C 13,3.7 10.5,1 7,1 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+          <circle cx="16.5" cy="2" r="0.9" fill="currentColor" />
+          <line x1="16.5" y1="5" x2="16.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M 20.5,5 L 26.5,5 L 20.5,13 L 26.5,13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="30" cy="2" r="0.9" fill="currentColor" />
+          <line x1="30" y1="5" x2="30" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M 39.5,6 C 38,4.8 34.5,4.8 34.5,9 C 34.5,13.2 38,13.2 39.5,12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <circle cx="44.5" cy="9" r="4" stroke="currentColor" stroke-width="1.2" />
+          <line x1="48.5" y1="5" x2="48.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          <line x1="52.5" y1="1" x2="52.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+        </svg>
+      </div>
+    </div>
+    <div class="c-mid ops-block">
+      <div class="ops-kicker">00:00 · 待开始</div>
+      <div class="pill">
+        <button type="button">开始</button>
+        <button type="button" disabled>提前结束</button>
+      </div>
+    </div>
+    <div class="c-right stand-block" role="group" aria-label="谱架模式">
+      <button type="button" class="stand-btn" title="谱架模式">谱架模式</button>
+      <div class="stand-badge-tip">大屏看谱</div>
+    </div>
+  </section>
+</template>
+
+<template id="tplDeckNew">
+  <section class="deck transport">
+    <div class="transport-main grid-3col">
+      <div class="c-left speaker-block" title="扬声孔：随音频与节奏律动">
+        <div class="grille-6x8 variant-countersink" aria-hidden="true"></div>
+      </div>
+      <div class="c-mid">
+        <div class="pill">
+          <button type="button">开始</button>
+          <button type="button" disabled>提前结束</button>
+        </div>
+      </div>
+      <div class="c-right" role="group" aria-label="谱架模式">
+        <button type="button" class="stand-btn" aria-pressed="false" title="谱架模式">谱架模式</button>
+      </div>
+    </div>
+    <div class="transport-caps grid-3col">
+      <div class="c-left">
+        <div class="dizical-logo" title="Dizical" aria-label="Dizical">
+          <svg class="dizical-mark-svg" viewBox="0 0 58 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 2,1 L 2,13 L 7,13 C 10.5,13 13,10.3 13,7 C 13,3.7 10.5,1 7,1 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+            <circle cx="16.5" cy="2" r="0.9" fill="currentColor" />
+            <line x1="16.5" y1="5" x2="16.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            <path d="M 20.5,5 L 26.5,5 L 20.5,13 L 26.5,13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="30" cy="2" r="0.9" fill="currentColor" />
+            <line x1="30" y1="5" x2="30" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            <path d="M 39.5,6 C 38,4.8 34.5,4.8 34.5,9 C 34.5,13.2 38,13.2 39.5,12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            <circle cx="44.5" cy="9" r="4" stroke="currentColor" stroke-width="1.2" />
+            <line x1="48.5" y1="5" x2="48.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            <line x1="52.5" y1="1" x2="52.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          </svg>
+        </div>
+      </div>
+      <div class="c-mid"><div class="ops-kicker">00:00 · 待开始</div></div>
+      <div class="c-right"><div class="stand-badge-tip">大屏看谱</div></div>
+    </div>
+  </section>
+</template>
+
+<template id="tplDiag">
+  <section class="diag-card">
+    <div class="diag-row">
+      <div class="diag-status">
+        <span class="mic-indicator-dot"></span>
+        <span>声波监听：已静音</span>
+      </div>
+      <div class="diag-actions">
+        <button type="button" class="diag-btn">开启收音</button>
+        <button type="button" class="diag-btn">发声: 关</button>
+      </div>
+    </div>
+    <div class="toast-banner">
+      <span class="toast-tag">提示:</span>
+      <span>扬声孔与麦克风智能联动：吹奏起笛时自动检测有效时长</span>
+    </div>
+  </section>
+</template>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   0) 元数据
+   ══════════════════════════════════════════════════════════════ */
+var META = {
+  a2old: { kind: 'a2', baseline: true, label: 'A2 现状' },
+  a21: { kind: 'a2', label: 'A2-1 沉头浅凹键' },
+  a22: { kind: 'a2', label: 'A2-2 银面浮雕键', knownCost: 'A2-4' },
+  a3old: { kind: 'a3', baseline: true, label: 'A3 现状' },
+  a31: { kind: 'a3', label: 'A3-1 细分割线' },
+  a32: { kind: 'a3', label: 'A3-2 弱底带' }
+};
+var WIDTHS = [['420', '1133×744'], ['500', '744×1133'], ['390', '440×956']];
+
+/* ══════════════════════════════════════════════════════════════
+   1) 骨架注入：真卡 markup 克隆 + 48 孔格栅
+   ══════════════════════════════════════════════════════════════ */
+function inject() {
+  var tOld = document.getElementById('tplDeckOld');
+  var tNew = document.getElementById('tplDeckNew');
+  var tDiag = document.getElementById('tplDiag');
+  document.querySelectorAll('.blk').forEach(function (blk) {
+    var host = blk.querySelector('.host');
+    var v = blk.dataset.v;
+    var tpl = META[v].kind === 'a3' ? tDiag : (v === 'a2old' ? tOld : tNew);
+    host.appendChild(tpl.content.cloneNode(true));
+  });
+  document.querySelectorAll('.grille-6x8').forEach(function (g) {
+    g.textContent = '';
+    for (var i = 0; i < 48; i++) {
+      var h = document.createElement('span');
+      h.className = 'hole';
+      h.style.setProperty('--i', String(i % 8));
+      g.appendChild(h);
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2) 交互：谱架键开合（只切形态与 aria 状态）
+   ══════════════════════════════════════════════════════════════ */
+function applyIso() {
+  var a2 = document.querySelector('#pA2 button.is-on');
+  var a3 = document.querySelector('#pA3 button.is-on');
+  if (a2 && a2.dataset.iso) document.body.setAttribute('data-iso-a2', a2.dataset.iso); else document.body.removeAttribute('data-iso-a2');
+  if (a3 && a3.dataset.iso) document.body.setAttribute('data-iso-a3', a3.dataset.iso); else document.body.removeAttribute('data-iso-a3');
+}
+function bind() {
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.stand-btn');
+    if (b) {
+      var on = b.classList.toggle('is-on');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  });
+  document.querySelectorAll('#pA2 .seg button, #pA3 .seg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var grp = b.parentElement;
+      grp.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      applyIso();
+    });
+  });
+  document.querySelectorAll('#pW .seg button, #pW button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#pW button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      document.querySelectorAll('.card').forEach(function (c) { c.dataset.w = b.dataset.w; });
+    });
+  });
+  document.querySelectorAll('#pSkin button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#pSkin button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+      else document.documentElement.dataset.skin = '';
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3) 测量 / 对比度工具（与卡内断言同口径）
+   ══════════════════════════════════════════════════════════════ */
+function p(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function R(el) { var r = el.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; }
+function spread(a) { return Math.max.apply(null, a) - Math.min.apply(null, a); }
+function col(str) {
+  str = String(str || '').trim();
+  var m;
+  if ((m = str.match(/^#([0-9a-f]{6})$/i))) { var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
+  if ((m = str.match(/^rgba?\(([^)]+)\)$/i))) { var q = m[1].split(',').map(function (x) { return parseFloat(x); }); return [q[0], q[1], q[2], q.length > 3 ? q[3] : 1]; }
+  return null;
+}
+function mix(fg, bg) { var a = fg[3]; return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a), 1]; }
+function lum(c) { function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); } return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+function ratio(a, b) { var l1 = lum(a), l2 = lum(b), hi = Math.max(l1, l2), lo = Math.min(l1, l2); return (hi + 0.05) / (lo + 0.05); }
+function rgb(c) { return 'rgb(' + c.slice(0, 3).map(Math.round).join(',') + ')'; }
+function eff(el, back) { var bg = col(getComputedStyle(el).backgroundColor); if (!bg) return back; return bg[3] < 1 ? mix(bg, back) : bg; }
+/* 渐变底：取全部色停；否则取「自身底压到背板」后的单色。对比度一律取最差的那个 */
+function bgList(el, back) {
+  var stops = (getComputedStyle(el).backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(col);
+  if (stops.length) return stops;
+  return [eff(el, back)];
+}
+function worstRatio(fg, list) { return Math.min.apply(null, list.map(function (b) { return ratio(fg, b); })); }
+function isCtl(el) { return /^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(el.tagName); }
+function frames(root) {
+  var out = [], all = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+  all.forEach(function (el) {
+    var cs = getComputedStyle(el);
+    var bw = [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].map(p);
+    if (bw.every(function (x) { return x > 0; }) && p(cs.borderTopLeftRadius) > 0) {
+      out.push({ el: el, cls: String(el.className), control: isCtl(el), rect: R(el), bw: bw });
+    }
+  });
+  return out;
+}
+function nested(root, fs) {
+  var cs = fs.filter(function (f) { return !f.control; }), pairs = [];
+  cs.forEach(function (f) {
+    var q = f.el.parentElement, chain = [];
+    while (q && q !== root.parentElement) {
+      if (cs.some(function (g) { return g.el === q; })) chain.push(String(q.className));
+      q = q.parentElement;
+    }
+    if (chain.length) pairs.push(f.cls + ' ⊂ ' + chain.join(' ⊂ '));
+  });
+  return pairs;
+}
+function bands(root, fs) {
+  var rr = R(root), x = Math.round(rr.cx), out = [];
+  fs.forEach(function (f) {
+    if (x < f.rect.l || x > f.rect.r) return;
+    out.push({ cls: f.cls, y: Math.round(f.rect.t), side: 'top' });
+    out.push({ cls: f.cls, y: Math.round(f.rect.b - f.bw[2]), side: 'bottom' });
+  });
+  return out.sort(function (a, b) { return a.y - b.y; });
+}
+function shadowDropLayers(v) {
+  if (!v || v === 'none') return 0;
+  var n = 0;
+  v.split(/,(?![^(]*\))/).forEach(function (l) { if (l.indexOf('inset') < 0) n++; });
+  return n;
+}
+var EMOJI = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u26FF\u2700-\u27BF]/;
+
+/* ══════════════════════════════════════════════════════════════
+   4) 单块测量
+   ══════════════════════════════════════════════════════════════ */
+function measureBlk(blk) {
+  var card = blk.querySelector('.card');
+  var v = blk.dataset.v, kind = META[v].kind;
+  var cardR = R(card);
+  var stops = (getComputedStyle(card).backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(col);
+  var back = stops.length ? stops[stops.length - 1] : col('rgb(255,255,255)');
+  var o = { v: v, kind: kind, label: META[v].label, baseline: !!META[v].baseline, knownCost: META[v].knownCost || null, cardW: Math.round(cardR.w) };
+  if (kind === 'a2') {
+    var deck = blk.querySelector('.deck.transport');
+    var grille = blk.querySelector('.grille-6x8');
+    var pill = blk.querySelector('.pill');
+    var btn = blk.querySelector('.stand-btn');
+    var logo = blk.querySelector('.dizical-logo');
+    var timer = blk.querySelector('.ops-kicker');
+    var tip = blk.querySelector('.stand-badge-tip');
+    o.mainCys = [R(grille).cy, R(pill).cy, R(btn).cy];
+    o.mainSpread = spread(o.mainCys);
+    var caps = deck.querySelector('.transport-caps');
+    o.hasCapsRow = !!caps;
+    if (caps) {
+      o.capCys = [R(logo).cy, R(timer).cy, R(tip).cy];
+      o.capSpread = spread(o.capCys);
+      o.capCxDiff = [Math.abs(R(grille).cx - R(logo).cx), Math.abs(R(pill).cx - R(timer).cx), Math.abs(R(btn).cx - R(tip).cx)];
+    }
+    var br = R(btn);
+    o.btnWH = [parseFloat(br.w.toFixed(1)), parseFloat(br.h.toFixed(1))];
+    o.btnDropLayers = shadowDropLayers(getComputedStyle(btn).boxShadow);
+    o.btnShadow = getComputedStyle(btn).boxShadow.replace(/\s+/g, ' ');
+    o.btnText = btn.textContent.trim();
+    o.btnEmoji = EMOJI.test(btn.textContent);
+    o.btnNameOk = /^[\u4e00-\u9fa5]{2,4}$/.test(o.btnText);
+    o.btnBg = rgb(eff(btn, back));
+    o.btnBgImage = getComputedStyle(btn).backgroundImage === 'none' ? '（纯色底）' : getComputedStyle(btn).backgroundImage;
+    var idleList = bgList(btn, back);
+    o.btnBgList = idleList.map(rgb).join(' / ');
+    /* 激活态：只有当 .is-on 真的改了底/渐变才算「有激活语言」，否则记 null（基线不该凭空得一个数） */
+    var beforeBg = getComputedStyle(btn).backgroundColor + '|' + getComputedStyle(btn).backgroundImage;
+    btn.classList.add('is-on');
+    var afterBg = getComputedStyle(btn).backgroundColor + '|' + getComputedStyle(btn).backgroundImage;
+    var onList = bgList(btn, back);
+    var onColor = col(getComputedStyle(btn).color);
+    btn.classList.remove('is-on');
+    o.hasOnRule = beforeBg !== afterBg;
+    o.contrast = {
+      standIdle: parseFloat(worstRatio(col(getComputedStyle(btn).color), idleList).toFixed(2)),
+      standOn: o.hasOnRule ? parseFloat(worstRatio(onColor, onList).toFixed(2)) : null
+    };
+    o.btnInk = null;
+    o.deckOverflow = deck.scrollWidth > deck.clientWidth + 1;
+  } else {
+    var dc = blk.querySelector('.diag-card');
+    var fs = frames(dc);
+    o.containerFrames = fs.filter(function (f) { return !f.control; }).map(function (f) { return f.cls; });
+    o.allFrames = fs.map(function (f) { return (f.control ? '[控件]' : '[容器]') + f.cls; });
+    o.nested = nested(dc, fs);
+    o.bands = bands(dc, fs).map(function (b) { return b.y + ' ' + b.side + ' ' + b.cls; });
+    var dBack = eff(dc, back);
+    o.cardBack = rgb(dBack);
+    o.contrast = {
+      diagStatus: parseFloat(ratio(col(getComputedStyle(dc.querySelector('.diag-status')).color), dBack).toFixed(2)),
+      diagTip: parseFloat(ratio(col(getComputedStyle(dc.querySelector('.toast-banner')).color), eff(dc.querySelector('.toast-banner'), dBack)).toFixed(2)),
+      diagBtn: parseFloat(ratio(col(getComputedStyle(dc.querySelector('.diag-btn')).color), eff(dc.querySelector('.diag-btn'), dBack)).toFixed(2))
+    };
+    o.cardOverflow = dc.scrollWidth > dc.clientWidth + 1;
+  }
+  return o;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5) 断言
+   ══════════════════════════════════════════════════════════════ */
+function asserts(o, ctx) {
+  var f = [];
+  if (o.kind === 'a2') {
+    if (o.mainSpread > 1.0) f.push('A2-1 主控件行 centerline 极差 ' + o.mainSpread.toFixed(2) + 'px > 1px [' + o.mainCys.map(function (c) { return c.toFixed(2); }).join(' / ') + ']');
+    if (o.hasCapsRow && o.capSpread > 1.0) f.push('A2-2 说明行 centerline 极差 ' + o.capSpread.toFixed(2) + 'px > 1px [' + o.capCys.map(function (c) { return c.toFixed(2); }).join(' / ') + ']');
+    if (o.hasCapsRow) {
+      o.capCxDiff.forEach(function (d, i) {
+        if (d > 1.0) f.push('A2-7 第 ' + (i + 1) + ' 列主控件↔说明竖轴差 ' + d.toFixed(2) + 'px > 1px');
+      });
+    }
+    if (!(o.btnWH[0] >= 44 && o.btnWH[1] >= 44)) f.push('A2-3 谱架键命中区 ' + o.btnWH[0] + 'x' + o.btnWH[1] + ' < 44');
+    if (o.btnDropLayers !== 0) f.push('A2-4 谱架键外投影 ' + o.btnDropLayers + ' 层（甲板只允许主操作抬升）');
+    if (o.btnEmoji) f.push('A2-5 谱架键文案含 emoji');
+    if (!o.btnNameOk) f.push('A2-5 谱架键文案不是 2–4 汉字纯名字: "' + o.btnText + '"');
+    if (o.contrast.standIdle < 4.5) f.push('A2-6 谱架键 idle 字/自身底 ' + o.contrast.standIdle + ':1 < 4.5');
+    if (o.contrast.standOn !== null && o.contrast.standOn < 4.5) f.push('A2-6 谱架键 激活 白字/coral-solid ' + o.contrast.standOn + ':1 < 4.5');
+    if (!o.hasOnRule) f.push('A2-9 谱架键没有激活态（.is-on 不改底）');
+    if (o.deckOverflow) f.push('A2-8 甲板横向溢出');
+  } else {
+    if (o.containerFrames.length !== 1) f.push('A3-1 diag-card 容器框数 ' + o.containerFrames.length + '（应 = 1）: ' + o.containerFrames.join(' , '));
+    if (o.nested.length !== 0) f.push('A3-2 容器框套框 ' + o.nested.length + ' 对: ' + o.nested.join(' ; '));
+    if (o.bands.length !== 2) f.push('A3-3 竖向扫描线穿过框线带 ' + o.bands.length + ' 条（应 = 2）: ' + o.bands.join(' ; '));
+    if (o.contrast.diagStatus < 4.5) f.push('A3-4 状态文字 ' + o.contrast.diagStatus + ':1 < 4.5');
+    if (o.contrast.diagTip < 4.5) f.push('A3-4 提示文字 ' + o.contrast.diagTip + ':1 < 4.5');
+    if (o.contrast.diagBtn < 4.5) f.push('A3-4 按钮文字 ' + o.contrast.diagBtn + ':1 < 4.5');
+    if (o.cardOverflow) f.push('A3-5 diag 卡横向溢出');
+  }
+  return f;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   6) 审计主流程
+   ══════════════════════════════════════════════════════════════ */
+function runAudit() {
+  var keepIso = [document.body.getAttribute('data-iso-a2'), document.body.getAttribute('data-iso-a3')];
+  var keepSkin = document.documentElement.dataset.skin || '';
+  var keepW = document.querySelector('.card').dataset.w;
+  document.documentElement.classList.add('audit-nofx');
+  document.body.removeAttribute('data-iso-a2');   /* 全部变体都露出来才量得到（量之前先激活） */
+  document.body.removeAttribute('data-iso-a3');
+
+  var lines = [], fails = [], known = [], base = {};
+  lines.push('=== a2a3-probe-pixel · ?audit=1 ===');
+  lines.push('probe: A2 谱架键 + A3 diag 单框 候选对照   窗口: ' + window.innerWidth + '×' + window.innerHeight);
+  lines.push('口径: A2 主控件/说明行 centerline 极差 ≤1px · 谱架键命中 ≥44 且无外投影 · A3 容器框=1 / 嵌套=0 / 扫描线框线带=2 · 对比度 ≥4.5（两皮肤）');
+
+  WIDTHS.forEach(function (wp) {
+    document.querySelectorAll('.card').forEach(function (c) { c.dataset.w = wp[0]; });
+    void document.body.offsetWidth;
+    lines.push('');
+    lines.push('--- 卡宽 ' + wp[0] + 'px（真卡 ' + wp[1] + ' 档）× 皮肤 light ---');
+    ['a2old', 'a21', 'a22', 'a3old', 'a31', 'a32'].forEach(function (v) {
+      var blk = document.querySelector('.blk[data-v="' + v + '"]');
+      void blk.offsetWidth;
+      var o = measureBlk(blk);
+      var f = asserts(o, wp[0]);
+      var tag = o.baseline ? '基线' : (o.knownCost ? '已知代价' : '候选');
+      if (o.kind === 'a2') {
+        lines.push('  ' + o.label + ' [' + tag + ']  主控件 cy [' + o.mainCys.map(function (c) { return c.toFixed(2); }).join(', ') + '] 极差 ' + o.mainSpread.toFixed(2) + 'px' +
+          (o.hasCapsRow ? '   说明行极差 ' + o.capSpread.toFixed(2) + 'px   竖轴差 [' + o.capCxDiff.map(function (d) { return d.toFixed(2); }).join(', ') + ']' : '   （无说明行）') +
+          '   键 ' + o.btnWH[0] + 'x' + o.btnWH[1] + ' 外投影 ' + o.btnDropLayers + ' 层  底 ' + o.btnBgList + '  idle对比 ' + o.contrast.standIdle +
+          '  激活 ' + (o.contrast.standOn === null ? '（无激活态）' : o.contrast.standOn));
+      } else {
+        lines.push('  ' + o.label + ' [' + tag + ']  容器框 ' + JSON.stringify(o.containerFrames) + '  嵌套 ' + o.nested.length + ' 对  扫描线框线带 ' + o.bands.length + ' 条' +
+          '   卡底 ' + o.cardBack + '  对比 状态 ' + o.contrast.diagStatus + ' / 提示 ' + o.contrast.diagTip + ' / 按钮 ' + o.contrast.diagBtn);
+      }
+      lines.push('      asserts: ' + (f.length ? 'FAIL → ' + f.join(' | ') : 'OK'));
+      if (o.baseline) base[v] = f;
+      else if (o.knownCost) {
+        var kk = known.filter(function (x) { return x.v === o.label; })[0];
+        if (!kk) { kk = { v: o.label, f: f }; known.push(kk); }
+      } else f.forEach(function (x) { fails.push('[' + wp[0] + '/light][' + o.label + '] ' + x); });
+    });
+  });
+
+  /* 皮肤矩阵（只跑对比度敏感的项：420 档 + ink） */
+  lines.push('');
+  lines.push('--- 皮肤矩阵：420 档 × light / ink（对比度） ---');
+  document.querySelectorAll('.card').forEach(function (c) { c.dataset.w = '420'; });
+  ['light', 'ink'].forEach(function (sk) {
+    document.documentElement.dataset.skin = (sk === 'ink' ? 'ink' : '');
+    void document.body.offsetWidth;
+    ['a2old', 'a21', 'a22', 'a3old', 'a31', 'a32'].forEach(function (v) {
+      var o = measureBlk(document.querySelector('.blk[data-v="' + v + '"]'));
+      var f = asserts(o, '420');
+      var row = (o.kind === 'a2')
+        ? ('键底 ' + o.btnBgList + '  idle ' + o.contrast.standIdle + ' / 激活 ' + (o.contrast.standOn === null ? '无' : o.contrast.standOn))
+        : ('卡底 ' + o.cardBack + '  状态 ' + o.contrast.diagStatus + ' / 提示 ' + o.contrast.diagTip + ' / 按钮 ' + o.contrast.diagBtn);
+      lines.push('  [' + sk + '] ' + o.label + '  ' + row + '   对比度不达标项 ' + f.filter(function (x) { return x.indexOf('A2-6') === 0 || x.indexOf('A3-4') === 0; }).length);
+      if (!o.baseline) {
+        f.filter(function (x) { return x.indexOf('A2-6') === 0 || x.indexOf('A3-4') === 0; }).forEach(function (x) {
+          if (!(o.knownCost && x.indexOf(o.knownCost) === 0)) fails.push('[' + sk + '][' + o.label + '] ' + x);
+        });
+      }
+    });
+  });
+  document.documentElement.dataset.skin = keepSkin;
+
+  /* 基线咬合（内置负控） */
+  lines.push('');
+  lines.push('--- 基线咬合检查（内置负控：现状块必须触发断言） ---');
+  var negA2 = (base.a2old || []).some(function (x) { return x.indexOf('A2-1') === 0; });
+  var negA3 = (base.a3old || []).some(function (x) { return x.indexOf('A3-1') === 0 || x.indexOf('A3-2') === 0 || x.indexOf('A3-3') === 0; });
+  lines.push('  A2 基线触发 A2-1 ? ' + negA2 + '   基线红行: ' + JSON.stringify(base.a2old || []));
+  lines.push('  A3 基线触发 A3-1/2/3 ? ' + negA3 + '   基线红行: ' + JSON.stringify(base.a3old || []));
+  if (!negA2) fails.push('NEG-A2 基线块没有触发 A2-1（断言没咬住，证明不了任何事）');
+  if (!negA3) fails.push('NEG-A3 基线块没有触发 A3-1/2/3（断言没咬住，证明不了任何事）');
+
+  /* 已知代价 */
+  lines.push('');
+  lines.push('--- 候选的已知代价（计入 spec，不计入 fails） ---');
+  if (known.length) known.forEach(function (k) { lines.push('  ' + k.v + ' : ' + JSON.stringify(k.f)); });
+  else lines.push('  （无）');
+
+  document.documentElement.classList.remove('audit-nofx');
+  document.querySelectorAll('.card').forEach(function (c) { c.dataset.w = keepW; });
+  if (keepIso[0]) document.body.setAttribute('data-iso-a2', keepIso[0]);
+  if (keepIso[1]) document.body.setAttribute('data-iso-a3', keepIso[1]);
+
+  lines.push('');
+  lines.push('fails[] = ' + JSON.stringify(fails));
+  lines.push('verdict = ' + (fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK'));
+  return { text: lines.join('\n'), fails: fails, verdict: fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK' };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   7) 启动
+   ══════════════════════════════════════════════════════════════ */
+function boot() {
+  inject();
+  bind();
+  var params = new URLSearchParams(location.search);
+  if (params.get('skin') === 'ink') {
+    document.documentElement.dataset.skin = 'ink';
+    document.querySelectorAll('#pSkin button').forEach(function (x) { x.classList.toggle('is-on', x.dataset.skin === 'ink'); });
+  }
+  if (params.get('w')) {
+    document.querySelectorAll('.card').forEach(function (c) { c.dataset.w = params.get('w'); });
+    document.querySelectorAll('#pW button').forEach(function (x) { x.classList.toggle('is-on', x.dataset.w === params.get('w')); });
+  }
+  if (params.get('iso')) {
+    var iso = params.get('iso');
+    document.body.setAttribute(iso.indexOf('a3') === 0 ? 'data-iso-a3' : 'data-iso-a2', iso);
+    var pill = document.querySelector('.seg button[data-iso="' + iso + '"]');
+    if (pill) {
+      pill.parentElement.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === pill); });
+      applyIso();
+    }
+  }
+  if (params.get('audit') === '1') {
+    var out = document.getElementById('auditOut');
+    out.hidden = false;
+    var res;
+    try { res = runAudit(); } catch (e) {
+      out.textContent = '!! 审计抛错: ' + e + '\n' + (e.stack || '');
+      document.documentElement.dataset.audit = 'ASSERT_ERROR';
+      return;
+    }
+    out.textContent = res.text;
+    document.documentElement.dataset.audit = res.verdict;
+    window.__audit = res;
+  }
+}
+window.addEventListener('DOMContentLoaded', function () {
+  try { boot(); } catch (e) {
+    var out = document.getElementById('auditOut');
+    if (out) { out.hidden = false; out.textContent = '!! BOOT 抛错: ' + e + '\n' + (e.stack || ''); }
+  }
+});
+</script>
+</body>
+</html>

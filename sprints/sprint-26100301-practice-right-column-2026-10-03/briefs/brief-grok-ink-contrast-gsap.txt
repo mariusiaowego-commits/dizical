@@ -1,0 +1,86 @@
+# BRIEF — grok · P1 第二轮：深墨对比度修复 + 3.5 改 GSAP + 收皮
+
+dad 已拍板：**3.5 用方案2（GSAP 逐帧）**；并指出深墨皮肤下正文对比度不足（已实测确认，根因见 §1）。
+
+## §1 根因（已定，不要另找别的解释）
+`--dash-ink`（#2C3E50）与 `--dash-muted`（#666666）在 `:root[data-skin="ink"]` 里**照抄浅银值没翻转**，
+却被当**正文色**用 → 深底上成为深色字。实测（我跑的，浏览器全页扫描）：
+```
+深墨 .brand「D5 今日记录」  #2C3E50 on #2C3E50 → 对比度 1.00（完全看不见）
+深墨 「展开」按钮           #666666 on #3E474E → 1.65
+深墨 .c-detail session 明细 #2C3E50 on #1A1E34 → 1.53（dad 报的那条）
+浅银 .v.delta.up「+27」     #FF6B6B on #FFFFFF → 2.78（< 3.0）
+```
+这两个 token **同时**还当填充色用（`background: var(--dash-ink)`、渐变色标、`.is-on` 反色钮、
+`background: var(--dash-muted)` D3:516），**所以不能直接翻转它们**，要新增会翻转的语义文字 token。
+
+## §2 任务 A — 新增 4 个会翻转的语义文字 token（6 个文件全体）
+在 `:root` 与 `:root[data-skin="ink"]` 里各加：
+```css
+--dash-text:        #2C3E50;              /* 浅银 */   ink: #FFF8F0
+--dash-text-soft:   #666666;              /* 浅银 */   ink: rgba(255, 248, 240, 0.68)
+--dash-delta-up:    #E04A4A;              /* 浅银 */   ink: #FF6B6B   /* 「多」红色文字用 */
+--dash-delta-down:  #0C8A60;              /* 浅银 */   ink: #10B981   /* 「少」绿色文字用 */
+```
+文件：`dashboard-skin-01-v2.html` `metronome-01-v2.html` `dashboard-bottom-blocks-01-v2.html`
+`requests-popout-v1-v2.html` `today-records-01.html` `d5-design-probe.html`
+（探针是 agy 的文件，你**只改 token 块与文字色**，别动他的结构与探针逻辑。）
+
+实测依据（我算的，两种皮肤各自承接面上都 ≥ 阈值）：
+```
+--dash-text       浅银 min 9.62 / 深墨 min 9.00
+--dash-text-soft  浅银 min 5.03 / 深墨 min 5.18
+--dash-delta-up   浅银 #E04A4A on white 4.00 / 深墨 #FF6B6B on #14181C 6.43
+--dash-delta-down 浅银 #0C8A60 on white 4.36 / 深墨 #10B981 on #14181C 7.03
+```
+
+### 替换规则（**按属性名逐条判断，禁止无脑全局替换**）
+替换（这些都是文字色）：
+- `color: var(--dash-ink)` → `color: var(--dash-text)`
+- `color: var(--dash-muted)` → `color: var(--dash-text-soft)`
+- 行内 `style="... color: var(--dash-muted)"` 同上
+- JS 里写死的字符串 `'var(--dash-ink)'` / `'var(--dash-muted)'`（如 D3 的 `tip.style.color`）同上
+- D4 的别名 `--c-secondary: var(--dash-ink)` → `var(--dash-text)`；`--c-muted: var(--dash-muted)` → `var(--dash-text-soft)`
+- tap/on 反色钮：`.seg button.is-on` / `.fold button.is-on` 里 `background: var(--dash-ink)` → `var(--dash-text)`
+  （浅银同值不变；深墨变成亮底 + `--dash-page` 深字，可读）
+- 「多/少」的红绿**文字**：把用 `--dash-coral` / `--dash-mic-on` 当**文字色**的地方（如 `.v.delta.up/.down`、
+  hero 里的 ±mm）改成 `--dash-delta-up` / `--dash-delta-down`
+
+**保留不动**（这些是填充/线条，不是文字）：`background:` `border` `box-shadow` `linear-gradient` `fill` `stroke`
+里的 `--dash-ink` / `--dash-muted` / `--dash-coral` / `--dash-mic-on`。
+
+## §3 任务 B — 3.5 改成方案2「GSAP 逐帧」（dad 已选）
+现在 D5 是 scroll 事件 + `filter: blur` + 70ms CSS 过渡（`paintEdgeBlur`，437–459 行）。改成：
+- 引入本地 `../vendor/gsap.min.js`（**不新增依赖、不联网**，只用这份本地文件）
+- 用 `gsap.ticker.add(...)` 逐帧按「行到滚动容器上下边缘的距离」算模糊半径：带 32px、上限 5px
+  （映射公式保持现值，别改观感参数）
+- 离开边缘要**快速变清晰**：用 gsap 补间收回到 `blur(0px)`，时长 ≤0.12s，完成后清掉内联 style
+- 尊重 `prefers-reduced-motion`：开启时不做模糊
+- 保留 `?audit=1` 并**新增实测字段**：`blurMethod: "gsap"`、`edgeBlurMax`（当前实测最大模糊半径）、
+  `blurCleared: true/false`；并加断言：滚动到中段时，最靠近下边缘那一行的实测 `filter` 模糊 > 0.5px；
+  到底后各行回到 0。**负控**：临时注释掉 `gsap.ticker` 那一行 → 上述断言必须红，贴出红的那一行；恢复后必须绿。
+
+## §4 任务 C — 收皮（把 agy 的规格落进 D5；规格原文见 `/tmp/agy-d5-design.md`）
+逐条对齐（数值以 agy 文档为准，不要自己发明）：
+- heroic 三数：28px / 字重 850 / 高度约 82；「练习时长」用 `--dash-accent`
+- 表头：高 34 / 11.5px / 字重 750 / 字距 0.04em / 底 `--dash-surface-2`
+- 行高：科目行 44 / session 行 40；hover 底 `--dash-ink-a04`
+- 占比列：百分比 + **48×4 微进度条**（轨 `--dash-ink-a12`，条 `--dash-coral`）← 现在缺
+- 卡片：圆角 20 / 内距 14 / 发丝线 `--dash-ink-a12`；分块间距 ≥22px
+- 折叠/展开切换：GSAP 淡出上移（时长 ≤0.25s，`power2.out`）
+- 响应式分档按 agy：**744 档隐藏「明细」列**；**440 档改三层卡片网格**（当前是换行 + overflow hidden）
+- 440 档不许横向溢出、不许出现横向滚动条（这条我复核）
+
+## §5 硬约束（同上一轮）
+- 不改 `src/`、不新增依赖（只用本地 gsap）、不做任何 git 写操作
+- 颜色只走 token；非中性色禁字面量；禁 `transition: all`；禁用 emoji 做 UI 标识
+- 不改动 grok 自己以外的四个 v2 文件的**结构与行为**，只做 §2 的 token/文字色替换
+
+## §6 自检与交付（缺一条不算完）
+1. `?audit=1` 贴出实测 JSON（含 §3 新增字段）
+2. 负控三条全贴：GSAP ticker 关掉 → 红；改回 → 绿；占比分母改错 → 红；改回 → 绿
+3. 静态证据：`grep -c 'color: var(--dash-ink)'` 与 `grep -c 'color: var(--dash-muted)'` 在 6 个文件里必须 **0**
+   （填充类保留的条数各文件列一下）
+4. 回复一句话结论 + 交付物路径
+5. 我随后会跑 `scripts/verify-demos.py`（静态八项）、`scripts/token-contrast.py`（配对表）、
+   浏览器 `scripts/audit-contrast.js`（实测对比度）—— 以我的实测为准，你的自述只作参考

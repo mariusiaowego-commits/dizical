@@ -1,0 +1,44 @@
+# BRIEF — grok · 第 2 轮（dad 2610062214 反馈）· compose + D2
+
+plan 全文：`docs/demos/practice-right-column-261003/plan-261006.md`（先读）
+dad 原始反馈：MRD 文件 `## 2610062214` 段
+
+## 硬约束
+- 只改 `docs/demos/practice-right-column-261003/`；**禁改 `src/`、禁改生产 `practice.html`**
+- **不新增依赖**（GSAP 只用 `../vendor/gsap.min.js`）
+- **禁 git 写操作**
+- 颜色只走 `--dash-*`；新增 token 六页同名同步
+- **不碰这三个文件**（agy 在改）：`dashboard-skin-01-v3.html` / `practice-duration-card-01-v3.html` / `requests-card-01-v3.html`
+- **不碰 `shared/ruler-production.*`**（hermes 正在改作用域）。
+- 产出新文件：`compose-02.html` / `metronome-01-v3.html`（不覆盖 v1/v2）；改前备份到 `.bak-grok-round2-261006/`
+- 每页 `?audit=1` 必须能过，新断言进页内
+
+## 你的任务
+
+### A. compose → `compose-02.html`（6 条，dad 原话逐条）
+1. **`card-practice-timer` 高度给得太小，内容展示不出来**。
+2. **一团乱、每张卡展示都不全**；dad 原话「如果这是会真实上线的，那这个组合视图肯定是错的离谱」→ **重定义这个页面的目标**：不再做「卡片列车（iframe 画廊）」，改成**贴近真实上线的一屏布局**：左栏（计时 + ruler 区）+ 右栏（向右延伸的卡片轨道：节拍器 / 老师要求 / 今日记录 / 今日时长 / 下方区块），**每卡按 `card-contract.md` 的默认宽高完整展示、不裁切**，页面可纵向滚动。允许继续用 iframe 载入各卡，但**必须给足高度**（按卡内 `scrollHeight` 自适应）且**不允许一屏塞多张导致压缩**。
+3. **`metro-card` 里出现了 ruler 刻度尺** —— dad 说节拍器卡里不该有尺子。**根因是共享尺子选择器没有作用域**（hermes 在修），你要做的：在 compose 里断言 `metro-card` 内 `.tick` / `.ruler-wrap` 数量 = 0；若 hermes 修完仍泄漏，回报（别自己改 shared/）。
+4. **`control-strip` 还在让人选扬声孔样式** —— dad 说他已经选好了。**固化已选变体**（孔阵用金属沉头 / 按钮用扁平胶囊 / 谱架按 dad 上次口径），**移除选择器 UI**；若某一处你判断尚无结论，保留但标注「待拍板」，且只留 1 处。
+5. **`dash-simulation-chassis` 里元素全叠在一起互相遮盖** —— 根因：舞台（`.stage-frame`/chassis）的定位样式泄漏进卡内。修：舞台定位限定在舞台容器内，卡内不继承 `position: absolute`。断言：卡内主要区块两两相交面积 = 0。
+6. **`card-today-records` 折叠/展开点了没反应** —— 组合页不再靠 URL 参数（`?expand=1`），折叠/展开由**卡内按钮**控制，compose 里点得动。
+
+### B. D2 → `metronome-01-v3.html`（1 条）
+dad 原话：「节拍器声音太闷了，可以多设计一些声音，到时候前端有 ui 选择」
+1. **做 5 种音色**（纯 Web Audio 合成，**零依赖**）：① 木鱼（woodblock，短促带木质噪声）② 电子滴答（click，窄脉冲）③ 808 低鼓（sub 正弦下滑）④ 鼓边（rimshot，噪声 + 高通）⑤ 清脆 blip（方波短音，高频）。**强势拍比弱拍高一点点音高或更亮**（强调 1 拍）。
+2. **卡内音色选择 UI**：分段控件 5 项 + 「试听」按钮；选中状态存 `localStorage`；默认选最接近 dad 参考的（**措辞：默认「木鱼」**，等 dad 拍板换默认）。
+3. 保证：切换音色后下一拍立即生效；计时快照语义不变（Q4：取值 = 计时开始那一刻）；无声音爆（`gain` 包络 5ms 起 80ms 落）。
+4. `?audit=1` 断言：5 个音色项都在、切换后 `currentTimbre` 变化、试听按钮触发一次 `AudioContext` 振荡器创建、`save/restore` localStorage 键存在。
+5. dad 给的参考链接 `https://share.google/soIs5a0eDMqwIdrJr` 被 Google 机器人校验挡住，hermes 拿不到内容**（已向 dad 要具体音色名）；你先按上面 5 种做，dad 反馈后再调**。
+
+## 交付
+1. `compose-02.html` + `metronome-01-v3.html` + 备份
+2. 报告 `review-grok-round2-261006.md`：表格 `条目 / 现象 / 根因 / 修法 / 改前→改后实测数字 / 证据`；compose 附「新的页面目标一句话 + 布局示意」
+3. 门禁实测输出：
+   ```bash
+   cd docs/demos/practice-right-column-261003
+   python3 scripts/verify-demos.py compose-02.html metronome-01-v3.html
+   python3 scripts/token-contrast.py
+   ```
+4. 三档视口实测（1133×744 / 744×1133 / 440×956）：无横向溢出、无内容裁切、卡内容完整
+5. 回简报：完成条数 / 未完成 + 原因 / 门禁结果

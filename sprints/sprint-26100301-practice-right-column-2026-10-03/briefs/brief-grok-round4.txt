@@ -1,0 +1,53 @@
+# BRIEF — grok · P1 第四轮（收皮尾项 + coral 当文字）
+
+我这轮用浏览器逐页实测（iframe 批量，含渐变背景识别），结果：
+- **D1 / D5 两皮肤 0 处不合格**（D5 最低 3.94 / 5.18）
+- D2/D3/D4 的不合格**几乎全在 demo 注记层**（`.cal` / `[路线 A 已拍板]` / 「开始自检」/「变体 A…」小字）→ 那是脚手架，不改
+- 产品 UI 里剩下的真问题是「coral 当文字」
+- D5 收皮：heroic 28px/850 ✓、表头 34/11.5/750 ✓、行高 44/40 ✓、744 隐藏明细 ✓、440 无溢出 ✓；
+  **占比微条没落地**、**440 不是「三层卡片网格」**
+
+## 任务 1 — 占比列补 48×4 微进度条（agy 规格 §3c/§4）
+- 位置：占比单元格里，百分比文字 + 48×4 微条；轨 `--dash-ink-a12`，条 `--dash-coral`
+- 条宽 = 占比 × 48px（取整即可）
+- `?audit=1` 新增：`shareBars: [{pct, barPx}]`，并加断言「barPx 与 pct 一致（±1px）」
+- **负控**：把某一行条宽写死 48px → 断言必须红，贴红行；改回 → 绿
+
+## 任务 2 — 440 档改成 agy 规格的「三层卡片网格」
+现状实测：`grid-template-columns: 339px 48px`、单元格 tops = [41,41,70,98,67]（换行拼凑，不是三层）
+要求：按 `/tmp/agy-d5-design.md` 里 440 那一档的分法做成**三层**（层级信息优先：科目/时长占一层，速度/单次一层，明细一层），
+并保证：① 无横向溢出 ② 层与层间距 ≥8px ③ 每层文字不挤（实测行高给出）
+交付：实测 `gridTemplateColumns` + 每层 top/height + 是否有横向溢出
+
+## 任务 3 — 新增 `--dash-coral-text`，把「coral 当文字」的位置路由过去
+实测证据（浏览器 computed style，两皮肤同值）：
+```
+D4 .card-metro-val「♩=68」16px   #FF6B6B on #FFF8F0 → 2.63
+D2 .led-label「强拍 1」11px      #FF6B6B on #FFF8F0 → 2.63
+```
+做法：
+1. 六文件加 `--dash-coral-text`：**浅银 #E04A4A / 深墨 #FF6B6B**（深墨下 coral 本来就够，保持原亮色）
+2. 只把**文字用法**（`color: var(--dash-coral)`）换成 `var(--dash-coral-text)`；
+   **图形用法不动**：LED 灯底、色块、进度条、边框、`box-shadow`、渐变、`background` 里的 coral 一律保留
+3. 涉及文件：D2（`.led-label`、`.demo-title span` 若是产品 UI）、D3（`.strip-title span` 同理）、D4（`.card-metro-val`、`--c-*` 别名里指向 coral 的）
+4. 改完给我每处的实测对比度数字（应 ≥4.5 若 ≤16px）
+
+## ❌ 任务 4（**不改**，等 dad 拍板，只测给我看）
+白字压在 coral 底上的三处产品 UI：
+```
+D2 .preset-chip.active「82 萨丽哈★」12px  white on #FF8C5A → 2.29
+D1 BUTTON「开始」13px                     white on #FF6B6B → 2.78
+D2 .m-term-badge「中板 · 优美抒情」12px     white on coral（渐变卡内）→ 2.78
+```
+只要求：把这 3 处**实测数字**列给我（颜色、字号、对比度），不要改色。
+
+## 硬约束（不变）
+不改 `src/`、不新增依赖、不做任何 git 写操作、颜色只走 token、禁 `transition: all`、不动 demo 注记层。
+
+## 自检与交付
+1. 任务 1：`?audit=1` 的 `shareBars` 实测 + 负控红/绿
+2. 任务 2：三条实测（grid / 层高 / 无溢出）
+3. 任务 3：每处改后的实测对比度
+4. 任务 4：三处实测数字（不改）
+5. `python3 scripts/verify-demos.py` 契约行（应为 68 名一致）
+6. 一句话结论

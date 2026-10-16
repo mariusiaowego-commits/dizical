@@ -1,0 +1,54 @@
+# BRIEF — grok · P1 第三轮（尾项修复）
+
+上一轮你的改动本身是对的（`--dash-text`/`--dash-text-soft`/delta 两枚 token 已生效，六文件契约 66 名一致，
+门禁 22 组 × 两皮肤全过）。我实测又抓到 3 处尾项，逐条修。
+
+## 尾项 1（真 bug）：`.seg button.is-on` 在深墨下文字看不见 —— 实测对比度 1.04
+实测（浏览器 computed style，我已排除过渡竞态）：
+```
+深墨 BUTTON「744×1133」 color rgba(255,248,240,0.68)  on bg #FFFFFF → 1.04
+深墨 BUTTON「440×956」  同上 → 1.04
+深墨 BUTTON「浅银」     同上 → 1.04
+```
+成因：`.seg button` 用 `color: var(--dash-text-soft)`，深墨下这枚是**浅色**；
+而 `.seg button.is-on` 的底色是 `var(--dash-white)`（浅）→ 浅底浅字。
+你已经给 `.fold button.is-on` 加了深墨覆盖（`today-records-01.html:190`），`.seg` 漏了，**按同一模式补**。
+
+要求：两种皮肤下这三处文字都 ≥ 4.5（12px / 字重 650 = 正文阈值）。
+参考做法（与 fold 一致）：让 `.is-on` 的文字色用 `var(--dash-page)`，浅银/深墨都成立（浅银底深、深墨底浅）。
+`d5-design-probe.html` 里同类 `.seg` 结构一起检查（探针顶部也有一排按钮）。
+
+## 尾项 2（自检说谎的反面：默认红）：`?audit=1` 初始态就报 `ASSERT_FAIL edgeBlur`
+实测：直接打开 `today-records-01.html?expand=1&audit=1`（未滚动）→
+```
+ASSERT_FAIL edgeBlur: got 0 want > 0.5
+{"ok":false, ... "edgeBlurMax":0, "blurCleared":true}
+```
+成因：列表在初始位置没有「够到边缘」的行，断言却无条件要求 >0.5。
+修法：断言**条件化**，并让 audit 能区分「测了但是 0」与「本次不适用」：
+```
+blurExpected: false   当 滚动容器不可滚 或 位于顶端/底端（不在中段）
+blurExpected: true    当 已滚动到中段 → 此时要求 edgeBlurMax > 0.5
+ok: 只在 blurExpected 为 true 时才把这条算进 failures
+```
+必须保留负控：注释掉 `gsap.ticker` 那行、并滚到中段 → 断言必须红（贴红行），恢复后绿。
+要求：初始态、顶端、中段、底端四种情形各贴一次 audit JSON（至少给中段与初始态两次）。
+
+## 尾项 3（不要动，等 dad 拍板）
+浅银下仍有两处品牌橙当文字不达标：
+```
+浅银 .tag「补录」 11px  #FF8C5A on #FFF4EE → 2.12（11px 需 4.5）
+浅银 .v「57」     28px  #FF8C5A on #FFFDFB → 2.26（28px 需 3.0）
+```
+这是 agy 规格里「练习时长用 --dash-accent」的设计意图，**属设计取舍**，dad 未拍板前不要改色。
+只允许提前做一件事：把这两个位置的颜色**改走一枚可替换的 token**（名字用 `--dash-accent-text`，
+先定义为当前值 `#FF8C5A`，浅银/深墨同值），这样 dad 定了改一行即可。加 token 后记得六个文件一起加（契约要一致）。
+
+## 硬约束（不变）
+不改 `src/`、不新增依赖（本地 gsap 可用）、不做任何 git 写操作、颜色只走 token、禁 `transition: all`。
+
+## 自检与交付
+1. 尾项 1：两种皮肤下实测三处对比度（给出数值）
+2. 尾项 2：四种滚动情形的 audit JSON + 负控红/绿两条
+3. 尾项 3：`--dash-accent-text` 已加到六文件（贴 `verify-demos.py` 契约行：应为 67 名一致）
+4. 一句话结论 + 文件路径

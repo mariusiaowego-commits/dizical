@@ -1,0 +1,64 @@
+# BRIEF — agy · 全量需求对照 review（只读，禁改代码）
+
+dad 原话：「先让 agy 对目前所有 demo，对比我所有的需求 prompt，进行一次完整的 review，看都做不到没有」
+
+## 你的任务
+拿 dad 的**全部需求原文**，逐条对**现有 demo**验收，输出一份对照报告。
+**只读 review —— 不改任何 demo 文件、不动 git。**
+
+## 需求原文来源（全部读完，别漏）
+1. MRD（含 dad 在文件末尾写的 Q1–Q6 答案）：
+   `/Users/mt16/Library/Mobile Documents/iCloud~md~obsidian/Documents/tqob/05-Coding/project-dizical/PRDs/MRD-练习页前端重构prompt集合（feat-practice-ui-iter-260920）.md`
+   注意：文件里 `## 2610041201 - hermes 疑问` 段之后是 dad 的逐条回答，**以他的回答为最终口径**。
+2. 已有一份对照表（你之前写的，这次要做**复核 + 修正**，不要照抄）：
+   `docs/demos/practice-right-column-261003/需求对照表-261003.md`
+3. 卡片契约：`docs/demos/practice-right-column-261003/card-contract.md`
+4. 参考件（dad 的原始 prompt / 参考图 / 设计指南）：
+   - `/Users/mt16/Downloads/dizical-uiux-reference/widget_prompt_ui.md`（今日时长卡）
+   - `/Users/mt16/Downloads/dizical-uiux-reference/bauhaus_metronome_ui_design_guide.md`（节拍器）
+   - `/Users/mt16/Downloads/dizical-uiux-reference/` 下其余 prompt/参考图/截图
+
+## 被验收的 demo（全在这一个目录）
+`docs/demos/practice-right-column-261003/`
+```
+index.html                       总览页（作者归属表在这）
+compose-01.html                  组合页（六卡装进同一条轨道）
+dashboard-skin-01-v2.html        ① 练习计时卡
+metronome-01-v2.html             ② 节拍器卡
+dashboard-bottom-blocks-01-v2.html ③ 下方三块卡
+requests-card-01.html            ④ 老师要求卡（独立卡 + 3D 卡叠 deck）
+requests-popout-v1-v2.html       ④ 的旧弹窗版（对照）
+today-records-01.html            ⑤ 今日记录卡
+practice-duration-card-01.html   ⑥ 今日时长卡
+card-dashboard-skeleton-01.html  轨道骨架
+ruler-shared-check.html          共享刻度尺接入自检
+shared/ruler-production.{css,js} 共享刻度尺（生产逐行切片）
+d5-design-probe.html             ⑤ 的设计探针
+```
+服务在跑：本机 `http://localhost:8771/practice-right-column-261003/`（**真开页面看**，别只读代码）。
+
+## 输出（写文件，不聊天里刷）
+写 `docs/demos/practice-right-column-261003/review-agy-requirements-261005.md`，结构：
+
+### A. 逐条对照表（核心）
+一行一条需求，四个字段：
+| # | dad 需求原文（摘要，保留关键限定词） | 落点（文件:行 或 页面元素） | 判定 | 证据 |
+判定只用四值：**做到 / 部分 / 未做 / 做不到**
+- 「部分」必须写清**差哪一点**（差的是数值、状态、还是交互）
+- 「做不到」必须写**为什么做不到**（技术限制 / 缺数据 / 缺接口 / 与 dad 另一条要求冲突）
+- 证据要可复核：DOM 实测值、CSS 行号、截图路径、或 `?audit=1` 输出的字段。**禁凭印象判「做到」**
+
+### B. 缺口清单（按严重度排）
+P0 挡住整体交付的 / P1 明显差一截 / P2 小瑕疵。每条给：现象 → 落点 → 建议动作（改哪个文件）。
+
+### C. 口径提醒
+- 判决与 dad 回答冲突时以 **dad 的回答**为准，并标出「旧对照表这里写错了」。
+- 跨卡一致性也查：六卡宽度是否都按 `card-contract.md` 声明；两皮肤是否都过 AA；440 档是否都不横滑。
+
+## 硬约束
+- 只读：禁改任何 demo 文件、禁 git 写操作、禁改 `src/`。
+- 允许起本地只读手段：`curl` / 读文件 / 你惯用的 Playwright 探针（同源页面）。
+- 结论必须能被我复核：我（hermes）会按你的表格逐条抽查，抽到与实测不符的条目会打回重做。
+
+## 交付后
+回一条简报：条数统计（做到 X / 部分 Y / 未做 Z / 做不到 W）+ P0 列表 + 报告文件路径。

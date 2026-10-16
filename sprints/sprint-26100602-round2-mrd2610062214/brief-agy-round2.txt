@@ -1,0 +1,64 @@
+# BRIEF — agy · 第 2 轮（dad 2610062214 反馈）· D1 + D6 + D4
+
+plan 全文：`docs/demos/practice-right-column-261003/plan-261006.md`（先读）
+dad 原始反馈：MRD 文件 `## 2610062214` 段（含 4 张截图链接）
+
+## 硬约束
+- 只改 `docs/demos/practice-right-column-261003/`；**禁改 `src/`、禁改生产 `practice.html`**
+- **不新增依赖**（GSAP 只用 `../vendor/gsap.min.js`）
+- **禁 git 写操作**（不 commit/push/branch）
+- 颜色只走 `--dash-*`；新增 token 六页同名同步
+- **产出新文件 `-v3`，不覆盖 v2**（dad 要对比）：`dashboard-skin-01-v3.html` / `practice-duration-card-01-v3.html` / `requests-card-01-v3.html`
+- 改前备份到 `.bak-agy-round2-261006/`
+- **`shared/ruler-production.*` 由 hermes 本人在改（加作用域 + run 态），你不要动，等 hermes 通知；D1-1.2 先写调用与断言，等通知后复测**
+- 每页保留/新增 `?audit=1`，新断言必须进页内并输出 `ASSERT_OK`
+
+## 你的任务
+
+### A. D1 → `dashboard-skin-01-v3.html`（8 条，dad 原话逐条）
+1. **点开始后不该直接出节拍器声音** —— 默认静音：计时开始不发声；发声由 D1 内「节拍器开关」控制（另有 D2 卡联动）；panel-foot 显示当前节拍状态（开/关 + BPM）。
+2. **计时中 `ruler-vine`（生花）+ `notes-bubbles`（音符）没出现**（只在待命拖动时有）—— run 态要调 `RulerProduction.setRunningModality(true)`，idle/finish 调 `false`。断言：run 中 `.ruler-vine` 内有节点、`.notes-bubbles` 有子节点、`.tick.cur` 在动。**等 hermes 通知共享件就绪后复测**。
+3. **`arc` 三项**：
+   - 3.1 `panel` 下圆弧的弧度 与 `arc` 圆点弧线**不平行、弧度不一致**；且圆点**太多太密**（不简洁）→ 两条弧共用同一圆心/半径体系；点数减少到「一步一点」。
+   - 3.2 **一个圆点 = 一个指针步进**；起点与终点必须与圆点和指针对应（现在没对上）→ 建立 dot↔step 一一映射，指针落在点上。
+   - 3.3 **指针起点 20:00 位置 → 终点 4:00 位置**；**1 分钟/步**；**最长 30 分、最小 1 分** → 角度范围与步数按此锁定（30 步）。
+   - **几何量法**：自己用视觉读 `/Users/mt16/Downloads/dizical-uiux-reference/科目卡片参考-04.jpg`（4096×4096，可裁切放大）量出：圆点数量、点径:间隙比、弧与 panel 底边最小间距、弧的张角。**量不出来就明说量不出来，不要猜**。
+4. **`mid-row` 的 +/− 对齐**：左 `−` 与 `panel-foot` 左边元素对齐；右 `+` 与右边元素对齐（三处共用同一列网格）。
+5. **744×1133 下 `panel-main` 很空** —— 上方空间压缩，把指针 / arc / 按钮 / speaker 的空间放大（写**独立纵向排布**，不是只换宽度）。
+6. **`speaker-block` 删掉线框外框**（dad 原话：不要自作聪明加什么外框）。
+7. **「下方三块卡」并入仪表盘**：dad 认为它就是仪表盘下面的东西，不该独立成卡（现在有两套下方 UI）→ **把 D3 的 diag-card + control-strip + speaker/谱架并入 D1 卡内下半区**；D3 页降为对照页（保留，不删）。
+8. **麦克风 + `diag-card` 归属计划**：dad 问「麦克风开关 UI 在哪？仪表盘没有入口；`diag-card` 是独立卡吗？给计划」→ 你的方案：麦克风入口 = D1 屏幕面板顶部 mic 键（与生产 `10:12am` 同位），开/关状态 + 电平指示；`diag-card` 并入 D1 下半区不再独立卡。**把这套在 v3 里实现出来**，并在交付说明里写清布局计划。
+
+### B. D6 → `practice-duration-card-01-v3.html`（6 条，按参考图重做）
+参考图（权威）：`/Users/mt16/Downloads/dizical-uiux-reference/19aebf0e-6a83-4632-8fb4-f72a3270dbb3.jpeg`
+dad 另给的 rail 细节图：vault `99-Attachments/MRD-…-2.png`
+1. **与参考图差距大** → 重做：深炭卡底 + **大圆角**（短边 ≈12%）+ 顶部「日期 / `Practice` / 空心大时钟（秒数右上小字）」+ 右上**橙色总量 pill**。
+2. **rail 里 seg 高度太高、胶囊不对** → 参考样式：**高度很小的细长圆胶囊**；rail 外带约卡高 1/6，带内是一条**细白线**（圆头，高约带高 1/5）：**实线=练习段、点划/虚线=未完段**，时间标签小字压在线上方对应位置。
+3. **细体字**（时间的细体字没采用）→ 大时钟用空心细体（SVG 描边字或细体 + 字距），不引外部字体。
+4. **深墨配色下看不清（字与背景同色）** → 逐元素实测深墨对比度，修到 ≥4.5（大字号 ≥3.0）；不要只跑门禁。
+5. **`ic-metronome` 单摆太靠旁边** → 摆线更竖直（只微斜），摆中点保留小圆点。
+6. **完全复刻两个 icon**（dad 指定 agy 复刻，prompt 原文）：
+```
+Bottom-Right Status Icons (Grouped):
+In the bottom-right corner of the dark charcoal UI, a tightly grouped pair of two ultra-minimalist, monoline vector icons. Both icons are perfectly aligned on their horizontal centerlines, spaced exactly 12px apart, and rendered in a crisp off-white (#F5F5F5) with a consistent, thin 1.5px stroke weight.
+Left Icon (Metronome): A purely geometric outline of a mechanical metronome. It consists of a clean isosceles triangle with a flattened top and a straight horizontal baseline. Inside the triangle, a single vertical line represents the pendulum, with a tiny distinct dot resting on the middle of the line.
+Right Icon (Achievement Crown): A flat, sharp-angled outline of a minimalist crown. It features a straight, solid horizontal base line, with three sharp peaks rising from it (the center peak is slightly taller than the two symmetrical side peaks).
+Style Constraints: 2D flat vector, no 3D effects, no drop shadows, no glowing gradients, strictly Bauhaus-inspired functional iconography, transparent backgrounds inside the icon outlines.
+```
+（皇冠点亮态可保留橙色光晕，但 icon 本体按上面复刻）
+
+### C. D4 → `requests-card-01-v3.html`（2 条，这卡归你一人做，避免撞车）
+1. **三个视口点标签看不到宽度或整体变化** → 三档卡宽必须真实不同（1133→600 / 744→440 / 440→408）+ 内部字号/行距随档变化。断言：三档卡宽互不相等。
+2. **拖动卡顿 + 重影**（dad 截图：多张半透明残影向左上错位）→ 拖动期**只允许 1 张跟随指针**，其余层完全隐藏；用 `transform: translate3d` + `will-change`；松手落定。断言：拖动中可见层 ≤ 2；拖动 200ms 内无叠层残留。
+
+## 交付
+1. 三个 v3 文件 + 备份目录
+2. 报告 `review-agy-round2-261006.md`：表格 `条目 / 现象 / 根因 / 修法 / 改前→改后实测数字 / 证据(文件:行或 DOM 值)`；arc 章节附你量参考图的数字
+3. 门禁实测输出：
+   ```bash
+   cd docs/demos/practice-right-column-261003
+   python3 scripts/verify-demos.py dashboard-skin-01-v3.html practice-duration-card-01-v3.html requests-card-01-v3.html
+   python3 scripts/token-contrast.py
+   ```
+4. 三档视口实测：无横向溢出、无内容裁切
+5. 回简报：完成条数 / 未完成条数 + 原因 / 门禁结果

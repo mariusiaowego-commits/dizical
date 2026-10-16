@@ -1,0 +1,67 @@
+# BRIEF — agy · 阶段二：全量 UI/UX · 交互 · 动画 · layout 审计 + 修复
+
+dad 原话：「让 agy 继续对目前所有 demo 进行一次 uiux、交互、动画效果、layout 的审计，检查所有可能的问题并修复」
+
+**执行顺序**：先做完阶段一（`/tmp/brief-agy-requirements-review.txt` 的只读需求对照 review，报告落到
+`review-agy-requirements-261005.md`），**再**做本阶段（审计 + 真改）。
+
+## 范围（所有 demo）
+`docs/demos/practice-right-column-261003/`
+```
+dashboard-skin-01-v2.html          ① 练习计时卡
+metronome-01-v2.html               ② 节拍器卡
+dashboard-bottom-blocks-01-v2.html ③ 下方三块卡
+requests-card-01.html              ④ 老师要求卡
+today-records-01.html              ⑤ 今日记录卡
+practice-duration-card-01.html     ⑥ 今日时长卡
+card-dashboard-skeleton-01.html    轨道骨架
+compose-01.html                    组合页
+index.html                         总览页
+shared/ruler-production.{css,js}   共享刻度尺
+ruler-shared-check.html            尺子自检页
+```
+服务：`http://localhost:8771/practice-right-column-261003/`（**真开页面 + 真操作**，别只读码）。
+
+## 六个审计维度（每条都要给「问题 → 证据 → 修法 → 复测数字」）
+
+1. **UI/UX 视觉**：层级、对齐、间距节奏、字体落位、圆角/描边一致性、两皮肤（浅银/深墨）各自是否成立；
+   有没有「一眼看出没做完」的地方（残留占位、调试文字、错位、半透明叠错）。
+2. **交互**：所有可点的东西（按钮 / knob / 滑块 / 卡片 / 指示点 / A-B 变体开关）逐个点一遍；
+   有没有点了没反应、状态不更新、禁用态该禁用没禁用、重复点击出错、拖拽与点击互相打架。
+   触控目标 ≥44px、有 hover/press 反馈、有 focus 可见样式、键盘可达（Tab/箭头）。
+3. **动画效果**：每条动效检查 —— 触发时机对不对、时长/缓动是否自然、有没有跳帧或抖动、
+   动画结束后状态是否落定（不留半个中间态）、快速重复触发会不会叠坏。
+   检查 `prefers-reduced-motion` 是否被尊重（该关的动效要关）；**禁 `transition: all`**。
+4. **Layout / 响应式**：1133×744、744×1133、440×956 三档逐档看；
+   横向不得溢出（`scrollWidth <= clientWidth`）；440 档不得横滑；
+   长文本/长数字不得撑破卡片；组合页轨道吸附停位对不对；骨架页 440 是否纵向堆叠。
+5. **性能**：滚动逐帧动效是否掉帧（GSAP 逐帧那处）、有没有长任务、有没有重复绑定事件、
+   iframe 嵌套（组合页/总览页）是否拖慢；有量化数字最好（帧时间 / 耗时）。
+6. **一致性**：六卡之间同一语义的元素（标题字号、胶囊、间距、皮肤变量）是否统一；
+   与 `card-contract.md` 声明的宽度是否一致；`--dash-*` token 名集合是否仍 68 个一致。
+
+## 修复规则（硬约束，违反即打回）
+- **可以改**：上述 demo 文件（含 shared/、skeleton、compose、index）。
+  改宽度只改 `card-contract.md` 表 + 卡内声明，两处同步。
+- **禁改**：`src/` 下任何文件；生产模板 `practice.html`。
+- **禁新增依赖**（GSAP 只用 `../vendor/gsap.min.js`）。
+- **禁 git 写操作**（不 commit / 不 push / 不 branch）。
+- **颜色只走 `--dash-*`**；新增 token 必须六文件同名同步（跑门禁看是否 68 名一致）。
+- **改完必须跑门禁**（这两条是硬门禁，红即未完成）：
+  ```bash
+  cd docs/demos/practice-right-column-261003
+  python3 scripts/verify-demos.py            # 静态八项 + 契约 68 名 + legacy_text=0
+  python3 scripts/token-contrast.py          # 对比度配对门禁，要求「不合格合计：0」
+  ```
+- **保留各页 `?audit=1`**：你改完页面后，原断言仍要能过（断言红要说明是断言过期还是真问题）。
+- 改前先备份你改的文件到 `docs/demos/practice-right-column-261003/.bak-agy-uiux-261005/`。
+
+## 输出
+写 `docs/demos/practice-right-column-261003/review-agy-uiux-fixes-261005.md`：
+- §1 问题清单（表格）：# / 维度(视觉·交互·动画·layout·性能·一致性) / 现象 / 证据（文件:行 或实测值）/ 严重度 P0-P2 / 是否已修 / 修法 / **复测数字（改前 → 改后）**
+- §2 改动文件清单（逐文件一句话说明改了什么）
+- §3 门禁复测结果（两条命令的实际输出尾部）
+- §4 未修项与原因（做不到 / 需要 dad 拍板的，明确列出）
+
+## 交付后
+回一条简报：P0/P1 各几条、已修几条、未修几条 + 两条门禁的实际结果 + 报告路径。

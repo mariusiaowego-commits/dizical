@@ -1,0 +1,63 @@
+# BRIEF — agy · P1 视觉 lane（D5 今日练习记录 · C 段 3.1–3.5）
+
+你是本 sprint 的**审美大脑**。本轮只交两件东西：一份设计说明 + 一个可点探针页。
+**页面实现由 grok 负责（`today-records-01.html`），你不要去写那个文件**，避免撞车。
+
+## 0 上下文
+- 仓库 `/Users/mt16/dev/dizical`；交付目录 `docs/demos/practice-right-column-261003/`
+- 已定视觉语言（可直接引用，不要另起一套）：`dashboard-skin-01-v2.html`（仪表盘）、`dashboard-bottom-blocks-01-v2.html`（下方三块）
+- **换肤契约**：`token-spec.md` —— 62 个 `--dash-*`，四个 v2 文件已一致，有浅银 / 深墨两套皮肤。
+  你的设计**必须复用这些 token 名**；需要新 token 时在说明里单列「新增 token 清单（名字 + 浅银值 + 深墨值）」，我统一收编。
+- 预览服务已在跑：根目录 = `docs/demos`，URL = `http://localhost:8771/practice-right-column-261003/<文件名>`
+
+## 1 需求原文（dad 2610011327 · C 段，逐条照抄，不许改语义）
+- **3.1** 展开态样式 copy `/Users/mt16/Downloads/dizical-uiux-reference/2609252147-reference-01.png`（high-resolution console 风）：**不 copy 黑色配色**，换本项目主题配色；**扁平化，不要特别拟物**。
+- **3.2** 头部通栏右侧保留「折叠 / 展开」双态按钮：折叠 → 列表只有**科目级**；展开 → 到科目下的 **session 级**。
+- **3.3** 通栏下 3 个 heroic 区（左→右）：**总时长**（从今日第一个科目 session 开始到现在的自然时间，单位分钟 `mm`）、**练习时长**（今日所有科目练习时长总和，`mm`）、**相比昨日**（多 = 红色 `+mm`，少 = 绿色 `-mm`）。
+- **3.4** 列表列：科目 / 总时长 / 速度 / 单次（单次时长）/ 明细（session）/ 占比（本科目练习时长 ÷ 截至目前累计时长，`x%`）。
+- **3.5** modal（pop-out）滚到卡片下方要有**渐进模糊**效果，用 GSAP（或评估后更合适的方案）：向下滚动时边缘信息模糊，离开边缘快速变清晰。
+
+**3.5 归属有歧义**（原文写在 C 段但句式提 pop-out）：主实现按「今日记录列表滚动时下方边缘渐进模糊」，探针里另给「pop-out 弹窗外壳内滚动」对照版，等 dad 定。
+
+## 2 冻结的数据形状（照这个设计，别自己发明字段）
+```json
+// 今日记录（读接口现状：GET /api/practices/{date}）
+{ "items":[{"item_id":1,"item_name":"萨丽哈","seconds":3420}],
+  "total_minutes":57,"total_seconds":3420,
+  "sessions":[{"item_id":1,"item_name":"萨丽哈","duration_seconds":600,"tempo_bpm":82,
+               "content":"...","reps":3,"is_extra":0,"started_at":"2026-10-03 19:10:00"}],
+  "behavior_log":[{"enter_time":"2026-10-03 19:08:12"}] }
+// 3.3 三个数（建议形状，demo 用 mock）
+{ "span_minutes":96,"practice_seconds":3420,"yesterday_seconds":1800,"delta_seconds":1620 }
+```
+- 占比 = 本科目 seconds ÷ 合计 seconds
+- 单次 = session `duration_seconds`；速度 = session `tempo_bpm`；明细 = session 行
+- 折叠态只显示科目级聚合行；展开态在科目下展开 session 行
+
+## 3 交付物（两件）
+### ① `/tmp/agy-d5-design.md` 设计说明，必须含：
+- (a) **3.1 参考 → dizicute 主题的映射表**：参考图里每个功能块 → 用哪个 `--dash-*` / 什么尺度 / 什么层级；写明**不抄**的黑底部分换成什么、扁平化具体去掉哪些拟物（阴影/渐变/立体边）
+- (b) **3.3 三个 heroic 的排版**：字号 / 间距 / 层级 / 三数各自的强调色（用 token 名；多=红 少=绿）
+- (c) **3.4 六列的列宽策略**：1133 / 744 / 440 三档分别怎么排；440 下如何避免横向挤压或如何降级（换行？隐藏哪列？）
+- (d) **3.5 方案对比（2 个）+ 推荐**：CSS `mask-image` 逐层渐变 vs GSAP 逐帧驱动模糊半径。**必须写清为什么推荐哪个**（原文允许「评估后更合适的方案」）。给出关键数值：模糊起始位置、最大模糊半径、离开边缘的恢复时长与缓动、滚动帧率影响
+- (e) **折叠/展开两态的差异清单**（行数、列、间距、动画）
+- (f) **新增 token 清单**（若需要）
+
+### ② `docs/demos/practice-right-column-261003/d5-design-probe.html` 可点探针
+- 能切 **折叠 / 展开**；能切 **3.5 方案 1 / 方案 2 / 关闭**（对照同一滚动区在三种状态下的边缘表现）
+- 三种视口切换 `1133×744` / `744×1133` / `440×956`
+- 皮肤可切浅银 / 深墨（复用 `data-skin`）
+- `?audit=1` 时在页面输出 JSON 实测值：滚动容器 `scrollTop` / 当前生效的模糊半径 / 可见行数 / 视口尺寸
+- 探针要**能自己证明模糊在起作用**：给出可读的实测数字（不是写死的文案）
+
+## 4 硬约束
+- **不改 `src/`**（生产代码一行都不许碰）、**不新增任何依赖**（GSAP 只用仓库本地 `docs/demos/vendor/gsap.min.js`）、**不做任何 git 写操作**（只允许读）
+- 不碰四个 v2 文件与 grok 的 `today-records-01.html`
+- 颜色只走 `--dash-*`；非中性色（蓝灰/coral/accent/gold 及其 alpha）禁止字面量；中性黑白 alpha 可以
+- 禁止 `transition: all`
+- 禁用 emoji 做 UI 标识；图标用内联 SVG
+
+## 5 自检与交付格式
+- 自己打开页面确认 **0 个 JS 报错**（浏览器控制台），把 `?audit=1` 的实测 JSON 贴进设计说明末尾
+- 每条「我做了 X」后面给出可复现的实测数字或命令
+- 完成后回复一句：交付物路径 + 一句结论（不要长篇复述）

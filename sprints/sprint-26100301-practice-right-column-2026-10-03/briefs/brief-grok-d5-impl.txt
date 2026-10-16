@@ -1,0 +1,62 @@
+# BRIEF — grok · P1 结构/行为 lane（D5 今日练习记录 · C 段 3.1–3.5）
+
+你负责**实现** D5 页面。视觉细节（配色映射/字阶/间距/模糊方案）由 agy 出（`/tmp/agy-d5-design.md` +
+`d5-design-probe.html`），**你不要等它、也不要自己发明新配色**：结构与行为先做完，视觉数值暂用现有 token
+与 D1/D3 已定语言，等 agy 的 spec 落地后由我统一收皮。
+
+## 0 上下文
+- 仓库 `/Users/mt16/dev/dizical`；交付目录 `docs/demos/practice-right-column-261003/`
+- 视觉语言参照：`dashboard-skin-01-v2.html`、`dashboard-bottom-blocks-01-v2.html`（同目录，已定稿）
+- **换肤契约**：`token-spec.md` —— 62 个 `--dash-*`，浅银 `:root` / 深墨 `:root[data-skin="ink"]`。
+  **必须复用这些 token 名**，需要新增时先告诉我，不要自己加。
+- 预览服务在跑：URL = `http://localhost:8771/practice-right-column-261003/<文件名>`
+- 参考图（3.1）：`/Users/mt16/Downloads/dizical-uiux-reference/2609252147-reference-01.png`
+
+## 1 需求原文（dad 2610011327 · C 段，逐条照抄）
+- **3.1** 展开态样式 copy 上面那张 console 风参考图：**不 copy 黑色配色**（换本项目主题色）；**扁平化，不要特别拟物**。
+- **3.2** 头部通栏右侧「折叠 / 展开」双态按钮：折叠 → 列表只有**科目级**；展开 → 到科目下的 **session 级**。
+- **3.3** 通栏下 3 个 heroic（左→右）：**总时长**（今日第一个 session 开始到现在的自然时间，`mm`）、**练习时长**（今日所有科目练习时长总和，`mm`）、**相比昨日**（多 = 红 `+mm`，少 = 绿 `-mm`）。
+- **3.4** 列表六列：科目 / 总时长 / 速度 / 单次 / 明细（session）/ 占比（本科目 ÷ 累计，`x%`）。
+- **3.5** 滚动到下方要有**渐进模糊**（原文要求 GSAP 或评估后更合适方案）：向下滚动时边缘模糊，离开边缘快速变清晰。
+
+## 2 冻结的数据形状（照这个接，别发明字段）
+```json
+// GET /api/practices/{date} 现状
+{ "items":[{"item_id":1,"item_name":"萨丽哈","seconds":3420}],
+  "total_minutes":57,"total_seconds":3420,
+  "sessions":[{"item_id":1,"item_name":"萨丽哈","duration_seconds":600,"tempo_bpm":82,
+               "content":"第 1-32 小节双吐颗粒度","reps":3,"is_extra":0,"started_at":"2026-10-03 19:10:00"}],
+  "behavior_log":[{"enter_time":"2026-10-03 19:08:12"}] }
+// 3.3 三个数（建议形状 /api/practices/{date}/summary，接口未实现 → 本轮 mock）
+{ "span_minutes":96,"practice_seconds":3420,"yesterday_seconds":1800,"delta_seconds":1620 }
+```
+**本轮用 mock 数据，但渲染必须由数据算**（不许把 96 / 57 / +27 这种数字写进 HTML 或写死文案）。
+mock 建议 3 个科目 / 8–10 条 session，含一个 `is_extra` 的行，让折叠态与展开态都有内容可比。
+
+## 3 交付物
+### ① `docs/demos/practice-right-column-261003/today-records-01.html`
+- 头部通栏：标题 + 右侧「折叠 / 展开」双态按钮（**两态真实切换**，状态可用 `?expand=1` 复现）
+- 三个 heroic 区（数值由 mock summary 算）
+- 六列列表；折叠=科目级聚合行，展开=科目行下挂 session 行
+- 底部滚动容器带渐进模糊（结构先接上；具体方案等 agy 探针，先实现一种并标注是哪一种）
+- 皮肤可切浅银 / 深墨；视口可切 `1133×744` / `744×1133` / `440×956`
+- `?audit=1` 输出 JSON 实测：折叠态行数 / 展开态行数 / 三个 heroic 的数值 / 占比合计（应为 100）
+
+### ② `docs/demos/practice-right-column-261003/today-records-01-notes.md`
+实现说明（关键决策 + 若有与需求书不同的地方要显式说明）
+
+## 4 硬约束
+- **不改 `src/`**、**不新增依赖**（GSAP 只用 `docs/demos/vendor/gsap.min.js`）、**不做任何 git 写操作**（只读）
+- 不碰四个 v2 文件与 agy 的 `d5-design-probe.html`
+- 颜色只走 `--dash-*`；非中性色（蓝灰/coral/accent/gold 及其 alpha）禁止字面量；中性黑白 alpha 允许
+- 禁止 `transition: all`；禁用 emoji 做 UI 标识（内联 SVG）
+- 440 视口不许横向溢出、不许出现横向滚动条
+
+## 5 自检与负控（必须做，且要给输出）
+1. 打开页面：**0 个 JS 报错**
+2. `?audit=1` 贴出实测 JSON
+3. **负控**（证明你的断言会咬）：
+   - 把「相比昨日」的比较方向取反 → 颜色/符号断言必须变红，贴出红的那一行
+   - 把占比分母改错（例如漏掉一个科目）→ 占比合计 ≠ 100% 的断言必须红，贴出红的那一行
+   - 改回原值 → 重跑必须绿
+4. 交付格式：一句话结论 + 交付物路径 + 上面三条的输出摘要（不要长篇复述）
