@@ -748,12 +748,15 @@ class MySQLBackend(BaseBackend):
                     final_practiced = 'Y' if merged_total > 0 else existing_practiced
 
                     # 不覆盖 practice_at (保留首次的练习时间) — 显式传入时仍写, 与原 MySQL 行为一致
+                    # 2026-10-09 (dad ack): first_practice_at 单调取早 (当天最早练习时刻, D5/D6 跨度起点)
                     if practice_at:
                         cur.execute('''
                             UPDATE daily_practices
-                            SET items = %s, total_minutes = %s, total_seconds = %s, log = %s, practiced = %s, practice_at = %s
+                            SET items = %s, total_minutes = %s, total_seconds = %s, log = %s, practiced = %s,
+                                practice_at = %s,
+                                first_practice_at = LEAST(COALESCE(first_practice_at, %s), %s)
                             WHERE date = %s
-                        ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_total_seconds, merged_log, final_practiced, practice_at, date.isoformat()))
+                        ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_total_seconds, merged_log, final_practiced, practice_at, practice_at, practice_at, date.isoformat()))
                     else:
                         cur.execute('''
                             UPDATE daily_practices
@@ -771,9 +774,9 @@ class MySQLBackend(BaseBackend):
                     items_json = json.dumps(normalized_items, ensure_ascii=False) if normalized_items else '[]'
                     if practice_at:
                         cur.execute('''
-                            INSERT INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced, behavior_log, practice_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, '', %s)
-                        ''', (date.isoformat(), items_json, total_minutes, insert_total_seconds, log, practiced, practice_at))
+                            INSERT INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced, behavior_log, practice_at, first_practice_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, '', %s, %s)
+                        ''', (date.isoformat(), items_json, total_minutes, insert_total_seconds, log, practiced, practice_at, practice_at))
                     else:
                         cur.execute('''
                             INSERT INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced, behavior_log)
@@ -873,6 +876,21 @@ class MySQLBackend(BaseBackend):
                 mins = int(row.get('total_minutes') or 0)
                 raw_secs = row.get('total_seconds')
                 row['total_seconds'] = int(raw_secs) if raw_secs else mins * 60
+                # 2026-10-09 (dad ack): 老行无 first_practice_at 时回退 practice_at (与 SQLite 同口径)
+                if not row.get('first_practice_at'):
+                    row['first_practice_at'] = row.get('practice_at')
+                # 2026-10-09: 当天自然跨度秒数 (与 SQLite 同口径, 复用同一函数避免两处算法漂移)
+                try:
+                    from src.database import _span_seconds_from_behavior_log as _span
+                    _blog = row.get('behavior_log')
+                    if isinstance(_blog, str):
+                        try:
+                            _blog = json.loads(_blog or '[]')
+                        except (TypeError, ValueError):
+                            _blog = []
+                    row['span_seconds'] = _span(_blog if isinstance(_blog, list) else [])
+                except Exception:
+                    row['span_seconds'] = 0
                 return row
 
     def get_daily_practices_in_range(self, start: dt.date, end: dt.date) -> List[Dict]:

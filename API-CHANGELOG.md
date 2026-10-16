@@ -1,5 +1,26 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-09 (**尚未上线** — 代码已改，待部署) — 当天最早练习时刻 `first_practice_at` + 当天自然跨度 `span_seconds`
+**类型**: 🟡 部分兼容（新增一列 + 读接口新增两个字段；老的请求/字段名/语义全不变。dizical-minip 不改也能跑）
+
+## 变更
+
+- **DDL（有）**: `daily_practices` 新增列 `first_practice_at DATETIME NULL`（CST ISO `'YYYY-MM-DD HH:MM:SS[.fff]'`，不带 Z 后缀，与 `practice_at` 同格式）。
+  SQLite 由 `database.py` 的 ensure-schema 幂等补列；MySQL 由 `schema_mysql.sql`（新库）+ `src/migrate_add_first_practice_at_261009.py`（存量库，默认 dry-run，`--apply` 才写）落地。
+- **语义**: `first_practice_at` = **当天所有练习记录里最早的练习时刻**，写入时**单调取早**（更新行 = MIN(已有, 本次)；补录一个更早的时刻能把它拉早）。
+  它是**新列**，`practice_at` 的语义与行为**完全不变**（仍是「该日首次写入时刻」，UPDATE 永不覆盖）。两条写入路径同改：`save_daily_practice` 与另一条 daily 写入路径（`database.py` / `database_mysql.py` 各两处 + `schema_mysql.sql`）。
+- **读接口新增 2 个字段**（不改不删老字段）:
+  - `first_practice_at`：当天最早练习时刻；老行该列为空时**回退返回 `practice_at`**。
+  - `span_seconds`：当天自然跨度秒数 = `max(段落结束) − min(段落开始)`（由 `behavior_log` 派生）；数据不足返回 0。
+  出处：`get_daily_practice`（SQLite / MySQL 两后端同口径，共用同一个 `_span_seconds_from_behavior_log`，避免两处算法漂移）。
+- **回填**: `src/migrate_add_first_practice_at_261009.py` —— 只填 `IS NULL` 的行，**绝不覆盖已有值**；取值优先 `behavior_log[0].enter_time`（比 `practice_at` 更接近真实练习时刻），没有就退回 `practice_at`，两者都无则留 NULL。
+- **对 dizical-minip**: **无需改代码**（新字段是追加，老客户端不读不受影响；建议择期可选同步展示「今日跨度」）。
+- **本地库 / 生产库**: 待部署后执行；本地 `data/dizi.db` 由服务启动时的 ensure-schema 自动补列（不需要单独跑脚本），回填脚本默认 dry-run。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-02 (已上线 #140, 2026-10-02 17:38 CST) — sprint 26100102 盲盒 feature 下线
 **类型**: 🔴 不兼容（端点整体移除，调用方将收到 404）
 

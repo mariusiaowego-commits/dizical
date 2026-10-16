@@ -26,6 +26,7 @@ Coral-red warmth for a kid's dizi practice app — playful, supportive, never bu
 | Token | Hex | 用途 |
 |---|---|---|
 | `colors.primary` | `#FF6B6B` | 珊瑚红 — dizical 招牌. button / nav 选中 / icon 底色 / streak badge |
+| `colors.vermilion` | `#FF5722` | **朱橙 — 与珊瑚红合作的第二主色**（2026-10-10 拍，不是替代）。语义=能量/进度/强度/节奏；用在进度胶囊 / 时长条 / 强弱拍灯 / 强调块 / 图表主色。demo 落地为 `--dash-vermilion*` 一族（-soft `#FF8A5C` / 浅底文字 `#A04217` / 深墨文字 `#FF9E7A` / 白字压底 `-solid #B8531F`）。同屏规则（只允许一个主色主导 / 不并排大面积 / 不叠色）见 dizicute DESIGN.md |
 | `colors.secondary` | `#2C3E50` | 深蓝灰 — 主文字, header (h1/h2/body) |
 | `colors.tertiary` | `#FFF8F0` | 暖白 — 页面背景 |
 | `colors.neutral` | `#FFFFFF` | 纯白 — 卡片 / 容器 / input |

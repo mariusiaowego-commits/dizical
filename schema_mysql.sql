@@ -53,7 +53,7 @@ CREATE TABLE daily_practices (
                     items TEXT NOT NULL ,
                     total_minutes BIGINT NOT NULL DEFAULT 0,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                , log TEXT, practiced TEXT NOT NULL , behavior_log TEXT NOT NULL , practice_at DATETIME, total_seconds BIGINT NOT NULL DEFAULT 0);
+                , log TEXT, practiced TEXT NOT NULL , behavior_log TEXT NOT NULL , practice_at DATETIME, total_seconds BIGINT NOT NULL DEFAULT 0, first_practice_at DATETIME);
 
 DROP TABLE IF EXISTS `lessons`;
 CREATE TABLE lessons (

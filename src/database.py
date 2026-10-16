@@ -8,6 +8,33 @@ from .models import Lesson, Payment, LessonStatus, settings
 from .database_base import BaseBackend
 
 
+def _span_seconds_from_behavior_log(log) -> int:
+    """当天练习的自然跨度秒数 = max(段落结束) - min(段落开始); 数据不足返回 0.
+
+    2026-10-09 (dad ack): D5/D6 要画「一天自然跨度」(例: 19:10 开始 → 20:07 结束,
+    中间 9 段练习 + 8 段休息). behavior_log 每条含 enter_time(CST ISO) + minutes/seconds.
+    """
+    if not log:
+        return 0
+    starts = []
+    for e in log:
+        if not isinstance(e, dict):
+            continue
+        t = e.get('enter_time')
+        if not t:
+            continue
+        try:
+            begin = dt.datetime.fromisoformat(str(t))
+        except (TypeError, ValueError):
+            continue
+        starts.append((begin, _item_secs(e)))
+    if not starts:
+        return 0
+    first = min(s[0] for s in starts)
+    last_end = max(s[0] + dt.timedelta(seconds=s[1]) for s in starts)
+    return max(0, int((last_end - first).total_seconds()))
+
+
 def _item_secs(it) -> int:
     """条目秒数。契约: seconds 缺省、或为 0 且 minutes > 0 → 按 minutes * 60 视作。
 
@@ -366,6 +393,10 @@ class Database(BaseBackend):
                 cursor.execute("ALTER TABLE daily_practices ADD COLUMN practiced TEXT NOT NULL DEFAULT 'Y'")
             if 'practice_at' not in columns:
                 cursor.execute("ALTER TABLE daily_practices ADD COLUMN practice_at DATETIME")
+            # 2026-10-09 (dad ack): 当天最早的练习时刻 —— D5/D6 总时长跨度需要「一天自然跨度的起点」.
+            #   语义: 单调取早 (MIN(已有, 本次)); 与 practice_at 同格式 (CST ISO, 不带 Z). 幂等补列.
+            if 'first_practice_at' not in columns:
+                cursor.execute("ALTER TABLE daily_practices ADD COLUMN first_practice_at DATETIME")
             # sprint 26093002 (2026-09-30 秒级时长): 秒是真值, 分钟保留为 ceil 派生值.
             #   老库缺列 → 幂等补 + 回填 seconds = minutes * 60 (历史事实: 当年就是按整分钟记的).
             if 'total_seconds' not in columns:
@@ -1030,11 +1061,18 @@ class Database(BaseBackend):
                 final_practiced = 'Y' if merged_total > 0 else existing_practiced
                 # UPDATE 路径: 永远不覆盖 practice_at (保留首次的练习时间)
                 # 只有在"该日首次创建"时 (新 INSERT 路径) 才写 practice_at
+                # 2026-10-09: first_practice_at 单调取早 (补录更早的时刻要能拉早), 与 practice_at 无关.
                 cursor.execute('''
                     UPDATE daily_practices
-                    SET items = ?, total_minutes = ?, total_seconds = ?, log = ?, practiced = ?
+                    SET items = ?, total_minutes = ?, total_seconds = ?, log = ?, practiced = ?,
+                        first_practice_at = CASE
+                            WHEN ? IS NULL THEN first_practice_at
+                            WHEN first_practice_at IS NULL THEN ?
+                            WHEN ? < first_practice_at THEN ?
+                            ELSE first_practice_at END
                     WHERE date = ?
-                ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_total_seconds, merged_log, final_practiced, date.isoformat()))
+                ''', (json.dumps(merged_items, ensure_ascii=False), merged_total, merged_total_seconds, merged_log, final_practiced,
+                      practice_at, practice_at, practice_at, practice_at, date.isoformat()))
                 audit_items = merged_items
                 audit_total = merged_total
             else:
@@ -1046,9 +1084,9 @@ class Database(BaseBackend):
                     new_it['seconds'] = _item_secs(it)
                     normalized_items.append(new_it)
                 cursor.execute('''
-                    INSERT INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced, practice_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (date.isoformat(), json.dumps(normalized_items, ensure_ascii=False), total_minutes, insert_total_seconds, log, practiced, practice_at))
+                    INSERT INTO daily_practices (date, items, total_minutes, total_seconds, log, practiced, practice_at, first_practice_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (date.isoformat(), json.dumps(normalized_items, ensure_ascii=False), total_minutes, insert_total_seconds, log, practiced, practice_at, practice_at))
                 audit_items = normalized_items
                 audit_total = total_minutes
 
@@ -1170,6 +1208,7 @@ class Database(BaseBackend):
             row = cursor.fetchone()
             if row:
                 mins = row['total_minutes'] or 0
+                _blog = json.loads(row['behavior_log']) if ('behavior_log' in row.keys() and row['behavior_log']) else []
                 return {
                     'id': row['id'],
                     'date': dt.date.fromisoformat(row['date']),
@@ -1180,9 +1219,14 @@ class Database(BaseBackend):
                     'log': row['log'],
                     'practiced': row['practiced'] if 'practiced' in row.keys() else 'Y',
                     # 26093002: behavior_log 列可为 NULL (ALTER 加列无默认值), json.loads(None) 会抛
-                    'behavior_log': json.loads(row['behavior_log']) if ('behavior_log' in row.keys() and row['behavior_log']) else [],
+                    'behavior_log': _blog,
+                    # 2026-10-09 (dad ack): 当天自然跨度秒数 (max 段落结束 − min 段落开始), 数据不足 = 0
+                    'span_seconds': _span_seconds_from_behavior_log(_blog),
                     # 2026-07-27 补: practice_at 字段 (migrate_add_practice_at.py 加列后漏读)
                     'practice_at': row['practice_at'] if 'practice_at' in row.keys() else None,
+                    # 2026-10-09 (dad ack): 当天最早练习时刻 (D5/D6 跨度起点). 老行无值时回退 practice_at.
+                    'first_practice_at': (row['first_practice_at'] if ('first_practice_at' in row.keys() and row['first_practice_at'])
+                                          else (row['practice_at'] if 'practice_at' in row.keys() else None)),
                 }
             return None
 
@@ -1900,22 +1944,29 @@ class Database(BaseBackend):
                 # 5. UPDATE 或 INSERT daily
                 if drow:
                     # 已存在: 不覆盖 practice_at (保留首次), 不重置 log
+                    # 2026-10-09: first_practice_at 单调取早 (与 save_daily_practice 同口径)
                     cursor.execute(
                         """UPDATE daily_practices
-                           SET items = ?, total_minutes = ?, total_seconds = ?, practiced = ?
+                           SET items = ?, total_minutes = ?, total_seconds = ?, practiced = ?,
+                               first_practice_at = CASE
+                                   WHEN ? IS NULL THEN first_practice_at
+                                   WHEN first_practice_at IS NULL THEN ?
+                                   WHEN ? < first_practice_at THEN ?
+                                   ELSE first_practice_at END
                            WHERE date = ?""",
                         (json.dumps(existing_items, ensure_ascii=False), new_total, new_total_seconds,
-                         final_practiced, practice_date.isoformat()),
+                         final_practiced, practice_at, practice_at, practice_at, practice_at,
+                         practice_date.isoformat()),
                     )
                 else:
-                    # 新建: 写 practice_at
+                    # 新建: 写 practice_at + first_practice_at
                     cursor.execute(
                         """INSERT INTO daily_practices
-                           (date, items, total_minutes, total_seconds, log, practiced, practice_at)
-                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                           (date, items, total_minutes, total_seconds, log, practiced, practice_at, first_practice_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                         (practice_date.isoformat(),
                          json.dumps(existing_items, ensure_ascii=False), new_total, new_total_seconds, "",
-                          final_practiced, practice_at),
+                          final_practiced, practice_at, practice_at),
                     )
 
                 # 6. 写 audit (append behavior_log, 跟 save_daily_practice 行为一致)
