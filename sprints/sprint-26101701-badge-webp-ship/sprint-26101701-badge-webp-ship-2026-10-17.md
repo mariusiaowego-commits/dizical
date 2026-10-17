@@ -37,8 +37,15 @@ plan: "[[plan-badge-webp-ship-2026-10-17]]"
 - [x] 建立 sprint plan / 验收 / 决策记录
 - [x] 复跑 8 条守卫测试 + badge COS/route 安全回归（60 passed, 5 warnings）；全量测试因既有 data/ 写路径未运行
 - [x] 两轮独立 review：round 1 的 P2 已修，round 2 无新增问题
-- [ ] PR 创建后发送 review packet；等待 dad review / 拍板
-- [ ] PR merge、CloudRun deploy、只读上线验证
+- [x] commit `ad9edf9` + push feature branch + PR #371 opened; 6-question review packet in PR body
+- [ ] dad review / 拍板；之后 merge、CloudRun deploy、只读上线验证
+
+## PR
+
+- URL：`https://github.com/mariusiaowego-commits/dizical/pull/371`
+- Head：`ad9edf9356a9ce4444e1708f8ad23da0a148ba31`
+- GitHub checks：当前无 checks 报告
+- Merge / deploy / 真实 badge commit：未执行，等 dad review 与 ID/等级决定。
 - [ ] 真实 badge commit（需先解决草稿 id 业务疑点并单独确认）
 
 ## 状态
