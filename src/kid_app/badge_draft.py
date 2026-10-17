@@ -647,17 +647,17 @@ _WEBP_MOD: Any = None
 
 
 def _webp_script():
-    """加载 scripts/generate_badge_webp.py (scripts/ 不是包, 用文件路径)."""
+    """webp 派生模块 —— **从 src/kid_app/badge_webp.py 拿**。
+
+    历史实现是从 `scripts/generate_badge_webp.py` 按文件路径动态加载。
+    2026-10-17 线上事故: `.tcbignore` 排除 `scripts/`, 容器 `/app/scripts/` 不存在 →
+    commit 抛 `[Errno 2] ... '/app/scripts/generate_badge_webp.py'`, 徽章全链落不了地。
+    别再改回 scripts/ —— 运行时代码只能依赖 src/ 下的模块 (见 tests/test_badge_webp_runtime_module.py 的静态守卫)。
+    """
     global _WEBP_MOD
     if _WEBP_MOD is None:
-        import importlib.util
-        path = Path(__file__).resolve().parent.parent.parent / "scripts" / "generate_badge_webp.py"
-        spec = importlib.util.spec_from_file_location("generate_badge_webp", path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"无法加载 webp 派生脚本: {path}")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _WEBP_MOD = mod
+        from src.kid_app import badge_webp
+        _WEBP_MOD = badge_webp
     return _WEBP_MOD
 
 

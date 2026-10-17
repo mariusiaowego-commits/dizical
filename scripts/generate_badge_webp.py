@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
-sprint-26091603 P1 资产管线: PNG → WebP 双档生成
+sprint-26091603 P1 资产管线: PNG → WebP 双档生成 (批处理 CLI)
+
 - thumbs/: 320×320, quality=80, method=6  (列表墙 / 网格小卡)
 - full/  : 1024×1024, quality=90, method=6 (Modal 放大 / 大屏展示)
 
 输入: src/kid_app/static/badges/*.png (顶层, 不下钻子目录)
 输出: src/kid_app/static/badges/thumbs/<name>.webp
       src/kid_app/static/badges/full/<name>.webp
+
+⚠️ 本文件只是 **CLI 壳**。真正的编码实现与规格常量住在 `src/kid_app/badge_webp.py`
+(2026-10-17 事故: `.tcbignore` 排除 `scripts/`, 而运行时代码曾从 scripts/ 动态加载 →
+生产容器里没有那个文件, badge commit 全链失败)。要改规格请改模块, 不要在这里复刻第二份。
 
 技术要点:
 - 保留 RGBA 透明通道 (mode='RGBA' 入参, PIL 自动处理)
@@ -18,25 +23,30 @@ sprint-26091603 P1 资产管线: PNG → WebP 双档生成
 """
 from __future__ import annotations
 
-import io
 import sys
 from pathlib import Path
 from typing import Iterable
 
-from PIL import Image
-
-# 路径常量
+# 路径常量 (脚本在 scripts/ 下跑, 先把 repo root 塞进 sys.path 才能 import src.*)
 REPO_ROOT = Path(__file__).resolve().parents[1]  # scripts/ → repo root
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from PIL import Image  # noqa: E402
+
+from src.kid_app.badge_webp import (  # noqa: E402  唯一真源: 规格 + 编码都在模块里
+    FULL_QUALITY,
+    FULL_SIZE,
+    THUMB_QUALITY,
+    THUMB_SIZE,
+    WEBP_METHOD,
+    encode_webp,
+)
+from src.kid_app.badge_webp import webp_variants  # noqa: E402,F401  对外兼容老调用方
+
 SRC_DIR = REPO_ROOT / "src" / "kid_app" / "static" / "badges"
 THUMBS_DIR = SRC_DIR / "thumbs"
 FULL_DIR = SRC_DIR / "full"
-
-# 输出规格
-THUMB_SIZE = (320, 320)
-THUMB_QUALITY = 80
-FULL_SIZE = (1024, 1024)
-FULL_QUALITY = 90
-WEBP_METHOD = 6  # PIL.Image.save(): 0=fast, 6=slowest/best
 
 
 def is_input_png(p: Path) -> bool:
@@ -49,32 +59,6 @@ def iter_inputs() -> Iterable[Path]:
     return sorted(p for p in SRC_DIR.iterdir() if is_input_png(p))
 
 
-def _encode_webp(im: Image.Image, target_size: tuple[int, int], quality: int) -> bytes:
-    """等比缩进 target_size (不放大) 后编码 WebP. 不改调用方手里的那张图."""
-    frame = im.copy()
-    # thumbnail() 在 LANCZOS 下保持宽高比, 不放大 (若原图已小于目标则保留原尺寸)
-    frame.thumbnail(target_size, resample=Image.Resampling.LANCZOS)
-    if frame.mode != "RGBA":
-        frame = frame.convert("RGBA")
-    buf = io.BytesIO()
-    buf.name = "badge.webp"  # Pillow 靠扩展名选 WEBP encoder
-    frame.save(buf, "WEBP", quality=quality, method=WEBP_METHOD, lossless=False)
-    return buf.getvalue()
-
-
-def webp_variants(png_bytes: bytes) -> tuple[bytes, bytes]:
-    """从 PNG 字节派生两档 WebP, 不写盘.
-
-    返回 (thumbs, full): 320×320 q80 / 1024×1024 q90, method=6, RGBA.
-    commit / replace 用这一份, 不跑 main() 的全目录批处理.
-    """
-    with Image.open(io.BytesIO(png_bytes)) as im:
-        return (
-            _encode_webp(im, THUMB_SIZE, THUMB_QUALITY),
-            _encode_webp(im, FULL_SIZE, FULL_QUALITY),
-        )
-
-
 def convert_one(src: Path, dst_dir: Path, target_size: tuple[int, int], quality: int) -> tuple[Path, int, int]:
     """将单张 PNG 转为 WebP 写入 dst_dir/<stem>.webp。
 
@@ -82,7 +66,7 @@ def convert_one(src: Path, dst_dir: Path, target_size: tuple[int, int], quality:
     """
     src_bytes = src.stat().st_size
     with Image.open(src) as im:
-        data = _encode_webp(im, target_size, quality)
+        data = encode_webp(im, target_size, quality)
     out_path = dst_dir / (src.stem + ".webp")
     out_path.write_bytes(data)
     return out_path, out_path.stat().st_size, src_bytes
