@@ -273,14 +273,20 @@ def test_tech_ji_ben_gong_gap_resets(conn):
 
 # ─── 典故组 ────────────────────────────────────────────────────────────────
 
-def test_lore_xiao_shi_total_min_12000(conn):
-    """彩凤听箫来: 累计 12000 分钟 (实测 6496)"""
-    sess(conn, "2026-01-01", 1001, 6000)
-    sess(conn, "2026-01-02", 1340, 5999)
+def test_lore_xiao_shi_total_min_10000_daily(conn):
+    """彩凤听箫来: 累计总时长 >= 10000 分钟 (daily_practices 口径, 实测 9419)
+
+    口径必须是 daily_practices —— 孩子端看到的「累计总时长」就是这一列。
+    practice_sessions 分段和(实测 6496)不是这个数, 所以只写 session 的行必须**不达成**。
+    """
+    sess(conn, "2026-01-01", 1001, 99999)        # 只有分段明细 → 不算
     assert calc(conn, "lore_xiao_shi").achieved is False
-    sess(conn, "2026-01-03", 1340, 1)
+    for i in range(1, 10):
+        day(conn, f"2026-0{i}-01", 1111)         # 9 × 1111 = 9999
+    assert calc(conn, "lore_xiao_shi").achieved is False
+    day(conn, "2026-10-01", 1)                   # 10000 → 达成
     r = calc(conn, "lore_xiao_shi")
-    assert r.achieved is True and r.achieved_at == "2026-01-03"
+    assert r.achieved is True and r.achieved_at == "2026-10-01"
 
 
 def test_lore_li_guinian_five_pieces_twenty_days(conn):
@@ -442,6 +448,38 @@ def test_brave_class_back_75_min(conn):
 
 
 # ─── 与旧链路共存 / 不劫持 ─────────────────────────────────────────────────
+
+def test_every_rule_kind_is_supported():
+    """规则表里的每个 kind 都必须在 PRACTICE_RULE_KINDS 白名单内。
+
+    kind 写错 ⇒ dispatch 落到 else 返 None ⇒ 那枚徽章永远灰着, 而且不抛异常、测试全绿。
+    这条测试是那个护栏的守卫: 以后有人在表里写错/改名 kind, 这里立刻红。
+    """
+    from src.achievement_definitions import PRACTICE_BADGE_RULES, PRACTICE_RULE_KINDS
+    bad = {k: r["kind"] for k, r in PRACTICE_BADGE_RULES.items()
+           if r["kind"] not in PRACTICE_RULE_KINDS}
+    assert bad == {}, f"规则表里有不支持的 kind: {bad}"
+
+
+def test_unknown_kind_is_loud_not_silent(conn, caplog, monkeypatch):
+    """表外 kind 必须「返未达成 + 打 ERROR 日志」, 不许静默失活。"""
+    from src.achievement_definitions import PRACTICE_BADGE_RULES
+    monkeypatch.setitem(PRACTICE_BADGE_RULES, "typo_probe_badge",
+                        {"kind": "single_mni", "ids": (1,), "m": 1})
+    with caplog.at_level("ERROR"):
+        r = calc(conn, "typo_probe_badge")
+    assert r.achieved is False
+    assert any("不在支持集合内" in rec.getMessage() for rec in caplog.records), \
+        "表外 kind 没有打日志 —— 这类失活必须留痕迹"
+
+
+def test_sessions_read_failure_logs_warning(conn, caplog):
+    """practice_sessions 表缺失 → 返未达成 + 留 WARNING 日志 (线上集体不亮时要有线索)"""
+    conn.execute("DROP TABLE practice_sessions")
+    with caplog.at_level("WARNING"):
+        calc(conn, "rep_saliha")
+    assert any("practice_sessions 读取失败" in rec.getMessage() for rec in caplog.records)
+
 
 def test_unknown_id_not_hijacked(conn):
     """不在规则表里的 id 走原链路 (这里落通用 fallback), 不被新分支拦下"""
