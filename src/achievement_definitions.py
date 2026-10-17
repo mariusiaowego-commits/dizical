@@ -10,10 +10,13 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
 import sqlite3  # 保留类型 hint 用, 实际连接走 src.db_adapter
+import logging
 import re
 from pathlib import Path
 
 from . import db_adapter
+
+logger = logging.getLogger(__name__)
 
 
 _DB_PATH = Path(__file__).parent.parent / "data" / "dizi.db"
@@ -1090,7 +1093,10 @@ def _ps_sessions(conn) -> list[tuple[str, int, int, int]]:
         cur = _exec(conn, "SELECT practice_date, item_id, duration_minutes, tempo_bpm "
                           "FROM practice_sessions")
         rows = cur.fetchall()
-    except Exception:
+    except Exception as e:                                    # noqa: BLE001
+        # 表缺失 / SQL 失败 ⇒ 本轮视为 0 段练习。必须吞掉 (抛出去会打断整轮 calc_all,
+        # 30 枚徽章一起不亮), 但一定要留一条日志 —— 否则线上集体不亮时毫无线索。
+        logger.warning("practice_sessions 读取失败, 本轮 calc 视为 0 段练习: %s", e)
         return []
     out: list[tuple[str, int, int, int]] = []
     for r in rows:
@@ -1199,13 +1205,17 @@ def _first_two_day_sum(sess, ids, m):
     return None, (max(per.values()) if per else 0)
 
 
-def _first_total_min(sess, ids, m):
-    """累计分钟 >= m (达成日 = 累计跨过阈值那天)。ids 为空 = 全部 item。"""
+def _first_total_min(daily: dict[str, int], m: int):
+    """累计练习分钟 >= m (达成日 = 累计跨过阈值那天)。
+
+    口径 = `daily_practices.total_minutes`（孩子端看到的「累计总时长」就是这一列），
+    与本批的 month_minutes / week_minutes 同一口径。
+    不用 practice_sessions 分段求和：分段和有明细分历史的日期才算得进, 数字比
+    daily 小一大截 (实测 6496 vs 9419), 且不是她看得见的那个数。
+    """
     tot, best = 0, None
-    for d, iid, mins, _t in sess:
-        if ids and iid not in ids:
-            continue
-        tot += mins
+    for d in sorted(daily):
+        tot += daily[d]
         if best is None and tot >= m:
             best = d
     return best, tot
@@ -1426,10 +1436,25 @@ def _first_new_item_window(sess, ids, window=7, need=3):
 # ─── 规则表: 徽章 id → 判定原语 ───────────────────────────────────────────────
 # kind 取值见上面各原语; cond 文案与 achievements.cond_text 保持一致口径。
 #
+# 支持的 kind 白名单 —— 规则表里写错 kind (拼错 / 改名) 会让那枚徽章**永远灰着**:
+# dispatch 落到 else 返 None → 走 legacy 链路 → 未达成, 而且异常、日志、测试全都不响
+# (同类事故的成因, 见本文件 _calc_practice_badge 注释)。所以这里显式列出支持的集合,
+# dispatch 入口逐个校验, 表外 kind 直接 logger.error。
+PRACTICE_RULE_KINDS: frozenset[str] = frozenset({
+    "single_min", "over_min", "session_count", "days", "day_sessions",
+    "two_day_sum", "total_min", "days_and_tempo", "single_min_tempo", "tempo",
+    "consec_item_days", "days_and_total", "items_over_days", "month_days",
+    "month_minutes", "week_minutes", "gap", "holiday", "school_week",
+    "summer_days", "holiday_item_min", "new_item_window",
+})
+#
 # 阈值口径 (2026-10-17 按 dad 的 C 方案重设): 真实记录显示她一年练 326 天、
 # 单月最多 31 天、全站最长连续 61 天 —— 凡按"累计天数"计的条件早就饱和, 一入库
 # 就会立刻点亮。所以门槛整体抬到"刚超过她的现有记录", 并且能改的都从**天数**口径
 # 换到**强度**口径 (单次时长 / tempo / 单曲连续天数 / 单月或单周时长)。
+# **时长类口径统一走 daily_practices** (total_min / month_minutes / week_minutes),
+# 不用 practice_sessions 分段求和 —— 分段和会漏掉没有明细的历史日期, 数字比
+# 孩子端看得见的累计时长短一大截 (实测 6496 vs 9419)。
 # 对应实测值写在每条注释里, 便于日后按记录再调。
 PRACTICE_BADGE_RULES: dict[str, dict] = {
     # 组1 曲目
@@ -1451,7 +1476,7 @@ PRACTICE_BADGE_RULES: dict[str, dict] = {
     "tech_dan_tu_4": {"kind": "tempo", "ids": (1349,), "t": 110},             # 实测 100 (未达成)
     "tech_ji_ben_gong": {"kind": "consec_item_days", "ids": (1033,), "n": 5},  # 实测连续 3
     # 组3 典故
-    "lore_xiao_shi": {"kind": "total_min", "ids": (), "m": 12000},            # 实测 9419
+    "lore_xiao_shi": {"kind": "total_min", "ids": (), "m": 10000},            # daily 口径实测 9419
     "lore_huan_yi": {"kind": "day_sessions", "ids": PIECE_ITEM_IDS, "n": 15},  # 实测 12
     "lore_li_guinian": {"kind": "items_over_days", "ids": PIECE_ITEM_IDS, "n": 5, "dmin": 20},
     #   实测 >=20 天的曲目只有 4 首
@@ -1492,6 +1517,12 @@ def _calc_practice_badge(conn, aid: str, stats: dict[str, dict]) -> Optional["Ca
     dates = sorted(set(daily) | {d for d, _i, _m, _t in sess})
 
     kind = rule["kind"]
+    if kind not in PRACTICE_RULE_KINDS:
+        # 规则表写错 kind ⇒ 这枚徽章会永远灰着, 而且不抛异常、不报错、测试也全绿。
+        # 显式报出来, 别让拼写错误变成静默失活。
+        logger.error("practice badge %s: 规则表 kind=%r 不在支持集合内, 该徽章按未达成处理",
+                     aid, kind)
+        return None
     v = 0
     if kind == "single_min":
         first, v = _first_single_min(sess, rule["ids"], rule["m"])
@@ -1506,7 +1537,7 @@ def _calc_practice_badge(conn, aid: str, stats: dict[str, dict]) -> Optional["Ca
     elif kind == "two_day_sum":
         first, v = _first_two_day_sum(sess, rule["ids"], rule["m"])
     elif kind == "total_min":
-        first, v = _first_total_min(sess, rule["ids"], rule["m"])
+        first, v = _first_total_min(daily, rule["m"])
     elif kind == "days_and_tempo":
         first, v = _first_days_and_tempo(sess, rule["ids"], rule["n"], rule["t"])
     elif kind == "single_min_tempo":
