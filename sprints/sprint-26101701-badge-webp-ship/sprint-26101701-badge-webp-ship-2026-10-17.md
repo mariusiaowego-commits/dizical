@@ -43,8 +43,8 @@ plan: "[[plan-badge-webp-ship-2026-10-17]]"
 ## PR
 
 - URL：`https://github.com/mariusiaowego-commits/dizical/pull/371`
-- Head：`ad9edf9356a9ce4444e1708f8ad23da0a148ba31`
-- GitHub checks：当前无 checks 报告
+- 实现 commit：`ad9edf9356a9ce4444e1708f8ad23da0a148ba31`；docs follow-up：`e13376c5c734d1b74158c67d12d607cd14965a81`。
+- PR 最近查询：OPEN / mergeState UNKNOWN；GitHub 未报告 checks。
 - Merge / deploy / 真实 badge commit：未执行，等 dad review 与 ID/等级决定。
 - [ ] 真实 badge commit（需先解决草稿 id 业务疑点并单独确认）
 
