@@ -4,7 +4,7 @@ type: sprint
 version: 1.0.0
 start_date: 2026-10-17
 end_date:
-status: 进行中
+status: 已合并（待部署）
 priority: 高
 summary: "修复生产 badge commit 因运行时代码依赖被排除 scripts/ 而无法派生 WebP 的 P0"
 tags: [sprint, dizical, badge, webp, p0]
@@ -38,16 +38,19 @@ plan: "[[plan-badge-webp-ship-2026-10-17]]"
 - [x] 复跑 8 条守卫测试 + badge COS/route 安全回归（60 passed, 5 warnings）；全量测试因既有 data/ 写路径未运行
 - [x] 两轮独立 review：round 1 的 P2 已修，round 2 无新增问题
 - [x] commit `ad9edf9` + push feature branch + PR #371 opened; 6-question review packet in PR body
-- [ ] dad review / 拍板；之后 merge、CloudRun deploy、只读上线验证
+- [x] Warden 独立审计：`W_VERDICT=PASS`、`W_BLOCKERS=none`（P2 两条非阻塞）
+- [x] dad 授权后 merge：PR #371 merged，merge commit `f4e9df477ebd2179af6711fc72f1d7a9ca8a9df2`
+- [ ] CloudRun deploy + 只读上线验证（容器不再依赖 `/app/scripts/...`）
 
 ## PR
 
 - URL：`https://github.com/mariusiaowego-commits/dizical/pull/371`
-- 实现 commit：`ad9edf9356a9ce4444e1708f8ad23da0a148ba31`；docs follow-up：`e13376c5c734d1b74158c67d12d607cd14965a81`。
-- PR 最近查询：OPEN / mergeState UNKNOWN；GitHub 未报告 checks。
-- Merge / deploy / 真实 badge commit：未执行，等 dad review 与 ID/等级决定。
+- 实现 commit：`ad9edf9356a9ce4444e1708f8ad23da0a148ba31`；docs follow-up：`e13376c5c734d1b74158c67d12d607cd14965a81`（head `956492d`）。
+- 合并结果：`merged=true`、`state=closed`、`merged_at=2026-10-17T06:41:55Z`；merge commit `f4e9df477ebd2179af6711fc72f1d7a9ca8a9df2`；仓库 `delete_branch_on_merge=false`，feature 分支保留。
+- 合并树与 PR head 树相同（`git diff 956492d f4e9df4` 为空）。
+- deploy / 真实 badge commit：未执行。部署验证与生产 badge 写入仍为后续门禁。
 - [ ] 真实 badge commit（需先解决草稿 id 业务疑点并单独确认）
 
 ## 状态
 
-进行中。代码仍是接手前 WIP；本 sprint 当前不执行合并、部署或生产数据写入。
+已合并，待部署。代码在 `main` 的 `f4e9df4`；未部署、未写生产 DB/COS。草稿 id `grade_5_excellent` 的等级疑点仍需 dad 决定后才可做真实 badge commit。
