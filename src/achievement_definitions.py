@@ -1115,9 +1115,17 @@ def _ps_sessions(conn) -> list[tuple[str, int, int, int]]:
 
 def _daily_totals(conn) -> dict[str, int]:
     """daily_practices → {date: total_minutes}。"""
-    cur = _exec(conn, "SELECT date, total_minutes FROM daily_practices")
+    try:
+        cur = _exec(conn, "SELECT date, total_minutes FROM daily_practices")
+        rows = cur.fetchall()
+    except Exception as e:                                    # noqa: BLE001
+        # 表缺失 / SQL 失败 ⇒ 本轮视为 0 分钟。必须吞掉 (抛出去会打断整轮 calc_all,
+        # 依赖本函数的 8 条规则一起不亮), 但一定要留一条日志 (同 _ps_sessions 的写法)
+        # —— 否则线上整批 calc 静默不亮时毫无线索, 连"是读库挂了还是真没练"都分不清。
+        logger.warning("daily_practices 读取失败, 本轮 calc 视为 0 分钟: %s", e)
+        return {}
     out: dict[str, int] = {}
-    for r in cur.fetchall():
+    for r in rows:
         try:
             d = _date_str(r[0])
             if d is None:

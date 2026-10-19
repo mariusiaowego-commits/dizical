@@ -632,3 +632,93 @@ def test_day_sessions_single_id_rules_unchanged(conn):
     wuqu, kanxi = calc(conn, "rep_xizang_wuqu"), calc(conn, "rep_xiao_kanxi")
     assert (wuqu.achieved, wuqu.computed_value, wuqu.achieved_at) == (True, 10, "2026-07-29")
     assert (kanxi.achieved, kanxi.computed_value, kanxi.achieved_at) == (True, 5, "2026-09-08")
+
+
+# ─── N3 (2026-10-19): 「首次达成日」不变量 ─────────────────────────────────
+#
+# 事故语义: achieved_at 写错会让徽章把达成日记成最近一次达标, 历史日期漂移;
+# 且 _persist_unlocked_milestones 只在 achieved_at 非 None 时落库 ⇒ 写错
+# 可能连带造成"灰卡永不解锁"。注释里反复强调这条不变量, 但原有用例每族只
+# 造 1 次达标 ⇒ 把 `best is None` 守卫去掉 (= 改记最后一个达成日) 时全绿。
+#
+# 下面 5 条逐族钉住: 两次分别达标 ⇒ 必须取**更早**那天。
+# 负控: 对应原语去掉 `best is None` 守卫 (或改成取更晚) → 各自变红。
+
+def test_first_day_invariant_single_min(conn):
+    """single_min 族: 两次达标 (05-24 / 06-10) ⇒ 取更早的 05-24, 不是最后一天。"""
+    sess(conn, "2026-05-24", 1340, 25)          # 达标 ①
+    sess(conn, "2026-06-10", 1340, 30)          # 达标 ② (更高)
+    r = calc(conn, "rep_saliha")
+    assert r.achieved is True and r.achieved_at == "2026-05-24"
+
+
+def test_first_day_invariant_over_min(conn):
+    """over_min 族: 两次跨过 >10 (09-21 / 09-28) ⇒ 取更早的 09-21。"""
+    sess(conn, "2026-09-21", 1352, 11)          # 达标 ①
+    sess(conn, "2026-09-28", 1352, 18)          # 达标 ②
+    r = calc(conn, "rep_chun_geng_qu")
+    assert r.achieved is True and r.achieved_at == "2026-09-21"
+
+
+def test_first_day_invariant_total_min(conn):
+    """total_min 族: 累计跨过 10000 的那天之后还有练习 ⇒ 取跨线那天, 不是今天。"""
+    day(conn, "2026-01-01", 9000)               # 累计 9000, 未达
+    day(conn, "2026-02-01", 1000)               # 累计 10000 ⇒ 跨线 (达成日)
+    day(conn, "2026-03-15", 800)                # 之后继续练, 累计 10800
+    r = calc(conn, "lore_xiao_shi")
+    assert r.achieved is True
+    assert r.achieved_at == "2026-02-01", f"取了 {r.achieved_at}, 应是跨线那天"
+    assert r.computed_value == 10800            # 展示值是最终累计, 达成日是跨线那天
+
+
+def test_first_day_invariant_day_sessions(conn):
+    """day_sessions 族: 两天各自练满 10 段 (07-29 / 08-15) ⇒ 取更早的 07-29。"""
+    for _ in range(10):
+        sess(conn, "2026-07-29", 1346, 2)       # 达标 ①
+    for _ in range(10):
+        sess(conn, "2026-08-15", 1346, 2)       # 达标 ②
+    r = calc(conn, "rep_xizang_wuqu")
+    assert r.achieved is True and r.achieved_at == "2026-07-29"
+    assert r.computed_value == 10      # computed_value 是「单日段数峰值」, 非两日总和
+
+
+def test_first_day_invariant_consec_item_days(conn):
+    """consec_item_days 族: 两个 item 各一段独立连续 ⇒ 必须取**更早**那段段末。
+
+    用 tech_chan_yin (1337/1347, n=10): 1337 连续 09-14~09-23, 1347 连续 10-05~10-14
+    ⇒ 达成日 = 09-23 (更早那段段末), 不是 10-14。
+
+    ⚠ 必须用**两个 item** 才能钉住这条不变量: 原语每个 item 命中第一段就
+    `break`, 单 item 时它本来就只看到一个候选, 把 `cand < best` 改成
+    `cand > best` 依然绿 (实测负控 5 就是这么假绿的)。
+    """
+    d1 = date(2026, 9, 14)
+    for i in range(10):                         # item 1337 连续 09-14 ~ 09-23
+        sess(conn, (d1 + timedelta(days=i)).isoformat(), 1337, 5)
+    d2 = date(2026, 10, 5)
+    for i in range(10):                         # item 1347 连续 10-05 ~ 10-14
+        sess(conn, (d2 + timedelta(days=i)).isoformat(), 1347, 5)
+    r = calc(conn, "tech_chan_yin")
+    assert r.achieved is True
+    assert r.achieved_at == "2026-09-23", f"取了 {r.achieved_at}, 应是更早那段的段末"
+
+
+def test_daily_practices_read_failure_logs_warning(conn, caplog):
+    """N2: daily_practices 读失败必须吞异常 + 留 WARNING (依赖它的 8 条规则不许静默不亮)。
+
+    与 test_sessions_read_failure_logs_warning 同一条规矩: 抛出去会打断整轮
+    calc_all, 但静默吞掉又会让线上集体不亮时毫无线索 —— 必须留一条日志。
+    """
+    conn.execute("DROP TABLE daily_practices")
+    with caplog.at_level("WARNING"):
+        r = calc(conn, "lore_xiao_shi")
+    assert r.achieved is False and r.achieved_at is None
+    assert any("daily_practices 读取失败" in rec.getMessage() for rec in caplog.records), \
+        "daily_practices 读失败没有打日志"
+
+
+def test_missing_daily_practices_table_does_not_crash(conn):
+    """N2 配套: 老库没有 daily_practices 表 → 返未达成, 不抛异常打断整轮。"""
+    conn.execute("DROP TABLE daily_practices")
+    r = calc(conn, "lore_xiao_shi")
+    assert r.achieved is False
