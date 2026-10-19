@@ -1,5 +1,24 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-19 (**已上线** — CloudRun deploy **#145**，BuildId 2608954220 / RunId `multi_tenant_1xIhf0493xZjj9`) — 30 枚可挣型徽章上架（纯数据 + calc 规则，无接口签名变化）
+**类型**: ✅ 完全兼容（无请求/返回结构变化；新增 30 个 badge id 走既有端点即可见；**dizical-minip 无需改代码**）
+
+## 变更
+
+### 新增 30 枚徽章定义（card_no 49~82，三表 90 行）
+
+- 生产三表经 MCP 单语句通道写入：`achievements` 48→**78** · `achievement_badges` 48→**78** · `achievement_stats` 29→**59**（老徽章里 19 枚本来就没有 stats 行，属既有状态）
+- 类型分布：曲目 8 / 技巧 6 / 典故 6 / 节令 6 / 勇气 4；`unlock_strategy='calc'`
+- 图片 url 用 `/static/badges/{id}_v1.png`（与既有 `soccer_seven` / `zizhudiao_a` 同形态；前端 `resolveCardImage` 自动换 thumbs/full webp 档）
+- 配套 calc 规则与判定原语随 PR #372 上线（`src/achievement_definitions.py` + `tests/test_practice_badges_calc.py`）
+- 落库瞬间达成 **7 枚**（4 枚节令补发 + 彩凤听箫来 10000 分钟 + 岐王乐客年 + 垄上春耕曲）；其余锁定，随练习逐枚点亮
+- 对 minip 的影响：既有 `getAchievements` 等调用零改动；**无需同步**
+
+### 审计与对拍留痕
+
+- warden 四轮独立审计（终审 PASS-WITH-NITS / 无 blocker）；本批 30 枚 `story_short` / `description` 与本地源聚合 md5 一致
+- 视觉终审 P0 0 / P1 1（已修）/ P2 6（dad 拍板接受）
+
 **日期**: 2026-10-16 (待上线, feat/newbadge-p3-261016) — sprint 26101401 P3 收尾（收敛判定口径 / list_keys 分页 / 收敛响应补齐）
 **类型**: 🟡 部分兼容（请求与既有字段不变；收敛 200 响应**新增** `image_storage` / `prod_visibility`；草稿列表在 >200 对象时不再静默截断。**无 DDL / 无数据迁移**）
 
