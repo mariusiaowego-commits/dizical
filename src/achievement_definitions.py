@@ -1178,16 +1178,24 @@ def _first_days(sess, ids, n):
 
 
 def _first_day_sessions(sess, ids, n):
-    """同一天同一 item 的练习段数 >= n (同日细分练习)。"""
-    cnt: dict[tuple[str, int], int] = {}
+    """同一天练习的段数合计 >= n (跨曲目/跨科目合计, 同日细分练习)。
+
+    口径 2026-10-19 改 (D1=A): 分组键由 `(日期, item_id)` 改为**只按日期**。
+    改前测的是"单曲单日" (PIECE 曲目下峰值 8), 跟卡面「同一天分段练满 15 段」/
+    卡背「一天里扎扎实实练满十五段」的文案对不上 —— 文案没限定同一首曲子。
+    改后同日跨曲目合计 (实测峰值 12), 与文案一致。
+
+    ids 只有 1 个时两种口径等价 (分组键里的 item_id 是常量), 所以
+    rep_xizang_wuqu(1346) / rep_xiao_kanxi(1351) 逐值不变。
+    """
+    cnt: dict[str, int] = {}
     best, val = None, 0
     for d, iid, _m, _t in sess:
         if iid not in ids:
             continue
-        k = (d, iid)
-        cnt[k] = cnt.get(k, 0) + 1
-        val = max(val, cnt[k])
-        if best is None and cnt[k] >= n:
+        cnt[d] = cnt.get(d, 0) + 1
+        val = max(val, cnt[d])
+        if best is None and cnt[d] >= n:
             best = d
     return best, val
 
