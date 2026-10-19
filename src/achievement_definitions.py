@@ -10,10 +10,13 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
 import sqlite3  # 保留类型 hint 用, 实际连接走 src.db_adapter
+import logging
 import re
 from pathlib import Path
 
 from . import db_adapter
+
+logger = logging.getLogger(__name__)
 
 
 _DB_PATH = Path(__file__).parent.parent / "data" / "dizi.db"
@@ -479,6 +482,14 @@ def _calc_milestone(conn: sqlite3.Connection, aid: str,
         if stat_achieved and stat_achieved_at:
             return stat_achieved_at
         return computed_at if calc_achieved else None
+
+    # ── sprint badge-batch-261017 (2026-10-17): 练习记录型 milestone (30 枚) ──
+    # 判定全部基于 practice_sessions / daily_practices 的可靠字段
+    # (item_id / 时长 / tempo / 日期), 规则表在文件末尾 PRACTICE_BADGE_RULES。
+    # 不在规则表里 → 返回 None, 落回下面的原有链路。
+    _practice = _calc_practice_badge(conn, aid, stats)
+    if _practice is not None:
+        return _practice
 
     # ── streak_* 系列: 史上首次达成"连续 ≥ n 天"即永久解锁 ──────
     # 2026-07-01 拍板: 之前用"今日 streak"是错的 — 今天没练 streak=0
@@ -1038,3 +1049,550 @@ def get_achievements_by_type(category: str) -> list[dict]:
 
 # 复用 datetime
 import datetime as dt
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# sprint badge-batch-261017 (2026-10-17): 练习记录型 milestone calc (30 枚)
+# -----------------------------------------------------------------------------
+# 这批徽章的条件全部建立在**真实练习记录**上, 数据源:
+#   practice_sessions  practice_date / item_id / duration_minutes / tempo_bpm
+#   daily_practices    date / total_minutes
+#   practice_items     曲目 / 技巧的 item_id (见 PIECE_ITEM_IDS)
+#
+# 设计要点 (踩坑留痕, 改本段前先读):
+#   1. practice_sessions.content 是**手打自由文本** ("最后两行 （♬=120）" / "一次不错" /
+#      "全曲（#4注意手指远离指孔）"), 口径会随录入漂移 → 本段**一律不用 content 判定**,
+#      只用 item_id / 时长 / tempo / 日期 四个可靠字段。
+#   2. practice_sessions.reps 目前**全 NULL** (没有任何写入路径) → "重复几遍"类条件
+#      不可算, 对应徽章走 unlock_strategy='immediate' 手动点亮, 不进本表。
+#   3. _persist_unlocked_milestones 只在 **achieved_at 非 None** 时落库 → 每个分支
+#      必须返回"首次达成日", 否则徽章永远停在灰卡 (2026-07-01 streak 事故同款)。
+#   4. 表可能不存在 (老库 / 单测临时库) → _ps_sessions 返空表, 不抛异常。
+#   5. 农历节日的公历日期是**查实后硬编码**的 (来源 usemooncal 农历换算, 2026-10-17),
+#      只覆盖 2026~2030; 2031 起需要补表, 否则节日徽章不再解锁 (不报错)。
+# ═════════════════════════════════════════════════════════════════════════════
+
+# 曲目类 item_id (练习记录里真实存在的考级曲目)
+PIECE_ITEM_IDS: tuple[int, ...] = (1004, 1026, 1340, 1346, 1348, 1351, 1352)
+
+# 农历/节气节日的公历日期 (2026-2030)
+HOLIDAY_DATES: dict[str, tuple[str, ...]] = {
+    "mid_autumn": ("2026-09-25", "2027-09-15", "2028-10-03", "2029-09-22", "2030-09-12"),
+    "spring_festival": ("2026-02-17", "2027-02-06", "2028-01-26", "2029-02-13", "2030-02-03"),
+    "dragon_boat": ("2026-06-19", "2027-06-09", "2028-05-28", "2029-06-16", "2030-06-05"),
+    "winter_solstice": ("2026-12-22", "2027-12-22", "2028-12-21", "2029-12-21", "2030-12-22"),
+}
+
+
+def _ps_sessions(conn) -> list[tuple[str, int, int, int]]:
+    """读 practice_sessions → [(date, item_id, minutes, tempo)], 按日期升序。
+
+    表不存在 / 字段异常 → 跳过该行 (不抛)。SQLite / MySQL 双后端走 _exec。
+    """
+    try:
+        cur = _exec(conn, "SELECT practice_date, item_id, duration_minutes, tempo_bpm "
+                          "FROM practice_sessions")
+        rows = cur.fetchall()
+    except Exception as e:                                    # noqa: BLE001
+        # 表缺失 / SQL 失败 ⇒ 本轮视为 0 段练习。必须吞掉 (抛出去会打断整轮 calc_all,
+        # 30 枚徽章一起不亮), 但一定要留一条日志 —— 否则线上集体不亮时毫无线索。
+        logger.warning("practice_sessions 读取失败, 本轮 calc 视为 0 段练习: %s", e)
+        return []
+    out: list[tuple[str, int, int, int]] = []
+    for r in rows:
+        try:
+            d = _date_str(r[0])
+            if d is None:
+                continue
+            out.append((d, int(r[1]), int(r[2] or 0), int(r[3] or 0)))
+        except (TypeError, ValueError):
+            # 脏行 (日期不可解析 / 数字字段是文本) → 跳过该行。
+            # 必须吞掉: 这里抛出去会打断整轮 calc_all, 所有徽章一起不解锁。
+            continue
+    out.sort()
+    return out
+
+
+def _daily_totals(conn) -> dict[str, int]:
+    """daily_practices → {date: total_minutes}。"""
+    try:
+        cur = _exec(conn, "SELECT date, total_minutes FROM daily_practices")
+        rows = cur.fetchall()
+    except Exception as e:                                    # noqa: BLE001
+        # 表缺失 / SQL 失败 ⇒ 本轮视为 0 分钟。必须吞掉 (抛出去会打断整轮 calc_all,
+        # 依赖本函数的 8 条规则一起不亮), 但一定要留一条日志 (同 _ps_sessions 的写法)
+        # —— 否则线上整批 calc 静默不亮时毫无线索, 连"是读库挂了还是真没练"都分不清。
+        logger.warning("daily_practices 读取失败, 本轮 calc 视为 0 分钟: %s", e)
+        return {}
+    out: dict[str, int] = {}
+    for r in rows:
+        try:
+            d = _date_str(r[0])
+            if d is None:
+                continue
+            out[d] = out.get(d, 0) + int(r[1] or 0)
+        except (TypeError, ValueError):
+            # 同 _ps_sessions: 脏行跳过, 不许把整轮 calc 打断。
+            continue
+    return out
+
+
+def _d(s: str) -> date:
+    return date.fromisoformat(s)
+
+
+# ─── 取「首次达成日」的原语 (返回 (first_at | None, 展示用数值)) ──────────────
+
+def _first_single_min(sess, ids, m):
+    """某 item 单次时长 >= m 分钟。"""
+    best, val = None, 0
+    for d, iid, mins, _t in sess:
+        if iid not in ids:
+            continue
+        val = max(val, mins)
+        if best is None and mins >= m:
+            best = d
+    return best, val
+
+
+def _first_over_min(sess, ids, m):
+    """严格大于 m (给"超过 10 分钟"这类口径)。"""
+    best, val = None, 0
+    for d, iid, mins, _t in sess:
+        if iid not in ids:
+            continue
+        val = max(val, mins)
+        if best is None and mins > m:
+            best = d
+    return best, val
+
+
+def _first_session_count(sess, ids, n):
+    """累计 session 段数 >= n。"""
+    cnt, best = 0, None
+    for d, iid, _m, _t in sess:
+        if iid not in ids:
+            continue
+        cnt += 1
+        if best is None and cnt >= n:
+            best = d
+    return best, cnt
+
+
+def _first_days(sess, ids, n):
+    """覆盖的不同练习日数 >= n。"""
+    days = sorted({d for d, iid, _m, _t in sess if iid in ids})
+    return (days[n - 1] if len(days) >= n else None), len(days)
+
+
+def _first_day_sessions(sess, ids, n):
+    """同一天练习的段数合计 >= n (跨曲目/跨科目合计, 同日细分练习)。
+
+    口径 2026-10-19 改 (D1=A): 分组键由 `(日期, item_id)` 改为**只按日期**。
+    改前测的是"单曲单日" (PIECE 曲目下峰值 8), 跟卡面「同一天分段练满 15 段」/
+    卡背「一天里扎扎实实练满十五段」的文案对不上 —— 文案没限定同一首曲子。
+    改后同日跨曲目合计 (实测峰值 12), 与文案一致。
+
+    ids 只有 1 个时两种口径等价 (分组键里的 item_id 是常量), 所以
+    rep_xizang_wuqu(1346) / rep_xiao_kanxi(1351) 逐值不变。
+    """
+    cnt: dict[str, int] = {}
+    best, val = None, 0
+    for d, iid, _m, _t in sess:
+        if iid not in ids:
+            continue
+        cnt[d] = cnt.get(d, 0) + 1
+        val = max(val, cnt[d])
+        if best is None and cnt[d] >= n:
+            best = d
+    return best, val
+
+
+def _first_two_day_sum(sess, ids, m):
+    """连续两天累计分钟 >= m (达成日 = 第二天)。"""
+    per: dict[str, int] = {}
+    for d, iid, mins, _t in sess:
+        if iid in ids:
+            per[d] = per.get(d, 0) + mins
+    ds = sorted(per)
+    for a, b in zip(ds, ds[1:]):
+        if (_d(b) - _d(a)).days == 1 and per[a] + per[b] >= m:
+            return b, per[a] + per[b]
+    return None, (max(per.values()) if per else 0)
+
+
+def _first_total_min(daily: dict[str, int], m: int):
+    """累计练习分钟 >= m (达成日 = 累计跨过阈值那天)。
+
+    口径 = `daily_practices.total_minutes`（孩子端看到的「累计总时长」就是这一列），
+    与本批的 month_minutes / week_minutes 同一口径。
+    不用 practice_sessions 分段求和：分段和有明细分历史的日期才算得进, 数字比
+    daily 小一大截 (实测 6496 vs 9419), 且不是她看得见的那个数。
+    """
+    tot, best = 0, None
+    for d in sorted(daily):
+        tot += daily[d]
+        if best is None and tot >= m:
+            best = d
+    return best, tot
+
+
+def _first_days_and_tempo(sess, ids, n, t):
+    """覆盖 >= n 天 且 历史最快 tempo >= t (两个条件都满足那天)。"""
+    days = sorted({d for d, iid, _m, _tp in sess if iid in ids})
+    tempo_days = [d for d, iid, _m, tp in sess if iid in ids and tp >= t]
+    if len(days) < n or not tempo_days:
+        return None, len(days)
+    return max(days[n - 1], min(tempo_days)), len(days)
+
+
+def _first_single_min_tempo(sess, ids, m, t):
+    """同一段练习既 >= m 分钟又 tempo >= t。"""
+    best, val = None, 0
+    for d, iid, mins, tp in sess:
+        if iid not in ids:
+            continue
+        val = max(val, mins)
+        if best is None and mins >= m and tp >= t:
+            best = d
+    return best, val
+
+
+def _first_tempo(sess, ids, t):
+    """历史最快 tempo >= t。"""
+    best, mx = None, 0
+    for d, iid, _m, tp in sess:
+        if iid not in ids:
+            continue
+        mx = max(mx, tp)
+        if best is None and tp >= t:
+            best = d
+    return best, mx
+
+
+def _first_consec_item_days(sess, ids, n):
+    """任一 item 连续 n 天有记录 (达成日 = 第 n 天), 取最早。"""
+    per: dict[int, set[str]] = {}
+    for d, iid, _m, _t in sess:
+        if iid in ids:
+            per.setdefault(iid, set()).add(d)
+    best = None
+    for _iid, ds in per.items():
+        sd = sorted(_d(x) for x in ds)
+        run = 1
+        for i in range(1, len(sd)):
+            run = run + 1 if (sd[i] - sd[i - 1]).days == 1 else 1
+            if run >= n:
+                cand = sd[i].isoformat()
+                if best is None or cand < best:
+                    best = cand
+                break
+    return best, 0
+
+
+def _first_days_and_total(sess, ids, n, m):
+    """覆盖 >= n 天 且 累计 >= m 分钟 (两个条件都满足那天)。"""
+    days = sorted({d for d, iid, _mm, _t in sess if iid in ids})
+    if len(days) < n:
+        return None, len(days)
+    tot, best = 0, None
+    for d, iid, mins, _t in sess:
+        if iid not in ids:
+            continue
+        tot += mins
+        if best is None and tot >= m and days[n - 1] <= d:
+            best = d
+    return best, len(days)
+
+
+def _first_items_over_days(sess, ids, n, dmin):
+    """有 >= n 个 item 各自覆盖 >= dmin 天 (达成日 = 第 n 个达标那天)。"""
+    per: dict[int, set[str]] = {}
+    for d, iid, _m, _t in sess:
+        if iid in ids:
+            per.setdefault(iid, set()).add(d)
+    reached = []
+    for _iid, ds in per.items():
+        sd = sorted(ds)
+        if len(sd) >= dmin:
+            reached.append(sd[dmin - 1])
+    if len(reached) < n:
+        return None, len(reached)
+    reached.sort()
+    return reached[n - 1], len(reached)
+
+
+def _first_month_days(dates, n):
+    """任一自然月内练习天数 >= n (达成日 = 该月第 n 个练习日)。"""
+    per: dict[str, list[str]] = {}
+    for d in dates:
+        per.setdefault(d[:7], []).append(d)
+    for m in sorted(per):
+        ds = sorted(per[m])
+        if len(ds) >= n:
+            return ds[n - 1], len(ds)
+    return None, (max(len(v) for v in per.values()) if per else 0)
+
+
+def _first_month_minutes(daily: dict[str, int], m: int):
+    """任一自然月内累计练习分钟 >= m (达成日 = 跨过阈值那天)。
+
+    为「天数已饱和」的徽章准备的强度口径: 她一年练 326 天、单月最多练满 31 天,
+    按"天数"计的条件早就成立, 只有按时长才还有区分度。
+    """
+    per: dict[str, list[tuple[str, int]]] = {}
+    for d, mins in daily.items():
+        per.setdefault(d[:7], []).append((d, mins))
+    best = 0
+    for mo in sorted(per):
+        run = 0
+        for d, mins in sorted(per[mo]):
+            run += mins
+            best = max(best, run)
+            if run >= m:
+                return d, run
+    return None, best
+
+
+def _first_week_minutes(daily: dict[str, int], m):
+    """任一自然周(周一~周日)练习分钟 >= m (达成日 = 跨过阈值那天)。"""
+    per: dict[tuple[int, int], list[tuple[str, int]]] = {}
+    for d, mins in daily.items():
+        y, mo, da = (int(x) for x in d.split("-"))
+        per.setdefault(date(y, mo, da).isocalendar()[:2], []).append((d, mins))
+    for k in sorted(per):
+        tot = 0
+        for d, mins in sorted(per[k]):
+            tot += mins
+            if tot >= m:
+                return d, tot
+    return None, 0
+
+
+def _first_gap(dates, days_gte):
+    """相邻两个练习日间隔 >= days_gte 天 (达成日 = 后一天) = 中断后重新开练。"""
+    sd = sorted(dates)
+    for a, b in zip(sd, sd[1:]):
+        gap = (_d(b) - _d(a)).days
+        if gap >= days_gte:
+            return b, gap
+    return None, 0
+
+
+def _first_in_holiday(dates, key, before=0, after=0):
+    """节日窗口 [节日-before, 节日+after] 内有练习 (达成日 = 窗口内最早练习日)。"""
+    out = None
+    for h in HOLIDAY_DATES.get(key, ()):
+        hd = _d(h)
+        for d in sorted(dates):
+            dd = _d(d)
+            if -before <= (dd - hd).days <= after:
+                if out is None or d < out:
+                    out = d
+    return out, 0
+
+
+def _first_school_week(dates, need=3):
+    """每年 9/1~9/7 开学周内练习 >= need 天 (达成日 = 第 need 天)。"""
+    for y in sorted({_d(d).year for d in dates}):
+        start, end = date(y, 9, 1), date(y, 9, 7)
+        hits = sorted(d for d in dates if start <= _d(d) <= end)
+        if len(hits) >= need:
+            return hits[need - 1], len(hits)
+    return None, 0
+
+
+def _first_summer_days(dates, need=20, daily=None, min_day=0):
+    """某年 7~8 月累计练习 >= need 天 (达成日 = 第 need 天)。
+
+    ``min_day > 0`` 时只数"单日 >= min_day 分钟"的达标日 (强度口径), 需要 ``daily``。
+    """
+    per: dict[int, list[str]] = {}
+    for d in dates:
+        dt = _d(d)
+        if not (7 <= dt.month <= 8):
+            continue
+        if min_day > 0 and (daily or {}).get(d, 0) < min_day:
+            continue
+        per.setdefault(dt.year, []).append(d)
+    for y in sorted(per):
+        hits = sorted(per[y])
+        if len(hits) >= need:
+            return hits[need - 1], len(hits)
+    return None, (max((len(v) for v in per.values()), default=0))
+
+
+def _first_holiday_item_min(sess, key, item_id, m):
+    """节日当天某 item 累计 >= m 分钟 (达成日 = 该节日)。"""
+    per: dict[str, int] = {}
+    for d, iid, mins, _t in sess:
+        if iid == item_id:
+            per[d] = per.get(d, 0) + mins
+    for h in sorted(HOLIDAY_DATES.get(key, ())):
+        if per.get(h, 0) >= m:
+            return h, per[h]
+    return None, (max(per.values()) if per else 0)
+
+
+def _first_new_item_window(sess, ids, window=7, need=3):
+    """某曲目**首次出现**后 window 天内练 >= need 天 (新曲开荒)。"""
+    per: dict[int, set[str]] = {}
+    for d, iid, _m, _t in sess:
+        if iid in ids:
+            per.setdefault(iid, set()).add(d)
+    for iid, ds in per.items():
+        sd = sorted(_d(x) for x in ds)
+        d0 = sd[0]
+        hits = [x for x in sd if (x - d0).days < window]
+        if len(hits) >= need:
+            return hits[need - 1].isoformat(), len(hits)
+    return None, 0
+
+
+# ─── 规则表: 徽章 id → 判定原语 ───────────────────────────────────────────────
+# kind 取值见上面各原语; cond 文案与 achievements.cond_text 保持一致口径。
+#
+# 支持的 kind 白名单 —— 规则表里写错 kind (拼错 / 改名) 会让那枚徽章**永远灰着**:
+# dispatch 落到 else 返 None → 走 legacy 链路 → 未达成, 而且异常、日志、测试全都不响
+# (同类事故的成因, 见本文件 _calc_practice_badge 注释)。所以这里显式列出支持的集合,
+# dispatch 入口逐个校验, 表外 kind 直接 logger.error。
+PRACTICE_RULE_KINDS: frozenset[str] = frozenset({
+    "single_min", "over_min", "session_count", "days", "day_sessions",
+    "two_day_sum", "total_min", "days_and_tempo", "single_min_tempo", "tempo",
+    "consec_item_days", "days_and_total", "items_over_days", "month_days",
+    "month_minutes", "week_minutes", "gap", "holiday", "school_week",
+    "summer_days", "holiday_item_min", "new_item_window",
+})
+#
+# 阈值口径 (2026-10-17 按 dad 的 C 方案重设): 真实记录显示她一年练 326 天、
+# 单月最多 31 天、全站最长连续 61 天 —— 凡按"累计天数"计的条件早就饱和, 一入库
+# 就会立刻点亮。所以门槛整体抬到"刚超过她的现有记录", 并且能改的都从**天数**口径
+# 换到**强度**口径 (单次时长 / tempo / 单曲连续天数 / 单月或单周时长)。
+# **时长类口径统一走 daily_practices** (total_min / month_minutes / week_minutes),
+# 不用 practice_sessions 分段求和 —— 分段和会漏掉没有明细的历史日期, 数字比
+# 孩子端看得见的累计时长短一大截 (实测 6496 vs 9419)。
+# 对应实测值写在每条注释里, 便于日后按记录再调。
+PRACTICE_BADGE_RULES: dict[str, dict] = {
+    # 组1 曲目
+    "rep_hui_niangjia": {"kind": "single_min", "ids": (1004,), "m": 15},      # 实测 10
+    "rep_caicha_pudie": {"kind": "two_day_sum", "ids": (1026,), "m": 40},     # 实测 32
+    "rep_saliha": {"kind": "single_min", "ids": (1340,), "m": 25},            # 实测 18
+    "rep_xizang_wuqu": {"kind": "day_sessions", "ids": (1346,), "n": 10},     # 实测 8
+    "rep_zi_zhu_diao": {"kind": "days_and_total", "ids": (1348,), "n": 20, "m": 180},  # 16 天/112
+    "rep_xiao_kanxi": {"kind": "day_sessions", "ids": (1351,), "n": 5},       # 实测 3
+    "rep_chun_geng_qu": {"kind": "over_min", "ids": (1352,), "m": 10},        # 实测 5 (未达成)
+    "rep_moli_hua": {"kind": "session_count", "ids": (1028, 1032), "n": 12},  # 实测 6
+    "rep_xin_qu_kai_huang": {"kind": "new_item_window", "ids": PIECE_ITEM_IDS,
+                             "window": 14, "need": 14},                        # 实测最多 13 天
+    # 组2 技巧
+    "tech_chang_yin": {"kind": "single_min", "ids": (1034,), "m": 20},        # 实测 17
+    "tech_dan_tu": {"kind": "days_and_tempo", "ids": (1343,), "n": 20, "t": 120},  # 天够, 速度 118
+    "tech_shuang_tu": {"kind": "single_min_tempo", "ids": (1350,), "m": 3, "t": 90},  # 实测 70
+    "tech_chan_yin": {"kind": "consec_item_days", "ids": (1337, 1347), "n": 10},  # 单项目实测最长 5
+    "tech_dan_tu_4": {"kind": "tempo", "ids": (1349,), "t": 110},             # 实测 100 (未达成)
+    "tech_ji_ben_gong": {"kind": "consec_item_days", "ids": (1033,), "n": 5},  # 实测连续 3
+    # 组3 典故
+    "lore_xiao_shi": {"kind": "total_min", "ids": (), "m": 10000},            # daily 口径实测 9419
+    "lore_huan_yi": {"kind": "day_sessions", "ids": PIECE_ITEM_IDS, "n": 15},  # 实测 12
+    "lore_li_guinian": {"kind": "items_over_days", "ids": PIECE_ITEM_IDS, "n": 5, "dmin": 20},
+    #   实测 >=20 天的曲目只有 4 首
+    "lore_li_mo": {"kind": "consec_item_days", "ids": PIECE_ITEM_IDS, "n": 15},  # 单曲实测最长连续 8
+    "lore_cai_yong": {"kind": "month_minutes", "m": 1500},                    # 实测单月最高 1418
+    "lore_ma_rong": {"kind": "week_minutes", "m": 450},                       # 实测最高一周 410
+    # 组4 节令
+    "season_mid_autumn": {"kind": "holiday", "key": "mid_autumn", "before": 3, "after": 3},
+    "season_new_year": {"kind": "holiday", "key": "spring_festival", "before": 0, "after": 2},
+    "season_duan_wu": {"kind": "holiday", "key": "dragon_boat", "before": 0, "after": 0},
+    "season_school_start": {"kind": "school_week", "need": 3},
+    "season_summer": {"kind": "summer_days", "need": 10, "min_day": 60},      # 实测 6 天
+    "season_dong_zhi": {"kind": "holiday_item_min", "key": "winter_solstice",
+                        "item_id": 1034, "m": 5},
+    # 组5 勇气
+    "brave_sick_back": {"kind": "gap", "days_gte": 8},                        # 实测 7 (未达成)
+    "brave_exam_pass": {"kind": "single_min", "ids": (1339,), "m": 60},       # 实测 50
+    "brave_class_back": {"kind": "single_min", "ids": (1338,), "m": 75},      # 实测 60
+}
+
+
+def _calc_practice_badge(conn, aid: str, stats: dict[str, dict]) -> Optional["CalcResult"]:
+    """练习记录型 milestone 的 calc 分支。不在规则表里 → 返回 None (交回原链路)。
+
+    返回的 achieved_at 必须是**首次达成日**: _persist_unlocked_milestones 只在
+    achieved_at 非 None 时落库 (否则灰卡永不解锁)。
+    """
+    rule = PRACTICE_BADGE_RULES.get(aid)
+    if rule is None:
+        return None
+
+    s = stats.get(aid, {})
+    stat_achieved = s.get("achieved") == "Y"
+    stat_at = s.get("achieved_at")
+
+    sess = _ps_sessions(conn)
+    daily = _daily_totals(conn)
+    dates = sorted(set(daily) | {d for d, _i, _m, _t in sess})
+
+    kind = rule["kind"]
+    if kind not in PRACTICE_RULE_KINDS:
+        # 规则表写错 kind ⇒ 这枚徽章会永远灰着, 而且不抛异常、不报错、测试也全绿。
+        # 显式报出来, 别让拼写错误变成静默失活。
+        logger.error("practice badge %s: 规则表 kind=%r 不在支持集合内, 该徽章按未达成处理",
+                     aid, kind)
+        return None
+    v = 0
+    if kind == "single_min":
+        first, v = _first_single_min(sess, rule["ids"], rule["m"])
+    elif kind == "over_min":
+        first, v = _first_over_min(sess, rule["ids"], rule["m"])
+    elif kind == "session_count":
+        first, v = _first_session_count(sess, rule["ids"], rule["n"])
+    elif kind == "days":
+        first, v = _first_days(sess, rule["ids"], rule["n"])
+    elif kind == "day_sessions":
+        first, v = _first_day_sessions(sess, rule["ids"], rule["n"])
+    elif kind == "two_day_sum":
+        first, v = _first_two_day_sum(sess, rule["ids"], rule["m"])
+    elif kind == "total_min":
+        first, v = _first_total_min(daily, rule["m"])
+    elif kind == "days_and_tempo":
+        first, v = _first_days_and_tempo(sess, rule["ids"], rule["n"], rule["t"])
+    elif kind == "single_min_tempo":
+        first, v = _first_single_min_tempo(sess, rule["ids"], rule["m"], rule["t"])
+    elif kind == "tempo":
+        first, v = _first_tempo(sess, rule["ids"], rule["t"])
+    elif kind == "consec_item_days":
+        first, v = _first_consec_item_days(sess, rule["ids"], rule["n"])
+    elif kind == "days_and_total":
+        first, v = _first_days_and_total(sess, rule["ids"], rule["n"], rule["m"])
+    elif kind == "items_over_days":
+        first, v = _first_items_over_days(sess, rule["ids"], rule["n"], rule["dmin"])
+    elif kind == "month_days":
+        first, v = _first_month_days(dates, rule["n"])
+    elif kind == "month_minutes":
+        first, v = _first_month_minutes(daily, rule["m"])
+    elif kind == "week_minutes":
+        first, v = _first_week_minutes(daily, rule["m"])
+    elif kind == "gap":
+        first, v = _first_gap(dates, rule["days_gte"])
+    elif kind == "holiday":
+        first, v = _first_in_holiday(dates, rule["key"],
+                                     rule.get("before", 0), rule.get("after", 0))
+    elif kind == "school_week":
+        first, v = _first_school_week(dates, rule["need"])
+    elif kind == "summer_days":
+        first, v = _first_summer_days(dates, rule["need"], daily, rule.get("min_day", 0))
+    elif kind == "holiday_item_min":
+        first, v = _first_holiday_item_min(sess, rule["key"], rule["item_id"], rule["m"])
+    elif kind == "new_item_window":
+        first, v = _first_new_item_window(sess, rule["ids"],
+                                         rule.get("window", 7), rule.get("need", 3))
+    else:
+        return None
+
+    achieved = first is not None
+    # stats 里已有历史达成时间 → 用它 (不可变); 否则用算出来的首次达成日
+    at = stat_at if (stat_achieved and stat_at) else (first if achieved else None)
+    # 展示文案: 这里**不读 DB** (calc_all 会被整页调用, 每次开连接会打爆池);
+    # 卡片 modal 的 cond_text 由调用方从 achievements.cond_text 取 (app.py 已传),
+    # 所以这里留空即可, 需要回落时才用规则里的兜底文案。
+    return CalcResult(achieved, v, None, at, rule.get("cond", ""))
