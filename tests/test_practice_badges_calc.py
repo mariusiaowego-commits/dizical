@@ -565,3 +565,70 @@ def test_dirty_duration_row_is_skipped_not_fatal(conn):
     sess(conn, "2026-09-02", 1340, 25)
     r = calc(conn, "rep_saliha")
     assert r.achieved is True and r.achieved_at == "2026-09-02"
+
+
+# ─── D1=A (2026-10-19): day_sessions 口径 = 同日跨曲目合计 ─────────────────────
+#
+# 原语 _first_day_sessions 的分组键曾是 (日期, item_id) ⇒ 测的是"单曲单日"
+# (PIECE 曲目下峰值 8), 而卡面「同一天分段练满 15 段」/卡背「一天里扎扎实实
+# 练满十五段」都没限定同一首曲子。dad 拍板 D1=A: 分组键只按日期。
+#
+# 下面 4 个用例是这个口径的护栏: 跨曲目合计成立、单 id 规则逐值不变。
+# 负控: 把分组键改回 (d, iid) → test_lore_huan_yi_cross_item_same_day_* 变红。
+
+def test_lore_huan_yi_cross_item_same_day_sums_up(conn):
+    """跨曲目同日合计: 8(1346) + 7(1351) = 15 段 ⇒ 达成 (改前按 (d,iid) 只有 8 段)。"""
+    for _ in range(8):
+        sess(conn, "2026-07-29", 1346, 1)
+    for _ in range(6):
+        sess(conn, "2026-07-29", 1351, 1)
+    assert calc(conn, "lore_huan_yi").achieved is False      # 合计 14 段
+    sess(conn, "2026-07-29", 1351, 1)                        # 合计 15 段
+    r = calc(conn, "lore_huan_yi")
+    assert r.achieved is True and r.achieved_at == "2026-07-29"
+    assert r.computed_value == 15
+
+
+def test_lore_huan_yi_cross_item_one_short(conn):
+    """跨曲目同日合计差 1 段 ⇒ 未达成 (边界负控, 不许 >= 变 >)。"""
+    for _ in range(8):
+        sess(conn, "2026-07-29", 1346, 1)
+    for _ in range(6):
+        sess(conn, "2026-07-29", 1351, 1)
+    r = calc(conn, "lore_huan_yi")
+    assert r.achieved is False
+    assert r.computed_value == 14 and r.achieved_at is None
+
+
+def test_lore_huan_yi_cross_item_different_days_do_not_sum(conn):
+    """跨曲目但**不同日**不得合并计数 —— 口径是"同一天合计", 不是"累计"。"""
+    for _ in range(8):
+        sess(conn, "2026-07-29", 1346, 1)
+    for _ in range(7):
+        sess(conn, "2026-07-30", 1351, 1)
+    r = calc(conn, "lore_huan_yi")
+    assert r.achieved is False
+    assert r.computed_value == 8 and r.achieved_at is None
+
+
+def test_day_sessions_single_id_rules_unchanged(conn):
+    """单 id 规则两种口径等价: 分组键里的 item_id 是常量, 逐值不变。
+
+    rep_xizang_wuqu (1346, n=10) 与 rep_xiao_kanxi (1351, n=5) 各自只有一个 id,
+    改口径前后 computed_value / achieved_at 必须完全一致。
+    """
+    for _ in range(8):
+        sess(conn, "2026-07-29", 1346, 2)
+    for _ in range(3):
+        sess(conn, "2026-09-08", 1351, 3)
+    wuqu, kanxi = calc(conn, "rep_xizang_wuqu"), calc(conn, "rep_xiao_kanxi")
+    assert (wuqu.achieved, wuqu.computed_value, wuqu.achieved_at) == (False, 8, None)
+    assert (kanxi.achieved, kanxi.computed_value, kanxi.achieved_at) == (False, 3, None)
+    # 单 id 补到阈值仍照常达成 (证明不是"永远不亮")
+    for _ in range(2):
+        sess(conn, "2026-07-29", 1346, 2)
+    for _ in range(2):
+        sess(conn, "2026-09-08", 1351, 3)
+    wuqu, kanxi = calc(conn, "rep_xizang_wuqu"), calc(conn, "rep_xiao_kanxi")
+    assert (wuqu.achieved, wuqu.computed_value, wuqu.achieved_at) == (True, 10, "2026-07-29")
+    assert (kanxi.achieved, kanxi.computed_value, kanxi.achieved_at) == (True, 5, "2026-09-08")
