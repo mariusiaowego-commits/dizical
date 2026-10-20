@@ -46,14 +46,16 @@ CREATE TABLE IF NOT EXISTS achievements (
     created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
     card_theme        TEXT,
     card_stars        INTEGER,
-    card_no           INTEGER  -- sprint 26091301 B1: 图鉴编号 (永久不变)
+    card_no           INTEGER  -- sprint 26091301 B1: 图鉴编号 (永久不变),
+    story_short       TEXT     -- sprint 26091401 F1: 卡背短典故 (≤60 字)
 );
 CREATE TABLE IF NOT EXISTS achievement_stats (
     achievement_id TEXT PRIMARY KEY,
     achieved       TEXT NOT NULL DEFAULT 'N',
     achieved_at    DATETIME,
     raw_stats      TEXT NOT NULL DEFAULT '{}',
-    computed_value INTEGER
+    computed_value INTEGER,
+    claimed_at     DATETIME DEFAULT NULL  -- sprint 26093001: 徽章领取判据列
 );
 CREATE TABLE IF NOT EXISTS achievement_badges (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,13 +100,19 @@ def _ensure_badge_tables(tmp_path_factory, monkeypatch_session):
     database.db.db_path = str(tmp_db_path)
     database.db._conn = None
     database.db._ensure_db_directory()
-    database.db._init_tables()
 
-    # 3. 创 badge 三表 (CREATE IF NOT EXISTS, 不 DROP)
+    # 3. 先创 badge 三表 —— 顺序修正 (P2-6):
+    #    _init_tables() 里的幂等迁移 (card_theme / card_stars / card_no / story_short /
+    #    achievement_stats.claimed_at) 靠 PRAGMA table_info 判断, 表不存在时静默跳过。
+    #    以前顺序倒置: 先 _init_tables() 后建表 → 迁移永远 no-op → 从零建的测试库缺列
+    #    → 任何走 /api/badge/unclaimed 的用例炸 "no such column: s.claimed_at"。
     conn = sqlite3.connect(str(tmp_db_path))
     conn.executescript(_INIT_SQL)
     conn.commit()
     conn.close()
+
+    # 4. 再跑基表 + 幂等迁移 (此时 badge 三表已存在, 迁移能生效)
+    database.db._init_tables()
     yield
     # 测试结束: monkeypatch_session 自动还原 settings.db_path
     # Database 单例在 production 进程 (8765) 是独立的, 不受影响
