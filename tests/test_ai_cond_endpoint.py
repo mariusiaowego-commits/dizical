@@ -9,7 +9,13 @@ from __future__ import annotations
 import json
 from unittest.mock import patch, MagicMock
 
+import os
+
 import pytest
+
+# P2-6 (2026-10-20): ai-cond 端点已挂服务端鉴权, 测试统一带机器 token。
+TEST_PUSH_TOKEN = "test-push-token-ai-cond"
+os.environ.setdefault("BADGE_PUSH_TOKEN", TEST_PUSH_TOKEN)
 
 
 class TestAiCondEndpoint:
@@ -27,7 +33,7 @@ class TestAiCondEndpoint:
                 yield token
 
         with patch("src.kid_app.subject_info._gemini_stream", side_effect=fake_stream):
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Badge-Push-Token": TEST_PUSH_TOKEN})
             resp = client.post("/config/api/badge/ai-cond", json={
                 "name": "批改小帮手",
                 "type": "突破",
@@ -51,7 +57,7 @@ class TestAiCondEndpoint:
                 yield ""
 
         with patch("src.kid_app.subject_info._gemini_stream", side_effect=empty_stream):
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Badge-Push-Token": TEST_PUSH_TOKEN})
             resp = client.post("/config/api/badge/ai-cond", json={
                 "name": "测试",
                 "placeholder": "test",
@@ -70,7 +76,7 @@ class TestAiCondEndpoint:
         from fastapi.testclient import TestClient
         from src.kid_app.app import app
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Badge-Push-Token": TEST_PUSH_TOKEN})
         resp = client.post("/config/api/badge/ai-cond", json={
             "name": "测试",
             "placeholder": "test",
@@ -94,7 +100,7 @@ class TestAiCondEndpoint:
             yield "测试结果"
 
         with patch("src.kid_app.subject_info._gemini_stream", side_effect=capture_stream):
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Badge-Push-Token": TEST_PUSH_TOKEN})
             resp = client.post("/config/api/badge/ai-cond", json={
                 "name": "test_name_xyz",
                 "placeholder": "test_placeholder_xyz",

@@ -3129,6 +3129,16 @@ app.include_router(config_router)
 from src.kid_app.routes.badge_workflow import router as badge_workflow_router
 app.include_router(badge_workflow_router)
 
+# P2-6: /config/api/badge/* 统一鉴权失败响应 (保持前端读 data.ok / data.error 的契约不变)。
+# 由 routes/badge_workflow.require_badge_push_auth 依赖抛出。
+from src.kid_app.routes.badge_workflow import BadgeAuthRequired as _BadgeAuthRequired  # noqa: E402
+
+
+@app.exception_handler(_BadgeAuthRequired)
+async def _badge_auth_required_handler(request, exc):  # noqa: ANN001
+    from fastapi.responses import JSONResponse as _JR
+    return _JR({"ok": False, "error": "需要 dad 登录或 PIN"}, status_code=401)
+
 # Sprint 26091101 feat/badge-3d-ccg: 注册徽章领取 API
 # 全局拦截弹窗数据源 + 入库幂等领取 (走 practice_audit_log 审计)
 from src.kid_app.routes.badge_claim import router as badge_claim_router

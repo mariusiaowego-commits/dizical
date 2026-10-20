@@ -26,6 +26,10 @@ from src.kid_app.badge_theme import (
 GET_URL = "/config/api/badge/card-appearance"
 POST_URL = "/config/api/badge/card-appearance"
 PREFIX = "appr_test_"
+# P2-6 (2026-10-20): 这两个端点已挂服务端三轨鉴权 + 机器 token 通道。
+# 本文件测的是卡面业务逻辑，不是鉴权（鉴权矩阵见 tests/test_badge_auth_expansion.py），
+# 所以 client 统一带机器 token 通过鉴权关。
+TEST_PUSH_TOKEN = "test-push-token-card-appearance"
 
 # (id, name, type, category, card_theme, card_stars)
 SEEDS = [
@@ -82,11 +86,12 @@ def _force_sqlite_backend(monkeypatch):
 
 
 @pytest.fixture()
-def client():
+def client(monkeypatch):
     _seed()
+    monkeypatch.setenv("BADGE_PUSH_TOKEN", TEST_PUSH_TOKEN)
     from fastapi.testclient import TestClient
     import src.kid_app.app as app_module
-    yield TestClient(app_module.app)
+    yield TestClient(app_module.app, headers={"X-Badge-Push-Token": TEST_PUSH_TOKEN})
     _cleanup()
 
 

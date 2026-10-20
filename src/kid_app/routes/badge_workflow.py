@@ -33,6 +33,71 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/config", tags=["badge-workflow"])
 
 
+class BadgeAuthRequired(Exception):
+    """鉴权失败 —— 由 app 级 handler 转成 {"ok": false, "error": "需要 dad 登录或 PIN"} (401)。
+
+    不用 HTTPException: 那样 body 会变成 {"detail": ...}, 破坏前端 `data.ok / data.error`
+    的既有契约 (config-badge.html 的 toast 直接读这两个字段)。
+    """
+
+
+BADGE_PUSH_TOKEN_HEADER = "X-Badge-Push-Token"
+BADGE_PUSH_TOKEN_ENV = "BADGE_PUSH_TOKEN"
+
+
+def _push_token_ok(request: Request) -> bool:
+    """机器通道: 请求头 X-Badge-Push-Token == env BADGE_PUSH_TOKEN.
+
+    env 未设 (或空) = 该通道关闭 (不给默认 token)。常数时间比较, 不引新依赖 (hmac 是 stdlib)。
+    P1 (P0b audit 收口 c): 两侧都 encode 成 bytes 再比 —— compare_digest 对**非 ASCII 的 str**
+    会抛 TypeError (→500); 攻击者发个非 ASCII header 就能把端点打成 500。
+    """
+    import hmac
+    import os
+
+    expected = (os.getenv(BADGE_PUSH_TOKEN_ENV) or "").strip()
+    if not expected:
+        return False
+    supplied = (request.headers.get(BADGE_PUSH_TOKEN_HEADER) or "").strip()
+    if not supplied:
+        return False
+    return hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
+
+
+async def _badge_push_authorized(request: Request) -> bool:
+    """两条通道任一通过即可:
+
+      ① 机器: X-Badge-Push-Token == env BADGE_PUSH_TOKEN
+      ② 人/浏览器: /config 现有的 dad 守门 —— 直接复用 routes/config_users._check_dad_or_401
+         (X-Dad-Pin header、dad 角色 web 会话、dizical_pin_ok cookie 三轨), 不另造一套。
+         multipart 请求读不出 body 里的 pin, 该轨自然只走 header/cookie (helper 内部已 try/except)。
+    """
+    if _push_token_ok(request):
+        return True
+
+    from src.kid_app.routes.config_users import _check_dad_or_401
+
+    return (await _check_dad_or_401(request)) is None
+
+
+async def require_badge_push_auth(request: Request) -> None:
+    """FastAPI 依赖版鉴权 (P0b audit 收口 a / P1 2026-10-14).
+
+    挂在路由的 dependencies 上 —— 鉴权在图外面执行, 将来有人删掉 handler 里的某一行
+    也不会**静默**把端点重新开成匿名可写。未通过 → 401。
+    """
+    if await _badge_push_authorized(request):
+        return
+    logger.warning(
+        "badge push auth denied: path=%s client=%s token_header=%s pin_header=%s",
+        request.url.path, getattr(request.client, "host", "?"),
+        bool(request.headers.get(BADGE_PUSH_TOKEN_HEADER)),
+        bool(request.headers.get("X-Dad-Pin")),
+    )
+    raise BadgeAuthRequired()
+
+
+
 # ─── Pydantic models (替代手写 json.loads) ───────────────────────────
 
 class DraftRequest(BaseModel):
@@ -101,7 +166,7 @@ def config_badge():
 
 # ─── POST /config/api/badge/draft (STEP 1) ───────────────────────
 
-@router.post("/api/badge/draft")
+@router.post("/api/badge/draft", dependencies=[Depends(require_badge_push_auth)])
 def api_create_draft(req: DraftRequest) -> JSONResponse:
     """STEP 1: 收 meta, 写草稿 (P1: 权威副本 = COS 或本地, 由 BADGE_STORE 决定), 返 draft_id + json.
 
@@ -178,7 +243,7 @@ def api_create_draft(req: DraftRequest) -> JSONResponse:
 
 # ─── GET /config/api/badge/draft/{draft_id} (STEP 2 read) ────────
 
-@router.get("/api/badge/draft/{draft_id}")
+@router.get("/api/badge/draft/{draft_id}", dependencies=[Depends(require_badge_push_auth)])
 def api_get_draft(draft_id: str) -> JSONResponse:
     """STEP 2: skill 读 draft (校验 + 返完整 draft).
 
@@ -234,63 +299,9 @@ DRAFT_IMAGE_MAX_BYTES = 8 * 1024 * 1024
 # 为什么不直接把它从白名单剔除: 中间件那条 401 分支只认 web session cookie, 表达不了
 # "机器 token"通道 —— 剔出白名单会把合法机器推送一起挡掉, 且会波及同前缀的其它 /config/api
 # 端点 (前置/顺序风险)。所以选择"白名单 + 端点内自查", 鉴权是本端点的第一条语句。
-BADGE_PUSH_TOKEN_HEADER = "X-Badge-Push-Token"
-BADGE_PUSH_TOKEN_ENV = "BADGE_PUSH_TOKEN"
-
-
-def _push_token_ok(request: Request) -> bool:
-    """机器通道: 请求头 X-Badge-Push-Token == env BADGE_PUSH_TOKEN.
-
-    env 未设 (或空) = 该通道关闭 (不给默认 token)。常数时间比较, 不引新依赖 (hmac 是 stdlib)。
-    P1 (P0b audit 收口 c): 两侧都 encode 成 bytes 再比 —— compare_digest 对**非 ASCII 的 str**
-    会抛 TypeError (→500); 攻击者发个非 ASCII header 就能把端点打成 500。
-    """
-    import hmac
-    import os
-
-    expected = (os.getenv(BADGE_PUSH_TOKEN_ENV) or "").strip()
-    if not expected:
-        return False
-    supplied = (request.headers.get(BADGE_PUSH_TOKEN_HEADER) or "").strip()
-    if not supplied:
-        return False
-    return hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
-
-
-async def _badge_push_authorized(request: Request) -> bool:
-    """两条通道任一通过即可:
-
-      ① 机器: X-Badge-Push-Token == env BADGE_PUSH_TOKEN
-      ② 人/浏览器: /config 现有的 dad 守门 —— 直接复用 routes/config_users._check_dad_or_401
-         (X-Dad-Pin header、dad 角色 web 会话、dizical_pin_ok cookie 三轨), 不另造一套。
-         multipart 请求读不出 body 里的 pin, 该轨自然只走 header/cookie (helper 内部已 try/except)。
-    """
-    if _push_token_ok(request):
-        return True
-
-    from src.kid_app.routes.config_users import _check_dad_or_401
-
-    return (await _check_dad_or_401(request)) is None
-
-
-async def require_badge_push_auth(request: Request) -> None:
-    """FastAPI 依赖版鉴权 (P0b audit 收口 a / P1 2026-10-14).
-
-    挂在路由的 dependencies 上 —— 鉴权在图外面执行, 将来有人删掉 handler 里的某一行
-    也不会**静默**把端点重新开成匿名可写。未通过 → 401。
-    """
-    if await _badge_push_authorized(request):
-        return
-    logger.warning(
-        "badge push auth denied: path=%s client=%s token_header=%s pin_header=%s",
-        request.url.path, getattr(request.client, "host", "?"),
-        bool(request.headers.get(BADGE_PUSH_TOKEN_HEADER)),
-        bool(request.headers.get("X-Dad-Pin")),
-    )
-    raise HTTPException(
-        status_code=401,
-        detail="未授权: 需要 dad 凭据 (X-Dad-Pin / dad 会话 / pin_ok cookie) 或 X-Badge-Push-Token",
-    )
+# 鉴权 helper（_push_token_ok / _badge_push_authorized / require_badge_push_auth）
+# 已上移到文件顶部 —— 路由装饰器 `dependencies=[Depends(require_badge_push_auth)]`
+# 在 import 期求值，定义必须早于第一个装饰器。
 
 
 def _revision_conflict_response(e: "Exception") -> JSONResponse:
@@ -600,7 +611,7 @@ async def api_upload_draft_image(
 
 # ─── POST /config/api/badge/commit-from-draft (STEP 3 write) ─────
 
-@router.post("/api/badge/commit-from-draft")
+@router.post("/api/badge/commit-from-draft", dependencies=[Depends(require_badge_push_auth)])
 def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
     """STEP 3: 收 draft_id, 校验 + 写三表 + 标 status=committed.
 
@@ -829,7 +840,7 @@ def api_commit_from_draft(req: CommitFromDraftRequest) -> JSONResponse:
 
 # ─── POST /config/api/badge/replace-image-from-draft (V2.1 替换老图) ──
 
-@router.post("/api/badge/replace-image-from-draft")
+@router.post("/api/badge/replace-image-from-draft", dependencies=[Depends(require_badge_push_auth)])
 def api_replace_image_from_draft(req: ReplaceImageFromDraftRequest) -> JSONResponse:
     """2026-07-01 feat/badges-streak-image-regen: 替换已有 badge 的图, 不写 achievements 表.
 
@@ -909,7 +920,7 @@ def api_replace_image_from_draft(req: ReplaceImageFromDraftRequest) -> JSONRespo
 
 # ─── GET /config/api/badge/discoveries (STEP 3 list) ─────────────
 
-@router.get("/api/badge/discoveries")
+@router.get("/api/badge/discoveries", dependencies=[Depends(require_badge_push_auth)])
 def api_discoveries(request: Request) -> JSONResponse:
     """STEP 3: 按需扫 lib/badge_data/, 返 [draft_awaiting_confirm] 列表.
 
@@ -923,7 +934,7 @@ def api_discoveries(request: Request) -> JSONResponse:
 
 # ─── GET /config/api/badge/draft-image (V2.6 待确认列表预览图) ─────
 
-@router.get("/api/badge/draft-image")
+@router.get("/api/badge/draft-image", dependencies=[Depends(require_badge_push_auth)])
 def api_draft_image(draft_id: str) -> Response:
     r"""V2.6: 待确认 badge 列表的预览图, 从 .tmp/ 临时图读取.
 
@@ -1007,7 +1018,7 @@ def api_draft_image(draft_id: str) -> Response:
 
 # ─── DELETE /config/api/badge/draft/{draft_id} (V2.1 阶段 2.2 放弃按钮) ─
 
-@router.delete("/api/badge/draft/{draft_id}")
+@router.delete("/api/badge/draft/{draft_id}", dependencies=[Depends(require_badge_push_auth)])
 def api_delete_draft(draft_id: str) -> JSONResponse:
     """V2.1: 删 draft (idempotent). 待确认列表的"删除"按钮用.
 
@@ -1036,7 +1047,7 @@ class AIDraftRequest(BaseModel):
     zh_story: str = Field(..., min_length=1)
 
 
-@router.post("/api/badge/ai-draft")
+@router.post("/api/badge/ai-draft", dependencies=[Depends(require_badge_push_auth)])
 def api_ai_draft(req: AIDraftRequest) -> JSONResponse:
     """V2.1: 调 hermes sub-agent 草拟 placeholder 英文描述.
 
@@ -1067,7 +1078,7 @@ def api_ai_draft(req: AIDraftRequest) -> JSONResponse:
 
 # ─── POST /config/api/badge/ai-cond (V2.2 条件文案 AI 生成) ─────
 
-@router.post("/api/badge/ai-cond")
+@router.post("/api/badge/ai-cond", dependencies=[Depends(require_badge_push_auth)])
 def api_ai_cond(req: AICondRequest) -> JSONResponse:
     """V2.2: 调 LLM 生成一句话"达成条件"文案, 给表单 v21CondText 字段填.
 
@@ -1177,7 +1188,7 @@ def _appearance_row(row: dict) -> dict:
     }
 
 
-@router.get("/api/badge/card-appearance")
+@router.get("/api/badge/card-appearance", dependencies=[Depends(require_badge_push_auth)])
 def api_card_appearance_list() -> JSONResponse:
     """列出全部 achievements 的卡片外观 (设计期表格用).
 
@@ -1219,7 +1230,7 @@ def api_card_appearance_list() -> JSONResponse:
     })
 
 
-@router.post("/api/badge/card-appearance")
+@router.post("/api/badge/card-appearance", dependencies=[Depends(require_badge_push_auth)])
 def api_card_appearance_update(req: CardAppearanceUpdateRequest) -> JSONResponse:
     """更新单张卡的 card_theme / card_stars, 返更新后完整单行结构.
 
@@ -1469,7 +1480,7 @@ def _write_manual_stats(conn, badge_id: str, action: str, achieved_at_str=None) 
         )
 
 
-@router.get("/api/badge/manual")
+@router.get("/api/badge/manual", dependencies=[Depends(require_badge_push_auth)])
 async def api_manual_badge_list(request: Request) -> JSONResponse:
     """列出手动颁发类徽章 (unlock_strategy='manual') 及当前颁发状态。"""
     if not await _manual_authorized(request):
@@ -1527,7 +1538,7 @@ async def api_manual_badge_list(request: Request) -> JSONResponse:
     })
 
 
-@router.post("/api/badge/manual/{badge_id}")
+@router.post("/api/badge/manual/{badge_id}", dependencies=[Depends(require_badge_push_auth)])
 async def api_manual_badge_action(
     badge_id: str, req: ManualBadgeActionRequest, request: Request,
 ) -> JSONResponse:
@@ -1581,9 +1592,11 @@ async def api_manual_badge_action(
 
     try:
         conn, _is_mysql = db_adapter.get_conn()
-    except Exception as e:
+    except Exception:
         logger.exception("manual badge action open db failed")
-        return JSONResponse({"ok": False, "error": f"数据库不可用: {e}"}, status_code=503)
+        return JSONResponse({
+            "ok": False, "error": "数据库不可用，请稍后重试", "code": "db_unavailable",
+        }, status_code=503)
 
     try:
         ach_rows = db_adapter.execute_dicts(
