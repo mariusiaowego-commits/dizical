@@ -1,6 +1,47 @@
 # Backend 切换 — API 变更
 
-**日期**: 2026-10-20 (待上线, `feat/badge-manual-award-261020` / PR #381) — 徽章新增 `unlock_strategy='manual'` 手动颁发通道
+**日期**: 2026-10-20 (待上线, `fix/p26-hygiene-261020`) — `/config/api/badge/*` 全量服务端鉴权收口（P2-6 技术债）
+**类型**: 🟡 部分兼容（**端点路径/请求体/返回结构零变化**；新增**服务端鉴权要求**。dizical-minip 与 Web 配置页**无需改代码**；任何**外部脚本**调这批端点必须带凭据）
+
+## 变更
+
+### 1) 13 个 `/config/api/badge/*` 端点补服务端鉴权（扩围前为匿名可进）
+
+`/config/api/` 在中间件公开白名单内（`app.py:147-150` 有注记：会写盘/传 COS 的端点必须端点内自查）。本批端点历史只靠 config 页 localStorage 的 PIN 门，服务端不验。扩围前实测：
+
+| 端点 | 扩围前匿名实测 | 风险 |
+|---|---|---|
+| `DELETE /config/api/badge/draft/{id}` | **200** | 知道 draft_id 即可删在制草稿 |
+| `GET /config/api/badge/discoveries` | **200** | 匿名可列待确认草稿（含元数据） |
+| `GET /config/api/badge/card-appearance` | **200** | 匿名可读全量徽章主题/星级 |
+| `POST /config/api/badge/commit-from-draft` | 422 | **写三表上线徽章**，仅差 body |
+| `POST /config/api/badge/replace-image-from-draft` | 422 | 换线上徽章图（写库 + 写 COS） |
+| `POST /config/api/badge/draft` / `ai-draft` / `ai-cond` | 422 | 写盘垃圾草稿 / 烧 LLM 额度 |
+| `GET /config/api/badge/draft/{id}` / `draft-image` | 404 / 422 | 读草稿内容与预览图 |
+
+收口方式：统一挂 FastAPI 依赖 `dependencies=[Depends(require_badge_push_auth)]`（鉴权在图外面执行，handler 内删行也不会静默开回匿名）。鉴权口径与 `manual` 端点一致：**dad 三轨**（Web 会话 role=dad / `X-Dad-Pin` / `dizical_pin_ok` cookie）+ **机器通道 `X-Badge-Push-Token`**（`env BADGE_PUSH_TOKEN`，未设则该通道关闭）。
+
+- 未改动 `POST /config/api/badge/draft/{id}/image`：该端点本就是 multipart + 自定义鉴权（默认拒绝 / token / dad）。
+- 401 响应体保持 `{"ok": false, "error": "需要 dad 登录或 PIN"}` 形态不变（由 app 级 handler 产出）。
+
+### 2) 鉴权前置：`POST /config/api/badge/manual/{id}` 匿名空 body 由 422 改回 401
+
+修前 FastAPI 先做 Pydantic body 校验、再执行 handler 内鉴权，匿名空 body 会返 422 并暴露字段名 `action`。修后匿名无 body / 空 JSON 一律 **401**；畸形 JSON 仍由框架返 422（无字段名泄漏，属框架解析阶段）。
+
+### 3) 503 不再拼接原始异常
+
+`api_manual_badge_action` 建连失败分支原为 `f"数据库不可用: {e}"`，改为固定文案 + `code=db_unavailable`，原始异常只进日志。
+
+### 对 dizical-minip 的影响：**无需同步**
+
+- minip 不调用 `/config/api/badge/*` 任何端点（`API-CHANGELOG §2.3` 已记，本次复核仍为 0 调用）。
+- 受影响的是**外部脚本**：`/badge-image` skill 的 `GET /config/api/badge/draft/{id}` 需补 `X-Badge-Push-Token` 头（skill 文档同步更新）。
+
+### 数据变更
+
+- 无 DDL。`tests/conftest.py` 补 `achievements.story_short` 与 `achievement_stats.claimed_at` 两列（测试库与生产 schema 对齐），并修正 `_init_tables()` 与建表脚本的**顺序倒置**（迁移先于建表 → 幂等 ALTER 永远 no-op）。
+
+**日期**: 2026-10-20 (**已上线**, `feat/badge-manual-award-261020` / PR #381) — 徽章新增 `unlock_strategy='manual'` 手动颁发通道
 **类型**: ✅ 完全兼容（既有端点签名/返回结构零变化；新增 2 个 **家长端专属** 管理端点；`GET /api/achievements` 复用既有 `achieved` / `condition` 字段承载 manual 徽章状态。**dizical-minip 无需改任何代码**）
 
 ## 变更
