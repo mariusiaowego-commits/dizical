@@ -951,3 +951,53 @@
       .v21-appearance-row { grid-template-columns: 1fr; gap: 8px; }
       .v21-appearance-action { justify-content: flex-start; }
     }
+    /* ─── 2026-10-20 feat/badge-manual-award-261020: 手动颁发列表 ─────────
+       5 列: 名称(含 36px 缩略图) / 类型·星级 / 达成条件·故事 / 状态·日期 / 操作。
+       卡面缺失 → 灰框占位 (.v21-manual-thumb-placeholder), 故事缺失 → 后端 story_text
+       已回落「故事准备中」。不用 emoji, 不引新色 (只用既有 token + 中性灰阶)。 */
+    .v21-manual-head,
+    .v21-manual-row {
+      grid-template-columns:
+        minmax(176px, 1.5fr) minmax(76px, 0.7fr) minmax(150px, 1.2fr)
+        minmax(150px, 1.1fr) minmax(140px, 0.9fr);
+      max-width: 1000px;
+    }
+    .v21-manual-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .v21-manual-name-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .v21-manual-name-line {
+      font-size: 14px; color: var(--secondary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .v21-manual-name-text small {
+      font-size: 11px; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .v21-manual-thumb-wrap {
+      width: 36px; height: 36px; flex: 0 0 36px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .v21-manual-thumb {
+      width: 36px; height: 36px; object-fit: contain;
+      border-radius: 8px; background: #FFFFFF;
+    }
+    .v21-manual-thumb-placeholder {
+      width: 36px; height: 36px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #E5E7EB; border: 1px dashed #D1D5DB; border-radius: 8px;
+      font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
+    }
+    .v21-manual-cond {
+      display: flex; flex-direction: column; gap: 3px; min-width: 0;
+      font-size: 12px; line-height: 1.5; color: var(--secondary);
+    }
+    .v21-manual-story { font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .v21-manual-state { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .v21-manual-state-main { font-size: 12px; color: var(--secondary); }
+    .v21-manual-state-sub { font-size: 11px; color: var(--muted); }
+    .v21-manual-danger-btn { border-color: var(--primary); color: var(--primary); }
+    .v21-manual-danger-btn:hover:not(:disabled) { background: var(--neutral); }
+
+    @media (max-width: 640px) {
+      .v21-manual-row { grid-template-columns: 1fr; gap: 8px; }
+      .v21-manual-head { display: none; }
+    }

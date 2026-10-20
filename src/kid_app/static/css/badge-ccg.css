@@ -1,5 +1,8 @@
 /* sprint-26091101 badge 3D CCG v2 — Pokemon V foil + encapsulated parallax
-   ── 卡面样式版本: v1.9.0-dev (sprint 26091604 CCG 生命周期与 WebKit 边角治理)
+   ── 卡面样式版本: v1.10.0-dev (feat/badge-manual-award-261020 卡面缺失灰框占位)
+      v1.10.0-dev (2026-10-20, feat/badge-manual-award-261020): 新增 .ccg-art-placeholder
+        灰框占位 —— 缺图 (.is-shown) 或图 404 (父容器 .is-art-missing) 时显示, 不裂图不空白。
+      v1.9.0-dev (sprint 26091604 CCG 生命周期与 WebKit 边角治理)
       v1.9.0-dev (2026-09-16, sprint 26091604): .is-frozen 补齐 --nx / --ny 归零 ——
         冻结时投影偏移变量也一起压平, 卡面 + 投影完全静止 (原只压旋转/升沉)。
       v1.7.0-dev (2026-09-16, Oracle 典藏卡生产合流): 象牙白卡纸 + 弱金边 + 水墨标牌 + 通栏 slogan + 精铸金章 + 整卡翻转。
@@ -2331,3 +2334,29 @@ body.ccg-modal-open .ccg-demo-actions {
 /* focus 单卡的动态水墨滤镜由 markup 侧 #oracle-ink-splash-graphic-bleed 分组自带的
    filter 属性提供 (走 SVG 属性路径, 不依赖 CSS `filter: url()` 的跨引擎支持度)。
    这里刻意不写 CSS url() 版本 —— 那会和分组属性叠加成 feDisplacementMap 双重位移。 */
+
+/* ─── 2026-10-20 feat/badge-manual-award-261020: 卡面缺失灰框占位 ─────────
+   资产由 feat/badge-manual4-art-261020 并行提供。缺图 (.is-shown) 或图 404
+   (父容器 .is-art-missing) 时显示灰框, 绝不裂图 / 空白。 */
+.ccg-art-placeholder {
+  display: none;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  background: #E5E7EB;
+  border: 1px dashed #D1D5DB;
+  border-radius: 10px;
+  color: #6B7280;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.ccg-art-placeholder.is-shown,
+.oracle-art.is-art-missing .ccg-art-placeholder,
+.ccg-holo-art.is-art-missing .ccg-art-placeholder,
+.ccg-layer-subject.is-art-missing .ccg-art-placeholder {
+  display: flex;
+}

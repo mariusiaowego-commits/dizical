@@ -70,6 +70,38 @@ class CalcResult:
     extra_count: int | None = None
 
 
+def is_commemorative_badge(ach: dict) -> bool:
+    """纪念章/手动颁发类徽章判定 (不经 calc, 直接读 achievement_stats)。
+
+    2026-10-20 feat/badge-manual-award-261020: 把 'manual' 并入 —— 手动颁发的
+    解锁状态唯一真源是 achievement_stats, calc_all() 对它只做短路读取。
+    """
+    return (ach.get("unlock_strategy") in ("immediate", "manual")
+            or bool(ach.get("achieved_at_override")))
+
+
+def commemorative_result(ach: dict, stats_row) -> "CalcResult":
+    """统一 commemorative 展示口径 (app.py 两处 + minip_api 一处共用, 防三处走岔)。
+
+    stats_row = (achieved, achieved_at) 或 None:
+      - achievements.achieved_at_override 非空 → 优先 (考级/获奖一次性事件)
+      - stats.achieved == 'Y' → 解锁; manual 显示 '颁发时间: YYYY-MM-DD', immediate 显示 '立即解锁'
+      - 否则 (未颁发 / 已撤销) → 恒锁定, 绝不残留 calc 结果
+    """
+    override_at = ach.get("achieved_at_override")
+    if override_at:
+        return CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
+    if stats_row and stats_row[0] == "Y":
+        at_val = stats_row[1]
+        at_str = str(at_val) if at_val else None
+        if (ach.get("unlock_strategy") or "calc") == "manual":
+            cond = f"颁发时间: {at_str[:10]}" if at_str else "手动颁发"
+        else:
+            cond = "立即解锁"
+        return CalcResult(True, 1, None, at_val, cond)
+    return CalcResult(False, 0, None, None, "")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 数据获取工具
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1011,10 +1043,30 @@ def calc_all() -> dict[str, CalcResult]:
         streak        = _get_consecutive_streak(dates, today)
 
         results: dict[str, CalcResult] = {}
+        # 2026-10-20 feat/badge-manual-award-261020: manual / immediate 策略不进 calc,
+        # 也不进 _persist_unlocked_milestones (它在 res.achieved and res.achieved_at 为真时
+        # 会回写 stats —— 状态唯一真源必须留在 achievement_stats, 由颁发/撤销端点写)。
+        calc_only_results: dict[str, CalcResult] = {}
 
         for ach in achievements:
             aid = ach["id"]
             cat = ach["category"]
+            # 老表可能没有 unlock_strategy 列 (部分单测自建表) → 缺列按 'calc' 处理
+            strategy = ach.get("unlock_strategy") or "calc"
+
+            if strategy in ("immediate", "manual"):
+                s = stats.get(aid) or {}
+                if s.get("achieved") == "Y":
+                    at_val = s.get("achieved_at")
+                    date_part = str(at_val)[:10] if at_val else ""
+                    if strategy == "manual":
+                        cond = f"颁发时间: {date_part}" if date_part else "手动颁发"
+                    else:
+                        cond = "立即解锁"
+                    results[aid] = CalcResult(True, 1, None, at_val, cond)
+                else:
+                    results[aid] = CalcResult(False, 0, None, None, "")
+                continue
 
             if cat == "seasonal":
                 seasonal_type = ach.get("seasonal_type", "monthly")
@@ -1025,8 +1077,11 @@ def calc_all() -> dict[str, CalcResult]:
                     conn, aid, stats, streak, total_mins,
                     top_items, has_all_items, all_items_achieved_at, has_double, today)
 
-        # 持久化 hook: 把新解锁的 milestone 写进 stats
-        _persist_unlocked_milestones(conn, results)
+            calc_only_results[aid] = results[aid]
+
+        # 持久化 hook: 把新解锁的 calc 策略 milestone 写进 stats
+        # (manual / immediate 已被上面短路, 不会进这里)
+        _persist_unlocked_milestones(conn, calc_only_results)
 
         return results
     finally:

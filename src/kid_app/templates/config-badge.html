@@ -46,6 +46,7 @@
         <button class="tab-header active" data-tab="new-draft">新建 Badge 草稿</button>
         <button class="tab-header" data-tab="pending">待确认 Badge</button>
         <button class="tab-header" data-tab="appearance">卡片外观</button>
+        <button class="tab-header" data-tab="manual">手动颁发</button>
       </div>
       <div class="tab-content active" data-tab-content="new-draft">
         <form id="v21NewDraftForm" class="v21-form" onsubmit="return submitNewDraft(event)">
@@ -95,6 +96,7 @@
                 <select id="v21UnlockStrategy" name="unlock_strategy">
                   <option value="calc" selected>calc (走计算逻辑, 默认)</option>
                   <option value="immediate">immediate (立即解锁, 纪念章)</option>
+                  <option value="manual">手动颁发 — 家长在配置页手动开关 (manual)</option>
                 </select>
               </div>
             </div>
@@ -284,6 +286,33 @@
           <span>加载徽章列表...</span>
         </div>
       </div>
+      <div class="tab-content" data-tab-content="manual" style="display:none">
+        <!-- 2026-10-20 feat/badge-manual-award-261020: 手动颁发 (unlock_strategy='manual') -->
+        <div id="v21ManualToolbar" class="v21-pending-toolbar">
+          <span class="v21-pending-title">手动颁发</span>
+          <span class="v21-pending-count">共 <b id="v21ManualCount">0</b> 枚</span>
+          <button type="button" class="v21-refresh-btn" onclick="v21LoadManual()">刷新</button>
+        </div>
+        <p class="v21-appearance-note">
+          仅展示解锁策略为 manual 的徽章。选择达成日期（不可选未来日期）后点"颁发"即刻点亮并触发一次领取弹窗；"撤销"将完全归零。
+        </p>
+        <div class="v21-appearance-head v21-manual-head">
+          <span>名称</span>
+          <span>类型 / 星级</span>
+          <span>达成条件 / 故事</span>
+          <span>状态 / 达成日期</span>
+          <span>操作</span>
+        </div>
+        <div id="v21ManualList" class="v21-appearance-list"></div>
+        <div id="v21ManualEmpty" class="v21-pending-empty" style="display:none">
+          <p>暂无手动颁发类徽章</p>
+          <p>仅展示 unlock_strategy = manual 的徽章。</p>
+        </div>
+        <div id="v21ManualLoading" class="v21-pending-loading" style="display:none">
+          <div class="braille-spinner" aria-label="加载中">⠿</div>
+          <span>加载手动颁发列表...</span>
+        </div>
+      </div>
     </div>
 
   <!-- Toast -->
@@ -321,6 +350,10 @@
         // sprint 26091301 B2: 切到 "卡片外观" 时拉一次全量列表
         if (tabName === 'appearance') {
           v21LoadAppearance();
+        }
+        // 2026-10-20 feat/badge-manual-award-261020: 切到 "手动颁发" 时拉一次 manual 列表
+        if (tabName === 'manual') {
+          v21LoadManual();
         }
       });
     });
@@ -1039,6 +1072,185 @@
         btn.disabled = false;
       }
     }
+
+    /* ─── 2026-10-20 feat/badge-manual-award-261020: 手动颁发 ─────────────
+       只作用于 unlock_strategy='manual' 的徽章; 状态唯一真源 = achievement_stats (后端写入).
+       卡面缺失 → 灰框占位; 故事缺失 → 「故事准备中」(后端 story_text 已兜底, 前端再兜一层). */
+    let v21ManualItems = {};
+    let v21ManualToday = '';
+
+    async function v21LoadManual() {
+      const listEl = document.getElementById('v21ManualList');
+      const emptyEl = document.getElementById('v21ManualEmpty');
+      const loadingEl = document.getElementById('v21ManualLoading');
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'none';
+      loadingEl.style.display = 'flex';
+
+      try {
+        const r = await fetch('/config/api/badge/manual');
+        const data = await r.json();
+        loadingEl.style.display = 'none';
+        if (!data.ok) {
+          showToast('error', data.error || '加载失败');
+          return;
+        }
+        v21ManualToday = data.today_cst || '';
+        v21RenderManual(data.data || []);
+      } catch (err) {
+        loadingEl.style.display = 'none';
+        showToast('error', '网络错误: ' + err.message);
+      }
+    }
+
+    function v21ManualThumbHtml(item) {
+      const url = (item.badge_url || '').trim();
+      const ph = `<span class="v21-manual-thumb-placeholder"${url ? ' style="display:none"' : ''}>暂无</span>`;
+      if (!url) return `<span class="v21-manual-thumb-wrap">${ph}</span>`;
+      return `<span class="v21-manual-thumb-wrap">`
+        + `<img class="v21-manual-thumb" src="${v21Esc(url)}" alt="" `
+        + `onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">`
+        + ph
+        + `</span>`;
+    }
+
+    function v21ManualRowHtml(item, mode) {
+      const achieved = !!item.achieved;
+      const story = v21Esc(item.story_text || '故事准备中');
+      const cond = v21Esc(item.cond_text || '—');
+      const typeTxt = v21Esc(item.type || '—');
+      const stars = item.card_stars ? ` · ${v21Esc(item.card_stars)} 星` : '';
+      const no = (item.card_no == null) ? '—' : item.card_no;
+      const meta = `#${v21Esc(no)} · ${v21Esc(item.id || '')}`;
+
+      const stateCell = achieved
+        ? `<div class="v21-manual-state-main">已颁发 · ${v21Esc(item.achieved_date || '')}</div>`
+          + `<small class="v21-manual-state-sub">${item.claimed_at ? '已弹窗领取' : '待弹窗领取'}</small>`
+        : `<input type="date" class="v21-appearance-select" data-field="achieved_date"`
+          + ` value="${v21Esc(item.achieved_date || v21ManualToday)}" max="${v21Esc(v21ManualToday)}">`;
+
+      let actionCell;
+      if (!achieved) {
+        actionCell = `<button type="button" class="v21-appearance-save-btn" data-role="award-btn">颁发</button>`
+          + `<span class="v21-appearance-msg" data-msg></span>`;
+      } else if (mode === 'confirm') {
+        actionCell = `<button type="button" class="v21-appearance-save-btn v21-manual-danger-btn" data-role="confirm-revoke-btn">确认撤销</button>`
+          + `<button type="button" class="v21-appearance-save-btn" data-role="cancel-revoke-btn">取消</button>`
+          + `<span class="v21-appearance-msg" data-msg></span>`;
+      } else {
+        actionCell = `<button type="button" class="v21-appearance-save-btn" data-role="ask-revoke-btn">撤销</button>`
+          + `<span class="v21-appearance-msg" data-msg></span>`;
+      }
+
+      return `
+        <div class="v21-manual-name">
+          ${v21ManualThumbHtml(item)}
+          <span class="v21-manual-name-text">
+            <span class="v21-manual-name-line">${v21Esc(item.name || '')}</span>
+            <small>${meta}</small>
+          </span>
+        </div>
+        <div class="v21-appearance-type">${typeTxt}${stars}</div>
+        <div class="v21-manual-cond">
+          <div>${cond}</div>
+          <small class="v21-manual-story">${story}</small>
+        </div>
+        <div class="v21-manual-state">${stateCell}</div>
+        <div class="v21-appearance-action">${actionCell}</div>`;
+    }
+
+    function v21PaintManualRow(row, item, mode) {
+      const m = mode || 'idle';
+      row.dataset.mode = m;
+      row.innerHTML = v21ManualRowHtml(item || {}, m);
+    }
+
+    function v21RenderManual(items) {
+      const listEl = document.getElementById('v21ManualList');
+      const emptyEl = document.getElementById('v21ManualEmpty');
+      document.getElementById('v21ManualCount').textContent = items.length;
+      v21ManualItems = {};
+      listEl.innerHTML = '';
+
+      if (!items.length) {
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      items.forEach(item => {
+        v21ManualItems[item.id] = item;
+        const row = document.createElement('div');
+        row.className = 'v21-appearance-row v21-manual-row';
+        row.setAttribute('data-id', item.id);
+        v21PaintManualRow(row, item, 'idle');
+        listEl.appendChild(row);
+      });
+    }
+
+    function v21ManualMsg(row, text, isErr) {
+      const msg = row.querySelector('[data-msg]');
+      if (!msg) return;
+      msg.className = 'v21-appearance-msg' + (isErr ? ' err' : (text ? ' ok' : ''));
+      msg.textContent = text || '';
+    }
+
+    async function v21SubmitManual(row, action, achievedDate) {
+      const badgeId = row.getAttribute('data-id');
+      row.querySelectorAll('button').forEach(b => { b.disabled = true; });
+      v21ManualMsg(row, action === 'award' ? '颁发中' : '撤销中', false);
+
+      try {
+        const payload = {action: action};
+        if (action === 'award') payload.achieved_date = achievedDate;
+        const r = await fetch(`/config/api/badge/manual/${encodeURIComponent(badgeId)}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          v21ManualMsg(row, data.error || '操作失败', true);
+          row.querySelectorAll('button').forEach(b => { b.disabled = false; });
+          return;
+        }
+        const item = data.data || {};
+        v21ManualItems[badgeId] = item;
+        /* 局部刷新: 只重画本行, 不整页刷新 */
+        v21PaintManualRow(row, item, 'idle');
+        showToast('success', (action === 'award' ? '已颁发：' : '已撤销：') + (item.name || badgeId));
+      } catch (err) {
+        v21ManualMsg(row, '网络错误: ' + err.message, true);
+        row.querySelectorAll('button').forEach(b => { b.disabled = false; });
+      }
+    }
+
+    document.addEventListener('click', ev => {
+      const t = ev.target;
+      if (!t || typeof t.closest !== 'function') return;
+      const btn = t.closest('#v21ManualList button[data-role]');
+      if (!btn) return;
+      const row = btn.closest('.v21-manual-row');
+      if (!row) return;
+      const role = btn.dataset.role;
+      const badgeId = row.getAttribute('data-id');
+
+      if (role === 'award-btn') {
+        const dateEl = row.querySelector('input[data-field="achieved_date"]');
+        const dateVal = dateEl ? dateEl.value : '';
+        if (!dateVal) {
+          v21ManualMsg(row, '请选择达成日期', true);
+          return;
+        }
+        v21SubmitManual(row, 'award', dateVal);
+      } else if (role === 'ask-revoke-btn') {
+        v21PaintManualRow(row, v21ManualItems[badgeId] || {}, 'confirm');
+      } else if (role === 'cancel-revoke-btn') {
+        v21PaintManualRow(row, v21ManualItems[badgeId] || {}, 'idle');
+      } else if (role === 'confirm-revoke-btn') {
+        v21SubmitManual(row, 'revoke', null);
+      }
+    });
   </script>
 </body>
 </html>
