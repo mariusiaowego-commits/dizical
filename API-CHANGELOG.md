@@ -14,6 +14,13 @@
 - 落库瞬间达成 **7 枚**（4 枚节令补发 + 彩凤听箫来 10000 分钟 + 岐王乐客年 + 垄上春耕曲）；其余锁定，随练习逐枚点亮
 - 对 minip 的影响：既有 `getAchievements` 等调用零改动；**无需同步**
 
+### 追加：immediate 三枚上架（同日第二次上线，Deploy #147）
+
+- `lore_boya`（高山流水知，card_no 70）/ `brave_first_stage`（初登聚光台，83）/ `brave_family_duet`（双笛和鸣调，85），`unlock_strategy='immediate'`（人工颁发）
+- 三表各 +3 行（`achievements` 78→81 / `achievement_badges` 81 / `achievement_stats` 62，`achieved='Y'` 38）；生效日 `2026-10-19`
+- 部署：**Deploy #147**（RunId `multi_tenant_1xIxm6y2wDEnjf`，镜像 `dizical-prod-147-20261020083228`，normal / FlowRatio 100）
+- 资产：三张 PNG 生产 sha256 与仓内逐字节一致；对 minip 同样零改动
+
 ### 审计与对拍留痕
 
 - warden 四轮独立审计（终审 PASS-WITH-NITS / 无 blocker）；本批 30 枚 `story_short` / `description` 与本地源聚合 md5 一致
