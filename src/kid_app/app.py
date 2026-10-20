@@ -930,21 +930,16 @@ def _milestone_html(category: Optional[str] = None, sort_by_achieved_at: bool = 
 
         # V2.6 (2026-06-16) feat/badge-achieved-at-override:
         # 纪念章/表彰型徽章不走 calc, 直接读 achievement_stats.achieved + achievements.achieved_at_override
-        # 触发条件: (a) unlock_strategy='immediate' (PR #101), 或 (b) achieved_at_override 非 NULL
-        from src.achievement_definitions import CalcResult
-        is_commemorative = (ach.get("unlock_strategy") == "immediate" or ach.get("achieved_at_override"))
+        # 触发条件: (a) unlock_strategy ∈ {'immediate','manual'} (PR #101 + 2026-10-20 manual), 或 (b) achieved_at_override 非 NULL
+        from src.achievement_definitions import commemorative_result, is_commemorative_badge
+        is_commemorative = is_commemorative_badge(ach)
         if is_commemorative:
             # P0-2026-08-06: 切云后 MySQL 不认 `?` 占位符 → 走统一入口自动转 %s
             cur = db_adapter.execute(conn,
                 "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
-            row = cur.fetchone()
-            override_at = ach.get("achieved_at_override")
-            if override_at:
-                # 通用字段: 用表单填的时间戳 (含 grade 1-10 考出时间)
-                res = CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
-            elif row and row[0] == 'Y':
-                # immediate: 读 stats 表
-                res = CalcResult(True, 1, None, row[1] or None, "立即解锁")
+            # 口径统一在 achievement_definitions.commemorative_result:
+            # override 优先 → stats.achieved='Y' 解锁 (manual 显示颁发时间) → 否则恒锁定
+            res = commemorative_result(ach, cur.fetchone())
 
         achieved = res.achieved
         cv = res.computed_value
@@ -2898,19 +2893,14 @@ def badges_page():
 
         # V2.6 (2026-06-16) feat/badge-achieved-at-override:
         # 纪念章/表彰型徽章不走 calc, 直接读 achievement_stats.achieved + achievements.achieved_at_override
-        # 触发条件: (a) unlock_strategy='immediate' (PR #101), 或 (b) achieved_at_override 非 NULL
-        from src.achievement_definitions import CalcResult
-        is_commemorative = (ach.get("unlock_strategy") == "immediate" or ach.get("achieved_at_override"))
+        # 触发条件: (a) unlock_strategy ∈ {'immediate','manual'} (PR #101 + 2026-10-20 manual), 或 (b) achieved_at_override 非 NULL
+        from src.achievement_definitions import commemorative_result, is_commemorative_badge
+        is_commemorative = is_commemorative_badge(ach)
         if is_commemorative:
             # P0-2026-08-06: 切云后 MySQL 不认 `?` 占位符 → 走统一入口自动转 %s
             cur = db_adapter.execute(conn,
                 "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?", (aid,))
-            row = cur.fetchone()
-            override_at = ach.get("achieved_at_override")
-            if override_at:
-                res = CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
-            elif row and row[0] == 'Y':
-                res = CalcResult(True, 1, None, row[1] or None, "立即解锁")
+            res = commemorative_result(ach, cur.fetchone())
 
         badges.append({
             "id": aid,

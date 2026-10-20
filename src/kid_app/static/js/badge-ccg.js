@@ -1,5 +1,15 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
-   ── 卡面样式版本: v1.9.0-dev (sprint 26091604 CCG 生命周期与 WebKit 边角治理)
+   ── 卡面样式版本: v1.10.0-dev (feat/badge-manual-award-261020 卡面/故事缺失降级)
+      v1.10.0-dev (2026-10-20, feat/badge-manual-award-261020): manual 徽章机制配套降级
+        ⓪ Rework 1 (p1 裁定): storyText(primary, secondary) 改双参 —— description 的
+           默认占位 "无" 是 truthy, 旧写法 `story || storyShort` 会短路吞掉真实 story_short;
+           调用点全部改传两参, 并对 achievements.html / badges.html 的详情弹窗暴露 storyText;
+        ① 卡面缺失 (无 url / webp 与原图都 404) → .ccg-art-placeholder 灰框占位 + 父容器
+           .is-art-missing, 藏掉裂图, 不再空白崩;
+        ② 故事缺失 (空串 / "无") → storyText() 统一回落「故事准备中」, 卡背 / 领取弹窗 /
+           打字机托盘口径一致 (资产由 feat/badge-manual4-art-261020 并行提供);
+        ③ normalize() 不再回落 demo 假图 (BADGE.image) 与假故事 (BADGE.story)。
+      v1.9.0-dev (sprint 26091604 CCG 生命周期与 WebKit 边角治理)
       v1.9.0-dev (2026-09-16, sprint 26091604 生命周期边角治理):
         ① window resize 监听收敛为模块单例 (原来每卡 1 个 × 44) + visualViewport.resize,
            视口变化统一清空所有活跃卡的 cachedRect (rec.resetCachedRect);
@@ -413,9 +423,41 @@
     return '<div class="ccg-title"><i class="ccg-orn" aria-hidden="true"></i><span>' + name + '</span><i class="ccg-orn" aria-hidden="true"></i></div>';
   }
 
+  /* 2026-10-20 feat/badge-manual-award-261020: 故事缺失兜底.
+     资产由 feat/badge-manual4-art-261020 并行提供 —— 空串 / "无" / undefined 一律
+     显示「故事准备中」, 卡背与领取弹窗都不留白 (也不回落到 demo 假故事).
+
+     Rework 1 (261020 p1 裁定): 双参兜底. `achievements.description` 的默认占位是
+     "无" (truthy!), 所以调用方**不能**写 `d.story || d.storyShort` —— 那样 "无" 会
+     短路吞掉非空的 story_short. 一律把两个候选按优先级传进来, 由本函数逐个过滤. */
+  function storyText(primary, secondary) {
+    var a = (primary === null || primary === undefined) ? "" : String(primary).trim();
+    if (a && a !== "无") return a;
+    var b = (secondary === null || secondary === undefined) ? "" : String(secondary).trim();
+    if (b && b !== "无") return b;
+    return "故事准备中";
+  }
+
+  /* 卡数据两套键名共存 (Rework 1 实渲染自测暴露):
+     - 后端 JSON / openClaim 走 normalize() → camelCase storyShort
+     - mountCard 直接吃调用方 data (achievements.html / badges.html / 列表卡) →
+       历史传 snake_case story_short / story / description
+     两个都要认, 否则 mountCard 拿不到 story_short, 卡背永远只剩 description 的 "无"。 */
+  function storyShortOf(d) {
+    if (!d) return "";
+    return d.storyShort || d.story_short || "";
+  }
+
+  function storyLongOf(d) {
+    if (!d) return "";
+    return d.story || d.zh_story || d.description || "";
+  }
+
   function backMarkup(d, mode) {
     var isFocus = (mode === "focus");
-    var storyVal = isFocus ? (d.story || d.storyShort || "") : (d.storyShort || d.story || "");
+    var shortStory = storyShortOf(d);
+    var longStory = storyLongOf(d);
+    var storyVal = isFocus ? storyText(longStory, shortStory) : storyText(shortStory, longStory);
     var storyLbl = isFocus ? "典故" : "典故·短板";
     var kicker = (d.tag || "") + (d.no ? " · " + d.no : "");
     return (
@@ -492,12 +534,24 @@
     return '<img alt="" ' + attrs + ' src="' + src + '"' + fb + '>';
   }
 
+  /* 卡面灰框占位 (2026-10-20 feat/badge-manual-award-261020).
+     缺图 / 图 404 → 显示 .ccg-art-placeholder, 绝不留裂图或空白.
+     is-shown = 一开始就没有图源 (无 <img> 可挂 error); 否则等 error 才翻出来. */
+  function artPlaceholderHtml(shown) {
+    return '<div class="ccg-art-placeholder' + (shown ? ' is-shown' : '') + '">暂无卡面</div>';
+  }
+
+  function artMarkup(src, orig) {
+    if (!src) return artPlaceholderHtml(true);
+    return imgTag(src, orig, 'width="512" height="512" loading="lazy" decoding="async"')
+      + artPlaceholderHtml(false);
+  }
+
   function artInner(scheme, d, mode) {
-    var img = imgTag(resolveCardImage(d.image, mode), d.image,
-      'width="512" height="512" decoding="sync" fetchpriority="high"');
+    var art = artMarkup(resolveCardImage(d.image, mode), d.image);
     return scheme === "px"
-      ? '<div class="ccg-layer ccg-layer-subject">' + img + '</div>'
-      : '<div class="ccg-holo-art">' + img + '</div>';
+      ? '<div class="ccg-layer ccg-layer-subject">' + art + '</div>'
+      : '<div class="ccg-holo-art">' + art + '</div>';
   }
 
   /* Amazing Rare 版式: 上 2/3 = 金框框住主视觉, 下 1/3 = 银数据条 + 米色说明栏 + 页脚
@@ -528,7 +582,7 @@
             '</div>' +
             '<div class="oracle-frame">' +
               '<div class="oracle-art">' +
-                imgTag(artSrc, d.image, 'width="512" height="512" loading="lazy" decoding="async"') +
+                artMarkup(artSrc, d.image) +
                 '<div class="oracle-sheen"></div>' +
                 '<div class="oracle-nameplate-wrap">' +
                   '<div class="oracle-nameplate">' +
@@ -566,13 +620,27 @@
     );
   }
 
+  /* 图片最终加载失败 (webp 与原图都 404) → 藏掉裂图, 挂 .is-art-missing 让灰框占位顶上来.
+     只处理带 .ccg-art-placeholder 的卡面容器; 头像等其它 <img> 保持原行为. */
+  function showArtPlaceholder(img) {
+    var host = img.parentElement;
+    if (!host) return;
+    if (!host.querySelector(".ccg-art-placeholder")) return;
+    img.style.display = "none";
+    host.classList.add("is-art-missing");
+  }
+
   function armImageFallback(img) {
-    var fb = img.getAttribute("data-fallback");
-    if (!fb) return;
     img.addEventListener("error", function () {
-      img.removeAttribute("data-fallback");
-      img.setAttribute("src", fb);
-    }, { once: true });
+      var fb = img.getAttribute("data-fallback");
+      if (fb) {
+        /* 还有一次回退源 (webp → 原生 PNG), 回退只做一次 */
+        img.removeAttribute("data-fallback");
+        img.setAttribute("src", fb);
+        return;
+      }
+      showArtPlaceholder(img);
+    });
   }
 
   function bindReady(stage) {
@@ -970,7 +1038,7 @@
     /* 卡背故事展开交互 (dad 2026-09-14 需求 2.1 & 2.2 & Brief E)
        仅在 focus (modal) 态且文字真实溢出 (scrollHeight > clientHeight) 时出现展开按钮；
        正文保持透传翻面，只有点击「展开全文 ▾」按钮才呼出打字机托盘 */
-    var fullStory = d.story || d.storyShort || "";
+    var fullStory = storyText(storyLongOf(d), storyShortOf(d));
     var storyBlock = stage.querySelector(".oracle-back-story") || stage.querySelector(".ccg-back-story");
 
     function checkStoryOverflow() {
@@ -1296,9 +1364,11 @@
       id: d.id || BADGE.id,
       name: d.name || BADGE.name,
       tag: d.tag || d.category || BADGE.tag,
-      image: d.image || d.image_url || d.badge_url || BADGE.image,
+      image: d.image || d.image_url || d.badge_url || "",
       cond: d.cond || d.cond_text || BADGE.cond,
-      story: d.story || d.zh_story || d.description || BADGE.story,
+      /* 2026-10-20: 故事缺失不再回落 demo 假故事 (BADGE.story) —— 空串交给 storyText()
+         统一显示「故事准备中」, 防 manual 徽章故事未到位时卡背出现无关故事. */
+      story: d.story || d.zh_story || d.description || "",
       /* sprint 26091401 F1: 卡背「典故·短板」= 后端 achievements.story_short (≤60 字).
          空 (未播种 / 新 badge) → 回落长典故, 卡背不留白; modal 右侧继续读 d.story 长文. */
       storyShort: d.story_short || d.storyShort || "",
@@ -1320,7 +1390,7 @@
     document.getElementById("ccg-claim-name").textContent = d.name;
     document.getElementById("ccg-claim-cond").textContent = d.cond;
     document.getElementById("ccg-claim-date").textContent = d.date;
-    document.getElementById("ccg-claim-story").textContent = d.story;
+    document.getElementById("ccg-claim-story").textContent = storyText(d.story, d.storyShort);
     var host = document.getElementById("ccg-claim-stage");
     /* sprint 26091604 T4: 换卡过渡期持锁 —— 旧卡 unmount 会释放它自己的 focus 锁, 新卡 mount
        才加回来, 中间那一瞬 pauseReasons 会空掉 (body.is-frozen 掉一帧: 背景墙先解冻再冻回去)。
@@ -1482,6 +1552,10 @@
     mountCard: mountCard,
     resolveCardImage: resolveCardImage,
     armImageFallback: armImageFallback,
+    /* Rework 1 (261020): 双参故事兜底对外暴露 —— achievements.html / badges.html 的
+       详情弹窗右侧 #ach-detail-story / #bd-detail-story 复用同一口径, 防 '无' 短路.
+       用法: DizicalCCG.storyText(desc, storyShort) */
+    storyText: storyText,
     unmount: unmount,
     unmountAll: unmountAll,
     claim: claim,

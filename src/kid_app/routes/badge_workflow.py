@@ -26,6 +26,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, 
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
+from src import db_adapter
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/config", tags=["badge-workflow"])
@@ -62,6 +64,16 @@ class AICondRequest(BaseModel):
     type: str = ""
     placeholder: str = Field(..., min_length=1)
     zh_story: str = Field(..., min_length=1)
+
+
+class ManualBadgeActionRequest(BaseModel):
+    """手动颁发 / 撤销 (2026-10-20 feat/badge-manual-award-261020).
+
+    只作用于 unlock_strategy='manual' 的徽章; 状态唯一真源 = achievement_stats.
+    """
+    action: str = Field(..., description="'award' 或 'revoke'")
+    achieved_date: str | None = Field(default=None, description="YYYY-MM-DD (award 时必填)")
+    pin: str | None = Field(default=None, description="可选 PIN 透传")
 
 
 # ─── helpers ───────────────────────────────────────────────────────
@@ -371,8 +383,10 @@ def _build_meta_for_db(draft) -> dict:
     if meta_for_db.get("cond_text") is None:
         meta_for_db["cond_text"] = None
     unlock_strategy = draft.meta.get("unlock_strategy", "calc")
-    if unlock_strategy not in ("immediate", "calc"):
-        raise ValueError(f"unlock_strategy 必须是 'immediate' 或 'calc', 收到: {unlock_strategy!r}")
+    if unlock_strategy not in ("immediate", "calc", "manual"):
+        raise ValueError(
+            f"unlock_strategy 必须是 'immediate'、'calc' 或 'manual', 收到: {unlock_strategy!r}"
+        )
     meta_for_db["unlock_strategy"] = unlock_strategy
     # 留空/空串 → None (DB nullable); 有值 → 原样 (TEXT YYYY-MM-DD)
     meta_for_db["achieved_at_override"] = str(draft.meta.get("achieved_at_override") or "").strip() or None
@@ -1304,3 +1318,369 @@ def api_card_appearance_update(req: CardAppearanceUpdateRequest) -> JSONResponse
         "data": _appearance_row(rows[0]),
         "updated": sorted(updates.keys()),
     })
+
+
+# ─── 手动颁发 (unlock_strategy='manual') ────────────────────────────────
+# 2026-10-20 feat/badge-manual-award-261020
+#   状态唯一真源 = achievement_stats; 颁发/撤销只写它 (+ 撤销清 achieved_at_override),
+#   achievement_badges 全程不动 (卡面由 badge 工作流另管)。
+#   鉴权: /config/api/ 在 app.py 中间件里是公开白名单, 必须在端点内自查 dad 三轨。
+
+
+def _cst_today_date():
+    """CST (UTC+8) 今日 date —— 手动颁发禁未来日期的比较基准。"""
+    import datetime as _dt
+    cst = _dt.timezone(_dt.timedelta(hours=8))
+    return _dt.datetime.now(cst).date()
+
+
+def _manual_story_text(ach: dict) -> str:
+    """卡背故事: story_short → description; 空 / '无' → '故事准备中'。
+
+    降级要求 (p1 裁定): 资产由 feat/badge-manual4-art-261020 并行提供, 机制分支
+    必须在缺故事时给稳定文案, 不许 500 / 空白。
+    """
+    for key in ("story_short", "description"):
+        val = ach.get(key)
+        if isinstance(val, str):
+            val = val.strip()
+            if val and val != "无":
+                return val
+    return "故事准备中"
+
+
+def _manual_badge_row(ach: dict, stats: dict | None, badge_url) -> dict:
+    """把 achievements 行 + achievement_stats 行 + 卡面 url 组装成前端契约结构。"""
+    at_val = (stats or {}).get("achieved_at")
+    claimed = (stats or {}).get("claimed_at")
+    achieved = bool(stats and stats.get("achieved") == "Y")
+    at_str = str(at_val) if at_val else None
+    return {
+        "id": ach.get("id"),
+        "card_no": ach.get("card_no"),
+        "name": ach.get("name"),
+        "type": ach.get("type"),
+        "category": ach.get("category"),
+        "card_theme": ach.get("card_theme"),
+        "card_stars": ach.get("card_stars"),
+        "cond_text": ach.get("cond_text") or "",
+        # 卡面缺失 → 空串 (前端渲染灰框占位), 绝不抛
+        "badge_url": (badge_url or "").strip() if isinstance(badge_url, str) else "",
+        "story_text": _manual_story_text(ach),
+        "unlock_strategy": ach.get("unlock_strategy") or "calc",
+        "achieved": achieved,
+        "achieved_date": at_str[:10] if (achieved and at_str) else None,
+        "achieved_at": at_str,
+        "claimed_at": str(claimed) if claimed else None,
+    }
+
+
+def _manual_badge_sort_key(row: dict):
+    """card_no 优先, 缺失排最后; 再按 sort_order / id (与 SQL 口径一致)。"""
+    card_no = row.get("card_no")
+    return (
+        card_no if isinstance(card_no, int) else 10 ** 9,
+        row.get("_sort_order") or 0,
+        str(row.get("id") or ""),
+    )
+
+
+async def _manual_authorized(request: Request, pin: str | None = None) -> bool:
+    """dad 三轨 + 机器 token, 另支持 body 里的 pin 透传 (POST 用)。"""
+    if pin:
+        from src.kid_app.auth import check_dad_pin
+        if check_dad_pin(pin):
+            return True
+    return await _badge_push_authorized(request)
+
+
+def _is_integrity_error(exc: BaseException) -> bool:
+    """识别主键 / 唯一约束冲突 (sqlite3.IntegrityError / pymysql.err.IntegrityError / 裸消息)。
+
+    P1-1 (Rework 2): 首次颁发并发写 achievement_stats 时, 后到者抛的就是这个类。
+    """
+    for cls in type(exc).__mro__:
+        if cls.__name__ == "IntegrityError":
+            return True
+    msg = str(exc).lower()
+    return ("unique constraint" in msg or "duplicate entry" in msg
+            or "duplicate key" in msg or "primary key" in msg or "(1062," in msg)
+
+
+def _write_manual_stats(conn, badge_id: str, action: str, achieved_at_str=None) -> None:
+    """manual 徽章写 achievement_stats: INSERT 优先, 撞主键回退 UPDATE (幂等)。
+
+    P1-1 (Rework 2, warden):
+      两个并发 award 都读到「无 stats 行」→ 同时 INSERT → 后到者
+      IntegrityError: UNIQUE constraint failed: achievement_stats.achievement_id → 500。
+      捕获后回退 UPDATE, 双请求均 200。
+      award 回退分支重查 claimed_at: 已被并发方/历史领取就保留, 否则保持 NULL。
+    """
+    try:
+        if action == "award":
+            db_adapter.execute(
+                conn,
+                "INSERT INTO achievement_stats "
+                "(achievement_id, achieved, achieved_at, claimed_at, raw_stats, computed_value) "
+                "VALUES (?, 'Y', ?, NULL, '{}', ?)",
+                (badge_id, achieved_at_str, 1),
+            )
+        else:
+            db_adapter.execute(
+                conn,
+                "INSERT INTO achievement_stats "
+                "(achievement_id, achieved, achieved_at, claimed_at, raw_stats, computed_value) "
+                "VALUES (?, 'N', NULL, NULL, '{}', NULL)",
+                (badge_id,),
+            )
+        return
+    except Exception as exc:  # noqa: BLE001
+        if not _is_integrity_error(exc):
+            raise
+        logger.warning(
+            "manual badge %s: stats INSERT 撞主键 (并发首次写入), 回退 UPDATE (%s)",
+            badge_id, type(exc).__name__,
+        )
+
+    try:
+        conn.rollback()   # 失败语句回滚, 不留半截事务 (sqlite / mysql 都安全)
+    except Exception:
+        pass
+
+    if action == "award":
+        rows = db_adapter.execute_dicts(
+            conn,
+            "SELECT claimed_at FROM achievement_stats WHERE achievement_id = ?",
+            (badge_id,),
+        )
+        keep_claimed = rows[0].get("claimed_at") if rows else None
+        db_adapter.execute(
+            conn,
+            "UPDATE achievement_stats SET achieved='Y', achieved_at=?, claimed_at=?, "
+            "raw_stats='{}', computed_value=? WHERE achievement_id=?",
+            (achieved_at_str, keep_claimed, 1, badge_id),
+        )
+    else:
+        db_adapter.execute(
+            conn,
+            "UPDATE achievement_stats SET achieved='N', achieved_at=NULL, claimed_at=NULL, "
+            "raw_stats='{}', computed_value=NULL WHERE achievement_id=?",
+            (badge_id,),
+        )
+
+
+@router.get("/api/badge/manual")
+async def api_manual_badge_list(request: Request) -> JSONResponse:
+    """列出手动颁发类徽章 (unlock_strategy='manual') 及当前颁发状态。"""
+    if not await _manual_authorized(request):
+        return JSONResponse({"ok": False, "error": "需要 dad 登录或 PIN"}, status_code=401)
+
+    from src import db_adapter
+
+    try:
+        conn, _is_mysql = db_adapter.get_conn()
+    except Exception:  # 连不上库 → 降级, 不 500
+        logger.exception("manual badge list open db failed")
+        return JSONResponse({
+            "ok": False, "error": "数据库不可用，请稍后重试", "code": "db_unavailable",
+        }, status_code=503)
+
+    try:
+        ach_rows = db_adapter.execute_dicts(
+            conn,
+            "SELECT * FROM achievements WHERE unlock_strategy = ?",
+            ("manual",),
+        )
+        stats_rows = db_adapter.execute_dicts(conn, "SELECT * FROM achievement_stats")
+        badge_rows = db_adapter.execute_dicts(
+            conn,
+            "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1",
+        )
+    except Exception:
+        logger.exception("manual badge list query failed")
+        return JSONResponse({
+            "ok": False, "error": "读取失败，请稍后重试", "code": "db_error",
+        }, status_code=500)
+    finally:
+        try:
+            conn.close()   # MySQL = 归还池, SQLite = 销毁
+        except Exception:
+            pass
+
+    stats_by_id = {r.get("achievement_id"): r for r in stats_rows or []}
+    url_by_id = {r.get("achievement_id"): r.get("url") for r in badge_rows or []}
+
+    data = []
+    for ach in ach_rows or []:
+        row = _manual_badge_row(ach, stats_by_id.get(ach.get("id")), url_by_id.get(ach.get("id")))
+        row["_sort_order"] = ach.get("sort_order") or 0
+        data.append(row)
+    data.sort(key=_manual_badge_sort_key)
+    for row in data:
+        row.pop("_sort_order", None)
+
+    return JSONResponse({
+        "ok": True,
+        "count": len(data),
+        "today_cst": str(_cst_today_date()),
+        "data": data,
+    })
+
+
+@router.post("/api/badge/manual/{badge_id}")
+async def api_manual_badge_action(
+    badge_id: str, req: ManualBadgeActionRequest, request: Request,
+) -> JSONResponse:
+    """颁发 / 撤销 manual 徽章 (幂等)。
+
+    award : achieved='Y', achieved_at='YYYY-MM-DD 00:00:00', 首次点亮 claimed_at=NULL
+            (已 achieved 时保留原 claimed_at, 只改日期 —— 防连点重弹)
+    revoke: achieved='N', achieved_at=NULL, claimed_at=NULL, 并清 achieved_at_override
+    """
+    if not await _manual_authorized(request, req.pin):
+        return JSONResponse({"ok": False, "error": "需要 dad 登录或 PIN"}, status_code=401)
+
+    action = (req.action or "").strip()
+    if action not in ("award", "revoke"):
+        return JSONResponse({
+            "ok": False,
+            "error": "action 必须是 'award' 或 'revoke'",
+            "code": "invalid_action",
+        }, status_code=400)
+
+    # award 的日期校验放在查库之前: 纯入参错误, 不必碰 DB
+    achieved_date = None
+    if action == "award":
+        import datetime as _dt
+        import re as _re
+
+        raw_date = (req.achieved_date or "").strip()
+        if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw_date):
+            return JSONResponse({
+                "ok": False,
+                "error": "achieved_date 格式必须为合法 YYYY-MM-DD",
+                "code": "invalid_date",
+            }, status_code=400)
+        try:
+            achieved_date = _dt.date.fromisoformat(raw_date)
+        except ValueError:
+            return JSONResponse({
+                "ok": False,
+                "error": "achieved_date 格式必须为合法 YYYY-MM-DD",
+                "code": "invalid_date",
+            }, status_code=400)
+        today_cst = _cst_today_date()
+        if achieved_date > today_cst:
+            return JSONResponse({
+                "ok": False,
+                "error": f"不能选择未来日期 (当前 CST: {today_cst})",
+                "code": "future_date_not_allowed",
+            }, status_code=400)
+
+    from src import db_adapter
+
+    try:
+        conn, _is_mysql = db_adapter.get_conn()
+    except Exception as e:
+        logger.exception("manual badge action open db failed")
+        return JSONResponse({"ok": False, "error": f"数据库不可用: {e}"}, status_code=503)
+
+    try:
+        ach_rows = db_adapter.execute_dicts(
+            conn, "SELECT * FROM achievements WHERE id = ?", (badge_id,),
+        )
+        if not ach_rows:
+            return JSONResponse({
+                "ok": False,
+                "error": f"id={badge_id!r} 不存在",
+                "code": "not_found",
+            }, status_code=404)
+
+        ach = ach_rows[0]
+        strategy = ach.get("unlock_strategy") or "calc"
+        if strategy != "manual":
+            return JSONResponse({
+                "ok": False,
+                "error": f"id={badge_id!r} 的 unlock_strategy={strategy!r}，仅允许操作 'manual' 徽章",
+                "code": "not_manual_badge",
+            }, status_code=400)
+
+        stats_rows = db_adapter.execute_dicts(
+            conn, "SELECT * FROM achievement_stats WHERE achievement_id = ?", (badge_id,),
+        )
+        existing = stats_rows[0] if stats_rows else None
+        was_achieved = bool(existing and existing.get("achieved") == "Y")
+
+        if action == "award":
+            achieved_at_str = f"{achieved_date.isoformat()} 00:00:00"
+            if existing is None:
+                # P1-1 (Rework 2): 并发首次写入撞主键 → 自动回退 UPDATE, 双请求均 200
+                _write_manual_stats(conn, badge_id, "award", achieved_at_str)
+            elif not was_achieved:
+                # 首次颁发 / 撤销后重颁 → claimed_at 归 NULL, 让 kid 端弹窗再弹一次
+                db_adapter.execute(
+                    conn,
+                    "UPDATE achievement_stats SET achieved='Y', achieved_at=?, claimed_at=NULL, "
+                    "raw_stats='{}', computed_value=? WHERE achievement_id=?",
+                    (achieved_at_str, 1, badge_id),
+                )
+            else:
+                # 幂等重颁 / 只改日期: 保留 claimed_at (防连点重复弹窗)
+                # P2-2 (Rework 2): 补 raw_stats='{}' —— 对齐架构 Q2 契约, 不许残留旧统计
+                db_adapter.execute(
+                    conn,
+                    "UPDATE achievement_stats SET achieved_at=?, raw_stats='{}', computed_value=? "
+                    "WHERE achievement_id=?",
+                    (achieved_at_str, 1, badge_id),
+                )
+        else:  # revoke
+            if existing is None:
+                # P1-1 (Rework 2): 同上, 并发首次写入撞主键 → 回退 UPDATE
+                _write_manual_stats(conn, badge_id, "revoke")
+            else:
+                db_adapter.execute(
+                    conn,
+                    "UPDATE achievement_stats SET achieved='N', achieved_at=NULL, claimed_at=NULL, "
+                    "raw_stats='{}', computed_value=NULL WHERE achievement_id=?",
+                    (badge_id,),
+                )
+            # 历史脏值兜底: override 非空会让展示层当成已解锁
+            db_adapter.execute(
+                conn, "UPDATE achievements SET achieved_at_override = NULL WHERE id = ?", (badge_id,),
+            )
+
+        conn.commit()
+
+        # 回读真实状态返给前端 (行内局部刷新用)
+        ach_rows = db_adapter.execute_dicts(
+            conn, "SELECT * FROM achievements WHERE id = ?", (badge_id,),
+        )
+        stats_rows = db_adapter.execute_dicts(
+            conn, "SELECT * FROM achievement_stats WHERE achievement_id = ?", (badge_id,),
+        )
+        badge_rows = db_adapter.execute_dicts(
+            conn,
+            "SELECT url FROM achievement_badges WHERE achievement_id = ? AND is_current = 1",
+            (badge_id,),
+        )
+    except Exception:
+        # P1-1 (Rework 2): DB 错误只进日志, HTTP 响应固定文案 (不泄漏表名/约束/连接串)
+        logger.exception("manual badge action failed for %s", badge_id)
+        return JSONResponse({
+            "ok": False,
+            "error": "操作失败，请稍后重试",
+            "code": "db_error",
+        }, status_code=500)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    row = _manual_badge_row(
+        ach_rows[0] if ach_rows else ach,
+        stats_rows[0] if stats_rows else None,
+        badge_rows[0].get("url") if badge_rows else None,
+    )
+    logger.info("manual badge %s: id=%s date=%s", action, badge_id, row.get("achieved_date"))
+    return JSONResponse({"ok": True, "action": action, "data": row})

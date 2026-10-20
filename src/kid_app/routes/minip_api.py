@@ -175,7 +175,11 @@ async def api_minip_verify_pin(request: Request):
 @router.get("/api/achievements")
 def api_achievements():
     """返回所有成就（已解锁 + 未解锁），跟 /badges 页面数据一致。"""
-    from src.achievement_definitions import calc_all, CalcResult
+    from src.achievement_definitions import (
+        calc_all,
+        commemorative_result,
+        is_commemorative_badge,
+    )
     from src.kid_app.app import get_badge_url, _ach_optional_cols
 
     conn = db._get_connection()
@@ -212,22 +216,15 @@ def api_achievements():
         if res is None:
             continue
 
-        # 纪念章/表彰型徽章特殊处理
-        is_commemorative = (
-            ach.get("unlock_strategy") == "immediate"
-            or ach.get("achieved_at_override")
-        )
+        # 纪念章/表彰型徽章特殊处理 (2026-10-20: 'manual' 并入, 口径统一到
+        # achievement_definitions.commemorative_result —— 与 app.py 两处同源)
+        is_commemorative = is_commemorative_badge(ach)
         if is_commemorative:
             cur = db_adapter.execute(conn, 
                 "SELECT achieved, achieved_at FROM achievement_stats WHERE achievement_id=?",
                 (aid,),
             )
-            row = cur.fetchone()
-            override_at = ach.get("achieved_at_override")
-            if override_at:
-                res = CalcResult(True, 1, None, override_at, f"考出时间: {override_at}")
-            elif row and row[0] == "Y":
-                res = CalcResult(True, 1, None, row[1] or None, "立即解锁")
+            res = commemorative_result(ach, cur.fetchone())
 
         badges.append({
             "id": aid,
