@@ -528,7 +528,13 @@
         document.getElementById('ach-detail-name').textContent  = card.dataset.name || '';
         document.getElementById('ach-detail-cond').textContent  =
           card.dataset.condText || card.dataset.cond || card.dataset.desc || '';
-        document.getElementById('ach-detail-story').textContent = card.dataset.desc || '';
+        /* Rework 1 (261020): 双参兜底 —— achievements.description 的默认占位 '无' 在 JS 里
+           是 truthy, 只传 desc 会把非空 story_short 短路吞掉; 统一走 DizicalCCG.storyText */
+        var achStoryTxt = (window.DizicalCCG && DizicalCCG.storyText)
+          ? DizicalCCG.storyText(card.dataset.desc, card.dataset.storyShort)
+          : ((card.dataset.desc && card.dataset.desc !== '无')
+              ? card.dataset.desc : (card.dataset.storyShort || '故事准备中'));
+        document.getElementById('ach-detail-story').textContent = achStoryTxt;
 
         var dateEl = document.getElementById('ach-detail-date');
         var dateVal = card.dataset.date;

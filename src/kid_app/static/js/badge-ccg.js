@@ -1,6 +1,9 @@
 /* sprint-26091101 — DizicalCCG tilt / holo / parallax / claim
    ── 卡面样式版本: v1.10.0-dev (feat/badge-manual-award-261020 卡面/故事缺失降级)
       v1.10.0-dev (2026-10-20, feat/badge-manual-award-261020): manual 徽章机制配套降级
+        ⓪ Rework 1 (p1 裁定): storyText(primary, secondary) 改双参 —— description 的
+           默认占位 "无" 是 truthy, 旧写法 `story || storyShort` 会短路吞掉真实 story_short;
+           调用点全部改传两参, 并对 achievements.html / badges.html 的详情弹窗暴露 storyText;
         ① 卡面缺失 (无 url / webp 与原图都 404) → .ccg-art-placeholder 灰框占位 + 父容器
            .is-art-missing, 藏掉裂图, 不再空白崩;
         ② 故事缺失 (空串 / "无") → storyText() 统一回落「故事准备中」, 卡背 / 领取弹窗 /
@@ -422,16 +425,39 @@
 
   /* 2026-10-20 feat/badge-manual-award-261020: 故事缺失兜底.
      资产由 feat/badge-manual4-art-261020 并行提供 —— 空串 / "无" / undefined 一律
-     显示「故事准备中」, 卡背与领取弹窗都不留白 (也不回落到 demo 假故事). */
-  function storyText(raw) {
-    var s = (raw === null || raw === undefined) ? "" : String(raw).trim();
-    if (!s || s === "无") return "故事准备中";
-    return s;
+     显示「故事准备中」, 卡背与领取弹窗都不留白 (也不回落到 demo 假故事).
+
+     Rework 1 (261020 p1 裁定): 双参兜底. `achievements.description` 的默认占位是
+     "无" (truthy!), 所以调用方**不能**写 `d.story || d.storyShort` —— 那样 "无" 会
+     短路吞掉非空的 story_short. 一律把两个候选按优先级传进来, 由本函数逐个过滤. */
+  function storyText(primary, secondary) {
+    var a = (primary === null || primary === undefined) ? "" : String(primary).trim();
+    if (a && a !== "无") return a;
+    var b = (secondary === null || secondary === undefined) ? "" : String(secondary).trim();
+    if (b && b !== "无") return b;
+    return "故事准备中";
+  }
+
+  /* 卡数据两套键名共存 (Rework 1 实渲染自测暴露):
+     - 后端 JSON / openClaim 走 normalize() → camelCase storyShort
+     - mountCard 直接吃调用方 data (achievements.html / badges.html / 列表卡) →
+       历史传 snake_case story_short / story / description
+     两个都要认, 否则 mountCard 拿不到 story_short, 卡背永远只剩 description 的 "无"。 */
+  function storyShortOf(d) {
+    if (!d) return "";
+    return d.storyShort || d.story_short || "";
+  }
+
+  function storyLongOf(d) {
+    if (!d) return "";
+    return d.story || d.zh_story || d.description || "";
   }
 
   function backMarkup(d, mode) {
     var isFocus = (mode === "focus");
-    var storyVal = isFocus ? storyText(d.story || d.storyShort) : storyText(d.storyShort || d.story);
+    var shortStory = storyShortOf(d);
+    var longStory = storyLongOf(d);
+    var storyVal = isFocus ? storyText(longStory, shortStory) : storyText(shortStory, longStory);
     var storyLbl = isFocus ? "典故" : "典故·短板";
     var kicker = (d.tag || "") + (d.no ? " · " + d.no : "");
     return (
@@ -1012,7 +1038,7 @@
     /* 卡背故事展开交互 (dad 2026-09-14 需求 2.1 & 2.2 & Brief E)
        仅在 focus (modal) 态且文字真实溢出 (scrollHeight > clientHeight) 时出现展开按钮；
        正文保持透传翻面，只有点击「展开全文 ▾」按钮才呼出打字机托盘 */
-    var fullStory = storyText(d.story || d.storyShort);
+    var fullStory = storyText(storyLongOf(d), storyShortOf(d));
     var storyBlock = stage.querySelector(".oracle-back-story") || stage.querySelector(".ccg-back-story");
 
     function checkStoryOverflow() {
@@ -1364,7 +1390,7 @@
     document.getElementById("ccg-claim-name").textContent = d.name;
     document.getElementById("ccg-claim-cond").textContent = d.cond;
     document.getElementById("ccg-claim-date").textContent = d.date;
-    document.getElementById("ccg-claim-story").textContent = storyText(d.story);
+    document.getElementById("ccg-claim-story").textContent = storyText(d.story, d.storyShort);
     var host = document.getElementById("ccg-claim-stage");
     /* sprint 26091604 T4: 换卡过渡期持锁 —— 旧卡 unmount 会释放它自己的 focus 锁, 新卡 mount
        才加回来, 中间那一瞬 pauseReasons 会空掉 (body.is-frozen 掉一帧: 背景墙先解冻再冻回去)。
@@ -1526,6 +1552,10 @@
     mountCard: mountCard,
     resolveCardImage: resolveCardImage,
     armImageFallback: armImageFallback,
+    /* Rework 1 (261020): 双参故事兜底对外暴露 —— achievements.html / badges.html 的
+       详情弹窗右侧 #ach-detail-story / #bd-detail-story 复用同一口径, 防 '无' 短路.
+       用法: DizicalCCG.storyText(desc, storyShort) */
+    storyText: storyText,
     unmount: unmount,
     unmountAll: unmountAll,
     claim: claim,

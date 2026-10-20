@@ -403,7 +403,7 @@ def test_calc_all_and_achievements_api_preserve_manual(client, auth_headers):
 
 
 # ─── 8. 卡面 / 故事缺失降级 (资产由 art 分支并行提供) ──────────────────
-def test_missing_art_and_story_graceful_fallback(client, auth_headers):
+def test_missing_art_and_story_graceful_fallback(client, auth_headers, db_path):
     """无 achievement_badges 记录 + description='无' → 200 + badge_url='' + story_text='故事准备中'."""
     payload = _get_manual(client, auth_headers)
     bare = _row_by_id(payload, MANUAL_BARE)
@@ -433,3 +433,48 @@ def test_missing_art_and_story_graceful_fallback(client, auth_headers):
 
     # 成就 JSON API 也不许因缺图缺故事 500
     assert client.get("/api/achievements").status_code == 200
+
+    # ── Rework 1 (261020 p1 裁定): description='无' + story_short 非空 ──
+    # 必须优先返回 story_short, 不许被 '无' 短路吞成 '故事准备中'
+    real_story = "伶伦截竹，定十二律。"
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "UPDATE achievements SET story_short = ? WHERE id = ?", (real_story, MANUAL_BARE))
+        conn.commit()
+    finally:
+        conn.close()
+
+    payload = _get_manual(client, auth_headers)
+    bare = _row_by_id(payload, MANUAL_BARE)
+    assert bare["story_text"] == real_story, bare["story_text"]
+
+    r = client.post(f"/config/api/badge/manual/{MANUAL_BARE}",
+                    json={"action": "award", "achieved_date": str(_cst_today())},
+                    headers=auth_headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["story_text"] == real_story
+
+    # 两者都是 '无' / 空 → 回落 '故事准备中'
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "UPDATE achievements SET story_short = '无', description = '无' WHERE id = ?",
+            (MANUAL_BARE,))
+        conn.commit()
+    finally:
+        conn.close()
+    payload = _get_manual(client, auth_headers)
+    assert _row_by_id(payload, MANUAL_BARE)["story_text"] == "故事准备中"
+
+    # story_short 清空 (NULL) + description 有真内容 → 回落 description
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "UPDATE achievements SET story_short = NULL, description = '轮指练到腕子发酸。' "
+            "WHERE id = ?", (MANUAL_BARE,))
+        conn.commit()
+    finally:
+        conn.close()
+    payload = _get_manual(client, auth_headers)
+    assert _row_by_id(payload, MANUAL_BARE)["story_text"] == "轮指练到腕子发酸。"

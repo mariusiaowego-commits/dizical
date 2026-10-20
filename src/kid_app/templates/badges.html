@@ -348,7 +348,13 @@ function openModal(card) {
     document.getElementById('bd-detail-name').textContent  = card.dataset.name || '';
     document.getElementById('bd-detail-cond').textContent  =
       card.dataset.cond || card.dataset.condText || card.dataset.desc || '';
-    document.getElementById('bd-detail-story').textContent = card.dataset.desc || '';
+    /* Rework 1 (261020): 双参兜底 —— description 的默认占位 '无' 在 JS 里是 truthy,
+       只传 desc 会短路吞掉非空 story_short; 统一走 DizicalCCG.storyText */
+    var bdStoryTxt = (window.DizicalCCG && DizicalCCG.storyText)
+      ? DizicalCCG.storyText(card.dataset.desc, card.dataset.storyShort)
+      : ((card.dataset.desc && card.dataset.desc !== '无')
+          ? card.dataset.desc : (card.dataset.storyShort || '故事准备中'));
+    document.getElementById('bd-detail-story').textContent = bdStoryTxt;
 
     const dateEl = document.getElementById('bd-detail-date');
     if (card.dataset.date) {
@@ -378,6 +384,9 @@ function openModal(card) {
       image: card.dataset.img || '',
       cond:  card.dataset.condText || card.dataset.cond || '',
       story: card.dataset.desc || '',
+      /* Rework 1 (261020): 与 achievements.html 对齐 —— 卡背 story_short 必须传进来,
+         否则 desc='无' 时卡背会被兜底成「故事准备中」并吞掉真实短故事 */
+      story_short: card.dataset.storyShort || '',
       date:  card.dataset.date || '',
       stars: parseInt(card.dataset.cardStars || '3', 10) || 3,
       no:    card.dataset.no || '',      // B1: 无编号 → '' → formatCardNo 返 '—'
