@@ -1027,6 +1027,12 @@ def calc_all() -> dict[str, CalcResult]:
     主力计算函数：返回所有成就的当前计算结果。
     milestone 读 achievement_stats；seasonal 实时计算。
     calc 完毕自动把新解锁的 milestone 写进 stats (持久化 hook).
+
+    2026-10-20 (Rework 2 P2-5): unlock_strategy ∈ {immediate, manual} 或
+    achievements.achieved_at_override 非空的徽章, 统一走 commemorative_result()
+    短路 (口径与 app.py / minip_api 读链路同源), 不进入 _calc_milestone,
+    也不进入 _persist_unlocked_milestones —— 它们的解锁状态唯一真源是
+    achievement_stats, 由 manual 颁发/撤销端点写。
     """
     conn, _is_mysql = _get_conn()
     try:
@@ -1043,29 +1049,21 @@ def calc_all() -> dict[str, CalcResult]:
         streak        = _get_consecutive_streak(dates, today)
 
         results: dict[str, CalcResult] = {}
-        # 2026-10-20 feat/badge-manual-award-261020: manual / immediate 策略不进 calc,
-        # 也不进 _persist_unlocked_milestones (它在 res.achieved and res.achieved_at 为真时
-        # 会回写 stats —— 状态唯一真源必须留在 achievement_stats, 由颁发/撤销端点写)。
+        # 2026-10-20 feat/badge-manual-award-261020 (Rework 2 P2-5):
+        # immediate / manual / achieved_at_override 统一由 is_commemorative_badge() 判定,
+        # 结果一律 commemorative_result() —— 与 app.py 两处 + minip_api 一处同源。
+        # (修前 calc_all 手写 strategy 判断, 漏 achieved_at_override: override 徽章被
+        #  _calc_milestone 重算, 与读链路给出的「考出时间」口径打架。)
         calc_only_results: dict[str, CalcResult] = {}
 
         for ach in achievements:
             aid = ach["id"]
             cat = ach["category"]
-            # 老表可能没有 unlock_strategy 列 (部分单测自建表) → 缺列按 'calc' 处理
-            strategy = ach.get("unlock_strategy") or "calc"
 
-            if strategy in ("immediate", "manual"):
-                s = stats.get(aid) or {}
-                if s.get("achieved") == "Y":
-                    at_val = s.get("achieved_at")
-                    date_part = str(at_val)[:10] if at_val else ""
-                    if strategy == "manual":
-                        cond = f"颁发时间: {date_part}" if date_part else "手动颁发"
-                    else:
-                        cond = "立即解锁"
-                    results[aid] = CalcResult(True, 1, None, at_val, cond)
-                else:
-                    results[aid] = CalcResult(False, 0, None, None, "")
+            if is_commemorative_badge(ach):
+                s = stats.get(aid)
+                stats_tuple = (s.get("achieved"), s.get("achieved_at")) if s else None
+                results[aid] = commemorative_result(ach, stats_tuple)
                 continue
 
             if cat == "seasonal":

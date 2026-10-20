@@ -1,5 +1,40 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-20 (待上线, `feat/badge-manual-award-261020` / PR #381) — 徽章新增 `unlock_strategy='manual'` 手动颁发通道
+**类型**: ✅ 完全兼容（既有端点签名/返回结构零变化；新增 2 个 **家长端专属** 管理端点；`GET /api/achievements` 复用既有 `achieved` / `condition` 字段承载 manual 徽章状态。**dizical-minip 无需改任何代码**）
+
+## 变更
+
+### 新增 2 个家长端管理端点（仅 Web `/config/badge` 「手动颁发」tab 使用）
+
+| 方法 | 路径 | 作用 |
+|------|------|------|
+| GET | `/config/api/badge/manual` | 列出 `unlock_strategy='manual'` 徽章 + 当前状态（`achieved` / `achieved_date` / `claimed_at` / `badge_url` / `story_text`） |
+| POST | `/config/api/badge/manual/{badge_id}` | 颁发 / 撤销，body `{"action": "award"\|"revoke", "achieved_date": "YYYY-MM-DD", "pin": "..."}` |
+
+- 鉴权：dad 三轨（登录态 / `X-Dad-Pin` / body `pin`）；匿名 401。`/config/api/*` 在中间件公开白名单内，端点内部自行校验。
+- 日期口径：只到「天」，按 **CST（UTC+8）** 校验，**不许未来日期**（`400 future_date_not_allowed`）；格式错 `400 invalid_date`。
+- 幂等：重复 `award` 只改日期、保留 `claimed_at`（防连点重复弹窗）并把 `raw_stats` 归 `'{}'`；重复 `revoke` 恒 200。
+- 撤销语义：`achieved='N'`、`achieved_at=NULL`、`claimed_at=NULL`、清 `achieved_at_override`，`computed_value=NULL`。
+- 非 manual 徽章 → `400 not_manual_badge`；未知 id → `404`。
+- **降级**：缺卡面时 `badge_url=''`、缺故事时 `story_text='故事准备中'`（4 枚 manual 徽章的 PNG/WebP/`story_short` 由 `feat/badge-manual4-art-261020` 并行提供）；DB 异常只回固定文案 + `code=db_error`，不泄漏表名/约束。
+- 并发：同一枚徽章首次颁发的并发写已做 `INSERT → IntegrityError → UPDATE` 回退，双请求均 200（不再 500）。
+
+### `GET /api/achievements`：manual 徽章走既有字段
+
+- `unlock_strategy='manual'` 的徽章不再走 calc，直接读 `achievement_stats`，复用既有 `achieved`（bool）与 `condition`（`"颁发时间: YYYY-MM-DD"`）字段 —— **无新增字段、无结构变化**。
+- 同批统一了口径：`unlock_strategy ∈ {immediate, manual}` 或 `achievements.achieved_at_override` 非空的徽章一律「override 优先」，`calc_all()` 与两条读链路（Web 卡页 / minip API）同源。
+
+### 对 dizical-minip 的影响：**无需同步**
+
+- `getAchievements` / `getBadges` 等既有调用零改动；manual 徽章以已解锁形态出现在既有列表里。
+- 家长端管理端点 `/config/api/badge/manual*` 属 Web 后台，minip 不调用。
+
+### 数据变更
+
+- 无 DDL。仅 `achievements.unlock_strategy` 新增取值 `'manual'`（该列既有，`immediate` / `calc` 用法不变）。
+- 生产 4 枚 manual 徽章的三表写入随资产分支合入后单独执行，本次 PR 不含任何生产数据操作。
+
 **日期**: 2026-10-19 (**已上线** — CloudRun deploy **#145**，BuildId 2608954220 / RunId `multi_tenant_1xIhf0493xZjj9`) — 30 枚可挣型徽章上架（纯数据 + calc 规则，无接口签名变化）
 **类型**: ✅ 完全兼容（无请求/返回结构变化；新增 30 个 badge id 走既有端点即可见；**dizical-minip 无需改代码**）
 

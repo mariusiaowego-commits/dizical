@@ -26,6 +26,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, 
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
+from src import db_adapter
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/config", tags=["badge-workflow"])
@@ -1392,6 +1394,81 @@ async def _manual_authorized(request: Request, pin: str | None = None) -> bool:
     return await _badge_push_authorized(request)
 
 
+def _is_integrity_error(exc: BaseException) -> bool:
+    """识别主键 / 唯一约束冲突 (sqlite3.IntegrityError / pymysql.err.IntegrityError / 裸消息)。
+
+    P1-1 (Rework 2): 首次颁发并发写 achievement_stats 时, 后到者抛的就是这个类。
+    """
+    for cls in type(exc).__mro__:
+        if cls.__name__ == "IntegrityError":
+            return True
+    msg = str(exc).lower()
+    return ("unique constraint" in msg or "duplicate entry" in msg
+            or "duplicate key" in msg or "primary key" in msg or "(1062," in msg)
+
+
+def _write_manual_stats(conn, badge_id: str, action: str, achieved_at_str=None) -> None:
+    """manual 徽章写 achievement_stats: INSERT 优先, 撞主键回退 UPDATE (幂等)。
+
+    P1-1 (Rework 2, warden):
+      两个并发 award 都读到「无 stats 行」→ 同时 INSERT → 后到者
+      IntegrityError: UNIQUE constraint failed: achievement_stats.achievement_id → 500。
+      捕获后回退 UPDATE, 双请求均 200。
+      award 回退分支重查 claimed_at: 已被并发方/历史领取就保留, 否则保持 NULL。
+    """
+    try:
+        if action == "award":
+            db_adapter.execute(
+                conn,
+                "INSERT INTO achievement_stats "
+                "(achievement_id, achieved, achieved_at, claimed_at, raw_stats, computed_value) "
+                "VALUES (?, 'Y', ?, NULL, '{}', ?)",
+                (badge_id, achieved_at_str, 1),
+            )
+        else:
+            db_adapter.execute(
+                conn,
+                "INSERT INTO achievement_stats "
+                "(achievement_id, achieved, achieved_at, claimed_at, raw_stats, computed_value) "
+                "VALUES (?, 'N', NULL, NULL, '{}', NULL)",
+                (badge_id,),
+            )
+        return
+    except Exception as exc:  # noqa: BLE001
+        if not _is_integrity_error(exc):
+            raise
+        logger.warning(
+            "manual badge %s: stats INSERT 撞主键 (并发首次写入), 回退 UPDATE (%s)",
+            badge_id, type(exc).__name__,
+        )
+
+    try:
+        conn.rollback()   # 失败语句回滚, 不留半截事务 (sqlite / mysql 都安全)
+    except Exception:
+        pass
+
+    if action == "award":
+        rows = db_adapter.execute_dicts(
+            conn,
+            "SELECT claimed_at FROM achievement_stats WHERE achievement_id = ?",
+            (badge_id,),
+        )
+        keep_claimed = rows[0].get("claimed_at") if rows else None
+        db_adapter.execute(
+            conn,
+            "UPDATE achievement_stats SET achieved='Y', achieved_at=?, claimed_at=?, "
+            "raw_stats='{}', computed_value=? WHERE achievement_id=?",
+            (achieved_at_str, keep_claimed, 1, badge_id),
+        )
+    else:
+        db_adapter.execute(
+            conn,
+            "UPDATE achievement_stats SET achieved='N', achieved_at=NULL, claimed_at=NULL, "
+            "raw_stats='{}', computed_value=NULL WHERE achievement_id=?",
+            (badge_id,),
+        )
+
+
 @router.get("/api/badge/manual")
 async def api_manual_badge_list(request: Request) -> JSONResponse:
     """列出手动颁发类徽章 (unlock_strategy='manual') 及当前颁发状态。"""
@@ -1402,9 +1479,11 @@ async def api_manual_badge_list(request: Request) -> JSONResponse:
 
     try:
         conn, _is_mysql = db_adapter.get_conn()
-    except Exception as e:  # 连不上库 → 降级, 不 500
+    except Exception:  # 连不上库 → 降级, 不 500
         logger.exception("manual badge list open db failed")
-        return JSONResponse({"ok": False, "error": f"数据库不可用: {e}"}, status_code=503)
+        return JSONResponse({
+            "ok": False, "error": "数据库不可用，请稍后重试", "code": "db_unavailable",
+        }, status_code=503)
 
     try:
         ach_rows = db_adapter.execute_dicts(
@@ -1417,9 +1496,11 @@ async def api_manual_badge_list(request: Request) -> JSONResponse:
             conn,
             "SELECT achievement_id, url FROM achievement_badges WHERE is_current = 1",
         )
-    except Exception as e:
+    except Exception:
         logger.exception("manual badge list query failed")
-        return JSONResponse({"ok": False, "error": f"读取失败: {e}"}, status_code=500)
+        return JSONResponse({
+            "ok": False, "error": "读取失败，请稍后重试", "code": "db_error",
+        }, status_code=500)
     finally:
         try:
             conn.close()   # MySQL = 归还池, SQLite = 销毁
@@ -1533,13 +1614,8 @@ async def api_manual_badge_action(
         if action == "award":
             achieved_at_str = f"{achieved_date.isoformat()} 00:00:00"
             if existing is None:
-                db_adapter.execute(
-                    conn,
-                    "INSERT INTO achievement_stats "
-                    "(achievement_id, achieved, achieved_at, claimed_at, raw_stats, computed_value) "
-                    "VALUES (?, 'Y', ?, NULL, '{}', ?)",
-                    (badge_id, achieved_at_str, 1),
-                )
+                # P1-1 (Rework 2): 并发首次写入撞主键 → 自动回退 UPDATE, 双请求均 200
+                _write_manual_stats(conn, badge_id, "award", achieved_at_str)
             elif not was_achieved:
                 # 首次颁发 / 撤销后重颁 → claimed_at 归 NULL, 让 kid 端弹窗再弹一次
                 db_adapter.execute(
@@ -1550,21 +1626,17 @@ async def api_manual_badge_action(
                 )
             else:
                 # 幂等重颁 / 只改日期: 保留 claimed_at (防连点重复弹窗)
+                # P2-2 (Rework 2): 补 raw_stats='{}' —— 对齐架构 Q2 契约, 不许残留旧统计
                 db_adapter.execute(
                     conn,
-                    "UPDATE achievement_stats SET achieved_at=?, computed_value=? "
+                    "UPDATE achievement_stats SET achieved_at=?, raw_stats='{}', computed_value=? "
                     "WHERE achievement_id=?",
                     (achieved_at_str, 1, badge_id),
                 )
         else:  # revoke
             if existing is None:
-                db_adapter.execute(
-                    conn,
-                    "INSERT INTO achievement_stats "
-                    "(achievement_id, achieved, achieved_at, claimed_at, raw_stats, computed_value) "
-                    "VALUES (?, 'N', NULL, NULL, '{}', NULL)",
-                    (badge_id,),
-                )
+                # P1-1 (Rework 2): 同上, 并发首次写入撞主键 → 回退 UPDATE
+                _write_manual_stats(conn, badge_id, "revoke")
             else:
                 db_adapter.execute(
                     conn,
@@ -1591,9 +1663,14 @@ async def api_manual_badge_action(
             "SELECT url FROM achievement_badges WHERE achievement_id = ? AND is_current = 1",
             (badge_id,),
         )
-    except Exception as e:
+    except Exception:
+        # P1-1 (Rework 2): DB 错误只进日志, HTTP 响应固定文案 (不泄漏表名/约束/连接串)
         logger.exception("manual badge action failed for %s", badge_id)
-        return JSONResponse({"ok": False, "error": f"操作失败: {e}"}, status_code=500)
+        return JSONResponse({
+            "ok": False,
+            "error": "操作失败，请稍后重试",
+            "code": "db_error",
+        }, status_code=500)
     finally:
         try:
             conn.close()
