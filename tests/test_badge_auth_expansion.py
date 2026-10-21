@@ -130,3 +130,53 @@ def test_db_failure_503_has_no_raw_exception(client, monkeypatch):
     for bad in ("secret-host", "10.0.0.9", "pymysql", "access denied", "RuntimeError"):
         assert bad not in body, f"503 响应体泄漏了 {bad!r}: {body[:300]}"
     assert "数据库不可用" in body
+
+
+# ─── dad 三轨（dad 亲口问过「我忘了密码会不会进不去」，这里把它锁死） ───────────
+
+def test_dad_session_passes_auth(client, monkeypatch):
+    """dad 浏览器会话（role=dad）必须能过：dad 日常就是靠这条改卡面/发徽章。
+
+    不 stub 整条鉴权链，只 stub 会话来源 get_current_user —— 测的是
+    「依赖真的会去问 dad 会话」这条接线，而不是「token 能用」。
+    """
+    import src.kid_app.auth as auth_mod
+    monkeypatch.setattr(auth_mod, "get_current_user", _fake_user("dad"))
+    monkeypatch.delenv("BADGE_PUSH_TOKEN", raising=False)
+
+    for method, path, body in [("get", "/config/api/badge/manual", None),
+                               ("get", "/config/api/badge/card-appearance", None),
+                               ("get", "/config/api/badge/draft/probe-none", None),
+                               ("post", "/config/api/badge/manual/tech_hua_yin",
+                                {"action": "award", "achieved_date": "2026-10-01"})]:
+        r = _call(client, method, path, body)
+        assert r.status_code != 401, f"dad 会话竟被 {method.upper()} {path} 拒了: {r.status_code}"
+
+
+def test_non_dad_session_is_rejected(client, monkeypatch):
+    """登录了但不是 dad（student/family/teacher）照样 401 —— 不能因为「有会话」就放行。"""
+    import src.kid_app.auth as auth_mod
+    monkeypatch.setattr(auth_mod, "get_current_user", _fake_user("student"))
+    monkeypatch.delenv("BADGE_PUSH_TOKEN", raising=False)
+
+    r = client.get("/config/api/badge/card-appearance")
+    assert r.status_code == 401, f"student 会话竟能读 card-appearance: {r.status_code}"
+
+
+def test_dad_pin_header_passes_auth(client, monkeypatch):
+    """应急 curl 通道：X-Dad-Pin 正确 → 过；错误 → 401。"""
+    import src.kid_app.routes.config_users as cu
+    monkeypatch.setattr(cu, "check_dad_pin", lambda pin: pin == "0905")
+    monkeypatch.delenv("BADGE_PUSH_TOKEN", raising=False)
+
+    ok = client.get("/config/api/badge/card-appearance", headers={"X-Dad-Pin": "0905"})
+    assert ok.status_code != 401, f"正确 PIN 被拒: {ok.status_code}"
+
+    bad = client.get("/config/api/badge/card-appearance", headers={"X-Dad-Pin": "0000"})
+    assert bad.status_code == 401, f"错误 PIN 竟通过: {bad.status_code}"
+
+
+def _fake_user(role: str):
+    async def _get_current_user(request):  # noqa: ANN001
+        return {"user_id": f"test_{role}", "username": f"test_{role}", "role": role}
+    return _get_current_user
