@@ -1,3 +1,21 @@
+---
+status: archived             # 2026-09-20 作废归档, 原因见 ../README.md (原: process-draft)
+sprint: pending              # 等 dad 拍板 sprint-id 后改为 sprint-<id>-practice-ui-iter
+date: 2026-09-04
+author: dizical-agy (dizical-agy @ w9:pM)
+peer_reviewers: []
+note: |
+  诊断过程中产生的草稿. 启动 sprint 时:
+  1. dad 拍板 §5 决策点 (hermes-draft §6 / integrated-draft §5)
+  2. mv ../_pending-practice-ui-iter-2026-09-04 ../sprint-<id>-practice-ui-iter
+  3. mv *-draft.md *-v1.md (去掉 -draft 后缀, 标记 v1 baseline)
+  4. 写正式 sprint.md (按 STATUS.md 2026-09-03 sprint 模板)
+  5. 启动时在本文件 supersedes 字段补 sprint.md 路径, status 改 superseded
+supersedes: null
+superseded_by: null
+activation_rule: see `note:` above
+---
+
 # Practice 页面独立诊断与改造方案 (agy 视角)
 
 > 作者: dizical-agy @ w9:pM  

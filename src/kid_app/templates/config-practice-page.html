@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+{% include "_favicon.html" %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>练习页配置 - 竹笛助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    :root {
+      --c-primary: #FF6B6B;
+      --c-secondary: #2C3E50;
+      --c-tertiary: #FFF8F0;
+      --c-neutral: #FFFFFF;
+      --c-muted: #666666;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--c-tertiary);
+      color: var(--c-secondary);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 24px 48px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 12px;
+      background: var(--c-neutral);
+      color: var(--c-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .card {
+      background: var(--c-neutral);
+      border: 1px solid rgba(44, 62, 80, 0.12);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow:
+        0 1px 3px rgba(44, 62, 80, 0.04),
+        0 8px 24px -4px rgba(44, 62, 80, 0.05);
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .desc {
+      margin: 0 0 16px;
+      color: var(--c-muted);
+    }
+
+    .preview-frame {
+      position: relative;
+      height: 96px;
+      border-radius: 12px;
+      background: var(--c-tertiary);
+      border: 1px solid rgba(44, 62, 80, 0.12);
+      overflow: hidden;
+    }
+
+    .preview-mask {
+      position: absolute;
+      inset: 0;
+    }
+
+    .preview-label {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-weight: 700;
+    }
+
+    .value-text {
+      margin: 8px 0 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      color: var(--c-secondary);
+      white-space: nowrap;
+    }
+
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      flex: 0 0 64px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    input[type="color"] {
+      width: 72px;
+      height: 44px;
+      padding: 4px;
+      border: 1px solid rgba(44, 62, 80, 0.14);
+      border-radius: 8px;
+      background: var(--c-neutral);
+    }
+
+    input[type="range"] {
+      flex: 1 1 auto;
+      min-width: 0;
+      accent-color: var(--c-primary);
+    }
+
+    input[type="number"] {
+      width: 72px;
+      min-height: 44px;
+      padding: 0 8px;
+      border: 1px solid rgba(44, 62, 80, 0.14);
+      border-radius: 8px;
+      background: var(--c-neutral);
+      color: var(--c-secondary);
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .unit {
+      color: var(--c-muted);
+      white-space: nowrap;
+    }
+
+    .status {
+      min-height: 22px;
+      margin: 0 0 12px;
+      color: var(--c-muted);
+    }
+
+    .status.is-error { color: var(--c-primary); }
+
+    .save-btn {
+      min-height: 44px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--c-primary);
+      color: var(--c-neutral);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .save-btn:disabled { opacity: 0.42; cursor: default; }
+
+    input:focus-visible,
+    .save-btn:focus-visible,
+    .back-link:focus-visible {
+      outline: 2px solid var(--c-primary);
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 1099px) {
+      .page { padding: 16px 12px 32px; }
+      .top-bar { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .field { flex-wrap: wrap; }
+      .field label { flex-basis: 100%; }
+      input[type="color"],
+      input[type="number"],
+      .save-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top-bar">
+      <a class="back-link" href="/config">返回配置</a>
+      <h1 class="page-title">练习页配置</h1>
+    </div>
+
+    <section class="card" aria-labelledby="maskTitle">
+      <h2 id="maskTitle">计时蒙版颜色</h2>
+      <p class="desc">计时开始后盖在票卡上的颜色。颜色和透明度分开调，保存后合成一个 rgba。</p>
+
+      <div class="preview-frame" aria-hidden="true">
+        <div class="preview-mask" id="previewMask"></div>
+        <div class="preview-label">票卡</div>
+      </div>
+      <p class="value-text" id="valueText"></p>
+
+      <div class="field">
+        <label for="maskColor">颜色</label>
+        <input id="maskColor" type="color" value="#2C3E50" aria-label="蒙版颜色">
+      </div>
+      <div class="field">
+        <label for="maskOpacity">透明度</label>
+        <input id="maskOpacity" type="range" min="0" max="100" step="1" value="35" aria-label="蒙版透明度">
+        <input id="maskOpacityNum" type="number" min="0" max="100" step="1" value="35" inputmode="numeric" aria-label="蒙版透明度百分比">
+        <span class="unit">%</span>
+      </div>
+
+      <p class="status" id="status" role="status"></p>
+      <button type="button" class="save-btn" id="saveBtn">保存</button>
+    </section>
+  </div>
+
+  <script>
+    const colorInput = document.getElementById('maskColor');
+    const rangeInput = document.getElementById('maskOpacity');
+    const numberInput = document.getElementById('maskOpacityNum');
+    const previewMask = document.getElementById('previewMask');
+    const valueText = document.getElementById('valueText');
+    const statusEl = document.getElementById('status');
+    const saveBtn = document.getElementById('saveBtn');
+
+    function formatAlpha(value) {
+      const text = value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+      return text === '' ? '0' : text;
+    }
+
+    function currentOpacity() {
+      const raw = Number(numberInput.value);
+      const percent = Number.isNaN(raw) ? Number(rangeInput.value) : Math.min(100, Math.max(0, raw));
+      return percent / 100;
+    }
+
+    function currentColor() {
+      const hex = colorInput.value;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + formatAlpha(currentOpacity()) + ')';
+    }
+
+    function paint() {
+      const color = currentColor();
+      previewMask.style.background = color;
+      valueText.textContent = color;
+    }
+
+    function applyStored(maskColor, maskOpacity) {
+      const match = String(maskColor).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+      if (match) {
+        const hex = [match[1], match[2], match[3]].map(function (part) {
+          return Number(part).toString(16).padStart(2, '0');
+        }).join('');
+        colorInput.value = '#' + hex;
+      }
+      const percent = Math.round(Number(maskOpacity) * 100);
+      const safe = Number.isNaN(percent) ? 35 : Math.min(100, Math.max(0, percent));
+      rangeInput.value = String(safe);
+      numberInput.value = String(safe);
+      paint();
+    }
+
+    function setStatus(message, isError) {
+      statusEl.textContent = message || '';
+      statusEl.classList.toggle('is-error', !!isError);
+    }
+
+    rangeInput.addEventListener('input', function () {
+      numberInput.value = rangeInput.value;
+      paint();
+    });
+    numberInput.addEventListener('input', function () {
+      if (numberInput.value === '') return;
+      const next = Math.min(100, Math.max(0, Number(numberInput.value)));
+      if (!Number.isNaN(next)) rangeInput.value = String(next);
+      paint();
+    });
+    colorInput.addEventListener('input', paint);
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/config/api/practice-page/settings');
+        const data = await res.json();
+        if (data && data.mask_color) applyStored(data.mask_color, data.mask_opacity);
+      } catch (err) {
+        applyStored({{ mask_color | tojson }}, {{ mask_opacity | tojson }});
+      }
+    }
+
+    saveBtn.addEventListener('click', async function () {
+      saveBtn.disabled = true;
+      setStatus('保存中');
+      try {
+        const res = await fetch('/config/api/practice-page/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: localStorage.getItem('config_pin') || '',
+            mask_color: colorInput.value,
+            mask_opacity: formatAlpha(currentOpacity())
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          setStatus(data.error || '保存失败', true);
+          return;
+        }
+        applyStored(data.mask_color, data.mask_opacity);
+        setStatus('已保存');
+      } catch (err) {
+        setStatus('保存失败', true);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    const needsPin = {{ (pin_locked | default("false")) | tojson }} === 'true';
+    if (needsPin && !localStorage.getItem('config_pin')) {
+      window.location.href = '/config';
+    } else {
+      applyStored({{ mask_color | tojson }}, {{ mask_opacity | tojson }});
+      loadSettings();
+    }
+  </script>
+</body>
+</html>
