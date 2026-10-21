@@ -38,9 +38,15 @@ def tmp_badge_data(monkeypatch, tmp_path):
     return data_dir
 
 
+# P2-6 (2026-10-20): /config/api/badge/* 已补服务端鉴权。本文件测端点业务逻辑,
+# 不是测鉴权 (鉴权矩阵见 tests/test_badge_auth_expansion.py), 统一带机器 token 过鉴权关。
+TEST_PUSH_TOKEN = "test-push-token-routes-badge-workflow"
+
+
 @pytest.fixture
-def client():
-    return TestClient(app)
+def client(monkeypatch):
+    monkeypatch.setenv("BADGE_PUSH_TOKEN", TEST_PUSH_TOKEN)
+    return TestClient(app, headers={"X-Badge-Push-Token": TEST_PUSH_TOKEN})
 
 
 def _make_valid_meta(id_suffix="curl_xyz"):
@@ -458,8 +464,9 @@ class TestUploadDraftImageAuth:
 
         r = _push_image(client, d.draft_id)
         assert r.status_code == 401, r.text
-        # P1: 鉴权改挂路由依赖 → 401 body 是 FastAPI 的 {"detail": ...} (不再是 {"ok":false,...})
-        assert "未授权" in r.text
+        # P2-6: 鉴权失败统一走 app 级 BadgeAuthRequired handler → 扁平 {"ok": false, "error": ...}
+        # (保持前端读 data.ok / data.error 的契约; 不再泄漏 FastAPI 的 {"detail": ...})
+        assert "需要 dad 登录或 PIN" in r.text
         assert tmp_png.read_bytes() == b"fake png content"      # 一个字节都没被覆盖
         # 草稿 image 仍是 helper 写的那份 (helper 不写 source 字段 → None 即"没被换成 api_upload")
         assert badge_draft.get_draft(d.draft_id).image.get("source") is None
