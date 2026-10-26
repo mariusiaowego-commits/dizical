@@ -17,8 +17,8 @@
 import pathlib, re, sys
 
 DEMO = pathlib.Path(__file__).resolve().parent.parent
-DEMO_VERSION = "v3.5"        # 全局：dad 261016 八条问题整轮修复（A卡错位/裁切根治 · 点环同心 · 缺口咬深=规格 · 卡槽18→50px · R卡#161A1E · 记录弹窗明细 · 744-440 内容驱动高度 · S横条 ≤120 · 弹窗内去 demo chrome）
-DEMO_DATE = "2026-10-16"
+DEMO_VERSION = "v3.7"        # 全局：261026 S17+S18 整轮（卡槽窄孔化 · 插卡不穿帮 · MIC/电池对齐孔缘 · 读数与封面居中 · 页脚贴黑区下缘）
+DEMO_DATE = "2026-10-26"
 
 # 文件 → (卡版本, 一句话状态)。卡版本对齐文件名后缀；无 vN 后缀的记 "—"。
 TABLE = [
@@ -32,7 +32,7 @@ TABLE = [
     ("today-records-01.html",                "v1", "⑤ 今日记录卡：折叠/展开 + 占位微条"),
     ("card-dashboard-skeleton-01.html",      "v1", "轨道骨架：吸附 + 左右切卡（dad 保留）"),
     ("ruler-shared-check.html",              "v1", "共享尺子接入自检页"),
-    ("canvas-01.html",                       "v1", "★ 右栏顶替 pk-main-col：真画布 practice-ticket-v4-260920 逐字搬入（本体零改动）+ **等高卡片网格**（右栏每张卡高度 = 左栏票卡：1133 档 577）+ **三组合**（image23/24 结构：组合1 仪表盘+底部卧卡+竖条通高 / 组合2 一行并排 / 组合3 复合列）+ 卡槽静态拟物（`.cz-punch-slot`，**无插入动画**，接缝 +7px）+ 双向联动总线（`DizicalPracticeBus`，负控真红）+ 轨内真横滑"),
+    ("canvas-01.html",                       "v1", "★ 右栏顶替 pk-main-col：真画布 practice-ticket-v4-260920 逐字搬入（本体零改动）+ **等高卡片网格**（右栏每张卡高度 = 左栏票卡：1133 档 577）+ **三组合**（image23/24 结构：组合1 仪表盘+底部卧卡+竖条通高 / 组合2 一行并排 / 组合3 复合列）+ **卡槽窄孔**（孔比黑区窄 28px 肩，孔上下两半 z42/z46 夹住卡片）+ 双向联动总线（`DizicalPracticeBus`，负控真红）+ 轨内真横滑"),
     ("compose-03.html",                      "v1", "组合自选台：5 预设 + 8 模块勾选 + localStorage + 一屏单行 + 横滑（槽位外框已拆）"),
     ("index.html",                           "—",  "总览页（入口）"),
     # 上一轮留档（对照用）
@@ -42,6 +42,13 @@ TABLE = [
     ("requests-card-01.html",                "v2", "④ 老师要求上一版（对照）"),
     ("practice-duration-card-01.html",       "v2", "⑥ 时长卡上一版（对照）"),
     ("compose-01.html",                      "v1", "组合视图上一版（卡片列车，对照）"),
+    # ── 右栏卡片唯一真源（S17/S18 轮：仪表盘卡 = 窄孔卡槽 + 读数/页脚对齐）──
+    ("cards/card-a-dashboard.html",          "v2", "A 仪表盘卡：卡槽窄孔（孔肩 28px，卡比孔再窄 8px）· 插卡减速回弹不露下缘 · MIC/电池对齐**孔左右缘**（28px）· 读数与封面图上下居中（差 0px）· 「今日 xx分 / BPM xx」贴黑区下缘"),
+    ("cards/card-b-metronome-full.html",     "v3", "B 全功能节拍器卡（本轮未动，仅同步版本号）"),
+    ("cards/card-s-metronome-strip.html",    "v1", "S 节拍器横条卡（feed 流下票夹变形为横 bar，本轮未动）"),
+    ("cards/card-d-duration.html",           "v3", "D 今日练习时长卡（本轮未动，仅同步版本号）"),
+    ("cards/card-r-records.html",            "v1", "R 今日练习记录卡（本轮未动，仅同步版本号）"),
+    ("cards/card-q-requests.html",           "v3", "Q 老师要求卡（本轮未动，仅同步版本号）"),
 ]
 
 MARK = '<span class="demo-ver"'
@@ -104,7 +111,7 @@ def main():
 
     manifest = DEMO / "VERSIONS.md"
     lines = ["---", "source: ai-agent", "project: dizical",
-             "sprint: sprint-26100602-round2-mrd2610062214", "updated: 2026-10-13", "---", "",
+             "sprint: sprint-26100602-round2-mrd2610062214", f"updated: {DEMO_DATE}", "---", "",
              "# demo 版本清单（自动生成，勿手改本体）", "",
              f"**当前 demo 版本：{DEMO_VERSION}**（{DEMO_DATE}）　口径：`demo vX.Y` = 全局轮次；`卡 vN` = 单卡设计版本", "",
              "| 页面 | demo 版本 | 卡版本 | 说明 |", "|:--|:--|:--|:--|"]
@@ -150,7 +157,9 @@ def main():
               "- **demo v3.1**（2026-10-11）：右栏并进真画布 —— ① D1 孔阵 `grille-6x8.variant-countersink` 从 **CSS 自循环**改为**真实麦克风电平驱动**（`AnalyserNode` 时域 RMS 做总强度 + 频域分段做列差异；静音全基态、无自循环动画；电平 0.35 只亮底排、1.0 全 **64 孔**亮到 scale 1.42 + 朱橙辉光；暴露 `__grilleLevel(v)` 注入 + `__grilleMode`；真机麦克风采样 headless 标 SKIPPED）· ② 共享件 `shared/hollow-digits.js` 数字内部**黑块**修复：`<g>` 缺 `fill` 吃到 SVG 默认纯黑 → 补 `fill=\"none\"`，实测渲染 5 元素 fill 全 none / 黑填充 0 · ③ 深墨皮肤「分钟」小字色 `--dash-text-soft` 解析成 #666 → 实测改后 `rgba(255,248,240,0.62)`、对面板对比度 **15.92** · ④ 新增 `canvas-01.html`：真画布 `practice-ticket-v4-260920.html` 用 `srcdoc` 逐字搬入（**本体零改动** sha256 前 16 位 `e86d4bc56163218d`），模块列挂进 **`#pkMainCol.pk-main-col` 顶替其内容**（原 7 块实测全 0：`#pkInstrCard` / `#pkReqCard` / `#pkSlotIdle` / `#pkStartBtn` / `.timer-block` / `.pk-slot4-box` / `.pk-running-telemetry`）；模块祖先链实测命中 pk-main-col；卡外**无壳**（4 层父级 border 0px none / radius 0px / bg 透明 / shadow none）；轨内真横滑（`#czRail` clientW 863 / scrollW 2516 / overflow-x auto，三次采样 0→827→0）；**插入卡槽动画**在仪表盘之上（待命 `getAnimations()`=0 + 两次 transform 均 none + 与槽不相交 gap 14px；触发后几何相交、`miniTop 90 = slotTop 90` 落定、`dashMode prep→run`、缓动 `cubic-bezier(.34,1.56,.64,1)`、声明 280ms / observedMs 308.4 fallback）· ⑤ compose-03 槽位外框按 dad 意见**全拆**（border / radius 20 / 底色 / 阴影删除）",
               "- **demo v3.2**（2026-10-11）：按 agy 独立 review（`review-agy-canvas-261011.md`：结论「暂不建议交付」+ P0-1/P0-2/P1-1/P1-2/P2-1/P2-2）与 §6 真窗口复验修缮 ——① **P0-1 高度击穿**修：模块列底实测 717/736/750 → 票卡 654（越界 61~96px）→ 改 `syncRailBudget()` 运行时算 `rail.maxHeight`，复验真窗口 1280/1133 三预设 `modColBottom 686.0 = ticketBottom 686.0`（越界 **0.0px**）·② **P0-2 窄屏堆叠**修：`@media (max-width:1023px)` 注入画布文档内 + `setVp()` 联动画布 iframe 宽度（原来只改卡片 `data-vp`）→ 真 744 窗口 column/580/580/行数=模块数、真 440 column/408/408；**桌面窗口点「744」也真生效**（实测 docClientW 744 · 轨 580/580 无横滑 · 行数 2/3/6）；负控窄屏强撑单行 440 档 66 红 / 744 档 71 红 ·③ **P1-1 状态机桥接**：落定调画布 `enterRun()`（内容未选先兜底 `content_options[0]`）+ 监听 `#pkStateToggle` 双向联动 → 实测左侧真实票卡 380 → **220** 真收窄、`enterRun 已进态`、复位 `exitRun 已复位` 回 379 ·④ **P1-2 深墨同翻**：走 `CANVAS_SCOPE` 运行时注入（画布源文件零改动）→ 实测 ink：stageBg `rgb(20,24,28)` / ticketBg `rgb(30,36,43)` / topBg `rgb(26,30,34)`；light 三者 transparent；新断言 C1b 查**画布本体实测底色**（上轮那条「验了等于没验」的 C1 已换掉）·⑤ **P2-1 兜底抢跑**修：`FALLBACK_MS` 320 → **500** 且等待期间**禁 cancel**（cancel 会让 onfinish 永久失去机会）→ 真时钟空载 onfinish 293ms / 抖 60ms 351 / 抖 80ms 372 / 事件不派发档（`?swallowfinish=1`）onfinish-by-clock 752；报告口径拆开 `animDurationMs`(280) 与 `measureSpanMs`；审计环境确实拿不到动画时**如实标 SKIPPED + 真窗口实测数**（不写成绿）·⑥ 我（hermes）本人复算：普通浏览器会话 `?audit=1` → `verdict ASSERT_OK` / `failures []` / 24 格；`insert.after.landedBy onfinish`（landedAt 441.2ms，兜底 500）；verify-demos canvas-01 + compose-03 双 OK、对比度 0、画布 sha256 `e86d4bc56163218d` 保持",
               "- **demo v3.3**（2026-10-13）：dad 等高反馈（左栏票卡 360×1024 vs 右栏仪表盘不等高）+ 三组合落地 ——① **等高卡片网格**：右栏每张卡高度 == 左栏票卡（1133 档票卡 360×577；组合1 `A326+12+(D/R 239)=577`、组合2 `A/S/R 全 577`、组合3 `B385+12+D180=577`，底边全 = 票卡底 635）·② **高度回环根治**：iframe 高度不再由画布 `scrollHeight` 反推（实测 `iframe.clientHeight 656 == 画布 scrollHeight 656`，且票卡不被竖切）·③ **卡槽**：接缝 slot 底 51 → 仪表盘顶 58 = **+7px**（此前 −54 重叠）；插入动画全撤（`runInsert`/`FALLBACK_MS`/`insertTicket` 计数 0）·④ **组合树**按 `参考图文字基线-261012.md`（image23/24）落地，可见模块集合 == `state.mods` 三组合逐一命中 ·⑤ **联动双向真通**：`DizicalPracticeBus` 左 60→63 时右 82→85 逐次跟随、反向右 +1 左跟随、组合重挂后仍通；`?negctl=bus` 真报红且 verdict 写明「右栏 82 没跟着变（左栏 62）」（不再静默降级）·⑥ 画布源 `practice-ticket-v4-260920.html` 零改动（sha256 `e86d4bc56163218d`）；`verify-demos` 16 页 OK / 0 FAIL、`token-contrast` 不合格 0",
-              "- **demo v3.5**（2026-10-16）：dad 文档 `PRDs/2610160819-demov3.4问题.md` 八条整轮修复 ——① **A 卡错位/裁切根治**：组合1 里旋钮与「开始/提前结束/按钮组」相交 499.5/790.9/1879.6px² → 0（旋钮不再压按钮）、`#panel` 内部裁 54 → 0、`#mid` 裁 55 → 0、封面名 0×0 → 34.3×13.2 可见、读数行 cx 由 +55px 偏 → == 卡中轴 ·② **arc 点环同心**：20 个点到旋钮圆心半径 106.26~106.38（散布 0.13px）＝几何同心，点不再落在旋钮面上 ·③ **缺口咬深 = 规格**：mask 圆心 y 由写死 242.5px → 按面板高计算，实测咬深 24px（= `--notch-depth`）·④ **卡槽**：`#pkPunchSlotWrap` 18 → 50px（agy 规格 48~54），落在 A 卡内、主屏之上 ·⑤ **今日记录卡**：迷你卡底色 rgb(232,229,224) 灰 → rgb(22,26,30)=#161A1E（与时长卡同族）· ⑥ **记录弹窗**：`#czPopFrame` 渲染「科目|总时长|速度|单次|明细|占比」12 行明细，且弹窗内 demo chrome（徽章/视口/皮肤切换）全隐 ·⑦ **744/440 内容驱动高度**（旧六卡写死 460）：744 = A573/B681/S108/D213/R719/Q556、440 = A678/B768/S345/D213/R797/Q556，六值异构且卡内滚动条 0（旧 R 缺 67/169px）·⑧ **S 竖条 → 横条**：h(S) 150 → 108（agy 判据 ≤120），内部 top/mid/bot 横排 ·⑨ **D 卡元素恢复**（组合1 224 宽）：空心时钟 135×44 + 时间轴胶囊 206×51(4 刻度) + 图标组，下方空白 63% → 0% ·⑩ 画布源零改动（sha256 `e86d4bc56163218d`）；`verify-demos` 16 页 OK / 0 FAIL、`token-contrast` 不合格 0", ""]
+              "- **demo v3.5**（2026-10-16）：dad 文档 `PRDs/2610160819-demov3.4问题.md` 八条整轮修复 ——① **A 卡错位/裁切根治**：组合1 里旋钮与「开始/提前结束/按钮组」相交 499.5/790.9/1879.6px² → 0（旋钮不再压按钮）、`#panel` 内部裁 54 → 0、`#mid` 裁 55 → 0、封面名 0×0 → 34.3×13.2 可见、读数行 cx 由 +55px 偏 → == 卡中轴 ·② **arc 点环同心**：20 个点到旋钮圆心半径 106.26~106.38（散布 0.13px）＝几何同心，点不再落在旋钮面上 ·③ **缺口咬深 = 规格**：mask 圆心 y 由写死 242.5px → 按面板高计算，实测咬深 24px（= `--notch-depth`）·④ **卡槽**：`#pkPunchSlotWrap` 18 → 50px（agy 规格 48~54），落在 A 卡内、主屏之上 ·⑤ **今日记录卡**：迷你卡底色 rgb(232,229,224) 灰 → rgb(22,26,30)=#161A1E（与时长卡同族）· ⑥ **记录弹窗**：`#czPopFrame` 渲染「科目|总时长|速度|单次|明细|占比」12 行明细，且弹窗内 demo chrome（徽章/视口/皮肤切换）全隐 ·⑦ **744/440 内容驱动高度**（旧六卡写死 460）：744 = A573/B681/S108/D213/R719/Q556、440 = A678/B768/S345/D213/R797/Q556，六值异构且卡内滚动条 0（旧 R 缺 67/169px）·⑧ **S 竖条 → 横条**：h(S) 150 → 108（agy 判据 ≤120），内部 top/mid/bot 横排 ·⑨ **D 卡元素恢复**（组合1 224 宽）：空心时钟 135×44 + 时间轴胶囊 206×51(4 刻度) + 图标组，下方空白 63% → 0% ·⑩ 画布源零改动（sha256 `e86d4bc56163218d`）；`verify-demos` 16 页 OK / 0 FAIL、`token-contrast` 不合格 0",
+              "- **demo v3.6**（2026-10-22）：八条整轮落地 —— ① 圆钮接缝 1px 外壳描边 · ② 卡槽与仪表盘等宽 · ③ 插卡改自上而下 · ④ 去灰直角（`.diag-card` 无上边框 + 卧卡 dash 圆角裁切）· ⑤ BPM 左票/竖条/仪表盘绝对值同步 · ⑥ 组合1 时长卡 32px 时钟 + 44px 时间轴胶囊 · ⑦ 440 顶栏双行 · ⑧ 440 面板底部 78px 留白；verify-demos canvas-01 OK、token-contrast 0 不合格、R2 0 failures",
+              "- **demo v3.7**（2026-10-26）：S17+S18 整轮落地 —— ① **卡槽窄孔化**：槽体透明，黑区上沿只留一道比黑区窄 28px 肩的缝；孔上下两半（`::after` z42 垫卡后 / `::before` z46 盖卡底）把卡片夹在中间 = 卡片从孔中穿过；孔所有状态常驻（准备态也在）·② **插卡动画不穿帮**：`pkCardToSlot` / `pkCardToSlotFeed` 全程 `translateY ≤ 0`（72% 归座 0px → 85% 回弹 −2px → 100% 落定 0px），逐帧实测卡底越过孔底 **0.00px**、回弹期卡底留在下半孔遮罩内 **7.00px** ·③ **MIC / 电池对齐卡槽孔缘**：`.status` 改 `padding: 0 var(--cz-status-pad-x,16px)`，实测 1133 C1/C2/C3 两态 `micLeftFromPanel = holeLeftFromPanel = 28.0px`、`batRightFromPanel = holeRightFromPanel = 28.0px`（误差 0.0px）·④ **读数与封面图上下居中**：新增 `alignReadoutWithCover()` 写 `--cz-readout-dx/dy`，实测 `digitsCoverCyDiff = 0.0px`，水平落在封面图右缘与右侧安全边界中点偏左 6px ·⑤ **页脚贴黑区下缘**：`--cz-foot-top = panel 高 − 20px`（不再由圆点弧顶牵制），实测「今日 xx分」距底 4.0px、「BPM xx」距底 0–2px ·⑥ **卡槽指示灯常驻同位**：`.cz-slot-led` 准备态/计时态同一孔肩位置，feed 流无孔肩则隐藏 ·⑦ **feed 流修右侧溢出 24px**（`crownInset` 统一 12px）+ 440 档旋钮 176→136px；门禁 `verify.js --strict` 11/11 PASS、6 模板字节级一致、CSS `[data-vp]` 0 处", ""]
     if not check:
         manifest.write_text("\n".join(lines), encoding="utf-8")
 

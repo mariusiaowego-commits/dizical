@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>D4 独立卡片：老师要求与历史备忘 · v3 (3D Deck Stack)</title>
+<style>
+  /* ══════ 与 D1 dashboard-skin-01-v3.html 严格对齐的 67 个 CSS Token ══════ */
+  :root {
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-serif: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", STSong, serif;
+    --dash-page: #F5F2EE;
+    --dash-radius: 36px;
+    --dash-shell-hi: #FFFFFF;
+    --dash-shell-lo: #E8E5E0;
+    --dash-shell-inset: rgba(44, 62, 80, 0.14);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1A1E22;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.15);
+    --dash-beat: 0.732s;
+    --dash-notch: 96px;
+    --dash-num: 48px;
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #FFFFFF;
+    --dash-btn-face-lo: #E4E1DC;
+    --dash-btn-glyph: #2C3E50;
+    --dash-btn-rim: rgba(255, 255, 255, 0.95);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #1E2328;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(44, 62, 80, 0.30);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(44, 62, 80, 0.65);
+    --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.08);
+    --dash-key-hi: rgba(255, 255, 255, 0.65);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 87, 34, 0.08);
+    --dash-notice-ink: #9E4A1A;
+    --dash-surface-2: #ECE8E1;
+    --dash-surface-3: #DFDAD1;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #B8860B;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.35);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(184, 134, 11, 0.35);
+    --dash-gold-glow: rgba(184, 134, 11, 0.30);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #C93B3B;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
+    --dash-coral-text: #C93B3B;
+
+    /* 响应式排版与卡宽基础变量 */
+    --card-width: 600px;
+    --deck-card-w: 556px;
+    --deck-card-h: 420px;
+    --title-sz: 17px;
+    --subtitle-sz: 13px;
+    --req-p-sz: 14.5px;
+    --req-p-line: 1.65;
+    --note-sz: 13px;
+    --sig-sz: 12px;
+    --counter-sz: 13px;
+    --metro-pill-sz: 14px;
+  }
+
+  :root[data-skin="ink"] {
+    --dash-page: #0E1114;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #161A1E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-notch: 96px;
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: var(--dash-accent);
+    --dash-accent-solid: #B8531F;
+    --dash-coral-text: #FF6B6B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-base);
+    background: var(--dash-page);
+    color: var(--dash-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    user-select: none;
+  }
+
+  /* ══════ 顶栏：视口切换与皮肤切换 ══════ */
+  .demo-bar {
+    max-width: calc(1133px);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--dash-white);
+    border: 1px solid var(--dash-shell-inset);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    gap: 8px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 6px var(--dash-ink-a04);
+  }
+  .demo-title { font-weight: 800; color: var(--dash-text); display: flex; align-items: center; gap: 6px; }
+  .demo-title span { color: var(--dash-coral); }
+  .demo-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill-group {
+    display: flex; background: var(--dash-surface-2); padding: 3px; border-radius: 8px; gap: 2px;
+  }
+  .pill-btn {
+    border: 0; background: transparent; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: var(--dash-text-soft); cursor: pointer;
+  }
+  .pill-btn.active {
+    background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px var(--dash-ink-a04);
+  }
+  :root[data-skin="ink"] .pill-btn.active { color: var(--dash-page); }
+
+  /* ══════ 舞台外框容器 (C1: 三档视口真实差异) ══════ */
+  .stage-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    width: 100%;
+    max-width: calc(1133px);
+  }
+
+  /* 模式自适应定制尺寸与字号 */
+  html.cz-expand .stage-frame {
+    --card-width: 600px;
+    --deck-card-w: 556px;
+    --deck-card-h: 420px;
+    --title-sz: 17px;
+    --subtitle-sz: 13px;
+    --req-p-sz: 14.5px;
+    --req-p-line: 1.65;
+    --note-sz: 13px;
+    --sig-sz: 12px;
+    --counter-sz: 13px;
+    --metro-pill-sz: 14px;
+    max-width: calc(1133px);
+  }
+  html.cz-feed .stage-frame {
+    --card-width: 440px;
+    --deck-card-w: 400px;
+    --deck-card-h: 405px;
+    --title-sz: 15px;
+    --subtitle-sz: 12px;
+    --req-p-sz: 13.5px;
+    --req-p-line: 1.55;
+    --note-sz: 12px;
+    --sig-sz: 11px;
+    --counter-sz: 12px;
+    --metro-pill-sz: 13px;
+    max-width: 744px;
+  }
+  @media (max-width: 440px) {
+    html.cz-feed .stage-frame,
+    .stage-frame {
+      --card-width: 408px;
+      --deck-card-w: 368px;
+      --deck-card-h: 388px;
+      --title-sz: 14px;
+      --subtitle-sz: 11px;
+      --req-p-sz: 12.5px;
+      --req-p-line: 1.50;
+      --note-sz: 11.5px;
+      --sig-sz: 10.5px;
+      --counter-sz: 11.5px;
+      --metro-pill-sz: 12px;
+      max-width: 440px;
+    }
+  }
+
+  /* ══════ 独立卡机身外壳 (C1: 真实响应卡宽 600 / 440 / 408) ══════ */
+  .req-card-chassis {
+    width: var(--card-width);
+    max-width: 100%;
+    background: linear-gradient(160deg, var(--dash-shell-hi), var(--dash-shell-lo) 70%);
+    border-radius: 28px;
+    padding: 16px;
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -2px 0 var(--dash-shell-inset),
+      0 12px 28px var(--dash-shell-shadow);
+    border: 1px solid var(--dash-shell-inset);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  /* 顶部信息行 */
+  .card-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px;
+  }
+  .m-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .m-title {
+    font-size: var(--title-sz);
+    font-weight: 800;
+    color: var(--dash-text);
+    letter-spacing: 0.3px;
+  }
+  .m-subtitle {
+    font-size: var(--subtitle-sz);
+    font-weight: 600;
+    color: var(--dash-text-soft);
+  }
+  .m-counter-badge {
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-shell-inset);
+    color: var(--dash-text);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: var(--counter-sz);
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  /* ══════ 3D 卡叠 Deck 舞台 ══════ */
+  .req-deck-stage {
+    position: relative;
+    width: 100%;
+    height: calc(var(--deck-card-h) + 20px);
+    perspective: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: pan-y;
+  }
+
+  /* 3D 卡片本身 (C2: 硬件加速与重影彻底消除) */
+  .deck-card {
+    position: absolute;
+    width: var(--deck-card-w);
+    height: var(--deck-card-h);
+    border-radius: 20px;
+    background: var(--dash-surface-soft);
+    border: 1.5px solid var(--dash-tray-inset);
+    box-shadow: 0 16px 36px var(--dash-ink-a12), 0 2px 8px var(--dash-ink-a04);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 16px 12px;
+    box-sizing: border-box;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    cursor: grab;
+    user-select: none;
+    overflow: hidden;
+  }
+  .deck-card:active {
+    cursor: grabbing;
+  }
+  .deck-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 19px;
+    border: 1px solid var(--dash-gold-a35);
+    pointer-events: none;
+  }
+
+  /* C2: 拖动中硬件加速 will-change，其余卡完全隐藏，零残影 */
+  .deck-card.is-dragging {
+    will-change: transform;
+    cursor: grabbing;
+    z-index: 100 !important;
+    box-shadow: 0 24px 48px var(--dash-ink-a25), 0 4px 12px var(--dash-ink-a12);
+  }
+
+  /* D4-1: 拖动期间露出下一张卡 (Peek)，让用户清晰感知下一张卡的存在 */
+  .req-deck-stage.is-deck-dragging .deck-card.is-next-card {
+    opacity: 0.88 !important;
+    visibility: visible !important;
+    pointer-events: none !important;
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+  }
+  /* 距离更深 (>=2) 的底层卡片在拖动期暂隐，防止多层叠影杂乱，保证可见层数 <= 2 */
+  .req-deck-stage.is-deck-dragging .deck-card:not(.is-dragging):not(.is-next-card) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: none !important;
+  }
+
+  /* 卡头 */
+  .card-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .card-subject-tag {
+    font-size: var(--title-sz);
+    font-weight: 800;
+    color: var(--dash-text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .latest-tag {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--dash-coral-solid);
+    color: var(--dash-white);
+    letter-spacing: 0.5px;
+  }
+  .card-date-badge {
+    font-size: var(--subtitle-sz);
+    font-weight: 600;
+    color: var(--dash-text-soft);
+    background: var(--dash-surface-2);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+
+  /* 节拍与速度信息条 */
+  .card-metro-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--dash-notice-bg);
+    border: 1.5px solid var(--dash-coral-a25);
+    padding: 4px 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    width: fit-content;
+  }
+  .card-metro-icon {
+    width: 14px;
+    height: 14px;
+    fill: var(--dash-coral);
+  }
+  .card-metro-val {
+    font-size: var(--metro-pill-sz);
+    font-weight: 800;
+    color: var(--dash-coral-text);
+    letter-spacing: 0.5px;
+  }
+  .card-metro-lbl {
+    font-size: 11px;
+    color: var(--dash-text-soft);
+    font-weight: 600;
+  }
+
+  /* 分段速度小片 */
+  .card-segments-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .card-seg-chip {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: var(--dash-surface-2);
+    color: var(--dash-text);
+    font-weight: 600;
+  }
+
+  /* 正文排版与段落 */
+  .card-req-body {
+    flex: 1;
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .card-req-body::-webkit-scrollbar {
+    width: 4px;
+  }
+  .card-req-body::-webkit-scrollbar-thumb {
+    background: var(--dash-ink-a16);
+    border-radius: 4px;
+  }
+  .req-p {
+    font-size: var(--req-p-sz);
+    line-height: var(--req-p-line);
+    color: var(--dash-text);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .req-bullet {
+    color: var(--dash-vermilion-text);
+    font-weight: 800;
+    line-height: var(--req-p-line);
+  }
+
+  /* 教师备忘重点条 */
+  .card-note-box {
+    background: var(--dash-surface-2);
+    border-left: 3px solid var(--dash-vermilion);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: var(--note-sz);
+    color: var(--dash-text-soft);
+    line-height: 1.5;
+  }
+  .card-note-box strong {
+    color: var(--dash-text);
+  }
+
+  /* 卡底 */
+  .card-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px dashed var(--dash-tray-inset);
+    padding-top: 8px;
+    font-size: var(--sig-sz);
+    color: var(--dash-text-soft);
+  }
+  .card-teacher-sig {
+    font-weight: 700;
+    color: var(--dash-text);
+  }
+
+  /* ══════ 底部控制器与指示点 ══════ */
+  .deck-footer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px;
+  }
+  .deck-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .deck-dot {
+    position: relative;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dash-text);
+    opacity: 0.85;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+  }
+  .deck-dot.active {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dash-coral);
+    opacity: 1;
+    box-shadow: 0 0 6px var(--dash-coral-glow);
+  }
+  .deck-nav-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .deck-btn {
+    padding: 10px 18px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--dash-shell-inset);
+    background: var(--dash-white);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dash-text);
+    cursor: pointer;
+  }
+  .deck-btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .deck-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* 自检面板 */
+  .audit-panel {
+    max-width: 600px;
+    width: 100%;
+    background: var(--dash-panel);
+    border-radius: 14px;
+    padding: 10px 14px;
+    color: var(--dash-panel-text);
+    font-size: 11.5px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .audit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 800;
+    color: var(--dash-vermilion);
+  }
+  .audit-terminal {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--dash-panel-dim);
+    max-height: 120px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+
+  button:focus-visible, .deck-btn:focus-visible, .pill-btn:focus-visible {
+    outline: 2px solid var(--dash-vermilion-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+</style>
+<script src="../vendor/gsap.min.js"></script>
+</head>
+<body>
+
+  <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
+  <div class="demo-bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v3 · 2026-10-26</span>
+    <div class="demo-title">
+      dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
+    </div>
+    <div class="demo-controls">
+      <div class="pill-group" id="vpPills">
+        <button class="pill-btn active" onclick="setViewport('1133x744')">iPad 1133×744 (600px)</button>
+        <button class="pill-btn" onclick="setViewport('744x1133')">iPad竖 744×1133 (440px)</button>
+        <button class="pill-btn" onclick="setViewport('440x956')">iPhone 440×956 (408px)</button>
+      </div>
+      <div class="pill-group" id="skinPills">
+        <button class="pill-btn active" onclick="setSkin('light')">包豪斯浅白</button>
+        <button class="pill-btn" onclick="setSkin('ink')">深色墨黑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 舞台框架 -->
+  <main class="stage-frame" data-vp="1133x744" id="stageFrame">
+    <!-- 独立卡机身外壳 (三档卡宽真实差异：600 / 440 / 408) -->
+    <article class="req-card-chassis" id="reqChassis">
+      
+      <!-- 头部：课后要求与历史备忘 -->
+      <header class="card-header-bar">
+        <div class="m-title-group">
+          <h2 class="m-title">李老师 · 课后要求与历史备忘</h2>
+          <div class="m-subtitle" id="mSubtitle">萨丽哈 · 共有 6 次课后指导</div>
+        </div>
+        <div class="m-counter-badge" id="cardCounterBadge">1 / 6</div>
+      </header>
+
+      <!-- 3D 卡叠 Deck 舞台 -->
+      <section class="req-deck-stage" id="deckStage" aria-label="课后要求 3D 卡叠"></section>
+
+      <!-- 底部控制器与导航 -->
+      <footer class="deck-footer-bar">
+        <div class="deck-dots" id="deckDots" aria-label="卡片切换指示点"></div>
+        <div class="deck-nav-btns">
+          <button class="deck-btn" id="prevBtn" onclick="navPrev()">上一张</button>
+          <button class="deck-btn" id="nextBtn" onclick="navNext()">下一张</button>
+        </div>
+      </footer>
+
+    </article>
+
+    <!-- 精度自检面板 (含 ?audit=1 输出) -->
+    <div class="audit-panel" id="auditPanel">
+      <div class="audit-header">
+        <span>D4 独立卡自检指标 (card-contract.md)</span>
+        <span id="auditVerdict">PENDING</span>
+      </div>
+      <div class="audit-terminal" id="auditLog">等待运行自检诊断...</div>
+    </div>
+  </main>
+
+  <script>
+    /* ═════════════════════════════════════════════════════════
+       萨丽哈 6 条真实历史课后指导数据
+       ═════════════════════════════════════════════════════════ */
+    const ASSIGNMENTS_DATA = [
+      {
+        id: "req_260928",
+        lesson_date: "2026-09-28",
+        is_latest: true,
+        subject: "萨丽哈",
+        metronome: "♩=82",
+        requirements: "第 1-32 小节快板段落注意双吐颗粒度，舌头放松，不要顶死。慢板引子部分长音气颤音要均匀，吸气饱满，换气点严格按气口记号。每天先在 ♩=76 慢练两遍，再提到 ♩=82。",
+        metronome_segments: [
+          { part: "引子散板", note: "♩", bpm: 60 },
+          { part: "慢板抒情", note: "♩", bpm: 72 },
+          { part: "快板双吐", note: "♩", bpm: 82 }
+        ],
+        teacher_note: "指法转换很熟练了，重点攻坚高音 double tonguing 清脆度！"
+      },
+      {
+        id: "req_260921",
+        lesson_date: "2026-09-21",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♩=76",
+        requirements: "重点练习小快板段落指法转换，尤其是高音 mi 到 so 的泛音指法切换。气流保持集中，速度稳定在 ♩=76。注意 17 小节切分音重音，休止符要停得干净利落。",
+        metronome_segments: [
+          { part: "小快板前段", note: "♩", bpm: 72 },
+          { part: "切分音段落", note: "♩", bpm: 76 }
+        ],
+        teacher_note: "气息稳定度有进步，注意休止符不要抢拍。"
+      },
+      {
+        id: "req_260914",
+        lesson_date: "2026-09-14",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♩=72",
+        requirements: "中板抒情段落气息下沉，揉音要柔和自然，不要过快。快板部分节拍器打 ♩=72，单吐、双吐交替练习，长音持续吹满 8 拍不晃动，音色保持明亮柔和。",
+        metronome_segments: [
+          { part: "中板抒情", note: "♩", bpm: 68 },
+          { part: "单双吐交替", note: "♩", bpm: 72 }
+        ],
+        teacher_note: "慢板新疆风味出来了，音色很有西域歌舞的画面感。"
+      },
+      {
+        id: "req_260907",
+        lesson_date: "2026-09-07",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♩=68",
+        requirements: "熟悉全曲骨干音与新疆舞曲切分节奏。引子散板自由但节拍框架要清晰。慢练 ♩=68，把音准控稳，特别是中音 fa 和高音 do，手指按压务必严实密合。",
+        metronome_segments: [
+          { part: "全曲慢练", note: "♩", bpm: 68 }
+        ],
+        teacher_note: "音孔按压要扎实密实，不要有漏气嘶嘶声。"
+      },
+      {
+        id: "req_260831",
+        lesson_date: "2026-08-31",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♪=120",
+        requirements: "分段精练：A 段引子与欢快小快板。单吐发音要如水滴般圆润干脆，手指抬起高度保持一指宽，切忌过大手型变形。节拍器以八分音符 ♪=120 对点练习。",
+        metronome_segments: [
+          { part: "A段引子", note: "♪", bpm: 100 },
+          { part: "欢快小快板", note: "♪", bpm: 120 }
+        ],
+        teacher_note: "手型保持放松圆拱，抬指动作要短促干脆。"
+      },
+      {
+        id: "req_260824",
+        lesson_date: "2026-08-24",
+        is_latest: false,
+        subject: "萨丽哈",
+        metronome: "♪=110",
+        requirements: "新课初识萨丽哈。打拍读谱，唱准节奏。重点看降 7 和升 4 的指孔按压手法。基础慢练 ♪=110，每天吹 15 分钟基本功长音和气颤音练习。",
+        metronome_segments: [
+          { part: "唱谱与长音", note: "♪", bpm: 110 }
+        ],
+        teacher_note: "新曲目开篇，保持耐心，先慢后快打好基础！"
+      }
+    ];
+
+    let currentIndex = 0;
+    const stage = document.getElementById('deckStage');
+    let isCurrentlyDragging = false;
+
+    function formatRequirementsToParagraphs(rawText) {
+      if (!rawText) return '';
+      const sentences = rawText.split('。').map(s => s.trim()).filter(s => s.length > 0);
+      return sentences.map(s => `
+        <div class="req-p">
+          <span class="req-bullet">▪</span>
+          <span>${s}。</span>
+        </div>
+      `).join('');
+    }
+
+    function createCardMarkup(item, index) {
+      const segHtml = item.metronome_segments.map(s => 
+        `<span class="card-seg-chip">${s.part} · ${s.note}=${s.bpm}</span>`
+      ).join('');
+
+      const paragraphsHtml = formatRequirementsToParagraphs(item.requirements);
+
+      return `
+        <div class="card-top-row">
+          <div class="card-subject-tag">
+            ${item.subject}
+            ${item.is_latest ? '<span class="latest-tag">本周最新</span>' : ''}
+          </div>
+          <div class="card-date-badge">${item.lesson_date}</div>
+        </div>
+
+        <div class="card-metro-pill">
+          <svg class="card-metro-icon" viewBox="0 0 24 24"><path d="M12 2L6 21h12L12 2zm0 4.5l3.8 12.5H8.2L12 6.5z"/></svg>
+          <span class="card-metro-val">${item.metronome}</span>
+          <span class="card-metro-lbl">指定速度</span>
+        </div>
+
+        <div class="card-segments-bar">${segHtml}</div>
+
+        <div class="card-req-body">
+          ${paragraphsHtml}
+        </div>
+
+        <div class="card-note-box">
+          <strong>老师备忘：</strong>${item.teacher_note}
+        </div>
+
+        <div class="card-footer-row">
+          <div class="card-teacher-sig">指导教师：李老师</div>
+          <div>第 ${ASSIGNMENTS_DATA.length - index} 课 ${item.is_latest ? '(最新)' : ''}</div>
+        </div>
+      `;
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       3D 卡叠 (Deck) 渲染：静态只展示前 3 张，无重叠杂乱
+       ═════════════════════════════════════════════════════════ */
+    function renderDeck() {
+      stage.innerHTML = '';
+      stage.classList.remove('is-deck-dragging');
+      isCurrentlyDragging = false;
+
+      const visibleCount = 3;
+      const total = ASSIGNMENTS_DATA.length;
+
+      // 逆序插入 DOM，确保 index 小的在最上面
+      for (let i = Math.min(total - 1, currentIndex + visibleCount - 1); i >= currentIndex; i--) {
+        const item = ASSIGNMENTS_DATA[i];
+        const card = document.createElement('div');
+        card.className = 'deck-card';
+        card.innerHTML = createCardMarkup(item, i);
+        card.dataset.index = i;
+
+        const stackOffset = i - currentIndex; // 0 是最顶层卡片
+        if (stackOffset === 1) {
+          card.classList.add('is-next-card');
+        }
+        const z = -stackOffset * 28;
+        const y = stackOffset * 10;
+        const scale = 1 - stackOffset * 0.035;
+        const opacity = stackOffset === 0 ? 1 : (stackOffset === 1 ? 0.85 : 0.45);
+
+        // 使用 translate3d 保证 GPU 渲染
+        card.style.transform = `translate3d(0px, ${y}px, ${z}px) scale(${scale})`;
+        card.style.opacity = opacity;
+
+        // 仅顶层卡片绑定左右滑动抛飞手势
+        if (stackOffset === 0) {
+          bindCardDrag(card);
+        }
+
+        stage.appendChild(card);
+      }
+
+      updateControls();
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       C2 / D4-1: 拖动抛飞 (Swipe Discard) —— 硬件加速 + 露出下一张卡
+       拖动期允许露出下一张卡 (Peek)，其余深层卡完全隐藏；松手落定
+       ═════════════════════════════════════════════════════════ */
+    function bindCardDrag(card) {
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let currentX = 0, currentY = 0;
+
+      const onPointerDown = (e) => {
+        if (e.target.closest && e.target.closest('.card-req-body')) return;
+        isDragging = true;
+        isCurrentlyDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        currentX = 0;
+        currentY = 0;
+
+        card.classList.add('is-dragging');
+        stage.classList.add('is-deck-dragging');
+
+        if (card.setPointerCapture) card.setPointerCapture(e.pointerId);
+      };
+
+      const onPointerMove = (e) => {
+        if (!isDragging) return;
+        currentX = e.clientX - startX;
+        currentY = e.clientY - startY;
+
+        // 硬件加速 translate3d 直接写入，零 GSAP 帧延迟
+        const rot = currentX * 0.045;
+        card.style.transform = `translate3d(${currentX}px, ${currentY * 0.15}px, 0px) rotate(${rot}deg)`;
+
+        // D4-1: 随拖动位移逐渐放大并浮现下一张卡片 (Peek)
+        const nextCard = stage.querySelector('.deck-card.is-next-card');
+        if (nextCard) {
+          const progress = Math.min(1, Math.abs(currentX) / 120);
+          const nextY = 10 * (1 - progress * 0.7);
+          const nextZ = -28 * (1 - progress * 0.7);
+          const nextScale = 0.965 + progress * 0.035;
+          const nextOpacity = 0.85 + progress * 0.15;
+          nextCard.style.transform = `translate3d(0px, ${nextY}px, ${nextZ}px) scale(${nextScale})`;
+          nextCard.style.opacity = nextOpacity;
+        }
+      };
+
+      const onPointerUp = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        isCurrentlyDragging = false;
+        if (card.releasePointerCapture) {
+          try { card.releasePointerCapture(e.pointerId); } catch(err) {}
+        }
+
+        // 判定阈值：水平移动超 85px 划走卡片切下一张
+        if (Math.abs(currentX) > 85 && currentIndex < ASSIGNMENTS_DATA.length - 1) {
+          const dir = currentX > 0 ? 1 : -1;
+          const nextCard = stage.querySelector('.deck-card.is-next-card');
+          if (nextCard && window.gsap) {
+            gsap.to(nextCard, {
+              y: 0,
+              scale: 1,
+              opacity: 1,
+              duration: 0.22,
+              ease: "power2.out"
+            });
+          }
+          if (window.gsap) {
+            gsap.to(card, {
+              x: dir * 550,
+              y: currentY * 0.15 + 20,
+              rotationZ: dir * 20,
+              opacity: 0,
+              duration: 0.22,
+              ease: "power2.in",
+              onComplete: () => {
+                currentIndex++;
+                renderDeck();
+              }
+            });
+          } else {
+            currentIndex++;
+            renderDeck();
+          }
+        } else {
+          // 弹簧回弹归位
+          const nextCard = stage.querySelector('.deck-card.is-next-card');
+          if (nextCard && window.gsap) {
+            gsap.to(nextCard, {
+              y: 10,
+              scale: 0.965,
+              opacity: 0.85,
+              duration: 0.22,
+              ease: "power3.out"
+            });
+          }
+          if (window.gsap) {
+            gsap.to(card, {
+              x: 0,
+              y: 0,
+              rotationZ: 0,
+              duration: 0.22,
+              ease: "power3.out",
+              onComplete: () => {
+                card.classList.remove('is-dragging');
+                stage.classList.remove('is-deck-dragging');
+                renderDeck();
+              }
+            });
+          } else {
+            card.classList.remove('is-dragging');
+            stage.classList.remove('is-deck-dragging');
+            renderDeck();
+          }
+        }
+      };
+
+      card.addEventListener('pointerdown', onPointerDown);
+      card.addEventListener('pointermove', onPointerMove);
+      card.addEventListener('pointerup', onPointerUp);
+      card.addEventListener('pointercancel', onPointerUp);
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       导航与指示点交互
+       ═════════════════════════════════════════════════════════ */
+    function updateControls() {
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      if (prevBtn) prevBtn.disabled = (currentIndex === 0);
+      if (nextBtn) nextBtn.disabled = (currentIndex === ASSIGNMENTS_DATA.length - 1);
+
+      const badge = document.getElementById('cardCounterBadge');
+      if (badge) badge.textContent = `${currentIndex + 1} / ${ASSIGNMENTS_DATA.length}`;
+
+      const dotsContainer = document.getElementById('deckDots');
+      if (dotsContainer) {
+        dotsContainer.innerHTML = '';
+        ASSIGNMENTS_DATA.forEach((_, idx) => {
+          const dot = document.createElement('div');
+          dot.className = 'deck-dot' + (idx === currentIndex ? ' active' : '');
+          dot.onclick = () => {
+            currentIndex = idx;
+            renderDeck();
+          };
+          dotsContainer.appendChild(dot);
+        });
+      }
+    }
+
+    function navPrev() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderDeck();
+      }
+    }
+
+    function navNext() {
+      if (currentIndex < ASSIGNMENTS_DATA.length - 1) {
+        currentIndex++;
+        renderDeck();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') navPrev();
+      if (e.key === 'ArrowRight') navNext();
+    });
+
+    /* ═════════════════════════════════════════════════════════
+       视口与换肤辅助
+       ═════════════════════════════════════════════════════════ */
+    function setViewport(vpKey) {
+      document.getElementById('stageFrame').dataset.vp = vpKey;
+      document.querySelectorAll('#vpPills .pill-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('onclick').includes(vpKey));
+      });
+    }
+
+    function setSkin(skin) {
+      document.documentElement.dataset.skin = (skin === 'ink' ? 'ink' : '');
+      document.querySelectorAll('#skinPills .pill-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', ['light', 'ink'][idx] === skin);
+      });
+    }
+
+    /* ═════════════════════════════════════════════════════════
+       契约级自检引擎 (?audit=1)
+       C1: 三档卡宽真实互不相等断言
+       C2: 拖动中可见层 <= 2，松手 200ms 内无叠层残留
+       ═════════════════════════════════════════════════════════ */
+    function runContractAudit() {
+      const chassis = document.getElementById('reqChassis');
+      const fails = [];
+
+      // 断言 1：deck 总张数 = 6
+      const deckCount = ASSIGNMENTS_DATA.length;
+      if (deckCount !== 6) fails.push(`deckCount want 6 got ${deckCount}`);
+
+      // 断言 2：当前卡初始索引 = 0
+      const initIdx = currentIndex;
+      if (initIdx !== 0) fails.push(`initIdx want 0 got ${initIdx}`);
+
+      // 断言 3：切换后索引变化
+      navNext();
+      const nextIdx = currentIndex;
+      navPrev();
+      if (nextIdx !== 1) fails.push(`nextIdx want 1 got ${nextIdx}`);
+
+      // 断言 4 (C1)：三档视口卡宽真实互不相等
+      setViewport('1133x744');
+      const w1133 = chassis.getBoundingClientRect().width;
+      setViewport('744x1133');
+      const w744 = chassis.getBoundingClientRect().width;
+      setViewport('440x956');
+      const w440 = chassis.getBoundingClientRect().width;
+      setViewport('1133x744'); // 恢复
+
+      const widthsDifferent = (w1133 !== w744) && (w744 !== w440) && (w1133 !== w440);
+      if (!widthsDifferent) {
+        fails.push(`three viewports width must differ: 1133(${w1133}), 744(${w744}), 440(${w440})`);
+      }
+
+      // 断言 5 (C2 / D4-1)：拖动中可见层数 <= 2 (拖动卡 1 张 + 下一层露出卡 1 张 = 2 层)
+      const topCard = stage.querySelector('.deck-card[data-index="' + currentIndex + '"]');
+      stage.classList.add('is-deck-dragging');
+      if (topCard) topCard.classList.add('is-dragging');
+
+      const visibleCardsDuringDrag = Array.from(stage.querySelectorAll('.deck-card')).filter(c => {
+        const style = window.getComputedStyle(c);
+        return style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) > 0.01;
+      });
+      const dragLayerCount = visibleCardsDuringDrag.length;
+      if (dragLayerCount > 2) {
+        fails.push(`dragVisibleLayers want <= 2, got ${dragLayerCount}`);
+      }
+
+      // D4-1 断言：拖动到阈值 (85px) 时露出下一张卡 (可见且暴露面积 > 0)
+      const testTopCard = stage.querySelector('.deck-card[data-index="' + currentIndex + '"]');
+      const testNextCard = stage.querySelector('.deck-card.is-next-card');
+      if (testTopCard) {
+        testTopCard.style.transform = 'translate3d(90px, 10px, 0px) rotate(4deg)';
+      }
+      if (testNextCard) {
+        testNextCard.style.transform = 'translate3d(0px, 4px, -10px) scale(0.99)';
+        testNextCard.style.opacity = '0.96';
+      }
+      let nextVisibleArea = 0;
+      let nextIsVisible = false;
+      if (testNextCard && testTopCard) {
+        const nextStyle = window.getComputedStyle(testNextCard);
+        nextIsVisible = (nextStyle.visibility !== 'hidden') && (parseFloat(nextStyle.opacity) > 0.1);
+        const topR = testTopCard.getBoundingClientRect();
+        const nextR = testNextCard.getBoundingClientRect();
+        // 顶层卡向右移 90px，露出左侧区域
+        const exposedW = Math.max(0, topR.left - nextR.left);
+        nextVisibleArea = exposedW * nextR.height;
+      }
+      if (!nextIsVisible || nextVisibleArea <= 0) {
+        fails.push(`D4-1 fail: next card must peek during drag at threshold: visible=${nextIsVisible}, exposedArea=${nextVisibleArea.toFixed(1)} (want > 0)`);
+      }
+
+      // 恢复静态
+      stage.classList.remove('is-deck-dragging');
+      if (topCard) {
+        topCard.classList.remove('is-dragging');
+        topCard.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+      }
+      if (testNextCard) {
+        testNextCard.style.transform = 'translate3d(0px, 10px, -28px) scale(0.965)';
+        testNextCard.style.opacity = '0.85';
+      }
+
+      // 断言 6 (C2)：释放后无叠层残留 (ghost layers = 0)
+      const ghostLayers = Array.from(stage.querySelectorAll('.deck-card.is-dragging')).length;
+      if (ghostLayers !== 0) {
+        fails.push(`ghost layers after release want 0, got ${ghostLayers}`);
+      }
+
+      // D4-2 断言：deck-dots 当前点与前后点清晰度，尺寸差 <= 1 档，对比度均 >= 3.0:1
+      const dots = Array.from(document.querySelectorAll('.deck-dot'));
+      const activeDot = document.querySelector('.deck-dot.active');
+      const inactiveDots = dots.filter(d => !d.classList.contains('active'));
+      let dotSizeDelta = 0;
+      let minDotContrast = 99;
+      if (activeDot && inactiveDots.length > 0) {
+        const aRect = activeDot.getBoundingClientRect();
+        const inRect = inactiveDots[0].getBoundingClientRect();
+        dotSizeDelta = Math.abs(aRect.width - inRect.width);
+        if (dotSizeDelta > 1.5) {
+          fails.push(`D4-2 fail: deck dot size delta want <= 1 step (<= 1.5px), got ${dotSizeDelta.toFixed(1)}px (active: ${aRect.width}px, inactive: ${inRect.width}px)`);
+        }
+        const inactiveStyle = window.getComputedStyle(inactiveDots[0]);
+        const inactiveBg = inactiveStyle.backgroundColor;
+        function getLum(rgbaStr, elemOpacity) {
+          const m = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+          if (!m) return 0.5;
+          let r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
+          let a = (m[4] !== undefined ? parseFloat(m[4]) : 1) * (elemOpacity !== undefined ? elemOpacity : 1);
+          r = Math.round(r * a + 240 * (1 - a));
+          g = Math.round(g * a + 243 * (1 - a));
+          b = Math.round(b * a + 246 * (1 - a));
+          const toLin = v => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+          return 0.2126 * toLin(r) + 0.7152 * toLin(g) + 0.0722 * toLin(b);
+        }
+        const chLum = 0.89;
+        const inLum = getLum(inactiveBg, parseFloat(inactiveStyle.opacity) || 1);
+        const l1 = Math.max(chLum, inLum), l2 = Math.min(chLum, inLum);
+        const contrast = (l1 + 0.05) / (l2 + 0.05);
+        minDotContrast = contrast;
+        if (contrast < 3.0) {
+          fails.push(`D4-2 fail: inactive dot contrast against chassis want >= 3.0:1, got ${contrast.toFixed(2)}:1 (bg: ${inactiveBg})`);
+        }
+      } else {
+        fails.push('D4-2 fail: deck dots missing active or inactive elements');
+      }
+
+      // 断言 7：机身无横向溢出
+      const noHOverflow = chassis.scrollWidth <= chassis.clientWidth;
+      if (!noHOverflow) fails.push(`horizontal overflow: scrollWidth ${chassis.scrollWidth} > clientWidth ${chassis.clientWidth}`);
+
+      const verdict = fails.length === 0 ? 'ASSERT_OK' : 'ASSERT_FAIL';
+      const out = {
+        deckCount,
+        initIdx,
+        nextIdx,
+        widths: { w1133, w744, w440 },
+        widthsDifferent,
+        dragLayerCount,
+        nextVisibleArea: parseFloat(nextVisibleArea.toFixed(1)),
+        dotSizeDelta: parseFloat(dotSizeDelta.toFixed(1)),
+        minDotContrast: parseFloat(minDotContrast.toFixed(2)),
+        ghostLayers,
+        noHOverflow,
+        fails,
+        verdict
+      };
+
+      const logEl = document.getElementById('auditLog');
+      const verdictEl = document.getElementById('auditVerdict');
+      if (logEl) logEl.textContent = JSON.stringify(out, null, 2);
+      if (verdictEl) {
+        verdictEl.textContent = verdict;
+        verdictEl.style.color = (verdict === 'ASSERT_OK') ? 'var(--dash-battery)' : 'var(--dash-coral)';
+      }
+      return out;
+    }
+
+    window.__czQText = function () {
+      var bad = [];
+      var nodes = document.body ? document.body.querySelectorAll('*') : [];
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        var st = getComputedStyle(el);
+        if (st.display === 'none' || st.visibility === 'hidden') { continue; }
+        if (!(el.clientWidth > 0)) { continue; }
+        var onlyText = (el.childElementCount === 0) && ((el.textContent || '').trim().length > 0);
+        if (!onlyText) { continue; }
+        if (el.scrollWidth > el.clientWidth + 1) {
+          bad.push({ text: (el.textContent || '').trim().slice(0, 32), sw: el.scrollWidth, cw: el.clientWidth, cls: el.className || el.tagName });
+        }
+      }
+      return { ok: bad.length === 0, n: bad.length, bad: bad.slice(0, 12) };
+    };
+
+    // 初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDeck();
+      if (new URLSearchParams(location.search).has('audit')) {
+        setTimeout(runContractAudit, 200);
+      }
+    });
+  </script>
+</body>
+</html>

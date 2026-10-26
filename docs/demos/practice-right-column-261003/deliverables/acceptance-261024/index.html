@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dizical demo v3.6 · 验收包（2026-10-25）</title>
+<style>
+  :root{
+    --ink:#161A1E; --ink2:#2A323A; --paper:#F7F4EF; --line:rgba(22,26,30,.12);
+    --dim:#6E7681; --coral:#FF5722; --green:#2ECC71;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55;
+       background-image:radial-gradient(circle at 12% -8%,rgba(255,87,34,.10),transparent 42%),
+                        radial-gradient(circle at 92% 4%,rgba(22,26,30,.07),transparent 38%);}
+  .wrap{max-width:1180px;margin:0 auto;padding:56px 28px 100px}
+  header.hero{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--coral);font-weight:700}
+  h1{font-size:40px;line-height:1.15;margin:10px 0 8px;letter-spacing:-.02em;font-weight:800}
+  h1 small{display:block;font-size:15px;font-weight:500;color:var(--dim);letter-spacing:0;margin-top:10px}
+  .metaline{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .chip{font-family:var(--mono);font-size:11.5px;padding:5px 10px;border-radius:999px;background:#fff;
+        border:1px solid var(--line);color:var(--ink2)}
+  .chip b{color:var(--ink)}
+  .chip.ok{background:rgba(46,204,113,.10);border-color:rgba(46,204,113,.4);color:#1D7A4A}
+  h2{font-size:22px;margin:52px 0 6px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:12px;color:var(--coral);margin-right:8px;vertical-align:2px}
+  .lede{color:var(--dim);font-size:14px;margin:0 0 20px;max-width:74ch}
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .big{grid-template-columns:1fr}
+  figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+         box-shadow:0 10px 26px rgba(22,26,30,.07)}
+  figure img{display:block;width:100%;height:auto;background:#EFEBE4}
+  figcaption{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+             padding:10px 14px;font-size:12.5px;border-top:1px solid var(--line);color:var(--ink2)}
+  figcaption .tag{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:rgba(22,26,30,.04);font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--ink2)}
+  tr:last-child td{border-bottom:0}
+  td.num{font-family:var(--mono);text-align:right}
+  .pass{color:#1D7A4A;font-weight:700}
+  .checklist{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+  .checklist li{display:flex;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:13.5px}
+  .checklist .box{flex:0 0 auto;width:16px;height:16px;border:1.5px solid var(--ink2);border-radius:4px;margin-top:2px}
+  .checklist .who{font-family:var(--mono);font-size:11px;color:var(--dim);margin-left:auto;white-space:nowrap}
+  .note{background:#fff;border-left:3px solid var(--coral);border-radius:0 12px 12px 0;padding:14px 18px;font-size:13.5px;margin:18px 0}
+  .note b{color:var(--coral)}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--dim);font-family:var(--mono)}
+  @media(max-width:860px){ .g2,.g3{grid-template-columns:1fr} h1{font-size:30px} .wrap{padding:36px 18px 70px} }
+  @media print{
+    @page{size:A4 landscape;margin:9mm}
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    header.hero{break-after:avoid;padding-bottom:10px;margin-bottom:12px}
+    h1{font-size:27px} h1 small{font-size:11px;margin-top:5px}
+    .metaline{margin-top:9px;gap:5px}
+    .chip{font-size:9.5px;padding:3px 7px}
+    h2{font-size:15px;margin:0 0 4px;break-after:avoid}
+    section{break-before:auto}
+    section.newpage{break-before:page}
+    h2:first-of-type{break-before:auto}
+    .lede{font-size:11px;margin-bottom:8px;max-width:none;break-after:avoid}
+    .note{break-inside:avoid;font-size:11px;padding:9px 12px;margin:8px 0}
+    table{break-inside:auto;font-size:11px}
+    th,td{padding:5px 8px}
+    tr{break-inside:avoid}
+    .grid{gap:6px;grid-template-columns:repeat(3,1fr);break-inside:auto}
+    .grid.big{grid-template-columns:repeat(2,1fr)}
+    figure{break-inside:avoid;page-break-inside:avoid;box-shadow:none;border-radius:8px}
+    figure img{width:100%;height:auto;max-height:62mm;object-fit:contain;object-position:top center}
+    .grid.big figure img{max-height:78mm}
+    figcaption{padding:4px 8px;font-size:9.5px}
+    .checklist{gap:4px}
+    .checklist li{break-inside:avoid;font-size:11px;padding:6px 10px}
+    footer{break-before:avoid;margin-top:12px;font-size:9.5px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">dizical · practice 右栏 · demo acceptance pack</div>
+  <h1>demo v3.6 验收包
+    <small>分支 <code>feat/practice-ui-iter-260920</code> · HEAD <code>f330bac</code>（tag demo-v3.5）+ S8→S12 未提交改动 · 2026-10-25 生成</small>
+  </h1>
+  <div class="metaline">
+    <span class="chip">页面版本 <b>demo v3.6</b></span>
+    <span class="chip">9 组合 × <b>11 项</b> 契约</span>
+    <span class="chip ok">verify.js --strict 全 PASS</span>
+    <span class="chip">6 模板字节一致</span>
+    <span class="chip">CSS [data-vp] = <b>0</b></span>
+    <span class="chip">截图 <b>31</b> 张</span>
+  </div>
+</header>
+
+<h2><span class="n">01</span>怎么看这份包</h2>
+<p class="lede">先在浏览器里逐张对照截图，再打开本地 demo 亲手动效（插卡、票夹变形、节拍器拖拽与长按）。截图只能证结构与排版，<b>动效手感必须真机看</b>。</p>
+<div class="note">
+  <b>动手入口：</b> 运行 <code>python3 -m http.server 8771 --bind 127.0.0.1 --directory docs/demos</code>，
+  打开 <code>http://127.0.0.1:8771/practice-right-column-261003/canvas-01.html</code>（当前已起，PID 见 <code>lsof -nP -iTCP:8771</code>）。<br>
+  顶栏可切视口（1133 / 744 / 440）、组合（1 / 2 / 3）、皮肤（浅银 / 深墨）；主画布右上「切到练习态」进计时态。
+</div>
+
+<section>
+<div class="note" style="border-left-color:#2ECC71">
+  <b style="color:#1D7A4A">本轮另修一处：</b>组合 2 的「今日练习记录」小卡，右上角数字标签原来显示 <code>未选内容 次</code>（把收拢态“本次练习内容”当成次数拼进去）。
+  已改为读今日记录胶囊：现在显示 <code>3 次</code>，主数字 <code>15 分</code> 也改读同一来源。
+</div>
+
+<h2><span class="n">02</span>主画布 · 1133（横排扩展）</h2>
+<p class="lede">组合 1（2 卡）/ 组合 2（4 卡）/ 组合 3（6 卡）。每组左右为准备态与计时态；计时态里票夹收成黑色竖条、卡槽出卡。</p>
+<div class="grid big">
+  <figure><img src="shots/canvas-1133-c1-prep.png" alt="1133 组合1 准备态"><figcaption><span>组合 1 · 准备态</span><span class="tag">1133×900</span></figcaption></figure>
+  <figure><img src="shots/canvas-1133-c1-run.png" alt="1133 组合1 计时态"><figcaption><span>组合 1 · 计时态</span><span class="tag">1133×900</span></figcaption></figure>
+  <figure><img src="shots/canvas-1133-c2-prep.png" alt="1133 组合2 准备态"><figcaption><span>组合 2 · 准备态</span><span class="tag">1133×900</span></figcaption></figure>
+  <figure><img src="shots/canvas-1133-c2-run.png" alt="1133 组合2 计时态"><figcaption><span>组合 2 · 计时态</span><span class="tag">1133×900</span></figcaption></figure>
+  <figure><img src="shots/canvas-1133-c3-prep.png" alt="1133 组合3 准备态"><figcaption><span>组合 3 · 准备态</span><span class="tag">1133×900</span></figcaption></figure>
+  <figure><img src="shots/canvas-1133-c3-run.png" alt="1133 组合3 计时态"><figcaption><span>组合 3 · 计时态</span><span class="tag">1133×900</span></figcaption></figure>
+</div>
+
+</section>
+<section class="newpage">
+<h2><span class="n">03</span>主画布 · 744（纵向）与 440（手机）</h2>
+<p class="lede">纵向视口下票夹在计时态变横向黑 bar，黑色 bar 再变形成卡插入下方卡槽；卡槽露出带 = 100%（整带露出）。</p>
+<div class="grid big">
+  <figure><img src="shots/canvas-744-c1-prep.png" alt="744 组合1 准备态"><figcaption><span>744 · 组合1 准备</span><span class="tag">744</span></figcaption></figure>
+  <figure><img src="shots/canvas-744-c1-run.png" alt="744 组合1 计时态"><figcaption><span>744 · 组合1 计时</span><span class="tag">744</span></figcaption></figure>
+  <figure><img src="shots/canvas-744-c2-run.png" alt="744 组合2 计时态"><figcaption><span>744 · 组合2 计时</span><span class="tag">744</span></figcaption></figure>
+  <figure><img src="shots/canvas-744-c3-prep.png" alt="744 组合3 准备态"><figcaption><span>744 · 组合3 准备</span><span class="tag">744</span></figcaption></figure>
+  <figure><img src="shots/canvas-440-c1-run.png" alt="440 组合1 计时态"><figcaption><span>440 · 组合1 计时</span><span class="tag">440</span></figcaption></figure>
+  <figure><img src="shots/canvas-440-c2-run.png" alt="440 组合2 计时态"><figcaption><span>440 · 组合2 计时</span><span class="tag">440</span></figcaption></figure>
+</div>
+
+</section>
+<section>
+<h2><span class="n">04</span>深墨皮肤</h2>
+<p class="lede">两套皮肤同一结构，只有色板切换；卡片白天/黑夜一致（组合内不再出现半卡黑红）。</p>
+<div class="grid big">
+  <figure><img src="shots/canvas-1133-c1-run-ink.png" alt="1133 深墨"><figcaption><span>1133 · 组合1 · 计时 · 深墨</span><span class="tag">ink</span></figcaption></figure>
+  <figure><img src="shots/canvas-744-c1-run-ink.png" alt="744 深墨"><figcaption><span>744 · 组合1 · 计时 · 深墨</span><span class="tag">ink</span></figcaption></figure>
+</div>
+
+</section>
+<section class="newpage">
+<h2><span class="n">05</span>单卡与工具页</h2>
+<p class="lede">每张卡的独立验收页（准备态），以及组合自选台、骨架、共享尺子自检页。</p>
+<div class="grid g2">
+  <figure><img src="shots/page-card-a-dashboard.png" alt="A 仪表盘"><figcaption><span>A · 仪表盘（计时卡）</span><span class="tag">dashboard-skin-01-v3</span></figcaption></figure>
+  <figure><img src="shots/page-card-b-metronome.png" alt="B 节拍器"><figcaption><span>B · 节拍器</span><span class="tag">metronome-01-v4</span></figcaption></figure>
+  <figure><img src="shots/page-card-s-strip.png" alt="S 竖条"><figcaption><span>S · 节拍器竖条</span><span class="tag">metronome-02-strip</span></figcaption></figure>
+  <figure><img src="shots/page-card-d-duration.png" alt="D 时长卡"><figcaption><span>D · 今日时长</span><span class="tag">practice-duration-card-01-v3</span></figcaption></figure>
+  <figure><img src="shots/page-card-r-records.png" alt="R 今日记录"><figcaption><span>R · 今日记录</span><span class="tag">today-records-01</span></figcaption></figure>
+  <figure><img src="shots/page-card-q-requests.png" alt="Q 老师要求"><figcaption><span>Q · 老师要求</span><span class="tag">requests-card-01-v3</span></figcaption></figure>
+  <figure><img src="shots/page-compose-03.png" alt="组合自选台"><figcaption><span>组合自选台</span><span class="tag">compose-03</span></figcaption></figure>
+  <figure><img src="shots/page-compose-02.png" alt="旧组合视图"><figcaption><span>组合视图（对照版）</span><span class="tag">compose-02</span></figcaption></figure>
+</div>
+<div class="grid g2" style="margin-top:16px">
+  <figure><img src="shots/page-skeleton.png" alt="轨道骨架"><figcaption><span>轨道骨架</span><span class="tag">card-dashboard-skeleton-01</span></figcaption></figure>
+  <figure><img src="shots/page-ruler-shared.png" alt="共享尺子"><figcaption><span>共享尺子自检</span><span class="tag">ruler-shared-check</span></figcaption></figure>
+</div>
+
+</section>
+<section class="newpage">
+<h2><span class="n">06</span>本轮契约实测</h2>
+<p class="lede"><code>node tools/verify.js --strict</code> — 9 组合 × 11 项，全部 PASS（exit 0）。下为关键量化项。</p>
+<table>
+  <thead><tr><th>项</th><th>断言</th><th>实测</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>卡槽卡契约：卡跨黑区顶缘 / 入槽被唇咬住 / 不压旋钮与主控件 / ± 按钮不压黑区</td><td class="num">9/9 组合</td><td class="pass">PASS</td></tr>
+    <tr><td>2</td><td>露出比例：横排 ∈ [18.5%, 21.5%]，feed 流整带 = 100%</td><td class="num">19.9–20.0% / 100%</td><td class="pass">PASS</td></tr>
+    <tr><td>3</td><td>露出条叶子文本两两重叠</td><td class="num">0.0 px²</td><td class="pass">PASS</td></tr>
+    <tr><td>4</td><td>今日记录弹窗 12 条明细 display==block 且无裁切</td><td class="num">12 条</td><td class="pass">PASS</td></tr>
+    <tr><td>5</td><td>exitRun 退场空窗帧</td><td class="num">0 帧</td><td class="pass">PASS</td></tr>
+    <tr><td>6</td><td>exitRun 退场 dual30 帧（v37g 成果锁定）</td><td class="num">0 帧</td><td class="pass">PASS</td></tr>
+    <tr><td>7</td><td>节点数匹配（组合 1/2/3 = 2/4/6 卡）</td><td class="num">2/2 · 4/4 · 6/6</td><td class="pass">PASS</td></tr>
+    <tr><td>8</td><td>Feed 顺序 A,B,S,D,R,Q</td><td class="num">全匹配</td><td class="pass">PASS</td></tr>
+    <tr><td>9</td><td>CSS [data-vp] 选择器总数</td><td class="num">0</td><td class="pass">PASS</td></tr>
+    <tr><td>10</td><td>三心合一：R_notch=78=R_knob64+14 · R_dot=70 · dy=50px=0.64R · ±压黑区 0px²</td><td class="num">全部命中</td><td class="pass">PASS</td></tr>
+    <tr><td>11</td><td><b>run 态直切视口</b>（1133 run → 744）</td><td class="num">dash 720 / knob 176 / frame 720</td><td class="pass">PASS</td></tr>
+  </tbody>
+</table>
+
+</section>
+<section>
+<h2><span class="n">07</span>run 态直切探针（本轮修复项）</h2>
+<p class="lede">修复前同场景实测 dash 24px、knob 0×0；现在六个场景全部恢复。</p>
+<table>
+  <thead><tr><th>场景</th><th class="num">dash</th><th class="num">knob</th><th class="num">frameH</th><th class="num">card</th></tr></thead>
+  <tbody>
+    <tr><td>1133 run → 744</td><td class="num">720</td><td class="num">176²</td><td class="num">720</td><td class="num">704×80</td></tr>
+    <tr><td>744 run → 440</td><td class="num">720</td><td class="num">176²</td><td class="num">720</td><td class="num">400×80</td></tr>
+    <tr><td>1133 run 组合1 → 2</td><td class="num">732</td><td class="num">128²</td><td class="num">732</td><td class="num">398×84</td></tr>
+    <tr><td>1133 run 组合2 → 3</td><td class="num">732</td><td class="num">128²</td><td class="num">732</td><td class="num">398×84</td></tr>
+    <tr><td>744 run 组合2 → 3</td><td class="num">720</td><td class="num">176²</td><td class="num">720</td><td class="num">704×80</td></tr>
+    <tr><td>440 run → 744</td><td class="num">720</td><td class="num">176²</td><td class="num">720</td><td class="num">440×80</td></tr>
+  </tbody>
+</table>
+
+</section>
+<section>
+<h2><span class="n">08</span>关键尺寸</h2>
+<table>
+  <thead><tr><th>元素</th><th>1133</th><th>744</th><th>440</th></tr></thead>
+  <tbody>
+    <tr><td>计时数字高度</td><td class="num">76px</td><td class="num">66px</td><td class="num">66px</td></tr>
+    <tr><td>「分钟」下标（= 数字一半）</td><td class="num">38px</td><td class="num">33px</td><td class="num">33px</td></tr>
+    <tr><td>下标字重</td><td class="num">250</td><td class="num">250</td><td class="num">250</td></tr>
+    <tr><td>卡槽 / 卡片（组合1）</td><td class="num">436×72 / 428×88</td><td colspan="2" class="num">feed 流：露出带 52px 整宽</td></tr>
+    <tr><td>插卡延迟 / 时长</td><td colspan="3" class="num">0.78s（bar 完成 + 0.5s）/ 0.312s</td></tr>
+  </tbody>
+</table>
+
+</section>
+<section>
+<h2><span class="n">09</span>这轮改了什么（S12）</h2>
+<ul class="checklist">
+  <li><span class="box"></span><span>run 态直切视口/组合塌陷 —— 三个根因全修（size containment / iframe 高度被锁 100px / 票夹 0 高度基准丢失）</span><span class="who">verify 项11</span></li>
+  <li><span class="box"></span><span>「分钟」下标改成数字高度的 1/2，字重 250（原 13px 像标点）</span><span class="who">1133=38px</span></li>
+  <li><span class="box"></span><span>卡槽抽屉式落位：74% 压过槽沿 +2px → 88% 回弹 −0.5px → 100% 归零</span><span class="who">301ms</span></li>
+  <li><span class="box"></span><span>记录小卡「次数」取错源（把“未选内容”当次数拼成“未选内容 次”）→ 改取今日记录胶囊</span><span class="who">3 次 / 15 分</span></li>
+</ul>
+
+</section>
+<section>
+<h2><span class="n">10</span>验收清单（请你勾）</h2>
+<ul class="checklist">
+  <li><span class="box"></span><span>1133 三组合：黑区高度随内容、元素不互压</span><span class="who">图 02</span></li>
+  <li><span class="box"></span><span>744 / 440：票夹横 bar → 卡插入下方槽，整带露出</span><span class="who">图 03</span></li>
+  <li><span class="box"></span><span>计时态：卡露头 1/5、卡底被槽唇咬住、卡顶冒出黑区</span><span class="who">图 02/03</span></li>
+  <li><span class="box"></span><span>插卡动效顺序：竖条 bar 先完成 → 0.5s → 卡片自上而下插入（需真机看手感）</span><span class="who">动效</span></li>
+  <li><span class="box"></span><span>票夹 ↔ 黑 bar ↔ 3D 票卡三态变形连续（准备 ↔ 计时往返）</span><span class="who">动效</span></li>
+  <li><span class="box"></span><span>节拍器：圆盘左右拖也能调速、± 长按连续加减</span><span class="who">交互</span></li>
+  <li><span class="box"></span><span>「分钟」下标大小/字重符合预期</span><span class="who">图 02</span></li>
+  <li><span class="box"></span><span>浅银 / 深墨两套皮肤看着一致、无半卡撞色</span><span class="who">图 04</span></li>
+</ul>
+
+</section>
+<footer>
+  dizical · practice-right-column-261003 · demo v3.6 · 生成于 2026-10-25 ·
+  证据目录 <code>deliverables/acceptance-261024/</code> · 截图 <code>shots/</code>
+</footer>
+
+</div>
+</body>
+</html>

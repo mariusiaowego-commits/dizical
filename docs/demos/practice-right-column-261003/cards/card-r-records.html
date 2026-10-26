@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D5 今日练习记录</title>
+<style>
+  /* token 与 dashboard-skin-01-v2 同一套名字。深墨由 data-skin="ink" 生效。 */
+  :root[data-skin="ink"] {
+    --dash-page: #2C3E50;
+    --dash-shell-hi: #5C6770;
+    --dash-shell-lo: #3E474E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+      --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-coral-text: #FF6B6B;
+}
+  :root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: var(--dash-accent);
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+      --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-coral-text: #C93B3B;
+}
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--dash-page); color: var(--dash-text);
+    font-family: "PingFang SC", "Heiti SC", system-ui, sans-serif;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  .page { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+  .chrome {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 6px 10px;
+  }
+  .brand { font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .seg { display: flex; gap: 4px; background: var(--dash-white); border-radius: 999px; padding: 3px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    border-radius: 999px; min-height: 28px; padding: 0 10px; font-size: 12px; font-weight: 650;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .seg button { color: var(--dash-page); }
+  .frame {
+    flex: 1 1 auto; min-height: 0; min-width: 0;
+    display: flex; justify-content: center; padding: 8px 12px 12px;
+  }
+  .console {
+    container: rec / inline-size;
+    width: min(100%, var(--vp-w));
+    height: 100%;
+    max-height: var(--vp-h);
+    min-width: 0;
+    background: var(--dash-white);
+    color: var(--dash-text);
+    border: 1px solid var(--dash-ink-a12);
+    border-radius: 20px;
+    padding: 14px;
+    gap: 22px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  :root[data-skin="ink"] .console { background: var(--dash-panel); }
+  .head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-width: 0;
+  }
+  .head h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+  .fold {
+    display: flex; background: var(--dash-surface-2); border-radius: 10px; padding: 3px; flex: 0 0 auto;
+  }
+  .fold button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    min-height: 44px; padding: 0 16px; border-radius: 8px; font-size: 13px; font-weight: 700;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+  .fold button.is-on { background: var(--dash-white); color: var(--dash-text); }
+  :root[data-skin="ink"] .fold button.is-on { color: var(--dash-page); }
+  .heroes {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    background: var(--dash-surface-soft);
+    border-top: 1px solid var(--dash-ink-a12);
+    border-bottom: 1px solid var(--dash-ink-a12);
+  }
+  .hero { min-height: 82px; padding: 10px 14px; min-width: 0; }
+  .hero + .hero { border-left: 1px solid var(--dash-ink-a12); }
+  .hero .k {
+    display: block; font-size: 11.5px; color: var(--dash-text-soft);
+    font-weight: 700; letter-spacing: 0.04em;
+  }
+  .hero .v {
+    display: block; margin-top: 4px;
+    font-size: 28px; line-height: 1.1; font-weight: 850; letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  #heroPractice { color: var(--dash-vermilion-text); }
+  .hero .s { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--dash-text-soft); }
+  .delta.up { color: var(--dash-delta-up); }
+  .delta.down { color: var(--dash-delta-down); }
+  .sheet { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(54px, 1.2fr) minmax(48px, auto) minmax(56px, auto) minmax(44px, auto) minmax(130px, 2.5fr) minmax(50px, auto);
+    gap: 8px 12px; align-items: center;
+    min-width: 0;
+  }
+  .c-meta { display: contents; }
+  .thead {
+    min-height: 34px; padding: 0 0 0 0; color: var(--dash-text-soft); font-size: 11.5px; font-weight: 750;
+    letter-spacing: 0.04em; background: var(--dash-surface-2);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    align-items: center;
+  }
+  /* S15 批注1（dad 261025）：去掉默认系统滚动条，uiverse 风格细滚动条（6px 圆角细轨道） */
+  .scroller {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    padding-right: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(44, 62, 80, 0.28) transparent;
+  }
+  .scroller::-webkit-scrollbar { width: 6px; }
+  .scroller::-webkit-scrollbar-track { background: transparent; }
+  .scroller::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #E2DDD5 0%, #CFC9BF 100%);
+    border-radius: 999px;
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+  }
+  .scroller::-webkit-scrollbar-thumb:hover { background: var(--dash-coral); background-clip: padding-box; }
+  .rec-row { padding: 0; border-bottom: 1px solid var(--dash-ink-a12); }
+  .rec-row:hover { background: var(--dash-ink-a04); }
+  .rec-row.subject { min-height: 44px; font-weight: 700; }
+  .rec-row.session { min-height: 40px; font-weight: 450; color: var(--dash-text); background: var(--dash-surface-soft); }
+  .rec-row.session .c-name { padding-left: 14px; font-weight: 500; color: var(--dash-text-soft); }
+  .c-name, .c-total, .c-tempo, .c-once, .c-share { white-space: nowrap !important; }
+  .c-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .c-detail { min-width: 0; word-break: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.35; font-size: 12px; font-weight: 450; color: var(--dash-text); }
+  .num { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .c-share { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .bar { display: block; width: 48px; height: 4px; border-radius: 999px; background: var(--dash-ink-a12); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: var(--dash-coral); }
+  .tag {
+    display: inline-block; margin-right: 4px; padding: 0 5px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; color: var(--dash-vermilion-text);
+    background: var(--dash-vermilion-wash);
+  }
+  /* S15 批注2（dad 261025）：宽表 6 列在窄卡里必然把右侧列挤出台面——
+     紧凑堆叠布局的断点从 540 提到 700，popout / feed / 组合卡全部走堆叠行，右侧列不再被裁 */
+  /* 断点取 760：记录弹窗窄档 console 实测 724-726px（dad 截图场景），必须覆盖到 */
+  @container rec (max-width: 760px) {
+    .thead { display: none; }
+    .rec-row.subject, .rec-row.session { min-height: 0; }
+    .rec-row.cols {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: auto auto auto;
+      grid-template-areas: "name total" "meta share" "detail detail";
+      row-gap: 6px;
+      column-gap: 12px;
+      padding: 10px 0;
+      align-items: center;
+    }
+    .c-name { grid-area: name; font-size: 15px; line-height: 22px; white-space: nowrap; }
+    .c-total { grid-area: total; justify-self: end; line-height: 22px; white-space: nowrap; }
+    .c-meta { display: flex; gap: 10px; grid-area: meta; align-items: center; height: 22px; line-height: 22px; white-space: nowrap; }
+    .c-share { grid-area: share; flex-direction: row; align-items: center; gap: 6px; justify-self: end; height: 22px; align-self: start; white-space: nowrap; }
+    .c-detail { grid-area: detail; display: block; font-size: 12px; line-height: 18px; min-height: 18px; word-break: break-word; }
+    .hero .v { font-size: 22px; }
+    .hero .s { white-space: normal; }
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--dash-vermilion-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+</style>
+</head>
+<body>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v1 · 2026-10-26</span>
+<div class="page">
+  <div class="chrome">
+    <span class="brand">D5 今日记录</span>
+    <div class="seg" id="vpSeg">
+      <button type="button" data-vp="1133x744" class="is-on">1133×744</button>
+      <button type="button" data-vp="744x1133">744×1133</button>
+      <button type="button" data-vp="440x956">440×956</button>
+    </div>
+    <div class="seg" id="skinSeg">
+      <button type="button" data-skin="light" class="is-on">浅银</button>
+      <button type="button" data-skin="ink">深墨</button>
+    </div>
+  </div>
+  <div class="frame">
+    <article class="console" id="console">
+      <header class="head">
+        <h1>今日练习记录</h1>
+        <div class="fold" role="group" aria-label="列表层级">
+          <button type="button" id="btnFold">折叠</button>
+          <button type="button" id="btnOpen">展开</button>
+        </div>
+      </header>
+      <section class="heroes" aria-label="今日三个时长">
+        <div class="hero">
+          <span class="k">总时长</span>
+          <span class="v" id="heroSpan"></span>
+          <span class="s">从首个 session 到现在</span>
+        </div>
+        <div class="hero">
+          <span class="k">练习时长</span>
+          <span class="v" id="heroPractice"></span>
+          <span class="s">今日全部科目合计</span>
+        </div>
+        <div class="hero">
+          <span class="k">相比昨日</span>
+          <span class="v delta" id="heroDelta"></span>
+          <span class="s" id="heroDeltaNote"></span>
+        </div>
+      </section>
+      <div class="sheet">
+      <div class="cols thead">
+        <span class="c-name">科目</span><span class="c-total">总时长</span><span class="c-tempo">速度</span><span class="c-once">单次</span><span class="c-detail">明细</span><span class="c-share">占比</span>
+      </div>
+      <div class="scroller" id="scroller">
+        <div id="rows"></div>
+      </div>
+      </div>
+    </article>
+  </div>
+</div>
+<script src="../vendor/gsap.min.js"></script>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var expanded = true;
+
+  /* 冻结形状里的 summary。span / yesterday 是输入。
+     practice 与 delta 不读这里的预计算字段，下面用 sessions 算。 */
+  var SUMMARY = {
+    span_minutes: 96,
+    yesterday_seconds: 1800
+  };
+
+  var SESSIONS = [
+    { item_id: 1340, item_name: '萨丽哈', duration_seconds: 600, tempo_bpm: 82, content: '第 1-32 小节双吐颗粒度', reps: 3, is_extra: 0, started_at: '2026-10-03 19:10:00' },
+    { item_id: 1034, item_name: '长音', duration_seconds: 480, tempo_bpm: 60, content: '吸满再出声', reps: 4, is_extra: 0, started_at: '2026-10-03 19:12:00' },
+    { item_id: 1343, item_name: '吐音', duration_seconds: 180, tempo_bpm: 96, content: '中音区单吐', reps: 5, is_extra: 0, started_at: '2026-10-03 19:18:00' },
+    { item_id: 1034, item_name: '长音', duration_seconds: 360, tempo_bpm: 60, content: '弱奏保持', reps: 2, is_extra: 0, started_at: '2026-10-03 19:22:00' },
+    { item_id: 1340, item_name: '萨丽哈', duration_seconds: 900, tempo_bpm: 76, content: '慢练连线，先稳后连', reps: 2, is_extra: 0, started_at: '2026-10-03 19:28:00' },
+    { item_id: 1343, item_name: '吐音', duration_seconds: 150, tempo_bpm: 100, content: '低音区单吐', reps: 4, is_extra: 0, started_at: '2026-10-03 19:36:00' },
+    { item_id: 1034, item_name: '长音', duration_seconds: 240, tempo_bpm: 66, content: '收尾不掉气', reps: 2, is_extra: 0, started_at: '2026-10-03 19:40:00' },
+    { item_id: 1340, item_name: '萨丽哈', duration_seconds: 420, tempo_bpm: 82, content: '补一遍气口', reps: 1, is_extra: 1, started_at: '2026-10-03 19:46:00' },
+    { item_id: 1343, item_name: '吐音', duration_seconds: 90, tempo_bpm: 100, content: '收束四拍', reps: 2, is_extra: 0, started_at: '2026-10-03 19:52:00' }
+  ];
+
+  function practiceSeconds() {
+    return SESSIONS.reduce(function (s, row) { return s + row.duration_seconds; }, 0);
+  }
+
+  /* SIGN_FN 相比昨日：练习秒 − 昨日秒。正 = 多 = 红 +；负 = 少 = 绿 −。 */
+  function signedDelta(practiceSec, yesterdaySec) {
+    return practiceSec - yesterdaySec;
+  }
+
+  function minutesOf(seconds) {
+    return Math.round(seconds / 60);
+  }
+
+  function groupSubjects() {
+    var order = [];
+    var map = {};
+    SESSIONS.forEach(function (row) {
+      if (!map[row.item_id]) {
+        map[row.item_id] = { item_id: row.item_id, item_name: row.item_name, seconds: 0, sessions: [] };
+        order.push(map[row.item_id]);
+      }
+      map[row.item_id].seconds += row.duration_seconds;
+      map[row.item_id].sessions.push(row);
+    });
+    return order;
+  }
+
+  /* SHARE_FN 占比分母 = 全部科目秒数之和。 */
+  function shareBase(groups) {
+    return groups.reduce(function (s, g) { return s + g.seconds; }, 0);
+  }
+
+  function sharePercents(groups) {
+    var total = shareBase(groups);
+    if (!total) return groups.map(function () { return 0; });
+    var raw = groups.map(function (g) { return g.seconds / total * 100; });
+    var rawSum = raw.reduce(function (a, b) { return a + b; }, 0);
+    if (Math.abs(rawSum - 100) > 0.01) {
+      return raw.map(function (n) { return Math.round(n); });
+    }
+    var floors = raw.map(function (n) { return Math.floor(n); });
+    var left = 100 - floors.reduce(function (a, b) { return a + b; }, 0);
+    var rank = raw.map(function (n, i) { return { i: i, r: n - Math.floor(n) }; });
+    rank.sort(function (a, b) { return b.r - a.r || a.i - b.i; });
+    for (var k = 0; k < left; k++) floors[rank[k].i] += 1;
+    return floors;
+  }
+
+  function tempoLabel(sessions) {
+    var bpms = sessions.map(function (s) { return s.tempo_bpm; });
+    var lo = Math.min.apply(null, bpms);
+    var hi = Math.max.apply(null, bpms);
+    return lo === hi ? String(lo) : (lo + '–' + hi);
+  }
+
+  function buildView() {
+    var groups = groupSubjects();
+    var shares = sharePercents(groups);
+    var practice = practiceSeconds();
+    var delta = signedDelta(practice, SUMMARY.yesterday_seconds);
+    var sign = delta > 0 ? '+' : delta < 0 ? '−' : '';
+    var tone = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+    return {
+      groups: groups,
+      shares: shares,
+      shareSum: shares.reduce(function (a, b) { return a + b; }, 0),
+      spanMinutes: SUMMARY.span_minutes,
+      practiceMinutes: minutesOf(practice),
+      deltaMinutes: minutesOf(Math.abs(delta)),
+      sign: sign,
+      tone: tone,
+      collapsedRows: groups.length,
+      expandedRows: groups.length + SESSIONS.length
+    };
+  }
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function paintHero(view) {
+    document.getElementById('heroSpan').textContent = String(view.spanMinutes);
+    document.getElementById('heroPractice').textContent = String(view.practiceMinutes);
+    var delta = document.getElementById('heroDelta');
+    delta.textContent = view.sign + String(view.deltaMinutes);
+    delta.className = 'v delta ' + view.tone;
+    var yMin = minutesOf(SUMMARY.yesterday_seconds);
+    var focus = SUMMARY.span_minutes ? Math.round(practiceSeconds() / (SUMMARY.span_minutes * 60) * 100) : 0;
+    var deltaPct = SUMMARY.yesterday_seconds ? Math.round(Math.abs(signedDelta(practiceSeconds(), SUMMARY.yesterday_seconds)) / SUMMARY.yesterday_seconds * 100) : 0;
+    document.getElementById('heroDeltaNote').textContent = view.tone === 'up'
+      ? ('昨日 ' + yMin + ' 分 · 多 ' + deltaPct + '%')
+      : view.tone === 'down'
+        ? ('昨日 ' + yMin + ' 分 · 少 ' + deltaPct + '%')
+        : ('昨日 ' + yMin + ' 分');
+    document.getElementById('heroPractice').nextElementSibling.textContent = '累计 ' + practiceSeconds() + ' 秒 · 专注 ' + focus + '%';
+  }
+
+  function shareCell(share) {
+    var cell = el('span', 'c-share');
+    cell.appendChild(el('span', 'num', share + '%'));
+    var track = el('span', 'bar');
+    var fill = document.createElement('i');
+    fill.dataset.pct = String(share);
+    fill.style.width = Math.round(share * 48 / 100) + 'px'; /* BAR_PX */
+    track.appendChild(fill);
+    cell.appendChild(track);
+    return cell;
+  }
+
+  function metaCell(tempoText, onceText) {
+    var meta = el('span', 'c-meta');
+    meta.appendChild(el('span', 'c-tempo num', tempoText));
+    meta.appendChild(el('span', 'c-once num', onceText));
+    return meta;
+  }
+
+  function subjectRow(group, share) {
+    var row = el('div', 'rec-row subject cols');
+    row.appendChild(el('span', 'c-name', group.item_name));
+    row.appendChild(el('span', 'c-total num', minutesOf(group.seconds) + ' 分'));
+    row.appendChild(metaCell(tempoLabel(group.sessions), group.sessions.length + ' 次'));
+    row.appendChild(el('span', 'c-detail', '—'));
+    row.appendChild(shareCell(share));
+    return row;
+  }
+
+  function sessionRow(session) {
+    var row = el('div', 'rec-row session cols');
+    row.appendChild(el('span', 'c-name', session.item_name));
+    row.appendChild(el('span', 'c-total num', '—'));
+    row.appendChild(metaCell(String(session.tempo_bpm), minutesOf(session.duration_seconds) + ' 分'));
+    var detail = el('span', 'c-detail');
+    if (session.is_extra) detail.appendChild(el('span', 'tag', '补录'));
+    detail.appendChild(document.createTextNode(session.content + (session.reps ? ' · ' + session.reps + ' 遍' : '')));
+    row.appendChild(detail);
+    row.appendChild(el('span', 'c-share num', '—'));
+    return row;
+  }
+
+  function render() {
+    var view = buildView();
+    paintHero(view);
+    var host = document.getElementById('rows');
+    host.textContent = '';
+    view.groups.forEach(function (group, i) {
+      host.appendChild(subjectRow(group, view.shares[i]));
+      if (expanded) {
+        group.sessions.forEach(function (session) { host.appendChild(sessionRow(session)); });
+      }
+    });
+    document.getElementById('btnFold').classList.toggle('is-on', !expanded);
+    document.getElementById('btnOpen').classList.toggle('is-on', expanded);
+    document.getElementById('btnFold').setAttribute('aria-pressed', expanded ? 'false' : 'true');
+    document.getElementById('btnOpen').setAttribute('aria-pressed', expanded ? 'true' : 'false');
+    return view;
+  }
+
+  /* 261015b：卡内边缘模糊层和展开遮罩已删除。列表只在 popout 里阅读。 */
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function specFailures(view) {
+    var failures = [];
+    var practice = practiceSeconds();
+    var wantSign = practice > SUMMARY.yesterday_seconds ? '+' : practice < SUMMARY.yesterday_seconds ? '−' : '';
+    var wantTone = practice > SUMMARY.yesterday_seconds ? 'up' : practice < SUMMARY.yesterday_seconds ? 'down' : 'flat';
+    if (view.sign !== wantSign) failures.push('ASSERT_FAIL sign: got ' + view.sign + ' want ' + wantSign);
+    if (view.tone !== wantTone) failures.push('ASSERT_FAIL tone: got ' + view.tone + ' want ' + wantTone);
+    if (view.shareSum !== 100) failures.push('ASSERT_FAIL shareSum: got ' + view.shareSum + ' want 100');
+    var dom = document.querySelectorAll('.rec-row').length;
+    var wantDom = expanded ? view.expandedRows : view.collapsedRows;
+    if (dom !== wantDom) failures.push('ASSERT_FAIL rows: got ' + dom + ' want ' + wantDom);
+    return failures;
+  }
+
+  function writeAudit(view) {
+    var failures = specFailures(view);
+    var shareBars = [];
+    document.querySelectorAll('.rec-row.subject .bar i').forEach(function (fill) {
+      var pct = parseInt(fill.dataset.pct, 10);
+      var barPx = Math.round(fill.getBoundingClientRect().width);
+      var want = Math.round(pct * 48 / 100);
+      shareBars.push({ pct: pct, barPx: barPx });
+      if (Math.abs(barPx - want) > 1) {
+        failures.push('ASSERT_FAIL shareBar: pct ' + pct + ' barPx ' + barPx + ' want ' + want);
+      }
+    });
+    var payload = {
+      ok: failures.length === 0,
+      collapsedRows: view.collapsedRows,
+      expandedRows: view.expandedRows,
+      domRows: document.querySelectorAll('.rec-row').length,
+      expanded: expanded,
+      hero: {
+        spanMinutes: view.spanMinutes,
+        practiceMinutes: view.practiceMinutes,
+        deltaMinutes: view.deltaMinutes,
+        sign: view.sign,
+        tone: view.tone
+      },
+      shareSum: view.shareSum,
+      shareBars: shareBars,
+      blurMethod: 'none',
+      failures: failures
+    };
+    var pre = document.getElementById('audit');
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.overflowWrap = 'anywhere';
+      pre.style.maxWidth = '100%';
+      pre.style.margin = '0';
+      document.body.appendChild(pre);
+    }
+    pre.textContent = (failures.length ? failures.join('\n') + '\n' : 'ASSERT_OK\n') + JSON.stringify(payload);
+  }
+
+  var auditTimer = 0;
+  function publishAudit() {
+    if (qs.get('audit') !== '1') return;
+    clearTimeout(auditTimer);
+    auditTimer = setTimeout(function () { writeAudit(buildView()); }, 200);
+  }
+
+  function switchExpanded(next) {
+    if (next === expanded) return;
+    expanded = next;
+    var view = render();
+    if (!reduceMotion && window.gsap) {
+      gsap.fromTo(document.getElementById('rows'), { opacity: 0.7, y: next ? 4 : -4 }, { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' });
+    }
+    publishAudit(view);
+  }
+
+  /* 261015b：折叠/展开按钮不再改卡内列表。明细在 popout。 */
+  document.getElementById('scroller').addEventListener('scroll', publishAudit, { passive: true });
+
+  var VP = { '1133x744': [1133, 744], '744x1133': [744, 1133], '440x956': [440, 956] };
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var pair = VP[b.dataset.vp];
+    document.documentElement.style.setProperty('--vp-w', pair[0] + 'px');
+    document.documentElement.style.setProperty('--vp-h', pair[1] + 'px');
+    document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+  });
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+  });
+
+  publishAudit(render());
+})();
+</script>
+</body>
+</html>

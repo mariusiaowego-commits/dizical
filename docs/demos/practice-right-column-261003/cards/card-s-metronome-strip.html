@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D2 节拍器竖条 — 最常用</title>
+<style>
+:root {
+    --dash-page: #FFF8F0;
+    --dash-shell-hi: #F3F4F6;
+    --dash-shell-lo: #D5D8DE;
+    --dash-shell-inset: rgba(44, 62, 80, 0.16);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1C1E21;
+    --dash-panel-text: #F7F4EF;
+    --dash-panel-dim: rgba(247, 244, 239, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-past: rgba(247, 244, 239, 0.78);
+    --dash-tick-rail: rgba(247, 244, 239, 0.34);
+    --dash-btn-face-hi: #3A3E44;
+    --dash-btn-face-lo: #14171A;
+    --dash-btn-glyph: #F7F4EF;
+    --dash-btn-rim: rgba(255, 255, 255, 0.22);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #121417;
+    --dash-mark: #F7F4EF;
+    --dash-dot: rgba(255, 255, 255, 0.42);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #14171A;
+    --dash-pill-idle: rgba(247, 244, 239, 0.55);
+    --dash-stand: #16191C;
+    --dash-stand-text: #F7F4EF;
+    --dash-battery: #7DCEA0;
+    --dash-kicker: rgba(44, 62, 80, 0.72);
+    --dash-num: 52px;
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif;
+      --dash-hole-active: #FF6B6B;
+    --dash-tray-inset: rgba(44, 62, 80, 0.12);
+    --dash-key-hi: #FFFFFF;
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #10B981;
+    --dash-notice-bg: #FFF8F0;
+    --dash-notice-ink: #9A3412;
+    --dash-surface-2: #F4EFEB;
+    --dash-surface-3: #E9ECEF;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #D4AF37;
+    --dash-beat: 0.73s;
+    --dash-notch: 96px;
+    --dash-radius: 36px;
+    --vp-w: 1133px;
+    --vp-h: 744px;
+    /* ── v2 追加：透明度阶梯。混色（蓝灰/coral/accent/gold 的 alpha）必须走 token，
+          审查规则：非中性色一律不得在组件里出现字面量 ── */
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #E04A4A;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
+    --dash-coral-text: #C93B3B;
+}
+
+  :root[data-skin="ink"] {
+    --dash-page: #0E1114;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #161A1E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+      --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: var(--dash-accent);
+    --dash-accent-solid: #B8531F;
+    --dash-coral-text: #FF6B6B;
+    --dash-notch: 96px;
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+}
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: var(--font-base);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+  }
+  .demo-bar {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .demo-ver {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px;
+    border: 1px solid var(--dash-ink-a16); color: var(--dash-text-soft);
+    background: var(--dash-surface-soft);
+  }
+  .demo-ver b { color: var(--dash-vermilion-text); font-weight: 600; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; padding: 2px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    font: inherit; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+
+  #gaugeHost {
+    position: absolute; left: 0; top: 0;
+    width: 0; height: 0; overflow: hidden;
+  }
+  #dashGauge { width: 420px; height: 1px; }
+
+  /* ══════ 两模式规范：横向扩展 cz-expand vs 纵向 feed 流 cz-feed ══════ */
+  html.cz-expand, html.cz-expand body {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  html.cz-expand .demo-bar { display: none !important; }
+  html.cz-expand .strip {
+    width: 100%;
+    min-width: 140px;
+    max-width: 100%;
+    height: 100%;
+    min-height: 0;
+    border-radius: 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 10px 14px;
+    gap: 10px;
+  }
+
+  html.cz-feed, html.cz-feed body {
+    padding: 0;
+    margin: 0;
+    height: auto;
+  }
+  html.cz-feed .demo-bar { display: none !important; }
+  html.cz-feed .strip {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 100%;
+    height: 92px;
+    min-height: 88px;
+    max-height: 96px;
+    padding: 10px 16px;
+    gap: 12px;
+    box-sizing: border-box;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  html.cz-feed .strip .top,
+  html.cz-feed .strip .mid,
+  html.cz-feed .strip .bot {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    flex: 0 1 auto;
+    gap: 8px;
+  }
+  html.cz-feed #bpmFace {
+    order: 2;
+    font-size: 32px;
+    line-height: 1;
+  }
+  html.cz-feed #tempoTerm {
+    order: 3;
+    letter-spacing: 0.04em;
+  }
+  html.cz-feed #stepDownBtn {
+    order: 1;
+    width: 32px;
+    height: 32px;
+  }
+  html.cz-feed #stepUpBtn {
+    order: 4;
+    width: 32px;
+    height: 32px;
+  }
+  html.cz-feed #mainToggleBtn {
+    width: 100px;
+    height: 40px;
+    border-radius: 20px;
+    line-height: 40px;
+  }
+  @media (max-width: 520px) {
+    html.cz-feed .strip {
+      padding: 8px 10px;
+      gap: 6px;
+    }
+    html.cz-feed .strip .top,
+    html.cz-feed .strip .mid {
+      flex: 0 0 auto;
+      gap: 6px;
+    }
+    html.cz-feed .strip .bot {
+      flex: 1 1 auto;
+      max-width: 100px;
+    }
+    html.cz-feed .strip #bpmFace {
+      font-size: 28px;
+    }
+    html.cz-feed .strip #mainToggleBtn {
+      width: 100%;
+      max-width: 100px;
+    }
+  }
+
+  .strip {
+    width: 140px;
+    min-height: 468px;
+    background: var(--dash-surface-soft);
+    color: var(--dash-text);
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 10px 14px;
+    gap: 10px;
+  }
+  .top, .mid, .bot { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .top { gap: 10px; }
+  .mid { gap: 8px; flex: 1; justify-content: center; }
+  .name {
+    width: 100%;
+    height: 36px;
+    border-radius: 18px;
+    border: 1px solid var(--dash-ink-a16);
+    background: transparent;
+    color: var(--dash-text);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 36px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .leds { display: flex; gap: 8px; }
+  .led {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--dash-btn-face-lo);
+    border: 2px solid var(--dash-shell-lo);
+    transition: background 0.04s ease-out, box-shadow 0.32s ease-out;
+  }
+  .led.weak-lit {
+    background: var(--dash-dot-on);
+    border-color: var(--dash-white);
+    box-shadow: 0 0 8px var(--dash-gold-glow);
+  }
+  .nudge {
+    width: 36px; height: 36px; border-radius: 18px; cursor: pointer;
+    border: 1px solid var(--dash-shell-inset);
+    background: linear-gradient(180deg, var(--dash-btn-face-hi), var(--dash-btn-face-lo));
+    color: var(--dash-btn-glyph);
+    font-size: 18px; font-weight: 700;
+    line-height: 1;
+  }
+  .bpm {
+    font-size: 48px; font-weight: 800; line-height: 0.9;
+    color: var(--dash-text); font-variant-numeric: tabular-nums;
+  }
+  .unit { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--dash-text-soft); }
+  .go {
+    width: 100%; height: 36px; border: 0; border-radius: 18px; cursor: pointer;
+    background: var(--dash-vermilion); color: var(--dash-page);
+    font-size: 14px; font-weight: 800; line-height: 36px; white-space: nowrap;
+  }
+  .go.running { background: var(--dash-panel); color: var(--dash-text); }
+  .pop[hidden] { display: none !important; }
+  .pop {
+    position: fixed; inset: 0; z-index: 5;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 6px; background: var(--dash-ink-a42);
+    overflow: hidden;
+  }
+  .pop-card {
+    width: 140px;
+    overflow: hidden;
+    background: var(--dash-surface-soft); color: var(--dash-text);
+    border-radius: 22px; padding: 8px;
+    border: 1px solid var(--dash-ink-a12);
+  }
+  .pop-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; flex-wrap: nowrap; margin-bottom: 8px;
+  }
+  .pop-title { font-size: 14px; font-weight: 800; white-space: nowrap; line-height: 1.2; }
+  .speed-row {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    margin: 6px 0 8px;
+  }
+  .bpm-label { flex: 1 1 auto; font-size: 13px; font-weight: 800; color: var(--dash-text); white-space: nowrap; line-height: 1.2; }
+  .bpm-arrow {
+    width: 22px; height: 22px; padding: 0; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--dash-ink-a16); background: transparent;
+    color: var(--dash-text); font-size: 16px; font-weight: 700; line-height: 1;
+  }
+  .timbre-col { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+  /* 音色多起来后改成两列网格，避免弹层被拉得过长 */
+  .timbre-col {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    max-height: 232px; overflow-y: auto; overscroll-behavior: contain;
+  }
+  .timbre-opt {
+    height: 28px; border-radius: 14px; padding: 0 4px; cursor: pointer;
+    border: 0; background: var(--dash-white); color: var(--dash-text);
+    font-size: 12px; font-weight: 700; line-height: 28px; white-space: nowrap;
+    text-align: center; overflow: hidden; text-overflow: ellipsis;
+  }
+  .timbre-opt.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .timbre-opt { color: var(--dash-page); }
+  :root[data-skin="ink"] .timbre-opt.is-on { background: var(--dash-text); color: var(--dash-page); }
+  .note { margin: 0; font-size: 11px; line-height: 1.2; color: var(--dash-text-soft); white-space: nowrap; }
+  .pop-close {
+    height: 24px; padding: 0 8px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--dash-ink-a16); background: transparent;
+    color: var(--dash-text); font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  button:focus-visible { outline: 2px solid var(--dash-vermilion-text); outline-offset: 2px; }
+  @media (max-width: 480px) {
+    .strip { width: 140px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+</style>
+<!-- 节拍音色库（与全卡节拍器共用的单一真源） -->
+<script src="shared/beat-timbres.js"></script>
+<script src="shared/beat-engine.js"></script>
+</head>
+<body>
+<div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
+<div class="demo-bar">
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v1 · 2026-10-26</span>
+  <div class="seg" id="skinSeg">
+    <button type="button" data-skin="light" class="is-on">浅色</button>
+    <button type="button" data-skin="ink">深色</button>
+  </div>
+</div>
+<div class="strip" id="strip">
+  <div class="top">
+    <button type="button" class="name face-setting" id="btnTimbre">经典</button>
+    <div class="leds" id="ledRow">
+      <div class="led" id="led0"></div>
+      <div class="led" id="led1"></div>
+      <div class="led" id="led2"></div>
+      <div class="led" id="led3"></div>
+    </div>
+  </div>
+  <div class="mid">
+    <button type="button" class="nudge face-setting" id="stepUpBtn">+</button>
+    <div class="bpm" id="bpmFace">60</div>
+    <div class="unit" id="tempoTerm">慢板</div>
+    <button type="button" class="nudge face-setting" id="stepDownBtn">−</button>
+  </div>
+  <div class="bot">
+    <button type="button" class="go face-setting" id="mainToggleBtn"><span id="toggleText">启动</span></button>
+  </div>
+</div>
+<div class="pop" id="settingsPop" hidden>
+  <div class="pop-card" role="dialog" aria-labelledby="popTitle">
+    <div class="pop-head">
+      <div class="pop-title" id="popTitle">设置</div>
+      <button type="button" class="pop-close" id="btnPopClose">关闭</button>
+    </div>
+    <p class="note">四拍同声 · 4/4</p>
+    <div class="speed-row" id="speedRow">
+      <div class="bpm-label" id="bpmLabel">BPM 60</div>
+      <button type="button" class="bpm-arrow" id="bpmDown" aria-label="BPM 减 1">‹</button>
+      <button type="button" class="bpm-arrow" id="bpmUp" aria-label="BPM 加 1">›</button>
+    </div>
+    <div class="timbre-col" id="timbreSeg">
+      <button type="button" class="timbre-opt" id="btnPreview">试听</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var TIMBRE_KEY = 'dizical.metro.timbre';
+  /* 音色表来自 shared/beat-timbres.js（与全卡节拍器共用同一份定义） */
+  var TIMBRES = (window.DIZI_TIMBRE_IDS && window.DIZI_TIMBRE_IDS.length)
+    ? window.DIZI_TIMBRE_IDS.slice()
+    : ['classic', 'wood', 'click', 'cowbell', 'sticks'];
+  /* 旧 id 兼容映射：'beep' 是旧竖条卡对电子滴答的写法 */
+  var LEGACY = { beep: 'click' };
+  var currentTimbre = 'classic';
+  var currentBpm = 60;
+  var MIN_BPM = 40;
+  var MAX_BPM = 200;
+
+  /* 抽屉里的音色按钮由音色表生成，保证与 TIMBRES 永远一致 */
+  function buildTimbreButtons() {
+    var seg = document.getElementById('timbreSeg');
+    if (!seg) return;
+    var preview = document.getElementById('btnPreview');
+    var list = (window.DIZI_TIMBRE_LIST && window.DIZI_TIMBRE_LIST.length)
+      ? window.DIZI_TIMBRE_LIST
+      : TIMBRES.map(function (id) { return { id: id, label: id }; });
+    list.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'timbre-opt';
+      b.setAttribute('data-timbre', t.id);
+      b.textContent = t.label;
+      if (t.id === currentTimbre) b.classList.add('is-on');
+      if (preview) seg.insertBefore(b, preview);
+      else seg.appendChild(b);
+    });
+  }
+
+  function term(bpm) {
+    if (bpm <= 60) return '慢板';
+    if (bpm <= 88) return '中板';
+    if (bpm <= 120) return '小快板';
+    if (bpm <= 160) return '快板';
+    return '急板';
+  }
+  function paintTimbre() {
+    var label = currentTimbre;
+    document.querySelectorAll('#timbreSeg button').forEach(function (b) {
+      var on = b.dataset.timbre === currentTimbre;
+      b.classList.toggle('is-on', on);
+      if (on) label = (b.textContent || '').trim();
+    });
+    var face = document.getElementById('btnTimbre');
+    if (face) face.textContent = label;
+  }
+  function saveTimbre() {
+    try { localStorage.setItem(TIMBRE_KEY, currentTimbre); } catch (e) {}
+  }
+  function restoreTimbre() {
+    var saved = null;
+    try { saved = localStorage.getItem(TIMBRE_KEY); } catch (e) {}
+    if (saved && LEGACY[saved] && TIMBRES.indexOf(saved) < 0) saved = LEGACY[saved];
+    currentTimbre = TIMBRES.indexOf(saved) >= 0 ? saved : 'classic';
+    try { localStorage.setItem(TIMBRE_KEY, currentTimbre); } catch (e) {}
+    paintTimbre();
+    if (window.BeatEngine) BeatEngine.setTimbre(currentTimbre);
+  }
+  function setTimbre(name) {
+    if (TIMBRES.indexOf(name) < 0) return;
+    currentTimbre = name;
+    paintTimbre();
+    saveTimbre();
+    if (window.BeatEngine) BeatEngine.setTimbre(name);
+  }
+  function updateBpmUI(bpm) {
+    document.getElementById('bpmFace').textContent = bpm;
+    document.getElementById('tempoTerm').textContent = term(bpm);
+    var label = document.getElementById('bpmLabel');
+    if (label) label.textContent = 'BPM ' + bpm;
+    document.querySelectorAll('.preset').forEach(function (chip) {
+      chip.classList.toggle('active', Number(chip.dataset.bpm) === bpm);
+    });
+  }
+  function setBpm(val) {
+    currentBpm = Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(val)));
+    updateBpmUI(currentBpm);
+    if (window.BeatEngine) BeatEngine.setBpm(currentBpm);
+  }
+  window.setBpm = setBpm;
+  function clearLeds() {
+    for (var i = 0; i < 4; i++) {
+      var el = document.getElementById('led' + i);
+      if (el) el.classList.remove('weak-lit', 'accent-lit');
+    }
+  }
+  function paintFromClock(ev) {
+    clearLeds();
+    if (!ev) return;
+    var el = document.getElementById('led' + ev.beat);
+    if (el) el.classList.add('weak-lit');
+  }
+  function toggleMetronome() {
+    var starting = !BeatEngine.isPlaying();
+    var btn = document.getElementById('mainToggleBtn');
+    var text = document.getElementById('toggleText');
+    if (starting) {
+      BeatEngine.setBpm(currentBpm);
+      BeatEngine.setTimbre(currentTimbre);
+      BeatEngine.setOnVisual(paintFromClock);
+      BeatEngine.start();
+      btn.classList.add('running');
+      text.textContent = '暂停';
+    } else {
+      BeatEngine.stop();
+      clearLeds();
+      btn.classList.remove('running');
+      text.textContent = '启动';
+    }
+  }
+  function setSkin(skin) {
+    if (skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', (b.dataset.skin || 'light') === (skin === 'ink' ? 'ink' : 'light'));
+    });
+  }
+  function faceCount() {
+    return [].filter.call(document.querySelectorAll('.strip .face-setting'), function (el) {
+      return el.getClientRects().length > 0;
+    }).length;
+  }
+  function parseCss(cs) {
+    var m = String(cs || '').match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    var p = m[1].split(',').map(function (x) { return parseFloat(x); });
+    return { rgb: [p[0], p[1], p[2]], a: p.length > 3 ? p[3] : 1 };
+  }
+  function relChan(c) {
+    c = c / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  function lum(rgb) {
+    return 0.2126 * relChan(rgb[0]) + 0.7152 * relChan(rgb[1]) + 0.0722 * relChan(rgb[2]);
+  }
+  function contrast(fg, bg) {
+    var L1 = lum(fg), L2 = lum(bg);
+    return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+  }
+  function bgOf(el) {
+    var node = el;
+    while (node) {
+      var bg = parseCss(getComputedStyle(node).backgroundColor);
+      if (bg && bg.a >= 0.98) return bg.rgb;
+      node = node.parentElement;
+    }
+    return [14, 17, 20];
+  }
+  function fgOf(el) {
+    var fg = parseCss(getComputedStyle(el).color);
+    var bg = bgOf(el);
+    if (!fg) return bg;
+    if (fg.a >= 0.99) return fg.rgb;
+    var a = fg.a;
+    return [
+      fg.rgb[0] * a + bg[0] * (1 - a),
+      fg.rgb[1] * a + bg[1] * (1 - a),
+      fg.rgb[2] * a + bg[2] * (1 - a)
+    ];
+  }
+  function inkMap(text) {
+    var m = text.match(/:root\[data-skin="ink"\]\s*\{/);
+    if (!m) return {};
+    var i = text.indexOf('{', m.index);
+    var depth = 0, j = i;
+    for (; j < text.length; j++) {
+      if (text[j] === '{') depth += 1;
+      else if (text[j] === '}') {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    var body = text.slice(i + 1, j).replace(/\/\*[\s\S]*?\*\//g, '');
+    var props = {};
+    body.split(';').forEach(function (part) {
+      var line = part.trim();
+      if (line.indexOf('--') !== 0) return;
+      var cut = line.indexOf(':');
+      if (cut < 0) return;
+      props[line.slice(0, cut).trim()] = line.slice(cut + 1).trim();
+    });
+    return props;
+  }
+
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    setSkin(b.dataset.skin);
+  });
+  function bindStripHold(el, delta) {
+    if (!el) return;
+    var timer = null, interval = null;
+    var holding = false;
+    var start = function (e) {
+      if (e.button && e.button !== 0) return;
+      holding = true;
+      e.preventDefault();
+      setBpm(currentBpm + delta);
+      timer = setTimeout(function () { interval = setInterval(function () { setBpm(currentBpm + delta); }, 120); }, 360);
+    };
+    var stop = function () { clearTimeout(timer); clearInterval(interval); setTimeout(function () { holding = false; }, 60); };
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointerleave', stop);
+    el.addEventListener('pointercancel', stop);
+    el.addEventListener('click', function () {
+      if (!holding) { setBpm(currentBpm + delta); }
+    });
+  }
+  bindStripHold(document.getElementById('stepUpBtn'), 1);
+  bindStripHold(document.getElementById('stepDownBtn'), -1);
+  document.getElementById('mainToggleBtn').addEventListener('click', toggleMetronome);
+  document.getElementById('btnTimbre').addEventListener('click', function () {
+    document.getElementById('settingsPop').hidden = false;
+  });
+  document.getElementById('btnPopClose').addEventListener('click', function () {
+    document.getElementById('settingsPop').hidden = true;
+  });
+  document.getElementById('settingsPop').addEventListener('click', function (e) {
+    if (e.target.id === 'settingsPop') e.currentTarget.hidden = true;
+  });
+  document.getElementById('timbreSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b || !b.dataset.timbre) return;
+    setTimbre(b.dataset.timbre);
+  });
+  document.getElementById('bpmDown').addEventListener('click', function () { setBpm(currentBpm - 1); });
+  document.getElementById('bpmUp').addEventListener('click', function () { setBpm(currentBpm + 1); });
+  document.getElementById('btnPreview').addEventListener('click', function () {
+    BeatEngine.preview(currentTimbre);
+  });
+
+  buildTimbreButtons();
+  restoreTimbre();
+  updateBpmUI(currentBpm);
+  BeatEngine.setOnVisual(paintFromClock);
+
+  if (location.search.indexOf('audit=1') < 0) return;
+  var fails = [];
+  try { localStorage.removeItem(TIMBRE_KEY); } catch (e) {}
+  restoreTimbre();
+  if (currentTimbre !== 'classic') fails.push('default timbre ' + currentTimbre);
+  var buttons = document.querySelectorAll('#timbreSeg button[data-timbre]');
+  if (buttons.length !== TIMBRES.length) fails.push('timbres ' + buttons.length + ' want ' + TIMBRES.length);
+  ['nikko', 'clave', 'bell', 'drip', 'shake', 'log'].forEach(function (n) {
+    if (TIMBRES.indexOf(n) < 0) fails.push('missing new timbre ' + n);
+  });
+  var measured = {};
+  var classicInfo = null;
+  TIMBRES.forEach(function (name) {
+    var info = BeatEngine.preview(name);
+    measured[name] = info && info.peak;
+    if (name === 'classic') classicInfo = info;
+    if (!info || info.accent) fails.push(name + ' accent');
+  });
+  TIMBRES.forEach(function (name) {
+    /* 响度下限：所有音色都要明显比旧版（0.16~0.26）响 */
+    if (!(measured[name] >= 0.30)) fails.push('timbre too quiet ' + name + ' peak ' + measured[name]);
+  });
+  var ratioHz = classicInfo && classicInfo.freq ? classicInfo.freq2 / classicInfo.freq : 0;
+  if (Math.abs(ratioHz - 2.7) > 0.02) fails.push('classic ratio ' + ratioHz);
+  var card = document.getElementById('strip');
+  var gauge = document.getElementById('dashGauge');
+  var sw = card.getBoundingClientRect().width;
+  var sh = card.getBoundingClientRect().height;
+  var gw = gauge.getBoundingClientRect().width;
+  var ratio = gw ? sw / gw : 0;
+  if (Math.abs(ratio - 1 / 3) > 0.01) fails.push('width ratio ' + ratio.toFixed(3) + ' want 0.333±0.01');
+  if (!(sh > sw)) fails.push('portrait ' + Math.round(sh) + 'x' + Math.round(sw));
+  if (card.scrollWidth > card.clientWidth + 1) fails.push('card overflow');
+  var pageOverflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+  if (pageOverflow > 1) fails.push('page overflow ' + pageOverflow);
+  var pop = document.getElementById('settingsPop');
+  if (pop.hidden !== true) fails.push('popup starts open');
+  var faceClosed = faceCount();
+  if (faceClosed > 5) fails.push('face settings ' + faceClosed);
+  document.getElementById('btnTimbre').click();
+  var popupOpened = pop.hidden === false;
+  if (!popupOpened) fails.push('popup did not open');
+  document.getElementById('btnPopClose').click();
+  var popupClosed = pop.hidden === true;
+  if (!popupClosed) fails.push('popup did not close');
+  setSkin('ink');
+  BeatEngine.setBpm(120);
+  BeatEngine.setTimbre('classic');
+  BeatEngine.armSync();
+  BeatEngine.start();
+  var waits = 0;
+  var skipped = [];
+  function syncSkipReason() {
+    var ctx = null;
+    try { ctx = BeatEngine.context(); } catch (e) {
+      return 'no AudioContext (' + (e && e.message) + '); beat-light sync cannot be sampled';
+    }
+    if (!window.AudioContext && !window.webkitAudioContext) {
+      return 'no AudioContext constructor; beat-light sync cannot be sampled';
+    }
+    if (!ctx) return 'AudioContext was not created; beat-light sync cannot be sampled';
+    if (ctx.state === 'suspended' || ctx.state === 'closed' || ctx.state === 'interrupted' || !(ctx.currentTime > 0.05)) {
+      return 'no audio output: AudioContext ' + ctx.state + ', currentTime ' + ctx.currentTime + '; beat-light sync cannot be sampled';
+    }
+    return '';
+  }
+  var poll = setInterval(function () {
+    waits += 1;
+    var ctxNow = null;
+    try { ctxNow = BeatEngine.context(); } catch (e) {}
+    var clockDead = !ctxNow || ctxNow.state === 'suspended' || ctxNow.state === 'closed' || !(ctxNow.currentTime > 0.05);
+    if (BeatEngine.syncSamples().length >= 4 || waits > 40 || (waits > 8 && clockDead)) {
+      clearInterval(poll);
+      BeatEngine.stop();
+      var samples = BeatEngine.syncSamples().slice(0, 4);
+      var accents = samples.filter(function (s) { return s.accent; }).length;
+      if (samples.length < 4) {
+        var why = samples.length === 0 ? syncSkipReason() : '';
+        if (why) skipped.push({ check: 'sync samples', reason: why });
+        else fails.push('sync samples ' + samples.length + ' want 4');
+      }
+      if (accents !== 0) fails.push('accent flags ' + accents);
+      var peaks = samples.map(function (s) { return s.peak; });
+      var freqs = samples.map(function (s) { return s.freq; });
+      if (peaks.length && Math.max.apply(null, peaks) - Math.min.apply(null, peaks) > 0.0001) {
+        fails.push('peak span');
+      }
+      if (freqs.length && Math.max.apply(null, freqs) - Math.min.apply(null, freqs) > 0.01) {
+        fails.push('freq span');
+      }
+      if (document.getElementById('led0').classList.contains('accent-lit')) fails.push('accent-lit');
+      document.getElementById('settingsPop').hidden = false;
+      var popEl = document.getElementById('settingsPop');
+      var menu = popEl.querySelector('.pop-card');
+      function scrollDelta(el) {
+        return {
+          y: el.scrollHeight - el.clientHeight,
+          x: el.scrollWidth - el.clientWidth
+        };
+      }
+      var menuScroll = scrollDelta(menu);
+      var popScroll = scrollDelta(popEl);
+      if (menuScroll.y > 0 || menuScroll.x > 0) fails.push('menu scroll ' + menuScroll.y + '/' + menuScroll.x);
+      if (popScroll.y > 0 || popScroll.x > 0) fails.push('pop scroll ' + popScroll.y + '/' + popScroll.x);
+      if (document.querySelector('input[type="range"], .bpm-slider')) fails.push('speed slider still present');
+      var label = document.getElementById('bpmLabel');
+      var arrows = [].slice.call(document.querySelectorAll('#speedRow .bpm-arrow'));
+      var labelBox = label.getBoundingClientRect();
+      var arrowsRight = arrows.filter(function (el) { return el.getBoundingClientRect().left >= labelBox.right - 1; });
+      if (arrows.length !== 2 || arrowsRight.length !== 2) fails.push('bpm arrows ' + arrows.length + ' right ' + arrowsRight.length);
+      var bpmText = (label.textContent || '').trim();
+      if (!/^BPM \d+$/.test(bpmText)) fails.push('bpm label ' + bpmText);
+      var tone = document.querySelector('#timbreSeg .timbre-opt');
+      var arrow = arrows[0];
+      var toneCs = tone ? getComputedStyle(tone) : null;
+      var arrowCs = arrow ? getComputedStyle(arrow) : null;
+      var shapeDiffs = [];
+      if (toneCs && arrowCs) {
+        if (Math.abs(parseFloat(toneCs.height) - parseFloat(arrowCs.height)) > 1) shapeDiffs.push('height');
+        if (Math.abs(parseFloat(toneCs.borderRadius) - parseFloat(arrowCs.borderRadius)) > 1) shapeDiffs.push('radius');
+        if (toneCs.backgroundColor !== arrowCs.backgroundColor) shapeDiffs.push('background');
+      }
+      if (shapeDiffs.length < 2) fails.push('speed/timbre shape diffs ' + shapeDiffs.join(','));
+      var menuBox = menu.getBoundingClientRect();
+      var clipped = false;
+      [].forEach.call(menu.querySelectorAll('button, .bpm-label, .note'), function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) return;
+        if (r.top < menuBox.top - 1 || r.bottom > menuBox.bottom + 1 || r.left < menuBox.left - 1 || r.right > menuBox.right + 1) clipped = true;
+      });
+      if (clipped) fails.push('menu content clipped');
+      if (menuBox.height > 420) fails.push('menu height ' + Math.round(menuBox.height) + ' want <= 420');
+      document.getElementById('settingsPop').hidden = true;
+      var menuReport = {
+        scrollY: menuScroll.y,
+        scrollX: menuScroll.x,
+        clipped: clipped,
+        height: Math.round(menuBox.height),
+        arrows: arrowsRight.length,
+        label: bpmText,
+        shapeDiffs: shapeDiffs
+      };
+      var contrastRows = [];
+      var minContrast = 99;
+      [].forEach.call(document.querySelectorAll('.strip *'), function (el) {
+        var hasText = [].some.call(el.childNodes, function (n) {
+          return n.nodeType === 3 && n.textContent.trim();
+        });
+        if (!hasText || !el.getClientRects().length) return;
+        var rowRatio = Math.round(contrast(fgOf(el), bgOf(el)) * 100) / 100;
+        contrastRows.push({ id: el.id || el.className, ratio: rowRatio });
+        if (rowRatio < minContrast) minContrast = rowRatio;
+        if (rowRatio < 4.5) fails.push('ink contrast ' + (el.id || el.className) + ' ' + rowRatio);
+      });
+      var mineInk = inkMap(document.querySelector('style').textContent);
+      fetch('practice-duration-card-01-v3.html').then(function (r) { return r.text(); }).then(function (html) {
+        var d6 = inkMap(html);
+        var mismatch = 0;
+        Object.keys(d6).forEach(function (k) {
+          if (mineInk[k] !== d6[k]) {
+            mismatch += 1;
+            fails.push('ink token ' + k);
+          }
+        });
+        var res = {
+          card: 'metronome-02-strip',
+          width: Math.round(sw * 100) / 100,
+          height: Math.round(sh * 100) / 100,
+          gauge: Math.round(gw * 100) / 100,
+          ratio: Math.round(ratio * 1000) / 1000,
+          portrait: sh > sw,
+          pageOverflow: pageOverflow,
+          faceSettings: faceCount(),
+          popup: { opened: popupOpened, closed: popupClosed },
+          menu: menuReport,
+          measuredPeaks: measured,
+          accentFlags: accents,
+          inkMismatch: mismatch,
+          inkContrastMin: minContrast,
+          inkContrast: contrastRows,
+          skipped: skipped,
+          failures: fails,
+          verdict: fails.length ? 'ASSERT_FAIL' : 'ASSERT_OK'
+        };
+        var pre = document.getElementById('audit');
+        if (!pre) {
+          pre = document.createElement('pre');
+          pre.id = 'audit';
+          pre.style.cssText = 'position:fixed;left:8px;bottom:8px;max-width:92vw;max-height:46vh;overflow:auto;background:rgba(0,0,0,0.85);color:#00ff00;font:11px/1.4 ui-monospace,monospace;padding:8px;z-index:9;white-space:pre-wrap;';
+          document.body.appendChild(pre);
+        }
+        pre.textContent = res.verdict + '\n' + JSON.stringify(res, null, 2);
+      }).catch(function (err) {
+        var pre = document.getElementById('audit');
+        if (!pre) {
+          pre = document.createElement('pre');
+          pre.id = 'audit';
+          document.body.appendChild(pre);
+        }
+        pre.textContent = 'ASSERT_FAIL\n' + (err && err.message);
+      });
+    }
+  }, 200);
+})();
+</script>
+</body>
+</html>

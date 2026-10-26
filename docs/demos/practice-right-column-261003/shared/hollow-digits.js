@@ -14,16 +14,16 @@
   'use strict';
 
   var HOLLOW_DIGITS = {
-    '0': '<rect x="2" y="2" width="28" height="48" rx="10" stroke="currentColor" stroke-width="1.8" / fill="none"/><line x1="8" y1="42" x2="24" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" / fill="none"/>',
-    '1': '<path d="M 9,12 L 16,2 L 16,50 M 7,50 L 25,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" / fill="none"/>',
-    '2': '<path d="M 3,14 C 3,-2.2 29,-2.2 29,15 C 29,26 4,37 2,50 L 30,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" / fill="none"/>',
-    '3': '<path d="M 4,8 C 7,-0.8 28,-0.8 28,14 C 28,23 18,26 13,26 C 20,26 28,29 28,38 C 28,52.5 7,52.5 3,44" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" / fill="none"/>',
-    '4': '<path d="M 22,2 L 4,34 L 28,34 M 22,2 L 22,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" / fill="none"/>',
-    '5': '<path d="M 28,2 L 4,2 L 4,22 C 7,19 16,19 22,22 C 28,25 29,32 28,39 C 27,51 14,51 4,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" / fill="none"/>',
-    '6': '<path d="M 24,2 C 12,2 2,14 2,36 A 14 14 0 1 0 16,22 A 14 14 0 0 0 2.8,32" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" / fill="none"/>',
-    '7': '<path d="M 2,2 L 30,2 L 10,50 M 14,26 L 24,26" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" / fill="none"/>',
-    '8': '<rect x="3" y="2" width="26" height="23" rx="8" stroke="currentColor" stroke-width="1.8" / fill="none"/><rect x="2" y="25" width="28" height="25" rx="9" stroke="currentColor" stroke-width="1.8" / fill="none"/>',
-    '9': '<path d="M 8,50 C 20,50 30,38 30,16 A 14 14 0 1 0 16,30 A 14 14 0 0 0 29.2,20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" / fill="none"/>',
+    '0': '<rect x="2" y="2" width="28" height="48" rx="10" stroke="currentColor" stroke-width="1.8" fill="none"/><line x1="8" y1="42" x2="24" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>',
+    '1': '<path d="M 9,12 L 16,2 L 16,50 M 7,50 L 25,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    '2': '<path d="M 3,14 C 3,-2.2 29,-2.2 29,15 C 29,26 4,37 2,50 L 30,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    '3': '<path d="M 4,8 C 7,-0.8 28,-0.8 28,14 C 28,23 18,26 13,26 C 20,26 28,29 28,38 C 28,52.5 7,52.5 3,44" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>',
+    '4': '<path d="M 22,2 L 4,34 L 28,34 M 22,2 L 22,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    '5': '<path d="M 28,2 L 4,2 L 4,22 C 7,19 16,19 22,22 C 28,25 29,32 28,39 C 27,51 14,51 4,50" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    '6': '<path d="M 24,2 C 12,2 2,14 2,36 A 14 14 0 1 0 16,22 A 14 14 0 0 0 2.8,32" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>',
+    '7': '<path d="M 2,2 L 30,2 L 10,50 M 14,26 L 24,26" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    '8': '<rect x="3" y="2" width="26" height="23" rx="8" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="2" y="25" width="28" height="25" rx="9" stroke="currentColor" stroke-width="1.8" fill="none"/>',
+    '9': '<path d="M 8,50 C 20,50 30,38 30,16 A 14 14 0 1 0 16,30 A 14 14 0 0 0 29.2,20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>',
     ':': '<circle cx="6" cy="18" r="2.2" fill="currentColor" /><circle cx="6" cy="34" r="2.2" fill="currentColor" />'
   };
 

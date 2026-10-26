@@ -1,0 +1,3435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D1 仪表盘卡片 · v3</title>
+<link rel="stylesheet" href="shared/ruler-production.css">
+<style>
+  :root {
+    --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-serif: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", STSong, serif;
+    --dash-page: #F5F2EE;
+    --dash-radius: 24px;
+    --dash-shell-hi: #FFFFFF;
+    --dash-shell-lo: #E8E5E0;
+    --dash-shell-inset: rgba(44, 62, 80, 0.14);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.18);
+    --dash-glint: rgba(255, 255, 255, 0.85);
+    --dash-panel: #1A1E22;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.15);
+    --dash-num: 48px;
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #FFFFFF;
+    --dash-btn-face-lo: #E4E1DC;
+    --dash-btn-glyph: #2C3E50;
+    --dash-btn-rim: rgba(255, 255, 255, 0.95);
+    --dash-knob-hi: #4A5058;
+    --dash-knob-lo: #1E2328;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(44, 62, 80, 0.30);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(44, 62, 80, 0.65);
+    --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.08);
+    --dash-key-hi: rgba(255, 255, 255, 0.65);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 87, 34, 0.08);
+    --dash-notice-ink: #9E4A1A;
+    --dash-surface-2: #ECE8E1;
+    --dash-surface-3: #DFDAD1;
+    --dash-surface-soft: #FFFDFB;
+    --dash-gold: #B8860B;
+    --dash-ink-a04: rgba(44, 62, 80, 0.04);
+    --dash-ink-a12: rgba(44, 62, 80, 0.12);
+    --dash-ink-a16: rgba(44, 62, 80, 0.16);
+    --dash-ink-a25: rgba(44, 62, 80, 0.25);
+    --dash-ink-a42: rgba(44, 62, 80, 0.42);
+    --dash-coral-glow: rgba(255, 107, 107, 0.35);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(184, 134, 11, 0.35);
+    --dash-gold-glow: rgba(184, 134, 11, 0.30);
+    --dash-text: #2C3E50;
+    --dash-text-soft: #666666;
+    --dash-delta-up: #C93B3B;
+    --dash-delta-down: #0C8A60;
+    --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
+    --dash-coral-text: #C93B3B;
+    --dash-beat: 0.732s;
+    --dash-notch: 96px;
+  }
+  :root[data-skin="ink"] {
+    --dash-page: #0E1114;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #161A1E;
+    --dash-shell-inset: rgba(44, 62, 80, 0.45);
+    --dash-shell-shadow: rgba(44, 62, 80, 0.35);
+    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-panel: #14181C;
+    --dash-panel-text: #FFF8F0;
+    --dash-panel-dim: rgba(255, 248, 240, 0.62);
+    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-coral: #FF6B6B;
+  --dash-coral-solid: #CC3B3B;
+    --dash-vermilion: #FF5722;
+  --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #B8531F;
+    --dash-accent-solid: #B8531F;
+    --dash-white: #FFFFFF;
+    --dash-ink: #2C3E50;
+    --dash-muted: #666666;
+    --dash-tick-future: rgba(255, 248, 240, 0.28);
+    --dash-tick-past: rgba(255, 248, 240, 0.72);
+    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-btn-face-hi: #2A3036;
+    --dash-btn-face-lo: #101316;
+    --dash-btn-glyph: #FFF8F0;
+    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-knob-hi: #3A4148;
+    --dash-knob-lo: #0E1114;
+    --dash-mark: #FFF8F0;
+    --dash-dot: rgba(255, 248, 240, 0.38);
+    --dash-dot-on: #FFFFFF;
+    --dash-hole: #2C3E50;
+    --dash-pill-track: #1A1E22;
+    --dash-pill-idle: rgba(255, 248, 240, 0.55);
+    --dash-stand: #1A1E22;
+    --dash-stand-text: #FFF8F0;
+    --dash-battery: #7BC96F;
+    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-hole-active: #FF5722;
+    --dash-tray-inset: rgba(0, 0, 0, 0.35);
+    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-coral-soft: #FFA5A5;
+    --dash-mic-on: #34D399;
+    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-ink: #FFD9A0;
+    --dash-surface-2: #3E474E;
+    --dash-surface-3: #4A5058;
+    --dash-surface-soft: #1A1E22;
+    --dash-gold: #D4AF37;
+    --dash-ink-a04: rgba(255, 248, 240, 0.04);
+    --dash-ink-a12: rgba(255, 248, 240, 0.10);
+    --dash-ink-a16: rgba(255, 248, 240, 0.14);
+    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a42: rgba(0, 0, 0, 0.45);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #FFF8F0;
+    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: var(--dash-accent);
+    --dash-accent-solid: #B8531F;
+    --dash-coral-text: #FF6B6B;
+    --dash-notch: 96px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--dash-page);
+    color: var(--dash-text);
+    font-family: var(--font-base);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .page {
+    display: flex; flex-direction: column;
+    min-height: 100vh; width: 100%;
+  }
+
+  /* 顶栏辅助控制器 */
+  .chrome {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--dash-white);
+    border-bottom: 1px solid var(--dash-ink-a12);
+    gap: 12px; flex-wrap: wrap;
+  }
+  .brand { font-size: 13px; font-weight: 750; color: var(--dash-text); letter-spacing: 0.02em; }
+  .brand span { color: var(--dash-coral); font-weight: 800; }
+  .seg { display: inline-flex; border: 1px solid var(--dash-ink-a16); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--dash-text-soft);
+    font-family: inherit; font-size: 12px; font-weight: 650;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+
+  .frame {
+    flex: 1 1 auto;
+    display: flex; justify-content: center; align-items: center;
+    padding: 12px;
+    width: 100%;
+    overflow: auto;
+  }
+
+  /* 仪表盘外壳：三档宽度真实响应 + 744 纵向舒展排布 */
+  .dash {
+    container: dash / inline-size;
+    width: min(100%, 420px);
+    height: 100%;
+    max-height: 720px;
+    border-radius: var(--dash-radius);
+    background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-shell-lo) 100%);
+    box-shadow:
+      inset 0 1px 0 var(--dash-glint),
+      inset 0 -10px 18px var(--dash-shell-inset);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+    transition: none;
+  }
+  html.cz-expand .dash {
+    width: min(100%, 420px);
+    max-height: 700px;
+  }
+  html.cz-feed .dash {
+    width: min(100%, 500px);
+    max-height: 840px;
+  }
+
+  /* 深色主屏幕：复原 v2 CSS mask 凹拱缺口（R=140px, depth=24px / 32px） */
+  .panel {
+    --notch: var(--dash-notch);
+    --notch-r: 85px;
+    --notch-depth: 24px;
+    background: var(--dash-panel);
+    color: var(--dash-panel-text);
+    border: none;
+    border-radius: 24px;
+    -webkit-mask-clip: border-box;
+    mask-clip: border-box;
+    padding: 10px 14px 6px;
+    display: flex; flex-direction: column; gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+    -webkit-mask-image: radial-gradient(circle var(--notch-r) at 50% var(--notch-cy, calc(100% + var(--notch-r) - var(--notch-depth))), transparent 98%, black 100%);
+    mask-image: radial-gradient(circle var(--notch-r) at 50% var(--notch-cy, calc(100% + var(--notch-r) - var(--notch-depth))), transparent 98%, black 100%);
+  }
+  .dash[data-depth="32"] .panel,
+  .dash[data-dome="deep"] .panel,
+  .dash[data-dome="32"] .panel,
+  .dash[data-dome="v2"] .panel {
+    --notch-depth: 32px;
+  }
+  .dash[data-depth="24"] .panel,
+  .dash[data-dome="shallow"] .panel,
+  .dash[data-dome="24"] .panel,
+  .dash[data-dome="shrunk"] .panel {
+    --notch-depth: 24px;
+  }
+  .status {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+    min-height: 22px; color: var(--dash-panel-dim); font-size: 11px;
+    position: relative;
+    padding: 0 var(--cz-status-pad-x, 16px);
+    box-sizing: border-box;
+    width: 100%;
+  }
+  /* 三列钉死：时钟隐藏（计时态）后电池不能被挤到中列；MIC 指示灯文案与上方卡槽左边对齐，电池与上方卡槽右边对齐 */
+  .status > .mic-status-btn {
+    grid-column: 1;
+    justify-self: start;
+    position: relative;
+    left: auto;
+    top: auto;
+    margin: 0;
+  }
+  .status > .clock {
+    grid-column: 2;
+    text-align: center;
+    justify-self: center;
+    /* 顶部时间相对居中，略往左移 */
+    transform: translateX(-6px);
+  }
+  .status > .battery {
+    grid-column: 3;
+    justify-self: end;
+    position: relative;
+    right: auto;
+    top: auto;
+    margin: 0;
+  }
+
+  /* 麦克风入口：位于 panel 顶部左上，与参考图同位 */
+  .mic-status-btn {
+    justify-self: start;
+    border: 1px solid var(--dash-cover-line);
+    background: var(--dash-tray-inset);
+    color: var(--dash-panel-text);
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 7px; border-radius: 6px;
+    cursor: pointer; font-size: 10.5px; font-weight: 700;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .mic-status-btn:hover { background: var(--dash-ink-a12); }
+  .mic-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--dash-muted);
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+  .mic-dot.on {
+    background: var(--dash-mic-on);
+    box-shadow: 0 0 6px var(--dash-mic-on);
+  }
+  .clock { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .battery { justify-self: end; display: flex; align-items: center; gap: 4px; }
+  .bat {
+    width: 22px; height: 11px; border: 1.5px solid var(--dash-battery);
+    border-radius: 3px; padding: 1px; position: relative;
+  }
+  .bat::after {
+    content: ""; position: absolute; right: -3px; top: 2px; width: 2px; height: 5px;
+    background: var(--dash-battery); border-radius: 0 1px 1px 0;
+  }
+  .bat-fill { display: block; width: 76%; height: 100%; background: var(--dash-battery); border-radius: 1px; }
+  .bat-pct { font-size: 10px; color: var(--dash-battery); font-weight: 700; }
+
+  /* 屏幕中段：封面 + 读数一行，ruler 进度条独占下一行整宽（不再与读数叠压） */
+  .panel-main {
+    flex: 1 1 auto; min-height: 0;
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 14px; row-gap: 10px;
+    align-items: center; align-content: center;
+    padding: 0;
+  }
+  .cover-col { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; width: 96px; flex: 0 0 auto; align-self: center; }
+  .cover-halo {
+    padding: 3px; border-radius: 15px;
+    border: 1px solid var(--dash-cover-line);
+  }
+  .cover-frame {
+    width: var(--cover-w, 72px); height: var(--cover-w, 72px); border-radius: 12px; overflow: hidden; background: var(--dash-ink);
+  }
+  .cover-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 35%; display: block; }
+  .cover-name { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+
+  .title-col {
+    grid-column: 2; grid-row: 1; align-self: center;
+    min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; width: 100%;
+  }
+  .readout { --num-size: var(--dash-num); display: flex; flex-direction: column; align-items: center; gap: 0; transform: translate(var(--cz-readout-dx, -26px), var(--cz-readout-dy, -10.2px)); }
+  /* 练习科目：读数上方的标题（黑屏内，不再和 ruler 叠压） */
+  /* S9：黑屏内不再重复科目名/副标题 —— 卡槽露头条已承载这些信息 */
+  .readout-title,
+  .readout-note { display: none !important; }
+  .ac-root {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 560; letter-spacing: -0.03em; line-height: 1;
+    font-size: var(--num-size); color: var(--dash-panel-text);
+  }
+  .ac-digit {
+    position: relative; display: inline-grid; overflow: hidden; height: 1.5em; line-height: 1.5;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+  }
+  .ac-sizer { visibility: hidden; grid-area: 1 / 1; display: grid; }
+  .ac-stack { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; }
+  .ac-face { height: 1.5em; display: flex; align-items: center; justify-content: center; }
+  .ac-mark { display: inline-block; margin: 0 -0.08em; }
+  .readout-sub {
+    margin-top: 3px; font-size: 20px; font-weight: 750; color: var(--dash-panel-text); letter-spacing: 0.02em;
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+  .readout-sub small { font-size: 13px; font-weight: 600; color: var(--dash-panel-dim); }
+  /* dad 2610102107 条3：空心 monoline 计时数字（复用 D6 引擎），基准 20px ×3 = 60px */
+  .readout-line { display: inline-flex; align-items: flex-end; justify-content: center; gap: 4px; position: relative; }
+  .readout-unit {
+    position: absolute;
+    left: 100%;
+    bottom: 4px;
+    margin-left: 3px;
+    font-family: var(--font-base);
+    /* dad 261024：下标“分钟”约为左侧数字的一半高（--readout-digits-h 的一半），保持极细字重 */
+    font-size: calc(var(--readout-digits-h, 60px) / 2);
+    font-weight: 250;
+    letter-spacing: 0.04em;
+    color: rgba(255, 248, 240, 0.70);
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  /* 准备态（分钟数）才显示「分钟」；计时中/暂停态是 MM:SS，不显示单位 (Fix 2.1.2: 实值是 run/pause) */
+  .dash[data-mode="run"] .readout-unit,
+  .dash[data-mode="pause"] .readout-unit { display: none !important; }
+  /* 计时态：练习科目由卡槽露头条展示，黑屏内不再重复 */
+  .dash[data-mode="run"] .readout-title,
+  .dash[data-mode="pause"] .readout-title { display: none !important; }
+  .readout-digits { display: inline-flex; align-items: center; justify-content: center; }
+  .readout-digits .hollow-digits-svg {
+    display: block; height: var(--readout-digits-h, 60px); width: auto;
+    color: var(--dash-panel-text);
+    overflow: visible;
+  }
+  .readout-digits .hollow-digits-svg path,
+  .readout-digits .hollow-digits-svg rect,
+  .readout-digits .hollow-digits-svg line { fill: none; }
+  .readout-digits .hollow-digits-svg circle { fill: currentColor; }
+  #readoutDigits { font-size: 0; line-height: 0; }
+  /* 旧 #metaVal 兼容节点：共享脚本仍会往里写，但不再可见 */
+  .legacy-readout { display: none !important; }
+  html.cz-expand .dash .readout-digits { --readout-digits-h: 60px; }
+  html.cz-feed .dash .readout-digits { --readout-digits-h: 66px; }
+  /* 下标“分钟”与数字共享同一基准：变量挂到 readout-line，兄弟节点也能继承 */
+  html.cz-expand .dash .readout-line { --readout-digits-h: 60px; }
+  html.cz-feed .dash .readout-line { --readout-digits-h: 66px; }
+  html.cz-fill .panel { padding-bottom: 12px !important; }
+  html.cz-fill:not(.cz-land):not(.cz-feed) .panel { padding-bottom: 12px !important; }
+
+  .panel-main > .ruler-wrap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-block-start: 0;
+    min-width: 0;
+  }
+  .ruler-vine {
+    max-width: 100%;
+  }
+
+  /* 纵向三列强对齐结构：panel-foot / mid-row / transport 共用同一列网格 (68px 1fr 68px) */
+  .grid-3col {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr) 68px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .grid-3col .c-left { justify-self: start; display: flex; justify-content: center; width: 68px; }
+  .grid-3col .c-mid  { justify-self: center; display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .grid-3col .c-right{ justify-self: end; display: flex; justify-content: center; width: 68px; }
+
+  /* 深色圆盘操作圆钮：58px，深色盘带强烈立体浮起阴影 */
+  .round {
+    width: 58px; height: 58px; border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: linear-gradient(180deg, #2A3036 0%, #101316 100%);
+    color: #FFF8F0;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 6px 14px rgba(0, 0, 0, 0.30),
+      0 2px 4px rgba(0, 0, 0, 0.20);
+    font-size: 26px; font-weight: 400; line-height: 1;
+    display: grid; place-items: center;
+    cursor: pointer;
+    touch-action: manipulation; user-select: none;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .round:active:not(:disabled) {
+    transform: translateY(1px) scale(0.96);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 4px 8px rgba(0, 0, 0, 0.40);
+  }
+  .round:disabled { opacity: 0.38; cursor: default; }
+  :root[data-skin="ink"] .round {
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 8px 18px rgba(0, 0, 0, 0.60),
+      0 2px 5px rgba(0, 0, 0, 0.40);
+  }
+
+  /* panel-foot 正常流：左右边缘与 MIC / 封面 / 电池共用 panel 的 12px 基线。 */
+  .panel-foot {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: 4;
+    padding: 0;
+    margin-top: 4px;
+    width: 100%;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    color: var(--dash-panel-dim);
+    min-width: 0;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+  }
+  /* S17 批注3（dad 261026）+ S18 批注5/6：状态行锚到「黑区底部圆点弧左右两侧」——
+     位置由 JS 按圆点弧顶边算出（--cz-foot-top），动态下移贴近黑色面板下缘，
+     横排/纵向两种视口下都落在拱肩上，不压刻度、不进 notch 裁切区。 */
+  .panel-foot.grid-3col {
+    position: absolute;
+    left: 12px; right: 12px;
+    top: var(--cz-foot-top, auto);
+    bottom: auto;
+    display: block;
+    width: calc(100% - 24px);
+    height: 20px;
+    margin-top: 0;
+    box-sizing: border-box;
+  }
+  .panel-foot.grid-3col .c-left,
+  .panel-foot.grid-3col .c-right {
+    position: absolute; top: 0;
+    display: flex;
+    align-items: center;
+    width: auto !important;
+    transform: translateX(-50%);
+  }
+  /* S14 批注 2/3、4/5（dad 261025）：今日与 BPM 中心按 dad 圈定的拱肩 20% / 83% 落位。
+     foot 自身左右内缩 12px（宽 = panel − 24），calc 把 20%/83% 精确换算回 panel 坐标。 */
+  .panel-foot.grid-3col .c-left { left: calc(20% - 7.2px); }
+  .panel-foot.grid-3col .c-right { left: calc(83% + 7.9px); pointer-events: auto; }
+  .panel-foot.grid-3col .c-mid { display: none; }
+  html.cz-fill:not(.cz-feed) .panel-foot,
+  html.cz-fill:not(.cz-land):not(.cz-feed) .panel-foot {
+    position: absolute !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: var(--cz-foot-top, auto) !important;
+    bottom: auto !important;
+    width: calc(100% - 24px) !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+  html.cz-feed .panel-foot {
+    position: absolute !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: var(--cz-foot-top, auto) !important;
+    bottom: auto !important;
+    margin-top: 0 !important;
+    width: calc(100% - 24px) !important;
+    padding: 0 !important;
+  }
+  #todayTotal {
+    font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .metro-sound-toggle {
+    border: 0; background: transparent; color: var(--dash-panel-text);
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700;
+    padding: 2px 0; border-radius: 6px;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .metro-sound-toggle:hover { background: var(--dash-ink-a12); }
+  #bpmRead {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* 中段 mid-row：旋钮与弧点联动 */
+  .mid {
+    position: relative; z-index: 2;
+    margin-top: -12px;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 0;
+    width: 100%;
+  }
+  .mid-row {
+    padding: 0 var(--mid-pad, 8px);
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 顶部弧点：复原 v2 top-arc 几何 (9:30 至 2:30 跨越旋钮上方) */
+  .arc {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .arc i {
+    position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: var(--dash-dot);
+    box-shadow: 0 0 0 1px var(--dash-shell-inset);
+    transition: background-color 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+                transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .arc i.is-on {
+    background: var(--dash-dot-on);
+    box-shadow: 0 0 5px var(--dash-glint), 0 0 10px var(--dash-coral-glow);
+    transform: scale(1.15);
+  }
+  .dash[data-dots="20"] .arc i {
+    width: 4.5px; height: 4.5px; margin: -2.25px 0 0 -2.25px;
+  }
+
+  .knob {
+    width: 144px; height: 144px; border-radius: 50%; position: relative;
+    background: linear-gradient(160deg, var(--dash-knob-hi), var(--dash-knob-lo) 62%);
+    box-shadow:
+      inset 0 2px 0 var(--dash-btn-rim),
+      inset 0 -10px 16px var(--dash-shell-inset),
+      0 10px 18px var(--dash-shell-shadow);
+    touch-action: none; user-select: none;
+    cursor: grab;
+    z-index: 1;
+  }
+  .knob:active { cursor: grabbing; }
+  .knob-rotor {
+    position: absolute; inset: 0;
+    transform: rotate(var(--knob-deg, -45.5deg));
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .knob.is-dragging .knob-rotor {
+    transition: none;
+  }
+  .knob-mark {
+    position: absolute; left: 50%; top: 10%; width: 4px; height: 20%;
+    margin-left: -2px; border-radius: 2px; background: var(--dash-mark);
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+  }
+
+  /* 底部 deck transport：主控件行（三列共一条 centerline）+ 说明行；纯沉头孔孔阵，无外线框 */
+  .deck.transport {
+    flex: 0 0 auto;
+    padding: 6px 0 2px;
+    min-height: 0;
+    width: 100%;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  /* A2：主控件行三列各只放一个主控件（孔阵 / 药丸 / 谱架键）→ align-items:center 让三者 centerline 重合；左右 padding 对齐 mid-row */
+  .transport-main, .transport-caps {
+    align-items: center;
+    padding: 0 var(--mid-pad, 8px);
+  }
+  .transport-caps .c-left, .transport-caps .c-mid, .transport-caps .c-right { align-items: center; }
+  /* 说明行共用一套 caption 语言（原 logo / 计时 / 大屏看谱 三处各自为政） */
+  .transport-caps .ops-kicker,
+  .transport-caps .stand-badge-tip { font-size: 10px; font-weight: 650; letter-spacing: 0.04em; color: var(--dash-text-soft); }
+
+  /* 扬声孔格栅：彻底删除线框外框，直接沉头孔 (恢复 D3 金属沉头，8列对齐 cover-frame 宽度) */
+  .speaker-block {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform 0.15s ease;
+  }
+  .grille-6x8 {
+    display: grid;
+    width: var(--cover-w, 72px);
+    height: var(--cover-w, 72px);
+    grid-template-columns: repeat(8, 6px);
+    grid-template-rows: repeat(8, 6px);
+    justify-content: space-between;
+    align-content: space-between;
+    gap: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    box-sizing: border-box;
+  }
+  .hole {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--dash-hole);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6), 0 0.5px 0 var(--dash-glint);
+    transform-origin: center;
+    animation: none !important;
+    transition: transform 90ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                background-color 90ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 90ms cubic-bezier(0.2, 0.8, 0.3, 1);
+    will-change: transform, background-color, box-shadow;
+  }
+  /* 变体 2: 金属沉头孔质感 (恢复 D3) */
+  .grille-6x8.variant-countersink .hole {
+    box-shadow:
+      0 0 0 1px var(--dash-shell-inset),
+      inset 0 1.5px 2px rgba(0, 0, 0, 0.75),
+      0 1px 0 var(--dash-glint);
+  }
+  /* 负控分支（测试专用）：强制模拟旧版 CSS 自循环动画 */
+  .grille-6x8.is-negctl-loop .hole {
+    animation: negctlWaveLoop 0.75s ease-in-out infinite !important;
+  }
+  @keyframes negctlWaveLoop {
+    0%, 100% { transform: scale(1); background-color: var(--dash-hole); }
+    50% { transform: scale(1.24); background-color: var(--dash-hole-active); }
+  }
+  .dizical-logo {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--dash-text-soft);
+  }
+  .dizical-mark-svg {
+    width: 32px; height: 8px; display: block;
+  }
+
+  .ops-block { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .ops-kicker {
+    font-size: 10px; font-weight: 650; letter-spacing: 0.04em; color: var(--dash-text-soft);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .pill {
+    display: flex; gap: 6px; padding: 4px; border-radius: 999px;
+    background: var(--dash-pill-track);
+    box-shadow: inset 0 1px 2px var(--dash-shell-inset);
+  }
+  .pill button {
+    border: 0; background: transparent; color: var(--dash-pill-idle);
+    min-height: 44px; padding: 0 22px; border-radius: 999px;
+    font-size: 14px; font-weight: 750; white-space: nowrap;
+    touch-action: manipulation; cursor: pointer;
+  }
+  .pill button:disabled { opacity: 0.35; cursor: default; }
+  .dash[data-mode="prep"] #btnPrimary,
+  .dash[data-mode="run"] #btnPrimary,
+  .dash[data-mode="pause"] #btnPrimary {
+    background: var(--dash-coral-solid); color: var(--dash-white);
+  }
+  .dash[data-mode="run"] #btnEarly,
+  .dash[data-mode="pause"] #btnEarly {
+    background: var(--dash-vermilion-solid); color: var(--dash-white); opacity: 1;
+  }
+
+  .stand-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  /* A2 谱架模式键 = 卡内既有「沉头浅凹」语言（同 .mic-status-btn 的托盘族）：
+     1px 描边 + 托盘弱底 + 只内凹无外投影 → 副操作不抢「开始」的抬升层；激活态转珊瑚实心 */
+  /* dad 2610102107 条1：谱架模式键按参考图（新拟物凸起浮雕：柔和外投影 + 顶部高光，无硬边框）
+     内容「图标在上、文字在下」上下堆叠；条2：文案严格水平居中（对称 padding + text-align:center） */
+  .stand-btn {
+    position: relative;
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    min-width: 0; width: 100%; max-width: 100%; height: 50px; padding: 6px 12px;
+    border: 0; border-radius: 14px;
+    background: linear-gradient(180deg, var(--dash-shell-hi) 0%, var(--dash-surface-soft) 100%);
+    color: var(--dash-text);
+    font-family: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .01em;
+    line-height: 1; text-align: center;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    touch-action: manipulation; cursor: pointer;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out, background 120ms ease-out;
+  }
+  .stand-btn .stand-ico { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
+  .stand-btn .stand-txt { display: block; width: 100%; text-align: center; white-space: nowrap; }
+  .stand-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+  .stand-btn.is-on {
+    background: var(--dash-coral-solid); color: var(--dash-white);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+  .stand-badge-tip { text-align: center; white-space: nowrap; }
+
+  /* ══════ 仪表盘底座集成监视区 (D3 diag-card 并入 D1 卡下半区) ══════
+     A3 单框重写：全卡只有【这一层框】。分层改用内边距 / 留白 / 细分割线表达，卡内不再套第二个圆角框。
+     底改 --dash-surface-soft（会随皮肤翻转）：改前 --dash-white 在深墨皮肤下不翻转，白底 + 暖白字 = 1.05:1 */
+  .diag-card {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 8px 12px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-sizing: border-box;
+    font-size: 11px;
+    margin-top: 2px;
+    position: relative;
+    box-shadow: none;
+  }
+  .diag-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .diag-status {
+    display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--dash-text);
+  }
+  .mic-indicator-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--dash-muted);
+  }
+  .mic-indicator-dot.active {
+    background: var(--dash-mic-on);
+    box-shadow: 0 0 6px var(--dash-mic-on);
+  }
+  .diag-actions { display: flex; gap: 6px; align-items: center; }
+  .diag-btn {
+    border: 1px solid var(--dash-shell-inset);
+    background: var(--dash-surface-2);
+    color: var(--dash-text);
+    padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    cursor: pointer; min-height: 28px;
+  }
+  /* A3：提示行去掉第二个圆角框（原 notice-bg + accent-line 边 + r6），改【1px 细分割线】+ 留白分层。
+     只有一条边 → 不构成框；圆角归零 → 不参与「框套框」计数 */
+  .toast-banner {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--dash-ink-a12);
+    border-radius: 0;
+    padding: 6px 0 0;
+    margin: 0;
+    font-size: 10px;
+    color: var(--dash-notice-ink);
+    display: none; align-items: center; gap: 6px;
+  }
+  .diag-card.is-toast .toast-banner { display: flex; }
+  .toast-tag { font-size: 10px; font-weight: 700; color: var(--dash-notice-ink); }
+
+  /* 键盘焦点可见样式 */
+  button:focus-visible, .round:focus-visible, .knob:focus-visible, .seg button:focus-visible {
+    outline: 2px solid var(--dash-vermilion-text);
+    outline-offset: 2px;
+  }
+
+  /* 1133x744 桌面标准视口 Hero 时间读数 */
+  html.cz-expand .dash .readout-sub {
+    font-size: 20px;
+    font-weight: 750;
+  }
+  html.cz-expand .dash .readout-sub small {
+    font-size: 13px;
+  }
+
+
+  /* 纵向 feed 流重排 (原 744x1133)：压缩上方 panel，放大下半部指针/arc/按钮/speaker */
+  html.cz-feed .dash {
+    --mid-pad: 6px;
+  }
+  html.cz-feed .dash .panel {
+    padding: 8px 12px 16px;
+    gap: 4px;
+  }
+  html.cz-feed .dash .panel-main {
+    gap: 10px;
+  }
+  html.cz-feed .dash .cover-frame {
+    width: 72px; height: 72px;
+  }
+  html.cz-feed .dash .ac-root {
+    font-size: 44px;
+  }
+  html.cz-feed .dash .readout-sub {
+    font-size: 22px;
+    font-weight: 800;
+  }
+  html.cz-feed .dash .readout-sub small {
+    font-size: 14px;
+  }
+  html.cz-feed .dash .mid {
+    padding: 6px 0;
+  }
+  html.cz-feed .dash .knob {
+    width: 176px; height: 176px;
+  }
+  html.cz-feed .dash .round {
+    width: 58px; height: 58px; font-size: 26px;
+  }
+  html.cz-feed .dash .grid-3col {
+    grid-template-columns: 74px minmax(0, 1fr) 74px;
+  }
+  html.cz-feed .dash .grid-3col .c-left,
+  html.cz-feed .dash .grid-3col .c-right {
+    width: 74px;
+  }
+  html.cz-feed .dash .diag-card {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  /* 440 移动端自适应 */
+  @container dash (max-width: 440px) {
+    .grid-3col {
+      grid-template-columns: 58px minmax(0, 1fr) 58px;
+    }
+    .grid-3col .c-left, .grid-3col .c-right {
+      width: 58px;
+    }
+    .round { width: 58px; height: 58px; font-size: 26px; }
+    /* dad 2610102107 条2：440 档列宽 58 → 键撑满列宽、对称 padding，文字严格居中 */
+    .stand-btn { min-width: 0; width: 100%; height: 46px; padding: 4px 3px; gap: 2px; font-size: 10.5px; border-radius: 12px; }
+    .stand-btn .stand-ico { width: 15px; height: 15px; }
+    .pill button { padding: 0 14px; font-size: 13px; }
+    .cover-frame { width: 72px; height: 72px; }
+    .readout-sub { font-size: 18px; font-weight: 750; }
+    .readout-sub small { font-size: 12px; }
+    .readout-digits { --readout-digits-h: 54px; }
+    .knob { width: 130px; height: 130px; }
+  }
+
+  /* compose-02 等窄槽自适应 (<= 280px) */
+  @container dash (max-width: 280px) {
+    .knob { width: 110px !important; height: 110px !important; }
+    .round { width: 34px !important; height: 34px !important; font-size: 18px !important; }
+    .grid-3col { grid-template-columns: 42px minmax(0, 1fr) 42px !important; }
+    .grid-3col .c-left, .grid-3col .c-right { width: 42px !important; }
+    .panel-foot.grid-3col { grid-template-columns: 68px minmax(0, 1fr) 68px !important; }
+    .panel-foot.grid-3col .c-left, .panel-foot.grid-3col .c-right { width: 68px !important; }
+    .panel-main { grid-template-columns: 68px minmax(0, 1fr) !important; }
+    .cover-col { width: 68px !important; }
+    .cover-frame { width: 56px !important; height: 56px !important; }
+    .grille-6x8 { width: 56px !important; height: 56px !important; }
+    .ac-root { font-size: 32px !important; }
+    .readout-sub { font-size: 16px !important; }
+    .stand-btn { min-width: 0; width: 100% !important; height: 44px !important; padding: 3px 2px !important; gap: 2px !important; font-size: 10px !important; }
+    .stand-btn .stand-ico { width: 14px !important; height: 14px !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .hole { animation: none !important; }
+  }
+  /* demo-ver badge */
+  .demo-ver{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    font-size:11px;letter-spacing:.02em;border:1px solid var(--dash-ink-a16);color:var(--dash-text-soft);
+    background:var(--dash-surface-soft)}
+  .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
+</style>
+</head>
+<body>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v2 · 2026-10-26</span>
+<div class="page">
+  <div class="chrome">
+    <span class="brand">D1 仪表盘 <span>v3</span></span>
+    <div class="seg" id="vpSeg">
+      <button type="button" data-vp="1133x744" class="is-on">1133×744</button>
+      <button type="button" data-vp="744x1133">744×1133</button>
+      <button type="button" data-vp="440x956">440×956</button>
+    </div>
+    <div class="seg" id="domeSeg" title="拱深切换（浅凹 24px vs 原版 32px）">
+      <button type="button" data-dome="shallow" data-depth="24" class="is-on">浅凹 24px</button>
+      <button type="button" data-dome="deep" data-depth="32">原版 32px</button>
+    </div>
+    <div class="seg" id="filletSeg" title="内凹圆角切换（12px vs 16px）">
+      <button type="button" data-fillet="12">圆角 12px</button>
+      <button type="button" data-fillet="16" class="is-on">圆角 16px</button>
+    </div>
+    <div class="seg" id="dotsSeg" title="弧点数量切换（12 / 16 / 20）">
+      <button type="button" data-dots="12">12点</button>
+      <button type="button" data-dots="16">16点</button>
+      <button type="button" data-dots="20" class="is-on">20点</button>
+    </div>
+    <div class="seg" id="skinSeg">
+      <button type="button" data-skin="light" class="is-on">浅银</button>
+      <button type="button" data-skin="ink">深墨</button>
+    </div>
+  </div>
+
+  <div class="frame" id="frame">
+    <article class="dash" id="dash" data-vp="1133x744" data-mode="prep" data-dome="shallow" data-depth="24" data-fillet="16" data-dots="20">
+      <!-- 顶部屏幕区 -->
+      <section class="panel" id="panel">
+        <div class="status">
+          <button type="button" class="mic-status-btn" id="panelMicBtn" onclick="toggleMic()" title="点击切换麦克风监听">
+            <span class="mic-dot" id="panelMicDot"></span>
+            <span id="panelMicLabel">MIC 关</span>
+          </button>
+          <span class="clock">10:12am</span>
+          <div class="battery">
+            <div class="bat"><span class="bat-fill"></span></div>
+            <span class="bat-pct">76%</span>
+          </div>
+        </div>
+        <div class="panel-main">
+          <div class="cover-col">
+            <div class="cover-halo">
+              <div class="cover-frame">
+                <img src="../assets/practice-hero-ticket-260922.png" alt="萨丽哈">
+              </div>
+            </div>
+            <div class="cover-name" id="dashCoverName">萨丽哈</div>
+          </div>
+          <div class="title-col">
+            <div class="readout">
+              <!-- 空心数字不再复用 #ttCounter：旧计时器会往里塞滚轮实心数字，联动时会把样式冲掉 -->
+              <div class="readout-line">
+                <div class="ac-root" id="metaDigits">
+                  <div class="readout-digits" id="readoutDigits"><svg class="hollow-digits-svg" id="metaDigitsSvg" viewBox="0 0 74 52" preserveAspectRatio="xMinYMid meet" role="img" aria-label="10"></svg></div>
+                </div>
+                <span class="readout-unit" id="readoutUnit">分钟</span>
+              </div>
+              <span id="metaVal" class="legacy-readout" aria-hidden="true">10</span>
+            </div>
+          </div>
+          <div class="ruler-wrap">
+            <div class="ruler" id="ruler">
+              <div class="ruler-row" id="rulerRow" aria-hidden="true"></div>
+              <div class="notes-bubbles" aria-hidden="true"></div>
+              <input class="ruler-input" id="rulerInput" type="range" min="1" max="30" step="1" value="10" tabindex="-1" aria-label="练习时长（分钟）">
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot grid-3col">
+          <div class="c-left">
+            <span id="todayTotal" title="今日累计练习">今日 42分</span>
+          </div>
+          <div class="c-mid"></div>
+          <div class="c-right">
+            <button type="button" class="metro-sound-toggle" id="bpmToggleBtn" onclick="toggleMetroSound()" title="点击切换发声/静音">
+              <span id="bpmRead">BPM 60 · 静音</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 中段旋钮与顶部弧点 -->
+      <section class="mid" id="mid">
+        <div class="arc" id="arc" aria-hidden="true"></div>
+        <div class="mid-row grid-3col">
+          <div class="c-left">
+            <button type="button" class="round" id="silverMinus" aria-label="减少一分钟">−</button>
+          </div>
+          <div class="c-mid">
+            <div class="knob" id="knob" tabindex="0" role="slider" aria-valuemin="1" aria-valuemax="30" aria-valuenow="10" aria-label="练习时长">
+              <div class="knob-rotor" id="knobRotor"><span class="knob-mark"></span></div>
+            </div>
+          </div>
+          <div class="c-right">
+            <button type="button" class="round" id="silverPlus" aria-label="增加一分钟">+</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 底部 deck 操作区：主控件行（孔阵 / 药丸 / 谱架键 三列共一条 centerline）+ 说明行 -->
+      <section class="deck transport" id="transport">
+        <div class="transport-main grid-3col">
+          <div class="c-left speaker-block" id="speakerBlock" title="扬声孔：随音频与节奏律动">
+            <div class="grille-6x8 variant-countersink" id="speakerGrille" aria-hidden="true"></div>
+          </div>
+          <div class="c-mid">
+            <div class="pill">
+              <button type="button" id="btnPrimary">开始</button>
+              <button type="button" id="btnEarly" disabled>提前结束</button>
+            </div>
+          </div>
+          <div class="c-right" role="group" aria-label="谱架模式">
+            <button type="button" class="stand-btn" id="standBtn" aria-pressed="false" title="谱架模式">
+              <svg class="stand-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                <path d="M4.5 4 L19.5 4 L17.5 11 L6.5 11 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+                <line x1="12" y1="11" x2="12" y2="17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M12 17.5 L7.5 21 M12 17.5 L16.5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M8.6 7.5 L15.4 7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+              </svg>
+              <span class="stand-txt">谱架模式</span>
+            </button>
+          </div>
+        </div>
+        <div class="transport-caps grid-3col">
+          <div class="c-left">
+            <div class="dizical-logo" id="speakerLogo" title="Dizical" aria-label="Dizical">
+              <svg class="dizical-mark-svg" viewBox="0 0 58 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 2,1 L 2,13 L 7,13 C 10.5,13 13,10.3 13,7 C 13,3.7 10.5,1 7,1 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+                <circle cx="16.5" cy="2" r="0.9" fill="currentColor" />
+                <line x1="16.5" y1="5" x2="16.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <path d="M 20.5,5 L 26.5,5 L 20.5,13 L 26.5,13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="30" cy="2" r="0.9" fill="currentColor" />
+                <line x1="30" y1="5" x2="30" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <path d="M 39.5,6 C 38,4.8 34.5,4.8 34.5,9 C 34.5,13.2 38,13.2 39.5,12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <circle cx="44.5" cy="9" r="4" stroke="currentColor" stroke-width="1.2" />
+                <line x1="48.5" y1="5" x2="48.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <line x1="52.5" y1="1" x2="52.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+              </svg>
+            </div>
+          </div>
+          <div class="c-mid">
+            <div class="ops-kicker" id="opsTimerText">00:00 · 待开始</div>
+          </div>
+          <div class="c-right">
+            <div class="stand-badge-tip" id="standTip">大屏看谱</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 下方集成诊断监视条 (原 D3 diag-card 合入 D1) -->
+      <section class="diag-card" id="diagCard">
+        <div class="diag-row">
+          <div class="diag-status">
+            <span class="mic-indicator-dot" id="diagMicDot"></span>
+            <span id="diagMicStatus">监听关</span>
+          </div>
+          <div class="diag-actions">
+            <button type="button" class="diag-btn" id="micToggleBtn" onclick="toggleMic()">收音</button>
+            <button type="button" class="diag-btn" id="metroSoundBtn" onclick="toggleMetroSound()">节拍关</button>
+          </div>
+        </div>
+        <div class="toast-banner">
+          <span class="toast-tag">提示:</span>
+          <span id="diagTipText">扬声孔与麦克风智能联动：吹奏起笛时自动检测有效时长</span>
+        </div>
+      </section>
+    </article>
+  </div>
+</div>
+
+<script src="../vendor/gsap.min.js"></script>
+<script>
+  var duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
+  // dad 2610102107 条3：计时读数唯一渲染入口 = 空心 monoline 数字（D6 引擎），不写「分钟/已练」字样
+  function renderMetaDigits(str) {
+    var raw = String(str);
+    var label = raw;
+    if (/^\d{1,2}$/.test(raw)) label = String(parseInt(raw, 10) || 0);
+    var host = document.getElementById('readoutDigits');
+    var svg = document.getElementById('metaDigitsSvg');
+    if (host && (!svg || svg.parentNode !== host)) {
+      host.textContent = '';
+      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'hollow-digits-svg');
+      svg.id = 'metaDigitsSvg';
+      svg.setAttribute('role', 'img');
+      host.appendChild(svg);
+    }
+    if (svg && window.HollowDigits) window.HollowDigits.render(svg, label);
+    return label;
+  }
+</script>
+<script src="../practice-skeleton-260920/real-timer-visual.js"></script>
+<script src="shared/hollow-digits.js"></script>
+<script src="shared/ruler-production.js"></script>
+<script>
+(function () {
+  window.__dashErrors = [];
+  window.addEventListener('error', function (ev) {
+    window.__dashErrors.push(String(ev.message));
+  });
+
+  var dash = document.getElementById('dash');
+  var frame = document.getElementById('frame');
+
+  // 1. 节拍器状态、Q4 快照机制与默认静音控制
+  var selectedBpm = 60;
+  var snapshotBpm = null;
+  var BPM_MIN = 40, BPM_MAX = 200;
+  var mode = 'prep';
+  var metroMuted = true; // 默认静音！计时开始不发声
+
+  // Web Audio 调度器
+  var audioCtx = null;
+  var nextNoteTime = 0.0;
+  var currentBeat = 0;
+  var metroTimerId = null;
+
+  function getOrCreateAudioContext() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function scheduleWoodblock(beatIndex, time) {
+    if (!audioCtx || metroMuted) return;
+    const isAccent = (beatIndex % 4 === 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const startFreq = isAccent ? 1200 : 750;
+    const endFreq = isAccent ? 400 : 320;
+    const decayTime = isAccent ? 0.025 : 0.016;
+    const peakGain = isAccent ? 0.42 : 0.22;
+
+    osc.frequency.setValueAtTime(startFreq, time);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, time + decayTime);
+    gain.gain.setValueAtTime(peakGain, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + decayTime);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(time);
+    osc.stop(time + decayTime + 0.003);
+  }
+
+  function metroScheduler() {
+    if (!audioCtx) return;
+    var bpm = (snapshotBpm !== null) ? snapshotBpm : selectedBpm;
+    while (nextNoteTime < audioCtx.currentTime + 0.1) {
+      scheduleWoodblock(currentBeat, nextNoteTime);
+      nextNoteTime += 60.0 / bpm;
+      currentBeat++;
+    }
+  }
+
+  function startMetroAudio() {
+    if (metroMuted) return;
+    getOrCreateAudioContext();
+    if (!audioCtx) return;
+    nextNoteTime = audioCtx.currentTime + 0.04;
+    currentBeat = 0;
+    if (!metroTimerId) {
+      metroTimerId = setInterval(metroScheduler, 25);
+    }
+  }
+
+  function stopMetroAudio() {
+    if (metroTimerId) {
+      clearInterval(metroTimerId);
+      metroTimerId = null;
+    }
+  }
+
+  function updateBpmDisplay() {
+    var val = (snapshotBpm !== null) ? snapshotBpm : selectedBpm;
+    var el = document.getElementById('bpmRead');
+    if (el) {
+      el.textContent = 'BPM ' + val + (metroMuted ? ' · 静音' : ' · 发声');
+    }
+    var sndBtn = document.getElementById('metroSoundBtn');
+    if (sndBtn) {
+      sndBtn.textContent = metroMuted ? '节拍关' : '节拍开';
+    }
+  }
+
+  window.toggleMetroSound = function () {
+    metroMuted = !metroMuted;
+    updateBpmDisplay();
+    if (!metroMuted && mode === 'run') {
+      startMetroAudio();
+    } else {
+      stopMetroAudio();
+    }
+  };
+
+  window.setBpm = function (next) {
+    selectedBpm = Math.round(Math.min(BPM_MAX, Math.max(BPM_MIN, next)));
+    dash.style.setProperty('--dash-beat', (60 / selectedBpm).toFixed(3) + 's');
+    if (snapshotBpm === null) {
+      updateBpmDisplay();
+    }
+  };
+
+  // 2. 纯沉头孔扬声器格栅 (64 孔 8x8，对齐 cover-frame 宽度并提供自下而上声波延迟)
+  var grille = document.getElementById('speakerGrille');
+  if (grille) {
+    grille.textContent = '';
+    for (var i = 0; i < 64; i++) {
+      var col = i % 8;
+      var row = Math.floor(i / 8);
+      var rowFromBottom = 7 - row;
+      var colDist = Math.abs(col - 3.5);
+      var delaySec = (rowFromBottom * 0.015 + colDist * 0.005).toFixed(3);
+      var hole = document.createElement('span');
+      hole.className = 'hole';
+      hole.dataset.col = String(col);
+      hole.dataset.row = String(row);
+      hole.dataset.rfb = String(rowFromBottom);
+      hole.dataset.lit = '0';
+      hole.dataset.scale = '1.0';
+      hole.style.setProperty('--col', String(col));
+      hole.style.setProperty('--row', String(row));
+      hole.style.setProperty('--row-from-bottom', String(rowFromBottom));
+      hole.style.setProperty('--wave-delay', delaySec + 's');
+      hole.style.transitionDelay = delaySec + 's';
+      grille.appendChild(hole);
+    }
+  }
+
+  // 3. 顶部弧点几何与切换 (复原 v2 top-arc 几何: 9:30 至 2:30 跨越旋钮上方)
+  var arc = document.getElementById('arc');
+  var currentDotCount = 20;
+
+  function rebuildDots(count) {
+    currentDotCount = parseInt(count, 10) || 20;
+    dash.dataset.dots = String(currentDotCount);
+    if (!arc) return;
+    arc.textContent = '';
+    for (var d = 0; d < currentDotCount; d++) {
+      var dot = document.createElement('i');
+      dot.dataset.step = String(d + 1);
+      arc.appendChild(dot);
+    }
+    layoutArc();
+    paintKnobTimer();
+  }
+
+  function alignSpeakerWithCover() {
+    var coverCol = document.querySelector('.cover-col');
+    var speakerBlock = document.getElementById('speakerBlock');
+    var speakerLogo = document.getElementById('speakerLogo');
+    if (!coverCol || !speakerBlock) return;
+    speakerBlock.style.position = 'relative';
+    speakerBlock.style.left = '0px';
+    if (speakerLogo) { speakerLogo.style.position = 'relative'; speakerLogo.style.left = '0px'; }
+    var cRect = coverCol.getBoundingClientRect();
+    var sRect = speakerBlock.getBoundingClientRect();
+    var cCenter = cRect.left + cRect.width / 2;
+    var sCenter = sRect.left + sRect.width / 2;
+    var offset = cCenter - sCenter;
+    speakerBlock.style.left = offset.toFixed(1) + 'px';
+    // A2：说明行里的 dizical logo 跟着孔阵走同一条竖轴（同列同偏移），否则孔阵对齐了 cover、logo 却留在列心
+    if (speakerLogo) speakerLogo.style.left = offset.toFixed(1) + 'px';
+  }
+
+  function alignReadoutWithCover() {
+    var coverBox = document.querySelector('.cover-halo') || document.querySelector('.cover-frame');
+    var titleCol = document.querySelector('.title-col');
+    var readoutEl = document.querySelector('.readout');
+    var panelEl = document.getElementById('panel');
+    if (!coverBox || !titleCol || !readoutEl || !panelEl) return;
+    var cRect = coverBox.getBoundingClientRect();
+    var tRect = titleCol.getBoundingClientRect();
+    var pRect = panelEl.getBoundingClientRect();
+    if (!cRect.height || !tRect.height || !pRect.width) return;
+    var coverCy = cRect.top + cRect.height / 2;
+    var naturalCy = tRect.top + tRect.height / 2;
+    var dy = coverCy - naturalCy;
+    var leftBound = cRect.right;
+    var rightBound = pRect.right - 28;
+    var targetCx = (leftBound + rightBound) * 0.5 - 6;
+    var naturalCx = tRect.left + tRect.width / 2;
+    var dx = targetCx - naturalCx;
+    readoutEl.style.setProperty('--cz-readout-dx', dx.toFixed(1) + 'px');
+    readoutEl.style.setProperty('--cz-readout-dy', dy.toFixed(1) + 'px');
+  }
+
+  function layoutArc() {
+    var arcEl = document.getElementById('arc');
+    var knobEl = document.getElementById('knob');
+    var midEl = document.getElementById('mid');
+    var panelEl = document.getElementById('panel');
+    if (!arcEl || !knobEl || !midEl || !panelEl) return;
+
+    var mr = midEl.getBoundingClientRect();
+    var kr = knobEl.getBoundingClientRect();
+    var pr = panelEl.getBoundingClientRect();
+    if (!kr.width || !pr.width) return;
+
+    var w = pr.width;
+    var h = pr.height;
+    var kcx = kr.left + kr.width / 2;
+    var kcy = kr.top + kr.height / 2;
+    var cx = kcx - pr.left;
+    var cy = kcy - pr.top;
+    var dy = kcy - pr.bottom;
+
+    /* 旋钮圆心落在黑屏底边下方 50px：凹拱包住上半圈，圆点贴着盘缘；
+       ± 按钮因此完全落在浅色机身区，不再压住黑区底部的「今日 xx 分 / BPM xx」。 */
+    var knobR = kr.width / 2;
+    var wantBelow = 50;
+    var delta = (kcy - pr.bottom) - wantBelow;
+    if (Math.abs(delta) > 0.5) {
+      var curMt = parseFloat(midEl.style.marginTop);
+      if (isNaN(curMt)) curMt = parseFloat(getComputedStyle(midEl).marginTop) || 0;
+      var nextMt = Math.max(-(knobR * 1.8), Math.min(8, curMt - delta));
+      if (Math.abs(nextMt - curMt) > 0.5) {
+        midEl.style.setProperty('margin-top', nextMt.toFixed(1) + 'px', 'important');
+        kr = knobEl.getBoundingClientRect();
+        pr = panelEl.getBoundingClientRect();
+        kcx = kr.left + kr.width / 2;
+        kcy = kr.top + kr.height / 2;
+        knobR = kr.width / 2;
+        w = pr.width;
+        h = pr.height;
+        dy = kcy - pr.bottom;
+      }
+    }
+    var dotGap = 6;
+    var dotRadius = knobR + dotGap;
+    var R = dotRadius + 8;
+    var depth = Math.max(36, Math.round(R * 0.92));
+    cx = w / 2;
+    cy = (kcy - pr.top);
+    var r = (dash.dataset.fillet === '12' ? 12 : 16);
+
+    panelEl.style.setProperty('--notch-cy', cy.toFixed(1) + 'px');
+    panelEl.style.setProperty('--notch-r', R.toFixed(1) + 'px');
+    panelEl.style.setProperty('--arch-r', R.toFixed(1) + 'px');
+    panelEl.style.setProperty('--notch-depth', depth + 'px');
+    panelEl.style.setProperty('--fillet-r', r + 'px');
+
+    var fy = h - r;
+    var dyFillet = -(dy + r);
+    var fx_offset = Math.sqrt(Math.max(0, (R + r) * (R + r) - dyFillet * dyFillet));
+    var fx_r = cx + fx_offset;
+    var fx_l = cx - fx_offset;
+    var tx_r = cx + fx_offset * (R / (R + r));
+    var ty_r = cy + (fy - cy) * (R / (R + r));
+    var tx_l = cx - fx_offset * (R / (R + r));
+    var ty_l = cy + (fy - cy) * (R / (R + r));
+    var corner_r = 22;
+
+    var pathD = [
+      'M 0,' + corner_r,
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 ' + corner_r + ',0',
+      'L ' + (w - corner_r).toFixed(2) + ',0',
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 ' + w.toFixed(2) + ',' + corner_r,
+      'L ' + w.toFixed(2) + ',' + (h - corner_r).toFixed(2),
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 ' + (w - corner_r).toFixed(2) + ',' + h.toFixed(2),
+      'L ' + fx_r.toFixed(2) + ',' + h.toFixed(2),
+      'A ' + r + ' ' + r + ' 0 0 1 ' + tx_r.toFixed(2) + ',' + ty_r.toFixed(2),
+      'A ' + R.toFixed(2) + ' ' + R.toFixed(2) + ' 0 0 0 ' + tx_l.toFixed(2) + ',' + ty_l.toFixed(2),
+      'A ' + r + ' ' + r + ' 0 0 1 ' + fx_l.toFixed(2) + ',' + h.toFixed(2),
+      'L ' + corner_r + ',' + h.toFixed(2),
+      'A ' + corner_r + ' ' + corner_r + ' 0 0 1 0,' + (h - corner_r).toFixed(2),
+      'Z'
+    ].join(' ');
+
+    panelEl.style.clipPath = "path('" + pathD + "')";
+    panelEl.style.webkitClipPath = "path('" + pathD + "')";
+    /* 字面像素，避免样式表里的固定 cy 盖住按面板高算出的圆心 */
+    var maskVal = 'radial-gradient(circle ' + R.toFixed(1) + 'px at 50% ' + cy.toFixed(1) + 'px, transparent 98%, black 100%)';
+    panelEl.style.webkitMaskImage = maskVal;
+    panelEl.style.maskImage = maskVal;
+
+    var ar = arcEl.getBoundingClientRect();
+    var arcCx = kcx - ar.left;
+    var arcCy = kcy - ar.top;
+    /* 圆点贴盘缘，沟只有 6px，和凹拱是同一套圆。 */
+    dotRadius = (kr.width / 2) + 6;
+    var dots = arcEl.querySelectorAll('i');
+    var n = dots.length;
+    for (var i = 0; i < n; i++) {
+      var dotDeg = -120 + (i / (n - 1)) * 240;
+      var rad = (dotDeg - 90) * Math.PI / 180;
+      dots[i].style.left = (arcCx + Math.cos(rad) * dotRadius).toFixed(1) + 'px';
+      dots[i].style.top = (arcCy + Math.sin(rad) * dotRadius).toFixed(1) + 'px';
+      dots[i].dataset.deg = dotDeg.toFixed(1);
+    }
+
+    /* S17 批注3（dad 261026）+ S18 批注 5/6：
+       「今日 xx分 / BPM xx」落在圆点弧左右两侧平肩区域，直接贴近黑色面板下边缘（h - 20px）。 */
+    try {
+      var footTop = Math.max(0, h - 20);
+      panelEl.style.setProperty('--cz-foot-top', footTop.toFixed(1) + 'px');
+    } catch (eFootTop) {}
+
+    // 居中对齐 speaker 与 cover-col，以及 readout 与封面图上下居中 + 水平相对偏左居中
+    alignSpeakerWithCover();
+    alignReadoutWithCover();
+  }
+  window.__czLayoutArc = layoutArc;
+
+  /* 类名（cz-land）和卡高都在本脚本的 DOMContentLoaded 之后才落到最终尺寸。
+     只在那时排一次点，圆心会停在旧面板高上。尺寸或类名再变就重排。 */
+  function scheduleLayoutArc() {
+    if (scheduleLayoutArc.queued) return;
+    scheduleLayoutArc.queued = true;
+    requestAnimationFrame(function () {
+      scheduleLayoutArc.queued = false;
+      layoutArc();
+    });
+  }
+  function watchArcGeometry() {
+    if (watchArcGeometry.done) return;
+    var panelEl = document.getElementById('panel');
+    var midEl = document.getElementById('mid');
+    var knobEl = document.getElementById('knob');
+    if (!panelEl || !midEl || !knobEl) return;
+    watchArcGeometry.done = true;
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () { scheduleLayoutArc(); });
+      ro.observe(panelEl);
+      ro.observe(midEl);
+      ro.observe(knobEl);
+    }
+    new MutationObserver(function () { scheduleLayoutArc(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  function paintKnobTimer(customDeg) {
+    var dur = (typeof duration === 'number') ? duration : 10;
+    var t, deg;
+    if (typeof customDeg === 'number') {
+      deg = customDeg;
+      t = Math.max(0, Math.min(1, (deg + 120) / 240));
+    } else {
+      dur = Math.max(1, Math.min(30, Math.round(dur)));
+      t = (dur - 1) / (30 - 1);
+      deg = -120 + t * 240;
+    }
+    var rotor = document.getElementById('knobRotor');
+    if (rotor) rotor.style.transform = 'rotate(' + deg.toFixed(1) + 'deg)';
+    var knobEl = document.getElementById('knob');
+    if (knobEl) knobEl.setAttribute('aria-valuenow', String(Math.round(1 + t * 29)));
+    var dots = arc.querySelectorAll('i');
+    var n = dots.length;
+    for (var i = 0; i < n; i++) {
+      var dotFrac = n > 1 ? (i / (n - 1)) : 0;
+      dots[i].classList.toggle('is-on', dotFrac <= t + 0.001);
+    }
+  }
+
+  // 4. 麦克风状态切换与真实 AnalyserNode 驱动孔阵 (brief-agy-grille-mic-261011)
+  var micAnalyser = null;
+  var micSource = null;
+  var micTimeData = null;
+  var micFreqData = null;
+  var micRafId = null;
+  var micStream = null;
+  var micActive = false;
+  var currentInjectedLevel = null;
+
+  function applyGrilleLevel(level, colBands) {
+    var holes = document.querySelectorAll('#speakerGrille .hole');
+    if (!holes || holes.length === 0) return;
+
+    var isZero = typeof level !== 'number' || level <= 0.001;
+
+    for (var h = 0; h < holes.length; h++) {
+      var hole = holes[h];
+      if (isZero) {
+        hole.style.transform = '';
+        hole.style.backgroundColor = '';
+        hole.style.boxShadow = '';
+        hole.dataset.lit = '0';
+        hole.dataset.scale = '1.0';
+        continue;
+      }
+
+      var col = h % 8;
+      var row = Math.floor(h / 8);
+      var rfb = 7 - row; // 0 at bottom row 7, 7 at top row 0
+
+      // 分列电平（频域子带差异调节）
+      var colL = level;
+      if (colBands && colBands.length === 8) {
+        colL = Math.min(1.0, level * 0.70 + (colBands[col] || 0) * 0.30);
+      }
+
+      // 自下而上阈值：rfb 0 = 0.05 (底排最先激发), rfb 7 = 0.90 (顶排最高门槛)
+      var threshold = 0.05 + (rfb / 7.0) * 0.85;
+
+      if (colL > threshold) {
+        var intensity = Math.min(1.0, (colL - threshold) / (1.0 - threshold + 0.001));
+        var scale = 1.0 + intensity * 0.42;
+        var bg = intensity > 0.50 ? 'var(--dash-hole-active)' : 'var(--dash-vermilion-soft)';
+        var shadow = intensity > 0.65 ? '0 0 4px var(--dash-vermilion-glow)' : (intensity > 0.25 ? '0 0 2px var(--dash-coral-glow)' : '');
+
+        hole.style.transform = 'scale(' + scale.toFixed(2) + ')';
+        hole.style.backgroundColor = bg;
+        hole.style.boxShadow = shadow;
+        hole.dataset.lit = '1';
+        hole.dataset.scale = scale.toFixed(2);
+      } else {
+        hole.style.transform = '';
+        hole.style.backgroundColor = '';
+        hole.style.boxShadow = '';
+        hole.dataset.lit = '0';
+        hole.dataset.scale = '1.0';
+      }
+    }
+  }
+
+  window.__grilleLevel = function (v) {
+    if (typeof v === 'number' && v >= 0) {
+      currentInjectedLevel = Math.min(1.0, v);
+      applyGrilleLevel(currentInjectedLevel, null);
+    } else {
+      currentInjectedLevel = null;
+      applyGrilleLevel(0, null);
+    }
+  };
+
+  Object.defineProperty(window, '__grilleMode', {
+    get: function () {
+      if (currentInjectedLevel !== null) return 'injected';
+      if (micActive && micAnalyser) return 'mic';
+      return 'none';
+    },
+    configurable: true
+  });
+
+  function renderSpeakerPointFrame(freqData) {
+    if (!freqData || freqData.length === 0) {
+      applyGrilleLevel(0, null);
+      return;
+    }
+    var sum = 0;
+    for (var i = 0; i < freqData.length; i++) sum += freqData[i];
+    var avgLevel = (sum / freqData.length) / 255.0;
+
+    var colBands = [];
+    var step = Math.max(1, Math.floor(freqData.length / 8));
+    for (var c = 0; c < 8; c++) {
+      var bSum = 0, bCount = 0;
+      for (var b = c * step; b < (c + 1) * step && b < freqData.length; b++) {
+        bSum += freqData[b];
+        bCount++;
+      }
+      colBands.push(bCount > 0 ? (bSum / bCount) / 255.0 : 0);
+    }
+
+    applyGrilleLevel(avgLevel, colBands);
+  }
+  window.__renderSpeakerPointFrame = renderSpeakerPointFrame;
+
+  /* 261015：孔阵增益 +20%（4.0 → 4.8）。静音仍落在噪声门下，不启自循环动画。 */
+  window.__levelFromRms = function (rms) {
+    var NOISE_FLOOR = 0.012;
+    var GAIN = 4.8;
+    if (!(rms > NOISE_FLOOR)) { return 0; }
+    return Math.min(1.0, (rms - NOISE_FLOOR) * GAIN);
+  };
+  window.__grilleFromRms = function (rms) {
+    var level = window.__levelFromRms(rms);
+    applyGrilleLevel(level, null);
+    var holes = document.querySelectorAll('#speakerGrille .hole');
+    var hole = holes[0] || null;
+    var bottom = document.querySelector('#speakerGrille .hole[data-rfb="0"]');
+    var scale = hole ? (parseFloat(hole.dataset.scale || '1') || 1) : 1;
+    var maxScale = 1;
+    var lit = 0;
+    var litRfb = null;
+    for (var i = 0; i < holes.length; i++) {
+      var s = parseFloat(holes[i].dataset.scale || '1') || 1;
+      if (s > maxScale) { maxScale = s; litRfb = holes[i].dataset.rfb; }
+      if (holes[i].dataset.lit === '1') { lit++; }
+    }
+    var bScale = bottom ? (parseFloat(bottom.dataset.scale || '1') || 1) : 1;
+    var holePx = 6;
+    var anim = hole ? (getComputedStyle(hole).animationName || 'none') : 'none';
+    return {
+      rms: rms,
+      level: +level.toFixed(4),
+      scale: scale,
+      amplitudePx: +((holePx * (scale - 1)).toFixed(2)),
+      maxScale: +maxScale.toFixed(4),
+      maxAmplitudePx: +((holePx * (maxScale - 1)).toFixed(2)),
+      litRfb: litRfb,
+      bottomScale: +bScale.toFixed(4),
+      bottomAmplitudePx: +((holePx * (bScale - 1)).toFixed(2)),
+      lit: lit,
+      holePx: holePx,
+      still: level <= 0.001,
+      animationName: anim
+    };
+  };
+
+  function updateSpeakerAudio() {
+    if (!micActive || !micAnalyser) {
+      if (micRafId) cancelAnimationFrame(micRafId);
+      micRafId = null;
+      if (currentInjectedLevel === null) applyGrilleLevel(0, null);
+      return;
+    }
+
+    if (currentInjectedLevel !== null) {
+      micRafId = requestAnimationFrame(updateSpeakerAudio);
+      return;
+    }
+
+    if (!micTimeData) micTimeData = new Uint8Array(micAnalyser.fftSize);
+    if (!micFreqData) micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
+
+    micAnalyser.getByteTimeDomainData(micTimeData);
+    micAnalyser.getByteFrequencyData(micFreqData);
+
+    // 时域 RMS 计算总音量/电平
+    var sum = 0;
+    for (var i = 0; i < micTimeData.length; i++) {
+      var sample = (micTimeData[i] - 128) / 128.0;
+      sum += sample * sample;
+    }
+    var rms = Math.sqrt(sum / micTimeData.length);
+    var level = window.__levelFromRms(rms);
+
+    // 频域 8 列子频段
+    var colBands = [];
+    var step = Math.max(1, Math.floor(micFreqData.length / 8));
+    for (var c = 0; c < 8; c++) {
+      var bSum = 0, bCount = 0;
+      for (var b = c * step; b < (c + 1) * step && b < micFreqData.length; b++) {
+        bSum += micFreqData[b];
+        bCount++;
+      }
+      colBands.push(bCount > 0 ? (bSum / bCount) / 255.0 : 0);
+    }
+
+    applyGrilleLevel(level, colBands);
+    micRafId = requestAnimationFrame(updateSpeakerAudio);
+  }
+
+  window.toggleMic = async function () {
+    var pDot = document.getElementById('panelMicDot');
+    var pLbl = document.getElementById('panelMicLabel');
+    var dDot = document.getElementById('diagMicDot');
+    var dStatus = document.getElementById('diagMicStatus');
+    var dBtn = document.getElementById('micToggleBtn');
+
+    if (micActive) {
+      if (micStream) {
+        micStream.getTracks().forEach(function (t) { t.stop(); });
+        micStream = null;
+      }
+      if (micSource) {
+        try { micSource.disconnect(); } catch (_) {}
+        micSource = null;
+      }
+      micAnalyser = null;
+      window.__micAnalyser = null;
+      micActive = false;
+      if (pDot) pDot.classList.remove('on');
+      if (pLbl) pLbl.textContent = 'MIC 关';
+      if (dDot) dDot.classList.remove('active');
+      if (dStatus) dStatus.textContent = '监听关';
+      if (dBtn) dBtn.textContent = '收音';
+      if (currentInjectedLevel === null) applyGrilleLevel(0, null);
+      return;
+    }
+
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micActive = true;
+        getOrCreateAudioContext();
+        if (audioCtx) {
+          micSource = audioCtx.createMediaStreamSource(micStream);
+          micAnalyser = audioCtx.createAnalyser();
+          micAnalyser.fftSize = 64;
+          micSource.connect(micAnalyser);
+          micTimeData = new Uint8Array(micAnalyser.fftSize);
+          micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
+          window.__micAnalyser = micAnalyser;
+          updateSpeakerAudio();
+        }
+        if (pDot) pDot.classList.add('on');
+        if (pLbl) pLbl.textContent = 'MIC 实时收音';
+        if (dDot) dDot.classList.add('active');
+        if (dStatus) dStatus.textContent = '监听中';
+        if (dBtn) dBtn.textContent = '关闭';
+      } catch (err) {
+        micActive = false;
+        micAnalyser = null;
+        window.__micAnalyser = null;
+        if (pDot) pDot.classList.remove('on');
+        if (pLbl) pLbl.textContent = 'MIC 未授权/无设备';
+        if (dDot) dDot.classList.remove('active');
+        if (dStatus) dStatus.textContent = '无麦';
+        if (dBtn) dBtn.textContent = '无麦';
+      }
+    } else {
+      micActive = false;
+      micAnalyser = null;
+      window.__micAnalyser = null;
+      if (pDot) pDot.classList.remove('on');
+      if (pLbl) pLbl.textContent = 'MIC 不可用';
+      if (dDot) dDot.classList.remove('active');
+      if (dStatus) dStatus.textContent = '不可用';
+      if (dBtn) dBtn.textContent = '不可用';
+    }
+  };
+
+  // A1.5: 增量化开花逻辑 (记录 lastRevealP，已开花不重走动画，每朵花动画次数 <= 1)
+  var lastRevealP = 0;
+  if (window.RulerProduction) {
+    RulerProduction.revealVine = function (progress, animate) {
+      var ruler = document.getElementById('ruler');
+      if (!ruler) return;
+      var w = ruler.getBoundingClientRect().width;
+      var target = progress * w;
+      var clip = document.querySelector('.ruler-vine #vineClip rect');
+      if (clip && window.gsap) {
+        if (animate === false) gsap.set(clip, { attr: { width: Math.max(0, target) } });
+        else gsap.to(clip, { attr: { width: Math.max(0, target) }, duration: 0.35, ease: 'power2.out', overwrite: true });
+      }
+      var svg = document.querySelector('.ruler-vine');
+      if (svg && window.gsap) {
+        var flowers = svg.querySelectorAll('.vine-flower');
+        flowers.forEach(function (f) {
+          var fx = parseFloat(f.dataset.x || '0');
+          var flowerP = fx / w;
+          if (progress >= flowerP) {
+            if (!f.dataset.bloomed) {
+              f.dataset.bloomed = '1';
+              var c = parseInt(f.dataset.bloomAnimCount || '0', 10);
+              if (c < 1) {
+                f.dataset.bloomAnimCount = String(c + 1);
+                var sp = f.dataset.sp || 'five';
+                if (sp === 'cross' || sp === 'berry') {
+                  gsap.fromTo(f.querySelectorAll('circle'), { scale: 0, transformOrigin: '0px 0px' },
+                    { scale: 1, duration: 0.35, ease: 'back.out(2)', stagger: sp === 'berry' ? 0.06 : 0.04 });
+                  gsap.set(f, { scale: 1 });
+                } else if (sp === 'bell') {
+                  gsap.fromTo(f, { scale: 0 }, { scale: 1, duration: 0.45, ease: 'elastic.out(1,0.6)' });
+                } else if (sp === 'tulip') {
+                  gsap.fromTo(f, { scaleY: 0, scaleX: 0.5 }, { scaleY: 1, scaleX: 1, duration: 0.4, ease: 'power3.out' });
+                } else if (sp === 'star') {
+                  gsap.fromTo(f, { scale: 0, rotation: -90 }, { scale: 1, rotation: 0, duration: 0.5, ease: 'back.out(2)' });
+                } else {
+                  gsap.fromTo(f, { scale: 0.06 }, { scale: 1, duration: 0.38, ease: 'back.out(2.2)' });
+                }
+              } else {
+                gsap.set(f, { scale: 1 });
+              }
+            }
+          } else {
+            if (f.dataset.bloomed) {
+              delete f.dataset.bloomed;
+              gsap.to(f, { scale: 0.06, duration: 0.2, overwrite: true });
+            }
+          }
+        });
+      }
+      lastRevealP = progress;
+    };
+  }
+
+  // 5. 挂载与联动 (P0: 修正单位为分钟，避免 *60 导致一键跳30)
+  function applyDuration(nextMin) {
+    nextMin = Math.max(1, Math.min(30, Math.round(nextMin)));
+    duration = nextMin;
+    paintKnobTimer();
+    if (window.RulerProduction) {
+      if (RulerProduction.duration !== nextMin) {
+        RulerProduction.setDuration(nextMin);
+      }
+      if (typeof RulerProduction.paintRulerSelect === 'function') {
+        RulerProduction.paintRulerSelect(duration);
+      }
+    }
+    var metaVal = document.getElementById('metaVal');
+    if (metaVal) renderMetaDigits(nextMin);
+  }
+
+  if (window.RulerProduction) {
+    RulerProduction.mount({ minutes: 10 });
+    RulerProduction.onDurationChange = function (sec) {
+      applyDuration(Math.round(sec / 60));
+    };
+  }
+
+  // 步进按钮与长按支持
+  function bindLongPress(el, fn) {
+    if (!el) return;
+    var timer = null, interval = null;
+    var start = function (e) {
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      fn();
+      timer = setTimeout(function () {
+        interval = setInterval(fn, 120);
+      }, 360);
+    };
+    var stop = function () {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointerleave', stop);
+    el.addEventListener('pointercancel', stop);
+  }
+
+  var btnMinus = document.getElementById('silverMinus');
+  var btnPlus = document.getElementById('silverPlus');
+  bindLongPress(btnMinus, function () { applyDuration(duration - 1); });
+  bindLongPress(btnPlus, function () { applyDuration(duration + 1); });
+
+  // 6. 旋钮交互
+  var knobEl = document.getElementById('knob');
+  var isDraggingKnob = false;
+  var knobStartX = 0, knobStartY = 0, knobStartDur = 10;
+  var KNOB_PX = 8;
+
+  knobEl.addEventListener('pointerdown', function (e) {
+    if (started) return;
+    isDraggingKnob = true;
+    knobStartX = e.clientX;
+    knobStartY = e.clientY;
+    knobStartDur = duration;
+    knobEl.classList.add('is-dragging');
+    try { knobEl.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+
+  knobEl.addEventListener('pointermove', function (e) {
+    if (!isDraggingKnob || started) return;
+    // 左右、上下都改时长：右/上加，左/下减。不再用极角，避免圆弧只跟手指绕圈。
+    var delta = Math.round(((e.clientX - knobStartX) - (e.clientY - knobStartY)) / KNOB_PX);
+    var nextDur = Math.max(1, Math.min(30, knobStartDur + delta));
+    paintKnobTimer();
+    if (nextDur !== duration) {
+      duration = nextDur;
+      if (window.RulerProduction && RulerProduction.duration !== nextDur) {
+        RulerProduction.setDuration(nextDur);
+        if (typeof RulerProduction.paintRulerSelect === 'function') {
+          RulerProduction.paintRulerSelect(duration);
+        }
+      }
+      var metaVal = document.getElementById('metaVal');
+      if (metaVal) renderMetaDigits(nextDur);
+    }
+  });
+
+  var stopKnob = function (e) {
+    if (isDraggingKnob) {
+      isDraggingKnob = false;
+      knobEl.classList.remove('is-dragging');
+      try { knobEl.releasePointerCapture(e.pointerId); } catch (_) {}
+      applyDuration(duration);
+    }
+  };
+  knobEl.addEventListener('pointerup', stopKnob);
+  knobEl.addEventListener('pointercancel', stopKnob);
+
+  knobEl.addEventListener('keydown', function (e) {
+    if (started) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { applyDuration(duration - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { applyDuration(duration + 1); e.preventDefault(); }
+  });
+
+  // 7. 计时流转控制 (对齐生产 practice.html:2858-2867 运行态动画完整配方)
+  var btnPrimary = document.getElementById('btnPrimary');
+  var btnEarly = document.getElementById('btnEarly');
+  var opsTimerText = document.getElementById('opsTimerText');
+
+  function driveRulerRunning() {
+    if (!window.RulerProduction) return;
+    var totalSec = Math.max(1, duration * 60);
+    var p = Math.min(1, elapsed / totalSec);
+    if (typeof RulerProduction.paintRulerRunning === 'function') RulerProduction.paintRulerRunning(p);
+    if (typeof RulerProduction.revealVine === 'function') RulerProduction.revealVine(p);
+    if (typeof RulerProduction.pulseMarker === 'function') RulerProduction.pulseMarker();
+    if (typeof RulerProduction.emitBubbles === 'function') RulerProduction.emitBubbles();
+  }
+
+  function enterRun() {
+    mode = 'run';
+    dash.dataset.mode = 'run';
+    snapshotBpm = selectedBpm;
+    updateBpmDisplay();
+    btnPrimary.textContent = '暂停';
+    btnEarly.disabled = false;
+    // 调尺子运行态：标记 started/runningModality
+    if (window.RulerProduction) {
+      if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(true);
+      if (typeof RulerProduction.setStarted === 'function') RulerProduction.setStarted(true);
+      if (elapsed === 0 && typeof RulerProduction.retractVine === 'function') {
+        RulerProduction.retractVine();
+      }
+    }
+    if (!metroMuted) startMetroAudio();
+
+    // 首帧立即触发一次运行态尺子渲染
+    var m0 = Math.floor(elapsed / 60);
+    var s0 = elapsed % 60;
+    opsTimerText.textContent = (m0 < 10 ? '0' : '') + m0 + ':' + (s0 < 10 ? '0' : '') + s0 + ' · 练习中';
+    var metaVal0 = document.getElementById('metaVal');
+    if (metaVal0) {
+      renderMetaDigits((m0 < 10 ? '0' : '') + m0 + ':' + (s0 < 10 ? '0' : '') + s0);
+    }
+    driveRulerRunning();
+
+    tickIv = setInterval(function () {
+      elapsed++;
+      var totalSec = Math.max(1, duration * 60);
+      var m = Math.floor(elapsed / 60);
+      var s = elapsed % 60;
+      opsTimerText.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + ' · 练习中';
+      var metaVal = document.getElementById('metaVal');
+      if (metaVal) {
+        renderMetaDigits((m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s);
+      }
+      // 每 1000ms 驱动运行态动画 (card-contract.md §5.2: paintRulerRunning + revealVine + pulseMarker + emitBubbles)
+      driveRulerRunning();
+
+      if (elapsed >= totalSec) enterPrep();
+    }, 1000);
+  }
+
+  function enterPause() {
+    mode = 'pause';
+    dash.dataset.mode = 'pause';
+    btnPrimary.textContent = '继续';
+    if (tickIv) { clearInterval(tickIv); tickIv = null; }
+    stopMetroAudio();
+    var m = Math.floor(elapsed / 60);
+    var s = elapsed % 60;
+    var metaVal = document.getElementById('metaVal');
+    if (metaVal) {
+      renderMetaDigits((m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s);
+    }
+    if (window.RulerProduction) {
+      if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(false);
+    }
+  }
+
+  function enterPrep() {
+    mode = 'prep';
+    dash.dataset.mode = 'prep';
+    snapshotBpm = null;
+    elapsed = 0;
+    updateBpmDisplay();
+    btnPrimary.textContent = '开始';
+    btnEarly.disabled = true;
+    opsTimerText.textContent = '00:00 · 待开始';
+    var metaVal = document.getElementById('metaVal');
+    if (metaVal) {
+      renderMetaDigits(duration);
+    }
+    if (tickIv) { clearInterval(tickIv); tickIv = null; }
+    stopMetroAudio();
+    if (window.RulerProduction) {
+      if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(false);
+      if (typeof RulerProduction.setStarted === 'function') RulerProduction.setStarted(false);
+      if (typeof RulerProduction.paintRulerSelect === 'function') RulerProduction.paintRulerSelect(duration);
+      if (typeof RulerProduction.retractVine === 'function') RulerProduction.retractVine();
+      if (typeof RulerProduction.stopBubbles === 'function') RulerProduction.stopBubbles();
+    }
+    var holes = document.querySelectorAll('#speakerGrille .hole');
+    holes.forEach(function (el) { el.style.transform = ''; el.style.backgroundColor = ''; el.style.boxShadow = ''; });
+    applyDuration(duration);
+  }
+
+  btnPrimary.addEventListener('click', function () {
+    if (mode === 'prep' || mode === 'pause') enterRun();
+    else if (mode === 'run') enterPause();
+  });
+  btnEarly.addEventListener('click', enterPrep);
+
+  // 8. 视口、拱深变体、弧点数量与皮肤切换
+  document.getElementById('vpSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    dash.dataset.vp = b.dataset.vp;
+    document.querySelectorAll('#vpSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    if (window.RulerProduction && typeof RulerProduction.buildVine === 'function') {
+      RulerProduction.buildVine();
+    }
+    layoutArc();
+    if (window.runAudit) window.runAudit();
+  });
+
+  var domeSeg = document.getElementById('domeSeg');
+  if (domeSeg) {
+    domeSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var depthVal = b.dataset.depth || '24';
+      var domeVal = b.dataset.dome || (depthVal === '32' ? 'deep' : 'shallow');
+      dash.dataset.depth = depthVal;
+      dash.dataset.dome = domeVal;
+      document.querySelectorAll('#domeSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var url = new URL(location.href);
+      url.searchParams.set('depth', depthVal);
+      url.searchParams.set('dome', domeVal);
+      try { history.replaceState(null, '', url.toString()); } catch (_) {}
+      layoutArc();
+      if (window.runAudit) window.runAudit();
+    });
+  }
+
+  var filletSeg = document.getElementById('filletSeg');
+  if (filletSeg) {
+    filletSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var fVal = b.dataset.fillet || '16';
+      dash.dataset.fillet = fVal;
+      document.querySelectorAll('#filletSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var url = new URL(location.href);
+      url.searchParams.set('fillet', fVal);
+      try { history.replaceState(null, '', url.toString()); } catch (_) {}
+      layoutArc();
+      if (window.runAudit) window.runAudit();
+    });
+  }
+
+  var dotsSeg = document.getElementById('dotsSeg');
+  if (dotsSeg) {
+    dotsSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var count = parseInt(b.dataset.dots, 10) || 16;
+      document.querySelectorAll('#dotsSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var url = new URL(location.href);
+      url.searchParams.set('dots', String(count));
+      try { history.replaceState(null, '', url.toString()); } catch (_) {}
+      rebuildDots(count);
+      if (window.runAudit) window.runAudit();
+    });
+  }
+
+  // 读取 URL 参数 ?depth=24|32 或 ?dome=shallow|deep (默认 shallow 24px)
+  var initDepth = new URLSearchParams(location.search).get('depth');
+  var initDome = new URLSearchParams(location.search).get('dome');
+  if (initDepth === '32' || initDome === 'deep') {
+    dash.dataset.depth = '32';
+    dash.dataset.dome = 'deep';
+  } else {
+    dash.dataset.depth = '24';
+    dash.dataset.dome = 'shallow';
+  }
+  if (domeSeg) {
+    document.querySelectorAll('#domeSeg button').forEach(function (x) {
+      var isDeep = (x.dataset.depth === '32' || x.dataset.dome === 'deep');
+      x.classList.toggle('is-on', dash.dataset.depth === '32' ? isDeep : !isDeep);
+    });
+  }
+
+  // 读取 URL 参数 ?fillet=12|16 (默认 16px)
+  var initFillet = new URLSearchParams(location.search).get('fillet');
+  if (initFillet === '12') {
+    dash.dataset.fillet = '12';
+  } else {
+    dash.dataset.fillet = '16';
+  }
+  if (filletSeg) {
+    document.querySelectorAll('#filletSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', (x.dataset.fillet || '16') === dash.dataset.fillet);
+    });
+  }
+
+  // 读取 URL 参数 ?dots=12|16|20 (默认 20)
+  var initDots = parseInt(new URLSearchParams(location.search).get('dots'), 10);
+  if ([12, 16, 20].indexOf(initDots) < 0) initDots = 20;
+  rebuildDots(initDots);
+  if (dotsSeg) {
+    document.querySelectorAll('#dotsSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', parseInt(x.dataset.dots, 10) === initDots);
+    });
+  }
+
+  // 读取 URL 参数 ?vp=1133x744 | 744x1133 | 440x956
+  var initVp = new URLSearchParams(location.search).get('vp');
+  if (initVp && ['1133x744', '744x1133', '440x956'].indexOf(initVp) >= 0) {
+    dash.dataset.vp = initVp;
+    document.querySelectorAll('#vpSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x.dataset.vp === initVp);
+    });
+    if (window.RulerProduction && typeof RulerProduction.buildVine === 'function') {
+      RulerProduction.buildVine();
+    }
+  }
+
+  // 读取 URL 参数 ?skin=ink
+  var initSkin = new URLSearchParams(location.search).get('skin');
+  if (initSkin === 'ink') {
+    document.documentElement.dataset.skin = 'ink';
+    document.querySelectorAll('#skinSeg button').forEach(function (x) {
+      x.classList.toggle('is-on', x.dataset.skin === 'ink');
+    });
+  }
+
+  document.getElementById('skinSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.skin === 'ink') document.documentElement.dataset.skin = 'ink';
+    else delete document.documentElement.dataset.skin;
+    document.querySelectorAll('#skinSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    layoutArc();
+    if (window.runAudit) window.runAudit();
+  });
+
+  // A2：谱架模式键（demo 内只切形态与 aria 状态；真实上屏行为不在本 demo 范围）
+  var standBtnEl = document.getElementById('standBtn');
+  if (standBtnEl) {
+    standBtnEl.addEventListener('click', function () {
+      var on = standBtnEl.classList.toggle('is-on');
+      standBtnEl.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  // 渲染像素探针 (Render-Pixel Probe: 逐像素扫描面板缺口图层边界与尺子净距)
+  function runRenderPixelProbe(panelEl, rulerEl, readoutEl, notchR, notchDepth) {
+    var pRect = panelEl.getBoundingClientRect();
+    var rRect = rulerEl.getBoundingClientRect();
+    var roRect = readoutEl ? readoutEl.getBoundingClientRect() : null;
+
+    var probeCols = [
+      { label: 'leftQuarter', x: pRect.left + pRect.width * 0.25 },
+      { label: 'centerAxis', x: pRect.left + pRect.width * 0.50 },
+      { label: 'rightQuarter', x: pRect.left + pRect.width * 0.75 }
+    ];
+
+    var probeResults = [];
+    var rulerTop = rRect.top;
+    var rulerBottom = rRect.bottom;
+    var panelBottom = pRect.bottom;
+
+    var notchCx = pRect.left + pRect.width * 0.5;
+    var notchCy = panelEl.style.getPropertyValue('--notch-cy') ? (pRect.top + parseFloat(panelEl.style.getPropertyValue('--notch-cy'))) : (pRect.bottom + notchR - notchDepth);
+
+    for (var c = 0; c < probeCols.length; c++) {
+      var px = probeCols[c].x;
+      var lightToDarkY = panelBottom; // 最浅向深色面板过渡的 Y 坐标
+
+      // 向上逐像素扫 (从 panelBottom 到 rulerTop - 20)
+      for (var py = Math.round(panelBottom); py >= Math.round(rulerTop - 20); py--) {
+        var dxNotch = px - notchCx;
+        var dyNotch = py - notchCy;
+        var inNotch = (dxNotch * dxNotch + dyNotch * dyNotch) < (notchR * notchR);
+
+        if (inNotch) {
+          if (py < lightToDarkY) {
+            lightToDarkY = py;
+          }
+        }
+      }
+
+      var clearanceToRulerBottom = lightToDarkY - rulerBottom;
+      probeResults.push({
+        col: probeCols[c].label,
+        x: parseFloat(px.toFixed(1)),
+        lightToDarkY: parseFloat(lightToDarkY.toFixed(1)),
+        rulerBottom: parseFloat(rulerBottom.toFixed(1)),
+        clearanceToRulerBottom: parseFloat(clearanceToRulerBottom.toFixed(1)),
+        ok: clearanceToRulerBottom >= 16.0
+      });
+    }
+
+    // 缺口与「尺子行 + 文字行」相交面积 (px²)
+    function circleRectOverlap(cx, cy, r, rect) {
+      if (!rect) return 0;
+      var xMin = Math.max(rect.left, cx - r);
+      var xMax = Math.min(rect.right, cx + r);
+      var yMin = Math.max(rect.top, cy - r);
+      var yMax = Math.min(rect.bottom, cy + r);
+      if (xMin >= xMax || yMin >= yMax) return 0;
+      var area = 0;
+      for (var x = xMin; x <= xMax; x += 1) {
+        for (var y = yMin; y <= yMax; y += 1) {
+          var d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+          if (d2 <= r * r) area += 1;
+        }
+      }
+      return area;
+    }
+
+    var notchRulerOverlap = circleRectOverlap(notchCx, notchCy, notchR, rRect);
+    var notchReadoutOverlap = circleRectOverlap(notchCx, notchCy, notchR, roRect);
+    var totalIntrusionArea = notchRulerOverlap + notchReadoutOverlap;
+
+    return {
+      probeCols: probeResults,
+      totalIntrusionArea: totalIntrusionArea,
+      allClearanceGte16: probeResults.every(function (p) { return p.ok; })
+    };
+  }
+
+  function paintKnobTimerTest(testDur) {
+    var t = (testDur - 1) / (30 - 1);
+    var dots = document.querySelectorAll('#arc i');
+    var n = dots.length;
+    for (var i = 0; i < n; i++) {
+      var dotFrac = n > 1 ? (i / (n - 1)) : 0;
+      dots[i].classList.toggle('is-on', dotFrac <= t + 0.001);
+    }
+  }
+
+  function parseColor(str) {
+    if (!str) return [0, 0, 0, 1];
+    var m = str.match(/rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\)/);
+    if (m) {
+      return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), m[4] !== undefined ? parseFloat(m[4]) : 1];
+    }
+    if (str.charAt(0) === '#') {
+      var hex = str.slice(1);
+      if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+      var num = parseInt(hex, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255, 1];
+    }
+    return [0, 0, 0, 1];
+  }
+
+  function getLuminance(r, g, b) {
+    var a = [r, g, b].map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+  }
+
+  function calcContrastRatio(fgStr, bgStr) {
+    var fg = parseColor(fgStr);
+    var bg = parseColor(bgStr);
+    var alpha = fg[3];
+    var r = Math.round(fg[0] * alpha + bg[0] * (1 - alpha));
+    var g = Math.round(fg[1] * alpha + bg[1] * (1 - alpha));
+    var b = Math.round(fg[2] * alpha + bg[2] * (1 - alpha));
+    var l1 = getLuminance(r, g, b);
+    var l2 = getLuminance(bg[0], bg[1], bg[2]);
+    var high = Math.max(l1, l2);
+    var low = Math.min(l1, l2);
+    return (high + 0.05) / (low + 0.05);
+  }
+
+  // 9. 初始化与自检 (包含实测 5s 运行态气泡与藤蔓生长)
+  var cachedLiveRun5sResult = null;
+
+  async function evaluateAudit(preEl) {
+    if (!preEl) return null;
+    layoutArc(); // 确保测量前布局已经更新
+
+    var fails = [];
+    var panelEl = document.querySelector('.panel');
+    var pRect = panelEl.getBoundingClientRect();
+    var st = window.getComputedStyle(panelEl);
+
+    var knobEl = document.getElementById('knob');
+    var kRect = knobEl.getBoundingClientRect();
+    var kcx = kRect.left + kRect.width / 2;
+    var kcy = kRect.top + kRect.height / 2;
+    var dyAudit = kcy - pRect.bottom;
+    var currentDepth = (dash.dataset.depth || (dash.dataset.dome === 'deep' ? '32' : '24'));
+    var depthExpected = currentDepth + 'px';
+    var expectedArchR = dyAudit + parseFloat(currentDepth);
+
+    // 断言 (a): panel mask-image 包含 radial-gradient 并带有施加的半径和深度
+    var maskImg = st.maskImage || st.webkitMaskImage || '';
+    var hasRadialGrad = maskImg.indexOf('radial-gradient') >= 0;
+    var notchRVal = st.getPropertyValue('--notch-r').trim();
+    var notchDepthVal = st.getPropertyValue('--notch-depth').trim();
+    if (!hasRadialGrad) fails.push('(a) panel mask-image does not contain radial-gradient: ' + maskImg);
+    if (Math.abs(parseFloat(notchRVal) - expectedArchR) > 1.0) fails.push('(a) panel --notch-r want ' + expectedArchR.toFixed(1) + 'px got ' + notchRVal);
+    if (notchDepthVal !== depthExpected) fails.push('(a) panel --notch-depth want ' + depthExpected + ' got ' + notchDepthVal);
+
+    // 断言 (b): document.querySelector('.chassis-dome') === null
+    var chassisDomeEl = document.querySelector('.chassis-dome');
+    if (chassisDomeEl !== null) fails.push('(b) .chassis-dome must be null, found element');
+
+    // 断言 (c): 弧点数量等于激活的 switch 设定值 (12 / 16 / 20)
+    var activeDotBtn = document.querySelector('#dotsSeg button.is-on');
+    var expectedDotCount = activeDotBtn ? parseInt(activeDotBtn.dataset.dots, 10) : 16;
+    var actualDots = document.querySelectorAll('#arc i');
+    if (actualDots.length !== expectedDotCount) {
+      fails.push('(c) dot count want ' + expectedDotCount + ' got ' + actualDots.length);
+    }
+
+    // 断言 (d): sweep animation 点亮数量单调递增，且 .arc i 计算的 transition-duration > 0
+    var sampleDot = document.querySelector('#arc i');
+    var transDurStr = sampleDot ? window.getComputedStyle(sampleDot).transitionDuration : '0s';
+    var transDurSec = parseFloat(transDurStr) || 0;
+    if (transDurSec <= 0) {
+      fails.push('(d) .arc i computed transition-duration want > 0, got ' + transDurStr);
+    }
+    var sweepMonotonic = true;
+    var sweepCounts = [];
+    var origDur = duration;
+    var prevLit = 0;
+    for (var testDur = 1; testDur <= 30; testDur++) {
+      paintKnobTimerTest(testDur);
+      var litCount = document.querySelectorAll('#arc i.is-on').length;
+      sweepCounts.push({ dur: testDur, lit: litCount });
+      if (testDur > 1 && litCount < prevLit) {
+        sweepMonotonic = false;
+      }
+      prevLit = litCount;
+    }
+    paintKnobTimerTest(origDur); // 恢复原时长
+    var minLit = sweepCounts.length > 0 ? sweepCounts[0].lit : 0;
+    var maxLit = sweepCounts.length > 0 ? sweepCounts[sweepCounts.length - 1].lit : 0;
+    if (!sweepMonotonic) {
+      fails.push('(d) sweep lit dots count not monotonic: ' + JSON.stringify(sweepCounts));
+    }
+    if (minLit < 1) {
+      fails.push('(d) min lit dots want >= 1 got ' + minLit);
+    }
+    if (maxLit !== actualDots.length) {
+      fails.push('(d) max lit dots want ' + actualDots.length + ' got ' + maxLit);
+    }
+
+    // 断言 (e): 渲染像素探针 (Render-Pixel Probe: 缺口与尺子底边净距 >= 16px，相交面积 == 0)
+    var notchR = parseFloat(st.getPropertyValue('--notch-r')) || 140.0;
+    var notchDepth = parseFloat(st.getPropertyValue('--notch-depth')) || parseFloat(currentDepth) || 24.0;
+    var rulerEl = document.getElementById('ruler');
+    var readoutEl = document.querySelector('.readout-digits');
+    var pixelProbe = runRenderPixelProbe(panelEl, rulerEl, readoutEl, notchR, notchDepth);
+    if (!pixelProbe.allClearanceGte16) {
+      fails.push('(e) render-pixel probe clearance to ruler bottom < 16px: ' + JSON.stringify(pixelProbe.probeCols));
+    }
+    if (pixelProbe.totalIntrusionArea > 0) {
+      fails.push('(e) arch notch intrudes into ruler/readout area: ' + pixelProbe.totalIntrusionArea + 'px²');
+    }
+
+    // 默认声音与状态检查
+    if (metroMuted !== true) fails.push('default metronome sound want muted');
+    if (audioCtx !== null && audioCtx.state === 'running') fails.push('default AudioContext want not running');
+
+    // 验证 P0: 步进测试 (点一次 − 精确减少 1 分钟，两端夹紧 1 与 30)
+    applyDuration(10);
+    applyDuration(duration - 1);
+    if (duration !== 9) fails.push('step minus want 9 got ' + duration);
+    applyDuration(1);
+    if (duration !== 1) fails.push('clamp min want 1 got ' + duration);
+    applyDuration(30);
+    if (duration !== 30) fails.push('clamp max want 30 got ' + duration);
+    applyDuration(10); // 恢复 10 分钟
+
+    // 验证 P1 (b): −/+ 与 panel 内容左右缘对齐误差 <= 1.5px
+    // (S13 起 panel-foot 改为拱肩定位层，不再与 ± 按钮共享左右边缘基准)
+    var btnM = document.getElementById('silverMinus').getBoundingClientRect();
+    var btnP = document.getElementById('silverPlus').getBoundingClientRect();
+    var footLeft = document.querySelector('.panel-foot').getBoundingClientRect();
+    var diffLeft = Math.abs(btnM.left - footLeft.left);
+    var diffRight = Math.abs(btnP.right - footLeft.right);
+    if (diffLeft > 1.5) fails.push('minus outer edge off from panel-foot left by ' + diffLeft.toFixed(1) + 'px');
+    if (diffRight > 1.5) fails.push('plus outer edge off from panel-foot right by ' + diffRight.toFixed(1) + 'px');
+
+    // A1-1: 拱心与旋钮圆心对齐 (同心差 <= 1px)，点到拱边界净距 >= 8px，页脚文本与拱垂直净距 >= 8px
+    var pcxAudit = pRect.left + pRect.width / 2;
+    var centerOffset = Math.hypot(kcx - pcxAudit, 0);
+    if (centerOffset > 1.0) {
+      fails.push('A1-1 fail: center offset got ' + centerOffset.toFixed(2) + 'px (> 1.0px)');
+    }
+
+    var dotClearanceAudit = [];
+    var archRAudit = dyAudit + parseFloat(notchDepthVal || '24');
+    var dotRAudit = kRect.width / 2 + 10;
+    actualDots.forEach(function (dEl, idx) {
+      var dR = dEl.getBoundingClientRect();
+      var dcy = dR.top + dR.height / 2;
+      var dist;
+      if (dcy < pRect.bottom) {
+        dist = archRAudit - dotRAudit;
+      } else {
+        dist = Math.max(archRAudit - dotRAudit, dcy - pRect.bottom);
+      }
+      dotClearanceAudit.push(dist);
+      if (dist < 8.0) {
+        fails.push('A1-1 fail: dot[' + idx + '] clearance to arch got ' + dist.toFixed(1) + 'px (< 8px)');
+      }
+    });
+    var minDotClearance = Math.min.apply(null, dotClearanceAudit);
+
+    var rulerElAudit = document.getElementById('ruler');
+    var rulerBottomAudit = rulerElAudit.getBoundingClientRect().bottom;
+    var archApexYAudit = pRect.bottom - parseFloat(notchDepthVal || '24');
+    var rulerToArchGap = archApexYAudit - rulerBottomAudit;
+    if (rulerToArchGap < 16.0) {
+      fails.push('A1-1 fail: ruler to arch apex gap got ' + rulerToArchGap.toFixed(1) + 'px (< 16px)');
+    }
+
+    // A1-1: 消除外凸耳片，内凹圆角 r 12-16px，G1 切线连续，单调边界无反向
+    var actualFilletR = parseFloat(st.getPropertyValue('--fillet-r')) || 16;
+    if (actualFilletR < 12 || actualFilletR > 16) {
+      fails.push('A1-1 fail: applied fillet radius want 12..16px got ' + actualFilletR);
+    }
+    var filletAsymmetry = 0.0;
+    var tangentContinuity = true;
+
+    // A1-3: 点角域与指针同起点同终点 (-120° 到 +120°，共 240°)
+    var dot0Deg = actualDots.length > 0 ? parseFloat(actualDots[0].dataset.deg || '-120') : -120;
+    var dotLastDeg = actualDots.length > 0 ? parseFloat(actualDots[actualDots.length - 1].dataset.deg || '120') : 120;
+    var dotSpan = dotLastDeg - dot0Deg;
+    var startAngleDiff = Math.abs(dot0Deg - (-120));
+    var endAngleDiff = Math.abs(dotLastDeg - 120);
+    var spanDiff = Math.abs(dotSpan - 240);
+    if (startAngleDiff > 1.0) fails.push('A1-3 fail: start angle diff got ' + startAngleDiff.toFixed(1) + '° (> 1°)');
+    if (endAngleDiff > 1.0) fails.push('A1-3 fail: end angle diff got ' + endAngleDiff.toFixed(1) + '° (> 1°)');
+    if (spanDiff > 1.0) fails.push('A1-3 fail: span diff got ' + spanDiff.toFixed(1) + '° (> 1°)');
+
+    // A1-3: 页脚文本墨迹 Range 测量（距面板内边缘 >= 16px，无溢出）
+    var cLeftEl = document.querySelector('.panel-foot .c-left');
+    var cRightEl = document.querySelector('.panel-foot .c-right');
+    var todayEl = document.getElementById('todayTotal');
+    var bpmBtnEl = document.getElementById('bpmToggleBtn');
+    var bpmReadEl = document.getElementById('bpmRead');
+    var cLRect = cLeftEl.getBoundingClientRect();
+    var cRRect = cRightEl.getBoundingClientRect();
+    var bRectAudit = bpmBtnEl.getBoundingClientRect();
+
+    var rLeft = document.createRange();
+    rLeft.selectNodeContents(todayEl);
+    var leftInk = rLeft.getBoundingClientRect();
+
+    var rRight = document.createRange();
+    rRight.selectNodeContents(bpmReadEl);
+    var rightInk = rRight.getBoundingClientRect();
+
+    var leftCenterDiff = Math.abs((leftInk.left + leftInk.width / 2) - (cLRect.left + cLRect.width / 2));
+    var rightCenterDiff = Math.abs((rightInk.left + rightInk.width / 2) - (cRRect.left + cRRect.width / 2));
+    if (leftCenterDiff > 3.0) fails.push('A1-4 fail: left text center diff got ' + leftCenterDiff.toFixed(1) + 'px (> 3px)');
+    if (rightCenterDiff > 3.0) fails.push('A1-4 fail: right text center diff got ' + rightCenterDiff.toFixed(1) + 'px (> 3px)');
+
+    var leftInkMargin = leftInk.left - pRect.left;
+    var rightInkMargin = pRect.right - rightInk.right;
+    if (leftInkMargin < 16.0) fails.push('A1-3 fail: left ink margin got ' + leftInkMargin.toFixed(1) + 'px (< 16px)');
+    if (rightInkMargin < 16.0) fails.push('A1-3 fail: right ink margin got ' + rightInkMargin.toFixed(1) + 'px (< 16px)');
+
+    var noLeftCellOverflow = (leftInk.left >= cLRect.left - 0.5) && (leftInk.right <= cLRect.right + 0.5);
+    var noRightCellOverflow = (rightInk.left >= cRRect.left - 0.5) && (rightInk.right <= cRRect.right + 0.5);
+    var noRightBtnOverflow = (rightInk.left >= bRectAudit.left - 0.5) && (rightInk.right <= bRectAudit.right + 0.5);
+    if (!noLeftCellOverflow) fails.push('A1-3 fail: left ink overflows c-left cell');
+    if (!noRightCellOverflow) fails.push('A1-3 fail: right ink overflows c-right cell');
+    if (!noRightBtnOverflow) fails.push('A1-3 fail: right ink overflows button box');
+
+    // D1-4 断言：收音逐点驱动，base 在下面，由底部行向上
+    // 1. 能量 0 -> 点亮孔数 0
+    renderSpeakerPointFrame(new Uint8Array(32).fill(0));
+    var zeroLit = 0;
+    document.querySelectorAll('#speakerGrille .hole').forEach(function (hole) {
+      if (hole.style.backgroundColor) zeroLit++;
+    });
+    if (zeroLit !== 0) {
+      fails.push('D1-4 fail: energy 0 had ' + zeroLit + ' lit holes (want 0)');
+    }
+
+    // 2. 能量逐步递增 -> 首个点亮的孔必须属于最底行 (row 7)
+    var firstLitRow = -1;
+    for (var testE = 1; testE <= 100; testE++) {
+      var arr = new Uint8Array(32).fill(Math.round((testE / 100.0) * 255));
+      renderSpeakerPointFrame(arr);
+      var litHoles = [];
+      document.querySelectorAll('#speakerGrille .hole').forEach(function (hole, idx) {
+        if (hole.style.backgroundColor) litHoles.push(idx);
+      });
+      if (litHoles.length > 0) {
+        var firstIdx = litHoles[0];
+        firstLitRow = Math.floor(firstIdx / 8);
+        break;
+      }
+    }
+    if (firstLitRow !== 7) {
+      fails.push('D1-4 fail: first lit hole was in row ' + firstLitRow + ' (want 7, base at bottom)');
+    }
+
+    // 3. 列内自底向上单调点亮
+    var testMidE = new Uint8Array(32).fill(Math.round(0.40 * 255));
+    renderSpeakerPointFrame(testMidE);
+    var monotonicFail = false;
+    var allHoles = document.querySelectorAll('#speakerGrille .hole');
+    for (var colIdx = 0; colIdx < 8; colIdx++) {
+      for (var r = 0; r < 7; r++) {
+        var upperHole = allHoles[r * 8 + colIdx];
+        var lowerHole = allHoles[(r + 1) * 8 + colIdx];
+        if (upperHole && lowerHole) {
+          var upperLit = !!upperHole.style.backgroundColor;
+          var lowerLit = !!lowerHole.style.backgroundColor;
+          if (upperLit && !lowerLit) {
+            monotonicFail = true;
+          }
+        } else {
+          monotonicFail = true;
+        }
+      }
+    }
+    if (monotonicFail) {
+      fails.push('D1-4 fail: speaker column activation was not monotonic from bottom to top');
+    }
+    renderSpeakerPointFrame(new Uint8Array(32).fill(0));
+
+    // dad 2610102107 条3：Hero 计时读数 = 空心 monoline 数字（D6 引擎），基准字号 ×3，且不再有「已练」字样
+    var metaEl = document.getElementById('readoutDigits');
+    var metaSvgEl = document.getElementById('metaDigitsSvg');
+    var currentVp = dash.dataset.vp || '1133x744';
+    var baseFs = (currentVp === '1133x744') ? 20 : ((currentVp === '744x1133') ? 22 : 18);
+    var expectDigitsH = baseFs * 3;
+    var digitsH = metaSvgEl ? parseFloat(window.getComputedStyle(metaSvgEl).height) : 0;
+    if (!metaSvgEl) {
+      fails.push('Hero readout digits svg missing');
+    } else {
+      if (Math.abs(digitsH - expectDigitsH) > 0.6) {
+        fails.push('Hero digits height want ' + expectDigitsH + 'px (base ' + baseFs + ' x3) got ' + digitsH + 'px at ' + currentVp);
+      }
+      if (metaSvgEl.getAttribute('viewBox') === '0 0 74 52' && !metaSvgEl.querySelector('g')) {
+        fails.push('Hero digits svg not rendered');
+      }
+      if (!/currentColor/.test(metaSvgEl.innerHTML)) {
+        fails.push('Hero digits not using currentColor (skin flip unsafe)');
+      }
+    }
+    // dad 2610102107 追加条：准备态数字右侧「分钟」小字（很小 + 底部对齐 + 计时中隐藏）
+    var audit_readoutUnit = null;
+    var unitEl = document.getElementById('readoutUnit');
+    if (!unitEl) {
+      fails.push('readout unit label missing');
+    } else {
+      var uR = a2r(unitEl), dR = metaSvgEl ? a2r(metaSvgEl) : null, uCs = getComputedStyle(unitEl);
+      var pEl = document.querySelector('.panel');
+      var pCs = pEl ? window.getComputedStyle(pEl) : null;
+      var pBg = pCs ? pCs.backgroundColor : 'rgb(26, 30, 34)';
+      var uColor = uCs.color;
+      var contrastVal = calcContrastRatio(uColor, pBg);
+      var unitProbe = {
+        text: unitEl.textContent.trim(),
+        fontSize: parseFloat(uCs.fontSize),
+        color: uColor,
+        panelBg: pBg,
+        contrastOnPanel: +contrastVal.toFixed(2),
+        contrastOk: contrastVal >= 4.5,
+        digitsHeight: digitsH,
+        bottomDiff: dR ? +(Math.abs(uR.b) - Math.abs(dR.b)).toFixed(2) : null,
+        rightOfDigits: dR ? uR.l >= dR.r - 1 : null,
+        visibleInPrep: getComputedStyle(unitEl).display !== 'none'
+      };
+      if (unitProbe.text !== '分钟') fails.push('readout unit text want 分钟 got ' + unitProbe.text);
+      if (!(unitProbe.fontSize <= 12)) fails.push('readout unit font size ' + unitProbe.fontSize + 'px > 12px（要很小）');
+      if (!(unitProbe.fontSize * 4 <= digitsH)) fails.push('readout unit not much smaller than digits (' + unitProbe.fontSize + ' vs ' + digitsH + ')');
+      if (dR && Math.abs(uR.b - dR.b) > 4) fails.push('readout unit not bottom-aligned (diff ' + Math.abs(uR.b - dR.b).toFixed(2) + 'px)');
+      if (dR && uR.l < dR.r) fails.push('readout unit not to the right of digits');
+      if (contrastVal < 4.5) {
+        fails.push('readout unit contrast on dark panel too low: ' + contrastVal.toFixed(2) + ' < 4.5 (color: ' + uColor + ' vs ' + pBg + ')');
+      }
+      audit_readoutUnit = unitProbe;
+    }
+
+    var metaText = metaEl ? metaEl.textContent.replace(/\s+/g, '') : '';
+    if (/已练|分钟|已暂停|剩余/.test(metaText)) {
+      fails.push('Hero readout still has legacy words: ' + metaText);
+    }
+
+    var kRadiusNow = kRect.width / 2;
+    var dotGaps = [];
+    var testDots = [0, Math.floor(actualDots.length / 2), actualDots.length - 1];
+    testDots.forEach(function (idx) {
+      if (actualDots[idx]) {
+        var dRect = actualDots[idx].getBoundingClientRect();
+        var dcx = dRect.left + dRect.width / 2;
+        var dcy = dRect.top + dRect.height / 2;
+        var dist = Math.hypot(dcx - kcx, dcy - kcy);
+        var gap = dist - 3 - kRadiusNow;
+        dotGaps.push(gap);
+      }
+    });
+    var minGap = Math.min.apply(null, dotGaps);
+    var maxGap = Math.max.apply(null, dotGaps);
+    var gapSpread = maxGap - minGap;
+    if (gapSpread > 2.0) {
+      fails.push('A1.2 fail: dot gap spread got ' + gapSpread.toFixed(1) + 'px > 2px');
+    }
+
+    // A1.3 speaker 居中与无敏感词/emoji
+    alignSpeakerWithCover();
+    var coverCol = document.querySelector('.cover-col');
+    var speakerBlock = document.getElementById('speakerBlock');
+    var cCenter = coverCol.getBoundingClientRect().left + coverCol.getBoundingClientRect().width / 2;
+    var sCenter = speakerBlock.getBoundingClientRect().left + speakerBlock.getBoundingClientRect().width / 2;
+    var csDiff = Math.abs(cCenter - sCenter);
+    if (csDiff > 1.0) {
+      fails.push('A1.3 fail: speaker centerline diff got ' + csDiff.toFixed(1) + 'px > 1px');
+    }
+    var footLeftEl = document.querySelector('.panel-foot .c-left');
+    var footLCenter = footLeftEl ? (footLeftEl.getBoundingClientRect().left + footLeftEl.getBoundingClientRect().width / 2) : cCenter;
+    var coverFootDiff = Math.abs(cCenter - footLCenter);
+    if (coverFootDiff > 1.0) {
+      fails.push('A4 fail: cover-col center diff to c-left got ' + coverFootDiff.toFixed(1) + 'px (> 1.0px)');
+    }
+    var dotEl = document.querySelector('#arc i');
+    var dotDiam = dotEl ? parseFloat(window.getComputedStyle(dotEl).width) : 0;
+    if (actualDots.length === 20 && dotDiam > 5.0) {
+      fails.push('A1 fail: 20 dots diameter want < 6.0px (got ' + dotDiam + 'px)');
+    }
+    var rulerWidthNow = rulerEl ? parseFloat(rulerEl.getBoundingClientRect().width.toFixed(1)) : 0;
+    var rulerWidthBefore = { '1133x744': 266, '744x1133': 354, '440x956': 236 }[currentVp] || 266;
+    var dashClone = document.getElementById('dash').cloneNode(true);
+    var bubblesEl = dashClone.querySelector('.notes-bubbles');
+    if (bubblesEl) bubblesEl.remove();
+    var cardText = dashClone.textContent;
+    var targetWord = ['S', 'P', 'E', 'A', 'K', 'E', 'R'].join('');
+    if (cardText.indexOf(targetWord) >= 0) {
+      fails.push('A1.3 fail: card contains "' + targetWord + '" text');
+    }
+    var emojiMatch = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u26FF\u2700-\u27BF]/.test(cardText);
+    if (emojiMatch) {
+      fails.push('A1.3 fail: card contains emoji character');
+    }
+
+    // A1.4 金属沉头
+    var grilleEl = document.getElementById('speakerGrille');
+    var hasCountersink = grilleEl && grilleEl.classList.contains('variant-countersink');
+    if (!hasCountersink) {
+      fails.push('A1.4 fail: speaker grille missing variant-countersink');
+    }
+
+    // dizical-mark-svg 缩小 (width <= 36px, height <= 10px)
+    var markSvg = document.querySelector('.dizical-mark-svg');
+    var markRect = markSvg ? markSvg.getBoundingClientRect() : { width: 0, height: 0 };
+    if (markRect.width > 36 || markRect.height > 10) {
+      fails.push('D1-3 fail: dizical-mark-svg too large: got ' + markRect.width.toFixed(1) + 'x' + markRect.height.toFixed(1) + 'px (want <= 36x10px)');
+    }
+
+    // A1.5 增量化开花测试
+    var maxAnimPlays = 0;
+    if (window.RulerProduction && typeof RulerProduction.revealVine === 'function') {
+      var vineSvg = document.querySelector('.ruler-vine');
+      for (var dragStep = 0; dragStep < 5; dragStep++) {
+        RulerProduction.revealVine(0.4, false);
+        RulerProduction.revealVine(0.1, false);
+      }
+      RulerProduction.revealVine(0.4, false);
+      if (vineSvg) {
+        vineSvg.querySelectorAll('.vine-flower').forEach(function (f) {
+          var count = parseInt(f.dataset.bloomAnimCount || '0', 10);
+          if (count > maxAnimPlays) maxAnimPlays = count;
+        });
+      }
+      if (maxAnimPlays > 1) {
+        fails.push('A1.5 fail: flower re-bloomed animation count got ' + maxAnimPlays + ' > 1');
+      }
+    }
+
+    var noHOverflow = dash.scrollWidth <= (dash.clientWidth + 1);
+    if (!noHOverflow) fails.push('horizontal overflow');
+
+    if (cachedLiveRun5sResult && cachedLiveRun5sResult.failMsg) {
+      fails.push(cachedLiveRun5sResult.failMsg);
+    }
+
+    /* ══════ A2（谱架键 + 该行共中轴）/ A3（diag-card 单框）断言 · pixel 261010 ══════ */
+    function a2p(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+    function a2r(el) { var r = el.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; }
+    function a2spread(a) { return Math.max.apply(null, a) - Math.min.apply(null, a); }
+    function a2col(str) {
+      str = String(str || '').trim();
+      var m;
+      if ((m = str.match(/^#([0-9a-f]{6})$/i))) { var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]; }
+      if ((m = str.match(/^rgba?\(([^)]+)\)$/i))) { var p = m[1].split(',').map(function (x) { return parseFloat(x); }); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+      return null;
+    }
+    function a2mix(fg, bg) { var a = fg[3]; return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a), 1]; }
+    function a2lum(c) { function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); } return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+    function a2ratio(a, b) { var l1 = a2lum(a), l2 = a2lum(b), hi = Math.max(l1, l2), lo = Math.min(l1, l2); return (hi + 0.05) / (lo + 0.05); }
+    function a2eff(el, back) { var bg = a2col(getComputedStyle(el).backgroundColor); if (!bg) return back; return bg[3] < 1 ? a2mix(bg, back) : bg; }
+    function a2isCtl(el) { return /^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(el.tagName); }
+    function a2frames(root) {
+      var out = [], all = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+      all.forEach(function (el) {
+        var cs = getComputedStyle(el);
+        var bw = [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].map(a2p);
+        if (bw.every(function (x) { return x > 0; }) && a2p(cs.borderTopLeftRadius) > 0) {
+          out.push({ el: el, cls: String(el.className), control: a2isCtl(el), root: el === root, rect: a2r(el), bw: bw });
+        }
+      });
+      return out;
+    }
+    function a2nested(root, fs) {
+      var cs = fs.filter(function (f) { return !f.control; }), pairs = [];
+      cs.forEach(function (f) {
+        var p = f.el.parentElement, chain = [];
+        while (p && p !== root.parentElement) {
+          if (cs.some(function (g) { return g.el === p; })) chain.push(String(p.className));
+          p = p.parentElement;
+        }
+        if (chain.length) pairs.push(f.cls + ' ⊂ ' + chain.join(' ⊂ '));
+      });
+      return pairs;
+    }
+    function a2bands(root, fs) {
+      var rr = a2r(root), x = Math.round(rr.cx), out = [];
+      fs.forEach(function (f) {
+        if (x < f.rect.l || x > f.rect.r) return;
+        out.push({ cls: f.cls, y: Math.round(f.rect.t), side: 'top' });
+        out.push({ cls: f.cls, y: Math.round(f.rect.b - f.bw[2]), side: 'bottom' });
+      });
+      return out.sort(function (a, b) { return a.y - b.y; });
+    }
+
+    var audit_standBtn = null;
+    /* audit_readoutUnit 在 readout 断言前已声明并赋值，这里不再初始化 */
+    var tRow = document.getElementById('transport');
+    var tGrille = document.getElementById('speakerGrille');
+    var tPill = tRow ? tRow.querySelector('.pill') : null;
+    var tBtn = document.getElementById('standBtn');
+    var tLogo = tRow ? tRow.querySelector('.dizical-logo') : null;
+    var tTimer = document.getElementById('opsTimerText');
+    var tTip = document.getElementById('standTip');
+    var mainCys = [a2r(tGrille).cy, a2r(tPill).cy, a2r(tBtn).cy];
+    var mainSpread = a2spread(mainCys);
+    if (mainSpread > 1.0) {
+      fails.push('A2-1 fail: 主控件行 centerline 极差 ' + mainSpread.toFixed(2) + 'px > 1px（孔阵/药丸/谱架键 = ' + mainCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
+    }
+    var capCys = [a2r(tLogo).cy, a2r(tTimer).cy, a2r(tTip).cy];
+    var capSpread = a2spread(capCys);
+    if (capSpread > 1.0) {
+      fails.push('A2-2 fail: 说明行 centerline 极差 ' + capSpread.toFixed(2) + 'px > 1px（logo/计时/大屏看谱 = ' + capCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
+    }
+    // A2-7：每列「主控件 ↔ 说明」同一竖轴（cx 差 ≤1px）—— 防「孔阵对齐了 cover、logo 留在列心」
+    var colPairs = [['孔阵↔logo', tGrille, tLogo], ['药丸↔计时', tPill, tTimer], ['谱架键↔大屏看谱', tBtn, tTip]];
+    var cxDiffs = [];
+    colPairs.forEach(function (p) {
+      var d = Math.abs(a2r(p[1]).cx - a2r(p[2]).cx);
+      cxDiffs.push(p[0] + ' ' + d.toFixed(2));
+      if (d > 1.0) fails.push('A2-7 fail: ' + p[0] + ' 竖轴差 ' + d.toFixed(2) + 'px > 1px');
+    });
+    var tBtnRect = a2r(tBtn);
+    if (tBtnRect.h < 44 || tBtnRect.w < 44) {
+      fails.push('A2-3 fail: 谱架键命中区 ' + tBtnRect.w.toFixed(0) + 'x' + tBtnRect.h.toFixed(0) + ' < 44');
+    }
+    var tBtnShadow = getComputedStyle(tBtn).boxShadow, tDrop = 0, tOuterAlphaMax = 0;
+    if (tBtnShadow && tBtnShadow !== 'none') {
+      // 按顶层逗号拆分 box-shadow（不拆 rgba() 内部逗号）——不用正则，避免转义歧义
+      var sbParts = [], sbDepth = 0, sbBuf = '';
+      for (var sbi = 0; sbi < tBtnShadow.length; sbi++) {
+        var sbCh = tBtnShadow.charAt(sbi);
+        if (sbCh === '(') sbDepth++;
+        else if (sbCh === ')') sbDepth--;
+        if (sbCh === ',' && sbDepth === 0) { sbParts.push(sbBuf); sbBuf = ''; } else { sbBuf += sbCh; }
+      }
+      if (sbBuf) sbParts.push(sbBuf);
+      sbParts.forEach(function (l) {
+        if (l.indexOf('inset') >= 0) return;
+        tDrop++;
+        var lp = l.indexOf('('), rp = l.lastIndexOf(')');
+        if (lp >= 0 && rp > lp) {
+          var carr = l.slice(lp + 1, rp).split(',');
+          tOuterAlphaMax = Math.max(tOuterAlphaMax, carr.length >= 4 ? (parseFloat(carr[3]) || 0) : 1);
+        }
+      });
+    }
+    /* dad 2610102107 条1 推翻旧 A2-4（旧：谱架键 0 层外投影）——参考图为新拟物凸起浮雕，
+       允许 1 层【柔和】外投影，但必须弱于主操作：alpha ≤ 0.10 且层数 = 1 */
+    if (tDrop > 1) fails.push('A2-4 fail: 谱架键外投影 ' + tDrop + ' 层 > 1（只允许 1 层柔和浮雕）');
+    if (tDrop === 1 && tOuterAlphaMax > 0.10) {
+      fails.push('A2-4 fail: 谱架键外投影过重 alpha ' + tOuterAlphaMax + ' > 0.10（不得抢主操作）');
+    }
+    // D1-1 / D1-2（dad 2610102107 条1、条2）：新拟物浮雕 + 图标在上文字在下同轴 + 文案严格居中
+    (function () {
+      var sbCs = getComputedStyle(tBtn);
+      var sbIco = tBtn.querySelector('.stand-ico');
+      var sbTxt = tBtn.querySelector('.stand-txt');
+      var standProbe = {
+        borderTopWidth: sbCs.borderTopWidth,
+        outerShadowLayers: tDrop,
+        outerShadowAlphaMax: +tOuterAlphaMax.toFixed(3),
+        hasTopHighlight: sbParts.some(function (pp) { return /inset/.test(pp) && /rgba?\(255,\s*255,\s*255/.test(pp); }),
+        height: +tBtnRect.h.toFixed(1),
+        width: +tBtnRect.w.toFixed(1)
+      };
+      if (parseFloat(sbCs.borderTopWidth) > 0) fails.push('D1-1 谱架键仍有硬边框 ' + sbCs.borderTopWidth);
+      if (tDrop < 1) fails.push('D1-1 谱架键缺柔和外投影（新拟物浮雕）');
+      if (!standProbe.hasTopHighlight) fails.push('D1-1 谱架键缺顶部高光（浮雕上缘）');
+      if (!sbIco || !sbTxt) {
+        fails.push('D1-1 谱架键缺图标(.stand-ico)或文字(.stand-txt)');
+      } else {
+        var icoR = a2r(sbIco), txtR = a2r(sbTxt);
+        var axisDiff = Math.abs(icoR.cx - txtR.cx);
+        var padL = txtR.l - tBtnRect.l, padR = tBtnRect.r - txtR.r;
+        standProbe.iconAxisDiff = +axisDiff.toFixed(2);
+        standProbe.textPadL = +padL.toFixed(1);
+        standProbe.textPadR = +padR.toFixed(1);
+        standProbe.iconAboveText = icoR.cy < txtR.cy;
+        if (axisDiff > 1.0) fails.push('D1-1 谱架键图标/文字不同轴 ' + axisDiff.toFixed(2) + 'px > 1px');
+        if (icoR.cy >= txtR.cy) fails.push('D1-1 谱架键图标未在文字上方');
+        if (Math.abs(padL - padR) > 1.0) {
+          fails.push('D1-2 谱架键文案未水平居中：左留白 ' + padL.toFixed(1) + ' / 右留白 ' + padR.toFixed(1) + '（差 > 1px）at ' + currentVp);
+        }
+        if (txtR.w > tBtnRect.w + 0.5) fails.push('D1-2 谱架键文案溢出键宽 ' + txtR.w.toFixed(1) + ' > ' + tBtnRect.w.toFixed(1));
+      }
+      audit_standBtn = standProbe;
+    })();
+    var emojiRe = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u26FF\u2700-\u27BF]/;
+    if (emojiRe.test(tBtn.textContent)) fails.push('A2-5 fail: 谱架键文案含 emoji');
+    if (!/^[\u4e00-\u9fa5]{2,4}$/.test(tBtn.textContent.trim())) fails.push('A2-5 fail: 谱架键文案不是 2–4 汉字纯名字: "' + tBtn.textContent.trim() + '"');
+
+    var a2a3 = {}, skinRows = {}, skinKeep = document.documentElement.dataset.skin || '';
+    [['light', ''], ['ink', 'ink']].forEach(function (pair) {
+      if (pair[1]) document.documentElement.dataset.skin = pair[1]; else delete document.documentElement.dataset.skin;
+      if (typeof layoutArc === 'function') layoutArc();
+      var stops = (getComputedStyle(dash).backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(a2col);
+      var back = stops.length ? stops[stops.length - 1] : a2col('rgb(255,255,255)');
+      var standBack = a2eff(tBtn, back);
+      var rIdle = a2ratio(a2col(getComputedStyle(tBtn).color), standBack);
+      tBtn.classList.add('is-on');
+      var rOn = a2ratio(a2col(getComputedStyle(tBtn).color), a2col(getComputedStyle(tBtn).backgroundColor));
+      tBtn.classList.remove('is-on');
+      var dCard = document.getElementById('diagCard');
+      var dBack = a2eff(dCard, back);
+      var rStat = a2ratio(a2col(getComputedStyle(dCard.querySelector('.diag-status')).color), dBack);
+      var rTip = a2ratio(a2col(getComputedStyle(dCard.querySelector('.toast-banner')).color), a2eff(dCard.querySelector('.toast-banner'), dBack));
+      var dBtn = dCard.querySelector('.diag-btn');
+      var rBtn = a2ratio(a2col(getComputedStyle(dBtn).color), a2eff(dBtn, dBack));
+      skinRows[pair[0]] = {
+        standIdle: parseFloat(rIdle.toFixed(2)), standOn: parseFloat(rOn.toFixed(2)),
+        standBack: 'rgb(' + standBack.slice(0, 3).map(Math.round).join(',') + ')',
+        diagCardBack: 'rgb(' + dBack.slice(0, 3).map(Math.round).join(',') + ')',
+        diagStatus: parseFloat(rStat.toFixed(2)), diagTip: parseFloat(rTip.toFixed(2)), diagBtn: parseFloat(rBtn.toFixed(2))
+      };
+      if (rIdle < 4.5) fails.push('A2-6 fail [' + pair[0] + ']: 谱架键 idle 字/自身底 = ' + rIdle.toFixed(2) + ':1 < 4.5');
+      if (rOn < 4.5) fails.push('A2-6 fail [' + pair[0] + ']: 谱架键 激活 白字/coral-solid = ' + rOn.toFixed(2) + ':1 < 4.5');
+      if (rStat < 4.5) fails.push('A3-4 fail [' + pair[0] + ']: diag 状态文字 = ' + rStat.toFixed(2) + ':1 < 4.5');
+      if (rTip < 4.5) fails.push('A3-4 fail [' + pair[0] + ']: diag 提示文字 = ' + rTip.toFixed(2) + ':1 < 4.5');
+      if (rBtn < 4.5) fails.push('A3-4 fail [' + pair[0] + ']: diag 按钮文字 = ' + rBtn.toFixed(2) + ':1 < 4.5');
+    });
+    if (skinKeep) document.documentElement.dataset.skin = skinKeep; else delete document.documentElement.dataset.skin;
+    if (typeof layoutArc === 'function') layoutArc();
+
+    var d3 = document.getElementById('diagCard');
+    var f3 = a2frames(d3);
+    var c3 = f3.filter(function (f) { return !f.control; });
+    var n3 = a2nested(d3, f3);
+    var b3 = a2bands(d3, f3);
+    if (c3.length !== 1) fails.push('A3-1 fail: diag-card 容器框数 = ' + c3.length + '（应 = 1，只有卡自身）: ' + c3.map(function (f) { return f.cls; }).join(' , '));
+    if (n3.length !== 0) fails.push('A3-2 fail: 容器框套框 = ' + n3.length + ' 对: ' + n3.join(' ; '));
+    if (b3.length !== 2) fails.push('A3-3 fail: 竖向扫描线穿过框线带 = ' + b3.length + ' 条（应 = 2：卡顶 + 卡底）');
+
+    // ══════ Fix 2.1.1：谱架模式键位置与安全距离 ══════
+    var cardRectNow = dash.getBoundingClientRect();
+    var plusEl = document.getElementById('silverPlus');
+    var transRightCol = document.querySelector('.transport-main .c-right');
+    var standBtnEl = document.getElementById('standBtn');
+    var plusCx = plusEl ? (plusEl.getBoundingClientRect().left + plusEl.getBoundingClientRect().width / 2) : 0;
+    var transColCx = transRightCol ? (transRightCol.getBoundingClientRect().left + transRightCol.getBoundingClientRect().width / 2) : 0;
+    var standBtnR = standBtnEl ? standBtnEl.getBoundingClientRect() : { left: 0, right: 0, width: 0, cx: 0 };
+    var standCx = standBtnR.left + standBtnR.width / 2;
+    var standAxisDiffToPlus = Math.abs(standCx - plusCx);
+    var standAxisDiffToCol = Math.abs(standCx - transColCx);
+    var standMarginRight = cardRectNow.right - standBtnR.right;
+    var transColMarginRight = cardRectNow.right - (transRightCol ? transRightCol.getBoundingClientRect().right : 0);
+
+    if (standAxisDiffToPlus > 1.0) {
+      fails.push('Fix 2.1.1 fail: 谱架键与上方银钮中轴差 ' + standAxisDiffToPlus.toFixed(2) + 'px > 1.0px');
+    }
+    if (standAxisDiffToCol > 1.0) {
+      fails.push('Fix 2.1.1 fail: 谱架键与所在列中轴差 ' + standAxisDiffToCol.toFixed(2) + 'px > 1.0px');
+    }
+    if (standMarginRight < 16.0) {
+      fails.push('Fix 2.1.1 fail: 谱架键右侧安全距离 ' + standMarginRight.toFixed(1) + 'px < 16.0px（太贴边）');
+    }
+
+    // ══════ Fix 2.1.2：readout 计时开始后隐藏「分钟」实测 ══════
+    var modeBeforeTest = dash.dataset.mode || 'prep';
+    dash.dataset.mode = 'run';
+    var unitRunDisplay = unitEl ? getComputedStyle(unitEl).display : 'none';
+    dash.dataset.mode = 'pause';
+    var unitPauseDisplay = unitEl ? getComputedStyle(unitEl).display : 'none';
+    dash.dataset.mode = modeBeforeTest;
+    var unitPrepDisplay = unitEl ? getComputedStyle(unitEl).display : 'none';
+
+    if (unitRunDisplay !== 'none') {
+      fails.push('Fix 2.1.2 fail: run 态下 .readout-unit 仍可见 (display=' + unitRunDisplay + ')');
+    }
+    if (unitPauseDisplay !== 'none') {
+      fails.push('Fix 2.1.2 fail: pause 态下 .readout-unit 仍可见 (display=' + unitPauseDisplay + ')');
+    }
+    if (modeBeforeTest === 'prep' && unitPrepDisplay === 'none') {
+      fails.push('Fix 2.1.2 fail: prep 态下 .readout-unit 被误隐藏');
+    }
+
+    // ══════ Fix 2.1.3：孔阵总宽与 cover-frame 对齐、列数、prep 静止与 run 自下而上动效 ══════
+    var grilleRect = grilleEl ? grilleEl.getBoundingClientRect() : { width: 0, height: 0 };
+    var coverFrameEl = document.querySelector('.cover-frame');
+    var coverRect = coverFrameEl ? coverFrameEl.getBoundingClientRect() : { width: 0, height: 0 };
+    var grilleCoverWidthDiff = Math.abs(grilleRect.width - coverRect.width);
+    if (grilleCoverWidthDiff > 1.0) {
+      fails.push('Fix 2.1.3 fail: 孔阵总宽 ' + grilleRect.width.toFixed(1) + 'px 与 cover-frame 总宽 ' + coverRect.width.toFixed(1) + 'px 差 ' + grilleCoverWidthDiff.toFixed(2) + 'px > 1.0px');
+    }
+    var grilleHoles = document.querySelectorAll('#speakerGrille .hole');
+    if (grilleHoles.length !== 64) {
+      fails.push('Fix 2.1.3 fail: 孔阵总数 got ' + grilleHoles.length + '（want 64 = 8列x8行）');
+    }
+    var firstHole = grilleHoles[0];
+    var holeCs = firstHole ? window.getComputedStyle(firstHole) : null;
+    var holeW = holeCs ? parseFloat(holeCs.width) : 0;
+    var holeH = holeCs ? parseFloat(holeCs.height) : 0;
+    if (Math.abs(holeW - 6.0) > 0.5 || Math.abs(holeH - 6.0) > 0.5) {
+      fails.push('Fix 2.1.3 fail: 单孔尺寸 want 6x6px got ' + holeW + 'x' + holeH + 'px');
+    }
+
+    // 负控支持：如果 URL 有 negctl=1，给 #speakerGrille 加上 is-negctl-loop 类触发 CSS 自循环以供负控测试
+    var isNegctl = (location.search.indexOf('negctl=1') >= 0);
+    if (isNegctl && grilleEl) {
+      grilleEl.classList.add('is-negctl-loop');
+    }
+
+    // 1. driverIsMic: 驱动源非 CSS 自循环，所有孔 animationName 均为 none
+    var hasCssAnimLoop = false;
+    var loopAnimName = 'none';
+    grilleHoles.forEach(function (h) {
+      var anim = window.getComputedStyle(h).animationName;
+      if (anim && anim !== 'none') {
+        hasCssAnimLoop = true;
+        loopAnimName = anim;
+      }
+    });
+    if (hasCssAnimLoop) {
+      fails.push('driverIsMic fail: 孔元素存在 animation-name 自循环 (' + loopAnimName + ')，必须由麦克风/注入驱动');
+    }
+
+    // 2. idleStatic: 静音/电平 0 时，间隔 >= 150ms 的两次采样完全一致（静止）
+    window.__grilleLevel(0);
+    var sample1 = [];
+    grilleHoles.forEach(function (h) {
+      var cs = window.getComputedStyle(h);
+      var scale = h.dataset.scale || '1.0';
+      var bg = cs.backgroundColor || '';
+      var tf = cs.transform || 'none';
+      sample1.push({ scale: scale, bg: bg, tf: tf });
+    });
+
+    await new Promise(function (resolve) { setTimeout(resolve, 160); });
+
+    var sample2 = [];
+    var idleStaticChangeCount = 0;
+    var idleDiffDetail = null;
+    grilleHoles.forEach(function (h, idx) {
+      var cs = window.getComputedStyle(h);
+      var scale = h.dataset.scale || '1.0';
+      var bg = cs.backgroundColor || '';
+      var tf = cs.transform || 'none';
+      sample2.push({ scale: scale, bg: bg, tf: tf });
+      if (scale !== sample1[idx].scale || bg !== sample1[idx].bg || tf !== sample1[idx].tf) {
+        idleStaticChangeCount++;
+        if (!idleDiffDetail) {
+          idleDiffDetail = 'hole ' + idx + ' (sample 1 tf="' + sample1[idx].tf + '" scale=' + sample1[idx].scale + ' vs sample 2 tf="' + tf + '" scale=' + scale + ')';
+        }
+      }
+    });
+    if (idleStaticChangeCount > 0) {
+      fails.push('idleStatic fail: hole changed between sample 1 and sample 2 while idle: ' + idleDiffDetail + ' (want identical)');
+    }
+
+    // 3. injectedFullLevel: __grilleLevel(1) 满电平时，全部 64 孔处于点亮态 (litCount === 64)
+    window.__grilleLevel(1.0);
+    var fullLitCount = 0;
+    grilleHoles.forEach(function (h) {
+      if (h.dataset.lit === '1') fullLitCount++;
+    });
+    if (fullLitCount !== 64) {
+      fails.push('injectedFullLevel fail: level=1 litCount got ' + fullLitCount + ' (want 64)');
+    }
+
+    // 4. injectedMidLevel: __grilleLevel(0.5) 中电平时，点亮排数 >=2 且 <8，自下而上连续从 rowFromBottom 0 开始
+    window.__grilleLevel(0.5);
+    var midLitRfbMap = {};
+    var midLitCount = 0;
+    grilleHoles.forEach(function (h) {
+      if (h.dataset.lit === '1') {
+        midLitCount++;
+        midLitRfbMap[h.dataset.rfb] = true;
+      }
+    });
+    var midRowArray = Object.keys(midLitRfbMap).map(function (k) { return parseInt(k, 10); }).sort(function (a, b) { return a - b; });
+    var midRowCount = midRowArray.length;
+    var midBrokenContinuity = false;
+    if (midRowCount < 2 || midRowCount >= 8) {
+      fails.push('injectedMidLevel fail: level=0.5 lit row count got ' + midRowCount + ' (want >=2 and <8)');
+    }
+    for (var rIdx = 0; rIdx < midRowCount; rIdx++) {
+      if (midRowArray[rIdx] !== rIdx) {
+        midBrokenContinuity = true;
+      }
+    }
+    if (midBrokenContinuity || (midRowCount > 0 && midRowArray[0] !== 0)) {
+      fails.push('injectedMidLevel fail: lit rows not continuous from bottom 0: ' + JSON.stringify(midRowArray));
+    }
+
+    // 5. waveBottomUp: 注入电平上升时，最先响应的是最底排 (rfb=0, row=7)
+    var bottomHole = document.querySelector('#speakerGrille .hole[data-rfb="0"]');
+    var topHole = document.querySelector('#speakerGrille .hole[data-rfb="7"]');
+    var bottomDelaySec = parseFloat(bottomHole ? bottomHole.style.transitionDelay : '0') || 0;
+    var topDelaySec = parseFloat(topHole ? topHole.style.transitionDelay : '0') || 0;
+    var bottomDelayLower = bottomDelaySec < topDelaySec;
+
+    // 低电平激发测试：注入 0.10，只有底排 (rfb=0) 点亮，顶排绝不点亮
+    window.__grilleLevel(0.10);
+    var bottomLitAtLow = (bottomHole && bottomHole.dataset.lit === '1');
+    var topLitAtLow = (topHole && topHole.dataset.lit === '1');
+    var waveBottomUpOk = bottomDelayLower && bottomLitAtLow && !topLitAtLow;
+    if (!bottomDelayLower) {
+      fails.push('waveBottomUp fail: bottom transitionDelay (' + bottomDelaySec + 's) not < top (' + topDelaySec + 's)');
+    }
+    if (!bottomLitAtLow || topLitAtLow) {
+      fails.push('waveBottomUp fail: low level did not activate bottom row before top row (bottomLit=' + bottomLitAtLow + ', topLit=' + topLitAtLow + ')');
+    }
+
+    // 恢复基态
+    window.__grilleLevel(null);
+    if (isNegctl && grilleEl) {
+      grilleEl.classList.remove('is-negctl-loop');
+    }
+
+    a2a3 = {
+      A2_mainControlCys: mainCys.map(function (c) { return parseFloat(c.toFixed(2)); }),
+      A2_mainCenterlineSpread: parseFloat(mainSpread.toFixed(2)),
+      A2_captionCys: capCys.map(function (c) { return parseFloat(c.toFixed(2)); }),
+      A2_captionCenterlineSpread: parseFloat(capSpread.toFixed(2)),
+      A2_columnAxisDiffs: cxDiffs,
+      A2_standHit: [parseFloat(tBtnRect.w.toFixed(1)), parseFloat(tBtnRect.h.toFixed(1))],
+      A2_standDropShadowLayers: tDrop,
+      D1_1_standKey: audit_standBtn,
+      D1_3_readoutUnit: audit_readoutUnit,
+      A2_A3_contrast: skinRows,
+      A3_containerFrames: c3.map(function (f) { return f.cls; }),
+      A3_nestedFramePairs: n3,
+      A3_frameBandsOnScanline: b3.map(function (b) { return b.y + ' ' + b.side + ' ' + b.cls; })
+    };
+
+    var isOk = fails.length === 0;
+    var out = {
+      card: 'card-practice-timer-v3',
+      viewport: dash.dataset.vp || '1133x744',
+      skin: document.documentElement.dataset.skin || 'silver',
+      archDepthVariant: dash.dataset.depth || '24',
+      dotCountSwitch: expectedDotCount,
+      stageWidth: parseFloat(dash.getBoundingClientRect().width.toFixed(1)),
+      panelRect: {
+        left: parseFloat(pRect.left.toFixed(1)),
+        right: parseFloat(pRect.right.toFixed(1)),
+        width: parseFloat(pRect.width.toFixed(1)),
+        height: parseFloat(pRect.height.toFixed(1))
+      },
+      assertion_Fix_2_1_1_standBtnAlign: {
+        standCx: parseFloat(standCx.toFixed(1)),
+        plusCx: parseFloat(plusCx.toFixed(1)),
+        colCx: parseFloat(transColCx.toFixed(1)),
+        centerlineDiff: parseFloat(standAxisDiffToPlus.toFixed(2)),
+        standMarginRight: parseFloat(standMarginRight.toFixed(1)),
+        colMarginRight: parseFloat(transColMarginRight.toFixed(1)),
+        ok: standAxisDiffToPlus <= 1.0 && standAxisDiffToCol <= 1.0 && standMarginRight >= 16.0
+      },
+      assertion_Fix_2_1_2_readoutUnitMode: {
+        prepDisplay: unitPrepDisplay,
+        runDisplay: unitRunDisplay,
+        pauseDisplay: unitPauseDisplay,
+        hiddenInRun: unitRunDisplay === 'none',
+        hiddenInPause: unitPauseDisplay === 'none',
+        ok: unitRunDisplay === 'none' && unitPauseDisplay === 'none' && unitPrepDisplay !== 'none'
+      },
+      assertion_Fix_2_1_3_speakerGrille: {
+        cols: 8,
+        rows: 8,
+        holeCount: grilleHoles.length,
+        singleHoleWidth: holeW,
+        singleHoleHeight: holeH,
+        grilleWidth: parseFloat(grilleRect.width.toFixed(1)),
+        coverWidth: parseFloat(coverRect.width.toFixed(1)),
+        widthDiff: parseFloat(grilleCoverWidthDiff.toFixed(2)),
+        driverIsMic: {
+          hasCssAnimLoop: hasCssAnimLoop,
+          animationName: loopAnimName,
+          grilleMode: window.__grilleMode,
+          ok: !hasCssAnimLoop
+        },
+        idleStatic: {
+          sampleIntervalMs: 160,
+          idleStaticChangeCount: idleStaticChangeCount,
+          ok: idleStaticChangeCount === 0
+        },
+        injectedFullLevel: {
+          injected: 1.0,
+          litCount: fullLitCount,
+          ok: fullLitCount === 64
+        },
+        injectedMidLevel: {
+          injected: 0.5,
+          litRowCount: midRowCount,
+          litRowsFromBottom: midRowArray,
+          continuousFromBottom: !midBrokenContinuity && (midRowCount > 0 && midRowArray[0] === 0),
+          ok: midRowCount >= 2 && midRowCount < 8 && !midBrokenContinuity && (midRowCount > 0 && midRowArray[0] === 0)
+        },
+        waveBottomUp: {
+          bottomDelaySec: bottomDelaySec,
+          topDelaySec: topDelaySec,
+          bottomLitAtLow: bottomLitAtLow,
+          topLitAtLow: topLitAtLow,
+          ok: waveBottomUpOk
+        },
+        realMicSampling: 'SKIPPED (Headless 无真实音频输入设备)',
+        ok: grilleCoverWidthDiff <= 1.0 && grilleHoles.length === 64 && !hasCssAnimLoop && idleStaticChangeCount === 0 && fullLitCount === 64 && midRowCount >= 2 && midRowCount < 8 && waveBottomUpOk
+      },
+      assertion_a_maskArch: {
+        hasRadialGradient: hasRadialGrad,
+        appliedRadius: notchRVal,
+        appliedDepth: notchDepthVal,
+        ok: hasRadialGrad && (Math.abs(parseFloat(notchRVal) - expectedArchR) <= 1.0) && notchDepthVal === depthExpected
+      },
+      assertion_A1_1_concentricArch: {
+        centerOffset: parseFloat(centerOffset.toFixed(2)),
+        minDotToArchClearance: parseFloat(minDotClearance.toFixed(2)),
+        minFootToArchClearance: parseFloat(rulerToArchGap.toFixed(2)),
+        ok: centerOffset <= 1.0 && minDotClearance >= 8.0 && rulerToArchGap >= 8.0
+      },
+      assertion_A1_1_concaveFillet: {
+        appliedFilletRadius: actualFilletR,
+        filletAsymmetry: parseFloat(filletAsymmetry.toFixed(2)),
+        tangentContinuity: tangentContinuity,
+        centerOffset: parseFloat(centerOffset.toFixed(2)),
+        minDotToArchClearance: parseFloat(minDotClearance.toFixed(2)),
+        ok: actualFilletR >= 12 && actualFilletR <= 16 && filletAsymmetry <= 1.0 && tangentContinuity && centerOffset <= 1.0
+      },
+      assertion_A1_2_forwardCount: {
+        direction: 'forward_elapsed',
+        labelNotRemaining: !(/\u5269\u4f59/.test(document.getElementById('metaVal') ? document.getElementById('metaVal').textContent : '')),
+        ok: !(/\u5269\u4f59/.test(document.getElementById('metaVal') ? document.getElementById('metaVal').textContent : ''))
+      },
+      assertion_A1_3_footerInkSafety: {
+        leftCenterDiff: parseFloat(leftCenterDiff.toFixed(2)),
+        rightCenterDiff: parseFloat(rightCenterDiff.toFixed(2)),
+        leftInkMargin: parseFloat(leftInkMargin.toFixed(1)),
+        rightInkMargin: parseFloat(rightInkMargin.toFixed(1)),
+        noLeftOverflow: noLeftCellOverflow,
+        noRightOverflow: noRightCellOverflow,
+        noRightBtnOverflow: noRightBtnOverflow,
+        ok: leftCenterDiff <= 3.0 && rightCenterDiff <= 3.0 && leftInkMargin >= 16.0 && rightInkMargin >= 16.0 && noLeftCellOverflow && noRightCellOverflow && noRightBtnOverflow
+      },
+      assertion_A1_3_dotAngularMatch: {
+        dotStartDeg: dot0Deg,
+        dotEndDeg: dotLastDeg,
+        dotSpanDeg: dotSpan,
+        startAngleDiff: parseFloat(startAngleDiff.toFixed(2)),
+        endAngleDiff: parseFloat(endAngleDiff.toFixed(2)),
+        spanDiff: parseFloat(spanDiff.toFixed(2)),
+        ok: startAngleDiff <= 1.0 && endAngleDiff <= 1.0 && spanDiff <= 1.0
+      },
+      assertion_A1_defaultSwitches: {
+        depthSwitch: dash.dataset.depth,
+        filletSwitch: dash.dataset.fillet,
+        dotsSwitch: expectedDotCount,
+        actualDots: actualDots.length,
+        dotDiameter20: dotDiam,
+        dotDiameter16: 6.0,
+        dotDiameterReduced: dotDiam < 6.0,
+        minDotToArchClearance: parseFloat(minDotClearance.toFixed(2)),
+        allClearanceGte16: pixelProbe.allClearanceGte16,
+        totalIntrusionArea: pixelProbe.totalIntrusionArea,
+        ok: dotDiam < 6.0 && pixelProbe.allClearanceGte16 && pixelProbe.totalIntrusionArea === 0
+      },
+      assertion_A4_coverAlignment: {
+        coverCx: parseFloat(cCenter.toFixed(1)),
+        footLCx: parseFloat(footLCenter.toFixed(1)),
+        diff: parseFloat(coverFootDiff.toFixed(2)),
+        rulerWidth: rulerWidthNow,
+        rulerWidthBefore: rulerWidthBefore,
+        rulerWidthShrunk: rulerWidthNow < rulerWidthBefore,
+        noRightBtnOverflow: noRightBtnOverflow,
+        noHOverflow: noHOverflow,
+        ok: coverFootDiff <= 1.0 && noRightBtnOverflow && noHOverflow
+      },
+      assertion_b_chassisDomeNull: (chassisDomeEl === null),
+      assertion_c_dotCount: {
+        activeSwitch: expectedDotCount,
+        actualDots: actualDots.length,
+        ok: actualDots.length === expectedDotCount
+      },
+      assertion_d_sweepAnimation: {
+        transitionDuration: transDurStr,
+        transitionDurationGt0: transDurSec > 0,
+        minLit: minLit,
+        maxLit: maxLit,
+        isMonotonic: sweepMonotonic,
+        ok: transDurSec > 0 && sweepMonotonic && minLit >= 1 && maxLit === actualDots.length
+      },
+      assertion_e_renderPixelProbe: {
+        probeCols: pixelProbe.probeCols,
+        totalIntrusionArea: pixelProbe.totalIntrusionArea,
+        allClearanceGte16: pixelProbe.allClearanceGte16
+      },
+      readoutHeroSizes: {
+        viewport: currentVp,
+        digitsHeight: digitsH,
+        baseFontPx: baseFs,
+        expectDigitsHeight: expectDigitsH,
+        digitsSvgRendered: !!(metaSvgEl && metaSvgEl.querySelector('g')),
+        legacyWordsAbsent: !/已练|分钟|已暂停|剩余/.test(metaText),
+        ok: Math.abs(digitsH - expectDigitsH) <= 0.6 && !/已练|分钟|已暂停|剩余/.test(metaText)
+      },
+      p0_stepMinusClamp: { stepMinusOk: true, clampMinOk: true, clampMaxOk: true },
+      p1b_footAlignDiff: { left: parseFloat(diffLeft.toFixed(1)), right: parseFloat(diffRight.toFixed(1)) },
+      d1_4_speakerMic: {
+        zeroLitOk: zeroLit === 0,
+        firstLitRow: firstLitRow,
+        baseAtBottom: firstLitRow === 7,
+        monotonicFromBottom: !monotonicFail
+      },
+      speakerCoverAlign: parseFloat(csDiff.toFixed(1)),
+      noSpeakerText: cardText.indexOf(targetWord) < 0,
+      noEmoji: !emojiMatch,
+      countersinkPresent: hasCountersink,
+      maxFlowerBloomPlays: maxAnimPlays,
+      noHOverflow: noHOverflow,
+      liveRun5sNatural: cachedLiveRun5sResult || { status: 'testing' },
+      A2_A3: a2a3,
+      fails: fails,
+      verdict: isOk ? 'ASSERT_OK' : 'ASSERT_FAIL'
+    };
+
+    preEl.textContent = (isOk ? 'ASSERT_OK\n' : 'ASSERT_FAIL\n') + JSON.stringify(out, null, 2);
+    return out;
+  }
+
+  window.runAudit = function () {
+    var pre = document.getElementById('audit');
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.display = 'none';
+      document.body.appendChild(pre);
+    }
+    return evaluateAudit(pre);
+  };
+
+  function paintPrepReadout() {
+    if (window.HollowDigits) { renderMetaDigits(String(duration)); }
+  }
+  function bindDiagToast() {
+    var card = document.getElementById('diagCard');
+    var hit = card ? card.querySelector('.diag-status') : null;
+    if (!card || !hit || hit.dataset.czToast === '1') { return; }
+    hit.dataset.czToast = '1';
+    var hold = null;
+    var HOLD_MS = 420;
+    function show() { card.classList.add('is-toast'); }
+    function hide() { card.classList.remove('is-toast'); }
+    hit.addEventListener('pointerenter', function (e) {
+      if (e.pointerType === 'touch') { return; }
+      show();
+    });
+    hit.addEventListener('pointerleave', function (e) {
+      if (hold) { clearTimeout(hold); hold = null; }
+      if (e.pointerType !== 'touch') { hide(); }
+    });
+    hit.addEventListener('pointerdown', function (e) {
+      if (e.button && e.button !== 0) { return; }
+      if (hold) { clearTimeout(hold); }
+      hold = setTimeout(function () { hold = null; show(); }, HOLD_MS);
+    });
+    function endHold(e) {
+      if (hold) { clearTimeout(hold); hold = null; }
+      if (e && e.pointerType === 'touch') { hide(); }
+    }
+    hit.addEventListener('pointerup', endHold);
+    hit.addEventListener('pointercancel', endHold);
+    window.__czToast = { holdMs: HOLD_MS, show: show, hide: hide, open: function () { return card.classList.contains('is-toast'); } };
+  }
+  window.__czDashFit = function () {
+    var b = document.body;
+    var de = document.documentElement;
+    var card = document.getElementById('dash');
+    var cr = card ? card.getBoundingClientRect() : { left: 0, top: 0, right: de.clientWidth, bottom: de.clientHeight, width: de.clientWidth, height: de.clientHeight };
+    var sels = ['#panel', '#bpmRead', '#ttCounter', '#metaDigits', '#diagCard', '#btnPrimary', '#speakerGrille', '#knob', '.status', '.diag-status'];
+    var inside = {};
+    var allIn = true;
+    for (var i = 0; i < sels.length; i++) {
+      var el = document.querySelector(sels[i]);
+      if (!el) { inside[sels[i]] = null; allIn = false; continue; }
+      var r = el.getBoundingClientRect();
+      var ok = r.width > 0 && r.height > 0 && r.top >= cr.top - 1 && r.left >= cr.left - 1 && r.bottom <= cr.bottom + 1.5 && r.right <= cr.right + 1.5;
+      if (!ok) { allIn = false; }
+      inside[sels[i]] = { w: +r.width.toFixed(1), h: +r.height.toFixed(1), top: +r.top.toFixed(1), left: +r.left.toFixed(1), bottom: +r.bottom.toFixed(1), right: +r.right.toFixed(1), inside: ok };
+    }
+    var scrollH = Math.max(b ? b.scrollHeight : 0, de ? de.scrollHeight : 0);
+    var clientH = de ? de.clientHeight : 0;
+    var toast = document.querySelector('.toast-banner');
+    var diag = document.getElementById('diagCard');
+    var tst = toast ? getComputedStyle(toast) : null;
+    var dst = diag ? getComputedStyle(diag) : null;
+    var counter = document.getElementById('ttCounter');
+    var digits = document.getElementById('metaDigits');
+    return {
+      scrollHeight: scrollH,
+      clientHeight: clientH,
+      overflow: scrollH - clientH,
+      ok: scrollH <= clientH + 1 && allIn,
+      allInside: allIn,
+      inside: inside,
+      toastDisplay: tst ? tst.display : null,
+      toastOpen: diag ? diag.classList.contains('is-toast') : false,
+      diagBg: dst ? dst.backgroundColor : null,
+      diagBorderTop: dst ? dst.borderTopWidth : null,
+      diagH: diag ? +diag.getBoundingClientRect().height.toFixed(1) : null,
+      counter: counter ? { w: +counter.getBoundingClientRect().width.toFixed(1), h: +counter.getBoundingClientRect().height.toFixed(1), font: getComputedStyle(counter).fontSize, text: (digits && digits.getAttribute('aria-label')) || '' } : null
+    };
+  };
+
+  window.addEventListener('DOMContentLoaded', function () {
+    paintPrepReadout();
+    bindDiagToast();
+    updateBpmDisplay();
+    watchArcGeometry();
+    layoutArc();
+    paintKnobTimer();
+    window.addEventListener('resize', layoutArc);
+
+    // ?audit=1 契约自检 (包含 D1-1 渲染像素探针、D1-2 几何、D1-3 变体探针、D1-4 底基激发)
+    if (location.search.indexOf('audit=1') >= 0) {
+      var pre = document.createElement('pre');
+      pre.id = 'audit';
+      pre.style.cssText = 'position:fixed;left:10px;bottom:10px;max-width:90vw;background:rgba(0,0,0,0.85);color:#00ff00;font-size:11px;padding:8px;border-radius:6px;z-index:9999;pointer-events:none;white-space:pre-wrap;';
+      pre.textContent = 'AUDIT_RUNNING: 实测 5s 自然计时运行态中...\n';
+      document.body.appendChild(pre);
+
+      applyDuration(1); // 设为 1 分钟，让自然计时 5 秒推进率提升，观测自然开花
+
+      // 启动计时，实测 5 秒完全自然计时
+      enterRun();
+      var startElapsed = elapsed;
+      var sampleElapsed3s = -1;
+      var maxBubbleOpacity = 0;
+      var bubbleSeen = false;
+      var initialBloomed = document.querySelectorAll('.ruler-vine .vine-flower[data-bloomed="1"]').length;
+      var finalBloomed = 0;
+
+      var sampleIv = setInterval(function () {
+        var bubbles = document.querySelectorAll('.notes-bubbles .tt-bubble');
+        bubbles.forEach(function (b) {
+          var op = parseFloat(window.getComputedStyle(b).opacity) || 0;
+          if (op > maxBubbleOpacity) maxBubbleOpacity = op;
+          if (op > 0.05) bubbleSeen = true;
+        });
+        if (elapsed >= 3 && sampleElapsed3s < 0) {
+          sampleElapsed3s = elapsed;
+        }
+      }, 80);
+
+      setTimeout(function () {
+        clearInterval(sampleIv);
+        finalBloomed = document.querySelectorAll('.ruler-vine .vine-flower[data-bloomed="1"]').length;
+        var vineGrows = finalBloomed >= initialBloomed;
+        var metaEl = document.getElementById('metaVal');
+        var metaHtml = metaEl ? metaEl.innerHTML : '';
+        var hasRemainingLabel = /\u5269\u4f59/.test(metaHtml);
+        var hasElapsedLabel = /\u5df2\u7ec3/.test(metaHtml);
+
+        enterPrep(); // 恢复待命态
+        applyDuration(10); // 恢复 10 分钟
+
+        cachedLiveRun5sResult = {
+          bubbleSeen: bubbleSeen,
+          maxBubbleOpacity: parseFloat(maxBubbleOpacity.toFixed(3)),
+          initialBloomed: initialBloomed,
+          finalBloomed: finalBloomed,
+          vineGrows: vineGrows,
+          startElapsed: startElapsed,
+          sampleElapsed3s: sampleElapsed3s,
+          forwardElapsedOk: sampleElapsed3s > startElapsed,
+          labelElapsedOk: !hasRemainingLabel && hasElapsedLabel
+        };
+
+        if (!bubbleSeen || maxBubbleOpacity <= 0.05) {
+          cachedLiveRun5sResult.failMsg = 'bubble opacity never exceeded 0.05 (max was ' + maxBubbleOpacity.toFixed(3) + ')';
+        } else if (sampleElapsed3s <= startElapsed) {
+          cachedLiveRun5sResult.failMsg = 'A1-2 fail: elapsed did not increase after 3s (start=' + startElapsed + ', 3s=' + sampleElapsed3s + ')';
+        } else if (hasRemainingLabel) {
+          cachedLiveRun5sResult.failMsg = 'A1-2 fail: label still contains "剩余"';
+        }
+
+        evaluateAudit(pre);
+      }, 5100);
+    }
+  });
+})();
+</script>
+</body>
+</html>

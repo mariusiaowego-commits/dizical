@@ -20,6 +20,7 @@
   var oscCount = 0;
   var noiseBuf = null;
   var lastScheduled = null;
+  var masterNode = null;
 
   /* 非重拍行。四拍共用这一行。 */
   var RECIPES = {
@@ -33,6 +34,27 @@
 
   function recipe() {
     return RECIPES[timbre] || RECIPES.wood;
+  }
+
+  /* 共享音色表（shared/beat-timbres.js）。有它就用它，
+     全卡节拍器与竖条节拍器共用同一份音色定义，localStorage 里的选择可互换。 */
+  function sharedDef(name) {
+    var T = global.DIZI_TIMBRES || {};
+    return T[name || timbre] || null;
+  }
+
+  function known(name) {
+    return !!RECIPES[name] || !!sharedDef(name);
+  }
+
+  function master() {
+    if (!ctx) return null;
+    if (!masterNode) {
+      masterNode = ctx.createGain();
+      masterNode.gain.value = 1;
+      masterNode.connect(ctx.destination);
+    }
+    return masterNode;
   }
 
   function ensure() {
@@ -67,6 +89,22 @@
 
   function hit(beat, time) {
     var ac = ctx;
+    var sd = sharedDef(timbre);
+    if (sd && sd.render) {
+      var speak = (sd.peak || 0.42) * (sd.gain || 1);
+      sd.render(ac, master() || ac.destination, { time: time, accent: false, peak: speak });
+      var n = (global.DIZI_TONE_STATS && global.DIZI_TONE_STATS.oscs) || 0;
+      if (n > oscCount) oscCount = n;
+      lastScheduled = {
+        timbre: timbre,
+        freq: sd.freq,
+        freq2: sd.freq2 || sd.freqAccent || sd.freq,
+        peak: speak,
+        beat: beat,
+        accent: false
+      };
+      return lastScheduled;
+    }
     var r = recipe();
     var g = env(ac, r.peak, time, r.attack, r.decay);
     g.connect(ac.destination);
@@ -255,7 +293,7 @@
       if (n >= 40 && n <= 200) bpm = n;
     },
     setTimbre: function (name) {
-      if (RECIPES[name]) timbre = name;
+      if (known(name)) timbre = name;
     },
     setBeatsPerBar: function (n) {
       n = Math.round(Number(n));
@@ -265,7 +303,7 @@
     preview: function (name) {
       ensure();
       var prev = timbre;
-      if (RECIPES[name]) timbre = name;
+      if (known(name)) timbre = name;
       var info = hit(0, ctx.currentTime + 0.03);
       timbre = prev;
       return info;
@@ -274,6 +312,8 @@
     peaks: function () {
       var o = {};
       Object.keys(RECIPES).forEach(function (k) { o[k] = RECIPES[k].peak; });
+      var T = global.DIZI_TIMBRES || {};
+      Object.keys(T).forEach(function (k) { o[k] = (T[k].peak || 0.42) * (T[k].gain || 1); });
       return o;
     },
     armSync: function () { samples = []; recording = true; },
