@@ -7690,7 +7690,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v2 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.9</b> · 卡 v2 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -10938,7 +10938,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.9</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13037,7 +13037,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v1 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.9</b> · 卡 v1 · 2026-10-27</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14034,7 +14034,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.9</b> · 卡 v3 · 2026-10-27</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -14862,7 +14862,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v1 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.9</b> · 卡 v1 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -15860,7 +15860,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.9</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -17212,7 +17212,19 @@ window.__CZ_CSS = [
   '}',
   '@media (max-width: 480px) {',
   '  .pk-ticket-hero-frame { height: 72px !important; max-height: 72px !important; }',
-  '}'
+  '}',
+  '/* ── v3.9（261027）：画布内 fixed 弹层锚到浏览器可视带 ──',
+  '   画布 iframe 的高度 = 票卡带自然高（组合 3 可达 3000+px），而 iframe 内 position:fixed 的包含块',
+  '   是「整篇画布文档」而不是浏览器视口 → 遮罩铺满 3000px、弹窗被 flex 居中到屏幕外，用户只看到一片灰',
+  '   （dad 261027 报：点「换曲目」弹窗没出来，只出灰色蒙版）。宿主把浏览器当前看得见的那一截算成',
+  '   --cz-band-t / --cz-band-h，弹层按它锚定；滚动时宿主实时刷新这两个变量。 ── */',
+  '.pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask {',
+  '  top: var(--cz-band-t, 0px) !important; bottom: auto !important; height: var(--cz-band-h, 100%) !important; }',
+  '.pk-folio-box { height: min(620px, calc(var(--cz-band-h, 100vh) - 40px)) !important; }',
+  '.pk-reader { max-height: calc(var(--cz-band-h, 100vh) - 48px) !important; }',
+  '.popout-panel { top: calc(var(--cz-band-t, 0px) + var(--cz-band-h, 100%) / 2) !important;',
+  '  max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }',
+  '.cz-pop-panel { height: min(560px, calc(var(--cz-band-h, 100vh) - 40px)) !important; }'
 ].join('\n'));
 
   /* ══════════════════════════════════════════════════════════════════
@@ -18894,6 +18906,7 @@ window.__CZ_CSS = [
       s.onerror = function () { cd.documentElement.dataset.czBusErr = '1'; };
       cd.body.appendChild(s);
     }
+    syncCanvasBand();
     return true;
   }
 
@@ -19325,11 +19338,35 @@ window.__CZ_CSS = [
       if (grown > scrollH) { canvasIframe.style.height = applied + 'px'; }
       else { applied = scrollH; scrollH = grown; }
     }
+    syncCanvasBand();
     return {
       box: applied, applied: applied,
       iframeClient: canvasIframe.clientHeight, docScroll: scrollH,
       ticketH: (ticketBox(cd) || {}).h || null
     };
+  }
+
+  /* ── v3.9（261027）：浏览器可视带 → 画布内 fixed 弹层的锚点 ──
+     画布 iframe 高 = 票卡带自然高（组合 3 约 3300px），iframe 内 position:fixed 的包含块是整篇画布文档，
+     弹窗被居中到文档中段 → 落在浏览器视口之外，遮罩却铺满全画布，用户只看到一片灰。
+     这里算出浏览器当前看得见的那一截（画布文档坐标），写进 --cz-band-t / --cz-band-h。 */
+  function canvasBand() {
+    var ir = canvasIframe.getBoundingClientRect();
+    var docH = canvasIframe.offsetHeight || ir.height || 0;
+    var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    var top = Math.max(0, -ir.top);
+    var bot = Math.min(docH, vh - ir.top);
+    if (!(bot > top)) { bot = Math.min(docH, top + Math.max(320, vh - 16)); }
+    if (bot > docH) { bot = docH; }
+    return { top: Math.round(top), height: Math.max(160, Math.round(bot - top)), docH: Math.round(docH), vh: vh };
+  }
+  function syncCanvasBand() {
+    var cd = canvasDoc();
+    if (!cd || !cd.documentElement) { return null; }
+    var b = canvasBand();
+    cd.documentElement.style.setProperty('--cz-band-t', b.top + 'px');
+    cd.documentElement.style.setProperty('--cz-band-h', b.height + 'px');
+    return b;
   }
 
   /* agy v2 ①：卡内视口档同时决定**画布 iframe 自身**的宽度 —— 否则桌面窗口里点「744」时画布文档仍是 1265 宽，
@@ -19708,7 +19745,9 @@ window.__CZ_CSS = [
     var b = e.target.closest('.cz-btn');
     if (b) { setSkin(b.dataset.skin); }
   });
-  window.addEventListener('resize', function () { applyCanvasViewport(); syncCanvasHeight(); syncAll(); syncHint(); });
+  window.addEventListener('resize', function () { applyCanvasViewport(); syncCanvasHeight(); syncAll(); syncHint(); syncCanvasBand(); });
+  /* 画布 iframe 高 = 内容自然高，fixed 弹层靠 --cz-band-* 锚到浏览器可视带 → 滚动时必须实时刷新 */
+  window.addEventListener('scroll', syncCanvasBand, { passive: true });
 
   canvasIframe.addEventListener('load', function () {
     if (!injectCanvas()) { return; }
@@ -19718,6 +19757,7 @@ window.__CZ_CSS = [
     syncAll();
     syncHint();
     bridgeCanvas();
+    syncCanvasBand();
   });
 
   /* ══════════ 自检 ══════════ */

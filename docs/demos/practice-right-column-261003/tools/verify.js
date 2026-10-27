@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * verify.js - dizical demo v38 自动化验证与护栏套件
+ * verify.js - dizical demo v39 自动化验证与护栏套件
  * 运行环境：Node.js + Playwright
  * 覆盖矩阵：3 视口 (1133, 744, 440) × 3 组合 (1, 2, 3) = 9 组合
- * 输出：/tmp/v38-verify.json + 终端表格
+ * 输出：/tmp/v39-verify.json + 终端表格
  */
 
 const fs = require('fs');
@@ -11,7 +11,7 @@ const path = require('path');
 const { chromium } = require('/Users/mt16/.hermes/profiles/quagmire/skills/ljg-skills/skills/ljg-card/node_modules/playwright');
 
 const URL = 'http://127.0.0.1:8771/practice-right-column-261003/canvas-01.html';
-const OUT_JSON = '/tmp/v38-verify.json';
+const OUT_JSON = '/tmp/v39-verify.json';
 
 const VIEWPORTS = [
   { vp: '1133', w: 1280, h: 820 },
@@ -437,17 +437,83 @@ const isStrict = process.argv.includes('--strict');
       pass: after.canvasW === 744 && after.dash > 300 && after.panel > 100 && after.knob > 30 && after.frameH > 300 };
   })();
 
+  // ─── 项 12：画布内 fixed 弹层必须落在浏览器视口内（v3.9 修复项）───
+  /* 画布 iframe 高 = 票卡带自然高（组合 3 约 3300px），iframe 内 position:fixed 的包含块是整篇画布文档，
+     弹窗被居中到屏幕外 → 用户只看到一片灰（dad 261027 报「换曲目弹窗没出来，只出灰色蒙版」）。
+     宿主用 --cz-band-t / --cz-band-h 把弹层锚到浏览器可视带；这里逐组合断言弹层本体在视口内。 */
+  const overlayViewport = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1500);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(600);
+      for (const combo of COMBOS) {
+        await vp.evaluate((c) => window.__cz.setCombo(c), combo);
+        await vp.waitForTimeout(1100);
+        await vp.evaluate(() => window.__cz.setCanvasStage('prep'));
+        await vp.waitForTimeout(500);
+
+        const probe = async (openExpr, closeExpr, sel) => {
+          await vp.evaluate(openExpr);
+          await vp.waitForTimeout(450);
+          const m = await vp.evaluate((s) => {
+            const cd = window.__cz.canvasDoc();
+            const el = cd.querySelector(s);
+            if (!el) return { missing: true };
+            const cs = cd.defaultView.getComputedStyle(el);
+            if (cs.display === 'none') return { hidden: true };
+            const fr = cd.defaultView.frameElement.getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            const t = fr.top + r.top, b = fr.top + r.bottom;
+            return {
+              pageT: +t.toFixed(1), pageB: +b.toFixed(1),
+              visible: t < window.innerHeight && b > 0,
+              fullyVisible: t >= 0 && b <= window.innerHeight,
+              vh: window.innerHeight
+            };
+          }, sel);
+          await vp.evaluate(closeExpr);
+          await vp.waitForTimeout(200);
+          return m;
+        };
+
+        const folio = await probe(
+          () => { const cd = window.__cz.canvasDoc(); cd.defaultView.openFolio && cd.defaultView.openFolio(); },
+          () => { const cd = window.__cz.canvasDoc(); cd.defaultView.closeFolio && cd.defaultView.closeFolio(); },
+          '.pk-folio-box'
+        );
+        const reader = await probe(
+          () => { const cd = window.__cz.canvasDoc(); cd.defaultView.openReader && cd.defaultView.openReader(); },
+          () => { const cd = window.__cz.canvasDoc(); cd.defaultView.closeReader && cd.defaultView.closeReader(); },
+          '.pk-reader'
+        );
+        const popout = await probe(
+          () => { try { window.__cz.openRecordsPop(); } catch (e) {} },
+          () => { try { window.__cz.closeRecordsPop(false); } catch (e) {} },
+          '.popout-panel'
+        );
+        const ok = [folio, reader, popout].every(x => x && x.visible === true);
+        rows.push({ vp: v.vp, combo, folio, reader, popout, pass: ok });
+      }
+      await vp.close();
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
   const fullOutput = {
     summary: summaryMatrix,
     staticChecks,
     details: results,
-    runSwitch
+    runSwitch,
+    overlayViewport
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(fullOutput, null, 2), 'utf-8');
 
   // 终端打印人读表格
   console.log('\n' + '═'.repeat(96));
-  console.log('  dizical demo v38 · S0 自动化测试与基线护栏报告 (9 组合实测)');
+  console.log('  dizical demo v39 · S0 自动化测试与基线护栏报告 (9 组合实测)');
   console.log('═'.repeat(96));
   const pad = (s, n) => String(s).padEnd(n);
   console.log(pad('视口', 6) + pad('组合', 6) + pad('重叠面积', 10) + pad('露出比', 10) + pad('条字重叠', 10) + pad('记录弹窗', 10) + pad('退场空窗', 9) + pad('退场双30', 9) + pad('进场双30', 9) + pad('节点(实/标)', 12) + pad('Feed顺序', 10));
@@ -503,6 +569,7 @@ const isStrict = process.argv.includes('--strict');
     && (sc.btnPanelOverlap === 0));                        // ± 按钮不压黑区
   console.log(` 10. 静态类：三心合一 (R_notch=${sc.notchR} = R_knob ${sc.knobR}+14, R_dot=${sc.dotR}, dy=${sc.dy}px = ${dyRatio === null ? 'n/a' : dyRatio.toFixed(2)}R, ±按钮压黑区=${sc.btnPanelOverlap}px²) : ` + (passConcentric ? '✅ PASS' : '❌ FAIL'));
   console.log(` 11. run 态直切视口 (1133 run → 744：dash=${runSwitch.after.dash}px, knob=${runSwitch.after.knob}px, frame=${runSwitch.after.frameH}px) : ` + (runSwitch.pass ? '✅ PASS' : '❌ FAIL'));
+  console.log(` 12. 画布内 fixed 弹层落在浏览器视口内 (换曲目/老师要求全文/记录明细 × 9 组合)   : ` + (overlayViewport.pass ? '✅ PASS (27/27 可见)' : '❌ FAIL (' + overlayViewport.rows.filter(r => !r.pass).map(r => r.vp + '/C' + r.combo).join(', ') + ')'));
   console.log('═'.repeat(96));
 
   if (isStrict) {
@@ -511,10 +578,11 @@ const isStrict = process.argv.includes('--strict');
       summaryMatrix.every(s => s.feedMatch === 'PASS' || s.feedMatch === 'SKIP') &&
       passDataVp &&
       passConcentric &&
-      runSwitch.pass;
+      runSwitch.pass &&
+      overlayViewport.pass;
     process.exit(allPassed ? 0 : 1);
   } else {
-    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass ? 0 : 1);
+    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass ? 0 : 1);
   }
 })().catch(err => {
   console.error(err);

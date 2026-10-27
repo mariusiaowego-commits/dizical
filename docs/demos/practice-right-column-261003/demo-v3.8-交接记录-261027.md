@@ -68,3 +68,24 @@ git diff --check                                                                
 
 - **待办**：dad 肉眼验收 `http://127.0.0.1:8771/practice-right-column-261003/canvas-01.html`（v3.8）；确认无误后再决定是否开 PR / merge / 打 tag。
 - **红线**：权威源唯一 `cards/card-*.html` + `sync-demo-templates.py`；CSS 禁 `[data-vp]`；画布源 `practice-ticket-v4-260920.html` 零改动；探针与截图统一放 `/private/tmp`。
+
+## 5 · agy 独立前端验收结论（2026-10-27 13:49，只读）
+
+任务 `20261027-134103-s19-v38-verify`（pane `w45:p1`），报告 `/private/tmp/herdr-dispatch/tasks/20261027-134103-s19-v38-verify/result.md`，verdict `ready_for_acceptance`，19 张截图 `/private/tmp/verify-*.png`。
+
+**A. 批注验证 5 项全 PASS**
+
+| 指标 | 实测值 | 判定 |
+|---|---|---|
+| A1 指示灯位置（440 prep/run） | `led=[394.50, 401.50]`，`panel.right=412.00` → 内缩 `10.50px`；`led.left=394.50 ≥ hole.right=384.00` | PASS |
+| A2 卡槽左右对称（3 视口 × 2 态） | `symDiff=0.0px`（左 28.0 / 右 28.0）；`holeR − batR = 0.0px` | PASS |
+| A3 读数靠中（440） | prep `#digits` 中心 `215.70px` vs 面板中心 `220.00px`（差 `-4.30px`）；run `00:00` 与封面净距 `25.09px` | PASS |
+| A4 喇叭孔 vs 按钮（440） | 净距 `38.00px`，重叠 `0.0px²` | PASS |
+| A5 露出比例（run） | 440 `19.8%` / 744 `20.1%` / 1133 `20.0%` | PASS |
+
+另测：`localStorage` 带 `vp=440` 刷新后 `innerScrollDiff=0px`（15px 滚动条根因已除）；动画中卡片下缘 `bleed ≤ -0.23px`（回弹不穿帮）。
+
+**B. 遗留问题（本轮不修，等 dad 拍板）**
+
+- **[P1] 外层演练控制栏窄窗溢出**：`#czPresets`（4 组长文本预设按钮，总宽约 `654px`，`white-space: nowrap`）在浏览器宽度 `541–660px` 区间导致外层出现横向滚动条（`scrollWidth=668px > clientWidth`）。**只影响 demo 调试控制栏，内部画布不溢出**。复现截图 `/private/tmp/verify-overflow-541px.png`。建议修法：`@media (max-width: 668px) { .cz-bar / .cz-seg { flex-wrap: wrap; } }` 或收敛预设文案长度。
+- **[P2] `.panel-foot` 父容器盒跨旋钮（误报）**：1133 下父容器盒覆盖中央旋钮，但实际文字子元素在旋钮两侧（今日 `73.8–129.4px`、BPM `343.0–424.6px`，旋钮 `172.0–300.0px`），视觉零重叠；自动化脚本改探叶子节点即可。
