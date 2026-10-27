@@ -448,6 +448,9 @@
   #practiceStage.stage-prep .pk-subject-info-card.prep-only { display: grid; }
   #practiceStage.stage-prep .run-only { display: none !important; }
   #practiceStage.stage-prep .run-only-block { display: none !important; }
+  /* S22：stage-bar = 只把票夹收成窄条，计时态仍属准备态 → 保留 prep 语义的显隐 */
+  #practiceStage.stage-bar .run-only,
+  #practiceStage.stage-bar .run-only-block { display: none !important; }
 
   #practiceStage.stage-running:not(.cz-ticket-enter) .prep-only { display: none !important; }
   #practiceStage.stage-running:not(.cz-ticket-enter) .prep-only-block { display: none !important; }
@@ -2113,6 +2116,59 @@
     58% { opacity: 1; transform: translateX(-2px) scaleX(1.02); filter: blur(0); }
     100% { opacity: 1; transform: translateX(0) scaleX(1); }
   }
+
+  /* ══════ S22：票夹「已选完 → 收成黑窄条」与「计时中」解耦 ══════
+     窄条形态只是票夹的形态，不是计时态。用独立 .stage-bar 承载几何，
+     绝不借用 .stage-running（否则插卡、prep-only 隐藏、run-only 显示、
+     『进行中』标签全部提前发生，用户还没点开始就看到计时态）。 */
+  #practiceStage.stage-bar .pk-left-col,
+  #practiceStage.stage-bar #pkLeftCol {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    flex: 0 0 50px !important;
+    align-self: flex-start !important;
+    /* 票卡 display:none 后 leftCol 会塌成 0 高，而 .pk-run-rail 是 height:100%
+       → 窄条会被压成 0px（实测 1133 只剩 2px 细边）。高度由 morph 时写入。 */
+    height: var(--cz-bar-h, auto) !important;
+    overflow: visible;
+  }
+  #practiceStage.stage-bar #pkTicketCard,
+  #practiceStage.stage-bar .pk-ticket {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    display: none !important;
+  }
+  #practiceStage.stage-bar .pk-run-rail {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    opacity: 1;
+    animation: none !important;
+    pointer-events: auto !important;
+  }
+  /* 纵向视口（feed）：窄条改为顶部横向 bar */
+  @media (max-width: 1023px) {
+    #practiceStage.stage-bar .pk-left-col,
+    #practiceStage.stage-bar #pkLeftCol {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+      height: 52px !important;
+      min-height: 52px !important;
+      max-height: 52px !important;
+      flex: 0 0 auto !important;
+      overflow: visible !important;
+      margin-bottom: 12px !important;
+    }
+    #practiceStage.stage-bar .pk-run-rail {
+      flex-direction: row !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 52px !important;
+      border-radius: 14px !important;
+    }
+  }
   @keyframes pkRailExit {
     0% { opacity: 1; transform: translateX(0) scaleX(1); }
     40% { opacity: 1; transform: translateX(-2px) scaleX(1.02); }
@@ -2160,13 +2216,15 @@
   }
   .pk-run-rail-remain-val {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13.5px;
+    /* 50px 窄条里竖排 + rotate(180deg) 会把「10:00」倒着读成「00:01」，dad 反复要求可读性优先。
+       「10:00」@11px 等宽 ≈ 33px，横排能完整放进 50px。 */
+    font-size: 11px;
     line-height: 1;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -.03em;
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
+    letter-spacing: -.02em;
+    writing-mode: horizontal-tb;
+    transform: none;
     color: #FFF8F0;
   }
   .pk-run-rail-bpm {
@@ -2225,6 +2283,45 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     padding: 2px 0;
+  }
+  .pk-run-rail-reselect-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 248, 240, 0.18);
+    background: rgba(255, 248, 240, 0.08);
+    color: rgba(255, 248, 240, 0.88);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.12s ease;
+    user-select: none;
+    box-sizing: border-box;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 0.14em;
+    padding: 8px 6px;
+    width: 32px;
+    margin-top: auto;
+    margin-bottom: 14px;
+    line-height: 1.25;
+  }
+  .pk-run-rail-reselect-btn:hover:not(:disabled) {
+    background: rgba(255, 248, 240, 0.18);
+    border-color: rgba(255, 248, 240, 0.35);
+    color: #FFF8F0;
+  }
+  .pk-run-rail-reselect-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  .pk-run-rail-reselect-btn:disabled,
+  .pk-run-rail-reselect-btn[disabled] {
+    opacity: 0.28 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    filter: grayscale(1);
   }
 
   /* ══════ 计时态信用卡：真信用卡比例 1.586，槽内仅露上 1/5 露出条，槽内与读数区交叠严格为 0 ══════ */
@@ -2841,6 +2938,18 @@
       max-height: none !important;
       max-width: 200px !important;
       font-size: 12px !important;
+    }
+    .pk-run-rail-reselect-btn {
+      writing-mode: horizontal-tb !important;
+      letter-spacing: normal !important;
+      width: auto !important;
+      height: 28px !important;
+      padding: 0 10px !important;
+      margin: 0 10px 0 auto !important;
+      font-size: 11px !important;
+      border-radius: 6px !important;
+      flex: 0 0 auto !important;
+      line-height: 26px !important;
     }
     #czTicketStage {
       width: clamp(210px, 50%, 320px);
@@ -4429,6 +4538,7 @@
           <div class="pk-run-rail-content-text" id="pkRailContent">选一个或输入本次练习内容</div>
           <span id="pkRailSession" style="display:none">未选内容</span>
         </div>
+        <button type="button" class="pk-run-rail-reselect-btn" id="pkRailReselectBtn" aria-label="重新选择练习科目与内容" title="重新选择练习科目与内容">重新选择</button>
       </aside>
 
     </aside>
@@ -5331,12 +5441,14 @@ const NOTES = [
   { sym: "♬", cap: "十六分音符" }
 ];
 
-let cur = ITEMS.focus[0];
+let cur = null;
 let bpm = 60;
 let noteIdx = 0;
 let content = "";
 let cat = "all";
 let sessionUI = null;
+let isBarDeformed = false;
+let userReselecting = false;
 
 function showToast(msg) {
   const old = document.querySelector('.pk-toast');
@@ -5352,10 +5464,31 @@ function showToast(msg) {
   }, 2400);
 }
 
+function updateReselectBtnState() {
+  const btn = document.getElementById('pkRailReselectBtn');
+  if (btn) {
+    const isTiming = !!(timerRunning || started);
+    btn.disabled = isTiming;
+    btn.setAttribute('aria-disabled', String(isTiming));
+  }
+}
+
+function checkAutoDeform() {
+  if (cur && content && content.trim().length > 0) {
+    if (!isBarDeformed && !userReselecting) {
+      morphTicketToBar();
+    }
+  }
+}
+
 /* 渲染 2 排 Session 胶囊标签（可视即点，双向同步） */
 function renderSessionPills() {
   const container = document.getElementById('pkSessionTags');
   if (!container) return;
+  if (!cur) {
+    container.innerHTML = '<span class="pk-empty-hint" style="font-size:12px;color:rgba(255,248,240,0.55);padding:10px 4px;display:inline-block;user-select:none;">请先在上方选择练习科目</span>';
+    return;
+  }
   const rawList = window.PracticeSessionSelector ? PracticeSessionSelector.parse(cur.content_options || '') : [];
   const list = rawList.length ? rawList : (window.PracticeSessionSelector ? PracticeSessionSelector.fallback : ['长音练习', '吐音练习', '连吐练习', '换气练习']);
 
@@ -5389,6 +5522,8 @@ function renderSessionPills() {
       syncRunMeta();
       syncStartState();
       updatePillSelection();
+      userReselecting = false;
+      checkAutoDeform();
     });
     container.appendChild(btn);
   });
@@ -5412,7 +5547,7 @@ function renderSessionPills() {
 
 function updatePillSelection() {
   const container = document.getElementById('pkSessionTags');
-  if (!container) return;
+  if (!container || !cur) return;
   const currentTags = Array.from(container.querySelectorAll('[data-tag]')).map(b => b.dataset.tag);
   if (content && !currentTags.includes(content)) {
     renderSessionPills();
@@ -5430,12 +5565,16 @@ window.renderSessionPills = renderSessionPills;
 
 /* 渲染票卡各部 */
 function renderTicket() {
+  if (!cur) {
+    renderEmptyTicket();
+    return;
+  }
   const isFocus = (cur.id === 1034 || cur.id === 1343);
   const isArch = ITEMS.archived.some(x => x.id === cur.id);
 
   // 左上打孔状态更新
   const hole = document.getElementById('pkTicketHoleTopLeft');
-  hole.className = 'pk-hole-punch ' + (isFocus ? 'status-focus' : isArch ? 'status-arch' : 'status-other');
+  if (hole) hole.className = 'pk-hole-punch ' + (isFocus ? 'status-focus' : isArch ? 'status-arch' : 'status-other');
 
   // 顶部 Hero Tag（若存在则更新语义，v23 已移除 DOM）
   const heroTag = document.getElementById('pkTicketHeroTag');
@@ -5443,17 +5582,22 @@ function renderTicket() {
 
   // 艺术家姓名位（科目名放大与长名自适应兜底）
   const nameEl = document.getElementById('pkTicketSubjectName');
-  nameEl.textContent = cur.name;
-  if (cur.name.length > 7) {
-    nameEl.style.fontSize = '22px';
-  } else {
-    nameEl.style.fontSize = '';
+  if (nameEl) {
+    nameEl.textContent = cur.name;
+    if (cur.name.length > 7) {
+      nameEl.style.fontSize = '22px';
+    } else {
+      nameEl.style.fontSize = '';
+    }
   }
-  document.getElementById('pkTicketSubjectSub').textContent = cur.sub || ("档案编号 No." + cur.id);
+  const subEl = document.getElementById('pkTicketSubjectSub');
+  if (subEl) subEl.textContent = cur.sub || ("档案编号 No." + cur.id);
 
   // 并排大数字
-  document.getElementById('pkBpmVal').textContent = bpm;
-  document.getElementById('pkTicketDurVal').textContent = duration;
+  const bpmEl = document.getElementById('pkBpmVal');
+  if (bpmEl) bpmEl.textContent = bpm;
+  const durEl = document.getElementById('pkTicketDurVal');
+  if (durEl) durEl.textContent = duration;
 
   // 票根区：条形码代码
   const bc = document.getElementById('pkTicketBarcodeCode');
@@ -5479,13 +5623,48 @@ function renderTicket() {
   syncStartState();
 }
 
+function renderEmptyTicket() {
+  const hole = document.getElementById('pkTicketHoleTopLeft');
+  if (hole) hole.className = 'pk-hole-punch status-other';
+
+  const heroTag = document.getElementById('pkTicketHeroTag');
+  if (heroTag) heroTag.textContent = "未选科目";
+
+  const nameEl = document.getElementById('pkTicketSubjectName');
+  if (nameEl) {
+    nameEl.textContent = "未选择科目";
+    nameEl.style.fontSize = '';
+  }
+  const subEl = document.getElementById('pkTicketSubjectSub');
+  if (subEl) subEl.textContent = "点击打开票夹选择练习曲目";
+
+  const bpmEl = document.getElementById('pkBpmVal');
+  if (bpmEl) bpmEl.textContent = "—";
+  const durEl = document.getElementById('pkTicketDurVal');
+  if (durEl) durEl.textContent = duration;
+
+  const bc = document.getElementById('pkTicketBarcodeCode');
+  if (bc) bc.textContent = 'DZ-0000-W';
+
+  const catEl = document.getElementById('pkMemoCategory');
+  if (catEl) catEl.textContent = "—";
+  const idEl = document.getElementById('pkMemoIdVal');
+  if (idEl) idEl.textContent = "No.----";
+
+  renderSubjectStats();
+  renderSessionPills();
+  renderReq();
+  syncRunMeta();
+  syncStartState();
+}
+
 let currentDemoMonth = new URLSearchParams(window.location.search).get('month') || '2026-09';
 
 /* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
 function renderSubjectStats() {
-  const stats = ITEM_STATS[cur.id] || {
-    id: cur.id,
-    name: cur.name,
+  const stats = (cur && ITEM_STATS[cur.id]) || {
+    id: cur ? cur.id : 0,
+    name: cur ? cur.name : "未选择科目",
     days: 0,
     sessions: 0,
     minutes: 0,
@@ -5633,7 +5812,7 @@ function renderFolioModal() {
 
   const box = document.getElementById('pkFolioList');
   box.innerHTML = list.map(item => {
-    const isSel = (item.id === cur.id);
+    const isSel = cur && (item.id === cur.id);
     const isFoc = (item.id === 1034 || item.id === 1343);
     return '<div class="pk-folio-item' + (isSel ? ' active' : '') + '" data-id="' + item.id + '">' +
       '<div class="pk-row" style="gap:10px">' +
@@ -5657,7 +5836,7 @@ function renderFolioModal() {
   // 归档列表（完整 37 条真实曲目，支持内部滚动）
   const archBox = document.getElementById('pkFolioArchList');
   archBox.innerHTML = ITEMS.archived.map(item => {
-    const isSel = (item.id === cur.id);
+    const isSel = cur && (item.id === cur.id);
     return '<div class="pk-row pk-between pk-folio-item' + (isSel ? ' active' : '') + '" data-id="' + item.id + '" style="padding:8px 12px;border-radius:10px;cursor:pointer">' +
       '<div class="pk-row" style="gap:8px;min-width:0">' +
         '<div class="pk-hole-punch mini status-arch"></div>' +
@@ -5680,7 +5859,7 @@ function renderFolioModal() {
 
 function selectItem(id, isArchived) {
   const all = ITEMS.focus.concat(ITEMS.other, ITEMS.archived);
-  cur = all.find(i => i.id === id) || cur;
+  cur = all.find(i => i.id === id) || cur || all[0];
   const matchBpm = (cur.metro.match(/=(\d+)/) || [0, '80'])[1];
   bpm = parseInt(matchBpm, 10) || 80;
   content = '';
@@ -5688,7 +5867,9 @@ function selectItem(id, isArchived) {
     sessionUI.setOptions(cur.content_options || '');
     sessionUI.setValue('');
   }
+  userReselecting = false;
   renderTicket();
+  checkAutoDeform();
 }
 
 function openFolio() {
@@ -5703,16 +5884,24 @@ function closeFolio() {
 
 /* 老师要求渲染 */
 function renderReq() {
-  document.getElementById('pkReqItemName').textContent = cur.name;
+  const reqName = cur ? cur.name : '未选择科目';
+  const nameEl = document.getElementById('pkReqItemName');
+  if (nameEl) nameEl.textContent = reqName;
   const listEl = document.getElementById('pkReqList');
-  const items = cur.reqItems || [];
-  listEl.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : '<li>无课后特别要求记录。</li>';
+  const items = cur ? (cur.reqItems || []) : [];
+  if (listEl) {
+    listEl.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
+  }
 
-  document.getElementById('pkReaderItem').textContent = cur.name;
-  document.getElementById('pkReaderTempo').textContent = NOTES[noteIdx].sym + ' = ' + bpm;
+  const readerItem = document.getElementById('pkReaderItem');
+  if (readerItem) readerItem.textContent = reqName;
+  const readerTempo = document.getElementById('pkReaderTempo');
+  if (readerTempo) readerTempo.textContent = NOTES[noteIdx].sym + ' = ' + bpm;
 
   const readerList = document.getElementById('pkReaderList');
-  readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : '<li>无课后特别要求记录。</li>';
+  if (readerList) {
+    readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
+  }
 }
 
 /* 页面配置接口（dad 第 3.1 条：蒙版颜色可配置） */
@@ -5727,16 +5916,20 @@ window.PracticePageConfig = {
 
 /* 元数据与开始按钮同步 */
 function syncRunMeta() {
-  document.getElementById('pkRunItemName').textContent = cur.name;
+  const name = cur ? cur.name : '未选择科目';
+  const runItemName = document.getElementById('pkRunItemName');
+  if (runItemName) runItemName.textContent = name;
   const ins = document.getElementById('pkInsertedName');
-  if (ins) ins.textContent = cur.name;
-  document.getElementById('pkRunSessionTag').textContent = content || '未选内容';
-  document.getElementById('pkRunSpeedVal').textContent = NOTES[noteIdx].sym + ' = ' + bpm;
+  if (ins) ins.textContent = name;
+  const runSessionTag = document.getElementById('pkRunSessionTag');
+  if (runSessionTag) runSessionTag.textContent = content || '待选择本次练习内容';
+  const runSpeedVal = document.getElementById('pkRunSpeedVal');
+  if (runSpeedVal) runSpeedVal.textContent = NOTES[noteIdx].sym + ' = ' + bpm;
 
   const collapsedSession = document.getElementById('pkCollapsedSessionVal');
-  if (collapsedSession) collapsedSession.textContent = content || '未选内容';
+  if (collapsedSession) collapsedSession.textContent = content || '待选择本次练习内容';
   const railSubject = document.getElementById('pkRailSubject');
-  if (railSubject) railSubject.textContent = cur.name || cur.subject || '练习';
+  if (railSubject) railSubject.textContent = cur ? (cur.name || cur.subject || '练习') : '未选科目';
   const railBpm = document.getElementById('pkRailBpm');
   if (railBpm) railBpm.textContent = String(bpm);
   const railContent = document.getElementById('pkRailContent');
@@ -5763,7 +5956,7 @@ function syncDashCover() {
     var dashFrameEl = document.querySelector('.cz-mod[data-mod="A"] > iframe') || document.querySelector('.cz-astack > iframe');
     var dashInner = dashFrameEl ? dashFrameEl.contentDocument : null;
     var dashCoverName = dashInner ? dashInner.getElementById('dashCoverName') : null;
-    if (dashCoverName) dashCoverName.textContent = cur.name || '练习曲目';
+    if (dashCoverName) dashCoverName.textContent = cur ? (cur.name || '练习曲目') : '未选择练习';
   } catch (eDashCover) {}
 }
 
@@ -5797,10 +5990,16 @@ function updateCollapsedProgress() {
 
 function syncStartState() {
   const btn = document.getElementById('pkStartBtn');
-  const ok = !!content && content.trim().length > 0;
+  const hasSubject = !!cur;
+  const hasContent = !!(content && content.trim().length > 0);
+  const ok = hasSubject && hasContent;
   if (btn) btn.disabled = !ok;
   const why = document.getElementById('pkWhy');
-  if (why) why.textContent = ok ? '' : '请选定或输入本次练习内容';
+  if (why) {
+    if (!hasSubject) why.textContent = '请先选择练习科目';
+    else if (!hasContent) why.textContent = '请选定或输入本次练习内容';
+    else why.textContent = '';
+  }
 }
 
 /* 计时走字主循环 */
@@ -5854,13 +6053,13 @@ function syncRunRailCard() {
     const bar = cd.getElementById('pkCardExposedBar');
     if (bar) bar.classList.toggle('is-compact', isCompact);
   }
-  const stats = ITEM_STATS[cur.id] || {};
+  const stats = (cur && ITEM_STATS[cur.id]) || {};
   const set = (id, value) => {
     const el = cd.getElementById(id);
     if (el) el.textContent = value == null || value === '' ? '—' : String(value);
   };
-  set('pkCcgName', cur.name || '练习曲目');
-  set('pkCcgNo', 'No.' + (cur.id || '—'));
+  set('pkCcgName', cur ? (cur.name || '练习曲目') : '未选择科目');
+  set('pkCcgNo', 'No.' + (cur ? (cur.id || '—') : '----'));
   set('pkCcgBpm', bpm + ' BPM');
   set('pkCcgDuration', duration + '分');
   set('pkCcgSession', content || '未选内容');
@@ -5869,15 +6068,15 @@ function syncRunRailCard() {
   set('pkCcgSessions', stats.sessions || 0);
 
   // Overlay popup fields
-  set('czPopupTitle', cur.name || '练习曲目');
-  set('czPopupNo', 'No.' + (cur.id || '—'));
+  set('czPopupTitle', cur ? (cur.name || '练习曲目') : '未选择科目');
+  set('czPopupNo', 'No.' + (cur ? (cur.id || '—') : '----'));
   set('czPopupSession', content || '未选内容');
   set('czPopupBpm', bpm + ' BPM');
   set('czPopupDuration', duration + ' 分钟');
-  set('czPopupCategory', cur.category || ITEM_CATEGORIES[cur.id] || '曲目');
+  set('czPopupCategory', cur ? (cur.category || ITEM_CATEGORIES[cur.id] || '曲目') : '—');
   set('czPopupNote', NOTES[noteIdx] ? NOTES[noteIdx].cap : '四分音符');
 
-  const reqRaw = (cur.reqItems && cur.reqItems.length) ? cur.reqItems.join(' ') : (cur.reqSnippet || '按老师要求完成今天的练习。');
+  const reqRaw = cur ? ((cur.reqItems && cur.reqItems.length) ? cur.reqItems.join(' ') : (cur.reqSnippet || '按老师要求完成今天的练习。')) : '按老师要求完成今天的练习。';
   const req = String(reqRaw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   set('czPopupRequirement', req);
 }
@@ -6041,37 +6240,19 @@ document.addEventListener('DOMContentLoaded', () => { syncRunRailCard(); initRun
 let runTimeline = null;
 let lastPrepHeight = 650;
 
-function enterRun() {
-  if (!content || !content.trim()) {
-    const activePill = document.querySelector('.pk-session-pill.is-active, .pk-session-tag.is-active');
-    const firstPill = document.querySelector('.pk-session-pill, .pk-session-tag');
-    if (activePill && activePill.textContent.trim()) {
-      content = activePill.textContent.trim();
-    } else if (firstPill && firstPill.textContent.trim()) {
-      firstPill.click();
-      content = firstPill.textContent.trim();
-    } else if (cur && cur.name) {
-      content = cur.name;
-    } else {
-      content = '筒音长音';
-    }
+function morphTicketToBar(callback, instant) {
+  if (isBarDeformed) {
+    if (typeof callback === 'function') callback();
+    return;
   }
-  started = true;
-  timerRunning = true;
-  paused = false;
-  elapsed = 0;
-
-  // 1. 文案先赋、再行动效（GSAP 只写 CSS，不写 DOM 文本）
-  syncRunMeta();
+  isBarDeformed = true;
+  userReselecting = false;
+  updateReselectBtnState();
 
   const stage = document.getElementById('practiceStage');
   const leftCol = document.getElementById('pkLeftCol');
   const ticketCard = document.getElementById('pkTicketCard');
-  const lockOverlay = document.getElementById('pkTicketLockOverlay');
-  const insertedHead = document.getElementById('pkInsertedHead');
-  const runTelemetry = document.getElementById('pkRunTelemetry');
 
-  // 进入计时态：主动关闭已打开的票夹弹层并禁用换科目
   closeFolio();
   const heroFrame = document.getElementById('pkTicketHeroFrame');
   if (heroFrame) {
@@ -6093,10 +6274,11 @@ function enterRun() {
     folioBtn.style.pointerEvents = 'none';
   }
 
-  // 保证高度完全一致：测定准备态卡片高度，收拢态逐像素对齐（禁止变矮，禁止高度漂移）
   const prepHeight = (ticketCard && ticketCard.offsetHeight > 100) ? ticketCard.offsetHeight : (lastPrepHeight || (window.innerWidth < 600 ? 666 : (window.innerWidth < 1024 ? 743 : 650)));
   lastPrepHeight = prepHeight;
-  stage.dataset.czPrepHeight = String(prepHeight);
+  if (stage) stage.dataset.czPrepHeight = String(prepHeight);
+  /* 窄条的最终高度 = 原来票夹高度（竖向长条）；票卡 display:none 后 leftCol 无内容会塌成 0 */
+  if (stage) stage.style.setProperty('--cz-bar-h', prepHeight + 'px');
   if (ticketCard) {
     ticketCard.style.height = prepHeight + 'px';
     ticketCard.style.minHeight = '0px';
@@ -6105,99 +6287,73 @@ function enterRun() {
     leftCol.style.minHeight = '0px';
   }
 
-  document.getElementById('pkBrand').textContent = '进行中';
-  document.getElementById('pkBrand').classList.add('running');
-  document.getElementById('pkMid').innerHTML = '<b>' + cur.name + '</b>';
-  document.getElementById('pkStateToggle').textContent = '切回准备态';
-
-  const pauseBtn = document.getElementById('pkPauseBtn');
-  pauseBtn.textContent = '暂停';
-  pauseBtn.classList.remove('paused-on');
-
   if (runTimeline) {
     runTimeline.kill();
     runTimeline = null;
   }
 
   const isStacked = window.innerWidth < 1024;
+  const isDesktop = window.innerWidth >= 1024;
   const targetColWidth = isStacked ? (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 360) : 50;
   const startColWidth = leftCol ? leftCol.offsetWidth : (isDesktop ? 380 : 360);
 
-  // 兜底 1: 无 GSAP 环境直接切终态（0 报错，终态高度仍不变）
-  if (typeof gsap === 'undefined') {
-    stage.classList.remove('stage-prep', 'cz-ticket-exit', 'cz-ticket-enter');
-    stage.classList.add('stage-running', 'cz-ticket-live');
-    lockOverlay.style.display = 'flex';
-    lockOverlay.style.opacity = '1';
-    leftCol.style.width = isStacked ? '100%' : targetColWidth + 'px';
+  /* S22：这一步只做「票夹形态 → 黑窄条」，绝不进入计时态。
+     stage-running 会把插卡、prep-only 隐藏、run-only 显示、『进行中』标签一起触发，
+     用户还没点开始就看到计时态（dad 261027 实测踩到）。几何由独立的 .stage-bar 承载。 */
+  if (instant || typeof gsap === 'undefined') {
+    if (stage) {
+      stage.classList.add('stage-bar');
+    }
+    if (leftCol) leftCol.style.width = isStacked ? '100%' : targetColWidth + 'px';
     if (ticketCard) {
       ticketCard.style.height = prepHeight + 'px';
       ticketCard.style.minHeight = prepHeight + 'px';
     }
-    if (typeof ttOnStart === 'function') ttOnStart();
-    pkTick();
+    updateReselectBtnState();
+    if (typeof callback === 'function') callback();
     return;
   }
 
-  // 兜底 2: prefers-reduced-motion 分支（仅 ≤100ms 淡入淡出，不做位移收窄，终态高度仍不变）
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReduced) {
-    stage.classList.remove('stage-prep', 'cz-ticket-exit', 'cz-ticket-enter');
-    stage.classList.add('stage-running', 'cz-ticket-live');
-    leftCol.style.width = isStacked ? '100%' : targetColWidth + 'px';
+    if (stage) {
+      stage.classList.add('stage-bar');
+    }
+    if (leftCol) leftCol.style.width = isStacked ? '100%' : targetColWidth + 'px';
     if (ticketCard) {
       ticketCard.style.height = prepHeight + 'px';
       ticketCard.style.minHeight = prepHeight + 'px';
     }
-    lockOverlay.style.display = 'flex';
-    gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.1, ease: 'linear' });
-    if (typeof ttOnStart === 'function') ttOnStart();
-    pkTick();
+    updateReselectBtnState();
+    if (typeof callback === 'function') callback();
     return;
   }
 
-  // GSAP 完整动画 Timeline（进入计时态：准备态票夹收拢与黑条淡入连续同步发生）
-  stage.classList.remove('stage-prep', 'cz-ticket-exit', 'cz-ticket-live');
-  stage.classList.add('stage-running', 'cz-ticket-enter');
+  if (stage) {
+    stage.classList.add('stage-bar');
+  }
 
-  lockOverlay.style.display = 'flex';
-  gsap.set(lockOverlay, { opacity: 0 });
-
-  const prepItems = ticketCard.querySelectorAll('.prep-only, .prep-only-block');
-  const runItems = ticketCard.querySelectorAll('.run-only, .run-only-block');
+  const prepItems = ticketCard ? ticketCard.querySelectorAll('.prep-only, .prep-only-block') : [];
   const pkRunRail = document.getElementById('pkRunRail') || (leftCol ? leftCol.querySelector('.pk-run-rail') : null);
 
   runTimeline = gsap.timeline({
     overwrite: 'auto',
     onComplete: () => {
-      stage.classList.remove('cz-ticket-enter');
-      stage.classList.add('cz-ticket-live');
-      gsap.set([leftCol, ticketCard, lockOverlay, insertedHead, runTelemetry, prepItems, runItems].filter(Boolean), { clearProps: 'all' });
+      gsap.set([leftCol, ticketCard, prepItems].filter(Boolean), { clearProps: 'all' });
       if (pkRunRail) { pkRunRail.style.opacity = '1'; }
-      gsap.set(lockOverlay, { opacity: 1 });
-      if (ticketCard) {
-        if (!isStacked) {
-          ticketCard.style.height = prepHeight + 'px';
-          ticketCard.style.minHeight = prepHeight + 'px';
-        }
+      if (ticketCard && !isStacked) {
+        ticketCard.style.height = prepHeight + 'px';
+        ticketCard.style.minHeight = prepHeight + 'px';
       }
-      try {
-        if (typeof syncSlotMode === 'function') syncSlotMode();
-      } catch (e) {}
+      updateReselectBtnState();
+      if (typeof callback === 'function') callback();
     }
   });
 
-  // (1) 展开态专属元素迅速淡出让位 (0.00s - 0.14s, power2.in)
   if (prepItems.length) {
-    runTimeline.to(prepItems, {
-      opacity: 0,
-      y: -4,
-      duration: 0.14,
-      ease: 'power2.in'
-    }, 0);
+    runTimeline.to(prepItems, { opacity: 0, y: -4, duration: 0.14, ease: 'power2.in' }, 0);
   }
 
-  // (2) 票卡与黑条连续对称变形 (0.00s - 0.28s 完成票夹收缩)
   if (!isStacked) {
     runTimeline.fromTo(leftCol,
       { width: startColWidth },
@@ -6220,7 +6376,6 @@ function enterRun() {
       );
     }
   } else {
-    // 纵向视口：票卡高度从 prepHeight 连续收窄至 0，左栏收拢为 52px (0.00s - 0.28s)
     if (ticketCard) {
       ticketCard.style.display = 'flex';
       ticketCard.style.overflow = 'hidden';
@@ -6230,12 +6385,14 @@ function enterRun() {
         0
       );
     }
-    leftCol.style.overflow = 'hidden';
-    runTimeline.fromTo(leftCol,
-      { height: prepHeight, minHeight: 0 },
-      { height: 52, minHeight: 0, duration: 0.28, ease: 'power3.inOut' },
-      0
-    );
+    if (leftCol) {
+      leftCol.style.overflow = 'hidden';
+      runTimeline.fromTo(leftCol,
+        { height: prepHeight, minHeight: 0 },
+        { height: 52, minHeight: 0, duration: 0.28, ease: 'power3.inOut' },
+        0
+      );
+    }
     if (pkRunRail) {
       runTimeline.fromTo(pkRunRail,
         { opacity: 0 },
@@ -6244,52 +6401,15 @@ function enterRun() {
       );
     }
   }
-
-  // (3) 蒙版锁定层淡入 (0.00s - 0.20s, power2.out)
-  runTimeline.to(lockOverlay, {
-    opacity: 1,
-    duration: 0.20,
-    ease: 'power2.out'
-  }, 0);
-
-  // (4) 打卡机卡头滑入插槽 (0.16s - 0.38s, back.out)
-  runTimeline.fromTo(insertedHead,
-    { y: -24, opacity: 0, scale: 0.96 },
-    { y: 0, opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(1.4)' },
-    0.16
-  );
-
-  // (5) 收拢态元素淡入就位 (0.22s - 0.42s, power2.out)
-  runTimeline.fromTo(runItems,
-    { opacity: 0, y: 6 },
-    { opacity: 1, y: 0, duration: 0.20, ease: 'power2.out' },
-    0.22
-  );
-
-  // (7) 仪表核心参数总线分项交错显现 (0.20s - 0.40s, stagger 0.035s)
-  const teleItems = runTelemetry ? runTelemetry.querySelectorAll('.pk-tele-block') : [];
-  if (teleItems.length) {
-    runTimeline.fromTo(teleItems,
-      { y: 10, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.20, stagger: 0.035, ease: 'power2.out' },
-      0.20
-    );
-  }
-
-  if (typeof ttOnStart === 'function') ttOnStart();
-  pkTick();
 }
 
-function exitRun() {
-  started = false;
-  timerRunning = false;
-  paused = false;
-  clearInterval(tickIv);
-  tickIv = null;
-
+function expandBarToFolio(callback, instant) {
+  if (!isBarDeformed) {
+    if (typeof callback === 'function') callback();
+    return;
+  }
+  isBarDeformed = false;
   closeCardOverlay();
-
-  if (typeof ttOnExit === 'function') ttOnExit();
 
   const stage = document.getElementById('practiceStage');
   const leftCol = document.getElementById('pkLeftCol');
@@ -6298,15 +6418,6 @@ function exitRun() {
   const insertedHead = document.getElementById('pkInsertedHead');
   const runTelemetry = document.getElementById('pkRunTelemetry');
 
-  document.getElementById('pkBrand').textContent = '练习准备';
-  document.getElementById('pkBrand').classList.remove('running');
-  document.getElementById('pkMid').textContent = '女儿竹笛早课';
-  document.getElementById('pkStateToggle').textContent = '切到练习态';
-
-  elapsed = 0;
-  if (typeof ttRenderDigits === 'function') ttRenderDigits(duration * 60, true);
-  if (typeof paintRulerSelect === 'function') paintRulerSelect(duration);
-
   if (runTimeline) {
     runTimeline.kill();
     runTimeline = null;
@@ -6314,19 +6425,22 @@ function exitRun() {
 
   const isStacked = window.innerWidth < 1024;
   const isWide = window.innerWidth >= 1200;
-  const isMed = window.innerWidth >= 1024 && window.innerWidth < 1200;
   const targetColWidth = isStacked ? (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 540) : (isWide ? 380 : 360);
-  const startColWidth = isStacked ? (leftCol ? leftCol.offsetWidth : targetColWidth) : (leftCol ? leftCol.offsetWidth : 50);
-
   const prepHeight = (ticketCard && ticketCard.offsetHeight > 100) ? ticketCard.offsetHeight : (lastPrepHeight || 650);
 
-  const prepItems = ticketCard.querySelectorAll('.prep-only, .prep-only-block');
-  const runItems = ticketCard.querySelectorAll('.run-only, .run-only-block');
+  const prepItems = ticketCard ? ticketCard.querySelectorAll('.prep-only, .prep-only-block') : [];
+  const runItems = ticketCard ? ticketCard.querySelectorAll('.run-only, .run-only-block') : [];
 
-  // 彻底复位的清理函数（0 残留保证：清除 GSAP 注入的所有 inline style，高度复位）
   const resetToPrepClean = () => {
-    stage.classList.remove('stage-running', 'cz-ticket-live', 'cz-ticket-exit');
-    stage.classList.add('stage-prep');
+    if (stage) {
+      /* S22：只撤票夹窄条形态；计时态（stage-running）由 exitRun 自己负责，这里不越权。 */
+      stage.classList.remove('stage-bar');
+      stage.style.removeProperty('--cz-bar-h');
+      if (!started && !timerRunning) {
+        stage.classList.remove('cz-ticket-live', 'cz-ticket-exit', 'cz-ticket-enter');
+        stage.classList.add('stage-prep');
+      }
+    }
     const heroFrame = document.getElementById('pkTicketHeroFrame');
     if (heroFrame) {
       heroFrame.removeAttribute('aria-disabled');
@@ -6374,33 +6488,31 @@ function exitRun() {
       lockOverlay.style.opacity = '0';
     }
     updateCollapsedProgress();
+    updateReselectBtnState();
+    try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
+    if (typeof callback === 'function') callback();
   };
 
-  // 兜底 1: 无 GSAP 环境直接复位
-  if (typeof gsap === 'undefined') {
-    stage.classList.remove('cz-ticket-live');
-    stage.classList.add('cz-ticket-exit');
-    window.setTimeout(resetToPrepClean, 430);
+  if (instant || typeof gsap === 'undefined') {
+    if (stage) {
+      stage.classList.remove('stage-bar');
+    }
+    resetToPrepClean();
     return;
   }
 
-  // 兜底 2: prefers-reduced-motion 分支
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReduced) {
-    stage.classList.remove('cz-ticket-live');
-    stage.classList.add('cz-ticket-exit');
-    gsap.to(lockOverlay, {
-      opacity: 0,
-      duration: 0.1,
-      ease: 'linear',
-      onComplete: resetToPrepClean
-    });
+    if (stage) {
+      stage.classList.remove('stage-bar');
+    }
+    resetToPrepClean();
     return;
   }
 
-  // GSAP 展开反向动画 Timeline (总时长 0.40s，对称反向连续编排，禁止黑条提前消失)
-  stage.classList.remove('stage-running', 'cz-ticket-live');
-  stage.classList.add('cz-ticket-exit');
+  if (stage) {
+    stage.classList.remove('stage-bar');
+  }
   runTimeline = gsap.timeline({
     overwrite: 'auto',
     onComplete: resetToPrepClean
@@ -6408,34 +6520,17 @@ function exitRun() {
 
   const pkRunRail = document.getElementById('pkRunRail') || (leftCol ? leftCol.querySelector('.pk-run-rail') : null);
 
-  // (1) 收拢态元素迅速退场 (0.00s - 0.14s, power2.in)
   if (runItems.length) {
-    runTimeline.to(runItems, {
-      opacity: 0,
-      y: 6,
-      duration: 0.14,
-      ease: 'power2.in'
-    }, 0);
+    runTimeline.to(runItems, { opacity: 0, y: 6, duration: 0.14, ease: 'power2.in' }, 0);
+  }
+  if (insertedHead) {
+    runTimeline.to(insertedHead, { y: -20, opacity: 0, duration: 0.14, ease: 'power2.in' }, 0);
+  }
+  if (lockOverlay) {
+    runTimeline.to(lockOverlay, { opacity: 0, duration: 0.24, ease: 'power2.inOut' }, 0);
   }
 
-  // (2) 卡头迅速抽回插槽 (0.00s - 0.14s, power2.in)
-  runTimeline.to(insertedHead, {
-    y: -20,
-    opacity: 0,
-    duration: 0.14,
-    ease: 'power2.in'
-  }, 0);
-
-  // (3) 蒙版锁定层淡出 (0.00s - 0.24s, power2.inOut)
-  runTimeline.to(lockOverlay, {
-    opacity: 0,
-    duration: 0.24,
-    ease: 'power2.inOut'
-  }, 0);
-
-  // (4) 票卡宽度/高度展开回准备态尺寸 - 连续镜像衔接 (0.18s 启动，与卡槽 0~0.20s 退出重叠 20ms)
   if (!isStacked) {
-    // 1133 横排视口：左栏 50px -> 360px，在 0.18s 卡槽插卡退出尾声无缝启动形变
     runTimeline.fromTo(leftCol,
       { width: 50 },
       { width: targetColWidth, duration: 0.28, ease: 'power3.inOut' },
@@ -6465,7 +6560,6 @@ function exitRun() {
       );
     }
   } else {
-    // 744、440 纵向视口：顶部 52px 横条 -> 准备态票夹高度连续展开 (0.18s 启动)
     const targetColHeight = lastPrepHeight || (window.innerWidth < 600 ? 666 : (window.innerWidth < 1024 ? 743 : 650));
     if (ticketCard) {
       ticketCard.style.display = 'flex';
@@ -6483,11 +6577,13 @@ function exitRun() {
         0.23
       );
     }
-    runTimeline.fromTo(leftCol,
-      { height: 52, minHeight: 0 },
-      { height: targetColHeight, minHeight: 0, duration: 0.28, ease: 'power3.inOut' },
-      0.18
-    );
+    if (leftCol) {
+      runTimeline.fromTo(leftCol,
+        { height: 52, minHeight: 0 },
+        { height: targetColHeight, minHeight: 0, duration: 0.28, ease: 'power3.inOut' },
+        0.18
+      );
+    }
     if (pkRunRail) {
       runTimeline.fromTo(pkRunRail,
         { opacity: 1 },
@@ -6497,7 +6593,6 @@ function exitRun() {
     }
   }
 
-  // (5) 展开态专属元素连续淡入就位 (0.16s - 0.40s, power2.out)
   if (prepItems.length) {
     runTimeline.fromTo(prepItems,
       { opacity: 0, y: -4 },
@@ -6505,6 +6600,112 @@ function exitRun() {
       0.16
     );
   }
+}
+
+function enterRun() {
+  if (!cur) {
+    if (typeof selectItem === 'function') selectItem(1034);
+    else cur = ITEMS.focus[0];
+  }
+  if (!content || !content.trim()) {
+    const activePill = document.querySelector('.pk-session-pill.is-active, .pk-session-tag.is-active');
+    const firstPill = document.querySelector('.pk-session-pill, .pk-session-tag');
+    if (activePill && activePill.textContent.trim()) {
+      content = activePill.textContent.trim();
+    } else if (firstPill && firstPill.textContent.trim()) {
+      firstPill.click();
+      content = firstPill.textContent.trim();
+    } else if (cur && cur.name) {
+      content = cur.name;
+    } else {
+      content = '筒音长音';
+    }
+  }
+  started = true;
+  timerRunning = true;
+  paused = false;
+  elapsed = 0;
+
+  syncRunMeta();
+  updateReselectBtnState();
+
+  const brand = document.getElementById('pkBrand');
+  if (brand) { brand.textContent = '进行中'; brand.classList.add('running'); }
+  const mid = document.getElementById('pkMid');
+  if (mid) mid.innerHTML = '<b>' + (cur ? cur.name : '') + '</b>';
+  const toggle = document.getElementById('pkStateToggle');
+  if (toggle) toggle.textContent = '切回准备态';
+
+  const pauseBtn = document.getElementById('pkPauseBtn');
+  if (pauseBtn) { pauseBtn.textContent = '暂停'; pauseBtn.classList.remove('paused-on'); }
+
+  /* S22：票夹已经收成窄条（用户选完两栏就变形过了）→ 只需要把计时态补齐，不重播变形。 */
+  if (isBarDeformed) {
+    const stage = document.getElementById('practiceStage');
+    if (stage) {
+      stage.classList.remove('stage-prep', 'cz-ticket-exit', 'cz-ticket-enter');
+      stage.classList.add('stage-running', 'cz-ticket-live');
+    }
+    const lockOverlay = document.getElementById('pkTicketLockOverlay');
+    if (lockOverlay) { lockOverlay.style.display = 'flex'; lockOverlay.style.opacity = '1'; }
+    updateReselectBtnState();
+    try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
+    if (typeof ttOnStart === 'function') ttOnStart();
+    pkTick();
+    return;
+  }
+
+  /* 未变形（理论上不该发生：选完两栏就变形了）→ 先变形再补计时态。 */
+  morphTicketToBar(() => {
+    const stage = document.getElementById('practiceStage');
+    if (stage) {
+      stage.classList.remove('stage-prep', 'cz-ticket-exit', 'cz-ticket-enter');
+      stage.classList.add('stage-running', 'cz-ticket-live');
+    }
+    const lockOverlay = document.getElementById('pkTicketLockOverlay');
+    if (lockOverlay) { lockOverlay.style.display = 'flex'; lockOverlay.style.opacity = '1'; }
+    updateReselectBtnState();
+    try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
+    if (typeof ttOnStart === 'function') ttOnStart();
+    pkTick();
+  });
+}
+
+function exitRun() {
+  started = false;
+  timerRunning = false;
+  paused = false;
+  clearInterval(tickIv);
+  tickIv = null;
+
+  closeCardOverlay();
+
+  if (typeof ttOnExit === 'function') ttOnExit();
+
+  const brand = document.getElementById('pkBrand');
+  if (brand) { brand.textContent = '练习准备'; brand.classList.remove('running'); }
+  const mid = document.getElementById('pkMid');
+  if (mid) mid.textContent = '女儿竹笛早课';
+  const toggle = document.getElementById('pkStateToggle');
+  if (toggle) toggle.textContent = '切到练习态';
+
+  elapsed = 0;
+  if (typeof ttRenderDigits === 'function') ttRenderDigits(duration * 60, true);
+  if (typeof paintRulerSelect === 'function') paintRulerSelect(duration);
+
+  /* S22：计时结束 → 回到「窄条准备态」（票夹仍是 bar，选择保留）。
+     只有点「重新选择」才展开成完整票夹。 */
+  userReselecting = false;
+  const stageEl = document.getElementById('practiceStage');
+  const lockEl = document.getElementById('pkTicketLockOverlay');
+  if (stageEl) {
+    stageEl.classList.remove('stage-running', 'cz-ticket-live', 'cz-ticket-exit', 'cz-ticket-enter');
+    stageEl.classList.add('stage-prep');
+    if (isBarDeformed) stageEl.classList.add('stage-bar');
+  }
+  if (lockEl) { lockEl.style.display = 'none'; lockEl.style.opacity = '0'; }
+  updateReselectBtnState();
+  try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
 }
 
 
@@ -6561,18 +6762,33 @@ function closeRecordsDrawer() {
   const sessionHost = document.getElementById('pkSessionSlot');
   if (sessionHost && window.PracticeSessionSelector) {
     sessionUI = PracticeSessionSelector.mount(sessionHost, {
-      options: PracticeSessionSelector.parse(cur.content_options || ''),
+      options: PracticeSessionSelector.parse(cur ? (cur.content_options || '') : ''),
       value: content,
       onChange: function(val, meta) {
         content = val;
         syncRunMeta();
         syncStartState();
         updatePillSelection();
+        if (content && content.trim()) {
+          userReselecting = false;
+          checkAutoDeform();
+        }
       }
     });
   }
 
   renderTicket();
+  updateReselectBtnState();
+
+  const railReselectBtn = document.getElementById('pkRailReselectBtn');
+  if (railReselectBtn) {
+    railReselectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (timerRunning || started) return;
+      userReselecting = true;
+      expandBarToFolio();
+    });
+  }
 
   // 换科目入口：票夹按钮与 hero 块
   document.getElementById('pkFolioBtn').addEventListener('click', () => {
@@ -6743,6 +6959,9 @@ function closeRecordsDrawer() {
       origSetDuration(v, skip);
       const durEl = document.getElementById('pkTicketDurVal');
       if (durEl) durEl.textContent = duration;
+      /* S22：窄条 bar 在准备态就常驻显示「剩余 mm:ss」，改时长必须同步，
+         否则出现「票面 18 / 窄条 10:00」两个数字（dad 261027 第 3 条）。 */
+      if (typeof updateCollapsedProgress === 'function') updateCollapsedProgress();
     };
   }
 
@@ -6752,6 +6971,26 @@ function closeRecordsDrawer() {
   } catch (err) {
     console.warn('[timer] 视觉层初始化提示:', err);
   }
+
+  function clearTicketSelection() {
+    cur = null;
+    content = "";
+    userReselecting = false;
+    if (sessionUI) {
+      sessionUI.setOptions('');
+      sessionUI.setValue('');
+    }
+    if (isBarDeformed) {
+      expandBarToFolio(null, true /* instant */);
+    }
+    renderTicket();
+    updateReselectBtnState();
+  }
+  window.clearTicketSelection = clearTicketSelection;
+  window.isTimingRunning = function () { return timerRunning; };
+  window.isBarDeformed = function () { return isBarDeformed; };
+  window.morphTicketToBar = morphTicketToBar;
+  window.expandBarToFolio = expandBarToFolio;
 })();
 </script>
 
@@ -7695,7 +7934,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v2 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v2 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -8589,7 +8828,7 @@ function closeRecordsDrawer() {
   }
 
   // 5. 挂载与联动 (P0: 修正单位为分钟，避免 *60 导致一键跳30)
-  function applyDuration(nextMin) {
+  function applyDuration(nextMin, fromInput) {
     nextMin = Math.max(1, Math.min(30, Math.round(nextMin)));
     duration = nextMin;
     paintKnobTimer();
@@ -8603,6 +8842,31 @@ function closeRecordsDrawer() {
     }
     var metaVal = document.getElementById('metaVal');
     if (metaVal) renderMetaDigits(nextMin);
+
+    var input = document.getElementById('rulerInput');
+    if (input) {
+      input.value = String(nextMin);
+      if (!fromInput) {
+        try {
+          input.dispatchEvent(new CustomEvent('input', { bubbles: true, detail: { fromApply: true } }));
+        } catch (e) {
+          try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+        }
+      }
+    }
+  }
+
+  window.applyDuration = applyDuration;
+
+  var rulerInputEl = document.getElementById('rulerInput');
+  if (rulerInputEl) {
+    rulerInputEl.addEventListener('input', function (e) {
+      if (e && e.detail && e.detail.fromApply) return;
+      var v = parseInt(rulerInputEl.value, 10);
+      if (!isNaN(v) && v !== duration) {
+        applyDuration(v, true /* fromInput */);
+      }
+    });
   }
 
   if (window.RulerProduction) {
@@ -8615,16 +8879,18 @@ function closeRecordsDrawer() {
   // 步进按钮与长按支持
   function bindLongPress(el, fn) {
     if (!el) return;
-    var timer = null, interval = null;
+    var timer = null, interval = null, pressed = false;
     var start = function (e) {
       if (e.button && e.button !== 0) return;
       e.preventDefault();
+      pressed = true;
       fn();
       timer = setTimeout(function () {
         interval = setInterval(fn, 120);
       }, 360);
     };
     var stop = function () {
+      pressed = false;
       clearTimeout(timer);
       clearInterval(interval);
     };
@@ -8632,6 +8898,9 @@ function closeRecordsDrawer() {
     el.addEventListener('pointerup', stop);
     el.addEventListener('pointerleave', stop);
     el.addEventListener('pointercancel', stop);
+    el.addEventListener('click', function (e) {
+      if (!pressed && e.detail === 0) fn();
+    });
   }
 
   var btnMinus = document.getElementById('silverMinus');
@@ -10943,7 +11212,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13042,7 +13311,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v1 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v1 · 2026-10-27</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14039,7 +14308,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v3 · 2026-10-27</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -14867,7 +15136,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v1 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v1 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -15865,7 +16134,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -16993,7 +17262,8 @@ function closeRecordsDrawer() {
     'body { padding-top: 28px !important; }',
     '#practiceStage { height: auto !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; }',
     '.pk-stage-wrap { align-items: flex-start !important; height: auto !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; overflow: visible !important; }',
-    '#practiceStage:not(.stage-running):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol { align-self: flex-start !important; height: auto !important; flex: 0 0 auto !important; }',
+    /* stage-bar 必须排除：窄条高度由 --cz-bar-h 写入，这里 height:auto 会把它压成 0 */
+    '#practiceStage:not(.stage-running):not(.stage-bar):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol { align-self: flex-start !important; height: auto !important; flex: 0 0 auto !important; }',
     '.pk-main-col { align-self: flex-start !important; height: auto !important; flex: 1 1 0% !important; min-width: 0 !important; }',
     '#practiceStage:not(.stage-running):not(.cz-ticket-exit):not(.cz-ticket-enter) .pk-ticket, #practiceStage:not(.stage-running):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkTicketCard { flex: 0 0 auto !important; height: auto !important; width: 100% !important; align-self: stretch !important; }',
     '/* ── 卡槽占位（261012c 第 1 条：票卡滑入槽那套动画全部删除；形态等 agy spec-agy-slot-261012） ── */',
@@ -17194,8 +17464,10 @@ window.__CZ_CSS = [
   '@media (max-width: 1023px) {',
   '  html, body, .pk-stage-wrap { min-height: 0 !important; height: auto !important; }',
   '  .pk-stage-wrap { flex-direction: column !important; align-items: stretch !important; width: 100% !important; max-width: 100% !important; gap: 12px !important; }',
-  '  #practiceStage:not(.stage-running):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol, .pk-main-col { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; height: auto !important; align-self: stretch !important; }',
+  '  #practiceStage:not(.stage-running):not(.stage-bar):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol, .pk-main-col { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; height: auto !important; align-self: stretch !important; }',
   '  #practiceStage.cz-ticket-exit #pkLeftCol, #practiceStage.cz-ticket-enter #pkLeftCol { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: hidden !important; }',
+  /* S22：票夹窄条形态（未计时）在纵向视口也必须压成 52px 横条 */
+  '  #practiceStage.stage-bar #pkLeftCol { width: 100% !important; max-width: 100% !important; height: 52px !important; min-height: 52px !important; max-height: 52px !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: visible !important; }',
   '  .cz-mod-col { display: flex !important; flex-direction: column !important; gap: 12px !important; width: 100% !important; }',
   '  .cz-combo, .cz-astack, .cz-comp, .cz-brow { display: contents !important; }',
   '  .cz-mod { width: 100% !important; max-width: 100% !important; }',
@@ -18663,6 +18935,9 @@ window.__CZ_CSS = [
       var input = d.getElementById('rulerInput');
       if (!input) { stats.degraded++; return { ok: false, why: '卡内无 rulerInput' }; }
       input.value = String(target);
+      if (d.defaultView && typeof d.defaultView.applyDuration === 'function') {
+        try { d.defaultView.applyDuration(target, true); } catch (e) {}
+      }
       try { input.dispatchEvent(new d.defaultView.Event('input', { bubbles: true })); } catch (e) {}
       if (d.defaultView && typeof d.defaultView.renderMetaDigits === 'function') d.defaultView.renderMetaDigits(String(target));
       /* 数字只走空心 SVG。不要向 #readoutDigits 写纯文本。 */
@@ -18678,6 +18953,7 @@ window.__CZ_CSS = [
       }
       if (source === 'right_dash') {
         var lv = leftDur();
+        if (lv === target) { return rec({ op: 'duration', dir: 'R2L', from: lv, to: target, steps: 0, readBack: lv }); }
         var st = poke(id('pkTicketDurUp'), id('pkTicketDurDown'), lv, target, 60);
         stats.applied++;
         return rec({ op: 'duration', dir: 'R2L', from: lv, to: target, steps: st, readBack: leftDur() });
@@ -18806,7 +19082,14 @@ window.__CZ_CSS = [
       if (d && d.documentElement.dataset.czBusDur !== '1') {
         d.documentElement.dataset.czBusDur = '1';
         var input = d.getElementById('rulerInput');
-        if (input) { input.addEventListener('input', function () { setTimeout(function () { api.duration(parseInt(input.value, 10) || 0, 'right_dash'); }, 30); }); }
+        if (input) {
+          input.addEventListener('input', function () {
+            var val = parseInt(input.value, 10) || 0;
+            if (val && val !== leftDur()) {
+              api.duration(val, 'right_dash');
+            }
+          });
+        }
       }
     }
     function bindDash() {
@@ -19501,19 +19784,27 @@ window.__CZ_CSS = [
     return { forced: want ? 'run' : 'prep', after: canvasStageClass(), ticketW: ticketW() };
   }
   /* 画布侧：进/出练习态。调画布自己的状态机（enterRun/exitRun）；内容未选先点第一个练习内容胶囊 */
+  /* S22：收敛兜底的代际令牌。旧调用的 520ms 定时器必须作废，
+     否则 prep → run 连点时旧定时器会在计时态里 forceCanvasStage('prep')，
+     把刚进的计时态立刻打回准备态（实测 1133/C2、C3 直接闪回）。 */
+  var czStageSyncToken = 0;
   function setCanvasStage(stage) {
     var cd = canvasDoc(), w = canvasWin();
     var o = { want: stage, before: canvasStageClass(), called: null, pickedContent: null };
     if (!cd || !w) { o.err = '画布未载'; return o; }
+    var myToken = ++czStageSyncToken;
     if (stage === 'run') {
-      if (canvasRunning()) { o.called = 'already-running'; }
+      if (canvasRunning() && w && w.isTimingRunning && w.isTimingRunning()) { o.called = 'already-running'; }
       else {
+        if (w && !w.cur && typeof w.selectItem === 'function') {
+          try { w.selectItem(1034); } catch (e) {}
+        }
         var active = cd.querySelector('.pk-session-pill.is-active, .pk-session-tag.is-active');
         var pills = cd.querySelectorAll('.pk-session-pill');
         if (!active && pills.length) { try { pills[0].click(); o.pickedContent = (pills[0].textContent || '').trim(); } catch (e) {} }
         try { if (typeof w.enterRun === 'function') { w.enterRun(); o.called = 'enterRun'; } } catch (e) { o.called = 'throw: ' + (e && e.message || e); }
       }
-    } else if (canvasRunning()) {
+    } else if (canvasRunning() || (w && w.isBarDeformed && w.isBarDeformed())) {
       try { if (typeof w.exitRun === 'function') { w.exitRun(); o.called = 'exitRun'; } } catch (e) { o.called = 'throw: ' + (e && e.message || e); }
     } else { o.called = 'already-prep'; }
     o.after = canvasStageClass();
@@ -19527,10 +19818,14 @@ window.__CZ_CSS = [
       var t0 = Date.now();
       o.sync = o.called + ' 已进态';
       (function tick() {
+        if (myToken !== czStageSyncToken) { return; }
         var w = ticketW();
-        var okW = want ? (w !== null && w <= 60) : (w !== null && w >= 300);
+        /* 准备态可能是完整票夹（宽 ≥300）也可能是 S22 的窄条形态（宽 50），两者都算终态 */
+        var barNow = !!(w && w.isBarDeformed && w.isBarDeformed());
+        var okW = want ? (w !== null && w <= 60) : (w !== null && (w >= 300 || barNow));
         if (canvasRunning() === want && okW) { syncSlotMode(); return; }
         if (Date.now() - t0 < 520) { setTimeout(tick, 40); return; }
+        if (myToken !== czStageSyncToken) { return; }
         var f = forceCanvasStage(want);
         o.sync = 'forced-' + (want ? 'run' : 'prep') + '（无头/虚拟时间下画布 GSAP 未跑完，只补 DOM 终态）';
         o.after = canvasStageClass();
@@ -20815,7 +21110,7 @@ window.__CZ_CSS = [
       }, 400);
     });
   }
-  window.__cz = { state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
+  window.__cz = { clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
 })();
 </script>
 </body>

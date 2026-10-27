@@ -554,13 +554,235 @@ const isStrict = process.argv.includes('--strict');
     return { rows, pass: rows.every(r => r.pass) };
   })();
 
+  // ─── 项 14：ruler ↔ 票夹时长双向联动（S22 修复项）───
+  /* 三视口 × 三组合：
+     1. 在仪表盘 A 卡改 rulerInput = 18 并派发 input → 左栏 #pkTicketDurVal 同值为 18；
+     2. 在左栏点 #pkTicketDurUp 2 次 (+2) → 票面变为 20，仪表盘 #rulerInput 同值为 20。 */
+  const durationLinkage = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1200);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(400);
+      for (const combo of COMBOS) {
+        await vp.evaluate((c) => window.__cz.setCombo(c), combo);
+        await vp.waitForTimeout(900);
+        await vp.evaluate(() => window.__cz.setCanvasStage('prep'));
+        await vp.waitForTimeout(400);
+
+        // Part 1: Ruler -> Ticket
+        const r2t = await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const frame = cd ? cd.querySelector('.cz-mod[data-mod="A"] iframe') : null;
+          const d = frame ? frame.contentDocument : null;
+          const rulerInput = d ? d.getElementById('rulerInput') : null;
+          if (!rulerInput) return { ok: false, why: 'no rulerInput' };
+          rulerInput.value = '18';
+          try {
+            rulerInput.dispatchEvent(new Event('input', { bubbles: true }));
+          } catch (e) {}
+          return { ok: true };
+        });
+        await vp.waitForTimeout(300);
+
+        const leftRead1 = await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const durEl = cd ? cd.getElementById('pkTicketDurVal') : null;
+          return durEl ? parseInt(durEl.textContent, 10) : null;
+        });
+
+        // Part 2: Ticket -> Ruler
+        await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const upBtn = cd ? cd.getElementById('pkTicketDurUp') : null;
+          if (upBtn) {
+            upBtn.click();
+            upBtn.click();
+          }
+        });
+        await vp.waitForTimeout(300);
+
+        const r2 = await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const durEl = cd ? cd.getElementById('pkTicketDurVal') : null;
+          const frame = cd ? cd.querySelector('.cz-mod[data-mod="A"] iframe') : null;
+          const d = frame ? frame.contentDocument : null;
+          const rulerInput = d ? d.getElementById('rulerInput') : null;
+          return {
+            leftDur: durEl ? parseInt(durEl.textContent, 10) : null,
+            rulerVal: rulerInput ? parseInt(rulerInput.value, 10) : null
+          };
+        });
+
+        /* Part 3: 窄条 bar（选完两项后的准备态）也要跟 ruler 走 ——
+           dad 261027 第 3 条：拖 ruler 改时长，左侧票夹时长没联动。 */
+        await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+          if (w && typeof w.selectItem === 'function') w.selectItem(1034);
+          const pill = cd ? cd.querySelector('.pk-session-pill') : null;
+          if (pill) pill.click();
+        });
+        await vp.waitForTimeout(1300);
+        await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const d = cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument;
+          const ri = d.getElementById('rulerInput');
+          ri.value = '18';
+          ri.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        await vp.waitForTimeout(500);
+        const barState = await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+          const remain = cd ? cd.getElementById('pkRailRemain') : null;
+          const durEl = cd ? cd.getElementById('pkTicketDurVal') : null;
+          return {
+            isBar: w && typeof w.isBarDeformed === 'function' ? w.isBarDeformed() : false,
+            railRemain: remain ? remain.textContent.trim() : null,
+            ticketDur: durEl ? parseInt(durEl.textContent, 10) : null
+          };
+        });
+
+        const pass = (leftRead1 === 18) && (r2.leftDur === 20) && (r2.rulerVal === 20)
+          && barState.isBar && barState.railRemain === '18:00' && barState.ticketDur === 18;
+        rows.push({ vp: v.vp, combo, r2tOk: r2t.ok, leftRead1, ...r2, barState, pass });
+      }
+      await vp.close();
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
+  // ─── 项 15：选完两项即变形 + 重新选择（S22 交付项）───
+  /* 1. 清空选择 → 票夹在（左栏宽 > 100px）；
+     2. 填满两项（选科目 + 选内容）→ 立即变形为 bar（左栏宽 ≈ 50px 档或移动端横条）且未计时；
+     3. 点「重新选择」→ 回票夹且选择保留；
+     4. 开始计时中「重新选择」按钮 disabled。 */
+  const autoMorphAndReselect = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1200);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(400);
+
+      // 步骤 1: 清空选择
+      await vp.evaluate(() => {
+        if (window.__cz && typeof window.__cz.clearSelection === 'function') {
+          window.__cz.clearSelection();
+        }
+      });
+      await vp.waitForTimeout(400);
+
+      const step1 = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+        const leftCol = cd ? cd.getElementById('pkLeftCol') : null;
+        const lr = leftCol ? leftCol.getBoundingClientRect() : null;
+        return {
+          leftW: lr ? +lr.width.toFixed(1) : 0,
+          leftH: lr ? +lr.height.toFixed(1) : 0,
+          cur: w ? w.cur : undefined,
+          isBar: w && typeof w.isBarDeformed === 'function' ? w.isBarDeformed() : false
+        };
+      });
+
+      // 步骤 2: 填满两项
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+        if (w && typeof w.selectItem === 'function') w.selectItem(1034);
+        const pill = cd ? cd.querySelector('.pk-session-pill') : null;
+        if (pill) pill.click();
+      });
+      await vp.waitForTimeout(600);
+
+      const step2 = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+        const leftCol = cd ? cd.getElementById('pkLeftCol') : null;
+        const btn = cd ? cd.getElementById('pkRailReselectBtn') : null;
+        const rail = cd ? cd.querySelector('.pk-run-rail') : null;
+        const remainVal = cd ? cd.getElementById('pkRailRemain') : null;
+        const lr = leftCol ? leftCol.getBoundingClientRect() : null;
+        const rr = rail ? rail.getBoundingClientRect() : null;
+        const rv = remainVal ? remainVal.getBoundingClientRect() : null;
+        const isMobile = cd && cd.documentElement.clientWidth < 1024;
+        return {
+          leftW: lr ? +lr.width.toFixed(1) : 0,
+          leftH: lr ? +lr.height.toFixed(1) : 0,
+          isBar: w && typeof w.isBarDeformed === 'function' ? w.isBarDeformed() : false,
+          isTiming: w && typeof w.isTimingRunning === 'function' ? w.isTimingRunning() : false,
+          reselectDisabled: btn ? btn.disabled : null,
+          /* S22 回归护栏 a：窄条不得塌成 0 高（票卡 display:none 后曾把 bar 压成 2px） */
+          railH: rr ? +rr.height.toFixed(1) : 0,
+          /* S22 回归护栏 b：窄条里的剩余时间必须能被完整读到（曾竖排+rotate 倒读成 00:01） */
+          remainText: remainVal ? remainVal.textContent.trim() : null,
+          remainWritingMode: remainVal ? cd.defaultView.getComputedStyle(remainVal).writingMode : null,
+          remainFitsBar: rv && rr ? (rv.left >= rr.left - 0.5 && rv.right <= rr.right + 0.5) : false,
+          isMobile
+        };
+      });
+
+      // 步骤 3: 点「重新选择」
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const btn = cd ? cd.getElementById('pkRailReselectBtn') : null;
+        if (btn) btn.click();
+      });
+      await vp.waitForTimeout(600);
+
+      const step3 = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+        const leftCol = cd ? cd.getElementById('pkLeftCol') : null;
+        const lr = leftCol ? leftCol.getBoundingClientRect() : null;
+        return {
+          leftW: lr ? +lr.width.toFixed(1) : 0,
+          leftH: lr ? +lr.height.toFixed(1) : 0,
+          isBar: w && typeof w.isBarDeformed === 'function' ? w.isBarDeformed() : false,
+          curName: (w && w.cur && w.cur.name) || (cd && cd.getElementById('pkTicketSubjectName') ? cd.getElementById('pkTicketSubjectName').textContent : null),
+          content: w ? w.content : null
+        };
+      });
+
+      // 步骤 4: 计时中 disabled 校验
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+        if (w && typeof w.enterRun === 'function') w.enterRun();
+      });
+      await vp.waitForTimeout(600);
+
+      const step4 = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
+        const btn = cd ? cd.getElementById('pkRailReselectBtn') : null;
+        return {
+          isTiming: w && typeof w.isTimingRunning === 'function' ? w.isTimingRunning() : false,
+          reselectDisabled: btn ? btn.disabled : null
+        };
+      });
+
+      const pass1 = step1.leftW > 100 && !step1.isBar;
+      const pass2 = (step2.isMobile ? (step2.leftH <= 56) : (Math.abs(step2.leftW - 50) <= 6)) && step2.isBar && !step2.isTiming && step2.reselectDisabled === false
+        && step2.railH >= (step2.isMobile ? 44 : 200)
+        && /^\d{2}:\d{2}$/.test(step2.remainText || '')
+        && step2.remainWritingMode === 'horizontal-tb' && step2.remainFitsBar;
+      const pass3 = step3.leftW > 100 && !step3.isBar && !!step3.curName && step3.curName !== '未选择科目';
+      const pass4 = step4.isTiming && step4.reselectDisabled === true;
+
+      const ok = pass1 && pass2 && pass3 && pass4;
+      rows.push({ vp: v.vp, step1, step2, step3, step4, pass: ok });
+      await vp.close();
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
   const fullOutput = {
     summary: summaryMatrix,
     staticChecks,
     details: results,
     runSwitch,
     overlayViewport,
-    slotCardTheme
+    slotCardTheme,
+    durationLinkage,
+    autoMorphAndReselect
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(fullOutput, null, 2), 'utf-8');
 
@@ -625,6 +847,10 @@ const isStrict = process.argv.includes('--strict');
   console.log(` 12. 画布内 fixed 弹层落在浏览器视口内 (换曲目/老师要求全文/记录明细 × 9 组合)   : ` + (overlayViewport.pass ? '✅ PASS (27/27 可见)' : '❌ FAIL (' + overlayViewport.rows.filter(r => !r.pass).map(r => r.vp + '/C' + r.combo).join(', ') + ')'));
   const badCards = slotCardTheme.rows.filter(r => !r.pass);
   console.log(` 13. 卡槽插入卡主题色 + 实色不透明 (含渐变实色/首停亮度/最终 opacity × 9 组合)  : ` + (slotCardTheme.pass ? '✅ PASS (27/27 主题色且不透明)' : '❌ FAIL (' + badCards.map(r => r.vp + '/C' + r.combo + ' lum=' + r.firstLum + ' alpha=' + r.translucentCount).join(', ') + ')'));
+  const badDur = durationLinkage.rows.filter(r => !r.pass);
+  console.log(` 14. ruler ↔ 票夹时长联动 (Dash改18->票面18，票面+2->Dash为20，窄条 18:00 × 9 组合) : ` + (durationLinkage.pass ? '✅ PASS (9/9 双向一致，窄条同步)' : '❌ FAIL (' + badDur.map(r => r.vp + '/C' + r.combo + ' bar=' + (r.barState ? r.barState.railRemain : 'n/a')).join(', ') + ')'));
+  const badMorph = autoMorphAndReselect.rows.filter(r => !r.pass);
+  console.log(` 15. 选完两项即变形 + 重新选择 (空态>100px, 满项≈50px未计时, 窄条不塌/时间横排可读, 重选保留, 计时禁用) : ` + (autoMorphAndReselect.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badMorph.map(r => r.vp + ' railH=' + r.step2.railH + ' remain=' + r.step2.remainText + '/' + r.step2.remainWritingMode + ' fits=' + r.step2.remainFitsBar).join(', ') + ')'));
   console.log('═'.repeat(96));
 
   if (isStrict) {
@@ -635,10 +861,12 @@ const isStrict = process.argv.includes('--strict');
       passConcentric &&
       runSwitch.pass &&
       overlayViewport.pass &&
-      slotCardTheme.pass;
+      slotCardTheme.pass &&
+      durationLinkage.pass &&
+      autoMorphAndReselect.pass;
     process.exit(allPassed ? 0 : 1);
   } else {
-    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass && slotCardTheme.pass ? 0 : 1);
+    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass && slotCardTheme.pass && durationLinkage.pass && autoMorphAndReselect.pass ? 0 : 1);
   }
 })().catch(err => {
   console.error(err);

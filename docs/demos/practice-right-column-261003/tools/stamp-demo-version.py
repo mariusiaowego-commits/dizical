@@ -17,7 +17,7 @@
 import pathlib, re, sys
 
 DEMO = pathlib.Path(__file__).resolve().parent.parent
-DEMO_VERSION = "v3.10"       # 全局：261027 S21 修轮（卡槽插入卡改主题色：去黑色金属渐变、文字转墨色，渐变两端实色不透明 · 深墨随 token 转深）
+DEMO_VERSION = "v3.11"       # 全局：261027 S22 修轮（票夹空态 + 选满两项即变形窄条 + 重新选择按钮 + 窄条不塌/时间横排可读 + ruler↔窄条时长联动 + 计时态被旧兜底打回的竞态）
 DEMO_DATE = "2026-10-27"
 
 # 文件 → (卡版本, 一句话状态)。卡版本对齐文件名后缀；无 vN 后缀的记 "—"。

@@ -935,7 +935,7 @@
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.10</b> · 卡 v2 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v2 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -1829,7 +1829,7 @@
   }
 
   // 5. 挂载与联动 (P0: 修正单位为分钟，避免 *60 导致一键跳30)
-  function applyDuration(nextMin) {
+  function applyDuration(nextMin, fromInput) {
     nextMin = Math.max(1, Math.min(30, Math.round(nextMin)));
     duration = nextMin;
     paintKnobTimer();
@@ -1843,6 +1843,31 @@
     }
     var metaVal = document.getElementById('metaVal');
     if (metaVal) renderMetaDigits(nextMin);
+
+    var input = document.getElementById('rulerInput');
+    if (input) {
+      input.value = String(nextMin);
+      if (!fromInput) {
+        try {
+          input.dispatchEvent(new CustomEvent('input', { bubbles: true, detail: { fromApply: true } }));
+        } catch (e) {
+          try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+        }
+      }
+    }
+  }
+
+  window.applyDuration = applyDuration;
+
+  var rulerInputEl = document.getElementById('rulerInput');
+  if (rulerInputEl) {
+    rulerInputEl.addEventListener('input', function (e) {
+      if (e && e.detail && e.detail.fromApply) return;
+      var v = parseInt(rulerInputEl.value, 10);
+      if (!isNaN(v) && v !== duration) {
+        applyDuration(v, true /* fromInput */);
+      }
+    });
   }
 
   if (window.RulerProduction) {
@@ -1855,16 +1880,18 @@
   // 步进按钮与长按支持
   function bindLongPress(el, fn) {
     if (!el) return;
-    var timer = null, interval = null;
+    var timer = null, interval = null, pressed = false;
     var start = function (e) {
       if (e.button && e.button !== 0) return;
       e.preventDefault();
+      pressed = true;
       fn();
       timer = setTimeout(function () {
         interval = setInterval(fn, 120);
       }, 360);
     };
     var stop = function () {
+      pressed = false;
       clearTimeout(timer);
       clearInterval(interval);
     };
@@ -1872,6 +1899,9 @@
     el.addEventListener('pointerup', stop);
     el.addEventListener('pointerleave', stop);
     el.addEventListener('pointercancel', stop);
+    el.addEventListener('click', function (e) {
+      if (!pressed && e.detail === 0) fn();
+    });
   }
 
   var btnMinus = document.getElementById('silverMinus');

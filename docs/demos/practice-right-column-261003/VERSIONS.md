@@ -7,35 +7,35 @@ updated: 2026-10-27
 
 # demo 版本清单（自动生成，勿手改本体）
 
-**当前 demo 版本：v3.10**（2026-10-27）　口径：`demo vX.Y` = 全局轮次；`卡 vN` = 单卡设计版本
+**当前 demo 版本：v3.11**（2026-10-27）　口径：`demo vX.Y` = 全局轮次；`卡 vN` = 单卡设计版本
 
 | 页面 | demo 版本 | 卡版本 | 说明 |
 |:--|:--|:--|:--|
-| `dashboard-skin-01-v3.html` | v3.10 | v3 | ① 练习计时卡：拱与旋钮【同心】(偏差 0) · 拱半径收到 85px 深 24/32 可切 · 拱-边缘交接处圆角(左右不对称 0) · 点域 -120→120 与指针完全一致 · 点-拱净距 ≥10px · 页脚三格居中(边距 19.2/18) |
-| `practice-duration-card-01-v3.html` | v3.10 | v3 | ⑥ 今日时长卡：★ 全站深色基准 · 刻度 = 每段起点 + 末段结束点(3 段→4 刻度) · 首刻度与首段左端对齐(差 0) · 虚线纯 1px 点线 |
-| `requests-card-01-v3.html` | v3.10 | v3 | ④ 老师要求卡：拖动露出下一张 + 前后 dot 都能看清 · dad 已定稿，本轮冻结 |
-| `metronome-01-v4.html` | v3.10 | v4 | ② 节拍器卡：5 音色 + 音色抽屉 + 灯声同步 + 深墨接 D6 + 440 档真重排 + rAF 驱动灯效 |
-| `metronome-02-strip.html` | v3.10 | v1 | ②-B 节拍器竖长条挂件：宽 0.333 · bpm-label 右 2 个 ‹ › 箭头(速度滑杆已删) · 菜单不出滚动条 |
-| `metronome-01-v3.html` | v3.10 | v3 | ② 节拍器卡：A 甲板分级 + 音色抽屉(不透明底板/外部点击与 ESC 收起) · 旋钮只调速去掉单击启停 · 440 档 LED 保持一字排开 · pad 档真双栏 · 改垂直位移拖拽 · 三处信息去冗余 · 补 data-term 兜底 · 甲板高 190→174 · 灯效改 rAF · 关强弱拍保留第 1 拍 0.55 微光 |
-| `compose-02.html` | v3.10 | v3 | 组合视图：横排等高 608 · 手机 440 纵排等宽 · 组合1(计时+老师要求+今日时长)一屏不横滑 |
-| `today-records-01.html` | v3.10 | v1 | ⑤ 今日记录卡：折叠/展开 + 占位微条 |
-| `card-dashboard-skeleton-01.html` | v3.10 | v1 | 轨道骨架：吸附 + 左右切卡（dad 保留） |
-| `ruler-shared-check.html` | v3.10 | v1 | 共享尺子接入自检页 |
-| `canvas-01.html` | v3.10 | v1 | ★ 右栏顶替 pk-main-col：真画布 practice-ticket-v4-260920 逐字搬入（本体零改动）+ **等高卡片网格**（右栏每张卡高度 = 左栏票卡：1133 档 577）+ **三组合**（image23/24 结构：组合1 仪表盘+底部卧卡+竖条通高 / 组合2 一行并排 / 组合3 复合列）+ **卡槽窄孔**（孔比黑区窄 28px 肩，孔上下两半 z42/z46 夹住卡片）+ 双向联动总线（`DizicalPracticeBus`，负控真红）+ 轨内真横滑 · v3.10 卡槽插入卡改主题色（去黑、实色不透明） |
-| `compose-03.html` | v3.10 | v1 | 组合自选台：5 预设 + 8 模块勾选 + localStorage + 一屏单行 + 横滑（槽位外框已拆） |
-| `index.html` | v3.10 | — | 总览页（入口） |
-| `dashboard-skin-01-v2.html` | v3.10 | v2 | ① 计时卡上一版（对照） |
-| `metronome-01-v2.html` | v3.10 | v2 | ② 节拍器上一版（对照） |
-| `dashboard-bottom-blocks-01-v2.html` | v3.10 | v2 | ③ 下方三块（已并入 D1，留作对照） |
-| `requests-card-01.html` | v3.10 | v2 | ④ 老师要求上一版（对照） |
-| `practice-duration-card-01.html` | v3.10 | v2 | ⑥ 时长卡上一版（对照） |
-| `compose-01.html` | v3.10 | v1 | 组合视图上一版（卡片列车，对照） |
-| `cards/card-a-dashboard.html` | v3.10 | v2 | A 仪表盘卡：1133/744/440 全视口统一窄孔卡槽（孔肩 28px，卡比孔再窄 8px，露卡 1/5）· 440 指示灯落在黑区右肩内 · 孔左右缘严格对齐 MIC/电池（误差 0px）· 读数靠中 · 喇叭孔 56px 与按钮净距 ≥32px |
-| `cards/card-b-metronome-full.html` | v3.10 | v3 | B 全功能节拍器卡（本轮未动，仅同步版本号） |
-| `cards/card-s-metronome-strip.html` | v3.10 | v1 | S 节拍器横条卡（feed 流下票夹变形为横 bar，本轮未动） |
-| `cards/card-d-duration.html` | v3.10 | v3 | D 今日练习时长卡（本轮未动，仅同步版本号） |
-| `cards/card-r-records.html` | v3.10 | v1 | R 今日练习记录卡（本轮未动，仅同步版本号） |
-| `cards/card-q-requests.html` | v3.10 | v3 | Q 老师要求卡（本轮未动，仅同步版本号） |
+| `dashboard-skin-01-v3.html` | v3.11 | v3 | ① 练习计时卡：拱与旋钮【同心】(偏差 0) · 拱半径收到 85px 深 24/32 可切 · 拱-边缘交接处圆角(左右不对称 0) · 点域 -120→120 与指针完全一致 · 点-拱净距 ≥10px · 页脚三格居中(边距 19.2/18) |
+| `practice-duration-card-01-v3.html` | v3.11 | v3 | ⑥ 今日时长卡：★ 全站深色基准 · 刻度 = 每段起点 + 末段结束点(3 段→4 刻度) · 首刻度与首段左端对齐(差 0) · 虚线纯 1px 点线 |
+| `requests-card-01-v3.html` | v3.11 | v3 | ④ 老师要求卡：拖动露出下一张 + 前后 dot 都能看清 · dad 已定稿，本轮冻结 |
+| `metronome-01-v4.html` | v3.11 | v4 | ② 节拍器卡：5 音色 + 音色抽屉 + 灯声同步 + 深墨接 D6 + 440 档真重排 + rAF 驱动灯效 |
+| `metronome-02-strip.html` | v3.11 | v1 | ②-B 节拍器竖长条挂件：宽 0.333 · bpm-label 右 2 个 ‹ › 箭头(速度滑杆已删) · 菜单不出滚动条 |
+| `metronome-01-v3.html` | v3.11 | v3 | ② 节拍器卡：A 甲板分级 + 音色抽屉(不透明底板/外部点击与 ESC 收起) · 旋钮只调速去掉单击启停 · 440 档 LED 保持一字排开 · pad 档真双栏 · 改垂直位移拖拽 · 三处信息去冗余 · 补 data-term 兜底 · 甲板高 190→174 · 灯效改 rAF · 关强弱拍保留第 1 拍 0.55 微光 |
+| `compose-02.html` | v3.11 | v3 | 组合视图：横排等高 608 · 手机 440 纵排等宽 · 组合1(计时+老师要求+今日时长)一屏不横滑 |
+| `today-records-01.html` | v3.11 | v1 | ⑤ 今日记录卡：折叠/展开 + 占位微条 |
+| `card-dashboard-skeleton-01.html` | v3.11 | v1 | 轨道骨架：吸附 + 左右切卡（dad 保留） |
+| `ruler-shared-check.html` | v3.11 | v1 | 共享尺子接入自检页 |
+| `canvas-01.html` | v3.11 | v1 | ★ 右栏顶替 pk-main-col：真画布 practice-ticket-v4-260920 逐字搬入（本体零改动）+ **等高卡片网格**（右栏每张卡高度 = 左栏票卡：1133 档 577）+ **三组合**（image23/24 结构：组合1 仪表盘+底部卧卡+竖条通高 / 组合2 一行并排 / 组合3 复合列）+ **卡槽窄孔**（孔比黑区窄 28px 肩，孔上下两半 z42/z46 夹住卡片）+ 双向联动总线（`DizicalPracticeBus`，负控真红）+ 轨内真横滑 · v3.10 卡槽插入卡改主题色（去黑、实色不透明） |
+| `compose-03.html` | v3.11 | v1 | 组合自选台：5 预设 + 8 模块勾选 + localStorage + 一屏单行 + 横滑（槽位外框已拆） |
+| `index.html` | v3.11 | — | 总览页（入口） |
+| `dashboard-skin-01-v2.html` | v3.11 | v2 | ① 计时卡上一版（对照） |
+| `metronome-01-v2.html` | v3.11 | v2 | ② 节拍器上一版（对照） |
+| `dashboard-bottom-blocks-01-v2.html` | v3.11 | v2 | ③ 下方三块（已并入 D1，留作对照） |
+| `requests-card-01.html` | v3.11 | v2 | ④ 老师要求上一版（对照） |
+| `practice-duration-card-01.html` | v3.11 | v2 | ⑥ 时长卡上一版（对照） |
+| `compose-01.html` | v3.11 | v1 | 组合视图上一版（卡片列车，对照） |
+| `cards/card-a-dashboard.html` | v3.11 | v2 | A 仪表盘卡：1133/744/440 全视口统一窄孔卡槽（孔肩 28px，卡比孔再窄 8px，露卡 1/5）· 440 指示灯落在黑区右肩内 · 孔左右缘严格对齐 MIC/电池（误差 0px）· 读数靠中 · 喇叭孔 56px 与按钮净距 ≥32px |
+| `cards/card-b-metronome-full.html` | v3.11 | v3 | B 全功能节拍器卡（本轮未动，仅同步版本号） |
+| `cards/card-s-metronome-strip.html` | v3.11 | v1 | S 节拍器横条卡（feed 流下票夹变形为横 bar，本轮未动） |
+| `cards/card-d-duration.html` | v3.11 | v3 | D 今日练习时长卡（本轮未动，仅同步版本号） |
+| `cards/card-r-records.html` | v3.11 | v1 | R 今日练习记录卡（本轮未动，仅同步版本号） |
+| `cards/card-q-requests.html` | v3.11 | v3 | Q 老师要求卡（本轮未动，仅同步版本号） |
 
 ## 历史轮次
 
