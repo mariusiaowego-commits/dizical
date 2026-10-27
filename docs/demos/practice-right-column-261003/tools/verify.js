@@ -502,12 +502,65 @@ const isStrict = process.argv.includes('--strict');
     return { rows, pass: rows.every(r => r.pass) };
   })();
 
+  // ─── 项 13：卡槽插入卡 = 主题色 + 实色不透明（v3.10 修复项）───
+  /* dad 261027 批注：卡槽卡片不要黑色金属风格，用主题色；不要透明度。
+     曾实测：#czTicketStage 渐变 #3B444D→#1D242A（黑），文字 #FFF8F0。
+     修复后改用 --dash-* token（浅银=奶油面，深墨随 token 转深），渐变两端实色。 */
+  const slotCardTheme = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1500);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(500);
+      for (const combo of COMBOS) {
+        await vp.evaluate((c) => window.__cz.setCombo(c), combo);
+        await vp.waitForTimeout(1100);
+        await vp.evaluate(() => window.__cz.setCanvasStage('prep'));
+        await vp.waitForTimeout(400);
+        await vp.evaluate(() => window.__cz.setCanvasStage('run'));
+        await vp.waitForTimeout(2200);
+        const m = await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const card = cd.getElementById('czTicketStage');
+          if (!card) return { missing: true };
+          const cs = cd.defaultView.getComputedStyle(card);
+          const grad = cs.backgroundImage;
+          const stops = (grad.match(/(?:rgba|rgb)\([^)]*\)|#[0-9a-fA-F]{3,8}/g) || []).map(s => {
+            if (s.startsWith('rgba(')) {
+              const a = parseFloat(s.match(/[\d.]+\)$/)[0]);
+              return { s, alpha: a };
+            }
+            return { s, alpha: 1 };
+          });
+          const translucent = stops.filter(x => x.alpha < 1);
+          const first = stops[0] ? stops[0].s : '';
+          const m1 = first.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          const lum = m1 ? (0.299 * +m1[1] + 0.587 * +m1[2] + 0.114 * +m1[3]) : -1;
+          return {
+            opacity: cs.opacity,
+            gradient: grad.slice(0, 120),
+            translucentCount: translucent.length,
+            firstLum: +lum.toFixed(1),
+            textColor: cd.defaultView.getComputedStyle(cd.getElementById('pkCcgName')).color
+          };
+        });
+        const ok = !m.missing && m.opacity === '1' && m.translucentCount === 0 && m.firstLum > 180;
+        rows.push({ vp: v.vp, combo, ...m, pass: ok });
+      }
+      await vp.close();
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
   const fullOutput = {
     summary: summaryMatrix,
     staticChecks,
     details: results,
     runSwitch,
-    overlayViewport
+    overlayViewport,
+    slotCardTheme
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(fullOutput, null, 2), 'utf-8');
 
@@ -570,6 +623,8 @@ const isStrict = process.argv.includes('--strict');
   console.log(` 10. 静态类：三心合一 (R_notch=${sc.notchR} = R_knob ${sc.knobR}+14, R_dot=${sc.dotR}, dy=${sc.dy}px = ${dyRatio === null ? 'n/a' : dyRatio.toFixed(2)}R, ±按钮压黑区=${sc.btnPanelOverlap}px²) : ` + (passConcentric ? '✅ PASS' : '❌ FAIL'));
   console.log(` 11. run 态直切视口 (1133 run → 744：dash=${runSwitch.after.dash}px, knob=${runSwitch.after.knob}px, frame=${runSwitch.after.frameH}px) : ` + (runSwitch.pass ? '✅ PASS' : '❌ FAIL'));
   console.log(` 12. 画布内 fixed 弹层落在浏览器视口内 (换曲目/老师要求全文/记录明细 × 9 组合)   : ` + (overlayViewport.pass ? '✅ PASS (27/27 可见)' : '❌ FAIL (' + overlayViewport.rows.filter(r => !r.pass).map(r => r.vp + '/C' + r.combo).join(', ') + ')'));
+  const badCards = slotCardTheme.rows.filter(r => !r.pass);
+  console.log(` 13. 卡槽插入卡主题色 + 实色不透明 (含渐变实色/首停亮度/最终 opacity × 9 组合)  : ` + (slotCardTheme.pass ? '✅ PASS (27/27 主题色且不透明)' : '❌ FAIL (' + badCards.map(r => r.vp + '/C' + r.combo + ' lum=' + r.firstLum + ' alpha=' + r.translucentCount).join(', ') + ')'));
   console.log('═'.repeat(96));
 
   if (isStrict) {
@@ -579,10 +634,11 @@ const isStrict = process.argv.includes('--strict');
       passDataVp &&
       passConcentric &&
       runSwitch.pass &&
-      overlayViewport.pass;
+      overlayViewport.pass &&
+      slotCardTheme.pass;
     process.exit(allPassed ? 0 : 1);
   } else {
-    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass ? 0 : 1);
+    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass && slotCardTheme.pass ? 0 : 1);
   }
 })().catch(err => {
   console.error(err);
