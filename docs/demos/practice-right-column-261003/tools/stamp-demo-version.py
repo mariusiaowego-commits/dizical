@@ -17,8 +17,8 @@
 import pathlib, re, sys
 
 DEMO = pathlib.Path(__file__).resolve().parent.parent
-DEMO_VERSION = "v3.7"        # 全局：261026 S17+S18 整轮（卡槽窄孔化 · 插卡不穿帮 · MIC/电池对齐孔缘 · 读数与封面居中 · 页脚贴黑区下缘）
-DEMO_DATE = "2026-10-26"
+DEMO_VERSION = "v3.8"        # 全局：261027 S19 整轮（744/440 全视口复刻 1133 窄孔卡槽 · 440 指示灯入黑区 · 孔与电池右缘对称 · 读数靠中 · 喇叭孔与按钮安全间距）
+DEMO_DATE = "2026-10-27"
 
 # 文件 → (卡版本, 一句话状态)。卡版本对齐文件名后缀；无 vN 后缀的记 "—"。
 TABLE = [
@@ -42,8 +42,8 @@ TABLE = [
     ("requests-card-01.html",                "v2", "④ 老师要求上一版（对照）"),
     ("practice-duration-card-01.html",       "v2", "⑥ 时长卡上一版（对照）"),
     ("compose-01.html",                      "v1", "组合视图上一版（卡片列车，对照）"),
-    # ── 右栏卡片唯一真源（S17/S18 轮：仪表盘卡 = 窄孔卡槽 + 读数/页脚对齐）──
-    ("cards/card-a-dashboard.html",          "v2", "A 仪表盘卡：卡槽窄孔（孔肩 28px，卡比孔再窄 8px）· 插卡减速回弹不露下缘 · MIC/电池对齐**孔左右缘**（28px）· 读数与封面图上下居中（差 0px）· 「今日 xx分 / BPM xx」贴黑区下缘"),
+    # ── 右栏卡片唯一真源（S19 轮：全视口统一窄孔卡槽 + 440 四项修复）──
+    ("cards/card-a-dashboard.html",          "v2", "A 仪表盘卡：1133/744/440 全视口统一窄孔卡槽（孔肩 28px，卡比孔再窄 8px，露卡 1/5）· 440 指示灯落在黑区右肩内 · 孔左右缘严格对齐 MIC/电池（误差 0px）· 读数靠中 · 喇叭孔 56px 与按钮净距 ≥32px"),
     ("cards/card-b-metronome-full.html",     "v3", "B 全功能节拍器卡（本轮未动，仅同步版本号）"),
     ("cards/card-s-metronome-strip.html",    "v1", "S 节拍器横条卡（feed 流下票夹变形为横 bar，本轮未动）"),
     ("cards/card-d-duration.html",           "v3", "D 今日练习时长卡（本轮未动，仅同步版本号）"),
@@ -159,7 +159,8 @@ def main():
               "- **demo v3.3**（2026-10-13）：dad 等高反馈（左栏票卡 360×1024 vs 右栏仪表盘不等高）+ 三组合落地 ——① **等高卡片网格**：右栏每张卡高度 == 左栏票卡（1133 档票卡 360×577；组合1 `A326+12+(D/R 239)=577`、组合2 `A/S/R 全 577`、组合3 `B385+12+D180=577`，底边全 = 票卡底 635）·② **高度回环根治**：iframe 高度不再由画布 `scrollHeight` 反推（实测 `iframe.clientHeight 656 == 画布 scrollHeight 656`，且票卡不被竖切）·③ **卡槽**：接缝 slot 底 51 → 仪表盘顶 58 = **+7px**（此前 −54 重叠）；插入动画全撤（`runInsert`/`FALLBACK_MS`/`insertTicket` 计数 0）·④ **组合树**按 `参考图文字基线-261012.md`（image23/24）落地，可见模块集合 == `state.mods` 三组合逐一命中 ·⑤ **联动双向真通**：`DizicalPracticeBus` 左 60→63 时右 82→85 逐次跟随、反向右 +1 左跟随、组合重挂后仍通；`?negctl=bus` 真报红且 verdict 写明「右栏 82 没跟着变（左栏 62）」（不再静默降级）·⑥ 画布源 `practice-ticket-v4-260920.html` 零改动（sha256 `e86d4bc56163218d`）；`verify-demos` 16 页 OK / 0 FAIL、`token-contrast` 不合格 0",
               "- **demo v3.5**（2026-10-16）：dad 文档 `PRDs/2610160819-demov3.4问题.md` 八条整轮修复 ——① **A 卡错位/裁切根治**：组合1 里旋钮与「开始/提前结束/按钮组」相交 499.5/790.9/1879.6px² → 0（旋钮不再压按钮）、`#panel` 内部裁 54 → 0、`#mid` 裁 55 → 0、封面名 0×0 → 34.3×13.2 可见、读数行 cx 由 +55px 偏 → == 卡中轴 ·② **arc 点环同心**：20 个点到旋钮圆心半径 106.26~106.38（散布 0.13px）＝几何同心，点不再落在旋钮面上 ·③ **缺口咬深 = 规格**：mask 圆心 y 由写死 242.5px → 按面板高计算，实测咬深 24px（= `--notch-depth`）·④ **卡槽**：`#pkPunchSlotWrap` 18 → 50px（agy 规格 48~54），落在 A 卡内、主屏之上 ·⑤ **今日记录卡**：迷你卡底色 rgb(232,229,224) 灰 → rgb(22,26,30)=#161A1E（与时长卡同族）· ⑥ **记录弹窗**：`#czPopFrame` 渲染「科目|总时长|速度|单次|明细|占比」12 行明细，且弹窗内 demo chrome（徽章/视口/皮肤切换）全隐 ·⑦ **744/440 内容驱动高度**（旧六卡写死 460）：744 = A573/B681/S108/D213/R719/Q556、440 = A678/B768/S345/D213/R797/Q556，六值异构且卡内滚动条 0（旧 R 缺 67/169px）·⑧ **S 竖条 → 横条**：h(S) 150 → 108（agy 判据 ≤120），内部 top/mid/bot 横排 ·⑨ **D 卡元素恢复**（组合1 224 宽）：空心时钟 135×44 + 时间轴胶囊 206×51(4 刻度) + 图标组，下方空白 63% → 0% ·⑩ 画布源零改动（sha256 `e86d4bc56163218d`）；`verify-demos` 16 页 OK / 0 FAIL、`token-contrast` 不合格 0",
               "- **demo v3.6**（2026-10-22）：八条整轮落地 —— ① 圆钮接缝 1px 外壳描边 · ② 卡槽与仪表盘等宽 · ③ 插卡改自上而下 · ④ 去灰直角（`.diag-card` 无上边框 + 卧卡 dash 圆角裁切）· ⑤ BPM 左票/竖条/仪表盘绝对值同步 · ⑥ 组合1 时长卡 32px 时钟 + 44px 时间轴胶囊 · ⑦ 440 顶栏双行 · ⑧ 440 面板底部 78px 留白；verify-demos canvas-01 OK、token-contrast 0 不合格、R2 0 failures",
-              "- **demo v3.7**（2026-10-26）：S17+S18 整轮落地 —— ① **卡槽窄孔化**：槽体透明，黑区上沿只留一道比黑区窄 28px 肩的缝；孔上下两半（`::after` z42 垫卡后 / `::before` z46 盖卡底）把卡片夹在中间 = 卡片从孔中穿过；孔所有状态常驻（准备态也在）·② **插卡动画不穿帮**：`pkCardToSlot` / `pkCardToSlotFeed` 全程 `translateY ≤ 0`（72% 归座 0px → 85% 回弹 −2px → 100% 落定 0px），逐帧实测卡底越过孔底 **0.00px**、回弹期卡底留在下半孔遮罩内 **7.00px** ·③ **MIC / 电池对齐卡槽孔缘**：`.status` 改 `padding: 0 var(--cz-status-pad-x,16px)`，实测 1133 C1/C2/C3 两态 `micLeftFromPanel = holeLeftFromPanel = 28.0px`、`batRightFromPanel = holeRightFromPanel = 28.0px`（误差 0.0px）·④ **读数与封面图上下居中**：新增 `alignReadoutWithCover()` 写 `--cz-readout-dx/dy`，实测 `digitsCoverCyDiff = 0.0px`，水平落在封面图右缘与右侧安全边界中点偏左 6px ·⑤ **页脚贴黑区下缘**：`--cz-foot-top = panel 高 − 20px`（不再由圆点弧顶牵制），实测「今日 xx分」距底 4.0px、「BPM xx」距底 0–2px ·⑥ **卡槽指示灯常驻同位**：`.cz-slot-led` 准备态/计时态同一孔肩位置，feed 流无孔肩则隐藏 ·⑦ **feed 流修右侧溢出 24px**（`crownInset` 统一 12px）+ 440 档旋钮 176→136px；门禁 `verify.js --strict` 11/11 PASS、6 模板字节级一致、CSS `[data-vp]` 0 处", ""]
+              "- **demo v3.7**（2026-10-26）：S17+S18 整轮落地 —— ① **卡槽窄孔化**：槽体透明，黑区上沿只留一道比黑区窄 28px 肩的缝；孔上下两半（`::after` z42 垫卡后 / `::before` z46 盖卡底）把卡片夹在中间 = 卡片从孔中穿过；孔所有状态常驻（准备态也在）·② **插卡动画不穿帮**：`pkCardToSlot` / `pkCardToSlotFeed` 全程 `translateY ≤ 0`（72% 归座 0px → 85% 回弹 −2px → 100% 落定 0px），逐帧实测卡底越过孔底 **0.00px**、回弹期卡底留在下半孔遮罩内 **7.00px** ·③ **MIC / 电池对齐卡槽孔缘**：`.status` 改 `padding: 0 var(--cz-status-pad-x,16px)`，实测 1133 C1/C2/C3 两态 `micLeftFromPanel = holeLeftFromPanel = 28.0px`、`batRightFromPanel = holeRightFromPanel = 28.0px`（误差 0.0px）·④ **读数与封面图上下居中**：新增 `alignReadoutWithCover()` 写 `--cz-readout-dx/dy`，实测 `digitsCoverCyDiff = 0.0px`，水平落在封面图右缘与右侧安全边界中点偏左 6px ·⑤ **页脚贴黑区下缘**：`--cz-foot-top = panel 高 − 20px`（不再由圆点弧顶牵制），实测「今日 xx分」距底 4.0px、「BPM xx」距底 0–2px ·⑥ **卡槽指示灯常驻同位**：`.cz-slot-led` 准备态/计时态同一孔肩位置，feed 流无孔肩则隐藏 ·⑦ **feed 流修右侧溢出 24px**（`crownInset` 统一 12px）+ 440 档旋钮 176→136px；门禁 `verify.js --strict` 11/11 PASS、6 模板字节级一致、CSS `[data-vp]` 0 处",
+              "- **demo v3.8**（2026-10-27）：S19 整轮落地 —— ① **744 / 440 全面复刻 1133 窄孔卡槽**：删除 `isFeedA` 整带露卡分支，三视口统一 `data-hole=\"1\"`、`holeInset=28`、`cardInset=36`、露卡 1/5（实测 exposedRatio 19.8%–20.1%）·② **440 指示灯与卡槽对称根治**：`updateCardSlotGeometry()` 直接读取 iframe 内 `#panel` 真实边界定位 `.cz-astack-crown`，并修复 `syncAll`/`measureCardContent` 首次加载少算 `--cz-panel-pt` 触发纵向滚动条挤歪黑区 15px 的根因，LED 定位在孔右肩中点 `right: 10.5px`（实测 440/744/1133 `holeLeft - micLeft = 0.0px`、`holeRight - batRight = 0.0px`、`holeSymDiff = 0.0px`、`ledInsidePanel = true`）·③ **440 读数靠中**：`alignReadoutWithCover()` 准备态扣除「分钟」下标半宽往左收敛（440 下数字中心 215.7px vs 面板中心 220.0px），计时态 4 位数自动保留与封面 ≥14px 安全边距 ·④ **440 按钮与喇叭孔零重叠**：440 档 `.grille-6x8` 缩至 56×56px、`.grid-3col` 列宽 64px + `column-gap: 8px`，`alignSpeakerWithCover()` 限制最大右偏保留 ≥12px 净距（实测 440 下 `grillePillGap = 32–34px`）；门禁 `verify.js --strict` 11/11 PASS", ""]
     if not check:
         manifest.write_text("\n".join(lines), encoding="utf-8")
 

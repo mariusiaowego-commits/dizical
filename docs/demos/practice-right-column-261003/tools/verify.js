@@ -340,17 +340,15 @@ const isStrict = process.argv.includes('--strict');
         && !!ss && insetOk
         && Math.abs((ss.slotW - ss.cardW) - cardInset * 2) <= 3
         && ss.cardTopAbovePanel >= 8
-        && (!geomData.isFeed
-          ? (ss.holeTop > 0 && ss.holeH >= 8 && ss.holeH <= 20
-            && ss.maskTop != null && !isNaN(ss.maskTop)
-            && Math.abs(ss.maskTop - (Math.abs(ss.cardTop - ss.slotTop) + ss.holeTop + ss.holeH * 0.5)) <= 1
-            && (Math.abs(ss.cardTop - ss.slotTop) + ss.maskTop) >= Math.abs(ss.cardTop - ss.slotTop))
-          : (Math.abs(ss.cardBottomBelowSlot) <= 2 && ss.lipHeight >= 12))
+        && (ss.holeTop > 0 && ss.holeH >= 8 && ss.holeH <= 20
+          && ss.maskTop != null && !isNaN(ss.maskTop)
+          && Math.abs(ss.maskTop - (Math.abs(ss.cardTop - ss.slotTop) + ss.holeTop + ss.holeH * 0.5)) <= 1
+          && (Math.abs(ss.cardTop - ss.slotTop) + ss.maskTop) >= Math.abs(ss.cardTop - ss.slotTop))
         && geomData.overlaps.cardPanel > 0;
 
       const ratio = geomData ? geomData.exposedRatio : 0.0;
-      /* feed 流下露出带与黑 bar 同高（整带露出），允许 100% */
-      const passRatio = geomData && geomData.isFeed ? (ratio >= 99.0) : (ratio >= 18.5 && ratio <= 21.5);
+      /* S19（dad 261027）：744 / 440 feed 流全面复刻 1133 窄孔卡槽，全视口统一露出比约 20% */
+      const passRatio = (ratio >= 18.5 && ratio <= 21.5);
 
       const passTextOv = geomData ? (geomData.textOverlap === 0.0) : false;
       const passRec = recData ? (recData.allBlock && recData.allNoClip) : false;

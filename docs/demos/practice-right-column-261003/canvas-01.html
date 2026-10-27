@@ -7637,16 +7637,18 @@ function closeRecordsDrawer() {
   /* 440 移动端自适应 */
   @container dash (max-width: 440px) {
     .grid-3col {
-      grid-template-columns: 58px minmax(0, 1fr) 58px;
+      grid-template-columns: 64px minmax(0, 1fr) 64px;
+      column-gap: 8px;
     }
     .grid-3col .c-left, .grid-3col .c-right {
-      width: 58px;
+      width: 64px;
     }
+    .grille-6x8 { width: 56px; height: 56px; }
     .round { width: 58px; height: 58px; font-size: 26px; }
     /* dad 2610102107 条2：440 档列宽 58 → 键撑满列宽、对称 padding，文字严格居中 */
     .stand-btn { min-width: 0; width: 100%; height: 46px; padding: 4px 3px; gap: 2px; font-size: 10.5px; border-radius: 12px; }
     .stand-btn .stand-ico { width: 15px; height: 15px; }
-    .pill button { padding: 0 14px; font-size: 13px; }
+    .pill button { padding: 0 12px; font-size: 13px; }
     .cover-frame { width: 72px; height: 72px; }
     .readout-sub { font-size: 18px; font-weight: 750; }
     .readout-sub small { font-size: 12px; }
@@ -7688,7 +7690,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v2 · 2026-10-26</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v2 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -8047,16 +8049,24 @@ function closeRecordsDrawer() {
   function alignSpeakerWithCover() {
     var coverCol = document.querySelector('.cover-col');
     var speakerBlock = document.getElementById('speakerBlock');
+    var speakerGrille = document.getElementById('speakerGrille');
     var speakerLogo = document.getElementById('speakerLogo');
+    var pillEl = document.querySelector('.transport-main .pill');
     if (!coverCol || !speakerBlock) return;
     speakerBlock.style.position = 'relative';
     speakerBlock.style.left = '0px';
     if (speakerLogo) { speakerLogo.style.position = 'relative'; speakerLogo.style.left = '0px'; }
     var cRect = coverCol.getBoundingClientRect();
-    var sRect = speakerBlock.getBoundingClientRect();
+    var sRect = (speakerGrille || speakerBlock).getBoundingClientRect();
     var cCenter = cRect.left + cRect.width / 2;
     var sCenter = sRect.left + sRect.width / 2;
     var offset = cCenter - sCenter;
+    /* S19 批注4（dad 261027）：440 窄屏下孔阵向右对齐封面时严禁压到中央开始/结束药丸按钮，保留 ≥12px 安全间距 */
+    if (pillEl) {
+      var pillRect = pillEl.getBoundingClientRect();
+      var maxOffset = pillRect.left - 12 - sRect.right;
+      if (offset > maxOffset) offset = Math.max(0, maxOffset);
+    }
     speakerBlock.style.left = offset.toFixed(1) + 'px';
     // A2：说明行里的 dizical logo 跟着孔阵走同一条竖轴（同列同偏移），否则孔阵对齐了 cover、logo 却留在列心
     if (speakerLogo) speakerLogo.style.left = offset.toFixed(1) + 'px';
@@ -8075,9 +8085,17 @@ function closeRecordsDrawer() {
     var coverCy = cRect.top + cRect.height / 2;
     var naturalCy = tRect.top + tRect.height / 2;
     var dy = coverCy - naturalCy;
+    var digitsEl = readoutEl.querySelector('.readout-digits');
+    var digitsW = digitsEl ? digitsEl.getBoundingClientRect().width : 88;
+    var unitEl = readoutEl.querySelector('.readout-unit');
+    var unitW = (unitEl && unitEl.offsetParent !== null) ? unitEl.getBoundingClientRect().width : 0;
     var leftBound = cRect.right;
     var rightBound = pRect.right - 28;
-    var targetCx = (leftBound + rightBound) * 0.5 - 6;
+    /* S19 批注3（dad 261027）：扣除右下角「分钟」下标宽度的一半并往左收敛，让「10 分钟」整体视觉居中靠左，不偏右 */
+    var shiftLeft = unitW > 0 ? Math.max(18, unitW * 0.5 + 6) : 6;
+    var targetCx = (leftBound + rightBound) * 0.5 - shiftLeft;
+    var minCx = leftBound + 14 + digitsW * 0.5;
+    if (targetCx < minCx) targetCx = minCx;
     var naturalCx = tRect.left + tRect.width / 2;
     var dx = targetCx - naturalCx;
     readoutEl.style.setProperty('--cz-readout-dx', dx.toFixed(1) + 'px');
@@ -8691,6 +8709,7 @@ function closeRecordsDrawer() {
     updateBpmDisplay();
     btnPrimary.textContent = '暂停';
     btnEarly.disabled = false;
+    requestAnimationFrame(alignReadoutWithCover);
     // 调尺子运行态：标记 started/runningModality
     if (window.RulerProduction) {
       if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(true);
@@ -8740,6 +8759,7 @@ function closeRecordsDrawer() {
     if (metaVal) {
       renderMetaDigits((m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s);
     }
+    requestAnimationFrame(alignReadoutWithCover);
     if (window.RulerProduction) {
       if (typeof RulerProduction.setRunningModality === 'function') RulerProduction.setRunningModality(false);
     }
@@ -8754,6 +8774,7 @@ function closeRecordsDrawer() {
     btnPrimary.textContent = '开始';
     btnEarly.disabled = true;
     opsTimerText.textContent = '00:00 · 待开始';
+    requestAnimationFrame(alignReadoutWithCover);
     var metaVal = document.getElementById('metaVal');
     if (metaVal) {
       renderMetaDigits(duration);
@@ -10917,7 +10938,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v3 · 2026-10-26</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13016,7 +13037,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v1 · 2026-10-26</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v1 · 2026-10-27</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14013,7 +14034,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v3 · 2026-10-26</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v3 · 2026-10-27</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -14841,7 +14862,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v1 · 2026-10-26</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v1 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -15839,7 +15860,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.7</b> · 卡 v3 · 2026-10-26</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.8</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -16655,8 +16676,8 @@ function closeRecordsDrawer() {
     'html.cz-fill .fold { display: none !important; }',
     'html.cz-fill .scroller { flex: 1 1 auto !important; min-height: 0 !important; overflow: auto !important; }',
     /* 744/440 喂流：外壳不再被 100% 锁死，滚动层摊开，卡高由内容决定。1133 不加这个类。 */
-    'html.cz-fill.cz-feed, html.cz-fill.cz-feed body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
-    'html.cz-fill.cz-feed .stage-frame, html.cz-fill.cz-feed .metro-card, html.cz-fill.cz-feed .card-wrap, html.cz-fill.cz-feed .strip, html.cz-fill.cz-feed .console, html.cz-fill.cz-feed .page, html.cz-fill.cz-feed .scroller, html.cz-fill.cz-feed .sheet, html.cz-fill.cz-feed .dash, html.cz-fill.cz-feed .frame { height: auto !important; max-height: none !important; min-height: 0 !important; overflow: visible !important; flex: 0 0 auto !important; }',
+    'html.cz-fill.cz-feed, html.cz-fill.cz-feed body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: hidden !important; }',
+    'html.cz-fill.cz-feed .stage-frame, html.cz-fill.cz-feed .metro-card, html.cz-fill.cz-feed .card-wrap, html.cz-fill.cz-feed .strip, html.cz-fill.cz-feed .console, html.cz-fill.cz-feed .page, html.cz-fill.cz-feed .scroller, html.cz-fill.cz-feed .sheet, html.cz-fill.cz-feed .dash, html.cz-fill.cz-feed .frame { height: auto !important; max-height: none !important; min-height: 0 !important; overflow: hidden !important; flex: 0 0 auto !important; }',
     'html.cz-fill.cz-feed .panel-main, html.cz-fill.cz-feed .panel-foot, html.cz-fill.cz-feed .mid, html.cz-fill.cz-feed .deck, html.cz-fill.cz-feed .diag-card, html.cz-fill.cz-feed .heroes, html.cz-fill.cz-feed .head { height: auto !important; max-height: none !important; min-height: 0 !important; overflow: visible !important; flex: 0 0 auto !important; }',
     'html.cz-fill.cz-feed .panel { height: auto !important; max-height: none !important; min-height: 220px !important; overflow: visible !important; flex: 0 0 auto !important; padding-bottom: 64px !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; justify-content: flex-start !important; }',
     /* 弹窗才横滑。喂流卡不加 cz-pop，避免 1133 的 600px 面板也被撑出滚动条。 */
@@ -16900,6 +16921,9 @@ function closeRecordsDrawer() {
     /* 440 档 iframe 约 404，三区按 708 的间距会把 120px 主开关推出条带。只在窄视口收间距，主开关让出剩余宽度。 */
     '@media (max-width: 520px) {',
     '  html.cz-fill.cz-feed .knob { width: 136px !important; height: 136px !important; }',
+    '  html.cz-fill.cz-feed .grille-6x8 { width: 56px !important; height: 56px !important; }',
+    '  html.cz-fill.cz-feed .pill button { padding-left: 12px !important; padding-right: 12px !important; }',
+    '  html.cz-fill.cz-feed .transport-main { column-gap: 8px !important; }',
     '  html.cz-fill.cz-feed .strip { padding: 12px 8px !important; gap: 6px !important; }',
     '  html.cz-fill.cz-feed .strip .top, html.cz-fill.cz-feed .strip .mid { flex: 0 0 auto !important; min-width: max-content !important; gap: 6px !important; }',
     '  html.cz-fill.cz-feed .strip .bot { flex: 1 1 auto !important; min-width: 0 !important; max-width: 120px !important; justify-content: stretch !important; }',
@@ -17083,7 +17107,7 @@ window.__CZ_CSS = [
   /* 卡槽右侧机体指示灯：留在槽体外的留白里，不被卡片全宽压到底边 */
   '.cz-slot-led { position: absolute !important; width: 7px !important; height: 7px !important; border-radius: 50% !important; background: #E0A15A !important; box-shadow: 0 0 0 1px rgba(10,12,14,0.9), 0 0 7px #E0A15A !important; z-index: 47 !important; pointer-events: none !important; }',
   /* S13 批注2 + S16 卡槽常驻：LED 始终落脚在孔下肩右侧，准备态与计时态同位；feed 流无孔肩则隐藏 */
-  '#pkPunchSlotWrap > .cz-slot-led { top: auto !important; bottom: calc(var(--pk-slot-hole-drop, 10px) * 0.5 - 3.5px) !important; right: 3% !important; transform: none !important; }',
+  '#pkPunchSlotWrap > .cz-slot-led { top: auto !important; bottom: calc(var(--pk-slot-hole-drop, 10px) * 0.5 - 3.5px) !important; right: var(--pk-led-right, 10.5px) !important; transform: none !important; }',
   '#pkPunchSlotWrap[data-hole="0"] > .cz-slot-led { display: none !important; }',
   '#pkPunchSlotWrap > .cz-slot-led { transition: top 0.2s ease, bottom 0.2s ease, right 0.2s ease; }',
   '.cz-slot-led[data-live="1"] { background: #3DDC84 !important; box-shadow: 0 0 0 1px rgba(10,12,14,0.9), 0 0 9px #3DDC84 !important; animation: cz-slot-lamp .7s ease; }',
@@ -17310,37 +17334,49 @@ window.__CZ_CSS = [
     if (!W || W < 100) {
       W = (state.combo === '1' ? 460 : 420);
     }
-    /* cz-feed 落在卡片 iframe 文档上；画布文档只有轨道方向可用，与 applyLayoutMode 同一判据。
-       S13：feed 流保持既有整带露卡形态，不进入「卡槽孔」样式。 */
-    var feedTrack = cd.querySelector('.cz-combo') || cd.querySelector('.cz-rail') || cd.getElementById('czModCol');
-    var isFeedA = !!(feedTrack && cd.defaultView && cd.defaultView.getComputedStyle(feedTrack).flexDirection === 'column');
     var crownInset = 12;
+    var crownLeft = crownInset;
     var slotW = Math.max(160, W - crownInset * 2);
     var running = canvasRunning();
     /* S17 批注1（dad 261026）：槽体 = 黑区等宽的金属槽；孔 = 槽体内明显更窄的插孔。
        孔肩 holeInset 让槽体轮廓可见；卡片比孔再窄 8px，从孔中穿过。
-       注意：cardInset 必须先于 cardW 赋值，否则 var 提升导致 cardW = NaN。 */
-    var holeInset = isFeedA ? 0 : 28;
-    var cardInset = isFeedA ? 4 : (holeInset + 8);
+       S19 批注1/2（dad 261027）：744 / 440 视口全面复刻 1133 窄孔卡槽，
+       且槽体水平坐标直接对齐 iframe 内 #panel 黑区，孔左右边缘与 MIC / 电池边缘严格对齐，LED 永不越出黑区。 */
+    var holeInset = 28;
+    var aFramePanel = aWrap.querySelector(':scope > iframe');
+    if (aFramePanel) {
+      try {
+        var ddPanel = aFramePanel.contentDocument;
+        var panelEl = ddPanel ? ddPanel.getElementById('panel') : null;
+        if (panelEl) {
+          var wRect = aWrap.getBoundingClientRect();
+          var fRect = aFramePanel.getBoundingClientRect();
+          var pRect = panelEl.getBoundingClientRect();
+          if (pRect.width >= 160 && wRect.width >= 160) {
+            crownLeft = Math.max(0, Math.round((fRect.left - wRect.left) + pRect.left));
+            slotW = Math.round(pRect.width);
+          }
+        }
+      } catch (ePanel) {}
+    }
+    var cardInset = holeInset + 8;
     var cardW = Math.max(140, slotW - cardInset * 2);
     var cardH = Math.round(cardW / 1.586);
     /* 露出带 = 卡片全高的 1/5（下面 4/5 完全藏进黑区） */
     var exposedH = Math.max(34, Math.min(96, Math.round(cardH * 0.20)));
-    /* feed 流：卡槽露出带与票夹黑 bar 同高，保证「黑 bar → 卡」观感连续 */
-    if (isFeedA) { exposedH = 52; }
     /* 卡顶高出黑区上沿的一段（S17：卡口只露 16px，其余在孔上方，避免顶到页面头部） */
-    var cardRise = isFeedA ? 10 : 16;
+    var cardRise = 16;
     var slotH = exposedH + 18;
     var cardTotalH = slotH + cardRise;
     /* S17（dad 261026）：窄孔 = 黑区上沿的一道缝。
        孔高 slotLipH 拆上下两半（z42 垫卡后 / z46 盖卡底），卡片从孔中穿过。
        insertDepth = 卡片插进孔内的深度（与孔底齐平），卡片底边落在孔底。 */
-    var slotLipH = isFeedA ? 12 : 18;
-    var insertDepth = isFeedA ? 0 : 18;
-    var holeDrop = isFeedA ? 0 : 10;
+    var slotLipH = 18;
+    var insertDepth = 18;
+    var holeDrop = 10;
     /* 槽体（冠）高度 = 卡片可见高度（露出带 + 插入深度）− 高出黑区上沿的那段：
        槽底 = 卡底 = 孔底，冠顶 = 黑区上沿。 */
-    var slotFullH = isFeedA ? slotH : (exposedH + insertDepth - cardRise);
+    var slotFullH = exposedH + insertDepth - cardRise;
     var crownPx = slotFullH;
     var slotSafeGap = 16;
 
@@ -17354,20 +17390,28 @@ window.__CZ_CSS = [
     root.style.setProperty('--pk-slot-hole-h', slotLipH + 'px');
     root.style.setProperty('--pk-slot-hole-drop', holeDrop + 'px');
     root.style.setProperty('--pk-hole-inset', holeInset + 'px');
+    root.style.setProperty('--pk-led-right', ((holeInset - 7) * 0.5).toFixed(1) + 'px');
     root.style.setProperty('--pk-slot-full-h', slotFullH + 'px');
 
     var crown = cd.querySelector('.cz-astack-crown');
     if (crown) {
+      crown.style.setProperty('left', crownLeft + 'px', 'important');
+      crown.style.setProperty('right', 'auto', 'important');
+      crown.style.setProperty('width', slotW + 'px', 'important');
       crown.style.setProperty('height', crownPx + 'px', 'important');
       crown.style.setProperty('overflow', 'visible', 'important');
       crown.style.setProperty('pointer-events', running ? 'auto' : 'none', 'important');
     }
     var slot = cd.getElementById('pkPunchSlotWrap');
     if (slot) {
-      slot.dataset.hole = isFeedA ? '0' : '1';
+      slot.dataset.hole = '1';
       slot.style.setProperty('width', slotW + 'px', 'important');
       slot.style.setProperty('height', slotFullH + 'px', 'important');
       slot.style.setProperty('overflow', 'visible', 'important');
+    }
+    var ledNow = slot ? slot.querySelector(':scope > .cz-slot-led') : null;
+    if (ledNow) {
+      ledNow.style.setProperty('right', ((holeInset - 7) * 0.5).toFixed(1) + 'px', 'important');
     }
     /* 黑屏顶边让出卡槽带（S17 批注2，dad 261026）：按「槽体全高」让位，
        不是按露出带——否则卡槽下沿会压住 MIC / 时钟 / 电量行。 */
@@ -17396,7 +17440,7 @@ window.__CZ_CSS = [
     if (card) {
       /* S17（dad 261026）：卡底与孔底齐平（冠底 = 孔底 = 卡底），
          下半孔层（z46）盖住卡底，卡不再从孔下方露出一截。 */
-      var cardStopIn = isFeedA ? (slotH + cardRise) : (exposedH + insertDepth);
+      var cardStopIn = exposedH + insertDepth;
       card.style.setProperty('width', cardW + 'px', 'important');
       card.style.setProperty('height', cardStopIn + 'px', 'important');
       card.style.setProperty('max-height', 'none', 'important');
@@ -17405,18 +17449,12 @@ window.__CZ_CSS = [
       card.style.removeProperty('transform');
       card.style.setProperty('left', '50%', 'important');
       card.style.setProperty('--cz-card-inset', cardInset + 'px');
-      /* 孔口遮罩：孔上缘以下裁掉（卡片局部坐标 = 卡顶偏移 + 孔上缘在槽内坐标）；feed 流不遮罩 */
-      if (!isFeedA) {
-        /* 孔上沿在冠内的坐标 = 冠高 − 孔高（S17：孔贴在冠底，卡从孔中穿过） */
-        var holeTopInWrap = slotFullH - slotLipH;
-        var maskTopPx = cardRise + holeTopInWrap + slotLipH * 0.5;
-        card.style.setProperty('--cz-card-mask-top', maskTopPx.toFixed(1) + 'px');
-        card.dataset.cardMaskTop = maskTopPx.toFixed(1);
-        card.dataset.cardMaskAtHoleMid = '1';
-      } else {
-        card.style.removeProperty('--cz-card-mask-top');
-        delete card.dataset.cardMaskTop;
-      }
+      /* 孔上沿在冠内的坐标 = 冠高 − 孔高（S17+S19：全视口统一窄孔，孔贴在冠底，卡从孔中穿过） */
+      var holeTopInWrap = slotFullH - slotLipH;
+      var maskTopPx = cardRise + holeTopInWrap + slotLipH * 0.5;
+      card.style.setProperty('--cz-card-mask-top', maskTopPx.toFixed(1) + 'px');
+      card.dataset.cardMaskTop = maskTopPx.toFixed(1);
+      card.dataset.cardMaskAtHoleMid = '1';
       cd.documentElement.style.setProperty('--cz-card-inset', cardInset + 'px');
       card.dataset.cardWidth = String(cardW);
       card.dataset.cardHeight = String(cardH);
@@ -17428,7 +17466,7 @@ window.__CZ_CSS = [
       card.dataset.slotHoleHeight = String(slotLipH);
       card.dataset.slotHoleTop = String(holeTopInWrap);
       card.dataset.aspectRatio = '1.586';
-      card.dataset.exposedRatio = isFeedA ? '100.000' : (exposedH / cardH).toFixed(3);
+      card.dataset.exposedRatio = (exposedH / cardH).toFixed(3);
       card.dataset.cardInset = String(cardInset);
       card.classList.toggle('is-compact', isCompact);
     }
@@ -17493,7 +17531,7 @@ window.__CZ_CSS = [
       slot.appendChild(led);
     }
     /* 指示灯放在卡片右侧留出的槽肩（拟物机体面），不压卡片、也不落到槽口唇边上 */
-    led.style.right = '3%';
+    led.style.right = 'var(--pk-led-right, 10.5px)';
     led.style.top = 'auto';
     led.style.bottom = '1.5px';
     led.style.transform = 'none';
@@ -17907,7 +17945,7 @@ window.__CZ_CSS = [
       });
     });
     [].slice.call(d.querySelectorAll('.panel')).forEach(function (el) {
-      touch(el, { padding: '10px 14px 6px', gap: '8px' });
+      touch(el, { padding: 'var(--cz-panel-pt, 10px) 14px 64px', gap: '8px' });
     });
     [].slice.call(d.querySelectorAll('.pill button')).forEach(function (el) {
       touch(el, { 'min-height': '44px' });
@@ -19173,6 +19211,7 @@ window.__CZ_CSS = [
     applyDCollapsedWidth();
     applyDCollapsedWidth();
     [].slice.call(col.querySelectorAll('.cz-mod > iframe')).forEach(function (f) { applyModuleState(f); });
+    updateCardSlotGeometry(canvasDoc());
     /* 画布 iframe 钉在票卡带自然高上（不读 scrollHeight，不按窗口高截短） */
     syncCanvasHeight();
     alignColTop();

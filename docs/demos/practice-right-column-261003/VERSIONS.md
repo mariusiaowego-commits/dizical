@@ -2,40 +2,40 @@
 source: ai-agent
 project: dizical
 sprint: sprint-26100602-round2-mrd2610062214
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # demo 版本清单（自动生成，勿手改本体）
 
-**当前 demo 版本：v3.7**（2026-10-26）　口径：`demo vX.Y` = 全局轮次；`卡 vN` = 单卡设计版本
+**当前 demo 版本：v3.8**（2026-10-27）　口径：`demo vX.Y` = 全局轮次；`卡 vN` = 单卡设计版本
 
 | 页面 | demo 版本 | 卡版本 | 说明 |
 |:--|:--|:--|:--|
-| `dashboard-skin-01-v3.html` | v3.7 | v3 | ① 练习计时卡：拱与旋钮【同心】(偏差 0) · 拱半径收到 85px 深 24/32 可切 · 拱-边缘交接处圆角(左右不对称 0) · 点域 -120→120 与指针完全一致 · 点-拱净距 ≥10px · 页脚三格居中(边距 19.2/18) |
-| `practice-duration-card-01-v3.html` | v3.7 | v3 | ⑥ 今日时长卡：★ 全站深色基准 · 刻度 = 每段起点 + 末段结束点(3 段→4 刻度) · 首刻度与首段左端对齐(差 0) · 虚线纯 1px 点线 |
-| `requests-card-01-v3.html` | v3.7 | v3 | ④ 老师要求卡：拖动露出下一张 + 前后 dot 都能看清 · dad 已定稿，本轮冻结 |
-| `metronome-01-v4.html` | v3.7 | v4 | ② 节拍器卡：5 音色 + 音色抽屉 + 灯声同步 + 深墨接 D6 + 440 档真重排 + rAF 驱动灯效 |
-| `metronome-02-strip.html` | v3.7 | v1 | ②-B 节拍器竖长条挂件：宽 0.333 · bpm-label 右 2 个 ‹ › 箭头(速度滑杆已删) · 菜单不出滚动条 |
-| `metronome-01-v3.html` | v3.7 | v3 | ② 节拍器卡：A 甲板分级 + 音色抽屉(不透明底板/外部点击与 ESC 收起) · 旋钮只调速去掉单击启停 · 440 档 LED 保持一字排开 · pad 档真双栏 · 改垂直位移拖拽 · 三处信息去冗余 · 补 data-term 兜底 · 甲板高 190→174 · 灯效改 rAF · 关强弱拍保留第 1 拍 0.55 微光 |
-| `compose-02.html` | v3.7 | v3 | 组合视图：横排等高 608 · 手机 440 纵排等宽 · 组合1(计时+老师要求+今日时长)一屏不横滑 |
-| `today-records-01.html` | v3.7 | v1 | ⑤ 今日记录卡：折叠/展开 + 占位微条 |
-| `card-dashboard-skeleton-01.html` | v3.7 | v1 | 轨道骨架：吸附 + 左右切卡（dad 保留） |
-| `ruler-shared-check.html` | v3.7 | v1 | 共享尺子接入自检页 |
-| `canvas-01.html` | v3.7 | v1 | ★ 右栏顶替 pk-main-col：真画布 practice-ticket-v4-260920 逐字搬入（本体零改动）+ **等高卡片网格**（右栏每张卡高度 = 左栏票卡：1133 档 577）+ **三组合**（image23/24 结构：组合1 仪表盘+底部卧卡+竖条通高 / 组合2 一行并排 / 组合3 复合列）+ **卡槽窄孔**（孔比黑区窄 28px 肩，孔上下两半 z42/z46 夹住卡片）+ 双向联动总线（`DizicalPracticeBus`，负控真红）+ 轨内真横滑 |
-| `compose-03.html` | v3.7 | v1 | 组合自选台：5 预设 + 8 模块勾选 + localStorage + 一屏单行 + 横滑（槽位外框已拆） |
-| `index.html` | v3.7 | — | 总览页（入口） |
-| `dashboard-skin-01-v2.html` | v3.7 | v2 | ① 计时卡上一版（对照） |
-| `metronome-01-v2.html` | v3.7 | v2 | ② 节拍器上一版（对照） |
-| `dashboard-bottom-blocks-01-v2.html` | v3.7 | v2 | ③ 下方三块（已并入 D1，留作对照） |
-| `requests-card-01.html` | v3.7 | v2 | ④ 老师要求上一版（对照） |
-| `practice-duration-card-01.html` | v3.7 | v2 | ⑥ 时长卡上一版（对照） |
-| `compose-01.html` | v3.7 | v1 | 组合视图上一版（卡片列车，对照） |
-| `cards/card-a-dashboard.html` | v3.7 | v2 | A 仪表盘卡：卡槽窄孔（孔肩 28px，卡比孔再窄 8px）· 插卡减速回弹不露下缘 · MIC/电池对齐**孔左右缘**（28px）· 读数与封面图上下居中（差 0px）· 「今日 xx分 / BPM xx」贴黑区下缘 |
-| `cards/card-b-metronome-full.html` | v3.7 | v3 | B 全功能节拍器卡（本轮未动，仅同步版本号） |
-| `cards/card-s-metronome-strip.html` | v3.7 | v1 | S 节拍器横条卡（feed 流下票夹变形为横 bar，本轮未动） |
-| `cards/card-d-duration.html` | v3.7 | v3 | D 今日练习时长卡（本轮未动，仅同步版本号） |
-| `cards/card-r-records.html` | v3.7 | v1 | R 今日练习记录卡（本轮未动，仅同步版本号） |
-| `cards/card-q-requests.html` | v3.7 | v3 | Q 老师要求卡（本轮未动，仅同步版本号） |
+| `dashboard-skin-01-v3.html` | v3.8 | v3 | ① 练习计时卡：拱与旋钮【同心】(偏差 0) · 拱半径收到 85px 深 24/32 可切 · 拱-边缘交接处圆角(左右不对称 0) · 点域 -120→120 与指针完全一致 · 点-拱净距 ≥10px · 页脚三格居中(边距 19.2/18) |
+| `practice-duration-card-01-v3.html` | v3.8 | v3 | ⑥ 今日时长卡：★ 全站深色基准 · 刻度 = 每段起点 + 末段结束点(3 段→4 刻度) · 首刻度与首段左端对齐(差 0) · 虚线纯 1px 点线 |
+| `requests-card-01-v3.html` | v3.8 | v3 | ④ 老师要求卡：拖动露出下一张 + 前后 dot 都能看清 · dad 已定稿，本轮冻结 |
+| `metronome-01-v4.html` | v3.8 | v4 | ② 节拍器卡：5 音色 + 音色抽屉 + 灯声同步 + 深墨接 D6 + 440 档真重排 + rAF 驱动灯效 |
+| `metronome-02-strip.html` | v3.8 | v1 | ②-B 节拍器竖长条挂件：宽 0.333 · bpm-label 右 2 个 ‹ › 箭头(速度滑杆已删) · 菜单不出滚动条 |
+| `metronome-01-v3.html` | v3.8 | v3 | ② 节拍器卡：A 甲板分级 + 音色抽屉(不透明底板/外部点击与 ESC 收起) · 旋钮只调速去掉单击启停 · 440 档 LED 保持一字排开 · pad 档真双栏 · 改垂直位移拖拽 · 三处信息去冗余 · 补 data-term 兜底 · 甲板高 190→174 · 灯效改 rAF · 关强弱拍保留第 1 拍 0.55 微光 |
+| `compose-02.html` | v3.8 | v3 | 组合视图：横排等高 608 · 手机 440 纵排等宽 · 组合1(计时+老师要求+今日时长)一屏不横滑 |
+| `today-records-01.html` | v3.8 | v1 | ⑤ 今日记录卡：折叠/展开 + 占位微条 |
+| `card-dashboard-skeleton-01.html` | v3.8 | v1 | 轨道骨架：吸附 + 左右切卡（dad 保留） |
+| `ruler-shared-check.html` | v3.8 | v1 | 共享尺子接入自检页 |
+| `canvas-01.html` | v3.8 | v1 | ★ 右栏顶替 pk-main-col：真画布 practice-ticket-v4-260920 逐字搬入（本体零改动）+ **等高卡片网格**（右栏每张卡高度 = 左栏票卡：1133 档 577）+ **三组合**（image23/24 结构：组合1 仪表盘+底部卧卡+竖条通高 / 组合2 一行并排 / 组合3 复合列）+ **卡槽窄孔**（孔比黑区窄 28px 肩，孔上下两半 z42/z46 夹住卡片）+ 双向联动总线（`DizicalPracticeBus`，负控真红）+ 轨内真横滑 |
+| `compose-03.html` | v3.8 | v1 | 组合自选台：5 预设 + 8 模块勾选 + localStorage + 一屏单行 + 横滑（槽位外框已拆） |
+| `index.html` | v3.8 | — | 总览页（入口） |
+| `dashboard-skin-01-v2.html` | v3.8 | v2 | ① 计时卡上一版（对照） |
+| `metronome-01-v2.html` | v3.8 | v2 | ② 节拍器上一版（对照） |
+| `dashboard-bottom-blocks-01-v2.html` | v3.8 | v2 | ③ 下方三块（已并入 D1，留作对照） |
+| `requests-card-01.html` | v3.8 | v2 | ④ 老师要求上一版（对照） |
+| `practice-duration-card-01.html` | v3.8 | v2 | ⑥ 时长卡上一版（对照） |
+| `compose-01.html` | v3.8 | v1 | 组合视图上一版（卡片列车，对照） |
+| `cards/card-a-dashboard.html` | v3.8 | v2 | A 仪表盘卡：1133/744/440 全视口统一窄孔卡槽（孔肩 28px，卡比孔再窄 8px，露卡 1/5）· 440 指示灯落在黑区右肩内 · 孔左右缘严格对齐 MIC/电池（误差 0px）· 读数靠中 · 喇叭孔 56px 与按钮净距 ≥32px |
+| `cards/card-b-metronome-full.html` | v3.8 | v3 | B 全功能节拍器卡（本轮未动，仅同步版本号） |
+| `cards/card-s-metronome-strip.html` | v3.8 | v1 | S 节拍器横条卡（feed 流下票夹变形为横 bar，本轮未动） |
+| `cards/card-d-duration.html` | v3.8 | v3 | D 今日练习时长卡（本轮未动，仅同步版本号） |
+| `cards/card-r-records.html` | v3.8 | v1 | R 今日练习记录卡（本轮未动，仅同步版本号） |
+| `cards/card-q-requests.html` | v3.8 | v3 | Q 老师要求卡（本轮未动，仅同步版本号） |
 
 ## 历史轮次
 
@@ -56,3 +56,4 @@ updated: 2026-10-26
 - **demo v3.5**（2026-10-16）：dad 文档 `PRDs/2610160819-demov3.4问题.md` 八条整轮修复 ——① **A 卡错位/裁切根治**：组合1 里旋钮与「开始/提前结束/按钮组」相交 499.5/790.9/1879.6px² → 0（旋钮不再压按钮）、`#panel` 内部裁 54 → 0、`#mid` 裁 55 → 0、封面名 0×0 → 34.3×13.2 可见、读数行 cx 由 +55px 偏 → == 卡中轴 ·② **arc 点环同心**：20 个点到旋钮圆心半径 106.26~106.38（散布 0.13px）＝几何同心，点不再落在旋钮面上 ·③ **缺口咬深 = 规格**：mask 圆心 y 由写死 242.5px → 按面板高计算，实测咬深 24px（= `--notch-depth`）·④ **卡槽**：`#pkPunchSlotWrap` 18 → 50px（agy 规格 48~54），落在 A 卡内、主屏之上 ·⑤ **今日记录卡**：迷你卡底色 rgb(232,229,224) 灰 → rgb(22,26,30)=#161A1E（与时长卡同族）· ⑥ **记录弹窗**：`#czPopFrame` 渲染「科目|总时长|速度|单次|明细|占比」12 行明细，且弹窗内 demo chrome（徽章/视口/皮肤切换）全隐 ·⑦ **744/440 内容驱动高度**（旧六卡写死 460）：744 = A573/B681/S108/D213/R719/Q556、440 = A678/B768/S345/D213/R797/Q556，六值异构且卡内滚动条 0（旧 R 缺 67/169px）·⑧ **S 竖条 → 横条**：h(S) 150 → 108（agy 判据 ≤120），内部 top/mid/bot 横排 ·⑨ **D 卡元素恢复**（组合1 224 宽）：空心时钟 135×44 + 时间轴胶囊 206×51(4 刻度) + 图标组，下方空白 63% → 0% ·⑩ 画布源零改动（sha256 `e86d4bc56163218d`）；`verify-demos` 16 页 OK / 0 FAIL、`token-contrast` 不合格 0
 - **demo v3.6**（2026-10-22）：八条整轮落地 —— ① 圆钮接缝 1px 外壳描边 · ② 卡槽与仪表盘等宽 · ③ 插卡改自上而下 · ④ 去灰直角（`.diag-card` 无上边框 + 卧卡 dash 圆角裁切）· ⑤ BPM 左票/竖条/仪表盘绝对值同步 · ⑥ 组合1 时长卡 32px 时钟 + 44px 时间轴胶囊 · ⑦ 440 顶栏双行 · ⑧ 440 面板底部 78px 留白；verify-demos canvas-01 OK、token-contrast 0 不合格、R2 0 failures
 - **demo v3.7**（2026-10-26）：S17+S18 整轮落地 —— ① **卡槽窄孔化**：槽体透明，黑区上沿只留一道比黑区窄 28px 肩的缝；孔上下两半（`::after` z42 垫卡后 / `::before` z46 盖卡底）把卡片夹在中间 = 卡片从孔中穿过；孔所有状态常驻（准备态也在）·② **插卡动画不穿帮**：`pkCardToSlot` / `pkCardToSlotFeed` 全程 `translateY ≤ 0`（72% 归座 0px → 85% 回弹 −2px → 100% 落定 0px），逐帧实测卡底越过孔底 **0.00px**、回弹期卡底留在下半孔遮罩内 **7.00px** ·③ **MIC / 电池对齐卡槽孔缘**：`.status` 改 `padding: 0 var(--cz-status-pad-x,16px)`，实测 1133 C1/C2/C3 两态 `micLeftFromPanel = holeLeftFromPanel = 28.0px`、`batRightFromPanel = holeRightFromPanel = 28.0px`（误差 0.0px）·④ **读数与封面图上下居中**：新增 `alignReadoutWithCover()` 写 `--cz-readout-dx/dy`，实测 `digitsCoverCyDiff = 0.0px`，水平落在封面图右缘与右侧安全边界中点偏左 6px ·⑤ **页脚贴黑区下缘**：`--cz-foot-top = panel 高 − 20px`（不再由圆点弧顶牵制），实测「今日 xx分」距底 4.0px、「BPM xx」距底 0–2px ·⑥ **卡槽指示灯常驻同位**：`.cz-slot-led` 准备态/计时态同一孔肩位置，feed 流无孔肩则隐藏 ·⑦ **feed 流修右侧溢出 24px**（`crownInset` 统一 12px）+ 440 档旋钮 176→136px；门禁 `verify.js --strict` 11/11 PASS、6 模板字节级一致、CSS `[data-vp]` 0 处
+- **demo v3.8**（2026-10-27）：S19 整轮落地 —— ① **744 / 440 全面复刻 1133 窄孔卡槽**：删除 `isFeedA` 整带露卡分支，三视口统一 `data-hole="1"`、`holeInset=28`、`cardInset=36`、露卡 1/5（实测 exposedRatio 19.8%–20.1%）·② **440 指示灯与卡槽对称根治**：`updateCardSlotGeometry()` 直接读取 iframe 内 `#panel` 真实边界定位 `.cz-astack-crown`，并修复 `syncAll`/`measureCardContent` 首次加载少算 `--cz-panel-pt` 触发纵向滚动条挤歪黑区 15px 的根因，LED 定位在孔右肩中点 `right: 10.5px`（实测 440/744/1133 `holeLeft - micLeft = 0.0px`、`holeRight - batRight = 0.0px`、`holeSymDiff = 0.0px`、`ledInsidePanel = true`）·③ **440 读数靠中**：`alignReadoutWithCover()` 准备态扣除「分钟」下标半宽往左收敛（440 下数字中心 215.7px vs 面板中心 220.0px），计时态 4 位数自动保留与封面 ≥14px 安全边距 ·④ **440 按钮与喇叭孔零重叠**：440 档 `.grille-6x8` 缩至 56×56px、`.grid-3col` 列宽 64px + `column-gap: 8px`，`alignSpeakerWithCover()` 限制最大右偏保留 ≥12px 净距（实测 440 下 `grillePillGap = 32–34px`）；门禁 `verify.js --strict` 11/11 PASS
