@@ -616,6 +616,26 @@ const isStrict = process.argv.includes('--strict');
           };
         });
 
+        /* Part 2b：票面「时长卡片」按钮走的是 ttStepMin（不是总线 arm），
+           必须同样回灌仪表盘 ruler，否则出现「票面 21 / 仪表盘 20」两个数字（agy P1）。 */
+        await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const btn = cd ? cd.getElementById('pkTicketDurBtn') : null;
+          if (btn) btn.click();
+        });
+        await vp.waitForTimeout(300);
+        const r2b = await vp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const durEl = cd ? cd.getElementById('pkTicketDurVal') : null;
+          const frame = cd ? cd.querySelector('.cz-mod[data-mod="A"] iframe') : null;
+          const d = frame ? frame.contentDocument : null;
+          const rulerInput = d ? d.getElementById('rulerInput') : null;
+          return {
+            leftDur: durEl ? parseInt(durEl.textContent, 10) : null,
+            rulerVal: rulerInput ? parseInt(rulerInput.value, 10) : null
+          };
+        });
+
         /* Part 3: 窄条 bar（选完两项后的准备态）也要跟 ruler 走 ——
            dad 261027 第 3 条：拖 ruler 改时长，左侧票夹时长没联动。 */
         await vp.evaluate(() => {
@@ -645,8 +665,9 @@ const isStrict = process.argv.includes('--strict');
         });
 
         const pass = (leftRead1 === 18) && (r2.leftDur === 20) && (r2.rulerVal === 20)
+          && (r2b.leftDur === 21) && (r2b.rulerVal === 21)
           && barState.isBar && barState.railRemain === '18:00' && barState.ticketDur === 18;
-        rows.push({ vp: v.vp, combo, r2tOk: r2t.ok, leftRead1, ...r2, barState, pass });
+        rows.push({ vp: v.vp, combo, r2tOk: r2t.ok, leftRead1, ...r2, r2b, barState, pass });
       }
       await vp.close();
     }
@@ -688,6 +709,20 @@ const isStrict = process.argv.includes('--strict');
       });
 
       // 步骤 2: 填满两项
+      /* S22-P0 护栏：变形必须逐帧插值。旧实现首帧就被 .stage-bar 的 !important
+         压成 50px（瞬间跳变），这里采样整段动画要求中间值 ≥ 3 档。 */
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const left = cd ? cd.getElementById('pkLeftCol') : null;
+        window.__czMorphSamples = [];
+        if (!left) return;
+        const t0 = performance.now();
+        (function loop() {
+          const r = left.getBoundingClientRect();
+          window.__czMorphSamples.push({ w: +r.width.toFixed(1), h: +r.height.toFixed(1) });
+          if (performance.now() - t0 < 800) requestAnimationFrame(loop);
+        })();
+      });
       await vp.evaluate(() => {
         const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
         if (w && typeof w.selectItem === 'function') w.selectItem(1034);
@@ -706,6 +741,16 @@ const isStrict = process.argv.includes('--strict');
         const rr = rail ? rail.getBoundingClientRect() : null;
         const rv = remainVal ? remainVal.getBoundingClientRect() : null;
         const isMobile = cd && cd.documentElement.clientWidth < 1024;
+        /* 变形插值采样：桌面看宽度，纵向 feed 看高度 */
+        const samples = window.__czMorphSamples || [];
+        const axis = isMobile ? 'h' : 'w';
+        const arr = samples.map((s) => s[axis]);
+        const first = arr.length ? arr[0] : 0;
+        const last = arr.length ? arr[arr.length - 1] : 0;
+        const lo = Math.min(first, last);
+        const hi = Math.max(first, last);
+        const midVals = [...new Set(arr.filter((v) => v > lo + 1 && v < hi - 1))];
+        const contentEl = cd ? cd.getElementById('pkRailContent') : null;
         return {
           leftW: lr ? +lr.width.toFixed(1) : 0,
           leftH: lr ? +lr.height.toFixed(1) : 0,
@@ -718,6 +763,13 @@ const isStrict = process.argv.includes('--strict');
           remainText: remainVal ? remainVal.textContent.trim() : null,
           remainWritingMode: remainVal ? cd.defaultView.getComputedStyle(remainVal).writingMode : null,
           remainFitsBar: rv && rr ? (rv.left >= rr.left - 0.5 && rv.right <= rr.right + 0.5) : false,
+          /* S22-P0 护栏：变形中间值档数（≥3 才是插值，不是跳变） */
+          morphMidSteps: midVals.length,
+          morphFirst: +first.toFixed(1),
+          morphLast: +last.toFixed(1),
+          /* S22-P1 护栏：窄条里的「本次内容」不能被压成一两个字（此前 440 实测仅 4.2px） */
+          contentWidth: contentEl ? +contentEl.getBoundingClientRect().width.toFixed(1) : 0,
+          contentClipped: contentEl ? (contentEl.scrollWidth > contentEl.clientWidth + 1) : false,
           isMobile
         };
       });
@@ -734,12 +786,17 @@ const isStrict = process.argv.includes('--strict');
         const cd = window.__cz.canvasDoc(), w = cd ? cd.defaultView : null;
         const leftCol = cd ? cd.getElementById('pkLeftCol') : null;
         const lr = leftCol ? leftCol.getBoundingClientRect() : null;
+        /* 展开回票夹后「换曲目」入口必须恢复可用（窄条形态下才 block，见 openFolio 的 isBarDeformed 早返回） */
+        if (w && typeof w.openFolio === 'function') { try { w.openFolio(); } catch (e) {} }
+        const modalOpen = cd && cd.getElementById('pkFolioModal') ? cd.getElementById('pkFolioModal').classList.contains('open') : false;
+        if (w && typeof w.closeFolio === 'function') { try { w.closeFolio(); } catch (e) {} }
         return {
           leftW: lr ? +lr.width.toFixed(1) : 0,
           leftH: lr ? +lr.height.toFixed(1) : 0,
           isBar: w && typeof w.isBarDeformed === 'function' ? w.isBarDeformed() : false,
           curName: (w && w.cur && w.cur.name) || (cd && cd.getElementById('pkTicketSubjectName') ? cd.getElementById('pkTicketSubjectName').textContent : null),
-          content: w ? w.content : null
+          content: w ? w.content : null,
+          folioOpens: modalOpen
         };
       });
 
@@ -763,8 +820,11 @@ const isStrict = process.argv.includes('--strict');
       const pass2 = (step2.isMobile ? (step2.leftH <= 56) : (Math.abs(step2.leftW - 50) <= 6)) && step2.isBar && !step2.isTiming && step2.reselectDisabled === false
         && step2.railH >= (step2.isMobile ? 44 : 200)
         && /^\d{2}:\d{2}$/.test(step2.remainText || '')
-        && step2.remainWritingMode === 'horizontal-tb' && step2.remainFitsBar;
-      const pass3 = step3.leftW > 100 && !step3.isBar && !!step3.curName && step3.curName !== '未选择科目';
+        && step2.remainWritingMode === 'horizontal-tb' && step2.remainFitsBar
+        && step2.morphMidSteps >= 3
+        && (step2.isMobile ? (step2.contentWidth >= 40 && step2.contentClipped === false) : true);
+      const pass3 = step3.leftW > 100 && !step3.isBar && !!step3.curName && step3.curName !== '未选择科目'
+        && step3.folioOpens === true;
       const pass4 = step4.isTiming && step4.reselectDisabled === true;
 
       const ok = pass1 && pass2 && pass3 && pass4;

@@ -2169,6 +2169,22 @@
       border-radius: 14px !important;
     }
   }
+  /* S22-P0：变形过渡态 .stage-morphing
+     .stage-bar 用 !important 锁死几何（width/height/flex），而 GSAP 补间写的是内联
+     style —— 内联非 !important 打不过样式表 !important，于是票夹在补间第一帧就被压成
+     50px（瞬间跳变，dad 261027 验收可见）。过渡态单独用 .stage-morphing：只负责把
+     窄条显示出来，不锁几何；动画结束后再切回 .stage-bar 稳态。 */
+  #practiceStage.stage-morphing .pk-run-rail {
+    display: flex !important;
+    animation: none !important;
+    pointer-events: none !important;
+  }
+  @media (min-width: 1024px) {
+    #practiceStage.stage-morphing .pk-run-rail {
+      flex-direction: column !important;
+      align-items: center !important;
+    }
+  }
   @keyframes pkRailExit {
     0% { opacity: 1; transform: translateX(0) scaleX(1); }
     40% { opacity: 1; transform: translateX(-2px) scaleX(1.02); }
@@ -2955,6 +2971,54 @@
       width: clamp(210px, 50%, 320px);
       height: var(--pk-card-exposed-h, 27px);
       max-height: 48px;
+    }
+  }
+  /* S22-P1：窄屏（≤600）横条信息位不够，科目/剩余/BPM/内容/重选五段把内容区挤到
+     4px（内容被压成 1 个字）。窄条里冗余的 BPM 在下方 Card A / Card B 常驻大字号，
+     这里让位给「本次内容」；同时压缩内边距、缩短标签与按钮。 */
+  @media (max-width: 600px) {
+    .pk-run-rail {
+      padding: 0 10px !important;
+    }
+    .pk-run-rail-subject {
+      padding: 0 10px 0 0 !important;
+    }
+    .pk-run-rail-subject-text {
+      font-size: 12px !important;
+      max-width: 84px !important;
+    }
+    .pk-run-rail-remain {
+      padding: 0 8px !important;
+      gap: 4px !important;
+    }
+    .pk-run-rail-bpm {
+      display: none !important;
+    }
+    .pk-run-rail-content {
+      padding: 0 0 0 8px !important;
+      gap: 6px !important;
+    }
+    .pk-run-rail-content-label {
+      font-size: 0 !important;
+      letter-spacing: 0 !important;
+      margin: 0 !important;
+    }
+    .pk-run-rail-content-label::after {
+      content: '本次';
+      font-size: 9px !important;
+      letter-spacing: .02em !important;
+      color: rgba(255,248,240,.45) !important;
+    }
+    .pk-run-rail-content-text {
+      font-size: 11px !important;
+      max-width: 118px !important;
+    }
+    .pk-run-rail-reselect-btn {
+      padding: 0 8px !important;
+      margin: 0 0 0 auto !important;
+      height: 26px !important;
+      line-height: 24px !important;
+      font-size: 10.5px !important;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -5875,6 +5939,9 @@ function selectItem(id, isArchived) {
 function openFolio() {
   const stage = document.getElementById('practiceStage');
   if ((stage && stage.classList.contains('stage-running')) || started || timerRunning) return;
+  /* S22：窄条形态下票夹本体是 display:none，展开入口只有「重新选择」按钮。
+     这里再挡一道，避免残留的键盘/回车路径把票夹弹层从窄条态打开。 */
+  if (isBarDeformed) return;
   renderFolioModal();
   document.getElementById('pkFolioModal').classList.add('open');
 }
@@ -6240,6 +6307,30 @@ document.addEventListener('DOMContentLoaded', () => { syncRunRailCard(); initRun
 let runTimeline = null;
 let lastPrepHeight = 650;
 
+/* S22-P2：窄条高度 --cz-bar-h 只在变形时算过一次，视口切换/屏幕旋转后会残留上一个
+   视口的高度。重算方法：临时撤掉 .stage-bar（此时左栏回到整列宽度，票卡按真实宽度
+   排版），量出票卡自然高度后写回。 */
+function refreshBarHeight() {
+  const stage = document.getElementById('practiceStage');
+  if (!stage || !stage.classList.contains('stage-bar')) { return; }
+  const card = document.getElementById('pkTicketCard');
+  if (!card) { return; }
+  const prevH = card.style.height;
+  const prevMin = card.style.minHeight;
+  card.style.height = '';
+  card.style.minHeight = '';
+  stage.classList.remove('stage-bar');
+  const h = card.offsetHeight;
+  stage.classList.add('stage-bar');
+  card.style.height = prevH;
+  card.style.minHeight = prevMin;
+  if (h > 100) {
+    lastPrepHeight = h;
+    stage.style.setProperty('--cz-bar-h', h + 'px');
+  }
+}
+window.addEventListener('resize', refreshBarHeight);
+
 function morphTicketToBar(callback, instant) {
   if (isBarDeformed) {
     if (typeof callback === 'function') callback();
@@ -6296,12 +6387,17 @@ function morphTicketToBar(callback, instant) {
   const isDesktop = window.innerWidth >= 1024;
   const targetColWidth = isStacked ? (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 360) : 50;
   const startColWidth = leftCol ? leftCol.offsetWidth : (isDesktop ? 380 : 360);
+  /* 桌面态：左栏高度钉成票夹高度，黑窄条（height:100%）动画全程不忽高忽低 */
+  if (leftCol && !isStacked) {
+    leftCol.style.height = prepHeight + 'px';
+  }
 
   /* S22：这一步只做「票夹形态 → 黑窄条」，绝不进入计时态。
      stage-running 会把插卡、prep-only 隐藏、run-only 显示、『进行中』标签一起触发，
      用户还没点开始就看到计时态（dad 261027 实测踩到）。几何由独立的 .stage-bar 承载。 */
   if (instant || typeof gsap === 'undefined') {
     if (stage) {
+      stage.classList.remove('stage-morphing');
       stage.classList.add('stage-bar');
     }
     if (leftCol) leftCol.style.width = isStacked ? '100%' : targetColWidth + 'px';
@@ -6317,6 +6413,7 @@ function morphTicketToBar(callback, instant) {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReduced) {
     if (stage) {
+      stage.classList.remove('stage-morphing');
       stage.classList.add('stage-bar');
     }
     if (leftCol) leftCol.style.width = isStacked ? '100%' : targetColWidth + 'px';
@@ -6330,7 +6427,8 @@ function morphTicketToBar(callback, instant) {
   }
 
   if (stage) {
-    stage.classList.add('stage-bar');
+    stage.classList.remove('stage-bar');
+    stage.classList.add('stage-morphing');
   }
 
   const prepItems = ticketCard ? ticketCard.querySelectorAll('.prep-only, .prep-only-block') : [];
@@ -6340,6 +6438,10 @@ function morphTicketToBar(callback, instant) {
     overwrite: 'auto',
     onComplete: () => {
       gsap.set([leftCol, ticketCard, prepItems].filter(Boolean), { clearProps: 'all' });
+      if (stage) {
+        stage.classList.remove('stage-morphing');
+        stage.classList.add('stage-bar');
+      }
       if (pkRunRail) { pkRunRail.style.opacity = '1'; }
       if (ticketCard && !isStacked) {
         ticketCard.style.height = prepHeight + 'px';
@@ -6435,6 +6537,7 @@ function expandBarToFolio(callback, instant) {
     if (stage) {
       /* S22：只撤票夹窄条形态；计时态（stage-running）由 exitRun 自己负责，这里不越权。 */
       stage.classList.remove('stage-bar');
+      stage.classList.remove('stage-morphing');
       stage.style.removeProperty('--cz-bar-h');
       if (!started && !timerRunning) {
         stage.classList.remove('cz-ticket-live', 'cz-ticket-exit', 'cz-ticket-enter');
@@ -6496,6 +6599,7 @@ function expandBarToFolio(callback, instant) {
   if (instant || typeof gsap === 'undefined') {
     if (stage) {
       stage.classList.remove('stage-bar');
+      stage.classList.remove('stage-morphing');
     }
     resetToPrepClean();
     return;
@@ -6505,13 +6609,30 @@ function expandBarToFolio(callback, instant) {
   if (prefersReduced) {
     if (stage) {
       stage.classList.remove('stage-bar');
+      stage.classList.remove('stage-morphing');
     }
     resetToPrepClean();
     return;
   }
 
   if (stage) {
+    /* 反向变形：先把几何钉成窄条终值再撤 .stage-bar 的 !important 规则，
+       否则左栏宽度/票卡高度会先瞬间弹回整列（闪一下），动画再从 50px 追不上。 */
+    stage.classList.add('stage-morphing');
     stage.classList.remove('stage-bar');
+  }
+  if (leftCol) {
+    leftCol.style.width = isStacked ? '100%' : '50px';
+    leftCol.style.height = isStacked ? '52px' : '';
+  }
+  if (ticketCard) {
+    ticketCard.style.display = 'flex';
+    ticketCard.style.overflow = 'hidden';
+    ticketCard.style.pointerEvents = 'none';
+    ticketCard.style.opacity = '0';
+    ticketCard.style.height = isStacked ? '0px' : '';
+    ticketCard.style.minHeight = isStacked ? '0px' : '';
+    ticketCard.style.width = isStacked ? '100%' : '0px';
   }
   runTimeline = gsap.timeline({
     overwrite: 'auto',
@@ -6962,6 +7083,15 @@ function closeRecordsDrawer() {
       /* S22：窄条 bar 在准备态就常驻显示「剩余 mm:ss」，改时长必须同步，
          否则出现「票面 18 / 窄条 10:00」两个数字（dad 261027 第 3 条）。 */
       if (typeof updateCollapsedProgress === 'function') updateCollapsedProgress();
+      /* S22-P1：票面时长任何路径（±按钮 / 长按 / 键盘 / JS 调用）改动后都要回灌仪表盘
+         ruler，否则出现「票面 24 / 仪表盘 25」两个数字（agy 复核 P1）。总线回环由
+         leftDur() 值比较挡住，不会自激。 */
+      try {
+        const bus = window.DizicalPracticeBus;
+        if (bus && typeof bus.duration === 'function' && !started) {
+          bus.duration(duration, 'left_ticket');
+        }
+      } catch (e) {}
     };
   }
 
@@ -7934,7 +8064,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v2 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v2 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -11212,7 +11342,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13311,7 +13441,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v1 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v1 · 2026-10-27</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14308,7 +14438,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v3 · 2026-10-27</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15136,7 +15266,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v1 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v1 · 2026-10-27</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16134,7 +16264,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.11</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v3 · 2026-10-27</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -17262,10 +17392,13 @@ function closeRecordsDrawer() {
     'body { padding-top: 28px !important; }',
     '#practiceStage { height: auto !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; }',
     '.pk-stage-wrap { align-items: flex-start !important; height: auto !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; overflow: visible !important; }',
-    /* stage-bar 必须排除：窄条高度由 --cz-bar-h 写入，这里 height:auto 会把它压成 0 */
-    '#practiceStage:not(.stage-running):not(.stage-bar):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol { align-self: flex-start !important; height: auto !important; flex: 0 0 auto !important; }',
+    /* stage-bar 必须排除：窄条高度由 --cz-bar-h 写入，这里 height:auto 会把它压成 0
+       stage-morphing 同样排除：变形动画期间不锁几何，否则 !important 覆盖 GSAP 内联补间（票夹瞬间跳变） */
+    '#practiceStage:not(.stage-running):not(.stage-bar):not(.stage-morphing):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol { align-self: flex-start !important; height: auto !important; flex: 0 0 auto !important; }',
+    '#practiceStage.stage-morphing #pkLeftCol { align-self: flex-start !important; flex: 0 0 auto !important; }',
     '.pk-main-col { align-self: flex-start !important; height: auto !important; flex: 1 1 0% !important; min-width: 0 !important; }',
-    '#practiceStage:not(.stage-running):not(.cz-ticket-exit):not(.cz-ticket-enter) .pk-ticket, #practiceStage:not(.stage-running):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkTicketCard { flex: 0 0 auto !important; height: auto !important; width: 100% !important; align-self: stretch !important; }',
+    '#practiceStage:not(.stage-running):not(.stage-morphing):not(.cz-ticket-exit):not(.cz-ticket-enter) .pk-ticket, #practiceStage:not(.stage-running):not(.stage-morphing):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkTicketCard { flex: 0 0 auto !important; height: auto !important; width: 100% !important; align-self: stretch !important; }',
+    '#practiceStage.stage-morphing .pk-ticket, #practiceStage.stage-morphing #pkTicketCard { flex: 0 0 auto !important; width: 100% !important; align-self: stretch !important; }',
     '/* ── 卡槽占位（261012c 第 1 条：票卡滑入槽那套动画全部删除；形态等 agy spec-agy-slot-261012） ── */',
     '.cz-slot-host { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; background: var(--surface-well); border: 1px dashed var(--border-strong); }',
     '.cz-slot-host[hidden] { display: none !important; }',
@@ -17464,7 +17597,8 @@ window.__CZ_CSS = [
   '@media (max-width: 1023px) {',
   '  html, body, .pk-stage-wrap { min-height: 0 !important; height: auto !important; }',
   '  .pk-stage-wrap { flex-direction: column !important; align-items: stretch !important; width: 100% !important; max-width: 100% !important; gap: 12px !important; }',
-  '  #practiceStage:not(.stage-running):not(.stage-bar):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol, .pk-main-col { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; height: auto !important; align-self: stretch !important; }',
+  '  #practiceStage:not(.stage-running):not(.stage-bar):not(.stage-morphing):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol, .pk-main-col { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; height: auto !important; align-self: stretch !important; }',
+  '  #practiceStage.stage-morphing #pkLeftCol { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; align-self: stretch !important; }',
   '  #practiceStage.cz-ticket-exit #pkLeftCol, #practiceStage.cz-ticket-enter #pkLeftCol { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: hidden !important; }',
   /* S22：票夹窄条形态（未计时）在纵向视口也必须压成 52px 横条 */
   '  #practiceStage.stage-bar #pkLeftCol { width: 100% !important; max-width: 100% !important; height: 52px !important; min-height: 52px !important; max-height: 52px !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: visible !important; }',
