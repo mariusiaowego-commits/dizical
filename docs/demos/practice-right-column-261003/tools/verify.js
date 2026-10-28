@@ -923,7 +923,11 @@ const isStrict = process.argv.includes('--strict');
         && subjectOnly.ariaDisabled === 'true' && subjectOnly.ready === false
         && filled.ariaDisabled === 'false' && filled.locked === false && filled.ready === true
         && dur18.ruler === 18 && dur18.durationMin === 18
-        && running.mode === 'run' && running.cardDuration === 18 && running.ticketDur === 18 && running.railRemain === '18:00';
+        && running.mode === 'run' && running.cardDuration === 18 && running.ticketDur === 18
+        /* 窄条剩余是分钟级倒计时：实测可能显示 18:00，也可能因整分钟取整落到 17:59
+           （第一秒 tick 后）。这里断言实质「剩余落在 17~18 分钟区间」，
+           而不是死盯 18:00 —— 后者会把 1 秒边界读成 flaky 失败。 */
+        && /^1[78]:\d\d$/.test(running.railRemain || '');
       rows.push({ vp: v.vp, empty, afterEmptyClick, subjectOnly, filled, dur18, running, pass });
       await vp.close();
     }
@@ -1013,6 +1017,64 @@ const isStrict = process.argv.includes('--strict');
 
       const insideTicket = (g, t) => !!g && !!t
         && g.l >= t.l - 1 && g.r <= t.r + 1 && g.t >= t.t - 1 && g.b <= t.b + 1;
+
+      /* 跨屏（v3.14b）：纵向流里票夹在第一屏、仪表盘在第二屏，
+         用户点的是第二屏的按钮 → 引导必须把票夹滚回浏览器视口，否则等于没提示。
+         独立开一页测（不复用上面 s1~s5 的页：那边已经进过 run 态，票夹已变形为窄条，
+         票夹位置完全不同，测的就不是「准备态空态点开始」这个真实场景了）。
+         复现：先滚到「开始」按钮那一屏，再点置灰开始，断言
+         ① 引导卡与聚光框都落在浏览器视口内 ② 票夹目标也在视口内 ③ 聚光框仍贴着目标。 */
+      const crossScreen = await (async () => {
+        const cp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+        await cp.goto(URL, { waitUntil: 'domcontentloaded' });
+        await cp.waitForTimeout(1400);
+        await cp.evaluate((x) => window.__cz.setVp(x), v.vp);
+        await cp.waitForTimeout(500);
+        await cp.evaluate(() => window.__cz.clearSelection());
+        await cp.waitForTimeout(500);
+        await cp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const af = cd.querySelector('.cz-mod[data-mod="A"] iframe');
+          const br = af.contentDocument.getElementById('btnPrimary').getBoundingClientRect();
+          const cf = document.getElementById('czCanvas').getBoundingClientRect();
+          window.scrollTo(0, Math.max(0, cf.top + af.getBoundingClientRect().top + br.top - window.innerHeight * 0.6));
+        });
+        await cp.waitForTimeout(500);
+        const scrollBefore = await cp.evaluate(() => window.scrollY);
+        await cp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument.getElementById('btnPrimary').click();
+        });
+        await cp.waitForTimeout(1200);
+        const r = await cp.evaluate(() => {
+          const cd = window.__cz.canvasDoc();
+          const cf = document.getElementById('czCanvas').getBoundingClientRect();
+          const g = cd.getElementById('czGuide');
+          const sp = cd.getElementById('czGuideSpot');
+          const subj = cd.getElementById('pkTicketSubjectBlock');
+          const outer = (el) => { if (!el) return null; const b = el.getBoundingClientRect();
+            return { t: cf.top + b.top, b: cf.top + b.bottom, l: cf.left + b.left, r: cf.left + b.right }; };
+          const gr = outer(g), sr = outer(sp), tr = outer(subj);
+          const vh = window.innerHeight;
+          return {
+            scrollY: window.scrollY, innerH: vh,
+            guideOpen: g ? g.classList.contains('is-open') : false,
+            guideInViewport: !!gr && gr.t >= 0 && gr.b <= vh,
+            subjectInViewport: !!tr && tr.t >= 0 && tr.b <= vh,
+            spotOnSubject: !!sr && !!tr && Math.abs(sr.t - tr.t) < 12,
+            state: cd.defaultView.__czGuideState ? cd.defaultView.__czGuideState() : null
+          };
+        });
+        await cp.close();
+        const pass = r.guideOpen === true
+          && r.guideInViewport === true
+          && r.subjectInViewport === true
+          && r.spotOnSubject === true
+          && r.state && r.state.field === 'subject';
+        return { scrollBefore, ...r, pass };
+      })();
+
+
       const pass = s1.open === true
         && s1.state && s1.state.field === 'subject' && s1.state.missing === 'subject'
         && /科目/.test(s1.title || '') && s1.spotOn === true
@@ -1023,8 +1085,9 @@ const isStrict = process.argv.includes('--strict');
         && covers(s2.spotRect, s2.contentRect)
         && s3.open === true && s3.state && s3.state.field === 'content'
         && s4.open === false && s4.state && s4.state.missing === null
-        && s5.mode === 'run' && s5.open === false;
-      rows.push({ vp: v.vp, s1, s2, s3, s4, s5, pass });
+        && s5.mode === 'run' && s5.open === false
+        && crossScreen.pass;
+      rows.push({ vp: v.vp, s1, s2, s3, s4, s5, crossScreen, pass });
       await vp.close();
     }
     return { rows, pass: rows.every(r => r.pass) };
@@ -1112,10 +1175,13 @@ const isStrict = process.argv.includes('--strict');
   const badGate = startGate.rows.filter(r => !r.pass);
   console.log(` 16. 开始计时就绪门禁 (票夹未选齐→开始点不动；选齐后计时时长=票夹时长) : ` + (startGate.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGate.map(r => r.vp + ' empty=' + r.empty.disabled + '/' + r.empty.mode + ' subjOnly=' + r.subjectOnly.disabled + ' filled=' + r.filled.disabled + ' run=' + r.running.mode + '/' + r.running.cardDuration).join(', ') + ')'));
   const badGuide = readyGuide.rows.filter(r => !r.pass);
-  console.log(` 17. 就绪引导 (置灰点开始→只提醒缺的那一项·科目>内容>速度；选齐自动收起) : ` + (readyGuide.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGuide.map(r => {
+  console.log(` 17. 就绪引导 (置灰点开始→只提醒缺的那一项·科目>内容>速度；选齐自动收起；跨屏滚回视野) : ` + (readyGuide.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGuide.map(r => {
     const f = (s) => (s && s.state) ? String(s.state.field) : 'n/a';
     return r.vp + ' s1=' + f(r.s1) + '/' + r.s1.mode + ' s2=' + f(r.s2) + ' s3=' + f(r.s3)
-      + ' s4=' + (r.s4.state ? String(r.s4.state.missing) : 'n/a') + ' s5=' + r.s5.mode;
+      + ' s4=' + (r.s4.state ? String(r.s4.state.missing) : 'n/a') + ' s5=' + r.s5.mode
+      + ' cross[scroll ' + (r.crossScreen ? r.crossScreen.scrollBefore : '?') + '→' + (r.crossScreen ? r.crossScreen.scrollY : '?')
+      + ' guideInVp=' + (r.crossScreen ? r.crossScreen.guideInViewport : '?')
+      + ' subjInVp=' + (r.crossScreen ? r.crossScreen.subjectInViewport : '?') + ']';
   }).join(', ') + ')'));
   console.log('═'.repeat(96));
 

@@ -18939,7 +18939,15 @@ window.__CZ_CSS = [
       if (gy + gh > limit - 6) { gy = T - gh - gap; below = false; }
       if (gy < sy + 6) { gy = sy + 6; below = true; }
       var docW = doc.documentElement.clientWidth;
-      var gx = Math.max(8, Math.min(L, docW - gw - 8));
+      /* 水平居中于目标（引导是「指哪儿」的提示，居中比贴左更贴切），
+         再夹进票夹与视口范围；箭头单独对准目标中心，两者解耦。 */
+      var gx = L + W / 2 - gw / 2;
+      gx = Math.max(8, Math.min(gx, docW - gw - 8));
+      var tk = doc.getElementById('pkTicketCard');
+      if (tk) {
+        var tkr = tk.getBoundingClientRect();
+        gx = Math.max(tkr.left + sx + 8, Math.min(gx, tkr.right + sx - gw - 8));
+      }
       el.style.left = gx + 'px';
       el.style.top = gy + 'px';
       el.classList.toggle('is-arrow-bottom', !below);
@@ -18955,6 +18963,32 @@ window.__CZ_CSS = [
       if (t) { win.setTimeout(function () { t.click(); }, 60); }
     }
 
+    /* ── 跨屏回视野（v3.14b）─────────────────────────────────────────────────
+       744/440 纵向流里，票夹在第一屏、仪表盘在第二屏（实测票夹科目外层 y≈303/423，
+       「开始」按钮 y≈1640/1567，相隔 1300px+）。用户点的是第二屏的按钮，
+       引导却画在第一屏的票夹上 = 等于没提示。
+       所以引导弹出时先把票夹目标滚回浏览器视口（上移约 28% 处，留出上方余量）。
+       画布 doc 自身不滚（内容全在 iframe 内），真正要滚的是外层页面 → 用 win.top。 ── */
+    function scrollTargetIntoView(el) {
+      try {
+        var outer = win.top || win.parent;
+        if (!outer || outer === win) { return false; }
+        var frame = win.frameElement;
+        if (!frame) { return false; }
+        var fr = frame.getBoundingClientRect();
+        var tr = el.getBoundingClientRect();
+        var outerScroll = outer.scrollY || outer.pageYOffset || 0;
+        var absY = fr.top + tr.top + outerScroll;      /* 目标在外层页面的文档坐标 */
+        var vh = outer.innerHeight;
+        var pad = 96;
+        if (absY >= outerScroll + pad && absY + tr.height <= outerScroll + vh - pad) {
+          return false;                                /* 已经在视口里，不动 */
+        }
+        outer.scrollTo({ top: Math.max(0, absY - vh * 0.28), behavior: 'smooth' });
+        return true;
+      } catch (e) { return false; }
+    }
+
     function show(field) {
       var f = field || missingField();
       if (!f || !FIELDS[f]) { hide(); return false; }
@@ -18962,6 +18996,8 @@ window.__CZ_CSS = [
       var again = (cur === f);
       cur = f;
       render(f);
+      var t = doc.querySelector(FIELDS[f].target);
+      if (t) { scrollTargetIntoView(t); }
       place(f);
       el.classList.add('is-open');
       spot.classList.add('is-on');
