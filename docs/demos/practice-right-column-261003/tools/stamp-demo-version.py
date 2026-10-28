@@ -17,7 +17,7 @@
 import pathlib, re, sys
 
 DEMO = pathlib.Path(__file__).resolve().parent.parent
-DEMO_VERSION = "v3.14"       # 全局：261028 S22 续轮（就绪引导：置灰状态点开始 → 弹 coach mark 指向票夹缺的那一项，一次只提醒一项，科目 > 内容 > 速度）
+DEMO_VERSION = "v3.15"       # 全局：261028 计时读数守卫（点开始后 run 态只接受 MM:SS，总线推的时长不再覆盖倒计时）
 DEMO_DATE = "2026-10-28"
 
 # 文件 → (卡版本, 一句话状态)。卡版本对齐文件名后缀；无 vN 后缀的记 "—"。

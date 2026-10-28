@@ -8101,7 +8101,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.15</b> · 卡 v3 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -8283,6 +8283,13 @@ function closeRecordsDrawer() {
     var raw = String(str);
     var label = raw;
     if (/^\d{1,2}$/.test(raw)) label = String(parseInt(raw, 10) || 0);
+    /* 运行态守卫（v3.15）：倒计时读数（MM:SS）是 run 模式下唯一合法值。
+       联总线在「开始」之后会把票夹时长再推一次到仪表盘，那会把 00:00 打回 10。
+       在 dash.dataset.mode === 'run' 时拒绝纯分钟数写入，leave run 后自动恢复。 */
+    var dashEl = document.getElementById('dash');
+    if (dashEl && dashEl.dataset.mode === 'run' && !/^\d{1,2}:\d{2}$/.test(raw)) {
+      return label;
+    }
     var host = document.getElementById('readoutDigits');
     var svg = document.getElementById('metaDigitsSvg');
     if (host && (!svg || svg.parentNode !== host)) {
@@ -11429,7 +11436,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.15</b> · 卡 v3 · 2026-10-28</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13528,7 +13535,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v1 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.15</b> · 卡 v1 · 2026-10-28</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14525,7 +14532,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.15</b> · 卡 v3 · 2026-10-28</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15353,7 +15360,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v1 · 2026-10-28</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.15</b> · 卡 v1 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16351,7 +16358,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.15</b> · 卡 v3 · 2026-10-28</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>

@@ -1172,6 +1172,52 @@ const isStrict = process.argv.includes('--strict');
   console.log(` 14. ruler ↔ 票夹时长联动 (Dash改18->票面18，票面+2->Dash为20，窄条 18:00 × 9 组合) : ` + (durationLinkage.pass ? '✅ PASS (9/9 双向一致，窄条同步)' : '❌ FAIL (' + badDur.map(r => r.vp + '/C' + r.combo + ' bar=' + (r.barState ? r.barState.railRemain : 'n/a')).join(', ') + ')'));
   const badMorph = autoMorphAndReselect.rows.filter(r => !r.pass);
   console.log(` 15. 选完两项即变形 + 重新选择 (空态>100px, 满项≈50px未计时, 窄条不塌/时间横排可读, 重选保留, 计时禁用) : ` + (autoMorphAndReselect.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badMorph.map(r => r.vp + ' railH=' + r.step2.railH + ' remain=' + r.step2.remainText + '/' + r.step2.remainWritingMode + ' fits=' + r.step2.remainFitsBar).join(', ') + ')'));
+  /* ── 项 18（v3.15）：计时读数守卫 ──────────────────────────────────────
+     dad 261028 录屏发现：点「开始」后读数会闪一下 00:00 → 10 → 00:01。
+     根因：A 卡 enterRun() 先渲染 00:00，紧接着画布侧票夹 enterRun() 通过
+     总线把时长 10 推回 A 卡，覆盖了倒计时读数。
+     修复：renderMetaDigits 加 run 态守卫——dash.dataset.mode === 'run' 时
+     拒绝纯分钟数写入，倒计时 MM:SS 是唯一合法值。
+     回归断言：点开始后立即采样读数（应为 00:00），等 1 秒再采样（应为 00:01），
+     两次都必须是 MM:SS 格式。 */
+  const runDigitGuard = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1400);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(500);
+      await vp.evaluate(() => window.__cz.canvasDoc().defaultView.selectItem(1034));
+      await vp.waitForTimeout(600);
+      await vp.evaluate(() => { const p = window.__cz.canvasDoc().querySelector('.pk-session-pill'); if (p) p.click(); });
+      await vp.waitForTimeout(700);
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument.getElementById('btnPrimary').click();
+      });
+      await vp.waitForTimeout(80);
+      const r0 = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const d = cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument;
+        return { mode: d.querySelector('.dash').dataset.mode,
+          aria: d.getElementById('metaDigitsSvg') ? d.getElementById('metaDigitsSvg').getAttribute('aria-label') : null };
+      });
+      await vp.waitForTimeout(1100);
+      const r1 = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const d = cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument;
+        return { mode: d.querySelector('.dash').dataset.mode,
+          aria: d.getElementById('metaDigitsSvg') ? d.getElementById('metaDigitsSvg').getAttribute('aria-label') : null };
+      });
+      await vp.close();
+      rows.push({ vp: v.vp, r0, r1,
+        pass: r0.mode === 'run' && /^\d{1,2}:\d{2}$/.test(r0.aria || '')
+        && r1.mode === 'run' && /^\d{1,2}:\d{2}$/.test(r1.aria || '') });
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
   const badGate = startGate.rows.filter(r => !r.pass);
   console.log(` 16. 开始计时就绪门禁 (票夹未选齐→开始点不动；选齐后计时时长=票夹时长) : ` + (startGate.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGate.map(r => r.vp + ' empty=' + r.empty.disabled + '/' + r.empty.mode + ' subjOnly=' + r.subjectOnly.disabled + ' filled=' + r.filled.disabled + ' run=' + r.running.mode + '/' + r.running.cardDuration).join(', ') + ')'));
   const badGuide = readyGuide.rows.filter(r => !r.pass);
@@ -1183,7 +1229,9 @@ const isStrict = process.argv.includes('--strict');
       + ' guideInVp=' + (r.crossScreen ? r.crossScreen.guideInViewport : '?')
       + ' subjInVp=' + (r.crossScreen ? r.crossScreen.subjectInViewport : '?') + ']';
   }).join(', ') + ')'));
-  console.log('═'.repeat(96));
+    const badDigit = runDigitGuard.rows.filter(r => !r.pass);
+  console.log(` 18. 计时读数守卫 (点开始后读数不被总线时长覆盖，run 态只接受 MM:SS) : ` + (runDigitGuard.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badDigit.map(r => r.vp + ' t0=' + r.r0.aria + ' t1=' + r.r1.aria).join(', ') + ')'));
+console.log('═'.repeat(96));
 
   if (isStrict) {
     const allPassed = allCorePass &&
