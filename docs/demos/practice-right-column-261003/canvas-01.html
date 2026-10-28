@@ -7884,6 +7884,10 @@ function closeRecordsDrawer() {
     touch-action: manipulation; cursor: pointer;
   }
   .pill button:disabled { opacity: 0.35; cursor: default; }
+  /* v3.14（261028）：置灰但可点 —— 就绪门禁不再用 disabled 掐死点击，
+     改用 aria-disabled 表达「此刻不可开始」，点击交给画布层弹引导（一次只提醒一项）。
+     视觉仍是置灰，指针给 pointer（点了有回应，不是死按钮）。 */
+  .pill button[aria-disabled="true"] { opacity: 0.38; cursor: pointer; }
   .dash[data-mode="prep"] #btnPrimary,
   .dash[data-mode="run"] #btnPrimary,
   .dash[data-mode="pause"] #btnPrimary {
@@ -8097,7 +8101,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -9138,8 +9142,11 @@ function closeRecordsDrawer() {
   function syncPrimaryEnabled() {
     /* 只有准备态会被拦；计时中的「暂停」必须一直可点 */
     var blocked = !practiceReady && mode === 'prep';
-    btnPrimary.disabled = blocked;
+    /* v3.14：不再真 disabled（disabled 会吞掉 click，引导就永远弹不出来）。
+       改成 aria-disabled + 视觉置灰类，点击由下面的 handler 转成引导请求。 */
+    btnPrimary.disabled = false;
     btnPrimary.setAttribute('aria-disabled', String(blocked));
+    btnPrimary.classList.toggle('is-locked', blocked);
     btnPrimary.title = blocked ? practiceReadyReason : '';
   }
   window.setPracticeReady = function (flag, reason) {
@@ -9152,8 +9159,18 @@ function closeRecordsDrawer() {
     return { ready: practiceReady, reason: practiceReadyReason };
   };
   window.getPracticeReady = function () {
-    return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration };
+    return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration, locked: !practiceReady && mode === 'prep' };
   };
+
+  /* v3.14：就绪门禁的引导请求交给画布层（票夹在画布文档里，引导要指着票夹画）。
+     本卡单独打开时画布层没有这个入口，静默降级为读数行提示。 */
+  function requestReadyGuide() {
+    try {
+      var p = window.parent;
+      if (p && typeof p.__czGuideShow === 'function') { p.__czGuideShow(); return true; }
+    } catch (e) {}
+    return false;
+  }
 
   function driveRulerRunning() {
     if (!window.RulerProduction) return;
@@ -9261,8 +9278,10 @@ function closeRecordsDrawer() {
 
   btnPrimary.addEventListener('click', function () {
     if (mode === 'prep' || mode === 'pause') {
-      if (!practiceReady) {
+      /* 只在准备态拦；暂停/继续永远可点（与 syncPrimaryEnabled 的判定同源） */
+      if (!practiceReady && mode === 'prep') {
         opsTimerText.textContent = practiceReadyReason || '请先在左侧票夹选择科目与时长';
+        requestReadyGuide();
         return;
       }
       enterRun();
@@ -11410,7 +11429,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13509,7 +13528,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v1 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v1 · 2026-10-28</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14506,7 +14525,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15334,7 +15353,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v1 · 2026-10-28</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v1 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16332,7 +16351,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -17707,6 +17726,66 @@ window.__CZ_CSS = [
 ].join('\n'));
 
   /* ══════════════════════════════════════════════════════════════════
+     v3.14（261028）· 开始计时就绪引导（coach mark）
+     dad：在「置灰状态」点开始时，弹一条引导去补齐票夹缺的那一项，
+     一次只提醒一项，优先级 科目 > 练习内容 > 速度（时长兜底）。
+     引导画在画布层（票夹所在文档），指针直接落在缺的那一项上；
+     仪表盘 A 卡只负责把「点了置灰的开始」这件事传过来。
+     颜色全部走 --dash-* token，浅银/深墨两套皮肤自动跟随。
+     ══════════════════════════════════════════════════════════════════ */
+  window.__CZ_GUIDE_CSS = [
+    '.cz-guide {',
+    '  position: absolute; z-index: 3200; width: 238px; box-sizing: border-box;',
+    '  padding: 10px 12px; border-radius: 15px;',
+    '  background: var(--dash-surface-soft); border: 1px solid var(--dash-ink-a16);',
+    '  box-shadow: 0 16px 36px var(--dash-shell-shadow), 0 2px 6px var(--dash-shell-shadow);',
+    '  color: var(--dash-text); font-size: 11.5px; line-height: 1.55;',
+    '  opacity: 0; transform: translateY(6px) scale(.97); transform-origin: 50% 0%;',
+    '  transition: opacity 170ms ease, transform 210ms cubic-bezier(.16,.84,.24,1);',
+    '  pointer-events: none;',
+    '}',
+    '.cz-guide.is-open { opacity: 1; transform: none; pointer-events: auto; }',
+    '.cz-guide-arrow {',
+    '  position: absolute; top: -7px; left: 20px; width: 12px; height: 12px;',
+    '  background: var(--dash-surface-soft); border-left: 1px solid var(--dash-ink-a16);',
+    '  border-top: 1px solid var(--dash-ink-a16); transform: rotate(45deg);',
+    '}',
+    '.cz-guide.is-arrow-bottom .cz-guide-arrow {',
+    '  top: auto; bottom: -7px; border: none;',
+    '  border-right: 1px solid var(--dash-ink-a16); border-bottom: 1px solid var(--dash-ink-a16);',
+    '}',
+    '.cz-guide-steps { display: flex; gap: 5px; margin-bottom: 6px; }',
+    '.cz-guide-step {',
+    '  font-size: 9.5px; font-weight: 700; line-height: 1; letter-spacing: .02em;',
+    '  padding: 3px 6px; border-radius: 999px;',
+    '  color: var(--dash-text-soft); background: var(--dash-ink-a04);',
+    '}',
+    '.cz-guide-step.is-done { color: var(--dash-vermilion-text); background: var(--dash-vermilion-wash); }',
+    '.cz-guide-step.is-current { color: var(--dash-white); background: var(--dash-vermilion); }',
+    '.cz-guide-title { font-size: 13px; font-weight: 750; line-height: 1.3; color: var(--dash-text); }',
+    '.cz-guide-body { margin-top: 2px; font-size: 11px; line-height: 1.5; color: var(--dash-text-soft); }',
+    '.cz-guide-cta {',
+    '  display: inline-flex; align-items: center; gap: 5px; margin-top: 7px;',
+    '  border: 0; border-radius: 999px; padding: 5px 10px;',
+    '  background: var(--dash-vermilion); color: var(--dash-white);',
+    '  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .01em;',
+    '  cursor: pointer; touch-action: manipulation;',
+    '}',
+    '.cz-guide-cta:hover { filter: brightness(1.06); }',
+    '.cz-guide-cta:focus-visible { outline: 2px solid var(--dash-vermilion); outline-offset: 2px; }',
+    '.cz-guide-spot {',
+    '  position: absolute; z-index: 3199; display: none; pointer-events: none;',
+    '  border: 2px solid var(--dash-vermilion); border-radius: 12px;',
+    '  animation: czGuidePulse 1.9s ease-out infinite;',
+    '}',
+    '.cz-guide-spot.is-on { display: block; }',
+    '@keyframes czGuidePulse {',
+    '  0% { box-shadow: 0 0 0 0 var(--dash-vermilion-glow); }',
+    '  70%, 100% { box-shadow: 0 0 0 9px transparent; }',
+    '}'
+  ].join('\n');
+
+  /* ══════════════════════════════════════════════════════════════════
      261012 第二轮（agy 四份 spec）
        A spec-agy-slot-261012        → 卡槽 .cz-punch-slot（拟物两态 · 零动画）
        B spec-agy-combos-261012      → 三组合（等高 654 基准 / 一屏右界 / 响应式）
@@ -18745,6 +18824,179 @@ window.__CZ_CSS = [
        映射：竖条 #bpmFace、仪表盘 #bpmRead 与左票 #pkBpmVal 保持同一个绝对数字（加载时和每次改动均同步为相同绝对值）。
        卡 iframe 未 load 完不判失败；load / rebind 之后再解析元素并重算 verdict。
        元素已就绪仍找不到显示 →「未接通」标红。?negctl=bus 在卡就绪后切断左→右，红条留「右栏 N 没跟着变」。 ══ */
+  /* ── v3.14：就绪引导（画布层 coach mark）──────────────────────────────────
+     挂在画布文档里（票夹和 A 卡 iframe 的父层），所以指针能直接落在票夹那一项上。
+     判据只用票夹真源 window.__czPracticeReady()，和仪表盘的「开始」按钮同源。 ── */
+  window.__CZ_GUIDE_SRC = function () {
+    var doc = document, win = window;
+    var FIELDS = {
+      subject: {
+        step: 0, title: '先选择练习科目',
+        body: '票夹还没定下科目。点亮的那一块就是当前曲目，点它打开票夹挑一个。',
+        cta: '打开票夹选科目',
+        target: '#pkTicketSubjectBlock',
+        act: '#pkTicketSubjectBlock'
+      },
+      content: {
+        step: 1, title: '再选本次练习内容',
+        body: '科目定了，还得说明这次练哪一段 —— 点胶囊标签，或在输入框里直接写。',
+        cta: '选择练习内容',
+        target: '#pkSessionSlot .pss',
+        act: '#pkSessionSlot input'
+      },
+      bpm: {
+        step: 2, title: '最后定一个练习速度',
+        body: '用票面左侧的 −／+ 调一个 BPM，节拍器会跟着走。',
+        cta: '去定速度',
+        target: '#pkBpmVal',
+        act: null
+      },
+      duration: {
+        step: 3, title: '还差一个练习时长',
+        body: '票面上的分钟数决定这次练多久，先定一个时长再开始。',
+        cta: '去定时长',
+        target: '#pkTicketDurVal',
+        act: null
+      }
+    };
+    var STEP_LABELS = ['科目', '内容', '速度', '时长'];
+    var el = null, spot = null, cur = null, tick = null;
+
+    /* 缺哪一项：优先级 科目 > 内容 > 速度 > 时长（dad 261028）。
+       一次只报一项 —— 前面的没补上就不轮到后面。 */
+    function missingField() {
+      var r = (typeof win.__czPracticeReady === 'function') ? win.__czPracticeReady() : null;
+      if (!r) { return null; }
+      if (!r.subjectId) { return 'subject'; }
+      if (!r.content || !String(r.content).trim()) { return 'content'; }
+      var bpmEl = doc.getElementById('pkBpmVal');
+      var bpm = bpmEl ? parseInt(bpmEl.textContent, 10) : 0;
+      if (!bpm || bpm < 30 || bpm > 240) { return 'bpm'; }
+      if (!r.durationMin) { return 'duration'; }
+      return null;
+    }
+
+    function ensure() {
+      if (el) { return el; }
+      el = doc.createElement('div');
+      el.className = 'cz-guide';
+      el.id = 'czGuide';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      el.innerHTML = '<div class="cz-guide-steps"></div><div class="cz-guide-title"></div>'
+        + '<div class="cz-guide-body"></div><button type="button" class="cz-guide-cta"></button>'
+        + '<i class="cz-guide-arrow"></i>';
+      spot = doc.createElement('div');
+      spot.className = 'cz-guide-spot';
+      spot.id = 'czGuideSpot';
+      doc.body.appendChild(spot);
+      doc.body.appendChild(el);
+      el.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      el.querySelector('.cz-guide-cta').addEventListener('click', onCta);
+      doc.addEventListener('pointerdown', function (e) {
+        if (el && el.classList.contains('is-open') && !el.contains(e.target)) { hide(); }
+      }, true);
+      doc.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { hide(); }
+      });
+      return el;
+    }
+
+    function render(f) {
+      var cfg = FIELDS[f];
+      var steps = el.querySelector('.cz-guide-steps');
+      var html = '';
+      for (var i = 0; i < STEP_LABELS.length; i++) {
+        var cls = 'cz-guide-step' + (i === cfg.step ? ' is-current' : (i < cfg.step ? ' is-done' : ''));
+        html += '<span class="' + cls + '">' + (i < cfg.step ? '✓ ' : '') + STEP_LABELS[i] + '</span>';
+      }
+      steps.innerHTML = html;
+      el.querySelector('.cz-guide-title').textContent = cfg.title;
+      el.querySelector('.cz-guide-body').textContent = cfg.body;
+      var cta = el.querySelector('.cz-guide-cta');
+      cta.textContent = cfg.cta;
+    }
+
+    /* 落位：默认贴在目标下方（箭头朝上），下方放不下就翻到上方（箭头朝下）；
+       左右都不越出票夹的横向范围。 */
+    function place(f) {
+      var cfg = FIELDS[f];
+      var t = doc.querySelector(cfg.target);
+      if (!t) { return false; }
+      var tr = t.getBoundingClientRect();
+      var sx = win.scrollX || 0, sy = win.scrollY || 0;
+      var L = tr.left + sx, T = tr.top + sy, W = tr.width, H = tr.height;
+      spot.style.left = (L - 5) + 'px';
+      spot.style.top = (T - 5) + 'px';
+      spot.style.width = (W + 10) + 'px';
+      spot.style.height = (H + 10) + 'px';
+      spot.style.borderRadius = Math.max(8, Math.min(14, H / 2)) + 'px';
+      var gw = el.offsetWidth, gh = el.offsetHeight;
+      var gap = 14;
+      var gy = T + H + gap, below = true;
+      var ticket = doc.getElementById('pkTicketCard');
+      var limit = ticket ? (ticket.getBoundingClientRect().bottom + sy) : (sy + win.innerHeight);
+      if (gy + gh > limit - 6) { gy = T - gh - gap; below = false; }
+      if (gy < sy + 6) { gy = sy + 6; below = true; }
+      var docW = doc.documentElement.clientWidth;
+      var gx = Math.max(8, Math.min(L, docW - gw - 8));
+      el.style.left = gx + 'px';
+      el.style.top = gy + 'px';
+      el.classList.toggle('is-arrow-bottom', !below);
+      el.querySelector('.cz-guide-arrow').style.left =
+        Math.max(16, Math.min(L + W / 2 - gx - 6, gw - 28)) + 'px';
+      return true;
+    }
+
+    function onCta() {
+      var cfg = cur ? FIELDS[cur] : null;
+      var t = cfg && cfg.act ? doc.querySelector(cfg.act) : null;
+      hide();
+      if (t) { win.setTimeout(function () { t.click(); }, 60); }
+    }
+
+    function show(field) {
+      var f = field || missingField();
+      if (!f || !FIELDS[f]) { hide(); return false; }
+      ensure();
+      var again = (cur === f);
+      cur = f;
+      render(f);
+      place(f);
+      el.classList.add('is-open');
+      spot.classList.add('is-on');
+      if (again) {   /* 重复点同一条：重播脉冲，让「又点了还是这条」有回应 */
+        spot.style.animation = 'none';
+        void spot.offsetWidth;
+        spot.style.animation = '';
+      }
+      return true;
+    }
+
+    function hide() {
+      if (el) { el.classList.remove('is-open'); }
+      if (spot) { spot.classList.remove('is-on'); }
+      cur = null;
+      if (tick) { win.clearTimeout(tick); tick = null; }
+    }
+
+    /* 票夹状态一变（选中/取消）就复算：缺的那项变了就改指向，都齐了就收起。 */
+    function sync() {
+      var f = missingField();
+      if (!f) { hide(); return; }
+      if (!cur) { return; }
+      if (cur !== f) { show(f); return; }
+      place(cur);
+    }
+
+    win.__czGuideShow = show;
+    win.__czGuideHide = hide;
+    win.__czGuideSync = sync;
+    win.__czGuideState = function () {
+      return { open: !!(el && el.classList.contains('is-open')), field: cur, missing: missingField() };
+    };
+  };
+
   window.__CZ_BUS_SRC = function () {
     var doc = document;
     var NEG_BUS = false;
@@ -19172,6 +19424,12 @@ window.__CZ_CSS = [
     }
     function onReady(flag, reason) {
       var d = dashDoc2();
+      /* v3.14：就绪状态一变，引导就跟着复算（缺的那项变了改指向，全齐就收起） */
+      try {
+        if (doc.defaultView && typeof doc.defaultView.__czGuideSync === 'function') {
+          doc.defaultView.__czGuideSync();
+        }
+      } catch (e) {}
       if (!d) { stats.degraded++; return rec({ op: 'ready', dir: 'L2R', ok: !!flag, why: '无仪表盘卡' }); }
       var view = d.defaultView;
       var applied = false;
@@ -19414,6 +19672,21 @@ window.__CZ_CSS = [
       (cd.head || cd.documentElement).appendChild(st2);
     }
     st2.textContent = window.__CZ_TOKENS + '\n' + window.__CZ_CSS;
+    /* ④-b v3.14：就绪引导的样式与逻辑也注入画布文档（引导要贴着票夹画） */
+    var st3 = cd.getElementById('cz-guide-style');
+    if (!st3) {
+      st3 = cd.createElement('style');
+      st3.id = 'cz-guide-style';
+      (cd.head || cd.documentElement).appendChild(st3);
+    }
+    st3.textContent = window.__CZ_GUIDE_CSS;
+    if (!cd.getElementById('czGuideLib')) {
+      var sg = cd.createElement('script');
+      sg.id = 'czGuideLib';
+      sg.textContent = '(' + String(window.__CZ_GUIDE_SRC) + ')();';
+      sg.onerror = function () { cd.documentElement.dataset.czGuideErr = '1'; };
+      cd.body.appendChild(sg);
+    }
     /* ④ 记录明细 popout 容器（画布 body 内，fixed 相对画布视口 = 全画布压暗） */
     buildPop();
     /* ⑤ 联动总线：注入画布文档执行（同一文档内可达左右栏与各卡 iframe） */

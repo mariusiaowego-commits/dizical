@@ -722,6 +722,10 @@
     touch-action: manipulation; cursor: pointer;
   }
   .pill button:disabled { opacity: 0.35; cursor: default; }
+  /* v3.14（261028）：置灰但可点 —— 就绪门禁不再用 disabled 掐死点击，
+     改用 aria-disabled 表达「此刻不可开始」，点击交给画布层弹引导（一次只提醒一项）。
+     视觉仍是置灰，指针给 pointer（点了有回应，不是死按钮）。 */
+  .pill button[aria-disabled="true"] { opacity: 0.38; cursor: pointer; }
   .dash[data-mode="prep"] #btnPrimary,
   .dash[data-mode="run"] #btnPrimary,
   .dash[data-mode="pause"] #btnPrimary {
@@ -935,7 +939,7 @@
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.14</b> · 卡 v3 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -1976,8 +1980,11 @@
   function syncPrimaryEnabled() {
     /* 只有准备态会被拦；计时中的「暂停」必须一直可点 */
     var blocked = !practiceReady && mode === 'prep';
-    btnPrimary.disabled = blocked;
+    /* v3.14：不再真 disabled（disabled 会吞掉 click，引导就永远弹不出来）。
+       改成 aria-disabled + 视觉置灰类，点击由下面的 handler 转成引导请求。 */
+    btnPrimary.disabled = false;
     btnPrimary.setAttribute('aria-disabled', String(blocked));
+    btnPrimary.classList.toggle('is-locked', blocked);
     btnPrimary.title = blocked ? practiceReadyReason : '';
   }
   window.setPracticeReady = function (flag, reason) {
@@ -1990,8 +1997,18 @@
     return { ready: practiceReady, reason: practiceReadyReason };
   };
   window.getPracticeReady = function () {
-    return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration };
+    return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration, locked: !practiceReady && mode === 'prep' };
   };
+
+  /* v3.14：就绪门禁的引导请求交给画布层（票夹在画布文档里，引导要指着票夹画）。
+     本卡单独打开时画布层没有这个入口，静默降级为读数行提示。 */
+  function requestReadyGuide() {
+    try {
+      var p = window.parent;
+      if (p && typeof p.__czGuideShow === 'function') { p.__czGuideShow(); return true; }
+    } catch (e) {}
+    return false;
+  }
 
   function driveRulerRunning() {
     if (!window.RulerProduction) return;
@@ -2099,8 +2116,10 @@
 
   btnPrimary.addEventListener('click', function () {
     if (mode === 'prep' || mode === 'pause') {
-      if (!practiceReady) {
+      /* 只在准备态拦；暂停/继续永远可点（与 syncPrimaryEnabled 的判定同源） */
+      if (!practiceReady && mode === 'prep') {
         opsTimerText.textContent = practiceReadyReason || '请先在左侧票夹选择科目与时长';
+        requestReadyGuide();
         return;
       }
       enterRun();

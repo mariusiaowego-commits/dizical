@@ -858,6 +858,9 @@ const isStrict = process.argv.includes('--strict');
         const st = cd.defaultView.__czPracticeReady ? cd.defaultView.__czPracticeReady() : null;
         return {
           disabled: btn ? btn.disabled : null,
+          ariaDisabled: btn ? btn.getAttribute('aria-disabled') : null,
+          locked: btn ? btn.classList.contains('is-locked') : null,
+          opacity: btn ? getComputedStyle(btn).opacity : null,
           title: btn ? btn.title : null,
           mode: dash ? dash.dataset.mode : null,
           ruler: ri ? parseInt(ri.value, 10) : null,
@@ -912,13 +915,116 @@ const isStrict = process.argv.includes('--strict');
         };
       });
 
-      const pass = empty.disabled === true && empty.ready === false
-        && afterEmptyClick.mode === 'prep' && afterEmptyClick.disabled === true
-        && subjectOnly.disabled === true && subjectOnly.ready === false
-        && filled.disabled === false && filled.ready === true
+      /* v3.14：置灰按钮不再用真 disabled（会吞掉 click，引导弹不出来），
+         改成 aria-disabled + is-locked 视觉类；所以门禁断言跟着改口径。 */
+      const pass = empty.disabled === false && empty.ariaDisabled === 'true'
+        && empty.locked === true && empty.ready === false
+        && afterEmptyClick.mode === 'prep' && afterEmptyClick.ariaDisabled === 'true'
+        && subjectOnly.ariaDisabled === 'true' && subjectOnly.ready === false
+        && filled.ariaDisabled === 'false' && filled.locked === false && filled.ready === true
         && dur18.ruler === 18 && dur18.durationMin === 18
         && running.mode === 'run' && running.cardDuration === 18 && running.ticketDur === 18 && running.railRemain === '18:00';
       rows.push({ vp: v.vp, empty, afterEmptyClick, subjectOnly, filled, dur18, running, pass });
+      await vp.close();
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
+  /* ── 项 17（v3.14）：就绪引导 ──────────────────────────────────────────────
+     dad 261028：在「置灰状态」点仪表盘的开始，要弹一条引导去补齐票夹缺的那一项，
+     一次只提醒一项，优先级 科目 > 练习内容 > 速度。
+     断言：① 空态点开始 → 引导开且指向科目，仪表盘不进入计时
+           ② 选了科目 → 引导自动改指「练习内容」（仍只提醒一项）
+           ③ 再点一次置灰开始 → 仍是同一条（不叠两条、不跳项）
+           ④ 选齐内容 → 引导自动收起
+           ⑤ 点开始 → 进计时态且引导不再出现 ── */
+  const readyGuide = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1400);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(500);
+      await vp.evaluate(() => window.__cz.clearSelection());
+      await vp.waitForTimeout(500);
+
+      const readGuide = () => vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const w = cd.defaultView;
+        const g = cd.getElementById('czGuide');
+        const sp = cd.getElementById('czGuideSpot');
+        const state = w.__czGuideState ? w.__czGuideState() : null;
+        const d = cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument;
+        const dash = d.querySelector('.dash');
+        const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect();
+          return { l: +b.left.toFixed(1), t: +b.top.toFixed(1), r: +b.right.toFixed(1), b: +b.bottom.toFixed(1) }; };
+        const ticket = cd.getElementById('pkTicketCard');
+        const subject = cd.getElementById('pkTicketSubjectBlock');
+        const content = cd.querySelector('#pkSessionSlot .pss');
+        return {
+          state,
+          title: g ? (g.querySelector('.cz-guide-title') || {}).textContent : null,
+          cta: g ? (g.querySelector('.cz-guide-cta') || {}).textContent : null,
+          open: g ? g.classList.contains('is-open') : false,
+          spotOn: sp ? sp.classList.contains('is-on') : false,
+          guideRect: r(g), spotRect: r(sp), subjectRect: r(subject), contentRect: r(content), ticketRect: r(ticket),
+          mode: dash ? dash.dataset.mode : null
+        };
+      });
+      const clickStart = () => vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const btn = cd.querySelector('.cz-mod[data-mod="A"] iframe').contentDocument.getElementById('btnPrimary');
+        if (btn) btn.click();
+      });
+      /* 聚光框要压在目标上：交集面积占目标面积 ≥ 60% */
+      const covers = (spot, target) => {
+        if (!spot || !target) return false;
+        const w = Math.min(spot.r, target.r) - Math.max(spot.l, target.l);
+        const h = Math.min(spot.b, target.b) - Math.max(spot.t, target.t);
+        if (w <= 0 || h <= 0) return false;
+        const ta = (target.r - target.l) * (target.b - target.t);
+        return ta > 0 && (w * h) / ta >= 0.6;
+      };
+
+      await clickStart();
+      await vp.waitForTimeout(500);
+      const s1 = await readGuide();
+
+      await vp.evaluate(() => { window.__cz.canvasDoc().defaultView.selectItem(1034); });
+      await vp.waitForTimeout(600);
+      const s2 = await readGuide();
+
+      await clickStart();
+      await vp.waitForTimeout(400);
+      const s3 = await readGuide();
+
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const pill = cd.querySelector('.pk-session-pill');
+        if (pill) pill.click();
+      });
+      await vp.waitForTimeout(700);
+      const s4 = await readGuide();
+
+      await clickStart();
+      await vp.waitForTimeout(700);
+      const s5 = await readGuide();
+
+      const insideTicket = (g, t) => !!g && !!t
+        && g.l >= t.l - 1 && g.r <= t.r + 1 && g.t >= t.t - 1 && g.b <= t.b + 1;
+      const pass = s1.open === true
+        && s1.state && s1.state.field === 'subject' && s1.state.missing === 'subject'
+        && /科目/.test(s1.title || '') && s1.spotOn === true
+        && covers(s1.spotRect, s1.subjectRect)
+        && insideTicket(s1.guideRect, s1.ticketRect)
+        && s1.mode === 'prep'
+        && s2.open === true && s2.state && s2.state.field === 'content' && /内容/.test(s2.title || '')
+        && covers(s2.spotRect, s2.contentRect)
+        && s3.open === true && s3.state && s3.state.field === 'content'
+        && s4.open === false && s4.state && s4.state.missing === null
+        && s5.mode === 'run' && s5.open === false;
+      rows.push({ vp: v.vp, s1, s2, s3, s4, s5, pass });
       await vp.close();
     }
     return { rows, pass: rows.every(r => r.pass) };
@@ -933,7 +1039,8 @@ const isStrict = process.argv.includes('--strict');
     slotCardTheme,
     durationLinkage,
     autoMorphAndReselect,
-    startGate
+    startGate,
+    readyGuide
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(fullOutput, null, 2), 'utf-8');
 
@@ -1004,6 +1111,12 @@ const isStrict = process.argv.includes('--strict');
   console.log(` 15. 选完两项即变形 + 重新选择 (空态>100px, 满项≈50px未计时, 窄条不塌/时间横排可读, 重选保留, 计时禁用) : ` + (autoMorphAndReselect.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badMorph.map(r => r.vp + ' railH=' + r.step2.railH + ' remain=' + r.step2.remainText + '/' + r.step2.remainWritingMode + ' fits=' + r.step2.remainFitsBar).join(', ') + ')'));
   const badGate = startGate.rows.filter(r => !r.pass);
   console.log(` 16. 开始计时就绪门禁 (票夹未选齐→开始点不动；选齐后计时时长=票夹时长) : ` + (startGate.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGate.map(r => r.vp + ' empty=' + r.empty.disabled + '/' + r.empty.mode + ' subjOnly=' + r.subjectOnly.disabled + ' filled=' + r.filled.disabled + ' run=' + r.running.mode + '/' + r.running.cardDuration).join(', ') + ')'));
+  const badGuide = readyGuide.rows.filter(r => !r.pass);
+  console.log(` 17. 就绪引导 (置灰点开始→只提醒缺的那一项·科目>内容>速度；选齐自动收起) : ` + (readyGuide.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGuide.map(r => {
+    const f = (s) => (s && s.state) ? String(s.state.field) : 'n/a';
+    return r.vp + ' s1=' + f(r.s1) + '/' + r.s1.mode + ' s2=' + f(r.s2) + ' s3=' + f(r.s3)
+      + ' s4=' + (r.s4.state ? String(r.s4.state.missing) : 'n/a') + ' s5=' + r.s5.mode;
+  }).join(', ') + ')'));
   console.log('═'.repeat(96));
 
   if (isStrict) {
@@ -1017,7 +1130,8 @@ const isStrict = process.argv.includes('--strict');
       slotCardTheme.pass &&
       durationLinkage.pass &&
       autoMorphAndReselect.pass &&
-      startGate.pass;
+      startGate.pass &&
+      readyGuide.pass;
     process.exit(allPassed ? 0 : 1);
   } else {
     process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass && slotCardTheme.pass && durationLinkage.pass && autoMorphAndReselect.pass && startGate.pass ? 0 : 1);
