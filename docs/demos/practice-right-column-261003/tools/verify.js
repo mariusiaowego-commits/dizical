@@ -834,6 +834,96 @@ const isStrict = process.argv.includes('--strict');
     return { rows, pass: rows.every(r => r.pass) };
   })();
 
+  // ─── 项 16：开始计时的就绪门禁（dad 261028）───
+  /* 票夹是唯一真源：科目 + 本次练习内容 + 时长都选齐之前，仪表盘的「开始」必须点不动；
+     选齐之后点开始，计时器用的时长必须等于票夹上选好的那一份。 */
+  const startGate = await (async () => {
+    const rows = [];
+    for (const v of VIEWPORTS) {
+      const vp = await browser.newPage({ viewport: { width: v.w, height: v.h } });
+      await vp.goto(URL, { waitUntil: 'domcontentloaded' });
+      await vp.waitForTimeout(1400);
+      await vp.evaluate((x) => window.__cz.setVp(x), v.vp);
+      await vp.waitForTimeout(500);
+      await vp.evaluate(() => window.__cz.clearSelection());
+      await vp.waitForTimeout(500);
+
+      const readCard = () => vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const f = cd.querySelector('.cz-mod[data-mod="A"] iframe');
+        const d = f ? f.contentDocument : null;
+        const btn = d ? d.getElementById('btnPrimary') : null;
+        const ri = d ? d.getElementById('rulerInput') : null;
+        const dash = d ? d.querySelector('.dash') : null;
+        const st = cd.defaultView.__czPracticeReady ? cd.defaultView.__czPracticeReady() : null;
+        return {
+          disabled: btn ? btn.disabled : null,
+          title: btn ? btn.title : null,
+          mode: dash ? dash.dataset.mode : null,
+          ruler: ri ? parseInt(ri.value, 10) : null,
+          ready: st ? st.ready : null,
+          reason: st ? st.reason : null,
+          durationMin: st ? st.durationMin : null
+        };
+      });
+      const clickStart = () => vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const f = cd.querySelector('.cz-mod[data-mod="A"] iframe');
+        const btn = f ? f.contentDocument.getElementById('btnPrimary') : null;
+        if (btn) btn.click();
+      });
+
+      const empty = await readCard();
+      await clickStart();
+      await vp.waitForTimeout(500);
+      const afterEmptyClick = await readCard();
+
+      // 只选科目，未选内容
+      await vp.evaluate(() => { window.__cz.canvasDoc().defaultView.selectItem(1034); });
+      await vp.waitForTimeout(500);
+      const subjectOnly = await readCard();
+
+      // 选满两项 → 就绪
+      await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const pill = cd.querySelector('.pk-session-pill');
+        if (pill) pill.click();
+      });
+      await vp.waitForTimeout(600);
+      const filled = await readCard();
+
+      // 票夹时长改成 18 → A 卡 ruler 同步 → 点开始 → 计时用 18
+      await vp.evaluate(() => { window.__cz.canvasDoc().defaultView.ttSetDuration(18); });
+      await vp.waitForTimeout(500);
+      const dur18 = await readCard();
+      await clickStart();
+      await vp.waitForTimeout(900);
+      const running = await vp.evaluate(() => {
+        const cd = window.__cz.canvasDoc();
+        const f = cd.querySelector('.cz-mod[data-mod="A"] iframe');
+        const d = f ? f.contentDocument : null;
+        const dash = d ? d.querySelector('.dash') : null;
+        const w = d ? d.defaultView : null;
+        return {
+          mode: dash ? dash.dataset.mode : null,
+          cardDuration: w && w.getPracticeReady ? w.getPracticeReady().durationMin : null,
+          ticketDur: cd.getElementById('pkTicketDurVal') ? parseInt(cd.getElementById('pkTicketDurVal').textContent, 10) : null,
+          railRemain: cd.getElementById('pkRailRemain') ? cd.getElementById('pkRailRemain').textContent.trim() : null
+        };
+      });
+
+      const pass = empty.disabled === true && empty.ready === false
+        && afterEmptyClick.mode === 'prep' && afterEmptyClick.disabled === true
+        && subjectOnly.disabled === true && subjectOnly.ready === false
+        && filled.disabled === false && filled.ready === true
+        && dur18.ruler === 18 && dur18.durationMin === 18
+        && running.mode === 'run' && running.cardDuration === 18 && running.ticketDur === 18 && running.railRemain === '18:00';
+      rows.push({ vp: v.vp, empty, afterEmptyClick, subjectOnly, filled, dur18, running, pass });
+      await vp.close();
+    }
+    return { rows, pass: rows.every(r => r.pass) };
+  })();
+
   const fullOutput = {
     summary: summaryMatrix,
     staticChecks,
@@ -842,7 +932,8 @@ const isStrict = process.argv.includes('--strict');
     overlayViewport,
     slotCardTheme,
     durationLinkage,
-    autoMorphAndReselect
+    autoMorphAndReselect,
+    startGate
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(fullOutput, null, 2), 'utf-8');
 
@@ -911,6 +1002,8 @@ const isStrict = process.argv.includes('--strict');
   console.log(` 14. ruler ↔ 票夹时长联动 (Dash改18->票面18，票面+2->Dash为20，窄条 18:00 × 9 组合) : ` + (durationLinkage.pass ? '✅ PASS (9/9 双向一致，窄条同步)' : '❌ FAIL (' + badDur.map(r => r.vp + '/C' + r.combo + ' bar=' + (r.barState ? r.barState.railRemain : 'n/a')).join(', ') + ')'));
   const badMorph = autoMorphAndReselect.rows.filter(r => !r.pass);
   console.log(` 15. 选完两项即变形 + 重新选择 (空态>100px, 满项≈50px未计时, 窄条不塌/时间横排可读, 重选保留, 计时禁用) : ` + (autoMorphAndReselect.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badMorph.map(r => r.vp + ' railH=' + r.step2.railH + ' remain=' + r.step2.remainText + '/' + r.step2.remainWritingMode + ' fits=' + r.step2.remainFitsBar).join(', ') + ')'));
+  const badGate = startGate.rows.filter(r => !r.pass);
+  console.log(` 16. 开始计时就绪门禁 (票夹未选齐→开始点不动；选齐后计时时长=票夹时长) : ` + (startGate.pass ? '✅ PASS (3/3 视口全通过)' : '❌ FAIL (' + badGate.map(r => r.vp + ' empty=' + r.empty.disabled + '/' + r.empty.mode + ' subjOnly=' + r.subjectOnly.disabled + ' filled=' + r.filled.disabled + ' run=' + r.running.mode + '/' + r.running.cardDuration).join(', ') + ')'));
   console.log('═'.repeat(96));
 
   if (isStrict) {
@@ -923,10 +1016,11 @@ const isStrict = process.argv.includes('--strict');
       overlayViewport.pass &&
       slotCardTheme.pass &&
       durationLinkage.pass &&
-      autoMorphAndReselect.pass;
+      autoMorphAndReselect.pass &&
+      startGate.pass;
     process.exit(allPassed ? 0 : 1);
   } else {
-    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass && slotCardTheme.pass && durationLinkage.pass && autoMorphAndReselect.pass ? 0 : 1);
+    process.exit(allCorePass && passDataVp && passConcentric && runSwitch.pass && overlayViewport.pass && slotCardTheme.pass && durationLinkage.pass && autoMorphAndReselect.pass && startGate.pass ? 0 : 1);
   }
 })().catch(err => {
   console.error(err);

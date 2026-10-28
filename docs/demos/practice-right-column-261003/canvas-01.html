@@ -6067,6 +6067,41 @@ function syncStartState() {
     else if (!hasContent) why.textContent = '请选定或输入本次练习内容';
     else why.textContent = '';
   }
+  pushPracticeReady();
+}
+
+/* S22（dad 261028）：练习就绪状态 —— 票夹是唯一真源。
+   仪表盘的「开始」必须等票夹把「科目 + 本次练习内容 + 时长」都定下来才允许点；
+   否则计时器记的是卡片自己的默认值，而不是票夹上选好的那一份。
+   正式版对应后端契约：开始练习必须带 subject_id + content + duration_min，
+   任一缺失时后端判「不可开始」并回原因，前端据此禁用按钮（demo 用总线模拟）。 */
+window.__czPracticeReady = function () {
+  const hasSubject = !!cur;
+  const hasContent = !!(content && String(content).trim().length > 0);
+  const dur = (typeof duration === 'number') ? Math.round(duration) : 0;
+  const hasDuration = dur >= 1 && dur <= 30;
+  let reason = '';
+  if (!hasSubject) reason = '请先在左侧票夹选择练习科目';
+  else if (!hasContent) reason = '请先在左侧票夹选择本次练习内容';
+  else if (!hasDuration) reason = '请先在左侧票夹设定练习时长';
+  return {
+    ready: hasSubject && hasContent && hasDuration,
+    reason: reason,
+    subjectId: cur ? cur.id : null,
+    subjectName: cur ? cur.name : null,
+    content: content || '',
+    durationMin: hasDuration ? dur : null
+  };
+};
+
+/* 把就绪状态推给仪表盘卡（总线 → A 卡 setPracticeReady） */
+function pushPracticeReady() {
+  const st = window.__czPracticeReady();
+  try {
+    const bus = window.DizicalPracticeBus;
+    if (bus && typeof bus.ready === 'function') { bus.ready(st.ready, st.reason); }
+  } catch (e) {}
+  return st;
 }
 
 /* 计时走字主循环 */
@@ -6724,24 +6759,22 @@ function expandBarToFolio(callback, instant) {
 }
 
 function enterRun() {
-  if (!cur) {
-    if (typeof selectItem === 'function') selectItem(1034);
-    else cur = ITEMS.focus[0];
+  /* S22（dad 261028）：开始计时的前置条件 = 票夹已选好「科目 + 本次练习内容 + 时长」。
+     真源在票夹；**不再自动替用户补选** —— 自动补选会让计时器记下一份用户从没选过的
+     科目/内容/时长，正是 dad 这次指出的问题。demo 调试壳 setCanvasStage('run')
+     仍会先代选，那是壳的行为，不是产品行为。 */
+  const readyState = window.__czPracticeReady();
+  if (!readyState.ready) {
+    showToast(readyState.reason || '请先在左侧票夹选择科目与本次练习内容');
+    pushPracticeReady();
+    return;
   }
-  if (!content || !content.trim()) {
-    const activePill = document.querySelector('.pk-session-pill.is-active, .pk-session-tag.is-active');
-    const firstPill = document.querySelector('.pk-session-pill, .pk-session-tag');
-    if (activePill && activePill.textContent.trim()) {
-      content = activePill.textContent.trim();
-    } else if (firstPill && firstPill.textContent.trim()) {
-      firstPill.click();
-      content = firstPill.textContent.trim();
-    } else if (cur && cur.name) {
-      content = cur.name;
-    } else {
-      content = '筒音长音';
-    }
-  }
+  pushPracticeReady();
+  /* 计时时长以票夹为真源：开始前把票夹的时长推给仪表盘，保证记的是同一份 */
+  try {
+    const bus = window.DizicalPracticeBus;
+    if (bus && typeof bus.duration === 'function') { bus.duration(readyState.durationMin, 'left_ticket'); }
+  } catch (e) {}
   started = true;
   timerRunning = true;
   paused = false;
@@ -8064,7 +8097,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v2 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -9096,6 +9129,32 @@ function closeRecordsDrawer() {
   var btnEarly = document.getElementById('btnEarly');
   var opsTimerText = document.getElementById('opsTimerText');
 
+  /* S22（dad 261028）：练习就绪门禁 —— 票夹是唯一真源。
+     票夹没把「科目 + 本次练习内容 + 时长」选齐之前，仪表盘的「开始」不许点：
+     否则计时器跑的是这张卡自己的默认值，dad 在票夹上选好的那一份根本没被记到。
+     就绪状态由画布侧总线推过来（window.setPracticeReady）；本卡单独打开时默认可用。 */
+  var practiceReady = true;
+  var practiceReadyReason = '';
+  function syncPrimaryEnabled() {
+    /* 只有准备态会被拦；计时中的「暂停」必须一直可点 */
+    var blocked = !practiceReady && mode === 'prep';
+    btnPrimary.disabled = blocked;
+    btnPrimary.setAttribute('aria-disabled', String(blocked));
+    btnPrimary.title = blocked ? practiceReadyReason : '';
+  }
+  window.setPracticeReady = function (flag, reason) {
+    practiceReady = !!flag;
+    practiceReadyReason = reason || '';
+    syncPrimaryEnabled();
+    if (mode === 'prep') {
+      opsTimerText.textContent = practiceReady ? '00:00 · 待开始' : (practiceReadyReason || '待选择票夹科目与时长');
+    }
+    return { ready: practiceReady, reason: practiceReadyReason };
+  };
+  window.getPracticeReady = function () {
+    return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration };
+  };
+
   function driveRulerRunning() {
     if (!window.RulerProduction) return;
     var totalSec = Math.max(1, duration * 60);
@@ -9113,6 +9172,7 @@ function closeRecordsDrawer() {
     updateBpmDisplay();
     btnPrimary.textContent = '暂停';
     btnEarly.disabled = false;
+    syncPrimaryEnabled();
     requestAnimationFrame(alignReadoutWithCover);
     // 调尺子运行态：标记 started/runningModality
     if (window.RulerProduction) {
@@ -9155,6 +9215,7 @@ function closeRecordsDrawer() {
     mode = 'pause';
     dash.dataset.mode = 'pause';
     btnPrimary.textContent = '继续';
+    syncPrimaryEnabled();
     if (tickIv) { clearInterval(tickIv); tickIv = null; }
     stopMetroAudio();
     var m = Math.floor(elapsed / 60);
@@ -9177,7 +9238,8 @@ function closeRecordsDrawer() {
     updateBpmDisplay();
     btnPrimary.textContent = '开始';
     btnEarly.disabled = true;
-    opsTimerText.textContent = '00:00 · 待开始';
+    opsTimerText.textContent = practiceReady ? '00:00 · 待开始' : (practiceReadyReason || '待选择票夹科目与时长');
+    syncPrimaryEnabled();
     requestAnimationFrame(alignReadoutWithCover);
     var metaVal = document.getElementById('metaVal');
     if (metaVal) {
@@ -9198,7 +9260,13 @@ function closeRecordsDrawer() {
   }
 
   btnPrimary.addEventListener('click', function () {
-    if (mode === 'prep' || mode === 'pause') enterRun();
+    if (mode === 'prep' || mode === 'pause') {
+      if (!practiceReady) {
+        opsTimerText.textContent = practiceReadyReason || '请先在左侧票夹选择科目与时长';
+        return;
+      }
+      enterRun();
+    }
     else if (mode === 'run') enterPause();
   });
   btnEarly.addEventListener('click', enterPrep);
@@ -11342,7 +11410,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13441,7 +13509,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v1 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v1 · 2026-10-28</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14438,7 +14506,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15266,7 +15334,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v1 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v1 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16264,7 +16332,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v3 · 2026-10-27</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -18689,7 +18757,7 @@ window.__CZ_CSS = [
     var settling = false;
     var switching = false;
     try { NEG_BUS = /(?:^|[?&])negctl=bus(?:&|$)/.test(String(window.parent.location.search)); } catch (e) {}
-    var S = { bpm: 80, beatNote: '♩', durationMin: 10, sessionTitle: '', sessionId: '', stageMode: 'prep' };
+    var S = { bpm: 80, beatNote: '♩', durationMin: 10, sessionTitle: '', sessionId: '', stageMode: 'prep', ready: false, readyReason: '请先在左侧票夹选择练习科目' };
     var log = [];
     var stats = { emitted: 0, applied: 0, selfIgnored: 0, degraded: 0, clamped: 0 };
     function now() { return +performance.now().toFixed(1); }
@@ -19031,6 +19099,7 @@ window.__CZ_CSS = [
       if (settling) { return; }
       settling = true;
       try {
+        syncReadyFromCanvas();
         if (switching && rightBpmEl()) { switching = false; }
         var hit = rightBpmEl();
         var nowL = leftBpm();
@@ -19094,6 +19163,32 @@ window.__CZ_CSS = [
       }
       return rec({ op: 'duration', dir: 'self', ignored: true });
     }
+    /* ── 联动 2b：练习就绪门禁（dad 261028）。票夹选齐（科目 + 内容 + 时长）才允许开始计时。
+       真源在画布侧：doc.defaultView.__czPracticeReady()；这里只负责把状态送到 A 卡。 ── */
+    function pullReady() {
+      var w = doc.defaultView;
+      if (!w || typeof w.__czPracticeReady !== 'function') { return null; }
+      try { return w.__czPracticeReady(); } catch (e) { return null; }
+    }
+    function onReady(flag, reason) {
+      var d = dashDoc2();
+      if (!d) { stats.degraded++; return rec({ op: 'ready', dir: 'L2R', ok: !!flag, why: '无仪表盘卡' }); }
+      var view = d.defaultView;
+      var applied = false;
+      if (view && typeof view.setPracticeReady === 'function') {
+        try { view.setPracticeReady(!!flag, reason || ''); applied = true; } catch (e) {}
+      }
+      if (applied) { stats.applied++; }
+      return rec({ op: 'ready', dir: 'L2R', ok: !!flag, reason: reason || null, applied: applied });
+    }
+    /* 卡 A 载入/重挂后，把票夹当前的就绪状态再推一次（否则 A 卡还是默认可用） */
+    function syncReadyFromCanvas() {
+      var r = pullReady();
+      if (!r) { return; }
+      S.ready = !!r.ready;
+      S.readyReason = r.reason || '';
+      onReady(S.ready, S.readyReason);
+    }
     /* ── 联动 3：Session 科目（左 → 右）。S9：黑屏顶栏不再显示科目标签 —— 卡槽露头条已有完整信息 ── */
     function onSession(title) {
       var d = dashDoc2();
@@ -19125,6 +19220,7 @@ window.__CZ_CSS = [
       duration: function (min, source) { S.durationMin = clamp(min, 1, 30); return onDuration(source || 'left_ticket', S.durationMin); },
       session: function (title, sid) { S.sessionTitle = String(title || ''); S.sessionId = sid || ''; return onSession(S.sessionTitle); },
       stage: function (mode, source) { S.stageMode = mode; return onStage(mode, source); },
+      ready: function (flag, reason) { S.ready = !!flag; S.readyReason = reason || ''; return onReady(S.ready, S.readyReason); },
       read: function () {
         var slot = doc.getElementById('pkPunchSlotWrap');
         if (rightBpmEl() || metroPending() || !activeMetroFrame()) { clearFalseDisconnect(); }
@@ -19265,7 +19361,7 @@ window.__CZ_CSS = [
         });
       }
     }
-    api.rebind = function () { bindLeft(); bindRight(); bindDash(); settleAfterReady(); paintMirror(); };
+    api.rebind = function () { bindLeft(); bindRight(); bindDash(); settleAfterReady(); paintMirror(); syncReadyFromCanvas(); };
     window.DizicalPracticeBus = api;
     bindLeft();
     bindRight();

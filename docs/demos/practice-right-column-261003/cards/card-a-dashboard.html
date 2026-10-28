@@ -935,7 +935,7 @@
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.12</b> · 卡 v2 · 2026-10-27</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.13</b> · 卡 v3 · 2026-10-28</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -1967,6 +1967,32 @@
   var btnEarly = document.getElementById('btnEarly');
   var opsTimerText = document.getElementById('opsTimerText');
 
+  /* S22（dad 261028）：练习就绪门禁 —— 票夹是唯一真源。
+     票夹没把「科目 + 本次练习内容 + 时长」选齐之前，仪表盘的「开始」不许点：
+     否则计时器跑的是这张卡自己的默认值，dad 在票夹上选好的那一份根本没被记到。
+     就绪状态由画布侧总线推过来（window.setPracticeReady）；本卡单独打开时默认可用。 */
+  var practiceReady = true;
+  var practiceReadyReason = '';
+  function syncPrimaryEnabled() {
+    /* 只有准备态会被拦；计时中的「暂停」必须一直可点 */
+    var blocked = !practiceReady && mode === 'prep';
+    btnPrimary.disabled = blocked;
+    btnPrimary.setAttribute('aria-disabled', String(blocked));
+    btnPrimary.title = blocked ? practiceReadyReason : '';
+  }
+  window.setPracticeReady = function (flag, reason) {
+    practiceReady = !!flag;
+    practiceReadyReason = reason || '';
+    syncPrimaryEnabled();
+    if (mode === 'prep') {
+      opsTimerText.textContent = practiceReady ? '00:00 · 待开始' : (practiceReadyReason || '待选择票夹科目与时长');
+    }
+    return { ready: practiceReady, reason: practiceReadyReason };
+  };
+  window.getPracticeReady = function () {
+    return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration };
+  };
+
   function driveRulerRunning() {
     if (!window.RulerProduction) return;
     var totalSec = Math.max(1, duration * 60);
@@ -1984,6 +2010,7 @@
     updateBpmDisplay();
     btnPrimary.textContent = '暂停';
     btnEarly.disabled = false;
+    syncPrimaryEnabled();
     requestAnimationFrame(alignReadoutWithCover);
     // 调尺子运行态：标记 started/runningModality
     if (window.RulerProduction) {
@@ -2026,6 +2053,7 @@
     mode = 'pause';
     dash.dataset.mode = 'pause';
     btnPrimary.textContent = '继续';
+    syncPrimaryEnabled();
     if (tickIv) { clearInterval(tickIv); tickIv = null; }
     stopMetroAudio();
     var m = Math.floor(elapsed / 60);
@@ -2048,7 +2076,8 @@
     updateBpmDisplay();
     btnPrimary.textContent = '开始';
     btnEarly.disabled = true;
-    opsTimerText.textContent = '00:00 · 待开始';
+    opsTimerText.textContent = practiceReady ? '00:00 · 待开始' : (practiceReadyReason || '待选择票夹科目与时长');
+    syncPrimaryEnabled();
     requestAnimationFrame(alignReadoutWithCover);
     var metaVal = document.getElementById('metaVal');
     if (metaVal) {
@@ -2069,7 +2098,13 @@
   }
 
   btnPrimary.addEventListener('click', function () {
-    if (mode === 'prep' || mode === 'pause') enterRun();
+    if (mode === 'prep' || mode === 'pause') {
+      if (!practiceReady) {
+        opsTimerText.textContent = practiceReadyReason || '请先在左侧票夹选择科目与时长';
+        return;
+      }
+      enterRun();
+    }
     else if (mode === 'run') enterPause();
   });
   btnEarly.addEventListener('click', enterPrep);
