@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>practice 骨架变体对照 (A/B/C) — 2026-09-20</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #F8F9FA; color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .demo-header {
+    background: #FFFFFF; border-bottom: 1px solid #E0E0E0;
+    padding: 16px 20px; position: sticky; top: 0; z-index: 10;
+  }
+  .demo-title { font-size: 20px; font-weight: bold; color: #FF6B6B; margin: 0 0 8px; }
+  .demo-notes { font-size: 13px; color: #555; line-height: 1.7; margin: 0; }
+  .demo-notes li { margin-bottom: 2px; }
+
+  .demo-toolbar {
+    background: #FFFFFF; border-bottom: 1px solid #E0E0E0;
+    padding: 10px 20px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    position: sticky; top: 0; z-index: 9;
+    /* 顶部两段一起 sticky: header 在上, toolbar 紧跟 */
+    margin-top: 0;
+  }
+  /* 上面 sticky header 的高度不固定, 改用常规流避免遮挡 */
+  .demo-header { position: relative; }
+  .demo-toolbar { position: sticky; top: 0; }
+
+  .demo-toolbar-group {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .demo-toolbar-label {
+    font-size: 12px; color: #7F8C8D; margin-right: 4px;
+  }
+  .demo-btn {
+    background: #FFFFFF; border: 2px solid #E0E0E0; color: #555;
+    border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .demo-btn:hover { border-color: #FF6B6B; color: #FF6B6B; }
+  .demo-btn.active { background: #FF6B6B; border-color: #FF6B6B; color: #FFFFFF; }
+
+  .demo-stage {
+    padding: 16px 20px;
+    display: flex; gap: 16px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .demo-frame {
+    background: #FFFFFF; border: 2px solid #E0E0E0; border-radius: 12px;
+    overflow: hidden;
+  }
+  .demo-frame-label {
+    background: #F8F9FA; padding: 6px 12px;
+    font-size: 12px; color: #7F8C8D; border-bottom: 1px solid #E0E0E0;
+  }
+  .demo-frame iframe {
+    display: block; border: 0; width: 100%; height: 1000px;
+  }
+
+  /* iframe 宽度模式 */
+  .demo-stage[data-width="440"]  .demo-frame { width: 440px; }
+  .demo-stage[data-width="744"]  .demo-frame { width: 744px; }
+  .demo-stage[data-width="1133"] .demo-frame { width: 1133px; }
+  .demo-stage[data-width="full"] .demo-frame { width: 100%; max-width: 1280px; }
+
+  .demo-stage[data-show="a"] .demo-frame[data-which="b"],
+  .demo-stage[data-show="a"] .demo-frame[data-which="c"] { display: none; }
+  .demo-stage[data-show="b"] .demo-frame[data-which="a"],
+  .demo-stage[data-show="b"] .demo-frame[data-which="c"] { display: none; }
+  .demo-stage[data-show="c"] .demo-frame[data-which="a"],
+  .demo-stage[data-show="c"] .demo-frame[data-which="b"] { display: none; }
+
+  .demo-foot {
+    text-align: center; padding: 20px;
+    font-size: 12px; color: #7F8C8D;
+  }
+</style>
+</head>
+<body>
+
+<header class="demo-header">
+  <h1 class="demo-title">practice 骨架变体对照 (A/B/C) — 2026-09-20</h1>
+  <ol class="demo-notes">
+    <li>依据 agy 2026-09-20 前端评审 — 三种骨架取舍</li>
+    <li>补录 (tabExtra / 旋钮 / 滚轮) 已砍，黑底 dashboard (dash-card-inline) 已去</li>
+    <li>刻度尺 / 滚轮数字 / 计时视觉是真件 — 从生产页逐字抽的 CSS + JS (real-practice.css + real-timer-visual.js)</li>
+    <li>三个变体的差别只在外层布局： A 双栏控制台 / B 单列竖排 (744 友好) / C 极简一屏 (主路径最短)</li>
+    <li>iframe 里的页面可以直接点 — 拖尺子 / ±步进 / 开始 / 选科目 / 暂停 / 提前结束 都通的</li>
+  </ol>
+</header>
+
+<div class="demo-toolbar">
+  <div class="demo-toolbar-group">
+    <span class="demo-toolbar-label">显示</span>
+    <button class="demo-btn active" data-show="all">全部</button>
+    <button class="demo-btn" data-show="a">A 双栏</button>
+    <button class="demo-btn" data-show="b">B 单列</button>
+    <button class="demo-btn" data-show="c">C 极简</button>
+  </div>
+  <div class="demo-toolbar-group">
+    <span class="demo-toolbar-label">视口宽度</span>
+    <button class="demo-btn" data-width="440">440 (iPhone)</button>
+    <button class="demo-btn active" data-width="744">744 (iPad 竖屏)</button>
+    <button class="demo-btn" data-width="1133">1133 (iPad 横屏)</button>
+    <button class="demo-btn" data-width="full">全宽</button>
+  </div>
+</div>
+
+<div class="demo-stage" data-show="all" data-width="744">
+  <div class="demo-frame" data-which="a">
+    <div class="demo-frame-label">A · 双栏控制台 (≥900px 并排，<900px 堆叠)</div>
+    <iframe src="variant-a.html" title="variant-a"></iframe>
+  </div>
+  <div class="demo-frame" data-which="b">
+    <div class="demo-frame-label">B · 单列竖排 (744 竖屏友好，参数默认折叠成 chip)</div>
+    <iframe src="variant-b.html" title="variant-b"></iframe>
+  </div>
+  <div class="demo-frame" data-which="c">
+    <div class="demo-frame-label">C · 极简一屏 (主路径最短，记录降到底)</div>
+    <iframe src="variant-c.html" title="variant-c"></iframe>
+  </div>
+</div>
+
+<div class="demo-foot">demo-glue.js 三个变体共用 — 选科目 / 计时 / BPM / tag 全在这层；真视觉逻辑在 real-timer-visual.js</div>
+
+<script>
+  (function () {
+    const stage = document.querySelector('.demo-stage');
+    const showBtns = document.querySelectorAll('.demo-btn[data-show]');
+    const widthBtns = document.querySelectorAll('.demo-btn[data-width]');
+
+    showBtns.forEach(b => b.addEventListener('click', () => {
+      showBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      stage.setAttribute('data-show', b.getAttribute('data-show'));
+    }));
+
+    widthBtns.forEach(b => b.addEventListener('click', () => {
+      widthBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      stage.setAttribute('data-width', b.getAttribute('data-width'));
+    }));
+  })();
+</script>
+
+</body>
+</html>

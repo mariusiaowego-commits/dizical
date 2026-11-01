@@ -2723,6 +2723,19 @@ def practice_page():
         subject_info_json=subject_info_json,
     )
 
+@app.get("/practice-dsh", response_class=HTMLResponse)
+def practice_dsh_page():
+    # demo v3.17 落地页：这份 HTML 与配套静态资源在迭代中被反复替换，
+    # 浏览器缓存旧版会表现为「破图 + 原生滑杆 + 数字消失」（卡片内 CSS/JS 未加载）。
+    # 页面本体禁用缓存，iframe 用 ?v=317 强制取新。
+    return HTMLResponse(
+        content=render("practice-dsh"),
+        headers={
+            "Cache-Control": "no-store, must-revalidate",
+            "X-Dsh-Build": "v3.17",
+        },
+    )
+
 @app.get("/achievements", response_class=HTMLResponse)
 def achievements_page():
     today = dt.date.today()
