@@ -1,5 +1,26 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-10-30 (**尚未上线** — 仅修改代码，未发布) — `GET /config/api/assignments` 返回每 stage 目标科目练习时长与科目 ID
+**类型**: 🟡 部分兼容（新增可选返回字段；请求参数、已有字段名与结构完全不变。dizical-minip 不改也能跑）
+
+## 变更
+
+- **端点**: `GET /config/api/assignments`
+- **变更内容**:
+  - 当传入 `item` 参数（科目名或科目 id）时，返回的 `assignments[]` 列表中每个 stage 条目新增 3 个派生字段：
+    - `total_seconds_per_stage` (int): 该科目在该 stage（`stage_start` ~ `stage_end`）在 `daily_practices` 中的累计练习总秒数。
+    - `stage_duration_text` (str): 格式化的累计练习时长文本（如 `11分25秒`、`1小时23分45秒`）。
+    - `target_item_id` (int | null): 匹配到的科目 ID（如 `1350`、`1034`），老记录缺失 `item_id` 时自动从 `practice_items` 补齐。
+  - 内部科目匹配优化：支持科目名称子串匹配及数字 ID 匹配，同时兼容老记录中 `item_id` 为空的清洗。
+- **对 dizical-minip**: **无需改代码**（新字段仅在前端 Q 卡及相关模块展示时被读取，已有调用端点不读取新增字段不受影响）。
+- **DDL / 数据库影响**: 无 DDL，无数据迁移。
+
+- **已知限制（本 PR 不修）**: 时长是在接口层用 `daily_practices.items` 现算的。匹配键写的是 `p_it.get("name")`，库存 JSON 的科目名键是 `item`；MySQL 若把 `items` 当字符串返回，`.get` 会抛错并被 `except: pass` 吞掉，结果停在 `0秒`。本地 SQLite 上同一份数据可以算出非 0。云端要等后端接入分支修解析和键名后再信这个数字。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-21 (**已上线**, PR #382 / merge `f684e49` / CloudRun Deploy #149) — `/config/api/badge/*` 全量服务端鉴权收口（P2-6 技术债）
 **类型**: 🟡 部分兼容（**端点路径/请求体/返回结构零变化**；新增**服务端鉴权要求**。dizical-minip 与 Web 配置页**无需改代码**；任何**外部脚本**调这批端点必须带凭据）
 
@@ -678,3 +699,6 @@ PR-B 移植到 MySQLBackend, 整事务 + 重算 daily + 写 audit + 同步冗余
 
 - practice 页: 选科目后渲染预置标签；BPM 步进器；卡片合并 2:8
 - config/practice: 科目行「内容」按钮编辑预置选项
+
+---
+

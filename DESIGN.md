@@ -26,6 +26,7 @@ Coral-red warmth for a kid's dizi practice app — playful, supportive, never bu
 | Token | Hex | 用途 |
 |---|---|---|
 | `colors.primary` | `#FF6B6B` | 珊瑚红 — dizical 招牌. button / nav 选中 / icon 底色 / streak badge |
+| `colors.vermilion` | `#FF5722` | **朱橙 — 与珊瑚红合作的第二主色**（2026-10-10 拍，不是替代）。语义=能量/进度/强度/节奏；用在进度胶囊 / 时长条 / 强弱拍灯 / 强调块 / 图表主色。demo 落地为 `--dash-vermilion*` 一族（-soft `#FF8A5C` / 浅底文字 `#A04217` / 深墨文字 `#FF9E7A` / 白字压底 `-solid #B8531F`）。同屏规则（只允许一个主色主导 / 不并排大面积 / 不叠色）见 dizicute DESIGN.md |
 | `colors.secondary` | `#2C3E50` | 深蓝灰 — 主文字, header (h1/h2/body) |
 | `colors.tertiary` | `#FFF8F0` | 暖白 — 页面背景 |
 | `colors.neutral` | `#FFFFFF` | 纯白 — 卡片 / 容器 / input |
@@ -42,6 +43,16 @@ PingFang SC (苹方, iOS/macOS 系统自带). Web fallback: `system-ui, -apple-s
 | h2 | 20px | 600 | 卡片 / section header |
 | body | 14px | 400 | 默认正文 |
 | label | 12px | 500 | nav label / button text / tag |
+
+### 衬线字族 (1) — 2026-09-22 新增（同步自 dizicute）
+
+`font.family.serif` = `"Songti SC", "STSong", Georgia, "Times New Roman", serif`
+
+| 用途 | 允许 | 禁止 |
+|---|---|---|
+| 票务 / 档案气质的文字 | 票头小字、票号、档案编号、`● TICKET` 类小标、票面主标题（科目名，**粗体衬线**） | 正文、控件文字、数字 |
+
+**数字一律走 monospace + `tabular-nums`**（2026-09-23 dad 试过细体衬线后否掉，改回）；正文走 PingFang SC 栈。
 
 ### 圆角 (4)
 
