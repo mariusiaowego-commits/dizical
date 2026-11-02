@@ -64,8 +64,8 @@ def test_bpm_clamped_and_content_required(html):
 def test_no_dead_route_and_day_refresh(html):
     assert "fetch(`/api/assignments?" not in html
     assert "window.__czReloadDay = reloadDay;" in html
-    assert "fetch('/api/practices/' + today)" in html
-    assert "fetch('/api/practices/' + yesterday)" in html
+    assert "fetch('/api/practices/' + d)" in html
+    assert "Promise.all([get(today), get(yesterday)])" in html
     assert "fetch('/api/today-stats" not in html, "today-stats 的服务端日期可能是 UTC，会串日期"
     assert html.count("window.__czApplyDay = function (payload)") == 3, "画布顶栏 + D / R 三处都要能接真实数据"
 
@@ -134,3 +134,32 @@ def test_second_write_keeps_first_practice_at(client):
     sessions = [s for s in day["sessions"] if str(s.get("started_at", "")).startswith("2026-11-02")]
     assert len(sessions) >= 2, sessions
     assert day["total_seconds"] >= 75, day["total_seconds"]
+
+
+# ── 审计 P1：A 卡自己计时那条路径 ─────────────────────────────────────────
+
+def test_dashboard_start_always_enters_ticket_timer(html):
+    """点仪表盘「开始」必须让票夹计时器也起来 —— 只看 stage-running 会漏掉
+    「票夹已是窄条但计时器没起」的那条路径，那段练习会不入库。"""
+    seg = html[html.index("function bridgeCardA()"):html.index("function bridgeCanvas()")]
+    assert "else if (!canvasRunning())" not in seg, "run 分支不能只看 stage-running"
+    assert "setCanvasStage('run')" in seg, "run 分支必须调 setCanvasStage('run')"
+
+
+def test_external_run_fallback_is_wired(html):
+    """票夹没计时、只有 A 卡在跑时，用 A 卡的秒数兜底记账。"""
+    assert "window.__czSaveExternalRun = function (seconds, startedAtCst)" in html
+    assert "window.__czRunInfo = function ()" in html
+    assert "function saveExternalRunIfNeeded()" in html
+    assert "saveExternalRunIfNeeded();" in html, "停止时必须调用兜底记账"
+    assert "lastElapsed: lastRunSeconds" in html, "A 卡要在进准备态前定格秒数"
+
+
+def test_duration_card_timeline_has_readable_span(html):
+    """D 卡时间轴至少铺 30 分钟，否则一段短练习的刻度全挤在一起。"""
+    assert "Math.max(1800, (last - first) / 1000)" in html
+
+
+def test_today_and_yesterday_fetch_are_independent(html):
+    """昨天接口挂了不能连今天的真实数据一起丢掉。"""
+    assert "Promise.all([get(today), get(yesterday)])" in html

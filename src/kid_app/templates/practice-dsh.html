@@ -7480,6 +7480,19 @@ function closeRecordsDrawer() {
     });
     return true;
   };
+
+  /* 兜底记账（dad 261102 审计 P1）：仪表盘 A 卡自己跑完、票夹计时器没启动时
+     （forceCanvasStage 等边界路径），这段练习不能丢。
+     条件：票夹当前没在计时（started=false）+ 本次还没写过库 + A 卡确实跑了 ≥1 秒。 */
+  window.__czSaveExternalRun = function (seconds, startedAtCst) {
+    if (started || sessionSaved) { return false; }
+    const sec = Math.max(0, Math.round(Number(seconds) || 0));
+    if (sec < 1) { return false; }
+    sessionSaved = true;
+    runEnterTime = startedAtCst || nowCstLocal();
+    postPracticeLog(sec);
+    return true;
+  };
 })();
 </script>
 
@@ -8631,6 +8644,18 @@ function closeRecordsDrawer() {
 <script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
 <script>
   var duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
+  /* 本段计时的开始时刻（CST ISO）。票夹没在计时、只有这张卡在跑时，用它兜底记账。*/
+  var runStartedAtCst = '';
+  /* 刚结束那一段的秒数与开始时刻（enterPrep 时定格）。*/
+  var lastRunSeconds = 0;
+  var lastRunStartedAt = '';
+  function nowCstA() {
+    var d = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var ms = String(d.getMilliseconds()).padStart(3, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+           pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + ms;
+  }
   // dad 2610102107 条3：计时读数唯一渲染入口 = 空心 monoline 数字（D6 引擎），不写「分钟/已练」字样
   function renderMetaDigits(str) {
     var raw = String(str);
@@ -9521,6 +9546,18 @@ function closeRecordsDrawer() {
   window.getPracticeReady = function () {
     return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration, locked: !practiceReady && mode === 'prep' };
   };
+  /* 本段计时的真实秒数 + 开始时刻。
+     票夹是入库的真源，但这张卡自己也跑一套计时；万一只有它在跑（票夹计时器没起来），
+     外壳要用这里的数字兜底记账，不能让这段练习丢掉。 */
+  window.__czRunInfo = function () {
+    return {
+      elapsed: Math.max(0, Math.round(elapsed)),
+      startedAt: runStartedAtCst,
+      mode: mode,
+      lastElapsed: lastRunSeconds,
+      lastStartedAt: lastRunStartedAt
+    };
+  };
 
   /* v3.14：就绪门禁的引导请求交给画布层（票夹在画布文档里，引导要指着票夹画）。
      本卡单独打开时画布层没有这个入口，静默降级为读数行提示。 */
@@ -9546,6 +9583,8 @@ function closeRecordsDrawer() {
     mode = 'run';
     dash.dataset.mode = 'run';
     snapshotBpm = selectedBpm;
+    /* 本段计时的开始时刻（CST ISO）+ 起始秒数，供外部在「票夹没在计时」时兜底记账。*/
+    if (elapsed === 0) { runStartedAtCst = nowCstA(); }
     updateBpmDisplay();
     btnPrimary.textContent = '暂停';
     btnEarly.disabled = false;
@@ -9611,7 +9650,11 @@ function closeRecordsDrawer() {
     mode = 'prep';
     dash.dataset.mode = 'prep';
     snapshotBpm = null;
+    /* 收尾前记下这一段跑了多少秒 —— 外面要靠它兜底记账（票夹计时器没起来的那条路径）。*/
+    lastRunSeconds = Math.max(0, Math.round(elapsed));
+    lastRunStartedAt = runStartedAtCst;
     elapsed = 0;
+    runStartedAtCst = '';
     updateBpmDisplay();
     btnPrimary.textContent = '开始';
     btnEarly.disabled = true;
@@ -15122,7 +15165,9 @@ function closeRecordsDrawer() {
     if (stamps.length) {
       var first = Math.min.apply(null, stamps.map(function (x) { return x.st; }));
       var last = Math.max.apply(null, stamps.map(function (x) { return x.en; }));
-      var span = Math.max(1, (last - first) / 1000);
+      /* 时间轴至少铺 30 分钟 —— 只有一段十几秒的练习时，
+         首尾几乎重合，刻度全挤在同一分钟，读不出「什么时候练的」。 */
+      var span = Math.max(1800, (last - first) / 1000);
       if (ticks.length > 1) {
         for (var i = 0; i < ticks.length; i++) {
           ticks[i].textContent = hmText(first + span * 1000 * (i / (ticks.length - 1)));
@@ -21776,6 +21821,26 @@ window.__CZ_CSS = [
     return o;
   }
   /* 卡 A 的按钮 → 画布（正向）：开始 → 练习态；提前结束 → 准备态 */
+  /* A 卡（仪表盘）自己的一套计时读数。票夹与它不是同一个状态机，
+     万一只有它在跑，票夹不会自动知道 —— 兜底记账要用这里的数字。 */
+  function dashRunInfo() {
+    try {
+      var d = dashDoc();
+      var w = d ? d.defaultView : null;
+      if (w && typeof w.__czRunInfo === 'function') { return w.__czRunInfo(); }
+    } catch (e) {}
+    return null;
+  }
+  function saveExternalRunIfNeeded() {
+    try {
+      var cw = canvasWin();
+      var info = dashRunInfo();
+      if (!cw || typeof cw.__czSaveExternalRun !== 'function' || !info) { return false; }
+      return !!cw.__czSaveExternalRun(info.lastElapsed || info.elapsed, info.lastStartedAt || info.startedAt);
+    } catch (e) {
+      return false;
+    }
+  }
   function bridgeCardA() {
     var d = dashDoc();
     if (!d) { return; }
@@ -21788,8 +21853,9 @@ window.__CZ_CSS = [
           var mode = cardAMode();
           bus.emit('parent', 'card-a-mode', { mode: mode, btn: id });
           if (mode === 'prep') {
+            saveExternalRunIfNeeded();
             if (canvasRunning()) { var r = setCanvasStage('prep'); bus.emit('canvas', 'stage', { stage: 'prep', from: 'cardA', after: r.after }); }
-          } else if (!canvasRunning()) {
+          } else {
             var r2 = setCanvasStage('run'); bus.emit('canvas', 'stage', { stage: 'run', from: 'cardA', after: r2.after });
           }
           syncTopBarFromCard(mode);
@@ -22092,11 +22158,13 @@ window.__CZ_CSS = [
     } catch (e) {}
     var today = cstDateStr(0);
     var yesterday = cstDateStr(-1);
-    return Promise.all([
-      fetch('/api/practices/' + today).then(function (r) { return r.json(); }),
-      fetch('/api/practices/' + yesterday).then(function (r) { return r.json(); })
-    ]).then(function (res) {
-      dayPayload = { today: res[0], yesterday: res[1] };
+    /* 今天和昨天分开兜底：昨天那个接口挂了不该连今天的真实数据一起丢掉。 */
+    var get = function (d) {
+      return fetch('/api/practices/' + d).then(function (r) { return r.json(); }).catch(function () { return null; });
+    };
+    return Promise.all([get(today), get(yesterday)]).then(function (res) {
+      if (!res[0] && !res[1]) { return null; }
+      dayPayload = { today: res[0] || {}, yesterday: res[1] || {} };
       applyDayToModules();
       return dayPayload;
     }).catch(function () { return null; });
