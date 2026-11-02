@@ -176,3 +176,57 @@ def test_practice_dsh_category_fallback_and_no_dead_assignments_route():
     assert "ITEM_CATEGORIES[a.category_id]" in html
     assert "fetch(`/api/assignments?" not in html
     assert 'fetch(`/config/api/assignments?weeks=24&item=' in html
+
+
+def test_finish_confirm_modal_contract():
+    """结束确认弹窗是唯一入库入口（P0：提前结束/到点/A 卡都要先确认）。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+
+    for eid in [
+        "pkFinishConfirmModal",
+        "pkFinishScreenMain",
+        "pkFinishScreenZero",
+        "pkFinishDurationVal",
+        "pkFinishSubmitBtn",
+        "pkFinishResumeBtn",
+        "pkFinishAbortBtn",
+        "pkFinishZeroBackBtn",
+        "pkFinishZeroConfirmBtn",
+        "pkRepsReadout",
+        "pkRepsMinus",
+        "pkRepsPlus",
+        "pkFinishErrorBanner",
+    ]:
+        assert f'id="{eid}"' in html, f"缺少结束确认弹窗元素 #{eid}"
+
+    # 状态机与守卫
+    for token in [
+        "finishPending",
+        "finishSubmitting",
+        "finishSavedElapsed",
+        "function requestFinish(done)",
+        "function finalizeExitRun(opts)",
+        "function cancelFinishAndResume()",
+        "function abortFinishAndDiscard()",
+        "function confirmFinish()",
+        "async function submitConfirmedPractice(reps)",
+        "window.__czIsPracticeBusy",
+    ]:
+        assert token in html, f"缺少结束确认状态机片段: {token}"
+
+    # 失败保活：8 秒超时 + sessionStorage 暂存 + 重试
+    assert "AbortController" in html and "8000" in html
+    assert "dsh_pending" in html and "_log_v1" in html
+    assert "重试提交" in html
+
+    # 离开保护
+    assert "beforeunload" in html
+
+
+def test_practice_tab_switch_guards_dsh_busy():
+    """dsh 在计时/待确认时，切页签要先过保护弹窗。"""
+    html = PRACTICE_TPL.read_text(encoding="utf-8")
+    assert "function dshBusy()" in html
+    assert "cw.__cz.isBusy()" in html
+    assert "pendingTab" in html
+    assert "timerProtectText" in html

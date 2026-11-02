@@ -1477,7 +1477,7 @@
   <div id="timerProtectModal">
     <div class="modal-box">
       <h3><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M10 2h4"/><path d="M12 2v3"/></svg></span> 计时器还在跑</h3>
-      <p>离开这个页面的话，计时会取消哦！</p>
+      <p id="timerProtectText">离开这个页面的话，计时会取消哦！</p>
       <div class="modal-actions">
         <button class="btn-stay" onclick="closeTimerProtect()">继续练习</button>
         <button class="btn-leave" onclick="confirmLeave()">确认离开</button>
@@ -2279,6 +2279,8 @@
     setInterval(updateClock, 1000);
     updateClock();
     let pendingNav = null;
+    let pendingTab = null;
+    let dshLeaveConfirmed = false;
 
     // ── 老科目加载 ──
     let archivedLoaded = false;
@@ -2582,24 +2584,34 @@
     function setupTimerProtect() {
       document.querySelectorAll('.nav a').forEach(a => {
         a.addEventListener('click', e => {
-          if (!timerRunning && !finishPending) return;
+          if (!timerRunning && !finishPending && !dshBusy()) return;
           const href = a.getAttribute('href');
           if (!href || href === window.location.pathname) return;
           e.preventDefault();
           pendingNav = href;
+          const tip = document.getElementById('timerProtectText');
+          if (tip) tip.textContent = '离开这个页面的话，计时会取消哦！';
           document.getElementById('timerProtectModal').classList.add('open');
         });
       });
       window.addEventListener('beforeunload', e => {
-        if (timerRunning || finishPending) { e.preventDefault(); e.returnValue = ''; }
+        if (timerRunning || finishPending || dshBusy()) { e.preventDefault(); e.returnValue = ''; }
       });
       document.addEventListener('visibilitychange', () => {
         if (document.hidden && (timerRunning || finishPending)) { pendingNav = null; }
       });
     }
+    function dshBusy() {
+      try {
+        const f = document.querySelector('#tabDsh iframe');
+        const cw = f && f.contentWindow;
+        return !!(cw && cw.__cz && typeof cw.__cz.isBusy === 'function' && cw.__cz.isBusy());
+      } catch (e) { return false; }
+    }
     function closeTimerProtect() {
       document.getElementById('timerProtectModal').classList.remove('open');
       pendingNav = null;
+      pendingTab = null;
     }
     function confirmLeave() {
       timerRunning = false;
@@ -2607,6 +2619,12 @@
       clearInterval(timerInterval);
       started = false;
       document.getElementById('timerProtectModal').classList.remove('open');
+      if (pendingTab) {
+        const t = pendingTab;
+        pendingTab = null;
+        dshLeaveConfirmed = true;
+        switchTab(t);
+      }
       if (pendingNav) window.location.href = pendingNav;
     }
 
@@ -3558,6 +3576,23 @@
 
     // ── V4 Tab 切换 ──
     function switchTab(tab) {
+      /* 练习助手（dsh）在计时或待确认时，切走会中断这一段练习 → 用同一张保护弹窗拦一下。 */
+      if (!dshLeaveConfirmed && document.body.classList.contains('practice-dsh-on') && tab !== 'dsh') {
+        const dshFrame = document.querySelector('#tabDsh iframe');
+        let dshBusy = false;
+        try {
+          const cw = dshFrame && dshFrame.contentWindow;
+          dshBusy = !!(cw && cw.__cz && typeof cw.__cz.isBusy === 'function' && cw.__cz.isBusy());
+        } catch (e) {}
+        if (dshBusy) {
+          pendingTab = tab;
+          const tip = document.getElementById('timerProtectText');
+          if (tip) tip.textContent = '这一段练习还在进行，切走后就看不到当前进度了。确认离开？';
+          document.getElementById('timerProtectModal').classList.add('open');
+          return;
+        }
+      }
+      dshLeaveConfirmed = false;
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       if (tab === 'timer') {

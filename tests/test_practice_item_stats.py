@@ -100,14 +100,25 @@ def test_item_stats_aggregates_seconds_days_and_month(client):
 
 
 def test_overview_counts_practice_days_and_reuses_streak(client):
-    _insert_day(_day(-1), 12)
-    _insert_day(_day(-2), 8)
-    _insert_day(_day(-4), 3)  # 中间隔了一天，不进当前连续
+    # 这些日期归本测试所有：先清掉，避免同 session 内其他测试的写入改变计数。
+    own_days = [_day(-1), _day(-2), _day(-4)]
+    conn = db._get_connection()
+    conn.execute(
+        "DELETE FROM daily_practices WHERE date IN (?, ?, ?, ?)",
+        tuple(d.isoformat() for d in own_days + [_day(0)]),
+    )
+    conn.commit()
+    before = client.get("/api/practices/overview").json()["practice_days"]
+
+    _insert_day(own_days[0], 12)
+    _insert_day(own_days[1], 8)
+    _insert_day(own_days[2], 3)  # 中间隔了一天，不进当前连续
 
     resp = client.get("/api/practices/overview")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["practice_days"] == 3
+    assert body["practice_days"] == before + 3
+    # streak_days() 从昨天往前数，今天不算；-1 / -2 连续、-4 断开 → 2 天。
     assert body["streak"] == 2
     assert body["last_date"] == _day(-1).isoformat()
 
