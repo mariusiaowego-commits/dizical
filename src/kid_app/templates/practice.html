@@ -2623,6 +2623,11 @@
         const t = pendingTab;
         pendingTab = null;
         dshLeaveConfirmed = true;
+        /* 用户确认离开：把练习助手这一段停掉，别让它在隐藏的 iframe 里继续走秒。 */
+        try {
+          const cw = document.querySelector('#tabDsh iframe')?.contentWindow;
+          if (cw && cw.__cz && typeof cw.__cz.abandon === 'function') cw.__cz.abandon();
+        } catch (e) {}
         switchTab(t);
       }
       if (pendingNav) window.location.href = pendingNav;

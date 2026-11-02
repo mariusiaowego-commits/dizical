@@ -7606,6 +7606,8 @@ function openFinishModal() {
 function requestFinish(done) {
   if (finishPending || finishSubmitting) { return; }
   if (!started) { return; }
+  /* 自动化自检（runAudit / runR2Pass）走静默复位，不能弹用户确认框。 */
+  if (window.__czAuditSilentFinish) { exitRun(); return; }
   const secs = Math.max(0, Math.round(elapsed));
   if (secs < 1) { exitRun(); sessionSaved = false; return; }
 
@@ -7695,6 +7697,8 @@ async function submitConfirmedPractice(reps) {
   finishSubmitting = false;
 
   if (!res.ok) {
+    /* 错误条和「重试提交」都在第一屏：失败时切回来，别让用户停在已隐藏的二次确认屏。 */
+    showFinishScreen('main');
     setFinishBusy(false);
     if (el.submit) { el.submit.dataset.retry = '1'; el.submit.textContent = '重试提交'; }
     if (el.resume) { el.resume.hidden = true; }
@@ -8040,6 +8044,7 @@ function closeRecordsDrawer() {
   window.__czIsPracticeBusy = function () {
     return Boolean(started || finishPending || finishSubmitting);
   };
+  window.__czIsFinishing = function () { return Boolean(finishPending || finishSubmitting); };
   window.addEventListener('beforeunload', function (e) {
     if (started || finishPending || finishSubmitting) { e.preventDefault(); e.returnValue = ''; }
   });
@@ -8143,6 +8148,37 @@ function closeRecordsDrawer() {
   window.__czSaveExternalRun = function (seconds, startedAtCst) {
     return window.__czRequestFinishFromCardA({ done: true, seconds: seconds, startedAt: startedAtCst });
   };
+  /* 崩溃/强退兜底：上次没等到响应的 payload 直接补交一次。
+     practice_at 原样带回 → 后端 _dedup_key 命中就返回首次结果，不会双写。 */
+  async function replayPendingLog() {
+    var raw = null;
+    try { raw = sessionStorage.getItem(PENDING_LOG_KEY); } catch (e) { return false; }
+    if (!raw) { return false; }
+    var rec = null;
+    try { rec = JSON.parse(raw); } catch (e) {}
+    var body = rec && rec.body;
+    var fresh = rec && (Date.now() - Number(rec.at || 0) < 12 * 3600 * 1000);
+    if (!body || !body.item_id || !body.practice_at || !fresh) {
+      try { sessionStorage.removeItem(PENDING_LOG_KEY); } catch (e) {}
+      return false;
+    }
+    try {
+      var res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      var json = await res.json().catch(function () { return null; });
+      if (res.ok && json && json.ok) {
+        try { sessionStorage.removeItem(PENDING_LOG_KEY); } catch (e) {}
+        showToast('已补交上次未同步的练习记录');
+        try { if (window.parent && typeof window.parent.__czReloadDay === 'function') { window.parent.__czReloadDay(); } } catch (e) {}
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  replayPendingLog();
 })();
 </script>
 
@@ -19256,9 +19292,10 @@ window.__CZ_CSS = [
   '   是「整篇画布文档」而不是浏览器视口 → 遮罩铺满 3000px、弹窗被 flex 居中到屏幕外，用户只看到一片灰',
   '   （dad 261027 报：点「换曲目」弹窗没出来，只出灰色蒙版）。宿主把浏览器当前看得见的那一截算成',
   '   --cz-band-t / --cz-band-h，弹层按它锚定；滚动时宿主实时刷新这两个变量。 ── */',
-  '.pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask {',
+  '.pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask, .pk-finish-modal {',
   '  top: var(--cz-band-t, 0px) !important; bottom: auto !important; height: var(--cz-band-h, 100%) !important; }',
   '.pk-folio-box { height: min(620px, calc(var(--cz-band-h, 100vh) - 40px)) !important; }',
+  '.pk-finish-box { max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }',
   '.pk-reader { max-height: calc(var(--cz-band-h, 100vh) - 48px) !important; }',
   '.popout-panel { top: calc(var(--cz-band-t, 0px) + var(--cz-band-h, 100%) / 2) !important;',
   '  max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }',
@@ -22625,6 +22662,12 @@ window.__CZ_CSS = [
       tg.addEventListener('click', function () {
         var last = null, stable = 0, t0 = Date.now();
         (function tick() {
+          /* 结束确认期间画布仍停在 stage-running，但它是「待记录」不是「在跑」：
+             这里若继续镜像，会把刚暂停的 A 卡重新拉回 run。 */
+          try {
+            var cwf = canvasWin();
+            if (cwf && cwf.__czIsFinishing && cwf.__czIsFinishing()) { return; }
+          } catch (e) {}
           var intent = canvasIntent();          /* 画布自述态（class 在虚拟时间下可能跟不上） */
           if (intent === last) { stable++; } else { stable = 0; last = intent; }
           if ((stable >= 2 && Date.now() - t0 > 700) || Date.now() - t0 > 1800) {
@@ -23301,8 +23344,13 @@ window.__CZ_CSS = [
           if ((o3.dir1.btn || '').indexOf('暂停') < 0) { fails.push('C3-1 fail [第3条 正向] 仪表盘按钮文案未同步：' + o3.dir1.btn); }
           /* ② 画布顶栏「切回准备态」→ 卡 A 回准备态（负控④ 关掉这一向 → 必红） */
           var tg = cd.getElementById('pkStateToggle');
-          if (tg) { window.__czToggleClicks = 1; tg.click(); }
+          if (tg) {
+            window.__czToggleClicks = 1;
+            try { canvasWin().__czAuditSilentFinish = true; } catch (e) {}
+            tg.click();
+          }
           return waitMs(4500).then(function () {
+            try { canvasWin().__czAuditSilentFinish = false; } catch (e) {}
             o3.dir2 = {
               stage: canvasStageClass(), running: canvasRunning(), ticketW: ticketW(),
               cardMode: cardAMode(), btn: cardABtnText(),
@@ -23980,7 +24028,7 @@ window.__CZ_CSS = [
   }
   window.__czIsBusyProxy = function () { try { var w = canvasWin(); return !!(w && w.__czIsPracticeBusy && w.__czIsPracticeBusy()); } catch (e) { return false; } };
   window.__czRequestFinishProxy = function (done) { try { var w = canvasWin(); if (w && typeof w.__czRequestFinishFromCardA === 'function') { return w.__czRequestFinishFromCardA({ done: !!done, seconds: 0 }); } } catch (e) {} return false; };
-  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
+  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
 })();
 </script>
 </body>

@@ -230,3 +230,37 @@ def test_practice_tab_switch_guards_dsh_busy():
     assert "cw.__cz.isBusy()" in html
     assert "pendingTab" in html
     assert "timerProtectText" in html
+
+
+def test_finish_modal_is_anchored_to_visible_band():
+    """画布 iframe 高度 = 内容自然高，fixed 弹层必须锚到 --cz-band-*，否则居中到视口外。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert ".pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask, .pk-finish-modal {" in html
+    assert ".pk-finish-box { max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }" in html
+
+
+def test_bridge_does_not_resume_card_a_during_finish_confirm():
+    """确认弹窗期间 A 卡必须停在 pause，反向桥不能把它拉回 run。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "window.__czIsFinishing = function ()" in html
+    seg = html[html.index("function bridgeCanvas()"):html.index("bridgeCardA();", html.index("function bridgeCanvas()"))]
+    assert "__czIsFinishing()" in seg
+    assert "return;" in seg
+
+
+def test_failure_returns_to_visible_screen_and_replays_pending():
+    """失败时切回第一屏（错误条 / 重试按钮在那），并且启动时能补交暂存 payload。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    seg = html[html.index("async function submitConfirmedPractice"):html.index("function finalizeExitRun")]
+    assert "showFinishScreen('main');" in seg
+    assert "function replayPendingLog()" in html
+    assert "sessionStorage.getItem(PENDING_LOG_KEY)" in html
+    assert "12 * 3600 * 1000" in html
+
+
+def test_audit_reset_is_silent_and_tab_leave_stops_dsh():
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "window.__czAuditSilentFinish" in html
+    page = PRACTICE_TPL.read_text(encoding="utf-8")
+    assert "cw.__cz.abandon()" in page
+    assert "abandon: function ()" in html
