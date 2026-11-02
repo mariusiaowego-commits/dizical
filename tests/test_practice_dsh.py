@@ -129,3 +129,50 @@ def test_post_api_log_with_session_fields(client):
     assert resp.status_code == 200, f"Error: {resp.text}"
     data = resp.json()
     assert data.get("ok") is True, f"API 打卡保存失败: {data}"
+
+def test_stage_duration_reads_mysql_json_string(client, monkeypatch):
+    """MySQL 把 items 当字符串返回，键是 item 不是 name。时长不能停在 0。"""
+    import datetime as dt
+    from src.kid_app.routes import config as config_routes
+
+    lesson = dt.date(2026, 10, 20)
+
+    def fake_assignments(weeks=8, item=None):
+        return [{
+            "lesson_date": lesson,
+            "items": [{"item": "春耕曲", "item_id": 1350, "requirements": "慢练"}],
+            "notes": "",
+            "images": [],
+            "videos": [],
+            "stage_order": 1,
+            "stage_start": dt.date(2026, 10, 1),
+            "stage_end": dt.date(2026, 10, 31),
+        }]
+
+    def fake_range(start, end):
+        return [{
+            "items": '[{"item": "春耕曲", "minutes": 2, "seconds": 90}]',
+        }]
+
+    monkeypatch.setattr(config_routes.practice_module, "query_assignments", fake_assignments)
+    monkeypatch.setattr(config_routes.db, "get_daily_practices_in_range", fake_range)
+    monkeypatch.setattr(
+        config_routes.db,
+        "get_practice_items",
+        lambda: [{"item_id": 1350, "name": "春耕曲"}],
+    )
+
+    resp = client.get("/config/api/assignments?weeks=24&item=1350")
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["assignments"]
+    assert len(rows) == 1
+    assert rows[0]["total_seconds_per_stage"] == 90
+    assert rows[0]["stage_duration_text"] == "1分30秒"
+    assert rows[0]["items"][0]["item"] == "春耕曲"
+
+
+def test_practice_dsh_category_fallback_and_no_dead_assignments_route():
+    html = PRACTICE_DSH_TPL.read_text()
+    assert "ITEM_CATEGORIES[a.category_id]" in html
+    assert "fetch(`/api/assignments?" not in html
+    assert 'fetch(`/config/api/assignments?weeks=24&item=' in html

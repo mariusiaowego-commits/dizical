@@ -1,6 +1,7 @@
 """配置管理台路由 - 练习科目配置"""
 
 import json
+import logging
 import re
 import shutil
 import subprocess
@@ -30,6 +31,8 @@ lesson_manager = LessonManager(db=db)
 payment_manager = PaymentManager(db=db)
 
 router = APIRouter(prefix="/config", tags=["config"])
+
+logger = logging.getLogger(__name__)
 
 
 # ─── 辅助函数 ───────────────────────────────────────────────────────────────
@@ -1030,13 +1033,24 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
                     d_end = s_end if isinstance(s_end, dt.date) else dt.date.fromisoformat(str(s_end))
                     practices = db.get_daily_practices_in_range(d_start, d_end)
                     for p in practices:
-                        for p_it in p.get("items", []):
+                        raw_items = p.get("items", [])
+                        # MySQL 这条读路径不解析 JSON，items 是字符串。在端点里解析，不改 DAL。
+                        if isinstance(raw_items, str):
+                            try:
+                                raw_items = json.loads(raw_items) if raw_items else []
+                            except (TypeError, ValueError):
+                                raw_items = []
+                        if not isinstance(raw_items, list):
+                            continue
+                        for p_it in raw_items:
+                            if not isinstance(p_it, dict):
+                                continue
                             p_id = p_it.get("item_id")
-                            p_name = p_it.get("name") or ""
+                            p_name = p_it.get("item") or p_it.get("name") or ""
                             if (p_id and p_id in target_ids) or (p_name and p_name in target_names):
                                 stage_sec += pick_seconds(p_it.get("seconds"), p_it.get("minutes"))
                 except Exception:
-                    pass
+                    logger.exception("stage duration failed for %s", item)
             entry["total_seconds_per_stage"] = stage_sec
             entry["stage_duration_text"] = _format_stage_duration(stage_sec)
             matched_item_id = matched[0].get("item_id") if matched else None

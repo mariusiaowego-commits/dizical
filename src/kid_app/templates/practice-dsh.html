@@ -5643,6 +5643,10 @@ async function loadLiveItemsData() {
     const data = await r.json();
     const items = data.items || [];
     const existingList = (typeof ITEMS !== 'undefined' && ITEMS) ? [].concat(ITEMS.focus || [], ITEMS.other || [], ITEMS.archived || []) : [];
+    ITEM_CATEGORIES = {};
+    (data.categories || []).forEach(function (c) {
+      ITEM_CATEGORIES[c.category_id || c.id] = c.name;
+    });
     const deco = function (a) {
       const prev = existingList.find(function (x) { return x.id === a.item_id || x.name === a.name; });
       return {
@@ -5650,7 +5654,8 @@ async function loadLiveItemsData() {
         name: a.name,
         sub: '档案编号 No.' + a.item_id,
         content_options: a.content_options || '',
-        category: a.category_name || '',
+        category: a.category_name || ITEM_CATEGORIES[a.category_id] || '',
+        last_session_at: a.last_session_at || '',
         metro: '♩=' + (a.last_tempo_bpm || 60),
         reqSnippet: prev ? (prev.reqSnippet || '') : '',
         reqItems: prev ? (prev.reqItems || []) : []
@@ -5663,10 +5668,6 @@ async function loadLiveItemsData() {
     });
     ITEMS = { focus: active.slice(0, 2), other: active.slice(2), archived: [] };
     window.ITEMS = ITEMS;
-    ITEM_CATEGORIES = {};
-    (data.categories || []).forEach(function (c) {
-      ITEM_CATEGORIES[c.category_id || c.id] = c.name;
-    });
     if (typeof window.refreshSubjectStats === 'function') {
       try { window.refreshSubjectStats(); } catch (e) {}
     }
@@ -16827,15 +16828,8 @@ function closeRecordsDrawer() {
       currentFetchSubject = itemName;
 
       try {
-        let res = null;
-        try {
-          res = await fetch(`/config/api/assignments?weeks=24&item=${encodeURIComponent(itemName)}`);
-          if (!res.ok) {
-            res = await fetch(`/api/assignments?weeks=24&item=${encodeURIComponent(itemName)}`);
-          }
-        } catch (e1) {
-          res = await fetch(`/api/assignments?weeks=24&item=${encodeURIComponent(itemName)}`);
-        }
+        const itemKey = itemId != null ? String(itemId) : itemName;
+        const res = await fetch(`/config/api/assignments?weeks=24&item=${encodeURIComponent(itemKey)}`);
 
         if (res && res.ok) {
           const data = await res.json();
