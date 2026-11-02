@@ -1,5 +1,23 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-11-02 (**尚未上线**) — 练习助手票夹读科目历史和连续天数
+**类型**: 🟡 部分兼容（新增只读端点。旧端点的路径、参数、返回字段都不变。dizical-minip 不调用，无需改代码）
+
+## 变更
+
+- **端点**:
+  - `GET /api/practices/item-stats?item_id=&month=`
+  - `GET /api/practices/overview`
+- **变更内容**:
+  - `item-stats` 按 `practice_sessions.item_id` 汇总全部历史：天数、次数、总秒数、最长一次的秒数、最近日期。`month=YYYY-MM` 只决定点阵用的 `practice_dates`，不缩小上面的汇总。秒为 0 且分钟大于 0 的旧行按分钟 × 60 计。
+  - `overview` 返回 `streak`（与 `/api/streak` 同一套「从昨天往前数」）、`practice_days`（`daily_practices.total_minutes > 0` 的天数）、`last_date`。
+- **对 dizical-minip**: **无需改代码**。
+- **DDL / 数据库影响**: 无。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-11-02 (**尚未上线**) — `POST /api/log` 的 `tempo_bpm` 上限由 150 放宽到 200
 **类型**: 🟡 部分兼容（只放宽校验。已有请求全部仍然合法。dizical-minip 不改也能跑；小程序自己若把滑杆停在 150，不受影响）
 

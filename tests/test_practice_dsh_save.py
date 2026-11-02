@@ -67,7 +67,8 @@ def test_no_dead_route_and_day_refresh(html):
     assert "fetch('/api/practices/' + d)" in html
     assert "Promise.all([get(today), get(yesterday)])" in html
     assert "fetch('/api/today-stats" not in html, "today-stats 的服务端日期可能是 UTC，会串日期"
-    assert html.count("window.__czApplyDay = function (payload)") == 3, "画布顶栏 + D / R 三处都要能接真实数据"
+    assert html.count("window.__czApplyDay = function (payload)") == 4, "画布顶栏 + A / D / R 四处都要能接真实数据"
+    assert "['A', 'D', 'R']" in html, "当天数据要推进 A 卡，不能只推 D / R"
 
 
 # ── 端到端：按前端实际 payload 打一次 API ─────────────────────────────────

@@ -5914,11 +5914,24 @@ function renderEmptyTicket() {
   syncStartState();
 }
 
-let currentDemoMonth = new URLSearchParams(window.location.search).get('month') || '2026-09';
+function localMonthStr(offset) {
+  var n = new Date();
+  n.setDate(1);
+  n.setMonth(n.getMonth() + (offset || 0));
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+function shiftMonth(ym, delta) {
+  var parts = String(ym || localMonthStr(0)).split('-');
+  var n = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1 + (delta || 0), 1);
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+/* 点阵默认看本月。画布是 srcdoc，读不到页面 query，不再锁死 2026-09。 */
+let currentDemoMonth = localMonthStr(0);
+var itemStatsPending = {};
+var itemStatsFailed = {};
 
-/* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
-function renderSubjectStats() {
-  const stats = (cur && ITEM_STATS[cur.id]) || {
+function emptySubjectStats() {
+  return {
     id: cur ? cur.id : 0,
     name: cur ? cur.name : "未选择科目",
     days: 0,
@@ -5929,6 +5942,47 @@ function renderSubjectStats() {
     daysAgo: "-",
     practiceDates: []
   };
+}
+
+/* 科目历史改读 /api/practices/item-stats。文件里的演示字典不再上屏。 */
+function ensureItemStats(itemId, month) {
+  var key = itemId + '|' + month;
+  var row = ITEM_STATS[itemId];
+  if (row && row._live && row._month === month) return;
+  if (itemStatsPending[key] || itemStatsFailed[key]) return;
+  itemStatsPending[key] = true;
+  fetch('/api/practices/item-stats?item_id=' + encodeURIComponent(itemId) + '&month=' + encodeURIComponent(month))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      delete itemStatsPending[key];
+      if (!data || data.error) { itemStatsFailed[key] = true; return; }
+      ITEM_STATS[data.item_id] = {
+        id: data.item_id,
+        name: data.name || '',
+        days: data.days || 0,
+        sessions: data.sessions || 0,
+        minutes: data.minutes || 0,
+        maxMinutes: data.max_minutes || 0,
+        lastDate: data.last_date || '暂无记录',
+        daysAgo: (data.last_date ? data.days_ago : '-'),
+        practiceDates: data.practice_dates || [],
+        _month: data.month,
+        _live: true
+      };
+      if (cur && String(cur.id) === String(itemId) && currentDemoMonth === month) renderSubjectStats();
+    })
+    .catch(function () {
+      delete itemStatsPending[key];
+      itemStatsFailed[key] = true;
+    });
+}
+
+/* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
+function renderSubjectStats() {
+  const liveRow = (cur && ITEM_STATS[cur.id] && ITEM_STATS[cur.id]._live && ITEM_STATS[cur.id]._month === currentDemoMonth)
+    ? ITEM_STATS[cur.id] : null;
+  const stats = liveRow || emptySubjectStats();
+  if (cur) ensureItemStats(cur.id, currentDemoMonth);
 
   const daysEl = document.getElementById('pkSubjectDaysVal');
   if (daysEl) daysEl.textContent = stats.days;
@@ -5955,8 +6009,9 @@ function renderSubjectStats() {
     }
   }
 
-  // 渲染自然月7列日历点阵（当前自然月 2026-09 或切 2026-08 历史自然月）
+  // 自然月点阵：默认本月，按钮在本月和上月之间切
   renderMonthDotMatrix(stats);
+  if (typeof syncRunRailCard === 'function') syncRunRailCard();
 }
 
 function renderMonthDotMatrix(stats) {
@@ -5986,13 +6041,12 @@ function renderMonthDotMatrix(stats) {
   }
 
   if (toggleBtn) {
-    if (currentDemoMonth === '2026-09') {
-      toggleBtn.textContent = '切8月';
-      toggleBtn.title = '当前为9月(最新云端真值)，点击切换至8月查看历史打卡数据';
-    } else {
-      toggleBtn.textContent = '切9月';
-      toggleBtn.title = '当前为8月(历史云端真值)，点击切回9月(当月)';
-    }
+    var nowMonth = localMonthStr(0);
+    var showingNow = currentDemoMonth === nowMonth;
+    var other = showingNow ? shiftMonth(nowMonth, -1) : nowMonth;
+    var otherNum = parseInt(other.slice(5), 10);
+    toggleBtn.textContent = '切' + otherNum + '月';
+    toggleBtn.title = showingNow ? '当前是本月，点击看上月打卡' : '当前不是本月，点击回本月';
   }
 
   function fillGrid(targetEl, dotClassPrefix) {
@@ -6041,13 +6095,9 @@ function toggleDemoMonth(targetMonth) {
   if (targetMonth) {
     currentDemoMonth = targetMonth;
   } else {
-    currentDemoMonth = (currentDemoMonth === '2026-09') ? '2026-08' : '2026-09';
+    var nowMonth = localMonthStr(0);
+    currentDemoMonth = (currentDemoMonth === nowMonth) ? shiftMonth(nowMonth, -1) : nowMonth;
   }
-  try {
-    const url = new URL(window.location.href);
-    url.searchParams.set('month', currentDemoMonth);
-    window.history.replaceState({}, '', url.toString());
-  } catch (e) {}
   renderSubjectStats();
 }
 
@@ -6351,7 +6401,8 @@ function syncRunRailCard() {
     const bar = cd.getElementById('pkCardExposedBar');
     if (bar) bar.classList.toggle('is-compact', isCompact);
   }
-  const stats = (cur && ITEM_STATS[cur.id]) || {};
+  const rawStats = (cur && ITEM_STATS[cur.id] && ITEM_STATS[cur.id]._live) ? ITEM_STATS[cur.id] : null;
+  const stats = rawStats || {};
   const set = (id, value) => {
     const el = cd.getElementById(id);
     if (el) el.textContent = value == null || value === '' ? '—' : String(value);
@@ -7435,6 +7486,28 @@ function closeRecordsDrawer() {
   /* ── 真数据（dad 261102）──────────────────────────────────────────────
      顶栏「今日记录 X分 · N次」和「今日练习记录」抽屉原来是写死的演示值。
      父页拿到 /api/practices/{今天} 后推过来，这里换成真实记录。 ── */
+  function paintCollapsedOverview() {
+    var ov = window.__czOverview || null;
+    var mins = Number(window.__czTodayMins || 0);
+    var sessions = Number(window.__czTodaySessions || 0);
+    var todayEl = document.getElementById('pkCollapsedTodayVal');
+    if (todayEl && window.__czTodayMins !== undefined) {
+      todayEl.textContent = String(mins);
+      var unit = todayEl.parentElement ? todayEl.parentElement.querySelector('.pk-collapsed-stat-unit') : null;
+      if (unit) unit.textContent = '分 · ' + sessions + ' 次';
+    }
+    if (!ov) return;
+    var streak = Number(ov.streak || 0);
+    var streakEl = document.getElementById('pkCollapsedStreakVal');
+    if (streakEl) streakEl.textContent = String(streak);
+    var hint = document.querySelector('#pkCollapsedStreakRow .pk-collapsed-stat-hint');
+    if (hint && /^\d{4}-\d{2}-\d{2}/.test(String(ov.last_date || ''))) {
+      var last = String(ov.last_date);
+      hint.textContent = '· 最近 ' + Number(last.slice(5, 7)) + '-' + Number(last.slice(8, 10));
+    }
+    var merged = document.getElementById('pkCollapsedMergedVal');
+    if (merged) merged.textContent = '今日 ' + mins + ' 分 · 连续 ' + streak + ' 天';
+  }
   window.__czApplyDay = function (payload) {
     const day = (payload && payload.today) || {};
     const sessions = (day.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
@@ -7446,6 +7519,9 @@ function closeRecordsDrawer() {
     };
     const pill = document.getElementById('pkRecords');
     if (pill) { pill.textContent = '今日记录 ' + mins + '分 · ' + sessions.length + '次 ▾'; }
+    window.__czTodayMins = mins;
+    window.__czTodaySessions = sessions.length;
+    paintCollapsedOverview();
     const sumVal = document.getElementById('pkDrawerTotalVal');
     if (sumVal) { sumVal.textContent = '今日 ' + mins + ' 分 · ' + sessions.length + ' 次'; }
     const list = document.getElementById('pkDrawerList');
@@ -7484,6 +7560,11 @@ function closeRecordsDrawer() {
     });
     return true;
   };
+  fetch('/api/practices/overview').then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+    if (!data || data.error) return;
+    window.__czOverview = data;
+    paintCollapsedOverview();
+  }).catch(function () {});
 
   /* 兜底记账（dad 261102 审计 P1）：仪表盘 A 卡自己跑完、票夹计时器没启动时
      （forceCanvasStage 等边界路径），这段练习不能丢。
@@ -8479,7 +8560,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.19</b> · 卡 v3 · 2026-11-02</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -9557,6 +9638,17 @@ function closeRecordsDrawer() {
   };
   window.getPracticeReady = function () {
     return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration, locked: !practiceReady && mode === 'prep' };
+  };
+  /* 真数据回灌（dad 261102）：面板底部「今日 xx分」原来是模板里的静态演示值（42分），
+     云端今天实际可能是 0 分。这里接 /api/practices/今天 的真实总秒数，
+     口径与票夹顶栏「今日记录 X分 · N次」一致（秒 <60 时按分钟向上取整，最少 0）。 */
+  window.__czApplyDay = function (payload) {
+    var day = (payload && payload.today) || {};
+    var totalSec = Number(day.total_seconds || 0);
+    var mins = totalSec > 0 ? Math.max(1, Math.ceil(totalSec / 60)) : 0;
+    var el = document.getElementById('todayTotal');
+    if (el) { el.textContent = '今日 ' + mins + '分'; }
+    return true;
   };
   /* 本段计时的真实秒数 + 开始时刻。
      票夹是入库的真源，但这张卡自己也跑一套计时；万一只有它在跑（票夹计时器没起来），
@@ -11856,7 +11948,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.19</b> · 卡 v3 · 2026-11-02</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13955,7 +14047,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v1 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.19</b> · 卡 v1 · 2026-11-02</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14952,7 +15044,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.19</b> · 卡 v3 · 2026-11-02</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15862,7 +15954,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v1 · 2026-11-02</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.19</b> · 卡 v1 · 2026-11-02</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16975,7 +17067,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.19</b> · 卡 v3 · 2026-11-02</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -21191,7 +21283,7 @@ window.__CZ_CSS = [
     applyPanelPad(f);
     syncModuleHeight(f);
     forwardStageGesture(f);
-    /* 真数据回灌：模块卡是 srcdoc iframe，装完就把当天真实练习推给它。*/
+    /* 真数据回灌：A（今日累计）/ D / R 都在 srcdoc 里，装完再推一次。*/
     if (dayPayload) {
       try {
         if (f.contentWindow && typeof f.contentWindow.__czApplyDay === 'function') {
@@ -22204,7 +22296,7 @@ window.__CZ_CSS = [
       var cw = canvasWin();
       if (cw && typeof cw.__czApplyDay === 'function') { cw.__czApplyDay(dayPayload); }
     } catch (e) {}
-    ['D', 'R'].forEach(function (k) {
+    ['A', 'D', 'R'].forEach(function (k) {
       var f = cd.querySelector('iframe[data-mod="' + k + '"]');
       try {
         if (f && f.contentWindow && typeof f.contentWindow.__czApplyDay === 'function') {
