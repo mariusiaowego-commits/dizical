@@ -20069,6 +20069,8 @@ window.__CZ_CSS = [
     [].slice.call(document.querySelectorAll('#czComboSeg .cz-btn')).forEach(function (x) {
       x.classList.toggle('is-on', (x.dataset.combo || 'off') === state.combo);
     });
+    /* 自检页会来回切组合，不能把审计用的组合写进用户的上次选择。 */
+    if (!AUDIT) { save(); }
     if (state.combo !== 'off') {
       [].slice.call(document.querySelectorAll('#czPresets .cz-btn')).forEach(function (x) { x.classList.remove('is-on'); });
     }
@@ -21679,6 +21681,11 @@ window.__CZ_CSS = [
       }
       if (o && (o.vp === '1133' || o.vp === '744' || o.vp === '440')) { state.vp = o.vp; }
       if (o && (o.skin === 'ink' || o.skin === 'light')) { state.skin = o.skin; }
+      /* 组合样式单独记住。预设组合以组合号为准，卡片清单跟组合走，避免和 mods 打架。 */
+      if (!AUDIT && o && (o.combo === 'off' || COMBO_MODS[o.combo])) {
+        state.combo = o.combo;
+        if (COMBO_MODS[o.combo]) { state.mods = COMBO_MODS[o.combo].slice(); }
+      }
     } catch (e) {}
   }
 
@@ -22128,6 +22135,9 @@ window.__CZ_CSS = [
     [].slice.call(checks.querySelectorAll('input[type="checkbox"]')).forEach(function (cb) { cb.checked = state.mods.indexOf(cb.value) >= 0; });
     [].slice.call(document.querySelectorAll('#czVp .cz-btn')).forEach(function (b) { b.classList.toggle('is-on', b.dataset.vp === state.vp); });
     [].slice.call(document.querySelectorAll('#czSkin .cz-btn')).forEach(function (b) { b.classList.toggle('is-on', b.dataset.skin === state.skin); });
+    [].slice.call(document.querySelectorAll('#czComboSeg .cz-btn')).forEach(function (b) {
+      b.classList.toggle('is-on', (b.dataset.combo || 'off') === state.combo);
+    });
   }
 
   document.getElementById('czPresets').addEventListener('click', function (e) {

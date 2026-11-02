@@ -188,3 +188,10 @@ def test_yesterday_unavailable_is_not_treated_as_zero(html):
     assert "昨日数据不可用" in html
     assert "var yest = (payload && payload.yesterday) ? payload.yesterday : null;" in html, \
         "R 卡不能把 null 昨天折成空对象（那等于把失败当成昨天 0 秒）"
+
+
+def test_combo_choice_is_restored(html):
+    """上次选的组合要写进 localStorage，下次打开按组合号恢复，而不是永远默认 2卡-2。"""
+    assert "if (!AUDIT) { save(); }" in html
+    assert "state.combo = o.combo;" in html
+    assert "COMBO_MODS[o.combo]" in html
