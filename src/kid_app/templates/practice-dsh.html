@@ -15955,7 +15955,8 @@ function closeRecordsDrawer() {
   }
   window.__czApplyDay = function (payload) {
     var today = (payload && payload.today) || {};
-    var yest = (payload && payload.yesterday) || {};
+    /* 昨天拿不到就是 null（不是 {}）—— 空对象会被当成「昨天 0 秒」。*/
+    var yest = (payload && payload.yesterday) ? payload.yesterday : null;
     var rows = (today.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
     if (!rows.length) { return false; }
     SESSIONS = rows.map(function (s) {

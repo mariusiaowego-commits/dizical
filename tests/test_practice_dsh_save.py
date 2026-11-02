@@ -186,3 +186,5 @@ def test_yesterday_unavailable_is_not_treated_as_zero(html):
     assert "yesterday_known" in html
     assert "yesterday: res[1] || null" in html
     assert "昨日数据不可用" in html
+    assert "var yest = (payload && payload.yesterday) ? payload.yesterday : null;" in html, \
+        "R 卡不能把 null 昨天折成空对象（那等于把失败当成昨天 0 秒）"
