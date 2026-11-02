@@ -79,10 +79,10 @@ def test_submit_practice_contract_intact(html):
 
 
 def test_start_button_gate_unchanged(html):
-    """开始按钮三条件: 选科目 + 内容非空 + bpm 40~150"""
+    """开始按钮三条件: 选科目 + 内容非空 + bpm 40~200"""
     assert "if (!selectedItemId) { btn.disabled = true; return; }" in html
     assert "if (!content) { btn.disabled = true; return; }" in html
-    assert "if (bpm < 40 || bpm > 150) { btn.disabled = true; return; }" in html
+    assert "if (bpm < 40 || bpm > 200) { btn.disabled = true; return; }" in html
 
 
 # ── 4. 三态语义与结束流程 ────────────────────────────────────────────

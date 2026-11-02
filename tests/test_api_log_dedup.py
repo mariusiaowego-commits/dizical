@@ -38,11 +38,21 @@ def test_pydantic_validation_missing_date(client):
     assert "details" in body
 
 
+def test_tempo_bpm_200_is_valid():
+    """dad 2026-11-02: 上限放到 200，200 本身合法，201 才越界。"""
+    from src.kid_app.schemas import PracticeLogRequest
+    ok = PracticeLogRequest.model_validate({
+        "date": "2026-11-02", "item": "x", "item_id": 1, "minutes": 5,
+        "tempo_note": "♪", "tempo_bpm": 200, "content": "test",
+    })
+    assert ok.tempo_bpm == 200
+
+
 def test_pydantic_validation_tempo_bpm_out_of_range(client):
     """tempo_bpm 越界 → 422."""
     r = client.post("/api/log", json={
         "date": "2026-07-29", "item": "x", "item_id": 1, "minutes": 5,
-        "tempo_note": "♪", "tempo_bpm": 200, "content": "test",
+        "tempo_note": "♪", "tempo_bpm": 201, "content": "test",
     })
     assert r.status_code == 422
     assert "tempo_bpm" in json.dumps(r.json())

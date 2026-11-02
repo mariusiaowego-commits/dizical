@@ -7252,7 +7252,7 @@ function closeRecordsDrawer() {
 
   // BPM 增减（长按加速）
   attachLongPressStepper(document.getElementById('pkBpmUp'), () => {
-    bpm = Math.min(160, bpm + 1);
+    bpm = Math.min(200, bpm + 1);
     document.getElementById('pkBpmVal').textContent = bpm;
     syncRunMeta();
   });

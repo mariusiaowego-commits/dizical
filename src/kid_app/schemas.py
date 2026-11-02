@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 ALLOWED_TEMPO_NOTES = ("♪", "♩", "♬")
 BPM_MIN = 40
-BPM_MAX = 150
+BPM_MAX = 200
 CONTENT_MAX_LEN = 200
 CONTENT_MIN_LEN = 1
 ALLOWED_CONTENT_SOURCES = ("manual", "legacy", "backfill")

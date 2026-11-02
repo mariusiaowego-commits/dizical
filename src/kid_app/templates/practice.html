@@ -2666,7 +2666,7 @@
       ).join('');
     }
     function setBpmValue(bpm) {
-      bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
+      bpm = Math.max(40, Math.min(200, parseInt(bpm) || 80));
       const input = document.getElementById('tempoBpmInput');
       const display = document.getElementById('tempoBpmDisplay');
       if (input) input.value = bpm;
@@ -2678,7 +2678,7 @@
     function stepBpm(delta) {
       const input = document.getElementById('tempoBpmInput');
       let v = parseInt(input?.value) || 80;
-      v = Math.max(40, Math.min(150, v + delta));
+      v = Math.max(40, Math.min(200, v + delta));
       setBpmValue(v);
       const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
       const hint = document.getElementById('tempoHint');
@@ -2687,7 +2687,7 @@
       updateDashboard();
     }
     function setExtraBpmValue(bpm) {
-      bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
+      bpm = Math.max(40, Math.min(200, parseInt(bpm) || 80));
       const input = document.getElementById('extraBpmInput');
       const display = document.getElementById('extraBpmDisplay');
       if (input) input.value = bpm;
@@ -2696,7 +2696,7 @@
     function stepExtraBpm(delta) {
       const input = document.getElementById('extraBpmInput');
       let v = parseInt(input?.value) || 80;
-      v = Math.max(40, Math.min(150, v + delta));
+      v = Math.max(40, Math.min(200, v + delta));
       setExtraBpmValue(v);
     }
 
@@ -2732,7 +2732,7 @@
       const content = (document.getElementById('sessionContentInput')?.value || '').trim();
       if (!content) { btn.disabled = true; return; }
       const bpm = parseInt(document.getElementById('tempoBpmInput')?.value) || 0;
-      if (bpm < 40 || bpm > 150) { btn.disabled = true; return; }
+      if (bpm < 40 || bpm > 200) { btn.disabled = true; return; }
       btn.disabled = false;
     }
     // ── selectItem: 选科目 + 触发默认值填充 + 状态机 ──
@@ -4686,7 +4686,7 @@ function settleSecToZero(){
       <button type="button" class="tempo-note-mini em-note-btn selected" id="emNoteQ" data-note="♪">♪</button>
       <button type="button" class="tempo-note-mini em-note-btn" id="emNoteM" data-note="♩">♩</button>
       <span>=</span>
-      <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="150" value="80" style="width:60px">
+      <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="200" value="80" style="width:60px">
       <span style="margin-left:12px">遍数</span>
       <input type="number" id="emReps" min="1" max="99" placeholder="—" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid #ddd;text-align:center">
       <span style="margin-left:10px">时长</span>

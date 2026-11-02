@@ -1,5 +1,19 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-11-02 (**尚未上线**) — `POST /api/log` 的 `tempo_bpm` 上限由 150 放宽到 200
+**类型**: 🟡 部分兼容（只放宽校验。已有请求全部仍然合法。dizical-minip 不改也能跑；小程序自己若把滑杆停在 150，不受影响）
+
+## 变更
+
+- **端点**: `POST /api/log`（`PracticeLogRequest.tempo_bpm` / `SessionDetail.tempo_bpm`）
+- **变更内容**: `BPM_MAX` 150 → 200。下限仍是 40。201 及以上仍 422。
+- **对 dizical-minip**: **无需改代码**。
+- **DDL / 数据库影响**: 无。列本来就是整数，没有 CHECK 约束。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-30 (**尚未上线** — 仅修改代码，未发布) — `GET /config/api/assignments` 返回每 stage 目标科目练习时长与科目 ID
 **类型**: 🟡 部分兼容（新增可选返回字段；请求参数、已有字段名与结构完全不变。dizical-minip 不改也能跑）
 
