@@ -163,3 +163,26 @@ def test_duration_card_timeline_has_readable_span(html):
 def test_today_and_yesterday_fetch_are_independent(html):
     """昨天接口挂了不能连今天的真实数据一起丢掉。"""
     assert "Promise.all([get(today), get(yesterday)])" in html
+
+
+def test_pause_is_synced_to_ticket_timer(html):
+    """仪表盘暂停 → 票夹计时器也要停，否则暂停的墙钟时间会被算进入库秒数。"""
+    assert "window.__czPause = function ()" in html
+    assert "window.__czResume = function ()" in html
+    seg = html[html.index("function bridgeCardA()"):html.index("function bridgeCanvas()")]
+    assert "mode === 'pause'" in seg, "bridge 必须处理 pause 状态"
+    assert "__czPause()" in seg and "__czResume()" in seg
+
+
+def test_card_a_natural_end_triggers_fallback_save(html):
+    """A 卡自己走到点（没有 click）也要触发兜底记账。"""
+    assert "function notifyRunEnd()" in html
+    assert "window.__czOnCardARunEnd = function (info)" in html
+    assert "window.__czSaveExternalRunIfNeeded = saveExternalRunIfNeeded;" in html
+
+
+def test_yesterday_unavailable_is_not_treated_as_zero(html):
+    """昨天接口失败不能当成「昨天没练」去做对比。"""
+    assert "yesterday_known" in html
+    assert "yesterday: res[1] || null" in html
+    assert "昨日数据不可用" in html

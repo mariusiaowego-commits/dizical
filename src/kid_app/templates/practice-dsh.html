@@ -7423,6 +7423,10 @@ function closeRecordsDrawer() {
     updateReselectBtnState();
   }
   window.clearTicketSelection = clearTicketSelection;
+  /* 仪表盘「暂停/继续」要同步到票夹计时器 —— 否则暂停的那段墙钟时间会被算进入库秒数。*/
+  window.__czPause = function () { if (started && timerRunning) { pauseToggle(); } };
+  window.__czResume = function () { if (started && paused) { pauseToggle(); } };
+  window.isPaused = function () { return !!paused; };
   window.isTimingRunning = function () { return timerRunning; };
   window.isBarDeformed = function () { return isBarDeformed; };
   window.morphTicketToBar = morphTicketToBar;
@@ -7484,6 +7488,14 @@ function closeRecordsDrawer() {
   /* 兜底记账（dad 261102 审计 P1）：仪表盘 A 卡自己跑完、票夹计时器没启动时
      （forceCanvasStage 等边界路径），这段练习不能丢。
      条件：票夹当前没在计时（started=false）+ 本次还没写过库 + A 卡确实跑了 ≥1 秒。 */
+  /* A 卡自己走到点（没有 click）时也要兜底记账 —— 由 A 卡回调这里。*/
+  window.__czOnCardARunEnd = function (info) {
+    try {
+      if (window.parent && typeof window.parent.__czSaveExternalRunIfNeeded === 'function') {
+        window.parent.__czSaveExternalRunIfNeeded();
+      }
+    } catch (e) {}
+  };
   window.__czSaveExternalRun = function (seconds, startedAtCst) {
     if (started || sessionSaved) { return false; }
     const sec = Math.max(0, Math.round(Number(seconds) || 0));
@@ -9549,6 +9561,17 @@ function closeRecordsDrawer() {
   /* 本段计时的真实秒数 + 开始时刻。
      票夹是入库的真源，但这张卡自己也跑一套计时；万一只有它在跑（票夹计时器没起来），
      外壳要用这里的数字兜底记账，不能让这段练习丢掉。 */
+  /* 通知画布层「这一段结束了」（自然到点没有 click，只能由卡自己报）。
+     票夹计时器没起来时，外壳用这里的秒数兜底记账。 */
+  function notifyRunEnd() {
+    if (lastRunSeconds < 1) { return; }
+    try {
+      var p = window.parent;
+      if (p && typeof p.__czOnCardARunEnd === 'function') {
+        p.__czOnCardARunEnd({ seconds: lastRunSeconds, startedAt: lastRunStartedAt });
+      }
+    } catch (e) {}
+  }
   window.__czRunInfo = function () {
     return {
       elapsed: Math.max(0, Math.round(elapsed)),
@@ -9653,6 +9676,7 @@ function closeRecordsDrawer() {
     /* 收尾前记下这一段跑了多少秒 —— 外面要靠它兜底记账（票夹计时器没起来的那条路径）。*/
     lastRunSeconds = Math.max(0, Math.round(elapsed));
     lastRunStartedAt = runStartedAtCst;
+    notifyRunEnd();
     elapsed = 0;
     runStartedAtCst = '';
     updateBpmDisplay();
@@ -15899,7 +15923,9 @@ function closeRecordsDrawer() {
      practice 与 delta 不读这里的预计算字段，下面用 sessions 算。 */
   var SUMMARY = {
     span_minutes: 96,
-    yesterday_seconds: 1800
+    yesterday_seconds: 1800,
+    /* 昨天数据是否可用（接口失败时为 false）—— 不可用就不能拿 0 当「昨天没练」。*/
+    yesterday_known: true
   };
 
   var SESSIONS = [
@@ -15953,7 +15979,8 @@ function closeRecordsDrawer() {
       var last = Math.max.apply(null, stamps.map(function (x) { return x.en; }));
       SUMMARY.span_minutes = Math.max(1, Math.round((last - first) / 60000));
     }
-    SUMMARY.yesterday_seconds = Number(yest.total_seconds || 0);
+    SUMMARY.yesterday_known = !!yest;
+    SUMMARY.yesterday_seconds = yest ? Number(yest.total_seconds || 0) : 0;
     render();
     return true;
   };
@@ -16044,6 +16071,13 @@ function closeRecordsDrawer() {
     document.getElementById('heroSpan').textContent = String(view.spanMinutes);
     document.getElementById('heroPractice').textContent = String(view.practiceMinutes);
     var delta = document.getElementById('heroDelta');
+    if (!SUMMARY.yesterday_known) {
+      delta.textContent = '—';
+      delta.className = 'v delta flat';
+      document.getElementById('heroDeltaNote').textContent = '昨日数据不可用';
+      document.getElementById('heroPractice').nextElementSibling.textContent = '累计 ' + practiceSeconds() + ' 秒';
+      return;
+    }
     delta.textContent = view.sign + String(view.deltaMinutes);
     delta.className = 'v delta ' + view.tone;
     var yMin = minutesOf(SUMMARY.yesterday_seconds);
@@ -21841,6 +21875,7 @@ window.__CZ_CSS = [
       return false;
     }
   }
+  window.__czSaveExternalRunIfNeeded = saveExternalRunIfNeeded;
   function bridgeCardA() {
     var d = dashDoc();
     if (!d) { return; }
@@ -21855,8 +21890,23 @@ window.__CZ_CSS = [
           if (mode === 'prep') {
             saveExternalRunIfNeeded();
             if (canvasRunning()) { var r = setCanvasStage('prep'); bus.emit('canvas', 'stage', { stage: 'prep', from: 'cardA', after: r.after }); }
+          } else if (mode === 'pause') {
+            /* 仪表盘暂停 → 票夹计时器也要停，否则暂停的那段墙钟时间会被算进入库秒数 */
+            try { var cwp = canvasWin(); if (cwp && cwp.__czPause) { cwp.__czPause(); } } catch (e) {}
           } else {
-            var r2 = setCanvasStage('run'); bus.emit('canvas', 'stage', { stage: 'run', from: 'cardA', after: r2.after });
+            /* run：票夹计时器没起 → 起它；票夹暂停中 → 继续它；已经在跑 → 不动
+               （直接 setCanvasStage('run') 会在暂停恢复时把 elapsed 清零） */
+            var cwr = canvasWin();
+            var timing = false, pausedT = false;
+            try {
+              timing = !!(cwr && cwr.isTimingRunning && cwr.isTimingRunning());
+              pausedT = !!(cwr && cwr.isPaused && cwr.isPaused());
+            } catch (e) {}
+            if (!timing && !pausedT) {
+              var r2 = setCanvasStage('run'); bus.emit('canvas', 'stage', { stage: 'run', from: 'cardA', after: r2.after });
+            } else if (pausedT) {
+              try { if (cwr && cwr.__czResume) { cwr.__czResume(); } } catch (e) {}
+            }
           }
           syncTopBarFromCard(mode);
           syncSlotMode();
@@ -22164,7 +22214,7 @@ window.__CZ_CSS = [
     };
     return Promise.all([get(today), get(yesterday)]).then(function (res) {
       if (!res[0] && !res[1]) { return null; }
-      dayPayload = { today: res[0] || {}, yesterday: res[1] || {} };
+      dayPayload = { today: res[0] || {}, yesterday: res[1] || null };
       applyDayToModules();
       return dayPayload;
     }).catch(function () { return null; });
