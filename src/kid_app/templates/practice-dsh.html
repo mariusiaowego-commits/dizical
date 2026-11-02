@@ -6283,8 +6283,8 @@ function syncStartState() {
 /* S22（dad 261028）：练习就绪状态 —— 票夹是唯一真源。
    仪表盘的「开始」必须等票夹把「科目 + 本次练习内容 + 时长」都定下来才允许点；
    否则计时器记的是卡片自己的默认值，而不是票夹上选好的那一份。
-   正式版对应后端契约：开始练习必须带 subject_id + content + duration_min，
-   任一缺失时后端判「不可开始」并回原因，前端据此禁用按钮（demo 用总线模拟）。 */
+   时长是倒计时的长度（票夹大数字、仪表盘刻度尺，1–30 分钟），dad 2026-11-02：不入库。
+   入库时只写实际练了多少秒。开始前仍要选好时长，否则计时器没有终点。 */
 window.__czPracticeReady = function () {
   const hasSubject = !!cur;
   const hasContent = !!(content && String(content).trim().length > 0);
@@ -6968,7 +6968,7 @@ function enterRun() {
     return;
   }
   pushPracticeReady();
-  /* 计时时长以票夹为真源：开始前把票夹的时长推给仪表盘，保证记的是同一份 */
+  /* 倒计时长度以票夹为准，推给仪表盘。这份分钟数不入库。 */
   try {
     const bus = window.DizicalPracticeBus;
     if (bus && typeof bus.duration === 'function') { bus.duration(readyState.durationMin, 'left_ticket'); }
