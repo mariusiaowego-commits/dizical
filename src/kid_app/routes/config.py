@@ -1,6 +1,8 @@
 """配置管理台路由 - 练习科目配置"""
 
 import json
+import logging
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -29,6 +31,8 @@ lesson_manager = LessonManager(db=db)
 payment_manager = PaymentManager(db=db)
 
 router = APIRouter(prefix="/config", tags=["config"])
+
+logger = logging.getLogger(__name__)
 
 
 # ─── 辅助函数 ───────────────────────────────────────────────────────────────
@@ -953,10 +957,45 @@ def api_practice_week(date_str: Optional[str] = None):
     })
 
 
+def _format_stage_duration(sec: int) -> str:
+    n = int(sec or 0)
+    if n <= 0:
+        return "0秒"
+    hours, rem = divmod(n, 3600)
+    minutes, seconds = divmod(rem, 60)
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours}小时")
+    if minutes > 0:
+        parts.append(f"{minutes}分")
+    if seconds > 0 or not parts:
+        parts.append(f"{seconds}秒")
+    return "".join(parts)
+
+
 @router.get("/api/assignments")
 def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
     """查询历史老师要求"""
+    import datetime as dt
     assignments = practice_module.query_assignments(weeks=weeks)
+
+    # 建立科目映射表（补齐老记录缺失的 item_id，支持名称与 id 双向匹配）
+    items_meta = db.get_practice_items()
+    name_to_id = {it["name"]: it["item_id"] for it in items_meta}
+    target_ids = set()
+    target_names = set()
+    primary_item_id = None
+    if item:
+        item_str = str(item).strip()
+        for it in items_meta:
+            if item_str == str(it["item_id"]) or (item_str and item_str in it["name"]):
+                target_ids.add(it["item_id"])
+                target_names.add(it["name"])
+                if primary_item_id is None:
+                    primary_item_id = it["item_id"]
+        if not target_names and item_str:
+            target_names.add(item_str)
+
     result = []
     for a in assignments:
         entry = {
@@ -969,11 +1008,54 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
             "stage_start": a["stage_start"].isoformat() if hasattr(a.get("stage_start"), "isoformat") else a.get("stage_start"),
             "stage_end": a["stage_end"].isoformat() if hasattr(a.get("stage_end"), "isoformat") else a.get("stage_end"),
         }
+        for it in entry["items"]:
+            if it.get("item_id") is None and it.get("item") in name_to_id:
+                it["item_id"] = name_to_id[it.get("item")]
+
         if item:
-            matched = [it for it in a["items"] if item in it.get("item", "")]
+            matched = []
+            for it in entry["items"]:
+                it_id = it.get("item_id")
+                it_name = it.get("item", "")
+                if (it_id and it_id in target_ids) or any(tn in it_name for tn in target_names):
+                    matched.append(it)
             if not matched:
                 continue
             entry["items"] = matched
+
+            # 计算本 stage 目标科目的累计练习时长
+            stage_sec = 0
+            s_start = a.get("stage_start")
+            s_end = a.get("stage_end")
+            if s_start and s_end:
+                try:
+                    d_start = s_start if isinstance(s_start, dt.date) else dt.date.fromisoformat(str(s_start))
+                    d_end = s_end if isinstance(s_end, dt.date) else dt.date.fromisoformat(str(s_end))
+                    practices = db.get_daily_practices_in_range(d_start, d_end)
+                    for p in practices:
+                        raw_items = p.get("items", [])
+                        # MySQL 这条读路径不解析 JSON，items 是字符串。在端点里解析，不改 DAL。
+                        if isinstance(raw_items, str):
+                            try:
+                                raw_items = json.loads(raw_items) if raw_items else []
+                            except (TypeError, ValueError):
+                                raw_items = []
+                        if not isinstance(raw_items, list):
+                            continue
+                        for p_it in raw_items:
+                            if not isinstance(p_it, dict):
+                                continue
+                            p_id = p_it.get("item_id")
+                            p_name = p_it.get("item") or p_it.get("name") or ""
+                            if (p_id and p_id in target_ids) or (p_name and p_name in target_names):
+                                stage_sec += pick_seconds(p_it.get("seconds"), p_it.get("minutes"))
+                except Exception:
+                    logger.exception("stage duration failed for %s", item)
+            entry["total_seconds_per_stage"] = stage_sec
+            entry["stage_duration_text"] = _format_stage_duration(stage_sec)
+            matched_item_id = matched[0].get("item_id") if matched else None
+            entry["target_item_id"] = matched_item_id or primary_item_id
+
         result.append(entry)
     # 最新课在前
     result.sort(key=lambda x: x["lesson_date"], reverse=True)
@@ -1823,4 +1905,143 @@ async def api_design_stop():
     return JSONResponse({
         "ok": result["ok"],
         "message": result["stdout"] if result["ok"] else result["stderr"],
+    })
+
+
+# ─── 练习页配置 ─────────────────────────────────────────────────────────────
+# 视觉参数进 settings 表（key-value），不新增表或列。
+# 本轮：计时开始时票卡蒙版颜色。以后的 practice 页参数沿同一组接口加字段。
+
+PRACTICE_MASK_COLOR_KEY = "practice_mask_color"
+PRACTICE_MASK_OPACITY_KEY = "practice_mask_opacity"
+DEFAULT_PRACTICE_MASK_COLOR = "rgba(44, 62, 80, 0.35)"
+DEFAULT_PRACTICE_MASK_OPACITY = "0.35"
+
+_MASK_HEX_RE = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})")
+_MASK_RGB_RE = re.compile(
+    r"rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*([0-9]*\.?[0-9]+)\s*)?\)",
+    re.IGNORECASE,
+)
+
+
+def _format_mask_opacity(value: float) -> str:
+    text = f"{value:.4f}".rstrip("0").rstrip(".")
+    return text if text else "0"
+
+
+def _parse_mask_rgb(raw) -> Optional[tuple]:
+    """合法 #hex / rgb() / rgba() → (r, g, b)。alpha 只检查范围，不作为结果。"""
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    hex_match = _MASK_HEX_RE.fullmatch(text)
+    if hex_match:
+        digits = hex_match.group(1)
+        if len(digits) in (3, 4):
+            digits = "".join(ch * 2 for ch in digits)
+        return tuple(int(digits[i:i + 2], 16) for i in (0, 2, 4))
+    rgb_match = _MASK_RGB_RE.fullmatch(text)
+    if not rgb_match:
+        return None
+    channels = tuple(int(rgb_match.group(i)) for i in (1, 2, 3))
+    if any(channel > 255 for channel in channels):
+        return None
+    if rgb_match.group(4) is not None:
+        alpha = float(rgb_match.group(4))
+        if alpha < 0 or alpha > 1:
+            return None
+    return channels
+
+
+def _parse_mask_opacity(raw) -> Optional[float]:
+    if isinstance(raw, bool) or raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        value = float(raw)
+    elif isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            return None
+        try:
+            value = float(text)
+        except ValueError:
+            return None
+    else:
+        return None
+    if value < 0 or value > 1:
+        return None
+    return round(value, 4)
+
+
+def _read_practice_page_settings() -> Dict[str, str]:
+    from src.kid_app.app import get_setting
+    color = get_setting(PRACTICE_MASK_COLOR_KEY, DEFAULT_PRACTICE_MASK_COLOR)
+    opacity = get_setting(PRACTICE_MASK_OPACITY_KEY, DEFAULT_PRACTICE_MASK_OPACITY)
+    return {"mask_color": color, "mask_opacity": opacity}
+
+
+@router.get("/practice-page", response_class=HTMLResponse)
+def config_practice_page():
+    """练习页配置：practice 页视觉参数。"""
+    from src.kid_app.app import render, get_setting
+    current = _read_practice_page_settings()
+    return render(
+        "config-practice-page",
+        active_nav="portal",
+        pin_locked="true" if get_setting("dad_pin") else "false",
+        mask_color=current["mask_color"],
+        mask_opacity=current["mask_opacity"],
+    )
+
+
+@router.get("/api/practice-page/settings")
+def api_get_practice_page_settings():
+    """读练习页视觉参数。未设置时返回默认蒙版，不写库。"""
+    current = _read_practice_page_settings()
+    return JSONResponse({"ok": True, **current})
+
+
+@router.post("/api/practice-page/settings")
+async def api_set_practice_page_settings(request: Request):
+    """写计时蒙版颜色。只落 practice_mask_color 与 practice_mask_opacity。"""
+    from src.kid_app.app import get_setting, set_setting
+    try:
+        body = json.loads(await request.body() or b"")
+    except json.JSONDecodeError:
+        return JSONResponse({"ok": False, "error": "请求不是合法的 JSON"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "error": "请求不是合法的 JSON"}, status_code=400)
+
+    if "mask_color" not in body or "mask_opacity" not in body:
+        return JSONResponse(
+            {"ok": False, "error": "请提供蒙版颜色和透明度"},
+            status_code=400,
+        )
+
+    rgb = _parse_mask_rgb(body.get("mask_color"))
+    if rgb is None:
+        return JSONResponse(
+            {"ok": False, "error": "颜色格式不对，请用 #十六进制、rgb() 或 rgba()"},
+            status_code=400,
+        )
+    opacity = _parse_mask_opacity(body.get("mask_opacity"))
+    if opacity is None:
+        return JSONResponse(
+            {"ok": False, "error": "透明度要在 0 到 1 之间"},
+            status_code=400,
+        )
+
+    stored_pin = get_setting("dad_pin")
+    pin = body.get("pin", "")
+    if stored_pin and pin != stored_pin:
+        return JSONResponse({"ok": False, "error": "PIN 不对"}, status_code=401)
+
+    opacity_text = _format_mask_opacity(opacity)
+    color_text = f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {opacity_text})"
+    set_setting(PRACTICE_MASK_COLOR_KEY, color_text)
+    set_setting(PRACTICE_MASK_OPACITY_KEY, opacity_text)
+    return JSONResponse({
+        "ok": True,
+        "mask_color": color_text,
+        "mask_opacity": opacity_text,
     })

@@ -1,5 +1,40 @@
 # Backend 切换 — API 变更
 
+**日期**: 2026-11-02 (**尚未上线**) — `POST /api/log` 的 `tempo_bpm` 上限由 150 放宽到 200
+**类型**: 🟡 部分兼容（只放宽校验。已有请求全部仍然合法。dizical-minip 不改也能跑；小程序自己若把滑杆停在 150，不受影响）
+
+## 变更
+
+- **端点**: `POST /api/log`（`PracticeLogRequest.tempo_bpm` / `SessionDetail.tempo_bpm`）
+- **变更内容**: `BPM_MAX` 150 → 200。下限仍是 40。201 及以上仍 422。
+- **对 dizical-minip**: **无需改代码**。
+- **DDL / 数据库影响**: 无。列本来就是整数，没有 CHECK 约束。
+
+---
+
+# Backend 切换 — API 变更
+
+**日期**: 2026-10-30 (**尚未上线** — 仅修改代码，未发布) — `GET /config/api/assignments` 返回每 stage 目标科目练习时长与科目 ID
+**类型**: 🟡 部分兼容（新增可选返回字段；请求参数、已有字段名与结构完全不变。dizical-minip 不改也能跑）
+
+## 变更
+
+- **端点**: `GET /config/api/assignments`
+- **变更内容**:
+  - 当传入 `item` 参数（科目名或科目 id）时，返回的 `assignments[]` 列表中每个 stage 条目新增 3 个派生字段：
+    - `total_seconds_per_stage` (int): 该科目在该 stage（`stage_start` ~ `stage_end`）在 `daily_practices` 中的累计练习总秒数。
+    - `stage_duration_text` (str): 格式化的累计练习时长文本（如 `11分25秒`、`1小时23分45秒`）。
+    - `target_item_id` (int | null): 匹配到的科目 ID（如 `1350`、`1034`），老记录缺失 `item_id` 时自动从 `practice_items` 补齐。
+  - 内部科目匹配优化：支持科目名称子串匹配及数字 ID 匹配，同时兼容老记录中 `item_id` 为空的清洗。
+- **对 dizical-minip**: **无需改代码**（新字段仅在前端 Q 卡及相关模块展示时被读取，已有调用端点不读取新增字段不受影响）。
+- **DDL / 数据库影响**: 无 DDL，无数据迁移。
+
+- **2026-11-02 修正（仍未上线）**: MySQL 的 `get_daily_practices_in_range` 把 `items` 当字符串返回。端点内先 `json.loads`，科目名改读键 `item`（兼容老的 `name`）。解析失败不再被静默吞掉，改记日志。字段名不变。✅ 完全兼容。
+
+---
+
+# Backend 切换 — API 变更
+
 **日期**: 2026-10-21 (**已上线**, PR #382 / merge `f684e49` / CloudRun Deploy #149) — `/config/api/badge/*` 全量服务端鉴权收口（P2-6 技术债）
 **类型**: 🟡 部分兼容（**端点路径/请求体/返回结构零变化**；新增**服务端鉴权要求**。dizical-minip 与 Web 配置页**无需改代码**；任何**外部脚本**调这批端点必须带凭据）
 
@@ -678,3 +713,6 @@ PR-B 移植到 MySQLBackend, 整事务 + 重算 daily + 写 audit + 同步冗余
 
 - practice 页: 选科目后渲染预置标签；BPM 步进器；卡片合并 2:8
 - config/practice: 科目行「内容」按钮编辑预置选项
+
+---
+

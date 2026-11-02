@@ -1401,8 +1401,25 @@
     .v4-tab-header .tab-btn { flex: 1; padding: 8px 0; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: transparent; color: #A09080; }
     .v4-tab-header .tab-btn.timer-tab.active { background: #FF6B6B; color: #fff; box-shadow: 0 1px 3px rgba(255,107,107,0.3); }
     .v4-tab-header .tab-btn.extra-tab.active { background: #FF8C5A; color: #fff; box-shadow: 0 1px 3px rgba(255,140,90,0.3); }
+    .v4-tab-header .tab-btn.practice-dsh-tab.active { background: #2C3E50; color: #fff; box-shadow: 0 1px 3px rgba(44,62,80,0.3); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+
+    .v4-tab-header { position: sticky; top: 0; z-index: 40; }
+    body.practice-dsh-on { overflow: hidden; height: 100vh; }
+    body.practice-dsh-on .item-section,
+    body.practice-dsh-on #reselectFloat,
+    body.practice-dsh-on .today-records,
+    body.practice-dsh-on .practice-footer { display: none !important; }
+    /* 高度由 JS 按「视口底 - 容器顶」实算（fitDshLayout），不再用固定 108px 估算：
+       顶栏 + 标签栏 + 外边距实际约 160px，108px 会让 iframe 底部溢出视口，页面出现滚动/截断。 */
+    body.practice-dsh-on .vertical-stack { margin: 0 12px; height: calc(100vh - 160px); min-height: 0; }
+    body.practice-dsh-on .floor-pickers {
+      height: 100%; min-height: 0; padding: 0; gap: 0;
+      background: transparent; border: 0; box-shadow: none; border-radius: 0;
+    }
+    body.practice-dsh-on #tabDsh { height: 100%; min-height: 0; overflow: hidden; }
+    body.practice-dsh-on #tabDsh iframe { width: 100%; height: 100%; min-height: 0; display: block; border-radius: 0; }
 
     /* V4: Dashboard (计时器卡片内部, 三列1:1:2) */
     .dash-card-inline { display: none; background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; color: #fff; }
@@ -1646,6 +1663,14 @@
     <div class="server-clock" id="serverClock"></div>
   </div>
 
+  <!-- 老练习 / 新练习助手并列。助手页自带票夹，不再叠旧的科目选择。 -->
+      <div class="v4-tab-header">
+        <button class="tab-btn timer-tab active" onclick="switchTab('timer')">计时练习</button>
+        <button class="tab-btn extra-tab" onclick="switchTab('extra')">快速补录</button>
+        <button class="tab-btn practice-dsh-tab" onclick="switchTab('dsh')">练习助手</button>
+      </div>
+
+
   <!-- 练习科目选择 -->
   <div class="item-section card">
     <h2><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span> 选择练习项目</h2>
@@ -1687,11 +1712,6 @@
   <div class="vertical-stack" id="vertical-stack">
 
     <div class="floor floor-pickers">
-      <!-- V4: Tab 在卡片内部标题栏 -->
-      <div class="v4-tab-header">
-        <button class="tab-btn timer-tab active" onclick="switchTab('timer')">计时练习</button>
-        <button class="tab-btn extra-tab" onclick="switchTab('extra')">快速补录</button>
-      </div>
 
       <!-- 主计时 -->
       <div class="tab-panel active" id="tabTimer">
@@ -1809,6 +1829,11 @@
         </div>
       </div>
       </div><!-- /tabExtra -->
+
+      <div class="tab-panel" id="tabDsh">
+        <iframe src="/practice-dsh?v=318" style="width:100%;height:100%;border:none;background:transparent;"
+                allow="autoplay; microphone"></iframe>
+      </div>
     </div>
 
   </div>
@@ -1942,6 +1967,9 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
+      const want = new URLSearchParams(location.search).get('tab');
+      if (want === 'dsh' || want === 'extra' || want === 'timer') switchTab(want);
+      if (want === 'dsh') { setTimeout(fitDshLayout, 60); setTimeout(fitDshLayout, 400); }
       const videoEl = document.getElementById('videoPreviewEl');
       if (videoEl) {
         videoEl.addEventListener('webkitendfullscreen', function() {
@@ -2638,7 +2666,7 @@
       ).join('');
     }
     function setBpmValue(bpm) {
-      bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
+      bpm = Math.max(40, Math.min(200, parseInt(bpm) || 80));
       const input = document.getElementById('tempoBpmInput');
       const display = document.getElementById('tempoBpmDisplay');
       if (input) input.value = bpm;
@@ -2650,7 +2678,7 @@
     function stepBpm(delta) {
       const input = document.getElementById('tempoBpmInput');
       let v = parseInt(input?.value) || 80;
-      v = Math.max(40, Math.min(150, v + delta));
+      v = Math.max(40, Math.min(200, v + delta));
       setBpmValue(v);
       const note = document.querySelector('#sessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
       const hint = document.getElementById('tempoHint');
@@ -2659,7 +2687,7 @@
       updateDashboard();
     }
     function setExtraBpmValue(bpm) {
-      bpm = Math.max(40, Math.min(150, parseInt(bpm) || 80));
+      bpm = Math.max(40, Math.min(200, parseInt(bpm) || 80));
       const input = document.getElementById('extraBpmInput');
       const display = document.getElementById('extraBpmDisplay');
       if (input) input.value = bpm;
@@ -2668,7 +2696,7 @@
     function stepExtraBpm(delta) {
       const input = document.getElementById('extraBpmInput');
       let v = parseInt(input?.value) || 80;
-      v = Math.max(40, Math.min(150, v + delta));
+      v = Math.max(40, Math.min(200, v + delta));
       setExtraBpmValue(v);
     }
 
@@ -2704,7 +2732,7 @@
       const content = (document.getElementById('sessionContentInput')?.value || '').trim();
       if (!content) { btn.disabled = true; return; }
       const bpm = parseInt(document.getElementById('tempoBpmInput')?.value) || 0;
-      if (bpm < 40 || bpm > 150) { btn.disabled = true; return; }
+      if (bpm < 40 || bpm > 200) { btn.disabled = true; return; }
       btn.disabled = false;
     }
     // ── selectItem: 选科目 + 触发默认值填充 + 状态机 ──
@@ -3535,11 +3563,32 @@
       if (tab === 'timer') {
         document.querySelector('.tab-btn.timer-tab').classList.add('active');
         document.getElementById('tabTimer').classList.add('active');
-      } else {
+      } else if (tab === 'extra') {
         document.querySelector('.tab-btn.extra-tab').classList.add('active');
         document.getElementById('tabExtra').classList.add('active');
+      } else if (tab === 'dsh') {
+        const dshBtn = document.querySelector('.tab-btn.practice-dsh-tab');
+        if (dshBtn) dshBtn.classList.add('active');
+        const dshPnl = document.getElementById('tabDsh');
+        if (dshPnl) dshPnl.classList.add('active');
+        fitDshLayout();
       }
+      document.body.classList.toggle('practice-dsh-on', tab === 'dsh');
     }
+
+    /* 练习助手页占满「视口剩余高度」：容器顶到视口底之间的全部空间都给 iframe。
+       用实算值代替固定 108px —— 顶栏/标签栏/外边距高度随视口变，写死会溢出屏幕（用户 261029 反馈：页面被截断 + 内部滚动）。 */
+    function fitDshLayout() {
+      if (!document.body.classList.contains('practice-dsh-on')) return;
+      const stack = document.querySelector('.vertical-stack');
+      if (!stack) return;
+      const top = stack.getBoundingClientRect().top;
+      const avail = Math.max(320, Math.floor(window.innerHeight - top - 2));
+      stack.style.height = avail + 'px';
+      const dshPnl = document.getElementById('tabDsh');
+      if (dshPnl) { dshPnl.style.height = avail + 'px'; }
+    }
+    window.addEventListener('resize', fitDshLayout);
 
     // ── V4 Dashboard 更新 ──
     // reqText: 老师要求原文 (含 metronome 前缀), 从 selectItem 传.
@@ -4637,7 +4686,7 @@ function settleSecToZero(){
       <button type="button" class="tempo-note-mini em-note-btn selected" id="emNoteQ" data-note="♪">♪</button>
       <button type="button" class="tempo-note-mini em-note-btn" id="emNoteM" data-note="♩">♩</button>
       <span>=</span>
-      <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="150" value="80" style="width:60px">
+      <input type="number" class="tempo-bpm-mini" id="emBpm" min="40" max="200" value="80" style="width:60px">
       <span style="margin-left:12px">遍数</span>
       <input type="number" id="emReps" min="1" max="99" placeholder="—" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid #ddd;text-align:center">
       <span style="margin-left:10px">时长</span>

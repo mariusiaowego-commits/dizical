@@ -1,0 +1,107 @@
+/* ============================================================================
+ * 共享件 · 生产刻度尺样式（ruler-row / notes-bubbles / tt-bubble / step-btn / tick / ruler-input）
+ * 来源：src/kid_app/templates/practice.html:580-637 —— 几何/尺寸/过渡/关键帧一字未改；
+ *      只有「颜色字面量」被提成 --ruler-* 变量（默认值=生产字面值），好让深墨皮肤能覆盖。
+ * 用法：<link rel="stylesheet" href="shared/ruler-production.css">（页面与本目录同级时）
+ * 改法：生产改了 → 先改 practice.html，再同步这里；深墨替代色见文件末尾 data-skin="ink" 块。
+ * ========================================================================= */
+
+:root {
+  /* 生产 practice.html:545-547 */
+  --tick-cur: #FF6B6B;
+  --tick-cur-h: 28px;
+  --ruler-row-h: 32px;
+  /* 生产字面色（580-637 抽出） */
+  --ruler-rail-line: #E8D8B0;
+  --ruler-step-border: #E8D8B0;
+  --ruler-step-bg: #FFF8F0;
+  --ruler-step-ink: #5D4037;
+  --ruler-step-border-hover: #D9C79A;
+  --ruler-step-bg-hover: #FFF3E2;
+  --ruler-step-bg-active: #FFE8C0;
+  --ruler-step-border-active: #C8860A;
+  --ruler-step-ink-active: #2C3E50;
+  --ruler-step-border-disabled: #DCD6CC;
+  --ruler-step-ink-disabled: #C2C2CC;
+  --ruler-tick-major-future: #C2C2CC;
+  --ruler-tick-major-past: #3C3C43;
+  --ruler-tick-minor-future: #DCDCE4;
+  --ruler-tick-minor-past: #5A5A64;
+  --ruler-bubble-ink: #FF6B6B;
+}
+
+/* ══ 刻度尺 (几何照抄参考页: 行高 32px / 底部对齐 / 2px 宽 pill / 三档高) ══ */
+.ruler-row{display:flex;height:var(--ruler-row-h);align-items:flex-end;justify-content:space-between;
+           border-bottom:1.5px solid var(--ruler-rail-line);padding-bottom:2px}
+.ruler-wrap{display:flex;align-items:center;gap:10px;width:100%;max-width:520px;margin-block-start:18px}
+/* 音符气泡: 层不裁剪 (dad: 不能有"钻到图层后面消失"的观感), 用升幅上限避免碰到上方时间 */
+.notes-bubbles{position:absolute;inset-inline:0;bottom:22px;height:22px;
+               pointer-events:none;z-index:4;overflow:visible}
+.tt-bubble{position:absolute;bottom:0;line-height:1;color:var(--ruler-bubble-ink);opacity:0;
+        font-family:"Apple Symbols","Segoe UI Symbol","Noto Music",serif;
+        will-change:transform,opacity;
+        /* 冒泡: 纯 CSS 关键帧 (合成层, 不依赖 rAF/GSAP ticker; 参数走 CSS 变量做随机) */
+        animation:bubbleUp var(--bd,1.2s) cubic-bezier(.22,.61,.36,1) forwards}
+.tt-bubble.no-anim{animation:none}
+@keyframes bubbleUp{
+  0%   {opacity:0;transform:translate3d(0,0,0) scale(.9) rotate(0deg)}
+  14%  {opacity:1}
+  60%  {opacity:1}
+  100% {opacity:0;transform:translate3d(var(--bx,6px),var(--by,-16px),0) scale(1) rotate(var(--br,8deg))}
+}
+/* agy 方案1: 跑道胶囊嵌入式触控键 (高度锁 32px = 刻度尺行高, 与尺子齐平) */
+.step-btn{
+  flex:0 0 auto;width:38px;height:32px;border-radius:10px;
+  border:1.5px solid var(--ruler-step-border);background:var(--ruler-step-bg);color:var(--ruler-step-ink);
+  font-family:inherit;font-size:16px;font-weight:700;line-height:1;
+  display:grid;place-items:center;cursor:pointer;position:relative;
+  transition:border-color 120ms ease,background-color 120ms ease,color 120ms ease,transform 90ms ease;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;        /* sprint 26091901 follow-up: iPad Safari 禁双击 zoom + 消 300ms 点击延迟 */
+  -webkit-user-select:none;user-select:none;  /* 防儿童狂点误选 +/- 文本高亮 */
+}
+.step-btn:hover{border-color:var(--ruler-step-border-hover);background:var(--ruler-step-bg-hover)}
+.step-btn:active{transform:scale(.94);background:var(--ruler-step-bg-active);border-color:var(--ruler-step-border-active);color:var(--ruler-step-ink-active)}
+.step-btn:disabled{opacity:.35;border-color:var(--ruler-step-border-disabled);color:var(--ruler-step-ink-disabled);background:var(--ruler-step-bg);cursor:default}
+.step-btn:disabled:hover{border-color:var(--ruler-step-border-disabled)}
+.ruler{position:relative;flex:1 1 auto;padding:0 1px;border-radius:12px}
+/* 底轨卷草纹 (dad 修正: 从细线【下方】生长): SVG 顶边贴在细线上, 花纹向下长 */
+.ruler-vine{position:absolute;left:0;top:calc(100% - 1.5px);pointer-events:none;z-index:1;overflow:visible}
+/* dad: 刻度更细更密 —— 每分钟 2 格 (主格=整分, 次格=半分钟), 线更细 */
+.tick{width:1.5px;border-radius:999px;transition:height 200ms ease,background-color 200ms ease}
+.tick.minor{width:1px}
+.tick.major.future{height:14px;background:var(--ruler-tick-major-future)}
+.tick.major.past{height:20px;background:var(--ruler-tick-major-past)}
+.tick.minor.future{height:9px;background:var(--ruler-tick-minor-future)}
+.tick.minor.past{height:13px;background:var(--ruler-tick-minor-past)}
+/* 当前格 = 参考页的红色标记: 3px 宽 + 负边距占同一槽 (替掉该格, 不并排) */
+.tick.cur{width:3px;height:var(--tick-cur-h);margin:0 -.5px;background:var(--tick-cur);border-radius:999px}
+/* 参考页做法: 尺子是 aria-hidden 的视觉层, 上面盖一个透明 range 原生控件负责拖拽。 */
+.ruler-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:grab;
+             appearance:none;background:transparent;border:0;margin:0;outline:none;
+             touch-action:none}                          /* sprint 26091901: iPad WebKit 上下滚动拦截 */
+.ruler-input:active{cursor:grabbing}
+.ruler-input:disabled{cursor:default}
+.ruler-input:focus,.ruler-input:focus-visible{outline:none;box-shadow:none}
+/* sprint 26091901: 拖拽中当前红针微高亮; 拖拽禁用 transition 保证 60fps 即时响应 */
+.ruler.is-dragging .tick.cur{transform:scaleY(1.2);filter:brightness(1.15);transition:none}
+
+/* ══ 深墨皮肤：只换颜色，几何/尺寸/过渡一律不动（生产无深墨版，本段是 demo 侧新增） ══ */
+:root[data-skin="ink"] {
+  --ruler-rail-line: rgba(255, 248, 240, 0.22);
+  --ruler-step-border: rgba(255, 248, 240, 0.20);
+  --ruler-step-bg: rgba(255, 248, 240, 0.06);
+  --ruler-step-ink: #FFF8F0;
+  --ruler-step-border-hover: rgba(255, 248, 240, 0.38);
+  --ruler-step-bg-hover: rgba(255, 248, 240, 0.12);
+  --ruler-step-bg-active: rgba(255, 140, 90, 0.22);
+  --ruler-step-border-active: #FF8C5A;
+  --ruler-step-ink-active: #FFF8F0;
+  --ruler-step-border-disabled: rgba(255, 248, 240, 0.14);
+  --ruler-step-ink-disabled: rgba(255, 248, 240, 0.35);
+  --ruler-tick-major-future: rgba(255, 248, 240, 0.30);
+  --ruler-tick-major-past: rgba(255, 248, 240, 0.92);
+  --ruler-tick-minor-future: rgba(255, 248, 240, 0.18);
+  --ruler-tick-minor-past: rgba(255, 248, 240, 0.62);
+  --ruler-bubble-ink: #FF8C5A;
+}
