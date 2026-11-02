@@ -5021,6 +5021,9 @@
 <script>
   let duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
   let tickIv = null;
+  /* 本次计时段的入库状态：runEnterTime = 开始时刻（CST ISO），sessionSaved = 本段是否已写入。*/
+  let runEnterTime = '';
+  let sessionSaved = false;
 </script>
 
 <script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
@@ -6956,6 +6959,67 @@ function expandBarToFolio(callback, instant) {
   }
 }
 
+/* ── 真数据入库（dad 261102）──────────────────────────────────────────────
+   票夹/仪表盘上拖出来的「练习时长」只是倒计时的长度，不是业务数字，不入库。
+   入库只写这次实际练了多少秒（seconds），分钟数由秒换算而来。
+   字段与旧 practice 页 /api/log 一致：date / item / item_id / minutes / seconds /
+   practice_at（CST ISO，无 Z）/ behavior_log + tempo_note / tempo_bpm / content。
+   tempo_* + content 三件齐 → 后端 has_session_detail() 为真 → 走 session 表，
+   不会退化成 daily items 合并（那样同一天会翻倍）。 ── */
+function nowCstLocal() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+}
+
+async function postPracticeLog(seconds) {
+  const subject = cur ? { id: cur.id, name: cur.name } : null;
+  if (!subject || !subject.id) { showToast('没有可入库的练习科目'); return; }
+  const detail = String(content || '').trim();
+  /* 内容为空就没有「本次练了什么」，写进去会是一条空 session。*/
+  if (!detail) { showToast('本次练习没有内容，未入库'); return; }
+  const tempo = Math.min(200, Math.max(40, parseInt(bpm, 10) || 60));
+  const note = (NOTES[noteIdx] && NOTES[noteIdx].sym) || '♩';
+  const minutes = Math.max(1, Math.ceil(seconds / 60));
+  const enterAt = runEnterTime || nowCstLocal();
+  const body = {
+    date: enterAt.slice(0, 10),
+    item: subject.name,
+    item_id: subject.id,
+    minutes: minutes,
+    seconds: seconds,
+    log: '',
+    practice_at: enterAt,
+    behavior_log: [{ enter_time: enterAt, item: subject.name, minutes: minutes, seconds: seconds }],
+    tempo_note: note,
+    tempo_bpm: tempo,
+    content: detail
+  };
+  try {
+    const res = await fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (res.ok && json && json.ok) {
+      showToast('已记录 ' + minutes + ' 分 ' + (seconds % 60) + ' 秒');
+      /* 回灌 D（今日时长）/ R（今日记录）两张卡的真实数据。*/
+      try {
+        if (window.parent && typeof window.parent.__czReloadDay === 'function') {
+          window.parent.__czReloadDay();
+        }
+      } catch (e) {}
+    } else {
+      showToast('记录失败：' + ((json && json.error) || ('HTTP ' + res.status)));
+    }
+  } catch (e) {
+    showToast('记录失败：网络异常');
+  }
+}
+
 function enterRun() {
   /* S22（dad 261028）：开始计时的前置条件 = 票夹已选好「科目 + 本次练习内容 + 时长」。
      真源在票夹；**不再自动替用户补选** —— 自动补选会让计时器记下一份用户从没选过的
@@ -6978,6 +7042,8 @@ function enterRun() {
   timerRunning = true;
   paused = false;
   elapsed = 0;
+  runEnterTime = nowCstLocal();
+  sessionSaved = false;
 
   syncRunMeta();
   updateReselectBtnState();
@@ -7025,6 +7091,12 @@ function enterRun() {
 }
 
 function exitRun() {
+  /* 退出前先把「实际练了多少秒」抓下来 —— 下面 elapsed 会被清零。
+     入口有三个（自然到点 / 提前结束 / 从画布切回准备态），都在这里收口，
+     保证一次计时段只写一次。 */
+  const finalSeconds = Math.max(0, Math.round(elapsed));
+  const shouldSave = started && finalSeconds >= 1 && !sessionSaved;
+  if (shouldSave) { sessionSaved = true; }
   started = false;
   timerRunning = false;
   paused = false;
@@ -7059,6 +7131,8 @@ function exitRun() {
   if (lockEl) { lockEl.style.display = 'none'; lockEl.style.opacity = '0'; }
   updateReselectBtnState();
   try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
+  /* 真实秒数落库（异步，失败只提示不打断 UI）。*/
+  if (shouldSave) { postPracticeLog(finalSeconds); }
 }
 
 
@@ -7353,6 +7427,59 @@ function closeRecordsDrawer() {
   window.isBarDeformed = function () { return isBarDeformed; };
   window.morphTicketToBar = morphTicketToBar;
   window.expandBarToFolio = expandBarToFolio;
+
+  /* ── 真数据（dad 261102）──────────────────────────────────────────────
+     顶栏「今日记录 X分 · N次」和「今日练习记录」抽屉原来是写死的演示值。
+     父页拿到 /api/practices/{今天} 后推过来，这里换成真实记录。 ── */
+  window.__czApplyDay = function (payload) {
+    const day = (payload && payload.today) || {};
+    const sessions = (day.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
+    const totalSec = Number(day.total_seconds || 0);
+    const mins = Math.max(0, Math.ceil(totalSec / 60));
+    const durText = function (sec) {
+      sec = Number(sec || 0);
+      return sec < 60 ? (sec + ' 秒') : (Math.ceil(sec / 60) + ' 分钟');
+    };
+    const pill = document.getElementById('pkRecords');
+    if (pill) { pill.textContent = '今日记录 ' + mins + '分 · ' + sessions.length + '次 ▾'; }
+    const sumVal = document.getElementById('pkDrawerTotalVal');
+    if (sumVal) { sumVal.textContent = '今日 ' + mins + ' 分 · ' + sessions.length + ' 次'; }
+    const list = document.getElementById('pkDrawerList');
+    const empty = document.getElementById('pkDrawerEmpty');
+    if (!list) { return false; }
+    list.textContent = '';
+    if (!sessions.length) {
+      if (empty) { empty.style.display = 'block'; }
+      return true;
+    }
+    if (empty) { empty.style.display = 'none'; }
+    sessions.slice().reverse().forEach(function (s) {
+      const art = document.createElement('article');
+      art.className = 'pk-drawer-item';
+      const head = document.createElement('div');
+      head.className = 'pk-row pk-between pk-drawer-item-head';
+      const time = document.createElement('span');
+      time.className = 'pk-drawer-item-time mono';
+      const st = String(s.started_at || '');
+      time.textContent = st.length >= 16 ? st.slice(11, 16) : '';
+      const dur = document.createElement('span');
+      dur.className = 'pk-drawer-item-dur';
+      dur.textContent = durText(s.duration_seconds);
+      head.appendChild(time);
+      head.appendChild(dur);
+      const subj = document.createElement('div');
+      subj.className = 'pk-drawer-item-subject';
+      subj.textContent = s.item_name || s.item || '';
+      const sess = document.createElement('div');
+      sess.className = 'pk-drawer-item-session';
+      sess.textContent = s.content || '';
+      art.appendChild(head);
+      art.appendChild(subj);
+      art.appendChild(sess);
+      list.appendChild(art);
+    });
+    return true;
+  };
 })();
 </script>
 
@@ -14941,6 +15068,86 @@ function closeRecordsDrawer() {
     tick: tickSecond
   };
 
+  /* ── 真数据接入（dad 261102）──────────────────────────────────────────
+     父页（practice-dsh 外壳）在保存成功后把 /api/practices/{date} 推进来。
+     卡片里原来的 08:26 / 2H 45M / Piano 是演示值，这里用真实数据替换：
+     大时钟 = 今日练习总时长，胶囊 = 同一份总时长，时间轴 = 各 session 的真实区间。
+     没有真实数据时保持演示值不动。 ── */
+  function parseStamp(v) {
+    if (!v) { return null; }
+    var t = Date.parse(String(v).replace(' ', 'T'));
+    return isNaN(t) ? null : t;
+  }
+  function hmText(ms) {
+    var d = new Date(ms);
+    return padZero(d.getHours()) + ':' + padZero(d.getMinutes());
+  }
+  window.__czApplyDay = function (payload) {
+    var day = (payload && payload.today) || {};
+    var sessions = (day.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
+    var total = Number(day.total_seconds || 0);
+    if (!total && !sessions.length) { return false; }
+
+    if (day.date) {
+      var d0 = new Date(String(day.date) + 'T00:00:00');
+      var wd = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d0.getDay()];
+      document.getElementById('dateText').textContent = wd + ' ' + d0.getDate();
+    }
+
+    var hh = Math.floor(total / 3600);
+    var mm = Math.floor((total % 3600) / 60);
+    var ss = total % 60;
+    curHour = hh; curMin = mm; curSec = ss;
+    updateClockDisplay();
+    /* 真实数据下时钟不再自己走 —— 它显示的是「今日已练」，不是墙上时间。*/
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+    clockSvg.setAttribute('aria-label', padZero(hh) + ':' + padZero(mm));
+    secSvg.setAttribute('aria-label', padZero(ss));
+
+    document.getElementById('pillVal').textContent =
+      total < 60 ? (total + 'S') : (hh ? (hh + 'H ' + mm + 'M') : (mm + 'M'));
+    document.getElementById('railDurationText').textContent =
+      total < 60 ? (total + ' 秒') : (Math.ceil(total / 60) + ' 分钟');
+
+    /* 时间轴：按 session 的真实起止时间铺白段 */
+    var track = document.getElementById('railTrack');
+    var ticks = document.querySelectorAll('#timeTicksRow span');
+    var stamps = sessions.map(function (s) {
+      var st = parseStamp(s.started_at);
+      return st == null ? null : { st: st, en: st + (s.duration_seconds || 0) * 1000, s: s };
+    }).filter(function (x) { return x !== null; });
+    if (track) {
+      track.querySelectorAll('.session-seg-white').forEach(function (n) { n.remove(); });
+    }
+    if (stamps.length) {
+      var first = Math.min.apply(null, stamps.map(function (x) { return x.st; }));
+      var last = Math.max.apply(null, stamps.map(function (x) { return x.en; }));
+      var span = Math.max(1, (last - first) / 1000);
+      if (ticks.length > 1) {
+        for (var i = 0; i < ticks.length; i++) {
+          ticks[i].textContent = hmText(first + span * 1000 * (i / (ticks.length - 1)));
+        }
+      }
+      if (track) {
+        stamps.forEach(function (x) {
+          var left = Math.max(0, (x.st - first) / 1000 / span * 100);
+          var width = Math.max(1.5, (x.s.duration_seconds || 0) / span * 100);
+          var seg = document.createElement('div');
+          seg.className = 'session-seg-white';
+          seg.style.left = left.toFixed(2) + '%';
+          seg.style.width = Math.min(100 - left, width).toFixed(2) + '%';
+          track.appendChild(seg);
+        });
+      }
+      var lastOne = stamps[stamps.length - 1].s;
+      var lastSec = Number(lastOne.duration_seconds || 0);
+      document.getElementById('subjectText').textContent =
+        (lastOne.item_name || lastOne.item || '练习') + ' ' +
+        (lastSec < 60 ? (lastSec + 's') : (Math.ceil(lastSec / 60) + 'm'));
+    }
+    return true;
+  };
+
   // 视口与皮肤切换 (真实响应宽度与背景)
   document.getElementById('vpSeg').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
@@ -15666,13 +15873,54 @@ function closeRecordsDrawer() {
     return SESSIONS.reduce(function (s, row) { return s + row.duration_seconds; }, 0);
   }
 
+  /* ── 真数据接入（dad 261102）──────────────────────────────────────────
+     父页把 /api/practices/{今天} 与 /api/practices/{昨天} 推进来，
+     替换掉下面写死的 SESSIONS / SUMMARY.yesterday_seconds。
+     没有真实 session 时保持演示数据不动。 ── */
+  function parseStampR(v) {
+    if (!v) { return null; }
+    var t = Date.parse(String(v).replace(' ', 'T'));
+    return isNaN(t) ? null : t;
+  }
+  window.__czApplyDay = function (payload) {
+    var today = (payload && payload.today) || {};
+    var yest = (payload && payload.yesterday) || {};
+    var rows = (today.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
+    if (!rows.length) { return false; }
+    SESSIONS = rows.map(function (s) {
+      return {
+        item_id: s.item_id,
+        item_name: s.item_name || s.item || '练习',
+        duration_seconds: Number(s.duration_seconds || 0),
+        tempo_bpm: s.tempo_bpm == null ? 0 : Number(s.tempo_bpm),
+        content: s.content || '',
+        reps: s.reps || 0,
+        is_extra: s.is_extra || 0,
+        started_at: s.started_at || ''
+      };
+    });
+    var stamps = SESSIONS.map(function (s) {
+      var st = parseStampR(s.started_at);
+      return st == null ? null : { st: st, en: st + s.duration_seconds * 1000 };
+    }).filter(function (x) { return x !== null; });
+    if (stamps.length) {
+      var first = Math.min.apply(null, stamps.map(function (x) { return x.st; }));
+      var last = Math.max.apply(null, stamps.map(function (x) { return x.en; }));
+      SUMMARY.span_minutes = Math.max(1, Math.round((last - first) / 60000));
+    }
+    SUMMARY.yesterday_seconds = Number(yest.total_seconds || 0);
+    render();
+    return true;
+  };
+
   /* SIGN_FN 相比昨日：练习秒 − 昨日秒。正 = 多 = 红 +；负 = 少 = 绿 −。 */
   function signedDelta(practiceSec, yesterdaySec) {
     return practiceSec - yesterdaySec;
   }
 
   function minutesOf(seconds) {
-    return Math.round(seconds / 60);
+    /* 不足一分钟的练习不能显示 0 分 —— 向上取整，至少 1 分。*/
+    return Math.max(1, Math.ceil(seconds / 60));
   }
 
   function groupSubjects() {
@@ -15711,7 +15959,9 @@ function closeRecordsDrawer() {
   }
 
   function tempoLabel(sessions) {
-    var bpms = sessions.map(function (s) { return s.tempo_bpm; });
+    var bpms = sessions.map(function (s) { return s.tempo_bpm; })
+      .filter(function (v) { return v != null && v !== 0; });
+    if (!bpms.length) { return '—'; }
     var lo = Math.min.apply(null, bpms);
     var hi = Math.max.apply(null, bpms);
     return lo === hi ? String(lo) : (lo + '–' + hi);
@@ -15795,7 +16045,7 @@ function closeRecordsDrawer() {
     var row = el('div', 'rec-row session cols');
     row.appendChild(el('span', 'c-name', session.item_name));
     row.appendChild(el('span', 'c-total num', '—'));
-    row.appendChild(metaCell(String(session.tempo_bpm), minutesOf(session.duration_seconds) + ' 分'));
+    row.appendChild(metaCell(session.tempo_bpm ? String(session.tempo_bpm) : '—', minutesOf(session.duration_seconds) + ' 分'));
     var detail = el('span', 'c-detail');
     if (session.is_extra) detail.appendChild(el('span', 'tag', '补录'));
     detail.appendChild(document.createTextNode(session.content + (session.reps ? ' · ' + session.reps + ' 遍' : '')));
@@ -20859,6 +21109,14 @@ window.__CZ_CSS = [
     applyPanelPad(f);
     syncModuleHeight(f);
     forwardStageGesture(f);
+    /* 真数据回灌：模块卡是 srcdoc iframe，装完就把当天真实练习推给它。*/
+    if (dayPayload) {
+      try {
+        if (f.contentWindow && typeof f.contentWindow.__czApplyDay === 'function') {
+          f.contentWindow.__czApplyDay(dayPayload);
+        }
+      } catch (e) {}
+    }
     /* S17：Card A 装载完成后立刻把票夹当前练习项目同步到仪表盘黑屏标题
        （否则准备态一直显示卡片模板里的默认曲目名）。 */
     syncDashCoverOuter();
@@ -21791,11 +22049,59 @@ window.__CZ_CSS = [
     bridgeCanvas();
     syncCanvasBand();
     refreshPicker();
+    /* 画布就绪后拉当天真实练习记录，回灌 D / R 两张卡。*/
+    reloadDay();
   });
 
   /* ══════════ 自检 ══════════ */
   var VP_LIST = ['1133', '744', '440'];
   var SKIN_LIST = ['light', 'ink'];
+
+  /* ── 真数据回灌（dad 261102）──────────────────────────────────────────
+     D（今日练习时长）/ R（今日练习记录）两张卡原本是写死的演示值。
+     这里读 /api/practices/{今天} 和 /api/practices/{昨天}，推给两张卡。
+     · 不用 /api/today-stats —— 它的服务端日期可能是 UTC，会串到昨天。
+     · ?audit=1 的自检页保留演示数据，契约断言不受真实数据影响。 ── */
+  var dayPayload = null;
+  function cstDateStr(offsetDays) {
+    var d = new Date();
+    d.setDate(d.getDate() + (offsetDays || 0));
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function applyDayToModules() {
+    var cd = canvasDoc();
+    if (!cd || !dayPayload) { return; }
+    /* 画布顶栏的「今日记录」胶囊 + 今日练习记录抽屉（在票夹文档里）。*/
+    try {
+      var cw = canvasWin();
+      if (cw && typeof cw.__czApplyDay === 'function') { cw.__czApplyDay(dayPayload); }
+    } catch (e) {}
+    ['D', 'R'].forEach(function (k) {
+      var f = cd.querySelector('iframe[data-mod="' + k + '"]');
+      try {
+        if (f && f.contentWindow && typeof f.contentWindow.__czApplyDay === 'function') {
+          f.contentWindow.__czApplyDay(dayPayload);
+        }
+      } catch (e) {}
+    });
+  }
+  function reloadDay() {
+    try {
+      if (new URLSearchParams(location.search).get('audit') === '1') { return Promise.resolve(null); }
+    } catch (e) {}
+    var today = cstDateStr(0);
+    var yesterday = cstDateStr(-1);
+    return Promise.all([
+      fetch('/api/practices/' + today).then(function (r) { return r.json(); }),
+      fetch('/api/practices/' + yesterday).then(function (r) { return r.json(); })
+    ]).then(function (res) {
+      dayPayload = { today: res[0], yesterday: res[1] };
+      applyDayToModules();
+      return dayPayload;
+    }).catch(function () { return null; });
+  }
+  window.__czReloadDay = reloadDay;
 
   function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
   /* 造主线程抖动：阻塞式忙等 N ms（不引依赖；用来复现 agy 的「轻度抖动」场景） */
