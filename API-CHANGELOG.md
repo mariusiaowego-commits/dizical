@@ -25,6 +25,9 @@
 
 - **端点**: `POST /api/log`（`PracticeLogRequest.tempo_bpm` / `SessionDetail.tempo_bpm`）
 - **变更内容**: `BPM_MAX` 150 → 200。下限仍是 40。201 及以上仍 422。
+- **2026-11-03 补修（🔴 上面这条当时只改了 API schema，没改 DB 层）**: `database.py` / `database_mysql.py` 的 `_BPM_MAX` 仍是 150，`_validate_session_fields` 会把 151-200 判成 `tempo_bpm 必须是 40-150 int` → `/api/log` 收成 400。也就是说 Deploy #151 上线后，**151-200 仍然写不进去**。本次把两处 `_BPM_MAX` 改为 200，并加 `tests/test_bpm_bounds_consistency.py` 守门（三层常量不一致即失败）。`tests/test_practice_sessions.py::test_tempo_bpm_bounds` 原来断言「151 拒」，反而把 bug 锁住了，已改为 201 拒 / 200 通过 / 160 通过。
+- **对 dizical-minip**: 仍然无需改代码。
+- **DDL / 数据库影响**: 无。列是整数，没有 CHECK 约束。
 - **对 dizical-minip**: **无需改代码**。
 - **DDL / 数据库影响**: 无。列本来就是整数，没有 CHECK 约束。
 
@@ -32,7 +35,7 @@
 
 # Backend 切换 — API 变更
 
-**日期**: 2026-10-30 (**尚未上线** — 仅修改代码，未发布) — `GET /config/api/assignments` 返回每 stage 目标科目练习时长与科目 ID
+**日期**: 2026-10-30 (**已上线**, 2026-11-03 16:45 CST / CloudRun Deploy **#151**, BuildId 2610770496) — `GET /config/api/assignments` 返回每 stage 目标科目练习时长与科目 ID
 **类型**: 🟡 部分兼容（新增可选返回字段；请求参数、已有字段名与结构完全不变。dizical-minip 不改也能跑）
 
 ## 变更
@@ -47,7 +50,7 @@
 - **对 dizical-minip**: **无需改代码**（新字段仅在前端 Q 卡及相关模块展示时被读取，已有调用端点不读取新增字段不受影响）。
 - **DDL / 数据库影响**: 无 DDL，无数据迁移。
 
-- **2026-11-02 修正（仍未上线）**: MySQL 的 `get_daily_practices_in_range` 把 `items` 当字符串返回。端点内先 `json.loads`，科目名改读键 `item`（兼容老的 `name`）。解析失败不再被静默吞掉，改记日志。字段名不变。✅ 完全兼容。
+- **2026-11-02 修正（已随 Deploy #151 上线）**: MySQL 的 `get_daily_practices_in_range` 把 `items` 当字符串返回。端点内先 `json.loads`，科目名改读键 `item`（兼容老的 `name`）。解析失败不再被静默吞掉，改记日志。字段名不变。✅ 完全兼容。
 
 ---
 
