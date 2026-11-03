@@ -422,6 +422,10 @@ function mount(opts) {
     ri.addEventListener("pointerdown", (e) => {
       if (started) return;
       if (e.button !== undefined && e.button !== 0) return;
+      /* 拖尺子只改时长：不抢焦点（避免 scroll-into-view 把舞台横向滚走）、
+         不起原生拖选（拖到边缘会带动横向滚动容器）。 */
+      if (e.cancelable) { e.preventDefault(); }
+      e.stopPropagation();
       dragCtx.active = true; dragCtx.startX = e.clientX;
       dragCtx.startDur = duration; dragCtx.pointerId = e.pointerId;
       try { ri.setPointerCapture(e.pointerId); } catch (_) {}

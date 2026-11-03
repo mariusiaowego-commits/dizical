@@ -55,12 +55,12 @@ def test_legacy_timer_ui_removed(html, legacy):
     assert legacy not in html, f"旧计时器残留: {legacy}"
 
 
-def test_main_picker_instantiation_removed_but_extra_kept(html):
-    """主计时器的 picker 实例必须删掉; 补录 (extraSection) 的必须留着"""
+def test_picker_instances_all_removed(html):
+    """主计时器和补录的 picker 都不再创建（补录页 261102 整页删除）"""
     assert "timerPicker = createDialKnob" not in html, "主计时器还在创建 dial knob"
     assert "timerWheel = createActivityWheel" not in html, "主计时器还在创建 activity wheel"
-    assert "extraPicker = createDialKnob" in html, "补录的 dial knob 被误删"
-    assert "extraWheel = createActivityWheel" in html, "补录的 activity wheel 被误删"
+    assert "extraPicker = createDialKnob" not in html, "补录 dial knob 应随补录页删除"
+    assert "extraWheel = createActivityWheel" not in html, "补录 activity wheel 应随补录页删除"
 
 
 # ── 3. 打卡链路契约 (改动计时器最容易顺手改坏的部分) ──────────────────
@@ -317,7 +317,7 @@ def test_ruler_drag_buildvine_debounced(html):
     "btnUpNormal", "btnDownNormal", "fnScreen1", "fnScreen2",
     "stageEarly", "casingEarly", "drumValEarly", "topValEarly", "bottomValEarly",
     "btnUpEarly", "btnDownEarly", "feScreen1", "feScreen2",
-    "extraRepsInput", "emReps"
+    "emReps"
 ])
 def test_reps_wheel_elements_present(html, reps_el):
     """遍数滚轮各元素必须在位"""

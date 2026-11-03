@@ -20,16 +20,16 @@ def client(monkeypatch):
     return TestClient(app)
 
 
-def test_practice_page_has_three_tabs(client):
-    """验证 /practice 页面顶部 Tab 栏包含三个 Tab：计时练习、快速补录、练习助手."""
+def test_practice_page_has_two_tabs(client):
+    """dad 261102 拍板：快速补录整页删除，只剩计时练习 / 练习助手两个 Tab."""
     resp = client.get("/practice")
     assert resp.status_code == 200
     html = resp.text
 
-    # Tab 头部按钮
     assert "计时练习" in html
-    assert "快速补录" in html
     assert "练习助手" in html
+    assert "快速补录" not in html
+    assert "tabExtra" not in html
     assert 'class="tab-btn practice-dsh-tab"' in html or "practice-dsh-tab" in html
     assert "switchTab('dsh')" in html or 'switchTab("dsh")' in html
 

@@ -3,6 +3,20 @@
 <head>
 {% include "_favicon.html" %}
   <meta charset="UTF-8">
+  <script>
+    (function () {
+      var s = null;
+      try { s = localStorage.getItem("dizical_skin"); } catch (e) {}
+      if (s !== "ink" && s !== "light") {
+        try {
+          var o = JSON.parse(localStorage.getItem("dizical_practice_dsh_state") || "{}");
+          if (o && (o.skin === "ink" || o.skin === "light")) s = o.skin;
+        } catch (e2) {}
+      }
+      if (s === "ink") document.documentElement.setAttribute("data-skin", "ink");
+      else document.documentElement.removeAttribute("data-skin");
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>练习打卡 - 竹笛助手</title>
   <link rel="stylesheet" href="/static/style.css">
@@ -958,32 +972,17 @@
     .sp-item-select {
       margin-bottom: 8px;
     }
-    .extra-item-select {
-      width: 100%; padding: 8px 12px; font-size: 14px;
-      border: 1px solid #E0D0A0; border-radius: 10px;
-      font-family: inherit; color: #5D4037; background: #fff;
-      box-sizing: border-box;
-      cursor: pointer;
-    }
     .sp-content-tags {
       display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
     }
 
     /* 额外记录日志 */
-    .extra-log-item {
-      display: flex; align-items: center; justify-content: space-between;
-      background: rgba(255,255,255,0.7); border: 1px solid #B0D8B0;
-      border-radius: 8px; padding: 8px 12px; font-size: 14px;
-      margin-top: 6px;
-    }
     .extra-log-item:first-child { margin-top: 10px; }
     .extra-log-item + .extra-log-item { margin-top: 6px; }
 
     /* Picker knob 拖拽光标 */
     .dizi-picker-knob { cursor: grab; }
     .dizi-picker-knob.dragging { cursor: grabbing; }
-    .extra-log-item .extra-mins { color: #2E7D32; font-weight: bold; }
-    .extra-log-item .extra-del { background: #FF6B6B; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
 
     /* 2026-07-27: session 记录展示 (科目分组 + 细节行) */
     .record-group { margin-bottom: 10px; background: #FFFEFA; border-radius: 10px; padding: 8px 10px; border: 1px solid #F0E8D0; }
@@ -1400,7 +1399,6 @@
     .v4-tab-header { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; background: #F5EDE0; padding: 3px; }
     .v4-tab-header .tab-btn { flex: 1; padding: 8px 0; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: transparent; color: #A09080; }
     .v4-tab-header .tab-btn.timer-tab.active { background: #FF6B6B; color: #fff; box-shadow: 0 1px 3px rgba(255,107,107,0.3); }
-    .v4-tab-header .tab-btn.extra-tab.active { background: #FF8C5A; color: #fff; box-shadow: 0 1px 3px rgba(255,140,90,0.3); }
     .v4-tab-header .tab-btn.practice-dsh-tab.active { background: #2C3E50; color: #fff; box-shadow: 0 1px 3px rgba(44,62,80,0.3); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -1421,6 +1419,91 @@
     body.practice-dsh-on #tabDsh { height: 100%; min-height: 0; overflow: hidden; }
     body.practice-dsh-on #tabDsh iframe { width: 100%; height: 100%; min-height: 0; display: block; border-radius: 0; }
 
+
+    /* 261102：practice 页全局浅色/深色。浅色规则不动，只在 html[data-skin=ink] 覆盖。 */
+    .practice-tab-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px; position: sticky; top: 0; z-index: 40;
+    }
+    .practice-tab-row .v4-tab-header { flex: 1 1 auto; margin-bottom: 0; position: static; }
+    .theme-toggle-btn {
+      flex: 0 0 auto; height: 36px; padding: 0 14px; border-radius: 999px;
+      border: 1px solid #E0D0A0; background: #FFFDF8; color: #2C3E50;
+      font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    html[data-skin="ink"] {
+      --bg: #0E1216; --card: #161B22; --text: #F0F6FC; --text-light: #8B949E;
+      --surface: #161B22;
+    }
+    html[data-skin="ink"] body { background: #0E1216; color: #F0F6FC; }
+    html[data-skin="ink"] .sidebar,
+    html[data-skin="ink"] .mobile-topbar {
+      background: #14181C; border-color: #30363D; color: #F0F6FC;
+    }
+    html[data-skin="ink"] .sidebar-username,
+    html[data-skin="ink"] .sidebar-item,
+    html[data-skin="ink"] .mobile-topbar-title,
+    html[data-skin="ink"] .mobile-topbar-menu { color: #F0F6FC; }
+    html[data-skin="ink"] .sidebar-userrole,
+    html[data-skin="ink"] .sidebar-account-chevron { color: #8B949E; }
+    html[data-skin="ink"] .top-bar .server-clock { background: #161B22; color: #8B949E; }
+    html[data-skin="ink"] .theme-toggle-btn {
+      background: #212830; color: #F0F6FC; border-color: #30363D;
+    }
+    html[data-skin="ink"] .v4-tab-header { background: #212830; }
+    html[data-skin="ink"] .v4-tab-header .tab-btn { color: #8B949E; }
+    html[data-skin="ink"] .v4-tab-header .tab-btn.practice-dsh-tab.active { background: #388BFD; color: #fff; }
+    html[data-skin="ink"] .card,
+    html[data-skin="ink"] .floor,
+    html[data-skin="ink"] .floor-pickers,
+    html[data-skin="ink"] #timerCard { background: #161A1E; border-color: #30363D; color: #F0F6FC; }
+    html[data-skin="ink"] .item-section h3 { color: #8B949E !important; }
+    html[data-skin="ink"] .item-filter-wrap input {
+      background: #0E1216; color: #F0F6FC; border-color: #30363D;
+    }
+    html[data-skin="ink"] .item-btn:not(.has-req) {
+      background: #212830; color: #C9D1D9; border-color: #30363D;
+    }
+    html[data-skin="ink"] .ac-root,
+    html[data-skin="ink"] .meta-row .val,
+    html[data-skin="ink"] .bpm-value,
+    html[data-skin="ink"] .sp-content-input,
+    html[data-skin="ink"] .rg-name { color: #F0F6FC; }
+    html[data-skin="ink"] .readout-sub {
+      background: #212830; color: #C9D1D9; border-color: #30363D;
+    }
+    html[data-skin="ink"] .readout-sub small,
+    html[data-skin="ink"] .sp-tempo-label,
+    html[data-skin="ink"] .sp-tempo-hint,
+    html[data-skin="ink"] .meta-row { color: #8B949E; }
+    html[data-skin="ink"] .step-btn {
+      background: #212830; color: #F0F6FC; border-color: #30363D;
+    }
+    html[data-skin="ink"] .ruler-row { border-bottom-color: #2A3644; }
+    html[data-skin="ink"] .tick.major.past { background: #E2E8F0; }
+    html[data-skin="ink"] .tick.major.future { background: #3A4756; }
+    html[data-skin="ink"] .tick.minor.past { background: #94A3B8; }
+    html[data-skin="ink"] .tick.minor.future { background: #263240; }
+    html[data-skin="ink"] .sp-tempo-note-group,
+    html[data-skin="ink"] .bpm-stepper,
+    html[data-skin="ink"] .sp-content-input { background: #212830; border-color: #30363D; }
+    html[data-skin="ink"] .sp-tempo-note-btn,
+    html[data-skin="ink"] .bpm-step,
+    html[data-skin="ink"] .sp-tempo-eq { color: #D29922; background: transparent; }
+    html[data-skin="ink"] .bpm-step { background: #212830; }
+    html[data-skin="ink"] .sp-content-tag { background: #212830; color: #C9D1D9; border-color: #30363D; }
+    html[data-skin="ink"] .record-group { background: #1C2128; border-color: #30363D; }
+    html[data-skin="ink"] .record-session,
+    html[data-skin="ink"] .rs-content { color: #C9D1D9; border-color: #30363D; }
+    html[data-skin="ink"] .finish-modal-box,
+    html[data-skin="ink"] .modal-box {
+      background: #161B22; color: #F0F6FC; border: 1px solid #30363D;
+    }
+    html[data-skin="ink"] .finish-modal-box p,
+    html[data-skin="ink"] .finish-modal-box h3,
+    html[data-skin="ink"] .modal-box p { color: #F0F6FC; }
+    html[data-skin="ink"] .dash-card-inline { border: 1px solid #1A252F; }
+
     /* V4: Dashboard (计时器卡片内部, 三列1:1:2) */
     .dash-card-inline { display: none; background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; color: #fff; }
     .dash-card-inline.visible { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 0; align-items: start; }
@@ -1440,7 +1523,6 @@
     .bpm-preset { padding: 2px 8px; background: #FFF8F0; border: 1px solid #E8D8B0; border-radius: 6px; font-size: 11px; color: #8B6914; cursor: pointer; transition: all 0.15s; }
     .bpm-preset:hover { background: #FF6B6B; color: #fff; border-color: #FF6B6B; }
 
-    .extra-current-item { font-size: 13px; color: #FF8C5A; font-weight: 600; }
     .extra-current-item.empty { color: #BDBDBD; font-weight: 400; }
 
     /* item-section 收拢动画 */
@@ -1664,10 +1746,12 @@
   </div>
 
   <!-- 老练习 / 新练习助手并列。助手页自带票夹，不再叠旧的科目选择。 -->
+      <div class="practice-tab-row">
       <div class="v4-tab-header">
         <button class="tab-btn timer-tab active" onclick="switchTab('timer')">计时练习</button>
-        <button class="tab-btn extra-tab" onclick="switchTab('extra')">快速补录</button>
         <button class="tab-btn practice-dsh-tab" onclick="switchTab('dsh')">练习助手</button>
+      </div>
+      <button type="button" class="theme-toggle-btn" id="globalThemeToggle" aria-pressed="false">浅色</button>
       </div>
 
 
@@ -1774,64 +1858,9 @@
       </div>
       </div><!-- /tabTimer -->
 
-      <div class="tab-panel" id="tabExtra">
-      <!-- PR-C (260815): 补录 Dashboard (主补录 UI 一致性, 跟主计时对齐 4 列) -->
-      <div class="dash-card-inline" id="dashCardInlineExtra">
-        <div class="dci-item"><span class="dci-name" id="dciNameExtra">—</span><span class="dci-id" id="dciIdExtra"></span></div>
-        <div class="dci-detail"><span class="dci-tempo" id="dciTempoExtra">—</span><span class="dci-content" id="dciContentExtra"></span></div>
-        <div class="dci-assign"><span class="dci-assign-label">已补录</span><span class="dci-assign-text" id="dciExtraCount">0 次</span></div>
-      </div>
-      <!-- 补录 -->
-      <div class="timer-block" id="extraSection">
-        <div class="picker-card">
-          <div class="activity-wheel" id="extraWheel"></div>
-          <div class="picker-col">
-            <div class="picker-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6v6l3.644 1.822"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M21.92 13.267a10 10 0 1 0-8.653 8.653"/></svg></span> 补录</div>
-            <div class="dial-knob" id="extraKnobEl">
-              <div class="dial-disc"></div>
-              <svg class="dial-ticks" id="extraTicks" viewBox="-110 -110 220 220"></svg>
-              <div class="dial-face">
-                <div class="dial-value" id="extraValue">5</div>
-                <div class="dial-unit">分钟</div>
-              </div>
-            </div>
-            <div class="action-btns">
-              <button class="btn btn-ghost" id="addExtraBtn" onclick="addExtraFromPicker()" disabled>记录这次补录</button>
-            </div>
-            <div id="extraLogList"></div>
-          </div>
-        </div>
-        <div class="session-panel" id="extraSessionPanel">
-          <div class="sp-header">补录详情</div>
-          <div class="sp-item-select">
-            <span class="extra-current-item" id="extraCurrentItem">上方未选择科目 — 请先在计时练习中选择</span>
-          </div>
-          <div class="sp-tempo-row-1">
-            <div class="sp-tempo-label">速度</div>
-            <div class="sp-tempo-note-group" role="group" aria-label="音符">
-              <button type="button" class="sp-tempo-note-btn selected" data-note="♪" onclick="setExtraNote('♪')">♪</button>
-              <button type="button" class="sp-tempo-note-btn" data-note="♩" onclick="setExtraNote('♩')">♩</button>
-            </div>
-            <span class="sp-tempo-eq">=</span>
-            <div class="bpm-stepper" aria-label="补录BPM">
-              <button type="button" class="bpm-step" onclick="stepExtraBpm(-1)" aria-label="减1">−</button>
-              <span class="bpm-value" id="extraBpmDisplay">80</span>
-              <button type="button" class="bpm-step" onclick="stepExtraBpm(1)" aria-label="加1">+</button>
-            </div>
-            <input type="hidden" id="extraBpmInput" value="80">
-            <div class="sp-reps-group" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;">
-              <span class="sp-tempo-label" style="font-size:13px;color:#8B6914;">遍数</span>
-              <input type="number" id="extraRepsInput" min="1" max="99" placeholder="—" style="width:48px;padding:3px 4px;border:1px solid #d4c4a8;border-radius:6px;font-size:13px;text-align:center;background:#fff;color:#5D4037;">
-            </div>
-          </div>
-          <div class="sp-content-tags" id="extraContentTags"></div>
-          <input type="text" class="sp-content-input" id="extraContentInput" maxlength="200" placeholder="练什么? 例如: 第一分句连吐" aria-label="补录内容">
-        </div>
-      </div>
-      </div><!-- /tabExtra -->
 
       <div class="tab-panel" id="tabDsh">
-        <iframe src="/practice-dsh?v=319" style="width:100%;height:100%;border:none;background:transparent;"
+        <iframe src="/practice-dsh?v=322" style="width:100%;height:100%;border:none;background:transparent;"
                 allow="autoplay; microphone"></iframe>
       </div>
     </div>
@@ -1966,9 +1995,59 @@
       }
     });
 
+    function readPracticeSkin() {
+      var s = null;
+      try { s = localStorage.getItem('dizical_skin'); } catch (e) {}
+      if (s !== 'ink' && s !== 'light') {
+        try {
+          var o = JSON.parse(localStorage.getItem('dizical_practice_dsh_state') || '{}');
+          if (o && (o.skin === 'ink' || o.skin === 'light')) s = o.skin;
+        } catch (e2) {}
+      }
+      return s === 'ink' ? 'ink' : 'light';
+    }
+    function pushSkinToDsh() {
+      var frame = document.querySelector('#tabDsh iframe');
+      var cw = frame && frame.contentWindow;
+      if (!cw || !cw.__cz || typeof cw.__cz.setSkin !== 'function') return;
+      try { cw.__cz.setSkin(document.documentElement.getAttribute('data-skin') === 'ink' ? 'ink' : 'light', { fromParent: true }); } catch (e) {}
+    }
+    function applyGlobalSkin(skin, opt) {
+      skin = skin === 'ink' ? 'ink' : 'light';
+      if (skin === 'ink') document.documentElement.setAttribute('data-skin', 'ink');
+      else document.documentElement.removeAttribute('data-skin');
+      try { localStorage.setItem('dizical_skin', skin); } catch (e) {}
+      var btn = document.getElementById('globalThemeToggle');
+      if (btn) {
+        btn.textContent = skin === 'ink' ? '深色' : '浅色';
+        btn.setAttribute('aria-pressed', skin === 'ink' ? 'true' : 'false');
+      }
+      if (!(opt && opt.fromChild)) pushSkinToDsh();
+    }
+    window.applyGlobalSkin = applyGlobalSkin;
+    window.addEventListener('message', function (ev) {
+      var m = ev.data;
+      if (!m || m.type !== 'dizical-skin') return;
+      if (m.skin !== 'ink' && m.skin !== 'light') return;
+      applyGlobalSkin(m.skin, { fromChild: true });
+    });
+    window.addEventListener('storage', function (ev) {
+      if (ev.key === 'dizical_skin') applyGlobalSkin(ev.newValue === 'ink' ? 'ink' : 'light', { fromChild: true });
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
+      applyGlobalSkin(readPracticeSkin(), { boot: true });
+      var themeBtn = document.getElementById('globalThemeToggle');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function () {
+          applyGlobalSkin(document.documentElement.getAttribute('data-skin') === 'ink' ? 'light' : 'ink');
+        });
+      }
+      var dshFrame = document.querySelector('#tabDsh iframe');
+      if (dshFrame) dshFrame.addEventListener('load', pushSkinToDsh);
       const want = new URLSearchParams(location.search).get('tab');
-      if (want === 'dsh' || want === 'extra' || want === 'timer') switchTab(want);
+      if (want === 'dsh' || want === 'timer') switchTab(want);
+      if (want === 'extra') switchTab('timer');
       if (want === 'dsh') { setTimeout(fitDshLayout, 60); setTimeout(fitDshLayout, 400); }
       const videoEl = document.getElementById('videoPreviewEl');
       if (videoEl) {
@@ -2248,11 +2327,6 @@
     let paused = false;  // U-4:暂停态(可继续)
     let finishPending = false;  // 提前结束但未打卡
     let submitting = false;  // 防重放：打卡请求进行中
-    let pendingExtraMins = 10;  // 副半圆 picker 当前选值
-    let selectedExtraItemId = null;  // V4: 补录 grid 选中的 item_id
-    let selectedExtraItemName = null; // V4: 补录 grid 选中的 item_name
-    let extraPicker = null;  // dial knob picker 实例
-    let extraWheel = null;   // activity wheel 实例
     let todayDate = "{{today_date}}";
     // 行为日志：进入时间 (CST 本地时间字符串, 2026-06-13 修复 UTC 时区错位 bug)
     function nowCstLocal() {
@@ -2709,20 +2783,6 @@
       updateStartBtnState();
       updateDashboard();
     }
-    function setExtraBpmValue(bpm) {
-      bpm = Math.max(40, Math.min(200, parseInt(bpm) || 80));
-      const input = document.getElementById('extraBpmInput');
-      const display = document.getElementById('extraBpmDisplay');
-      if (input) input.value = bpm;
-      if (display) display.textContent = bpm;
-    }
-    function stepExtraBpm(delta) {
-      const input = document.getElementById('extraBpmInput');
-      let v = parseInt(input?.value) || 80;
-      v = Math.max(40, Math.min(200, v + delta));
-      setExtraBpmValue(v);
-    }
-
     function renderContentTags(itemId, btn) {
       const tagsContainer = document.getElementById('sessionContentTags');
       if (!tagsContainer) return;
@@ -2776,24 +2836,16 @@
       selectedItem = name;
       selectedItemId = id;
       resetTimer();
-      refreshExtraSection();
       const reqText = btn ? btn.getAttribute('data-req') : null;
       updateReqPanel(btn);
       updateSelectedSummary(name, id, reqText, btn);
-      // PR-C (260815): 选科目后同步补录 dashboard
-      _pulseUpdateExtra();
       collapseSelection();
       // V4: item-section 收拢
       document.querySelector('.item-section').classList.add('compact');
-      // V4: 补录用计时选择的 item
-      const extraCur = document.getElementById('extraCurrentItem');
-      if (extraCur) { extraCur.textContent = '当前科目: ' + name; extraCur.classList.remove('empty'); }
       fillSessionDefaults(id);
       renderBpmPresets(id);
       renderContentTags(id, btn);
       updateStartBtnState();
-      // 补录按钮只看补录自己的科目选择，不跟主计时绑定
-      updateExtraBtnState();
       // V4: 更新 Dashboard (传 reqText 让第三列显示老师要求)
       updateDashboard(reqText);
     }
@@ -2820,8 +2872,6 @@
       if (confirmArea) confirmArea.classList.remove('show');
       // 重新显示 picker + 数字,隐藏时间显示
       ttOnExit();        // 花纹自右向左收卷 + 气泡清空 + 回到选择态
-      const addBtn = document.getElementById('addExtraBtn');
-      if (addBtn) addBtn.disabled = !selectedItemId;
     }
 
     function toggleTimer() {
@@ -3190,211 +3240,6 @@
       }
     }
 
-    // ── 额外练习时间 ──
-    async function refreshExtraSection() {
-      try {
-        let res = await fetch('/api/practices/' + todayDate);
-        let data = await res.json();
-        let logList = document.getElementById('extraLogList');
-        let extras = (data.items || []).filter(it => it.is_extra);
-        if (extras.length === 0) {
-          logList.innerHTML = '<div style="font-size:13px;color:#A5D6A7;text-align:center;padding:6px;">暂无额外记录</div>';
-        } else {
-          logList.innerHTML = extras.map(it => {
-            const sec = DizicalDur.pick(it.seconds, it.minutes);
-            const durStr = DizicalDur.fmt(sec) || (it.minutes + '分');
-            return `
-            <div class="extra-log-item">
-              <span>${it.item}</span>
-              <span class="extra-mins">+${durStr}</span>
-              <button class="extra-del" onclick="deleteExtraRecord('${it.item_id}')">✕</button>
-            </div>
-          `;
-          }).join('');
-        }
-      } catch(e) {}
-    }
-
-    async function addExtraMins(mins, item = null, sessionDetail = null) {
-      const theItem = item || { name: selectedItem, item_id: selectedItemId };
-      if (!theItem.name) return;
-
-      try {
-        const body = {
-          date: todayDate,
-          item: theItem.name,
-          item_id: theItem.item_id,
-          minutes: mins,
-          seconds: mins * 60,
-          log: '',
-          is_extra: true,
-          // PR-C: 传 practice_at (CST ISO), session.started_at 有值
-          practice_at: nowCstLocal(),
-          behavior_log: [{enter_time: enterTime, item: theItem.name, minutes: mins, seconds: mins * 60}]
-        };
-
-        // 如果有 session detail，一起传
-        if (sessionDetail) {
-          body.session_detail = sessionDetail;
-          if (sessionDetail.reps != null && sessionDetail.reps > 0) {
-            body.reps = sessionDetail.reps;
-          }
-        }
-        
-        let res = await fetch('/api/log', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(body)
-        });
-        let json = await res.json();
-        if (json.ok) {
-          fireConfetti();
-          refreshExtraSection();
-          loadTodayRecords();
-          // Sprint 26091101: 练笛补录成功后拦截，金色礼花入库动效
-          if (window.DizicalCCG && typeof window.DizicalCCG.checkUnclaimed === 'function') {
-            setTimeout(() => { window.DizicalCCG.checkUnclaimed(); }, 600);
-          }
-        }
-      } catch(e) {}
-    }
-
-    // 初始化补录科目下拉
-    // V4: 补录 item-grid 渲染 (替换 select)
-    function renderExtraItemGrid() {
-      const grid = document.getElementById('extraItemGrid');
-      if (!grid || !ALL_ITEMS) return;
-      const q = (document.getElementById('extraItemFilter')?.value || '').trim().toLowerCase();
-      const filtered = ALL_ITEMS.filter(it => !q || it.name.toLowerCase().includes(q));
-      grid.innerHTML = filtered.map(it => {
-        const sel = selectedExtraItemId == it.item_id ? ' selected' : '';
-        return '<button class="extra-item-btn' + sel + '" onclick="selectExtraItem(' + it.item_id + ',\'' + it.name.replace(/'/g,"\\'") + '\')">' + it.name + '</button>';
-      }).join('');
-    }
-    
-    function selectExtraItem(itemId, itemName) {
-      selectedExtraItemId = itemId;
-      selectedExtraItemName = itemName;
-      renderExtraItemGrid();
-      renderExtraContentTags(itemId);
-      updateExtraBtnState();
-      // 自动填充速度默认值
-      fillExtraDefaults(itemId);
-    }
-    
-    async function fillExtraDefaults(itemId) {
-      try {
-        let resp = await fetch('/api/practice-sessions/latest?item_id=' + itemId);
-        let d = await resp.json();
-        if (d.found) { setExtraNote(d.tempo_note || '♪'); setExtraBpmValue(d.tempo_bpm || 80); return; }
-      } catch(e) {}
-      try {
-        let resp = await fetch('/api/assignments/latest?item_id=' + itemId);
-        let d = await resp.json();
-        if (d.found && d.tempo_note) { setExtraNote(d.tempo_note); setExtraBpmValue(d.tempo_bpm); return; }
-      } catch(e) {}
-      setExtraNote('♪'); setExtraBpmValue(80);
-    }
-
-    function updateExtraBtnState() {
-      const btn = document.getElementById('addExtraBtn');
-      const extraContent = (document.getElementById('extraContentInput')?.value || '').trim();
-      if (btn) btn.disabled = !(selectedItemId && extraContent);
-    }
-    
-    // 设置补录音符
-    function setExtraNote(note) {
-      document.querySelectorAll('#extraSessionPanel .sp-tempo-note-btn').forEach(b => b.classList.remove('selected'));
-      const btn = document.querySelector(`#extraSessionPanel .sp-tempo-note-btn[data-note="${note}"]`);
-      if (btn) btn.classList.add('selected');
-    }
-    
-    // 渲染补录内容标签
-    function renderExtraContentTags(itemId) {
-      const tagsContainer = document.getElementById('extraContentTags');
-      if (!tagsContainer || !ALL_ITEMS) return;
-      
-      const item = ALL_ITEMS.find(i => i.item_id == itemId);
-      tagsContainer.innerHTML = '';
-      
-      let options = [];
-      if (item && item.content_options) {
-        options = item.content_options.split(/[,，]/).filter(Boolean).map(s => s.trim());
-      }
-      
-      if (options.length === 0) {
-        options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
-      }
-      
-      options.forEach(opt => {
-        const tag = document.createElement('span');
-        tag.className = 'sp-content-tag';
-        tag.textContent = opt;
-        tag.onclick = () => {
-          const input = document.getElementById('extraContentInput');
-          if (input) { input.value = opt; updateExtraBtnState(); }
-        };
-        tagsContainer.appendChild(tag);
-      });
-    }
-
-    async function addExtraFromPicker() {
-      if (!selectedItemId) {
-        alert('请先在计时练习中选择科目');
-        return;
-      }
-      
-      const item = ALL_ITEMS.find(i => i.item_id == selectedItemId);
-      if (!item) return;
-      
-      if (!pendingExtraMins || pendingExtraMins < 1) {
-        alert('请先在补录 picker 拖动选择分钟数');
-        return;
-      }
-      
-      // 2026-07-29: 补录内容必填
-      const extraContent = document.getElementById('extraContentInput').value.trim();
-      if (!extraContent) {
-        alert('请填写补录练习内容');
-        return;
-      }
-      
-      // 从补录独立输入获取
-      const noteBtn = document.querySelector('#extraSessionPanel .sp-tempo-note-btn.selected');
-      const tempo_note = noteBtn ? noteBtn.getAttribute('data-note') : '♪';
-      const tempo_bpm = parseInt(document.getElementById('extraBpmInput').value) || 80;
-      const content = extraContent;
-      const extraRepsVal = parseInt(document.getElementById('extraRepsInput')?.value);
-      const reps = (extraRepsVal > 0) ? Math.min(99, extraRepsVal) : null;
-      
-      await addExtraMins(pendingExtraMins, item, { tempo_note, tempo_bpm, content, reps });
-      // PR-C (260815): 补录计数 +1 并刷新 dashboard
-      _extraLogCount++;
-      updateDashboardExtra();
-
-      // 重置输入
-      document.getElementById('extraContentInput').value = '';
-      if (document.getElementById('extraRepsInput')) document.getElementById('extraRepsInput').value = '';
-    }
-
-    async function deleteExtraRecord(id) {
-      if (!confirm('确定要删除这条额外练习记录吗？')) return;
-      try {
-        let res = await fetch('/api/log', {
-          method: 'DELETE',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({date: todayDate, id: id})
-        });
-        let result = await res.json();
-        if (result.ok) {
-          refreshExtraSection();
-          renderTodayRecords(result.items || [], result.total_minutes || 0, result.sessions || []);
-        } else {
-          alert('删除失败: ' + (result.error || '未知错误'));
-        }
-      } catch(e) { console.error(e); }
-    }
-
     // Load today's records from API (2026-07-27: sessions[] 优先)
     function renderTodayRecords(items, total, sessions) {
       let recordsList = document.getElementById('recordsList');
@@ -3603,9 +3448,6 @@
       if (tab === 'timer') {
         document.querySelector('.tab-btn.timer-tab').classList.add('active');
         document.getElementById('tabTimer').classList.add('active');
-      } else if (tab === 'extra') {
-        document.querySelector('.tab-btn.extra-tab').classList.add('active');
-        document.getElementById('tabExtra').classList.add('active');
       } else if (tab === 'dsh') {
         const dshBtn = document.querySelector('.tab-btn.practice-dsh-tab');
         if (dshBtn) dshBtn.classList.add('active');
@@ -3651,26 +3493,6 @@
       const assignEl = document.getElementById('dciAssignText');
       if (assignEl) assignEl.textContent = (_lastReqText && _lastReqText.trim()) ? _lastReqText.trim() : '—';
       card.classList.add('visible');
-    }
-
-    // PR-C (260815): 补录 Dashboard 跟主计时 dashboard 数据共享
-    let _extraLogCount = 0;
-    function updateDashboardExtra() {
-      const card = document.getElementById('dashCardInlineExtra');
-      if (!card) return;
-      const name = selectedItem || '—';
-      const bpm = document.getElementById('extraBpmInput')?.value || '';
-      const note = document.querySelector('#extraSessionPanel .sp-tempo-note-btn.selected')?.dataset?.note || '♪';
-      const content = (document.getElementById('extraContentInput')?.value || '').trim();
-      document.getElementById('dciNameExtra').textContent = name;
-      document.getElementById('dciIdExtra').textContent = selectedItemId ? '#' + selectedItemId : '';
-      document.getElementById('dciTempoExtra').textContent = note + '=' + bpm;
-      document.getElementById('dciContentExtra').textContent = content || '未填写补录内容';
-      document.getElementById('dciExtraCount').textContent = _extraLogCount + ' 次';
-      card.classList.add('visible');
-    }
-    function _pulseUpdateExtra() {
-      if (typeof updateDashboardExtra === 'function') updateDashboardExtra();
     }
 
     async function loadTodayRecords() {
@@ -3844,223 +3666,6 @@
           alert('删除失败: ' + (result.error || '未知错误'));
         }
       } catch(e) { console.error(e); }
-    }
-
-    // ════════════════════════════════════════════════
-    // ════════════════════════════════════════════════
-    // Dial Knob + Activity Wheel (replaces old semi-circle picker)
-    // ════════════════════════════════════════════════
-
-    // Fun descriptions — scattered intervals
-    const EXTRA_DESCS = {
-      2: '蚊子腿也是肉', 3: '三分钟 意思意思', 5: '小小加练',
-      8: '越练越起劲', 10: '够意思！', 13: '加练也要卷？',
-      15: '额外的努力！', 18: '这还是加练？！', 20: '二十分钟加练！',
-      25: '你是要上天！', 30: '你赢了！！',
-    };
-
-    // Line-art SVG icons — each one unique
-    const WHEEL_ICONS = [
-      '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-      '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>',
-      '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
-      '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
-      '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>',
-      '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>',
-      '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
-      '<polygon points="6 3 20 12 6 21 6 3"/>',
-      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
-      '<path d="M12 3v18"/><path d="M8 7l4-4 4 4"/><path d="M8 17l4 4 4-4"/>',
-      '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
-      '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>',
-      '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
-      '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-      '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
-      '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
-      '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-      '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-      '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-      '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
-      '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>',
-      '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
-    ];
-
-    // Dial Knob — full-circle rotary dial
-    function createDialKnob(opts) {
-      const {
-        containerEl, ticksEl, valueEl, onChange,
-        initial = 10, min = 1, max = 30, step = 1,
-        snapVals = [], dotCount = 30, color = '#FF6B6B', sensitivity = 0.25,
-      } = opts;
-      const SVG_NS = 'http://www.w3.org/2000/svg';
-      const DOT_RADIUS = 80, OUTER_TICKS = 60, SNAP_RADIUS = 0.8;
-      const range = max - min;
-      let currentValue = initial, isDragging = false, lastAngle = 0;
-
-      ticksEl.innerHTML = '';
-      for (let i = 0; i < OUTER_TICKS; i++) {
-        const angle = (i / OUTER_TICKS) * 360 - 90;
-        const rad = (angle * Math.PI) / 180;
-        const isMarker = (i % 5 === 0);
-        const line = document.createElementNS(SVG_NS, 'line');
-        line.setAttribute('x1', Math.cos(rad) * 100);
-        line.setAttribute('y1', Math.sin(rad) * 100);
-        line.setAttribute('x2', Math.cos(rad) * (isMarker ? 88 : 94));
-        line.setAttribute('y2', Math.sin(rad) * (isMarker ? 88 : 94));
-        line.setAttribute('stroke-width', isMarker ? 1.8 : 1);
-        line.setAttribute('stroke-linecap', 'round');
-        line.setAttribute('stroke', isMarker ? '#c8860a' : 'rgba(200,160,40,0.3)');
-        ticksEl.appendChild(line);
-      }
-      for (let i = 0; i < dotCount; i++) {
-        const angle = (i / dotCount) * 360 - 90;
-        const rad = (angle * Math.PI) / 180;
-        const c = document.createElementNS(SVG_NS, 'circle');
-        c.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
-        c.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
-        c.setAttribute('r', 2);
-        c.setAttribute('fill', '#E8E0D0');
-        ticksEl.appendChild(c);
-      }
-      const activeGroup = document.createElementNS(SVG_NS, 'g');
-      ticksEl.appendChild(activeGroup);
-      const arcPath = document.createElementNS(SVG_NS, 'path');
-      arcPath.setAttribute('fill', 'none');
-      arcPath.setAttribute('stroke', color);
-      arcPath.setAttribute('stroke-width', 1.2);
-      arcPath.setAttribute('stroke-opacity', 0.25);
-      arcPath.setAttribute('stroke-linecap', 'round');
-      activeGroup.appendChild(arcPath);
-
-      function updateVisual() {
-        const ratio = (currentValue - min) / range;
-        const filledDots = Math.round(ratio * dotCount);
-        ticksEl.style.transform = 'rotate(' + (ratio * 360) + 'deg)';
-        activeGroup.querySelectorAll('.active-dot').forEach(d => d.remove());
-        for (let i = 0; i < filledDots; i++) {
-          const angle = (i / dotCount) * 360 - 90;
-          const rad = (angle * Math.PI) / 180;
-          const c = document.createElementNS(SVG_NS, 'circle');
-          c.setAttribute('cx', Math.cos(rad) * DOT_RADIUS);
-          c.setAttribute('cy', Math.sin(rad) * DOT_RADIUS);
-          c.setAttribute('r', i === filledDots - 1 ? 4 : 3);
-          c.setAttribute('fill', color);
-          c.classList.add('active-dot');
-          activeGroup.insertBefore(c, arcPath);
-        }
-        if (filledDots > 1) {
-          const startRad = (-90 * Math.PI) / 180;
-          const endA = ((filledDots - 1) / dotCount) * 360 - 90;
-          const endRad = (endA * Math.PI) / 180;
-          const large = (endA - (-90)) > 180 ? 1 : 0;
-          arcPath.setAttribute('d', 'M ' + Math.cos(startRad)*DOT_RADIUS + ' ' + Math.sin(startRad)*DOT_RADIUS + ' A ' + DOT_RADIUS + ' ' + DOT_RADIUS + ' 0 ' + large + ' 1 ' + Math.cos(endRad)*DOT_RADIUS + ' ' + Math.sin(endRad)*DOT_RADIUS);
-          arcPath.style.display = '';
-        } else { arcPath.style.display = 'none'; }
-        if (valueEl) valueEl.textContent = currentValue;
-        if (onChange) onChange(currentValue);
-      }
-      function snapValue(v) {
-        v = Math.round(v / step) * step;
-        for (const sv of snapVals) { if (Math.abs(v - sv) <= SNAP_RADIUS) return sv; }
-        return Math.max(min, Math.min(max, v));
-      }
-      function getAngle(cx, cy) {
-        const rect = containerEl.getBoundingClientRect();
-        return (Math.atan2(cy - (rect.top + rect.height / 2), cx - (rect.left + rect.width / 2)) * 180) / Math.PI;
-      }
-      containerEl.addEventListener('pointerdown', (e) => {
-        isDragging = true; lastAngle = getAngle(e.clientX, e.clientY);
-        containerEl.setPointerCapture(e.pointerId); ticksEl.classList.add('dragging'); e.preventDefault();
-      });
-      containerEl.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        const angle = getAngle(e.clientX, e.clientY);
-        let delta = angle - lastAngle;
-        if (delta > 180) delta -= 360; if (delta < -180) delta += 360;
-        currentValue = snapValue(currentValue + delta * sensitivity);
-        lastAngle = angle; updateVisual();
-      });
-      containerEl.addEventListener('pointerup', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
-      containerEl.addEventListener('pointercancel', () => { isDragging = false; ticksEl.classList.remove('dragging'); });
-      containerEl.addEventListener('wheel', (e) => {
-        e.preventDefault(); currentValue = snapValue(currentValue + (e.deltaY > 0 ? -step : step)); updateVisual();
-      }, { passive: false });
-      updateVisual();
-      return { getValue: () => currentValue, setValue: (v) => { currentValue = snapValue(v); updateVisual(); } };
-    }
-
-    // Activity Wheel — vertical curved arc selector
-    function createActivityWheel(opts) {
-      const { containerEl, values, descs, icons, initial, onChange, ARC_RADIUS = 280, ARC_STEP_DEG = 10, VISIBLE_RANGE = 5 } = opts;
-      let selectedIdx = values.indexOf(initial); if (selectedIdx < 0) selectedIdx = 0;
-      containerEl.innerHTML = '';
-      const items = values.map((v, i) => {
-        const el = document.createElement('div'); el.className = 'wheel-item';
-        const iconSvg = icons ? icons[i % icons.length] : '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
-        el.innerHTML = '<div class="wheel-right"><span class="wheel-pill">' + v + '</span><div class="wheel-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + iconSvg + '</svg></div><div class="wheel-indicator"></div></div>';
-        el.addEventListener('click', () => { selectedIdx = i; updateWheel(true); if (onChange) onChange(values[selectedIdx]); });
-        containerEl.appendChild(el); return el;
-      });
-      function updateWheel(animate) {
-        items.forEach((el, i) => {
-          const offset = i - selectedIdx, absOffset = Math.abs(offset);
-          const angleRad = (offset * ARC_STEP_DEG * Math.PI) / 180;
-          const arcX = ARC_RADIUS * (1 - Math.cos(angleRad));
-          const arcY = ARC_RADIUS * Math.sin(angleRad);
-          const scale = Math.max(0.72, 1 - absOffset * 0.06);
-          const opacity = absOffset > VISIBLE_RANGE ? 0 : Math.max(0.25, 1 - absOffset * 0.18);
-          el.classList.toggle('selected', offset === 0);
-          el.style.top = 'calc(50% + ' + (-17 + arcY) + 'px)';
-          el.style.transform = 'translateX(' + arcX + 'px) scale(' + scale + ')';
-          el.style.opacity = opacity;
-          el.style.pointerEvents = absOffset > VISIBLE_RANGE ? 'none' : 'auto';
-          if (animate) { el.style.transition = 'transform 280ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease'; setTimeout(() => el.style.transition = '', 300); }
-        });
-      }
-      let wheelAccum = 0; const WHEEL_THRESHOLD = 35;
-      containerEl.addEventListener('wheel', (e) => {
-        e.preventDefault(); wheelAccum += e.deltaY;
-        if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
-        const steps = Math.trunc(wheelAccum / WHEEL_THRESHOLD); wheelAccum -= steps * WHEEL_THRESHOLD;
-        const newIdx = Math.max(0, Math.min(values.length - 1, selectedIdx + steps));
-        if (newIdx !== selectedIdx) { selectedIdx = newIdx; updateWheel(true); if (onChange) onChange(values[selectedIdx]); }
-      }, { passive: false });
-      let touchStartY = 0;
-      containerEl.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
-      containerEl.addEventListener('touchmove', (e) => {
-        const dy = touchStartY - e.touches[0].clientY;
-        if (Math.abs(dy) > 25) { const steps = Math.trunc(dy / 25); touchStartY = e.touches[0].clientY;
-          const newIdx = Math.max(0, Math.min(values.length - 1, selectedIdx + steps));
-          if (newIdx !== selectedIdx) { selectedIdx = newIdx; updateWheel(true); if (onChange) onChange(values[selectedIdx]); } }
-      }, { passive: true });
-      updateWheel(false);
-      return { getValue: () => values[selectedIdx], setValue: (v) => { const idx = values.indexOf(v); if (idx >= 0) { selectedIdx = idx; updateWheel(true); } } };
-    }
-
-    // ── Init Picker 实例 ──
-    function initPickers() {
-      // 旋钮吸附点：只有 5/10/15/20/25/30 有阻力
-      const snapPoints = [5, 10, 15, 20, 25, 30];
-      // 完整数值范围用于 activity wheel
-      const extraValues = Array.from({length: 30}, (_, i) => i + 1);
-
-
-
-      extraPicker = createDialKnob({
-        containerEl: document.getElementById('extraKnobEl'),
-        ticksEl: document.getElementById('extraTicks'),
-        valueEl: document.getElementById('extraValue'),
-        initial: 5, min: 1, max: 30, step: 1,
-        snapVals: snapPoints, sensitivity: 0.25,
-        onChange: (v) => { pendingExtraMins = v; if (extraWheel) extraWheel.setValue(v); },
-      });
-
-      extraWheel = createActivityWheel({
-        containerEl: document.getElementById('extraWheel'),
-        values: extraValues, descs: EXTRA_DESCS, icons: WHEEL_ICONS,
-        initial: 5,
-        onChange: (v) => { pendingExtraMins = v; if (extraPicker) extraPicker.setValue(v); },
-      });
     }
 
     // Init
@@ -4610,11 +4215,9 @@ function settleSecToZero(){
   rollCol(counter.cols[3],0,-1,0.28);   // 秒个位弹性落 0
 }
 
-    initPickers();
     ttInitTimer();
     loadTodayRecords();
     // PR-C (260815): 初始化补录 dashboard (空态显示 "—")
-    updateDashboardExtra();
     // 页脚励志文案轮换
     (function(){
       const quotes = [
@@ -4668,9 +4271,6 @@ function settleSecToZero(){
         updateDashboard();
       });
       if (contentInput) contentInput.addEventListener('input', () => { updateStartBtnState(); updateDashboard(); });
-      // 2026-07-29: 补录内容输入监听 (内容必填校验)
-      const extraContentInput = document.getElementById('extraContentInput');
-      if (extraContentInput) extraContentInput.addEventListener('input', () => { updateExtraBtnState(); });
     })();
     
     // 加载科目列表（补录下拉 + content_options 标签）
@@ -4681,7 +4281,6 @@ function settleSecToZero(){
         const data = await res.json();
         ALL_ITEMS = data.items || [];
         window.ALL_ITEMS = ALL_ITEMS;
-        if (typeof renderExtraItemGrid === 'function') renderExtraItemGrid();
       } catch (e) {
         console.warn('loadAllItems failed', e);
       }
