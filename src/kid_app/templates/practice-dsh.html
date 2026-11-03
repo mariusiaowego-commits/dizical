@@ -2700,19 +2700,6 @@
     flex: 0 0 auto;
     min-width: 0;
   }
-  .pk-exposed-session {
-    color: var(--dash-text-soft);
-    max-width: 75px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .pk-exposed-bpm, .pk-exposed-dur {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-weight: 600;
-    color: var(--dash-text);
-    white-space: nowrap;
-  }
   .pk-exposed-expand-hint {
     font-size: 9.5px;
     color: var(--dash-text-soft);
@@ -2739,14 +2726,6 @@
     min-width: 0 !important;
     gap: 4px !important;
   }
-  #czTicketStage.is-compact #pkCcgSession,
-  .is-compact #pkCcgSession,
-  #czTicketStage.is-compact .pk-exposed-session,
-  .pk-card-exposed-bar.is-compact .pk-exposed-session,
-  .is-compact .pk-exposed-session {
-    display: none !important;
-  }
-  #czTicketStage.is-compact .pk-exposed-expand-hint,
   .pk-card-exposed-bar.is-compact .pk-exposed-expand-hint,
   .is-compact .pk-exposed-expand-hint {
     font-size: 9px !important;
@@ -2776,15 +2755,6 @@
     gap: 4px !important;
     flex-shrink: 0 !important;
     min-width: 0 !important;
-  }
-  #czTicketStage.is-compact .pk-exposed-bpm,
-  .pk-card-exposed-bar.is-compact .pk-exposed-bpm,
-  .is-compact .pk-exposed-bpm,
-  #czTicketStage.is-compact .pk-exposed-dur,
-  .pk-card-exposed-bar.is-compact .pk-exposed-dur,
-  .is-compact .pk-exposed-dur {
-    font-size: 10px !important;
-    flex-shrink: 0 !important;
   }
   .pk-card-body-masked {
     display: block !important;
@@ -19583,12 +19553,10 @@ window.__CZ_CSS = [
   '/* ── 卡片露出条紧凑排版 ── */',
   '#czTicketStage.is-compact .pk-card-exposed-bar, .pk-card-exposed-bar.is-compact { padding: 0 6px !important; }',
   '#czTicketStage.is-compact .pk-exposed-left, .pk-card-exposed-bar.is-compact .pk-exposed-left, .is-compact .pk-exposed-left { flex: 1 1 auto !important; min-width: 0 !important; gap: 4px !important; }',
-  '#czTicketStage.is-compact #pkCcgSession, .is-compact #pkCcgSession, #czTicketStage.is-compact .pk-exposed-session, .pk-card-exposed-bar.is-compact .pk-exposed-session, .is-compact .pk-exposed-session { display: none !important; }',
   '#czTicketStage.is-compact .pk-exposed-expand-hint, .pk-card-exposed-bar.is-compact .pk-exposed-expand-hint, .is-compact .pk-exposed-expand-hint { font-size: 9px !important; padding: 1px 5px !important; flex-shrink: 0 !important; }',
   '#czTicketStage.is-compact .pk-exposed-chip, .pk-card-exposed-bar.is-compact .pk-exposed-chip, .is-compact .pk-exposed-chip { font-size: 8px !important; padding: 1px 4px !important; flex-shrink: 0 !important; }',
   '#czTicketStage.is-compact .pk-exposed-title, .pk-card-exposed-bar.is-compact .pk-exposed-title, .is-compact .pk-exposed-title { font-size: 11.5px !important; max-width: none !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; flex: 1 1 auto !important; }',
   '#czTicketStage.is-compact .pk-exposed-meta, .pk-card-exposed-bar.is-compact .pk-exposed-meta, .is-compact .pk-exposed-meta { gap: 4px !important; flex-shrink: 0 !important; min-width: 0 !important; }',
-  '#czTicketStage.is-compact .pk-exposed-bpm, .pk-card-exposed-bar.is-compact .pk-exposed-bpm, .is-compact .pk-exposed-bpm, #czTicketStage.is-compact .pk-exposed-dur, .pk-card-exposed-bar.is-compact .pk-exposed-dur, .is-compact .pk-exposed-dur { font-size: 10px !important; flex-shrink: 0 !important; }',
   '/* ── 今日练习记录小卡。浅色对齐 D 卡浅银：白瓷底 #FFFDFB + 墨字 #2C3E50。深墨才用深炭 #161A1E。强调色仍是珊瑚/朱，不另造绿。 ── */',
   '.card-records-mini { flex: 0 0 auto; box-sizing: border-box; width: 100%; height: 100%; max-height: 100%; overflow-y: auto; overflow-x: hidden;',
   '  background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); border-radius: 24px; color: var(--dash-text, #2C3E50);',

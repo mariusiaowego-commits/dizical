@@ -100,6 +100,22 @@ def test_practice_dsh_structure_and_contracts():
     assert "fetch('/api/items')" in html, "必须接入 GET /api/items"
 
 
+def test_run_state_keeps_prep_ticket_width():
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    """计时态不能因为票夹收到 50px 就把右栏压进一屏（dad 261103 录屏）。
+
+    可用宽在窄条和计时态下仍按准备态票夹宽扣，这份宽度变形当时记在 czPrepColW。
+    """
+    assert "function comboAvailWidth" in html
+    assert "dataset.czPrepColW" in html, "变形时必须记下准备态票夹宽"
+    assert "stage-bar" in html and "stage-running" in html
+    # 卡槽露出条只留进行中 / 科目全名 / 展开卡片，不再带 BPM 和时长
+    assert 'id="pkCcgBpm"' not in html
+    assert 'id="pkCcgDuration"' not in html
+    assert 'id="pkCcgSession"' not in html
+    assert "pk-exposed-expand-hint" in html
+
+
 def test_post_api_log_with_session_fields(client):
     """测试 POST /api/log 支持练习助手带有的 tempo_note + tempo_bpm + content 字段."""
     items_resp = client.get("/api/items?include_archived=false")
