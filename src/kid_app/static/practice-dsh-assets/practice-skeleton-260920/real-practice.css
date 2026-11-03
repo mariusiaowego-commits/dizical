@@ -202,7 +202,10 @@
      iPad 无键盘 → 不做键盘控制: tabindex=-1 且不画 focus 描边 (dad: 那圈黑框不好看) */
   .ruler-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:grab;
                appearance:none;background:transparent;border:0;margin:0;outline:none;
-               touch-action:none}                          /* sprint 26091901: iPad WebKit 上下滚动拦截 */
+               touch-action:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+                                                           /* sprint 26091901: iPad WebKit 上下滚动拦截 */
+  /* 尺子/旋钮区域内不产生文本选区：拖选到容器边缘会把横向滚动容器一起带走 */
+  .ruler-wrap,.ruler{user-select:none;-webkit-user-select:none}
   .ruler-input:active{cursor:grabbing}
   .ruler-input:disabled{cursor:default}
   .ruler-input:focus,.ruler-input:focus-visible{outline:none;box-shadow:none}

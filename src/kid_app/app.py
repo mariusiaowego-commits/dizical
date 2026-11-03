@@ -1725,6 +1725,145 @@ def api_stage_image_history(limit: int = 20):
     return JSONResponse({"ok": True, "artifacts": out})
 
 
+def _practice_date10(column: str) -> str:
+    """日期列统一成 YYYY-MM-DD。SQLite 存文本，MySQL 的 DATE 会带 00:00:00。"""
+    return f"substr(CAST({column} AS CHAR), 1, 10)"
+
+
+def _session_seconds_sql() -> str:
+    """秒是真值。秒为 0 但分钟 > 0 是没回填的旧行，退回分钟 × 60。"""
+    return (
+        "CASE WHEN duration_seconds IS NULL "
+        "OR (duration_seconds = 0 AND COALESCE(duration_minutes, 0) > 0) "
+        "THEN COALESCE(duration_minutes, 0) * 60 "
+        "ELSE COALESCE(duration_seconds, 0) END"
+    )
+
+
+def _parse_year_month(month: Optional[str]) -> Optional[Tuple[int, int]]:
+    if not month:
+        today = dt.date.today()
+        return today.year, today.month
+    parts = month.split("-")
+    if len(parts) != 2 or len(parts[0]) != 4 or len(parts[1]) != 2:
+        return None
+    try:
+        year = int(parts[0])
+        mon = int(parts[1])
+    except ValueError:
+        return None
+    if year < 2000 or not (1 <= mon <= 12):
+        return None
+    return year, mon
+
+
+@app.get("/api/practices/overview")
+def api_practices_overview():
+    """票夹顶上的两个总数字：累计有练习的天数、当前连续天数。
+
+    连续天数直接复用 streak_days()（从昨天往前数，今天没练不计断）。
+    累计天数数 daily_practices 里 total_minutes > 0 的日子，和连续天数同一张表。
+    """
+    from src import db_adapter
+
+    date10 = _practice_date10("date")
+    cur = db_adapter.execute(
+        db._get_connection(),
+        f"SELECT COUNT(*), MAX({date10}) FROM daily_practices "
+        "WHERE COALESCE(total_minutes, 0) > 0",
+    )
+    row = cur.fetchone()
+    practice_days = int(row[0] or 0) if row else 0
+    last_date = str(row[1])[:10] if row and row[1] else ""
+    return JSONResponse({
+        "streak": streak_days(),
+        "practice_days": practice_days,
+        "last_date": last_date,
+    })
+
+
+@app.get("/api/practices/item-stats")
+def api_practice_item_stats(item_id: Optional[str] = None, month: Optional[str] = None):
+    """一个科目的全部历史，外加某自然月的练习日期（票夹点阵）。
+
+    只读。不写库。dizical-minip 不调用，旧端点的字段不变。
+    """
+    from src import db_adapter
+
+    if item_id is None or not str(item_id).strip().lstrip("-").isdigit():
+        return JSONResponse({"error": "item_id 必须是整数"}, status_code=400)
+    iid = int(item_id)
+    parsed = _parse_year_month(month)
+    if parsed is None:
+        return JSONResponse({"error": "month 格式必须是 YYYY-MM"}, status_code=400)
+    year, mon = parsed
+    month_start = dt.date(year, mon, 1)
+    if mon == 12:
+        month_end = dt.date(year + 1, 1, 1) - dt.timedelta(days=1)
+    else:
+        month_end = dt.date(year, mon + 1, 1) - dt.timedelta(days=1)
+
+    date10 = _practice_date10("practice_date")
+    secs = _session_seconds_sql()
+    conn = db._get_connection()
+    cur = db_adapter.execute(
+        conn,
+        f"""
+        SELECT COUNT(*),
+               COUNT(DISTINCT {date10}),
+               COALESCE(SUM({secs}), 0),
+               COALESCE(MAX({secs}), 0),
+               MAX({date10}),
+               MAX(item_name)
+        FROM practice_sessions
+        WHERE item_id = ?
+        """,
+        (iid,),
+    )
+    row = cur.fetchone()
+    sessions = int(row[0] or 0) if row else 0
+    days = int(row[1] or 0) if row else 0
+    total_seconds = int(row[2] or 0) if row else 0
+    max_seconds = int(row[3] or 0) if row else 0
+    last_raw = row[4] if row else None
+    name = row[5] if row and row[5] else ""
+    last_date = str(last_raw)[:10] if last_raw else ""
+    if last_date:
+        days_ago = (dt.date.today() - dt.date.fromisoformat(last_date)).days
+    else:
+        days_ago = None
+    minutes = (total_seconds + 59) // 60 if total_seconds > 0 else 0
+    max_minutes = (max_seconds + 59) // 60 if max_seconds > 0 else 0
+
+    cur = db_adapter.execute(
+        conn,
+        f"""
+        SELECT DISTINCT {date10} AS d
+        FROM practice_sessions
+        WHERE item_id = ?
+          AND {date10} >= ?
+          AND {date10} <= ?
+        ORDER BY d
+        """,
+        (iid, month_start.isoformat(), month_end.isoformat()),
+    )
+    practice_dates = [str(r[0])[:10] for r in cur.fetchall() if r and r[0]]
+    return JSONResponse({
+        "item_id": iid,
+        "name": name,
+        "days": days,
+        "sessions": sessions,
+        "minutes": minutes,
+        "total_seconds": total_seconds,
+        "max_minutes": max_minutes,
+        "max_seconds": max_seconds,
+        "last_date": last_date,
+        "days_ago": days_ago,
+        "month": f"{year:04d}-{mon:02d}",
+        "practice_dates": practice_dates,
+    })
+
+
 @app.get("/api/practices/{date_str}")
 def api_practice_day(date_str: str):
     """返回指定日期的练习明细 (兼容旧 items 字段, 2026-07-27 新增 sessions[])"""
@@ -2725,14 +2864,14 @@ def practice_page():
 
 @app.get("/practice-dsh", response_class=HTMLResponse)
 def practice_dsh_page():
-    # demo v3.17 落地页：这份 HTML 与配套静态资源在迭代中被反复替换，
+    # demo v3.21 落地页：这份 HTML 与配套静态资源在迭代中被反复替换，
     # 浏览器缓存旧版会表现为「破图 + 原生滑杆 + 数字消失」（卡片内 CSS/JS 未加载）。
-    # 页面本体禁用缓存，iframe 用 ?v=317 强制取新。
+    # 页面本体禁用缓存，iframe 用 ?v=322 强制取新。
     return HTMLResponse(
         content=render("practice-dsh"),
         headers={
             "Cache-Control": "no-store, must-revalidate",
-            "X-Dsh-Build": "v3.17",
+            "X-Dsh-Build": "v3.21",
         },
     )
 

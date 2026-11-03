@@ -2,6 +2,19 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<script>
+  (function () {
+    var s = null;
+    try { s = localStorage.getItem("dizical_skin"); } catch (e) {}
+    if (s !== "ink" && s !== "light") {
+      try {
+        var o = JSON.parse(localStorage.getItem("dizical_practice_dsh_state") || "{}");
+        if (o && (o.skin === "ink" || o.skin === "light")) s = o.skin;
+      } catch (e2) {}
+    }
+    if (s === "ink") document.documentElement.setAttribute("data-skin", "ink");
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dizical 练习助手 · 练习票夹与练习仪表盘</title>
 <style>
@@ -89,82 +102,95 @@
     --dash-delta-down: #0C8A60;
     --dash-vermilion-text: #A04217; /* 浅色皮肤：朱橙墨调，压住 accent-wash 上 ≥4.5 */
     --dash-coral-text: #C93B3B;
+    --dash-modal-surface: linear-gradient(180deg, #FFFDFB 0%, #F4EFEB 100%);
+    --dash-modal-surface-2: #EFEAE2;
+    --dash-modal-ink: #2C3E50;
+    --dash-modal-ink-dim: #666666;
+    --dash-modal-line: rgba(44, 62, 80, 0.16);
+    --dash-modal-accent: #CC3B3B;
 }
 
 :root[data-skin="ink"] {
-    --dash-page: #2C3E50;
-    --dash-shell-hi: #5C6770;
-    --dash-shell-lo: #3E474E;
+    --dash-page: #1C2127;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
+    --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
     --dash-accent: #FF8C5A;
     --dash-accent-soft: #FFA073;
     --dash-accent-wash: rgba(255, 140, 90, 0.08);
     --dash-accent-line: rgba(255, 140, 90, 0.30);
     --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: #B8531F;
+    --dash-accent-text: #FF8C5A;
     --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(222, 215, 205, 0.28);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
-      --dash-hole-active: #FF5722;
+    --dash-kicker: #A8A29A;
+    --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
-    --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
     --dash-delta-up: #FF6B6B;
     --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
-    --dash-accent: #FF8C5A;
-    --dash-accent-soft: #FFA073;
-    --dash-accent-wash: rgba(255, 140, 90, 0.08);
-    --dash-accent-line: rgba(255, 140, 90, 0.30);
-    --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: var(--dash-accent);
-    --dash-accent-solid: #B8531F;
+    --dash-vermilion-text: #FF9E7A;
     --dash-coral-text: #FF6B6B;
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
 }
 
   /* ══════════════════════════════════════════════════════════════
@@ -205,7 +231,7 @@
   }
   .cz-btn:hover { color: var(--dash-text); }
   .cz-btn.is-on { background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px var(--dash-ink-a16); }
-  :root[data-skin="ink"] .cz-btn.is-on { background: var(--dash-surface-soft); color: var(--dash-text); }
+  :root[data-skin="ink"] .cz-btn.is-on { background: var(--dash-coral); color: var(--dash-page); }
   .cz-checks { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .cz-checks label {
     display: inline-flex; align-items: center; gap: 4px;
@@ -346,6 +372,12 @@
     --s6-exit-slot-dur: 0.26s;
     --s6-exit-ticket-delay: 0.18s;
     --s6-exit-ticket-dur: 0.28s;
+    --dash-modal-surface: linear-gradient(180deg, #FFFDFB 0%, #F4EFEB 100%);
+    --dash-modal-surface-2: #EFEAE2;
+    --dash-modal-ink: #2C3E50;
+    --dash-modal-ink-dim: #666666;
+    --dash-modal-line: rgba(44, 62, 80, 0.16);
+    --dash-modal-accent: #CC3B3B;
   }
   [data-theme="dizicute"] {
     --surface-page: var(--c-tertiary);
@@ -421,6 +453,63 @@
     --pk-drawer-item-bg: var(--surface-card);
     --pk-drawer-item-border: 1px solid var(--border-card);
     --pk-drawer-item-radius: 10px;
+  }
+  [data-theme="dizicute"][data-skin="ink"] {
+    --surface-page: #1C2127;
+    --surface-card: #232931;
+    --surface-subtle: rgba(255, 107, 107, 0.12);
+    --surface-well: rgba(222, 215, 205, 0.08);
+    --surface-archived: rgba(222, 215, 205, 0.10);
+    --border-card: rgba(222, 215, 205, 0.20);
+    --border-strong: rgba(222, 215, 205, 0.28);
+    --border-active: var(--c-primary);
+    --text-main: #DED7CD;
+    --text-muted: #A8A29A;
+    --text-on-cta: #1C2127;
+    --cta-bg: var(--c-primary);
+    --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.24), 0 10px 28px -6px rgba(0, 0, 0, 0.36),
+                   inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+    --shadow-raised: 0 4px 10px rgba(0, 0, 0, 0.28), 0 16px 36px -6px rgba(0, 0, 0, 0.44),
+                     inset 0 1px 0 0 rgba(255, 255, 255, 0.10);
+    --shadow-ticket: 0 6px 20px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.24),
+                     inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --shadow-inserted: 0 8px 22px rgba(0, 0, 0, 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-top {
+    background: #14181C;
+    border-color: #21262D;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-pill {
+    background: #212830;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-ticket-subject-block,
+  [data-theme="dizicute"][data-skin="ink"] #practiceStage.stage-running .pk-ticket-subject-block {
+    background: rgba(28, 33, 39, 0.88);
+    border-color: var(--border-card);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-subject-info-card {
+    background: rgba(28, 33, 39, 0.65);
+    border-color: var(--border-card);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-stub-memo-block {
+    background: rgba(0, 0, 0, 0.22);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-perf-notch-left,
+  [data-theme="dizicute"][data-skin="ink"] .pk-perf-notch-right {
+    border-color: var(--border-card);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-perforation-line {
+    border-top-color: var(--border-card);
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -511,7 +600,7 @@
   .pk-top {
     max-width: 1280px;
     width: 100%;
-    height: 40px;
+    height: 44px;
     margin: 0 auto 8px;
     display: flex;
     align-items: center;
@@ -589,9 +678,15 @@
     box-shadow: 0 1px 2px rgba(44, 62, 80, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
   .pk-pill.mini {
+    height: 28px;
     min-height: 28px;
-    padding: 3px 10px;
+    padding: 0 11px;
     font-size: 11.5px;
+    box-sizing: border-box;
+  }
+  .pk-pill.mini.busy {
+    opacity: 0.55;
+    pointer-events: none;
   }
   .pk-pill.mark {
     background: var(--surface-subtle);
@@ -680,9 +775,9 @@
       padding: 3px 6px;
     }
     .pk-top {
-      height: 32px;
+      height: 38px;
       margin-bottom: 4px;
-      padding: 0 6px;
+      padding: 0 8px;
     }
     .pk-stage-wrap {
       min-height: 0;
@@ -821,7 +916,7 @@
       padding: 2px 6px;
     }
     .pk-top {
-      height: 28px;
+      height: 36px;
       margin-bottom: 2px;
       padding: 0 6px;
     }
@@ -2185,7 +2280,8 @@
       max-height: 52px !important;
       flex: 0 0 auto !important;
       overflow: visible !important;
-      margin-bottom: 12px !important;
+      /* 手机/竖屏：黑 bar 与下方 dashboard 贴紧，不再留 24px 空档 */
+      margin-bottom: 4px !important;
     }
     #practiceStage.stage-bar .pk-run-rail {
       flex-direction: row !important;
@@ -2451,7 +2547,7 @@
   #czTicketStage {
     position: absolute;
     left: 50%;
-    top: var(--cz-card-rise, -16px);
+    top: var(--cz-card-rise, -20px);
     bottom: auto;
     width: 100%;
     height: var(--pk-card-total-h, 86px);
@@ -2463,16 +2559,21 @@
     z-index: 44;
     border-radius: 12px 12px 4px 4px;
     /* v3.10（261027）：卡槽卡片不走黑色金属风格，改本项目主题色（dizicute 奶油面），
-       不透明（渐变两端均为实色，无 alpha）。深墨皮肤下随 --dash-* token 自动转深。 */
+       不透明（渐变两端均为实色，无 alpha）。深墨皮肤下随 --dash-* token 自动转深。
+       不用 clip-path:inset(0)：直角裁切会把上圆角切成直线，顶边就看不见了。 */
     background: linear-gradient(180deg, var(--dash-surface-soft) 0%, var(--dash-surface-2) 48%, var(--dash-shell-lo) 100%);
     border: 1px solid var(--dash-ink-a16);
+    border-top: 1px solid rgba(44, 62, 80, 0.38);
     border-bottom: 1px solid var(--dash-ink-a16);
     box-shadow: inset 0 1px 0 var(--dash-key-hi), inset 0 -14px 22px var(--dash-shell-inset), 0 8px 18px var(--dash-shell-shadow);
     cursor: pointer;
     overflow: hidden;
-    clip-path: inset(0 0 0 0);
     display: flex;
     flex-direction: column;
+  }
+  :root[data-skin="ink"] #czTicketStage,
+  html[data-skin="ink"] #czTicketStage {
+    border-top-color: rgba(222, 215, 205, 0.55);
   }
   #practiceStage.stage-running:not(.cz-ticket-exit) #czTicketStage,
   #practiceStage.cz-ticket-live:not(.cz-ticket-exit) #czTicketStage {
@@ -2539,7 +2640,8 @@
     pointer-events: none !important;
   }
 
-  /* 露出部分（约 1/5）：标题 + session + 速度 + 时长 */
+  /* 露出部分（约 1/5）：只留「进行中」+ 科目全名 + 展开胶囊。
+     速度和时长不放这里，长科目名才能排开。 */
   .pk-card-exposed-bar {
     height: var(--pk-card-exposed-h, 54px);
     flex: 0 0 var(--pk-card-exposed-h, 54px);
@@ -2547,22 +2649,22 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 14px;
-    background: transparent;
+    background: linear-gradient(180deg, var(--dash-surface-soft) 0%, var(--dash-surface-2) 52%, var(--dash-shell-lo) 120%);
+    border-radius: 12px 12px 0 0;
     border-bottom: none;
-    box-shadow: inset 0 -1px 0 var(--dash-ink-a12);
+    box-shadow: inset 0 1px 0 var(--dash-key-hi), inset 0 -1px 0 var(--dash-ink-a12);
     color: var(--dash-text);
     box-sizing: border-box;
     cursor: pointer;
     overflow: hidden;
   }
-  .pk-card-exposed-bar:hover {
-    background: var(--dash-ink-a12);
-  }
   .pk-exposed-left {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 0 0 auto;
+    /* 露出的 1/5 只留 chip + 科目全名 + 展开胶囊，科目名吃掉中间全部余量 */
+    flex: 1 1 auto;
+    min-width: 0;
   }
   .pk-exposed-chip {
     font-size: 8.5px;
@@ -2582,9 +2684,10 @@
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: clamp(80px, 28cqw, 180px);
+    /* 不再卡 max-width：卡槽里 90% 的科目名原来都被截成「春耕曲主…」 */
+    max-width: none;
     min-width: 0;
-    flex-shrink: 1;
+    flex: 1 1 auto;
   }
   .pk-exposed-meta {
     display: flex;
@@ -2594,21 +2697,8 @@
     font-size: 11px;
     color: var(--dash-text-soft);
     white-space: nowrap;
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     min-width: 0;
-  }
-  .pk-exposed-session {
-    color: var(--dash-text-soft);
-    max-width: 75px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .pk-exposed-bpm, .pk-exposed-dur {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-weight: 600;
-    color: var(--dash-text);
-    white-space: nowrap;
   }
   .pk-exposed-expand-hint {
     font-size: 9.5px;
@@ -2620,11 +2710,9 @@
     white-space: nowrap;
   }
   @media (max-width: 600px) {
-    .pk-exposed-session { display: none !important; }
-    .pk-exposed-expand-hint { display: none !important; }
     .pk-exposed-chip { font-size: 8px !important; padding: 1px 4px !important; }
-    .pk-exposed-title { font-size: 11.5px !important; max-width: 80px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
-    .pk-exposed-bpm, .pk-exposed-dur { font-size: 10px !important; flex-shrink: 0 !important; }
+    .pk-exposed-title { font-size: 11.5px !important; max-width: none !important; }
+    .pk-exposed-expand-hint { font-size: 9px !important; padding: 1px 5px !important; }
   }
   #czTicketStage.is-compact .pk-card-exposed-bar,
   .pk-card-exposed-bar.is-compact,
@@ -2638,17 +2726,11 @@
     min-width: 0 !important;
     gap: 4px !important;
   }
-  #czTicketStage.is-compact #pkCcgSession,
-  .is-compact #pkCcgSession,
-  #czTicketStage.is-compact .pk-exposed-session,
-  .pk-card-exposed-bar.is-compact .pk-exposed-session,
-  .is-compact .pk-exposed-session {
-    display: none !important;
-  }
-  #czTicketStage.is-compact .pk-exposed-expand-hint,
   .pk-card-exposed-bar.is-compact .pk-exposed-expand-hint,
   .is-compact .pk-exposed-expand-hint {
-    display: none !important;
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    flex-shrink: 0 !important;
   }
   #czTicketStage.is-compact .pk-exposed-chip,
   .pk-card-exposed-bar.is-compact .pk-exposed-chip,
@@ -2661,11 +2743,11 @@
   .pk-card-exposed-bar.is-compact .pk-exposed-title,
   .is-compact .pk-exposed-title {
     font-size: 11.5px !important;
-    max-width: clamp(76px, 35cqw, 140px) !important;
+    max-width: none !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
-    flex-shrink: 1 !important;
+    flex: 1 1 auto !important;
   }
   #czTicketStage.is-compact .pk-exposed-meta,
   .pk-card-exposed-bar.is-compact .pk-exposed-meta,
@@ -2673,15 +2755,6 @@
     gap: 4px !important;
     flex-shrink: 0 !important;
     min-width: 0 !important;
-  }
-  #czTicketStage.is-compact .pk-exposed-bpm,
-  .pk-card-exposed-bar.is-compact .pk-exposed-bpm,
-  .is-compact .pk-exposed-bpm,
-  #czTicketStage.is-compact .pk-exposed-dur,
-  .pk-card-exposed-bar.is-compact .pk-exposed-dur,
-  .is-compact .pk-exposed-dur {
-    font-size: 10px !important;
-    flex-shrink: 0 !important;
   }
   .pk-card-body-masked {
     display: block !important;
@@ -2925,7 +2998,8 @@
       min-height: 52px !important;
       max-height: 52px !important;
       overflow: visible !important;
-      margin-bottom: 12px !important;
+      /* 竖屏计时态：黑条与 dashboard 收紧（配合 .pk-stage-wrap gap:8px） */
+      margin-bottom: 4px !important;
     }
     #practiceStage.stage-running:not(.cz-ticket-exit):not(.cz-ticket-enter) #pkTicketCard {
       display: none !important;
@@ -4070,6 +4144,223 @@
     border-radius: 22px;
   }
 
+  /* ══════ 结束确认弹窗（双主题 · 浅银暖白瓷 / 深墨柔化深炭） ══════ */
+  .pk-finish-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(44, 62, 80, 0.38);
+    backdrop-filter: blur(3px);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-finish-modal {
+    background: rgba(10, 13, 16, 0.62);
+  }
+  .pk-finish-modal.open { display: flex; }
+  .pk-finish-box {
+    width: min(420px, 100%);
+    max-height: calc(100vh - 36px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 20px 20px 16px;
+    border-radius: 22px;
+    color: var(--dash-modal-ink);
+    background: var(--dash-modal-surface);
+    border: 1px solid var(--dash-modal-line);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 24px 60px -12px rgba(44, 62, 80, 0.24);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-finish-box {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px -12px rgba(0, 0, 0, 0.62);
+  }
+  .pk-finish-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .pk-finish-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--dash-modal-ink);
+  }
+  .pk-finish-tag {
+    font-size: 12px;
+    color: var(--dash-modal-ink-dim);
+    background: var(--dash-modal-surface-2);
+    border: 1px solid var(--dash-modal-line);
+    border-radius: 999px;
+    padding: 2px 9px;
+    white-space: nowrap;
+  }
+  .pk-finish-dur {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    margin: 14px 0 4px;
+  }
+  .pk-finish-dur-val {
+    font-size: 40px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    color: var(--dash-modal-accent);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-finish-dur-val {
+    color: var(--c-primary);
+  }
+  .pk-finish-dur-cap {
+    font-size: 13px;
+    color: var(--dash-modal-ink-dim);
+  }
+  .pk-finish-split {
+    width: 100%;
+    height: 1px;
+    margin: 14px 0;
+    background: linear-gradient(90deg, var(--dash-modal-line), transparent);
+  }
+  .pk-finish-label {
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    color: var(--dash-modal-ink-dim);
+    margin-bottom: 9px;
+  }
+  .pk-finish-reps-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .pk-finish-readout {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    border-radius: 14px;
+    background: var(--dash-modal-surface-2);
+    border: 1px solid var(--dash-modal-line);
+    box-shadow: inset 0 1px 3px rgba(44, 62, 80, 0.08);
+    flex: 0 0 auto;
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-finish-readout {
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.35);
+  }
+  .pk-finish-reps-val {
+    min-width: 52px;
+    text-align: center;
+    font-size: 26px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--dash-modal-ink);
+  }
+  .pk-finish-step {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    border: 1px solid var(--dash-modal-line);
+    background: var(--surface-card);
+    color: var(--dash-modal-ink);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .pk-finish-step:active { transform: scale(0.94); }
+  .pk-finish-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .pk-finish-preset {
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--dash-modal-line);
+    background: var(--dash-modal-surface-2);
+    color: var(--dash-modal-ink);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .pk-finish-preset.is-on {
+    background: var(--dash-modal-accent);
+    border-color: var(--dash-modal-accent);
+    color: #FFF8F0;
+    font-weight: 700;
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-finish-preset.is-on {
+    background: var(--c-primary);
+    border-color: var(--c-primary);
+    color: #1C2127;
+  }
+  .pk-finish-hint {
+    margin-top: 9px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dash-modal-ink-dim);
+  }
+  .pk-finish-content-wrap { margin-top: 14px; }
+  .pk-finish-content-input {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--dash-modal-line);
+    background: var(--dash-modal-surface-2);
+    color: var(--dash-modal-ink);
+    font: inherit;
+    font-size: 14px;
+  }
+  .pk-finish-content-input:focus {
+    outline: none;
+    border-color: var(--c-primary);
+  }
+  .pk-finish-error {
+    margin-top: 12px;
+    padding: 9px 12px;
+    border-radius: 11px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--dash-modal-accent);
+    background: rgba(255, 107, 107, 0.12);
+    border: 1px solid rgba(204, 59, 59, 0.36);
+  }
+  [data-theme="dizicute"][data-skin="ink"] .pk-finish-error {
+    color: #FFD9D0;
+    background: rgba(255, 107, 107, 0.14);
+    border-color: rgba(255, 107, 107, 0.42);
+  }
+  .pk-finish-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .pk-finish-actions .pk-cta { flex: 1 1 auto; }
+  .pk-finish-actions .pk-cta.is-primary {
+    background: var(--dash-modal-accent);
+    border-color: var(--dash-modal-accent);
+    color: #FFF8F0;
+  }
+  .pk-finish-actions .pk-cta.is-sub {
+    background: var(--dash-modal-surface-2);
+    border: 1px solid var(--dash-modal-line);
+    color: var(--dash-modal-ink);
+    box-shadow: none;
+  }
+  .pk-finish-note {
+    margin-top: 11px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--dash-modal-ink-dim);
+    text-align: center;
+  }
+  .pk-finish-screen[hidden] { display: none; }
+
   /* ══════ 模块 4：老师要求卡（常驻可见 · 字级下限 ≥12.5px · 结构稳定） ══════ */
   .pk-req-card {
     background: var(--pk-req-bg, var(--surface-card));
@@ -4419,6 +4710,7 @@
     <span class="pk-mid" id="pkMid">女儿竹笛早课</span>
     <span class="pk-grow"></span>
     <button class="pk-pill mini" id="pkStateToggle">切到练习态</button>
+    <button class="pk-pill mini" id="pkRelayoutBtn" title="重新测量并排布全部卡片（组合切换/增减卡片后布局走样时使用）">刷新布局</button>
     <button class="pk-pill mini ok" id="pkRecords">今日记录 15分 · 3次 ▾</button>
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
   </header>
@@ -4770,9 +5062,6 @@
                 <span class="pk-exposed-title" id="pkCcgName">吸气长音</span>
               </div>
               <div class="pk-exposed-meta">
-                <span class="pk-exposed-session" id="pkCcgSession">未选内容</span>
-                <span class="pk-exposed-bpm" id="pkCcgBpm">60 BPM</span>
-                <span class="pk-exposed-dur" id="pkCcgDuration">10分</span>
                 <span class="pk-exposed-expand-hint">展开卡片 ▾</span>
               </div>
             </div>
@@ -5017,6 +5306,65 @@
   </div>
 </aside>
 
+<!-- ══════════ 结束确认弹窗（唯一入库入口） ══════════ -->
+<div class="pk-finish-modal" id="pkFinishConfirmModal" role="dialog" aria-modal="true" aria-label="结束本次练习">
+  <div class="pk-finish-box">
+    <div class="pk-finish-head">
+      <div class="pk-finish-title" id="pkFinishTitle">结束本次练习</div>
+      <div class="pk-finish-tag" id="pkFinishTag">提前结束</div>
+    </div>
+    <div class="pk-finish-dur">
+      <span class="pk-finish-dur-val" id="pkFinishDurationVal">00:00</span>
+      <span class="pk-finish-dur-cap" id="pkFinishDurationCap">本次练习时长</span>
+    </div>
+
+    <div class="pk-finish-screen" id="pkFinishScreenMain">
+      <div class="pk-finish-split"></div>
+      <div class="pk-finish-label">练习遍数 · 可留空</div>
+      <div class="pk-finish-reps-row">
+        <div class="pk-finish-readout">
+          <button type="button" class="pk-finish-step" id="pkRepsMinus" aria-label="减少一遍">−</button>
+          <span class="pk-finish-reps-val" id="pkRepsReadout">—</span>
+          <button type="button" class="pk-finish-step" id="pkRepsPlus" aria-label="增加一遍">+</button>
+        </div>
+        <div class="pk-finish-presets" id="pkRepsPresets">
+          <button type="button" class="pk-finish-preset is-on" data-reps="0">不记</button>
+          <button type="button" class="pk-finish-preset" data-reps="1">1遍</button>
+          <button type="button" class="pk-finish-preset" data-reps="3">3遍</button>
+          <button type="button" class="pk-finish-preset" data-reps="5">5遍</button>
+          <button type="button" class="pk-finish-preset" data-reps="10">10遍</button>
+          <button type="button" class="pk-finish-preset" data-reps="20">20遍</button>
+        </div>
+      </div>
+      <div class="pk-finish-hint">基本功按时长练可不记遍数；曲目练习建议填实际遍数，方便周报统计。</div>
+
+      <div class="pk-finish-content-wrap" id="pkFinishContentWrap" hidden>
+        <div class="pk-finish-label">本次练习内容 · 必填</div>
+        <input type="text" class="pk-finish-content-input" id="pkFinishContentInput" maxlength="200" placeholder="例如：第一分句连吐">
+      </div>
+
+      <div class="pk-finish-error" id="pkFinishErrorBanner" hidden></div>
+
+      <div class="pk-finish-actions">
+        <button type="button" class="pk-cta is-primary" id="pkFinishSubmitBtn">提交</button>
+        <button type="button" class="pk-cta is-sub" id="pkFinishResumeBtn">继续练</button>
+        <button type="button" class="pk-cta is-sub" id="pkFinishAbortBtn">不练了</button>
+      </div>
+      <div class="pk-finish-note" id="pkFinishNote">「不练了」会丢弃这一段已练时长，不写入记录。</div>
+    </div>
+
+    <div class="pk-finish-screen" id="pkFinishScreenZero" hidden>
+      <div class="pk-finish-split"></div>
+      <div class="pk-finish-title" style="font-size:15px">本次不记录遍数？</div>
+      <div class="pk-finish-hint" id="pkFinishZeroText">确认后将正常记录练习时长，仅跳过遍数统计。</div>
+      <div class="pk-finish-actions">
+        <button type="button" class="pk-cta is-sub" id="pkFinishZeroBackBtn">返回填遍数</button>
+        <button type="button" class="pk-cta is-primary" id="pkFinishZeroConfirmBtn">确认只记时长</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ 生产真件依赖全局变量 ══════════ -->
 <script>
   let duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
@@ -5024,6 +5372,12 @@
   /* 本次计时段的入库状态：runEnterTime = 开始时刻（CST ISO），sessionSaved = 本段是否已写入。*/
   let runEnterTime = '';
   let sessionSaved = false;
+  /* 结束确认状态机（唯一入库入口 = 弹窗里的「提交」）。*/
+  let finishPending = false;
+  let finishSubmitting = false;
+  let finishReason = null;
+  let finishSavedElapsed = 0;
+  let selectedReps = 0;
 </script>
 
 <script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
@@ -5914,11 +6268,24 @@ function renderEmptyTicket() {
   syncStartState();
 }
 
-let currentDemoMonth = new URLSearchParams(window.location.search).get('month') || '2026-09';
+function localMonthStr(offset) {
+  var n = new Date();
+  n.setDate(1);
+  n.setMonth(n.getMonth() + (offset || 0));
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+function shiftMonth(ym, delta) {
+  var parts = String(ym || localMonthStr(0)).split('-');
+  var n = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1 + (delta || 0), 1);
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+/* 点阵默认看本月。画布是 srcdoc，读不到页面 query，不再锁死 2026-09。 */
+let currentDemoMonth = localMonthStr(0);
+var itemStatsPending = {};
+var itemStatsFailed = {};
 
-/* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
-function renderSubjectStats() {
-  const stats = (cur && ITEM_STATS[cur.id]) || {
+function emptySubjectStats() {
+  return {
     id: cur ? cur.id : 0,
     name: cur ? cur.name : "未选择科目",
     days: 0,
@@ -5929,6 +6296,47 @@ function renderSubjectStats() {
     daysAgo: "-",
     practiceDates: []
   };
+}
+
+/* 科目历史改读 /api/practices/item-stats。文件里的演示字典不再上屏。 */
+function ensureItemStats(itemId, month) {
+  var key = itemId + '|' + month;
+  var row = ITEM_STATS[itemId];
+  if (row && row._live && row._month === month) return;
+  if (itemStatsPending[key] || itemStatsFailed[key]) return;
+  itemStatsPending[key] = true;
+  fetch('/api/practices/item-stats?item_id=' + encodeURIComponent(itemId) + '&month=' + encodeURIComponent(month))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      delete itemStatsPending[key];
+      if (!data || data.error) { itemStatsFailed[key] = true; return; }
+      ITEM_STATS[data.item_id] = {
+        id: data.item_id,
+        name: data.name || '',
+        days: data.days || 0,
+        sessions: data.sessions || 0,
+        minutes: data.minutes || 0,
+        maxMinutes: data.max_minutes || 0,
+        lastDate: data.last_date || '暂无记录',
+        daysAgo: (data.last_date ? data.days_ago : '-'),
+        practiceDates: data.practice_dates || [],
+        _month: data.month,
+        _live: true
+      };
+      if (cur && String(cur.id) === String(itemId) && currentDemoMonth === month) renderSubjectStats();
+    })
+    .catch(function () {
+      delete itemStatsPending[key];
+      itemStatsFailed[key] = true;
+    });
+}
+
+/* 渲染科目历史信息模块（逐帧 copy 参考图：左大数字+自然月7列日历点阵，右4行科目真实数据） */
+function renderSubjectStats() {
+  const liveRow = (cur && ITEM_STATS[cur.id] && ITEM_STATS[cur.id]._live && ITEM_STATS[cur.id]._month === currentDemoMonth)
+    ? ITEM_STATS[cur.id] : null;
+  const stats = liveRow || emptySubjectStats();
+  if (cur) ensureItemStats(cur.id, currentDemoMonth);
 
   const daysEl = document.getElementById('pkSubjectDaysVal');
   if (daysEl) daysEl.textContent = stats.days;
@@ -5955,8 +6363,9 @@ function renderSubjectStats() {
     }
   }
 
-  // 渲染自然月7列日历点阵（当前自然月 2026-09 或切 2026-08 历史自然月）
+  // 自然月点阵：默认本月，按钮在本月和上月之间切
   renderMonthDotMatrix(stats);
+  if (typeof syncRunRailCard === 'function') syncRunRailCard();
 }
 
 function renderMonthDotMatrix(stats) {
@@ -5986,13 +6395,12 @@ function renderMonthDotMatrix(stats) {
   }
 
   if (toggleBtn) {
-    if (currentDemoMonth === '2026-09') {
-      toggleBtn.textContent = '切8月';
-      toggleBtn.title = '当前为9月(最新云端真值)，点击切换至8月查看历史打卡数据';
-    } else {
-      toggleBtn.textContent = '切9月';
-      toggleBtn.title = '当前为8月(历史云端真值)，点击切回9月(当月)';
-    }
+    var nowMonth = localMonthStr(0);
+    var showingNow = currentDemoMonth === nowMonth;
+    var other = showingNow ? shiftMonth(nowMonth, -1) : nowMonth;
+    var otherNum = parseInt(other.slice(5), 10);
+    toggleBtn.textContent = '切' + otherNum + '月';
+    toggleBtn.title = showingNow ? '当前是本月，点击看上月打卡' : '当前不是本月，点击回本月';
   }
 
   function fillGrid(targetEl, dotClassPrefix) {
@@ -6041,13 +6449,9 @@ function toggleDemoMonth(targetMonth) {
   if (targetMonth) {
     currentDemoMonth = targetMonth;
   } else {
-    currentDemoMonth = (currentDemoMonth === '2026-09') ? '2026-08' : '2026-09';
+    var nowMonth = localMonthStr(0);
+    currentDemoMonth = (currentDemoMonth === nowMonth) ? shiftMonth(nowMonth, -1) : nowMonth;
   }
-  try {
-    const url = new URL(window.location.href);
-    url.searchParams.set('month', currentDemoMonth);
-    window.history.replaceState({}, '', url.toString());
-  } catch (e) {}
   renderSubjectStats();
 }
 
@@ -6335,7 +6739,7 @@ function pkTick() {
     const meta = document.getElementById('metaVal');
     if (meta) meta.innerHTML = '总计 ' + duration + '<small>分钟</small> · 剩余 ' + leftStr;
 
-    if (elapsed >= duration * 60) finish(true);
+    if (elapsed >= duration * 60) requestFinish(true);
   }, 1000);
 }
 
@@ -6351,16 +6755,14 @@ function syncRunRailCard() {
     const bar = cd.getElementById('pkCardExposedBar');
     if (bar) bar.classList.toggle('is-compact', isCompact);
   }
-  const stats = (cur && ITEM_STATS[cur.id]) || {};
+  const rawStats = (cur && ITEM_STATS[cur.id] && ITEM_STATS[cur.id]._live) ? ITEM_STATS[cur.id] : null;
+  const stats = rawStats || {};
   const set = (id, value) => {
     const el = cd.getElementById(id);
     if (el) el.textContent = value == null || value === '' ? '—' : String(value);
   };
   set('pkCcgName', cur ? (cur.name || '练习曲目') : '未选择科目');
   set('pkCcgNo', 'No.' + (cur ? (cur.id || '—') : '----'));
-  set('pkCcgBpm', bpm + ' BPM');
-  set('pkCcgDuration', duration + '分');
-  set('pkCcgSession', content || '未选内容');
   set('pkCcgNote', NOTES[noteIdx] ? NOTES[noteIdx].cap : '四分音符');
   set('pkCcgDays', stats.days || 0);
   set('pkCcgSessions', stats.sessions || 0);
@@ -6562,9 +6964,15 @@ function refreshBarHeight() {
 }
 window.addEventListener('resize', refreshBarHeight);
 
+/* 变形结束时通知外层页再排一次。可用宽仍按准备态票夹宽扣（comboAvailWidth），
+   所以这里只是对齐分页，不会把卡片压进一屏。 */
+function notifyBarMorph() {
+  try { if (window.parent && window.parent !== window) window.parent.postMessage({ cz: 'bar-morph' }, '*'); } catch (e) {}
+}
 function morphTicketToBar(callback, instant) {
   if (isBarDeformed) {
-    if (typeof callback === 'function') callback();
+    notifyBarMorph();
+      if (typeof callback === 'function') callback();
     return;
   }
   isBarDeformed = true;
@@ -6618,6 +7026,8 @@ function morphTicketToBar(callback, instant) {
   const isDesktop = window.innerWidth >= 1024;
   const targetColWidth = isStacked ? (leftCol && leftCol.parentElement ? leftCol.parentElement.offsetWidth : 360) : 50;
   const startColWidth = leftCol ? leftCol.offsetWidth : (isDesktop ? 380 : 360);
+  /* 外层 fitWideCombo 用这份宽度当布局预算，避免窄条 50px 把右栏卡片压窄。 */
+  if (stage && startColWidth > 120) stage.dataset.czPrepColW = String(Math.round(startColWidth));
   /* 桌面态：左栏高度钉成票夹高度，黑窄条（height:100%）动画全程不忽高忽低 */
   if (leftCol && !isStacked) {
     leftCol.style.height = prepHeight + 'px';
@@ -6637,7 +7047,8 @@ function morphTicketToBar(callback, instant) {
       ticketCard.style.minHeight = prepHeight + 'px';
     }
     updateReselectBtnState();
-    if (typeof callback === 'function') callback();
+    notifyBarMorph();
+      if (typeof callback === 'function') callback();
     return;
   }
 
@@ -6653,7 +7064,8 @@ function morphTicketToBar(callback, instant) {
       ticketCard.style.minHeight = prepHeight + 'px';
     }
     updateReselectBtnState();
-    if (typeof callback === 'function') callback();
+    notifyBarMorph();
+      if (typeof callback === 'function') callback();
     return;
   }
 
@@ -6679,6 +7091,7 @@ function morphTicketToBar(callback, instant) {
         ticketCard.style.minHeight = prepHeight + 'px';
       }
       updateReselectBtnState();
+      notifyBarMorph();
       if (typeof callback === 'function') callback();
     }
   });
@@ -6828,6 +7241,7 @@ function expandBarToFolio(callback, instant) {
     updateCollapsedProgress();
     updateReselectBtnState();
     try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
+    notifyBarMorph();
     if (typeof callback === 'function') callback();
   };
 
@@ -6974,12 +7388,13 @@ function nowCstLocal() {
          `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
 }
 
-async function postPracticeLog(seconds) {
+/* 组装本次入库载荷。practice_at 永远是本段开始时刻（runEnterTime），重试时不变，
+   后端 _dedup_key 靠它 + seconds + reps 做 10 秒幂等去重，避免连点/重传双写。 */
+function buildPracticeLogBody(seconds, reps) {
   const subject = cur ? { id: cur.id, name: cur.name } : null;
-  if (!subject || !subject.id) { showToast('没有可入库的练习科目'); return; }
+  if (!subject || !subject.id) { return { error: '没有可入库的练习科目' }; }
   const detail = String(content || '').trim();
-  /* 内容为空就没有「本次练了什么」，写进去会是一条空 session。*/
-  if (!detail) { showToast('本次练习没有内容，未入库'); return; }
+  if (!detail) { return { error: '本次练习没有内容，请先补填练习内容' }; }
   const tempo = Math.min(200, Math.max(40, parseInt(bpm, 10) || 60));
   const note = (NOTES[noteIdx] && NOTES[noteIdx].sym) || '♩';
   const minutes = Math.max(1, Math.ceil(seconds / 60));
@@ -6997,30 +7412,42 @@ async function postPracticeLog(seconds) {
     tempo_bpm: tempo,
     content: detail
   };
+  /* 后端 REPS_MIN = 1：不记遍数时省略字段，绝不传 0。 */
+  const repNum = Number(reps);
+  if (Number.isFinite(repNum) && repNum >= 1) { body.reps = Math.min(99, Math.round(repNum)); }
+  return { body: body, minutes: minutes };
+}
+
+/* 返回 { ok, error }。成功后的礼花/徽章走 window.top 桥接，独占 /practice-dsh 时静默跳过。 */
+async function postPracticeLog(seconds, reps) {
+  const built = buildPracticeLogBody(seconds, reps);
+  if (built.error) { return { ok: false, error: built.error }; }
+  const body = built.body;
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 8000) : null;
   try {
     const res = await fetch('/api/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => null);
     if (res.ok && json && json.ok) {
-      showToast('已记录 ' + minutes + ' 分 ' + (seconds % 60) + ' 秒');
-      /* 回灌 D（今日时长）/ R（今日记录）两张卡的真实数据。*/
-      try {
-        if (window.parent && typeof window.parent.__czReloadDay === 'function') {
-          window.parent.__czReloadDay();
-        }
-      } catch (e) {}
-    } else {
-      showToast('记录失败：' + ((json && json.error) || ('HTTP ' + res.status)));
+      if (timer) { clearTimeout(timer); }
+      return { ok: true, minutes: built.minutes, seconds: seconds, body: body };
     }
+    if (timer) { clearTimeout(timer); }
+    return { ok: false, error: (json && json.error) || ('HTTP ' + res.status), body: body };
   } catch (e) {
-    showToast('记录失败：网络异常');
+    if (timer) { clearTimeout(timer); }
+    const aborted = e && (e.name === 'AbortError');
+    return { ok: false, error: aborted ? '请求超时（8 秒）' : '网络异常', body: body };
   }
 }
 
 function enterRun() {
+  if (finishPending || finishSubmitting) { return; }
   /* S22（dad 261028）：开始计时的前置条件 = 票夹已选好「科目 + 本次练习内容 + 时长」。
      真源在票夹；**不再自动替用户补选** —— 自动补选会让计时器记下一份用户从没选过的
      科目/内容/时长，正是 dad 这次指出的问题。demo 调试壳 setCanvasStage('run')
@@ -7042,6 +7469,11 @@ function enterRun() {
   timerRunning = true;
   paused = false;
   elapsed = 0;
+  finishPending = false;
+  finishSubmitting = false;
+  finishReason = null;
+  finishSavedElapsed = 0;
+  selectedReps = 0;
   runEnterTime = nowCstLocal();
   sessionSaved = false;
 
@@ -7090,13 +7522,15 @@ function enterRun() {
   });
 }
 
+/* 强制静默复位：只给画布调试壳 / 自动化审计（setCanvasStage('prep')）用。
+   正常用户出口一律走 requestFinish()，绝不在这里写库。 */
 function exitRun() {
-  /* 退出前先把「实际练了多少秒」抓下来 —— 下面 elapsed 会被清零。
-     入口有三个（自然到点 / 提前结束 / 从画布切回准备态），都在这里收口，
-     保证一次计时段只写一次。 */
-  const finalSeconds = Math.max(0, Math.round(elapsed));
-  const shouldSave = started && finalSeconds >= 1 && !sessionSaved;
-  if (shouldSave) { sessionSaved = true; }
+  finishPending = false;
+  finishSubmitting = false;
+  finishReason = null;
+  finishSavedElapsed = 0;
+  selectedReps = 0;
+  hideFinishModal();
   started = false;
   timerRunning = false;
   paused = false;
@@ -7131,13 +7565,17 @@ function exitRun() {
   if (lockEl) { lockEl.style.display = 'none'; lockEl.style.opacity = '0'; }
   updateReselectBtnState();
   try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
-  /* 真实秒数落库（异步，失败只提示不打断 UI）。*/
-  if (shouldSave) { postPracticeLog(finalSeconds); }
+  /* 槽位/卡 A 的复位在壳层：通知它同步一次，否则 data-mode 会停在 run。 */
+  try {
+    if (window.parent && typeof window.parent.__czSyncAfterCanvasExit === 'function') {
+      window.parent.__czSyncAfterCanvasExit();
+    }
+  } catch (e) {}
 }
 
 
 function pauseToggle() {
-  if (!started) return;
+  if (!started || finishPending || finishSubmitting) return;
   const pauseBtn = document.getElementById('pkPauseBtn');
   if (timerRunning) {
     timerRunning = false;
@@ -7155,8 +7593,254 @@ function pauseToggle() {
 }
 
 function finish(done) {
+  requestFinish(done);
+}
+
+/* ══════════ 结束确认状态机（唯一入库入口） ══════════ */
+const PENDING_LOG_KEY = 'dsh_pending' + '_log_v1';
+
+function fmtSecs(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
+}
+
+function finishEls() {
+  return {
+    modal: document.getElementById('pkFinishConfirmModal'),
+    title: document.getElementById('pkFinishTitle'),
+    tag: document.getElementById('pkFinishTag'),
+    durVal: document.getElementById('pkFinishDurationVal'),
+    durCap: document.getElementById('pkFinishDurationCap'),
+    main: document.getElementById('pkFinishScreenMain'),
+    zero: document.getElementById('pkFinishScreenZero'),
+    zeroText: document.getElementById('pkFinishZeroText'),
+    repsVal: document.getElementById('pkRepsReadout'),
+    presets: document.getElementById('pkRepsPresets'),
+    contentWrap: document.getElementById('pkFinishContentWrap'),
+    contentInput: document.getElementById('pkFinishContentInput'),
+    error: document.getElementById('pkFinishErrorBanner'),
+    submit: document.getElementById('pkFinishSubmitBtn'),
+    resume: document.getElementById('pkFinishResumeBtn'),
+    abort: document.getElementById('pkFinishAbortBtn'),
+    note: document.getElementById('pkFinishNote'),
+    zeroBack: document.getElementById('pkFinishZeroBackBtn'),
+    zeroConfirm: document.getElementById('pkFinishZeroConfirmBtn')
+  };
+}
+
+function renderFinishReps() {
+  const el = finishEls();
+  if (el.repsVal) { el.repsVal.textContent = selectedReps > 0 ? String(selectedReps) : '—'; }
+  if (el.presets) {
+    Array.prototype.forEach.call(el.presets.querySelectorAll('[data-reps]'), (btn) => {
+      btn.classList.toggle('is-on', Number(btn.dataset.reps) === selectedReps);
+    });
+  }
+}
+
+function setFinishReps(next) {
+  selectedReps = Math.max(0, Math.min(99, Math.round(Number(next) || 0)));
+  renderFinishReps();
+}
+
+function showFinishScreen(which) {
+  const el = finishEls();
+  const zero = which === 'zero';
+  if (el.main) { el.main.hidden = zero; }
+  if (el.zero) { el.zero.hidden = !zero; }
+}
+
+function setFinishBusy(busy) {
+  const el = finishEls();
+  [el.submit, el.resume, el.abort, el.zeroBack, el.zeroConfirm].forEach((b) => {
+    if (b) { b.disabled = !!busy; }
+  });
+  if (el.submit) { el.submit.textContent = busy ? '记录中…' : (finishSubmitting ? '记录中…' : (el.submit.dataset.retry === '1' ? '重试提交' : '提交')); }
+}
+
+function showFinishError(msg) {
+  const el = finishEls();
+  if (!el.error) { return; }
+  if (msg) {
+    el.error.hidden = false;
+    el.error.textContent = msg + ' · 本次 ' + fmtSecs(finishSavedElapsed) + ' 未丢失，可直接重试';
+  } else {
+    el.error.hidden = true;
+    el.error.textContent = '';
+  }
+}
+
+function hideFinishModal() {
+  const el = finishEls();
+  if (el.modal) { el.modal.classList.remove('open'); }
+}
+
+function openFinishModal() {
+  const el = finishEls();
+  if (!el.modal) { return; }
+  const normal = finishReason === 'normal';
+  if (el.title) { el.title.textContent = normal ? '练习完成 · 记录一下' : '提前结束 · 记录一下'; }
+  if (el.tag) { el.tag.textContent = normal ? '到点完成' : '提前结束'; }
+  if (el.durVal) { el.durVal.textContent = fmtSecs(finishSavedElapsed); }
+  if (el.durCap) { el.durCap.textContent = '本次实际练习时长'; }
+  if (el.resume) { el.resume.hidden = normal; }
+  if (el.note) {
+    el.note.textContent = normal
+      ? '「不练了」会丢弃这一段已练时长，不写入记录。'
+      : '「继续练」从 ' + fmtSecs(finishSavedElapsed) + ' 原地接着练；「不练了」丢弃本段。';
+  }
+  if (el.zeroText) {
+    el.zeroText.textContent = '本次已练 ' + fmtSecs(finishSavedElapsed) +
+      '。确认后正常记录练习时长，仅跳过遍数统计。';
+  }
+  if (el.submit) { el.submit.dataset.retry = '0'; el.submit.textContent = '提交'; }
+  setFinishBusy(false);
+  showFinishError('');
+  const needContent = !String(content || '').trim();
+  if (el.contentWrap) { el.contentWrap.hidden = !needContent; }
+  if (el.contentInput) { el.contentInput.value = needContent ? '' : String(content); }
+  selectedReps = 0;
+  renderFinishReps();
+  showFinishScreen('main');
+  el.modal.classList.add('open');
+}
+
+/* 用户出口：elapsed < 1 直接静默回准备态；否则定格秒数 + 开确认弹窗。 */
+function requestFinish(done) {
+  if (finishPending || finishSubmitting) { return; }
+  if (!started) { return; }
+  /* 自动化自检（runAudit / runR2Pass）走静默复位，不能弹用户确认框。 */
+  if (window.__czAuditSilentFinish) { exitRun(); return; }
+  const secs = Math.max(0, Math.round(elapsed));
+  if (secs < 1) { exitRun(); sessionSaved = false; return; }
+
+  clearInterval(tickIv);
+  tickIv = null;
+  timerRunning = false;
+  paused = true;
+  finishPending = true;
+  finishSubmitting = false;
+  finishReason = done ? 'normal' : 'early';
+  finishSavedElapsed = done ? Math.max(secs, Math.round(duration * 60)) : secs;
+  selectedReps = 0;
+
+  if (typeof ttPauseLabel === 'function') { ttPauseLabel(true); }
+  const pauseBtn = document.getElementById('pkPauseBtn');
+  if (pauseBtn) { pauseBtn.textContent = '继续练习'; pauseBtn.classList.add('paused-on'); }
+  const brand = document.getElementById('pkBrand');
+  if (brand) { brand.textContent = '待记录'; brand.classList.remove('running'); }
+  closeCardOverlay();
+  /* A 卡跟着停在暂停态（不退 prep，否则「继续练」时读数已归零）。 */
+  try {
+    if (window.parent && typeof window.parent.__czPauseCardA === 'function') { window.parent.__czPauseCardA(); }
+  } catch (e) {}
+  openFinishModal();
+}
+
+function cancelFinishAndResume() {
+  if (!finishPending || finishSubmitting || finishReason !== 'early') { return; }
+  hideFinishModal();
+  finishPending = false;
+  finishReason = null;
+  const resumeFrom = finishSavedElapsed;
+  finishSavedElapsed = 0;
+  selectedReps = 0;
+  started = true;
+  timerRunning = true;
+  paused = false;
+  elapsed = resumeFrom;
+  if (typeof ttRenderDigits === 'function') { ttRenderDigits(elapsed); }
+  const pauseBtn = document.getElementById('pkPauseBtn');
+  if (pauseBtn) { pauseBtn.textContent = '暂停'; pauseBtn.classList.remove('paused-on'); }
+  if (typeof ttPauseLabel === 'function') { ttPauseLabel(false); }
+  const brand = document.getElementById('pkBrand');
+  if (brand) { brand.textContent = '进行中'; brand.classList.add('running'); }
+  try {
+    if (window.parent && typeof window.parent.__czResumeCardA === 'function') { window.parent.__czResumeCardA(elapsed); }
+  } catch (e) {}
+  pkTick();
+}
+
+function abortFinishAndDiscard() {
+  if (!finishPending || finishSubmitting) { return; }
+  sessionStorage.removeItem(PENDING_LOG_KEY);
+  showFinishError('');
+  finalizeExitRun({ discard: true });
+}
+
+function confirmFinish() {
+  if (!finishPending || finishSubmitting) { return; }
+  if (selectedReps === 0) { showFinishScreen('zero'); return; }
+  submitConfirmedPractice(selectedReps);
+}
+
+async function submitConfirmedPractice(reps) {
+  if (!finishPending || finishSubmitting) { return; }
+  const el = finishEls();
+  const typed = el.contentInput && !el.contentWrap.hidden ? String(el.contentInput.value || '').trim() : '';
+  if (typed) { content = typed; syncRunMeta(); }
+  if (!String(content || '').trim()) {
+    if (el.contentWrap) { el.contentWrap.hidden = false; }
+    showFinishError('请先补填本次练习内容');
+    if (el.contentInput) { el.contentInput.focus(); }
+    return;
+  }
+
+  finishSubmitting = true;
+  if (el.submit) { el.submit.dataset.retry = '0'; el.submit.textContent = '记录中…'; }
+  setFinishBusy(true);
+  showFinishError('');
+
+  const built = buildPracticeLogBody(finishSavedElapsed, reps);
+  if (built.body) {
+    try { sessionStorage.setItem(PENDING_LOG_KEY, JSON.stringify({ body: built.body, at: Date.now() })); } catch (e) {}
+  }
+
+  const res = await postPracticeLog(finishSavedElapsed, reps);
+  finishSubmitting = false;
+
+  if (!res.ok) {
+    /* 错误条和「重试提交」都在第一屏：失败时切回来，别让用户停在已隐藏的二次确认屏。 */
+    showFinishScreen('main');
+    setFinishBusy(false);
+    if (el.submit) { el.submit.dataset.retry = '1'; el.submit.textContent = '重试提交'; }
+    if (el.resume) { el.resume.hidden = true; }
+    showFinishError('记录失败：' + res.error);
+    return;
+  }
+
+  try { sessionStorage.removeItem(PENDING_LOG_KEY); } catch (e) {}
+  const savedSec = finishSavedElapsed;
+  showFinishError('');
+  finalizeExitRun({ discard: false });
+
+  /* 结束反馈：礼花 + 徽章领取走顶层窗口，独占 /practice-dsh 时静默跳过。 */
+  try {
+    if (window.top && window.top !== window) {
+      if (typeof window.top.fireConfetti === 'function') { window.top.fireConfetti(); }
+      if (window.top.DizicalCCG && typeof window.top.DizicalCCG.checkUnclaimed === 'function') {
+        setTimeout(() => { try { window.top.DizicalCCG.checkUnclaimed(); } catch (e) {} }, 600);
+      }
+    }
+  } catch (e) {}
+}
+
+function finalizeExitRun(opts) {
+  const discard = !!(opts && opts.discard);
+  const savedSec = finishSavedElapsed;
+  const wasSaved = !discard;
   exitRun();
-  showToast(done ? '打卡完成 · 练习已结束' : '已提前结束 · 票卡已归位');
+  sessionSaved = wasSaved;
+  if (discard) {
+    showToast('已取消本次练习 · 未记录');
+  } else {
+    showToast('打卡完成 · 已记录 ' + fmtSecs(savedSec));
+    try {
+      if (window.parent && typeof window.parent.__czReloadDay === 'function') { window.parent.__czReloadDay(); }
+    } catch (e) {}
+  }
 }
 
 function openReader() {
@@ -7353,10 +8037,42 @@ function closeRecordsDrawer() {
   // 按键绑定
   document.getElementById('pkStartBtn').addEventListener('click', enterRun);
   document.getElementById('pkPauseBtn').addEventListener('click', pauseToggle);
-  document.getElementById('pkEarlyBtn').addEventListener('click', () => finish(false));
+  document.getElementById('pkEarlyBtn').addEventListener('click', () => requestFinish(false));
   document.getElementById('pkStateToggle').addEventListener('click', () => {
-    if (started) finish(false); else enterRun();
+    if (started) requestFinish(false); else enterRun();
   });
+
+  /* 手动刷新布局：组合切换/增减卡片后布局走样时兜底（自动 syncAll 之外的手动入口） */
+  const relayoutBtn = document.getElementById('pkRelayoutBtn');
+  if (relayoutBtn) {
+    relayoutBtn.addEventListener('click', () => {
+      try {
+        if (window.parent && typeof window.parent.__cz !== 'undefined' && typeof window.parent.__cz.syncAll === 'function') {
+          window.parent.__cz.syncAll();
+        }
+      } catch (e) {}
+      relayoutBtn.classList.add('busy');
+      setTimeout(() => relayoutBtn.classList.remove('busy'), 600);
+    });
+  }
+
+  /* 结束确认弹窗：提交 / 继续练 / 不练了 / 二次确认。 */
+  const fEls = finishEls();
+  if (fEls.submit) { fEls.submit.addEventListener('click', confirmFinish); }
+  if (fEls.resume) { fEls.resume.addEventListener('click', cancelFinishAndResume); }
+  if (fEls.abort) { fEls.abort.addEventListener('click', abortFinishAndDiscard); }
+  if (fEls.zeroBack) { fEls.zeroBack.addEventListener('click', () => showFinishScreen('main')); }
+  if (fEls.zeroConfirm) { fEls.zeroConfirm.addEventListener('click', () => submitConfirmedPractice(null)); }
+  const repsMinus = document.getElementById('pkRepsMinus');
+  const repsPlus = document.getElementById('pkRepsPlus');
+  if (repsMinus) { repsMinus.addEventListener('click', () => setFinishReps(selectedReps - 1)); }
+  if (repsPlus) { repsPlus.addEventListener('click', () => setFinishReps(selectedReps + 1)); }
+  if (fEls.presets) {
+    fEls.presets.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-reps]');
+      if (btn) { setFinishReps(Number(btn.dataset.reps)); }
+    });
+  }
 
   // 阅读层
   document.getElementById('pkExpandReqBtn').addEventListener('click', openReader);
@@ -7426,6 +8142,31 @@ function closeRecordsDrawer() {
   /* 仪表盘「暂停/继续」要同步到票夹计时器 —— 否则暂停的那段墙钟时间会被算进入库秒数。*/
   window.__czPause = function () { if (started && timerRunning) { pauseToggle(); } };
   window.__czResume = function () { if (started && paused) { pauseToggle(); } };
+  /* A 卡（仪表盘）的结束出口：一律收口到确认弹窗，不再旁路直写。 */
+  window.__czRequestFinishFromCardA = function (info) {
+    var payload = (info && typeof info === 'object') ? info : { done: !!info };
+    if (started) { requestFinish(!!payload.done); return true; }
+    var sec = Math.max(0, Math.round(Number(payload.seconds || 0)));
+    if (sec < 1) { return false; }
+    /* A 卡独立跑完（票夹那边没起计时）：把这段接进同一条确认流。 */
+    started = true;
+    timerRunning = false;
+    paused = true;
+    elapsed = sec;
+    runEnterTime = payload.startedAt || nowCstLocal();
+    sessionSaved = false;
+    finishPending = false;
+    finishSubmitting = false;
+    requestFinish(!!payload.done);
+    return true;
+  };
+  window.__czIsPracticeBusy = function () {
+    return Boolean(started || finishPending || finishSubmitting);
+  };
+  window.__czIsFinishing = function () { return Boolean(finishPending || finishSubmitting); };
+  window.addEventListener('beforeunload', function (e) {
+    if (started || finishPending || finishSubmitting) { e.preventDefault(); e.returnValue = ''; }
+  });
   window.isPaused = function () { return !!paused; };
   window.isTimingRunning = function () { return timerRunning; };
   window.isBarDeformed = function () { return isBarDeformed; };
@@ -7435,6 +8176,28 @@ function closeRecordsDrawer() {
   /* ── 真数据（dad 261102）──────────────────────────────────────────────
      顶栏「今日记录 X分 · N次」和「今日练习记录」抽屉原来是写死的演示值。
      父页拿到 /api/practices/{今天} 后推过来，这里换成真实记录。 ── */
+  function paintCollapsedOverview() {
+    var ov = window.__czOverview || null;
+    var mins = Number(window.__czTodayMins || 0);
+    var sessions = Number(window.__czTodaySessions || 0);
+    var todayEl = document.getElementById('pkCollapsedTodayVal');
+    if (todayEl && window.__czTodayMins !== undefined) {
+      todayEl.textContent = String(mins);
+      var unit = todayEl.parentElement ? todayEl.parentElement.querySelector('.pk-collapsed-stat-unit') : null;
+      if (unit) unit.textContent = '分 · ' + sessions + ' 次';
+    }
+    if (!ov) return;
+    var streak = Number(ov.streak || 0);
+    var streakEl = document.getElementById('pkCollapsedStreakVal');
+    if (streakEl) streakEl.textContent = String(streak);
+    var hint = document.querySelector('#pkCollapsedStreakRow .pk-collapsed-stat-hint');
+    if (hint && /^\d{4}-\d{2}-\d{2}/.test(String(ov.last_date || ''))) {
+      var last = String(ov.last_date);
+      hint.textContent = '· 最近 ' + Number(last.slice(5, 7)) + '-' + Number(last.slice(8, 10));
+    }
+    var merged = document.getElementById('pkCollapsedMergedVal');
+    if (merged) merged.textContent = '今日 ' + mins + ' 分 · 连续 ' + streak + ' 天';
+  }
   window.__czApplyDay = function (payload) {
     const day = (payload && payload.today) || {};
     const sessions = (day.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
@@ -7446,6 +8209,9 @@ function closeRecordsDrawer() {
     };
     const pill = document.getElementById('pkRecords');
     if (pill) { pill.textContent = '今日记录 ' + mins + '分 · ' + sessions.length + '次 ▾'; }
+    window.__czTodayMins = mins;
+    window.__czTodaySessions = sessions.length;
+    paintCollapsedOverview();
     const sumVal = document.getElementById('pkDrawerTotalVal');
     if (sumVal) { sumVal.textContent = '今日 ' + mins + ' 分 · ' + sessions.length + ' 次'; }
     const list = document.getElementById('pkDrawerList');
@@ -7484,27 +8250,54 @@ function closeRecordsDrawer() {
     });
     return true;
   };
+  fetch('/api/practices/overview').then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+    if (!data || data.error) return;
+    window.__czOverview = data;
+    paintCollapsedOverview();
+  }).catch(function () {});
 
-  /* 兜底记账（dad 261102 审计 P1）：仪表盘 A 卡自己跑完、票夹计时器没启动时
-     （forceCanvasStage 等边界路径），这段练习不能丢。
-     条件：票夹当前没在计时（started=false）+ 本次还没写过库 + A 卡确实跑了 ≥1 秒。 */
-  /* A 卡自己走到点（没有 click）时也要兜底记账 —— 由 A 卡回调这里。*/
+  /* A 卡自跑到点 / 点提前结束时的回调：不再旁路直写，统一进确认弹窗。 */
   window.__czOnCardARunEnd = function (info) {
     try {
-      if (window.parent && typeof window.parent.__czSaveExternalRunIfNeeded === 'function') {
-        window.parent.__czSaveExternalRunIfNeeded();
+      var payload = { done: !!(info && info.done), seconds: info && info.seconds, startedAt: info && info.startedAt };
+      return window.__czRequestFinishFromCardA(payload);
+    } catch (e) { return false; }
+  };
+  /* 历史接口保留但不再写库：确认流是唯一写入口。 */
+  window.__czSaveExternalRun = function (seconds, startedAtCst) {
+    return window.__czRequestFinishFromCardA({ done: true, seconds: seconds, startedAt: startedAtCst });
+  };
+  /* 崩溃/强退兜底：上次没等到响应的 payload 直接补交一次。
+     practice_at 原样带回 → 后端 _dedup_key 命中就返回首次结果，不会双写。 */
+  async function replayPendingLog() {
+    var raw = null;
+    try { raw = sessionStorage.getItem(PENDING_LOG_KEY); } catch (e) { return false; }
+    if (!raw) { return false; }
+    var rec = null;
+    try { rec = JSON.parse(raw); } catch (e) {}
+    var body = rec && rec.body;
+    var fresh = rec && (Date.now() - Number(rec.at || 0) < 12 * 3600 * 1000);
+    if (!body || !body.item_id || !body.practice_at || !fresh) {
+      try { sessionStorage.removeItem(PENDING_LOG_KEY); } catch (e) {}
+      return false;
+    }
+    try {
+      var res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      var json = await res.json().catch(function () { return null; });
+      if (res.ok && json && json.ok) {
+        try { sessionStorage.removeItem(PENDING_LOG_KEY); } catch (e) {}
+        showToast('已补交上次未同步的练习记录');
+        try { if (window.parent && typeof window.parent.__czReloadDay === 'function') { window.parent.__czReloadDay(); } } catch (e) {}
+        return true;
       }
     } catch (e) {}
-  };
-  window.__czSaveExternalRun = function (seconds, startedAtCst) {
-    if (started || sessionSaved) { return false; }
-    const sec = Math.max(0, Math.round(Number(seconds) || 0));
-    if (sec < 1) { return false; }
-    sessionSaved = true;
-    runEnterTime = startedAtCst || nowCstLocal();
-    postPracticeLog(sec);
-    return true;
-  };
+    return false;
+  }
+  replayPendingLog();
 })();
 </script>
 
@@ -7594,64 +8387,65 @@ function closeRecordsDrawer() {
     --dash-notch: 96px;
   }
   :root[data-skin="ink"] {
-    --dash-page: #0E1114;
+    --dash-page: #1C2127;
     --dash-shell-hi: #2E343B;
-    --dash-shell-lo: #161A1E;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
+    --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
     --dash-accent: #FF8C5A;
     --dash-accent-soft: #FFA073;
     --dash-accent-wash: rgba(255, 140, 90, 0.08);
     --dash-accent-line: rgba(255, 140, 90, 0.30);
     --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: #B8531F;
+    --dash-accent-text: #FF8C5A;
     --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(222, 215, 205, 0.28);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-kicker: #A8A29A;
     --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
     --dash-coral-glow: rgba(255, 107, 107, 0.45);
     --dash-coral-a25: rgba(255, 107, 107, 0.25);
@@ -7661,20 +8455,18 @@ function closeRecordsDrawer() {
     --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
     --dash-gold-a35: rgba(212, 175, 55, 0.35);
     --dash-gold-glow: rgba(255, 210, 100, 0.60);
-    --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
     --dash-delta-up: #FF6B6B;
     --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
-    --dash-accent: #FF8C5A;
-    --dash-accent-soft: #FFA073;
-    --dash-accent-wash: rgba(255, 140, 90, 0.08);
-    --dash-accent-line: rgba(255, 140, 90, 0.30);
-    --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: var(--dash-accent);
-    --dash-accent-solid: #B8531F;
+    --dash-vermilion-text: #FF9E7A;
     --dash-coral-text: #FF6B6B;
-    --dash-notch: 96px;
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
   }
 
   * { box-sizing: border-box; }
@@ -7710,6 +8502,7 @@ function closeRecordsDrawer() {
     transition: background-color 0.15s, color 0.15s;
   }
   .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .seg button.is-on { background: var(--dash-coral); color: var(--dash-page); }
 
   .frame {
     flex: 1 1 auto;
@@ -7781,7 +8574,7 @@ function closeRecordsDrawer() {
     --notch-depth: 24px;
   }
   .status {
-    display: grid; grid-template-columns: auto 1fr auto; align-items: flex-start !important;
+    display: flex; align-items: center !important; justify-content: flex-start !important;
     min-height: 22px; color: var(--dash-panel-dim); font-size: 11px;
     position: relative;
     padding-top: 0;
@@ -7795,28 +8588,9 @@ function closeRecordsDrawer() {
   }
   /* 三列钉死：时钟隐藏（计时态）后电池不能被挤到中列；MIC 指示灯文案与上方卡槽左边对齐，电池与上方卡槽右边对齐 */
   .status > .mic-status-btn {
-    grid-column: 1;
-    justify-self: start;
-    align-self: flex-start !important;
+    align-self: center !important;
     position: relative;
     left: auto;
-    top: auto;
-    margin: 0;
-  }
-  .status > .clock {
-    grid-column: 2;
-    text-align: center;
-    justify-self: center;
-    align-self: center;
-    /* 顶部时间相对居中，略往左移 */
-    transform: translateX(-6px);
-  }
-  .status > .battery {
-    grid-column: 3;
-    justify-self: end;
-    align-self: flex-start !important;
-    position: relative;
-    right: auto;
     top: auto;
     margin: 0;
   }
@@ -8479,7 +9253,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -8516,11 +9290,6 @@ function closeRecordsDrawer() {
             <span class="mic-dot" id="panelMicDot"></span>
             <span id="panelMicLabel">MIC 关</span>
           </button>
-          <span class="clock">10:12am</span>
-          <div class="battery">
-            <div class="bat"><span class="bat-fill"></span></div>
-            <span class="bat-pct">76%</span>
-          </div>
         </div>
         <div class="panel-main">
           <div class="cover-col">
@@ -9558,20 +10327,48 @@ function closeRecordsDrawer() {
   window.getPracticeReady = function () {
     return { ready: practiceReady, reason: practiceReadyReason, durationMin: duration, locked: !practiceReady && mode === 'prep' };
   };
+  /* 真数据回灌（dad 261102）：面板底部「今日 xx分」原来是模板里的静态演示值（42分），
+     云端今天实际可能是 0 分。这里接 /api/practices/今天 的真实总秒数，
+     口径与票夹顶栏「今日记录 X分 · N次」一致（秒 <60 时按分钟向上取整，最少 0）。 */
+  window.__czApplyDay = function (payload) {
+    var day = (payload && payload.today) || {};
+    var totalSec = Number(day.total_seconds || 0);
+    var mins = totalSec > 0 ? Math.max(1, Math.ceil(totalSec / 60)) : 0;
+    var el = document.getElementById('todayTotal');
+    if (el) { el.textContent = '今日 ' + mins + '分'; }
+    return true;
+  };
   /* 本段计时的真实秒数 + 开始时刻。
      票夹是入库的真源，但这张卡自己也跑一套计时；万一只有它在跑（票夹计时器没起来），
      外壳要用这里的数字兜底记账，不能让这段练习丢掉。 */
-  /* 通知画布层「这一段结束了」（自然到点没有 click，只能由卡自己报）。
-     票夹计时器没起来时，外壳用这里的秒数兜底记账。 */
-  function notifyRunEnd() {
-    if (lastRunSeconds < 1) { return; }
+  /* 用户出口（自然到点 / 点提前结束）→ 交给画布开确认弹窗，本卡停在 pause。
+     绝不在这里直接退 prep，否则「继续练」时读数已经归零。 */
+  function notifyFinishRequest(done) {
+    var sec = Math.max(0, Math.round(elapsed));
+    if (sec < 1) { return false; }
     try {
       var p = window.parent;
-      if (p && typeof p.__czOnCardARunEnd === 'function') {
-        p.__czOnCardARunEnd({ seconds: lastRunSeconds, startedAt: lastRunStartedAt });
+      if (p && typeof p.__czRequestFinishFromCardA === 'function') {
+        return !!p.__czRequestFinishFromCardA({ done: !!done, seconds: sec, startedAt: runStartedAtCst });
       }
     } catch (e) {}
+    return false;
   }
+  /* 供画布/外壳调用的受控接口（暂停、续跑、复位、对齐秒数）。 */
+  window.__czCardA = {
+    mode: function () { return mode; },
+    pause: function () { if (mode === 'run') { enterPause(); } return mode; },
+    resume: function (sec) {
+      if (typeof sec === 'number' && isFinite(sec) && sec >= 0) { elapsed = Math.round(sec); }
+      if (mode === 'pause' || mode === 'prep') { enterRun(); }
+      return mode;
+    },
+    prep: function () { if (mode !== 'prep') { enterPrep(); } return mode; },
+    setElapsed: function (sec) {
+      if (typeof sec === 'number' && isFinite(sec) && sec >= 0) { elapsed = Math.round(sec); }
+      return elapsed;
+    }
+  };
   window.__czRunInfo = function () {
     return {
       elapsed: Math.max(0, Math.round(elapsed)),
@@ -9646,7 +10443,7 @@ function closeRecordsDrawer() {
       // 每 1000ms 驱动运行态动画 (card-contract.md §5.2: paintRulerRunning + revealVine + pulseMarker + emitBubbles)
       driveRulerRunning();
 
-      if (elapsed >= totalSec) enterPrep();
+      if (elapsed >= totalSec) { enterPause(); notifyFinishRequest(true); }
     }, 1000);
   }
 
@@ -9676,7 +10473,6 @@ function closeRecordsDrawer() {
     /* 收尾前记下这一段跑了多少秒 —— 外面要靠它兜底记账（票夹计时器没起来的那条路径）。*/
     lastRunSeconds = Math.max(0, Math.round(elapsed));
     lastRunStartedAt = runStartedAtCst;
-    notifyRunEnd();
     elapsed = 0;
     runStartedAtCst = '';
     updateBpmDisplay();
@@ -9715,7 +10511,11 @@ function closeRecordsDrawer() {
     }
     else if (mode === 'run') enterPause();
   });
-  btnEarly.addEventListener('click', enterPrep);
+  btnEarly.addEventListener('click', function () {
+    if (mode === 'prep') { return; }
+    if (mode === 'run') { enterPause(); }
+    notifyFinishRequest(false);
+  });
 
   // 8. 视口、拱深变体、弧点数量与皮肤切换
   document.getElementById('vpSeg').addEventListener('click', function (e) {
@@ -11154,7 +11954,7 @@ function closeRecordsDrawer() {
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
     --dash-muted: #666666;
-    --dash-tick-future: rgba(247, 244, 239, 0.28);
+    --dash-tick-future: rgba(122, 112, 100, 0.42);
     --dash-tick-past: rgba(247, 244, 239, 0.78);
     --dash-tick-rail: rgba(247, 244, 239, 0.34);
     --dash-btn-face-hi: #3A3E44;
@@ -11215,79 +12015,86 @@ function closeRecordsDrawer() {
 }
 
   :root[data-skin="ink"] {
-    --dash-page: #2C3E50;
-    --dash-shell-hi: #5C6770;
-    --dash-shell-lo: #3E474E;
+    --dash-page: #1C2127;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
+    --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
     --dash-accent: #FF8C5A;
     --dash-accent-soft: #FFA073;
     --dash-accent-wash: rgba(255, 140, 90, 0.08);
     --dash-accent-line: rgba(255, 140, 90, 0.30);
     --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: #B8531F;
+    --dash-accent-text: #FF8C5A;
     --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(226, 219, 209, 0.40);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
-      --dash-hole-active: #FF5722;
+    --dash-kicker: #A8A29A;
+    --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
-    --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
     --dash-delta-up: #FF6B6B;
     --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
-    --dash-accent: #FF8C5A;
-    --dash-accent-soft: #FFA073;
-    --dash-accent-wash: rgba(255, 140, 90, 0.08);
-    --dash-accent-line: rgba(255, 140, 90, 0.30);
-    --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: var(--dash-accent);
-    --dash-accent-solid: #B8531F;
+    --dash-vermilion-text: #FF9E7A;
     --dash-coral-text: #FF6B6B;
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
 }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -11336,7 +12143,7 @@ function closeRecordsDrawer() {
   .pill-btn.active {
     background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
-  :root[data-skin="ink"] .pill-btn.active { color: var(--dash-page); }
+  :root[data-skin="ink"] .pill-btn.active { background: var(--dash-coral); color: var(--dash-page); }
 
   /* ══════ 舞台外框容器 (多视口仿真) ══════ */
   .stage-frame {
@@ -11369,16 +12176,19 @@ function closeRecordsDrawer() {
     max-width: 420px;
     background: linear-gradient(160deg, var(--dash-shell-hi), var(--dash-shell-lo) 70%);
     border-radius: 28px;
-    padding: 16px;
+    padding: 14px 16px 12px;
     box-shadow:
       inset 0 1px 0 var(--dash-glint),
       inset 0 -2px 0 var(--dash-shell-inset);
     border: 1px solid var(--dash-shell-inset);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     position: relative;
     z-index: 1;
+    /* 兜底：深色/窄高组合下内容仍超限时允许卡内滚动，不再把底部 pill 裁掉 */
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   /* 顶置小节信息条 / 顶层中枢栏 */
@@ -11534,15 +12344,20 @@ function closeRecordsDrawer() {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 0;
-    min-height: 240px;
+    padding: 6px 0 4px;
+    min-height: 202px;
   }
 
   /* 外部刻度环 (围绕 168px 旋钮) */
   .dial-outer-ring {
     position: absolute;
-    width: 236px;
-    height: 236px;
+    width: 220px;
+    height: 220px;
+    /* 明确按 .knob-section 居中：绝对定位默认走静态位置，
+       布局一变就偏，刻度和旋钮指示对不上。 */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     pointer-events: none;
   }
 
@@ -11726,6 +12541,7 @@ function closeRecordsDrawer() {
 
   /* L3 速度预设滑动栏：横向滚动、隐藏滚动条、药丸 h34 / r9999 */
   .preset-scroll { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .preset-scroll { margin-top: 8px; gap: 6px; }
   .ps-header { display: none; }
   .ps-row {
     display: flex; align-items: center; gap: 8px;
@@ -11739,7 +12555,7 @@ function closeRecordsDrawer() {
   .ps-row::-webkit-scrollbar { display: none; height: 0; }
   .ps-label { flex: none; font-size: 11.5px; font-weight: 650; color: var(--dash-text-soft); letter-spacing: .04em; }
 
-  .bottom-ops { position: relative; z-index: 2; display: flex; flex-direction: column; margin-top: 16px; padding-bottom: 20px; }
+  .bottom-ops { position: relative; z-index: 2; display: flex; flex-direction: column; margin-top: 10px; padding-bottom: 10px; }
 
   .primary-toggle-btn {
     position: relative; flex: 0 0 calc(70% - 5px); min-width: 0; height: 26px; padding: 0 14px; gap: 6px;
@@ -11856,7 +12672,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -13589,80 +14405,66 @@ function closeRecordsDrawer() {
 }
 
   :root[data-skin="ink"] {
-    --dash-page: #0E1114;
+    --dash-page: #1C2127;
     --dash-shell-hi: #2E343B;
-    --dash-shell-lo: #161A1E;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
+    --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
     --dash-accent: #FF8C5A;
     --dash-accent-soft: #FFA073;
     --dash-accent-wash: rgba(255, 140, 90, 0.08);
     --dash-accent-line: rgba(255, 140, 90, 0.30);
     --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: #B8531F;
+    --dash-accent-text: #FF8C5A;
     --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(222, 215, 205, 0.28);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
-      --dash-hole-active: #FF5722;
+    --dash-kicker: #A8A29A;
+    --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    /* v2 追加：深墨底上蓝灰透明不可见，翻向暖白；品牌 alpha 沿用浅银值 */
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
-    --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
-    --dash-delta-up: #FF6B6B;
-    --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
-    --dash-accent: #FF8C5A;
-    --dash-accent-soft: #FFA073;
-    --dash-accent-wash: rgba(255, 140, 90, 0.08);
-    --dash-accent-line: rgba(255, 140, 90, 0.30);
-    --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: var(--dash-accent);
-    --dash-accent-solid: #B8531F;
-    --dash-coral-text: #FF6B6B;
-    --dash-notch: 96px;
     --dash-coral-glow: rgba(255, 107, 107, 0.45);
     --dash-coral-a25: rgba(255, 107, 107, 0.25);
     --dash-vermilion-soft: #FF8A5C;
@@ -13671,6 +14473,18 @@ function closeRecordsDrawer() {
     --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
     --dash-gold-a35: rgba(212, 175, 55, 0.35);
     --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
+    --dash-delta-up: #FF6B6B;
+    --dash-delta-down: #10B981;
+    --dash-vermilion-text: #FF9E7A;
+    --dash-coral-text: #FF6B6B;
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
 }
 
   * { box-sizing: border-box; }
@@ -13710,6 +14524,7 @@ function closeRecordsDrawer() {
     padding: 4px 10px; border-radius: 999px; cursor: pointer;
   }
   .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .seg button.is-on { background: var(--dash-coral); color: var(--dash-page); }
 
   #gaugeHost {
     position: absolute; left: 0; top: 0;
@@ -13782,12 +14597,15 @@ function closeRecordsDrawer() {
     order: 3;
     letter-spacing: 0.04em;
   }
-  html.cz-feed #stepDownBtn {
+  /* 下面这套 order/size 是给扁平 strip 的。B 卡的旋钮行也有同名 id（模板里两处），
+     不限定到 .strip 会把旋钮行里的 −/+ 也改成 order 1/4，
+     旋钮被挤到行首，刻度环（按 .knob-section 居中）就与旋钮不同心。 */
+  html.cz-feed .strip #stepDownBtn {
     order: 1;
     width: 32px;
     height: 32px;
   }
-  html.cz-feed #stepUpBtn {
+  html.cz-feed .strip #stepUpBtn {
     order: 4;
     width: 32px;
     height: 32px;
@@ -13923,8 +14741,8 @@ function closeRecordsDrawer() {
     text-align: center; overflow: hidden; text-overflow: ellipsis;
   }
   .timbre-opt.is-on { background: var(--dash-text); color: var(--dash-page); }
-  :root[data-skin="ink"] .timbre-opt { color: var(--dash-page); }
-  :root[data-skin="ink"] .timbre-opt.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .timbre-opt { background: var(--dash-surface-2); color: var(--dash-text); }
+  :root[data-skin="ink"] .timbre-opt.is-on { background: var(--dash-coral); color: var(--dash-page); }
   .note { margin: 0; font-size: 11px; line-height: 1.2; color: var(--dash-text-soft); white-space: nowrap; }
   .pop-close {
     height: 24px; padding: 0 8px; border-radius: 4px; cursor: pointer;
@@ -13955,7 +14773,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v1 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v1 · 2026-11-03</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14531,65 +15349,65 @@ function closeRecordsDrawer() {
     --dash-coral-text: #C93B3B;
   }
   :root[data-skin="ink"] {
-    --dash-page: #0E1114;
+    --dash-page: #1C2127;
     --dash-shell-hi: #2E343B;
-    --dash-shell-lo: #161A1E;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
     --dash-accent: #FF8C5A;
     --dash-accent-soft: #FFA073;
     --dash-accent-wash: rgba(255, 140, 90, 0.08);
     --dash-accent-line: rgba(255, 140, 90, 0.30);
     --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: #B8531F;
+    --dash-accent-text: #FF8C5A;
     --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(222, 215, 205, 0.28);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-kicker: #A8A29A;
     --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
     --dash-coral-glow: rgba(255, 107, 107, 0.45);
     --dash-coral-a25: rgba(255, 107, 107, 0.25);
@@ -14599,19 +15417,18 @@ function closeRecordsDrawer() {
     --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
     --dash-gold-a35: rgba(212, 175, 55, 0.35);
     --dash-gold-glow: rgba(255, 210, 100, 0.60);
-    --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
     --dash-delta-up: #FF6B6B;
     --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
-    --dash-accent: #FF8C5A;
-    --dash-accent-soft: #FFA073;
-    --dash-accent-wash: rgba(255, 140, 90, 0.08);
-    --dash-accent-line: rgba(255, 140, 90, 0.30);
-    --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: var(--dash-accent);
-    --dash-accent-solid: #B8531F;
+    --dash-vermilion-text: #FF9E7A;
     --dash-coral-text: #FF6B6B;
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
   }
 
   * { box-sizing: border-box; }
@@ -14639,6 +15456,7 @@ function closeRecordsDrawer() {
     padding: 4px 10px; border-radius: 999px; cursor: pointer;
   }
   .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
+  :root[data-skin="ink"] .seg button.is-on { background: var(--dash-coral); color: var(--dash-page); }
 
   /* ══════ 两模式规范：横向扩展 cz-expand (双栏 ~220px) vs 纵向 feed 流 cz-feed (单栏自然流) ══════ */
   html.cz-expand, html.cz-expand body {
@@ -14952,7 +15770,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15545,65 +16363,87 @@ function closeRecordsDrawer() {
 <style>
   /* token 与 dashboard-skin-01-v2 同一套名字。深墨由 data-skin="ink" 生效。 */
   :root[data-skin="ink"] {
-    --dash-page: #2C3E50;
-    --dash-shell-hi: #5C6770;
-    --dash-shell-lo: #3E474E;
+    --dash-page: #1C2127;
+    --dash-shell-hi: #2E343B;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
+    --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
+    --dash-accent: #FF8C5A;
+    --dash-accent-soft: #FFA073;
+    --dash-accent-wash: rgba(255, 140, 90, 0.08);
+    --dash-accent-line: rgba(255, 140, 90, 0.30);
+    --dash-accent-glow: rgba(255, 140, 90, 0.35);
+    --dash-accent-text: #FF8C5A;
+    --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(222, 215, 205, 0.28);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-kicker: #A8A29A;
     --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
-      --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-coral-glow: rgba(255, 107, 107, 0.45);
+    --dash-coral-a25: rgba(255, 107, 107, 0.25);
+    --dash-vermilion-soft: #FF8A5C;
+    --dash-vermilion-wash: rgba(255, 87, 34, 0.08);
+    --dash-vermilion-line: rgba(255, 87, 34, 0.30);
+    --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
+    --dash-gold-a35: rgba(212, 175, 55, 0.35);
+    --dash-gold-glow: rgba(255, 210, 100, 0.60);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
     --dash-delta-up: #FF6B6B;
     --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
+    --dash-vermilion-text: #FF9E7A;
     --dash-coral-text: #FF6B6B;
-}
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
+  }
   :root {
     --dash-page: #FFF8F0;
     --dash-shell-hi: #F3F4F6;
@@ -15713,7 +16553,9 @@ function closeRecordsDrawer() {
     transition: background-color 120ms ease-out, color 120ms ease-out;
   }
   .seg button.is-on { background: var(--dash-text); color: var(--dash-page); }
-  :root[data-skin="ink"] .seg button { color: var(--dash-page); }
+  :root[data-skin="ink"] .seg { background: var(--dash-surface-2); }
+  :root[data-skin="ink"] .seg button { color: var(--dash-text); }
+  :root[data-skin="ink"] .seg button.is-on { background: var(--dash-coral); color: var(--dash-page); }
   .frame {
     flex: 1 1 auto; min-height: 0; min-width: 0;
     display: flex; justify-content: center; padding: 8px 12px 12px;
@@ -15733,7 +16575,7 @@ function closeRecordsDrawer() {
     display: flex; flex-direction: column;
     overflow: hidden;
   }
-  :root[data-skin="ink"] .console { background: var(--dash-panel); }
+  :root[data-skin="ink"] .console { background: var(--dash-surface-soft); }
   .head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     min-width: 0;
@@ -15748,7 +16590,7 @@ function closeRecordsDrawer() {
     transition: background-color 120ms ease-out, color 120ms ease-out;
   }
   .fold button.is-on { background: var(--dash-white); color: var(--dash-text); }
-  :root[data-skin="ink"] .fold button.is-on { color: var(--dash-page); }
+  :root[data-skin="ink"] .fold button.is-on { background: var(--dash-coral); color: var(--dash-page); }
   .heroes {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     background: var(--dash-surface-soft);
@@ -15862,7 +16704,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v1 · 2026-11-02</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v1 · 2026-11-03</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16352,65 +17194,65 @@ function closeRecordsDrawer() {
   }
 
   :root[data-skin="ink"] {
-    --dash-page: #0E1114;
+    --dash-page: #1C2127;
     --dash-shell-hi: #2E343B;
-    --dash-shell-lo: #161A1E;
+    --dash-shell-lo: #1E242B;
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
-    --dash-glint: rgba(255, 255, 255, 0.28);
+    --dash-glint: rgba(255, 255, 255, 0.22);
     --dash-panel: #14181C;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.10);
+    --dash-panel-text: #DED7CD;
+    --dash-panel-dim: #A8A29A;
+    --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
-  --dash-coral-solid: #CC3B3B;
+    --dash-coral-solid: #CC3B3B;
     --dash-vermilion: #FF5722;
-  --dash-vermilion-solid: #B8531F;
+    --dash-vermilion-solid: #B8531F;
     --dash-accent: #FF8C5A;
     --dash-accent-soft: #FFA073;
     --dash-accent-wash: rgba(255, 140, 90, 0.08);
     --dash-accent-line: rgba(255, 140, 90, 0.30);
     --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: #B8531F;
+    --dash-accent-text: #FF8C5A;
     --dash-accent-solid: #B8531F;
     --dash-white: #FFFFFF;
     --dash-ink: #2C3E50;
-    --dash-muted: #666666;
-    --dash-tick-future: rgba(255, 248, 240, 0.28);
-    --dash-tick-past: rgba(255, 248, 240, 0.72);
-    --dash-tick-rail: rgba(255, 248, 240, 0.35);
+    --dash-muted: #A8A29A;
+    --dash-tick-future: rgba(222, 215, 205, 0.28);
+    --dash-tick-past: rgba(222, 215, 205, 0.72);
+    --dash-tick-rail: rgba(222, 215, 205, 0.35);
     --dash-btn-face-hi: #2A3036;
-    --dash-btn-face-lo: #101316;
-    --dash-btn-glyph: #FFF8F0;
-    --dash-btn-rim: rgba(255, 255, 255, 0.18);
+    --dash-btn-face-lo: #14181C;
+    --dash-btn-glyph: #DED7CD;
+    --dash-btn-rim: rgba(222, 215, 205, 0.18);
     --dash-knob-hi: #3A4148;
-    --dash-knob-lo: #0E1114;
-    --dash-mark: #FFF8F0;
-    --dash-dot: rgba(255, 248, 240, 0.38);
-    --dash-dot-on: #FFFFFF;
+    --dash-knob-lo: #14181C;
+    --dash-mark: #DED7CD;
+    --dash-dot: rgba(222, 215, 205, 0.38);
+    --dash-dot-on: #DED7CD;
     --dash-hole: #2C3E50;
-    --dash-pill-track: #1A1E22;
-    --dash-pill-idle: rgba(255, 248, 240, 0.55);
-    --dash-stand: #1A1E22;
-    --dash-stand-text: #FFF8F0;
+    --dash-pill-track: #181C21;
+    --dash-pill-idle: #A8A29A;
+    --dash-stand: #181C21;
+    --dash-stand-text: #DED7CD;
     --dash-battery: #7BC96F;
-    --dash-kicker: rgba(255, 248, 240, 0.72);
+    --dash-kicker: #A8A29A;
     --dash-hole-active: #FF5722;
     --dash-tray-inset: rgba(0, 0, 0, 0.35);
-    --dash-key-hi: rgba(255, 255, 255, 0.22);
+    --dash-key-hi: rgba(255, 255, 255, 0.16);
     --dash-coral-soft: #FFA5A5;
     --dash-mic-on: #34D399;
-    --dash-notice-bg: rgba(255, 248, 240, 0.10);
+    --dash-notice-bg: rgba(222, 215, 205, 0.10);
     --dash-notice-ink: #FFD9A0;
-    --dash-surface-2: #3E474E;
-    --dash-surface-3: #4A5058;
-    --dash-surface-soft: #1A1E22;
+    --dash-surface-2: #2C333C;
+    --dash-surface-3: #363E48;
+    --dash-surface-soft: #232931;
     --dash-gold: #D4AF37;
-    --dash-ink-a04: rgba(255, 248, 240, 0.04);
-    --dash-ink-a12: rgba(255, 248, 240, 0.10);
-    --dash-ink-a16: rgba(255, 248, 240, 0.14);
-    --dash-ink-a25: rgba(255, 248, 240, 0.22);
+    --dash-ink-a04: rgba(222, 215, 205, 0.05);
+    --dash-ink-a12: rgba(222, 215, 205, 0.20);
+    --dash-ink-a16: rgba(222, 215, 205, 0.24);
+    --dash-ink-a25: rgba(222, 215, 205, 0.30);
     --dash-ink-a42: rgba(0, 0, 0, 0.45);
     --dash-coral-glow: rgba(255, 107, 107, 0.45);
     --dash-coral-a25: rgba(255, 107, 107, 0.25);
@@ -16420,19 +17262,18 @@ function closeRecordsDrawer() {
     --dash-vermilion-glow: rgba(255, 87, 34, 0.35);
     --dash-gold-a35: rgba(212, 175, 55, 0.35);
     --dash-gold-glow: rgba(255, 210, 100, 0.60);
-    --dash-text: #FFF8F0;
-    --dash-text-soft: rgba(255, 248, 240, 0.68);
+    --dash-text: #DED7CD;
+    --dash-text-soft: #A8A29A;
     --dash-delta-up: #FF6B6B;
     --dash-delta-down: #10B981;
-    --dash-vermilion-text: #FF9E7A; /* 朱橙浅调：深墨皮肤下当文字要 ≥4.5，与主色同族 */
-    --dash-accent: #FF8C5A;
-    --dash-accent-soft: #FFA073;
-    --dash-accent-wash: rgba(255, 140, 90, 0.08);
-    --dash-accent-line: rgba(255, 140, 90, 0.30);
-    --dash-accent-glow: rgba(255, 140, 90, 0.35);
-    --dash-accent-text: var(--dash-accent);
-    --dash-accent-solid: #B8531F;
+    --dash-vermilion-text: #FF9E7A;
     --dash-coral-text: #FF6B6B;
+    --dash-modal-surface: linear-gradient(180deg, #232931 0%, #1B2026 100%);
+    --dash-modal-surface-2: rgba(0, 0, 0, 0.22);
+    --dash-modal-ink: #DED7CD;
+    --dash-modal-ink-dim: #A8A29A;
+    --dash-modal-line: rgba(222, 215, 205, 0.20);
+    --dash-modal-accent: #CC3B3B;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -16479,7 +17320,7 @@ function closeRecordsDrawer() {
   .pill-btn.active {
     background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 3px var(--dash-ink-a04);
   }
-  :root[data-skin="ink"] .pill-btn.active { color: var(--dash-page); }
+  :root[data-skin="ink"] .pill-btn.active { background: var(--dash-coral); color: var(--dash-page); }
 
   /* ══════ 舞台外框容器 (C1: 三档视口真实差异) ══════ */
   .stage-frame {
@@ -16573,38 +17414,52 @@ function closeRecordsDrawer() {
 
   /* 顶部信息行 */
   .card-header-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    flex-wrap: nowrap !important;
-    padding: 2px 4px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 12px;
+    /* 机身圆角 24px 会裁 iframe。标题贴边时左上角会被削掉，这里让出圆角。 */
+    padding: 16px 16px 4px 18px;
     min-width: 0;
   }
   .m-title-group {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
     min-width: 0;
-    overflow: hidden;
-    flex: 1 1 auto;
+    grid-column: 1;
+    grid-row: 1;
   }
   .m-title {
     font-size: var(--title-sz);
     font-weight: 800;
     color: var(--dash-text);
     letter-spacing: 0.3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* 长标题允许换行，绝不被圆角截断 */
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
     flex-shrink: 1;
     margin: 0;
   }
   .m-meta-row {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
-    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+  .m-counter-badge {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
+    margin: 0;
+    white-space: nowrap;
   }
   .m-meta-chip {
     display: inline-flex;
@@ -16655,6 +17510,9 @@ function closeRecordsDrawer() {
     position: relative;
     width: 100%;
     height: calc(var(--deck-card-h) + 20px);
+    /* 卡片高度被 flex 压小后必须跟着收，否则卡底会溢出到 .deck-footer-bar 上把按钮盖住 */
+    min-height: 200px;
+    overflow: hidden;
     perspective: 1200px;
     display: flex;
     align-items: center;
@@ -16666,14 +17524,18 @@ function closeRecordsDrawer() {
   .deck-card {
     position: absolute;
     width: var(--deck-card-w);
-    height: var(--deck-card-h);
+    /* deck 区被模块高度压短时，卡跟着收；上下各留 10px 给投影，绝不越过 footer */
+    height: min(var(--deck-card-h), calc(100% - 20px));
+    max-height: calc(100% - 20px);
     border-radius: 20px;
     background: var(--dash-surface-soft);
-    border: 1.5px solid var(--dash-tray-inset);
+    /* 卡缘用中性墨色描边：浅色下 --dash-tray-inset 只有 8% 黑，手机视口看不出边界 */
+    border: 1px solid var(--dash-ink-a16, rgba(44, 62, 80, 0.16));
     box-shadow: 0 16px 36px var(--dash-ink-a12), 0 2px 8px var(--dash-ink-a04);
     display: flex;
     flex-direction: column;
-    padding: 16px 16px 12px;
+    /* 卡头留够圆角安全区：20px 圆角 + 1px 描边，16px 内边距时首行贴角 */
+    padding: 18px 16px 12px;
     box-sizing: border-box;
     transform-style: preserve-3d;
     backface-visibility: hidden;
@@ -16690,8 +17552,97 @@ function closeRecordsDrawer() {
     position: absolute;
     inset: 0;
     border-radius: 19px;
-    border: 1px solid var(--dash-gold-a35);
+    /* 去掉金色内圈（dad 261103：卡片不要黄色边缘）；只留 1px 顶部高光 */
+    border: 0;
+    box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255, 255, 255, 0.65));
     pointer-events: none;
+  }
+
+  /* 空态：未选科目时不要把 3 行字顶在卡头、下面留 300px 空白 */
+  /* 只在纵向 feed 档收高；横版（cz-expand）仍按组合高度铺满 */
+  .req-card-chassis.is-feed.is-empty .req-deck-stage,
+  html.cz-feed .req-card-chassis.is-empty .req-deck-stage {
+    height: auto;
+  }
+  .req-card-chassis.is-feed.is-empty .deck-card,
+  html.cz-feed .req-card-chassis.is-empty .deck-card {
+    position: relative;
+    height: auto;
+    min-height: 132px;
+  }
+  .deck-card.is-empty {
+    justify-content: flex-start;
+  }
+  .deck-card.is-empty .card-metro-pill,
+  .deck-card.is-empty .card-footer-row,
+  .deck-card.is-empty .card-date-badge,
+  .deck-card.is-empty .latest-tag {
+    display: none;
+  }
+  .deck-card.is-empty .card-top-row {
+    margin-bottom: 0;
+  }
+  .deck-card.is-empty .card-req-body {
+    flex: 0 0 auto;
+    margin: 10px 0 0;
+    align-items: flex-start;
+    gap: 8px;
+    overflow: visible;
+  }
+  .deck-card.is-empty .req-p {
+    color: var(--dash-text-soft);
+  }
+  .deck-card.is-empty .req-p:first-child {
+    color: var(--dash-text);
+    font-weight: 650;
+  }
+
+  /* ══════ 纵向 feed 档：单张长卡，高度随内容长高（dad 261103 方向 A） ══════
+     手机 / iPad 竖屏下同一张卡不同 stage 需要的自然高在 420~800 之间浮动，
+     固定高必然一边裁字一边留白。这里把 feed 档退化成单卡文档流：
+     卡高 = 内容高，卡内不滚动，底栏（指示点 / 上一张 / 下一张）跟在卡后，
+     横版（cz-expand）继续 3D 叠卡 + 卡内滚动。 */
+  html.cz-feed .req-card-chassis,
+  html.cz-feed .req-deck-stage {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    perspective: none;
+  }
+  html.cz-feed .deck-card {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: min(var(--deck-card-w), 100%);
+    height: auto;
+    min-height: 380px;
+    max-height: none;
+    transform: none;
+    opacity: 1;
+    overflow: visible;
+    margin: 0 auto;
+    transition: opacity 180ms ease-out;
+  }
+  html.cz-feed .deck-card.is-empty {
+    min-height: 132px;
+  }
+  /* feed 只留当前这张：底层卡不再叠着透字 */
+  html.cz-feed .deck-card:not(.is-active) {
+    display: none;
+  }
+  html.cz-feed .card-req-body {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    /* 只有极端长文才出细滚动条，避免一张卡把底栏推到两屏之外 */
+    max-height: 760px;
+    overflow-y: auto;
+  }
+  html.cz-feed .card-note-box {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   /* C2: 拖动中硬件加速 will-change，其余卡完全隐藏，零残影 */
@@ -16723,6 +17674,10 @@ function closeRecordsDrawer() {
     align-items: baseline;
     justify-content: space-between;
     margin-bottom: 8px;
+    /* 长科目名不允许把日期 badge 挤到换行顶穿卡边：允许折行，日期单独落一行 */
+    flex-wrap: wrap;
+    row-gap: 4px;
+    min-width: 0;
   }
   .card-subject-tag {
     font-size: var(--title-sz, 17px);
@@ -16731,6 +17686,11 @@ function closeRecordsDrawer() {
     display: flex;
     align-items: baseline;
     gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .latest-tag {
     font-size: 14px;
@@ -16739,6 +17699,7 @@ function closeRecordsDrawer() {
     background: transparent;
     padding: 0;
     letter-spacing: normal;
+    flex-shrink: 0;
   }
   .card-date-badge {
     font-size: 14px;
@@ -16747,6 +17708,8 @@ function closeRecordsDrawer() {
     background: transparent;
     padding: 0;
     font-family: inherit;
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   /* 节拍与速度信息条（统一正文字号字重，移除红底框） */
@@ -16866,7 +17829,9 @@ function closeRecordsDrawer() {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 2px 4px;
+    /* 底栏控制点和上/下一张按钮跟 3D 卡左右对齐：
+       卡宽是 --deck-card-w，卡在舞台里居中，两侧留白就是 (容器宽 - 卡宽) / 2。 */
+    padding: 2px max(4px, calc((100% - var(--deck-card-w)) / 2));
   }
   .deck-dots {
     display: flex;
@@ -16909,6 +17874,10 @@ function closeRecordsDrawer() {
     font-weight: 700;
     color: var(--dash-text);
     cursor: pointer;
+  }
+  :root[data-skin="ink"] .deck-btn {
+    background: var(--dash-surface-2);
+    border-color: var(--dash-ink-a16);
   }
   .deck-btn:active:not(:disabled) {
     transform: scale(0.97);
@@ -16975,7 +17944,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.18</b> · 卡 v3 · 2026-11-02</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -17131,6 +18100,11 @@ function closeRecordsDrawer() {
 
     /* 联动接口：接收外部科目更新，从后端按 stage 真实要求重绘卡叠 */
     window.updateSubjectAssignment = async function (itemData) {
+      /* 翻页会触发外层重量，重量又会把当前科目再推一次进来。
+         科目没变就别重拉：重拉会把用户翻到的那一页打回第 1 页。 */
+      if (itemData && itemData.name && currentFetchSubject === itemData.name.trim() && ASSIGNMENTS_DATA.length > 1) {
+        return;
+      }
       if (!itemData || !itemData.name) {
         currentFetchSubject = null;
         ASSIGNMENTS_DATA = [{
@@ -17224,6 +18198,41 @@ function closeRecordsDrawer() {
     /* ═════════════════════════════════════════════════════════
        3D 卡叠 (Deck) 渲染：静态只展示前 3 张，无重叠杂乱
        ═════════════════════════════════════════════════════════ */
+    /* 纵向 feed 档判定：host 给文档根加 cz-feed（手机 / iPad 竖屏的纵向无限 feed 流） */
+    function isFeedDeck() {
+      return document.documentElement.classList.contains('cz-feed');
+    }
+
+    /* feed 档翻页后卡高变了，外层模块的 iframe 高度得重量一次，否则底部被裁或留白 */
+    function pokeFeedReflow() {
+      try {
+        const p = window.parent;
+        if (p && p.__cz && typeof p.__cz.remeasureNarrow === 'function') { p.__cz.remeasureNarrow(); return; }
+      } catch (e1) {}
+      try {
+        const gp = window.parent && window.parent.parent;
+        if (gp && gp.__cz && typeof gp.__cz.remeasureNarrow === 'function') { gp.__cz.remeasureNarrow(); }
+      } catch (e2) {}
+    }
+
+    /* feed 档用轻量横滑翻页（3D 抛飞手势在单卡长卡下没有意义） */
+    function bindFeedFlip(card) {
+      let sx = 0, sy = 0, tracking = false;
+      card.addEventListener('pointerdown', (e) => {
+        if (e.target.closest && e.target.closest('button, a, .card-req-body')) { tracking = false; return; }
+        tracking = true; sx = e.clientX; sy = e.clientY;
+      });
+      card.addEventListener('pointerup', (e) => {
+        if (!tracking) { return; }
+        tracking = false;
+        const dx = e.clientX - sx;
+        const dy = e.clientY - sy;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) { return; }
+        if (dx < 0) { navNext(); } else { navPrev(); }
+      });
+      card.addEventListener('pointercancel', () => { tracking = false; });
+    }
+
     function renderDeck() {
       stage.innerHTML = '';
       stage.classList.remove('is-deck-dragging');
@@ -17231,16 +18240,39 @@ function closeRecordsDrawer() {
 
       const visibleCount = 3;
       const total = ASSIGNMENTS_DATA.length;
+      /* 空态只留一张「未选练习」：卡片收成内容高，不要 500px 大白板 */
+      const chassis = document.getElementById('reqChassis');
+      if (chassis) { chassis.classList.toggle('is-empty', total === 1 && ASSIGNMENTS_DATA[0].id === 'empty'); }
+
+      /* 纵向 feed 档（手机 / iPad 竖屏）：退化成单张长卡 —— 高度随当前 stage 内容长高，
+         卡内不滚动，底栏跟在卡后。不再叠 3 张：底层卡在深色下透字、还把高度撑乱。 */
+      if (isFeedDeck()) {
+        const item = ASSIGNMENTS_DATA[currentIndex] || ASSIGNMENTS_DATA[0];
+        if (item) {
+          const card = document.createElement('div');
+          card.className = 'deck-card is-active';
+          if (item.id === 'empty') { card.classList.add('is-empty'); }
+          card.innerHTML = createCardMarkup(item, currentIndex);
+          card.dataset.index = String(currentIndex);
+          bindFeedFlip(card);
+          stage.appendChild(card);
+        }
+        updateControls();
+        requestAnimationFrame(() => { requestAnimationFrame(pokeFeedReflow); });
+        return;
+      }
 
       // 逆序插入 DOM，确保 index 小的在最上面
       for (let i = Math.min(total - 1, currentIndex + visibleCount - 1); i >= currentIndex; i--) {
         const item = ASSIGNMENTS_DATA[i];
         const card = document.createElement('div');
         card.className = 'deck-card';
+        if (item.id === 'empty') { card.classList.add('is-empty'); }
         card.innerHTML = createCardMarkup(item, i);
         card.dataset.index = i;
 
         const stackOffset = i - currentIndex; // 0 是最顶层卡片
+        if (stackOffset === 0) { card.classList.add('is-active'); }
         if (stackOffset === 1) {
           card.classList.add('is-next-card');
         }
@@ -17697,6 +18729,36 @@ function closeRecordsDrawer() {
       return { ok: bad.length === 0, n: bad.length, bad: bad.slice(0, 12) };
     };
 
+    /* 纵向 feed 长卡契约自检（261103 方向 A）
+       F1 卡高 >= 内容高（卡底不裁字）
+       F2 正文没到 760 上限就不该有滚动（超过才允许滚）
+       F3 备忘框底边落在卡内（不再被卡底切断） */
+    window.__czQFeedAudit = function () {
+      if (!document.documentElement.classList.contains('cz-feed')) { return { skip: 'not-feed' }; }
+      var card = document.querySelector('.deck-card.is-active');
+      if (!card) { return { skip: 'no-card' }; }
+      var body = card.querySelector('.card-req-body');
+      var note = card.querySelector('.card-note-box');
+      var cr = card.getBoundingClientRect();
+      var out = { F1: null, F2: null, F3: null };
+      out.cardH = +cr.height.toFixed(1);
+      out.contentH = +card.scrollHeight.toFixed(1);
+      out.F1 = card.scrollHeight <= Math.ceil(cr.height) + 1;
+      if (body) {
+        var br = body.getBoundingClientRect();
+        out.bodyClient = +br.height.toFixed(1);
+        out.bodyScroll = +body.scrollHeight.toFixed(1);
+        out.F2 = body.scrollHeight > 761 ? (br.height >= 759) : (body.scrollHeight <= Math.ceil(br.height) + 1);
+      }
+      if (note) {
+        out.noteBottom = +note.getBoundingClientRect().bottom.toFixed(1);
+        out.cardBottom = +cr.bottom.toFixed(1);
+        out.F3 = out.noteBottom <= out.cardBottom + 1;
+      }
+      out.ok = (out.F1 !== false) && (out.F2 !== false) && (out.F3 !== false);
+      return out;
+    };
+
     // 初始化
     window.addEventListener('DOMContentLoaded', () => {
       renderDeck();
@@ -17927,7 +18989,29 @@ function closeRecordsDrawer() {
     'html.cz-fill .req-card-chassis { width: 100% !important; max-width: 100% !important; background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; container-type: inline-size !important; }',
     'html.cz-fill .req-deck-stage { width: 100% !important; max-width: 100% !important; }',
     'html.cz-fill .deck-card { width: min(var(--deck-card-w), 100%) !important; max-width: 100% !important; box-sizing: border-box !important; }',
-    'html.cz-fill .card-top-row, html.cz-fill .card-footer-row, html.cz-fill .card-metro-pill, html.cz-fill .deck-footer-bar, html.cz-fill .card-header-bar { flex-wrap: wrap !important; min-width: 0 !important; max-width: 100% !important; row-gap: 4px !important; }',
+    /* 261103 方向 A：纵向 feed 档 Q 卡改单张长卡，高度随内容长高。
+       内联 transform / opacity 是 3D 叠卡留下的，必须用 !important 压掉。 */
+    'html.cz-fill.cz-feed .req-card-chassis { height: auto !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed .req-deck-stage { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; perspective: none !important; display: block !important; }',
+    'html.cz-fill.cz-feed .deck-card { position: relative !important; left: auto !important; top: auto !important; height: auto !important; min-height: 380px !important; max-height: none !important; transform: none !important; opacity: 1 !important; overflow: visible !important; margin: 0 auto !important; }',
+    'html.cz-fill.cz-feed .deck-card.is-empty { min-height: 132px !important; }',
+    'html.cz-fill.cz-feed .deck-card:not(.is-active) { display: none !important; }',
+    'html.cz-fill.cz-feed .card-req-body { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; max-height: 760px !important; overflow-y: auto !important; }',
+    'html.cz-fill.cz-feed .card-note-box { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
+    /* Q 卡专属：feed 档不许有 100% 高度链条，否则 stage-frame 100% × body auto = 0，整卡被裁 */
+    'html.cz-fill.cz-feed.cz-qcard, html.cz-fill.cz-feed.cz-qcard body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed.cz-qcard .stage-frame { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; container-type: inline-size !important; }',
+    'html.cz-fill.cz-feed.cz-qcard .req-card-chassis { height: auto !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed.cz-qcard .req-deck-stage { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed.cz-qcard .deck-footer-bar { height: auto !important; max-height: none !important; overflow: visible !important; }',
+    /* B 节拍器：feed 档不锁高，卡高由内容决定（旋钮区尺寸见后面窄档那组） */
+    'html.cz-fill.cz-feed .metro-card { height: auto !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; }',
+    'html.cz-fill .card-top-row, html.cz-fill .card-footer-row, html.cz-fill .card-metro-pill, html.cz-fill .deck-footer-bar { flex-wrap: wrap !important; min-width: 0 !important; max-width: 100% !important; row-gap: 4px !important; }',
+    /* 长科目标题和 1/2 次数分成两列：次数钉在右上，不再被挤到下一行把标题顶进圆角裁切 */
+    'html.cz-fill .card-header-bar { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: start !important; column-gap: 12px !important; padding: 16px 16px 4px 18px !important; min-width: 0 !important; max-width: 100% !important; }',
+    'html.cz-fill .m-title-group { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 2px !important; min-width: 0 !important; grid-column: 1 !important; grid-row: 1 !important; }',
+    'html.cz-fill .m-counter-badge { grid-column: 2 !important; grid-row: 1 !important; justify-self: end !important; align-self: start !important; margin: 0 !important; white-space: nowrap !important; }',
+    'html.cz-fill .m-meta-row { display: flex !important; flex-wrap: wrap !important; width: auto !important; max-width: 100% !important; order: 0 !important; flex: none !important; }',
     'html.cz-fill .card-date-badge, html.cz-fill .card-subject-tag, html.cz-fill .m-title, html.cz-fill .m-subtitle, html.cz-fill .card-metro-val, html.cz-fill .card-seg-chip, html.cz-fill .req-p, html.cz-fill .card-note-box, html.cz-fill .card-teacher-sig { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; white-space: normal !important; }',
     'html.cz-fill .card-date-badge { font-size: 14px !important; font-weight: 500 !important; }',
     /* 261015b R5：B/D/R/Q 外壳 container-type，内层只用 flex / clamp / cqh。矮盒靠 @container 收敛，元素仍在盒内。 */
@@ -17935,7 +19019,12 @@ function closeRecordsDrawer() {
     /* feed 流靠内容撑高；size containment 会让 page/frame/dash 忽略子内容高度，run 态切视口时塌成 24px。 */
     'html.cz-fill.cz-feed .page, html.cz-fill.cz-feed .frame, html.cz-fill.cz-feed .dash { container-type: inline-size !important; }',
     'html.cz-fill .card-wrap { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; border-radius: 24px !important; padding: clamp(8px, 3cqh, 18px) clamp(8px, 3cqw, 16px) !important; gap: clamp(4px, 1.4cqh, 12px) !important; }',
-    'html.cz-fill .metro-card { display: flex !important; flex-direction: column !important; gap: clamp(4px, 1.2cqh, 12px) !important; padding: clamp(6px, 1.6cqh, 14px) !important; border-radius: 24px !important; }',
+    'html.cz-fill .metro-card { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; gap: clamp(4px, 1.2cqh, 10px) !important; padding: 12px 14px 20px !important; border-radius: 24px !important; }',
+    'html.cz-fill .knob-section { flex: 1 1 auto !important; min-height: 168px !important; max-height: 210px !important; padding-top: 0 !important; padding-bottom: 0 !important; }',
+    'html.cz-fill .bottom-ops { flex: 0 0 auto !important; margin-top: 4px !important; padding-bottom: 0 !important; }',
+    'html.cz-fill .preset-scroll { gap: 6px !important; margin-top: 6px !important; }',
+    'html.cz-fill .preset-chip { height: 30px !important; }',
+    'html.cz-fill .ps-row { gap: 6px !important; row-gap: 6px !important; }',
     'html.cz-fill .rotary-knob { width: min(168px, 46cqh) !important; height: min(168px, 46cqh) !important; }',
     'html.cz-fill .dial-outer-ring { width: min(220px, 64cqh) !important; height: min(220px, 64cqh) !important; }',
     /* 只压预设行的最小内容宽。不写 width:100%，否则百分比会把列宽撑开。 */
@@ -18188,8 +19277,13 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed .strip .top, html.cz-fill.cz-feed .strip .mid, html.cz-fill.cz-feed .strip .bot { flex-direction: row !important; align-items: center !important; justify-content: center !important; width: auto !important; height: auto !important; flex: 0 1 auto !important; gap: 8px !important; writing-mode: horizontal-tb !important; }',
     'html.cz-fill.cz-feed #bpmFace { order: 2; font-size: 32px !important; line-height: 1 !important; width: auto !important; height: auto !important; color: var(--dash-panel-text) !important; writing-mode: horizontal-tb !important; }',
     'html.cz-fill.cz-feed #tempoTerm { order: 3; writing-mode: horizontal-tb !important; letter-spacing: 0.04em !important; color: var(--dash-panel-text) !important; }',
-    'html.cz-fill.cz-feed #stepDownBtn { order: 1; width: 32px !important; height: 32px !important; }',
-    'html.cz-fill.cz-feed #stepUpBtn { order: 4; width: 32px !important; height: 32px !important; }',
+    /* order/尺寸只给扁平 strip。旋钮行里的 −/+ 与旋钮同属一行，
+       一旦被改成 order 1/4，旋钮会被推到行首，刻度环与旋钮就错位。 */
+    'html.cz-fill.cz-feed .strip #stepDownBtn { order: 1; width: 32px !important; height: 32px !important; }',
+    'html.cz-fill.cz-feed .strip #stepUpBtn { order: 4; width: 32px !important; height: 32px !important; }',
+    'html.cz-fill.cz-feed .knob-row #stepDownBtn { order: 0 !important; }',
+    'html.cz-fill.cz-feed .knob-row #rotaryKnob { order: 1 !important; }',
+    'html.cz-fill.cz-feed .knob-row #stepUpBtn { order: 2 !important; }',
     'html.cz-fill.cz-feed #mainToggleBtn { width: 100px !important; height: 40px !important; border-radius: 20px !important; line-height: 40px !important; }',
     /* 440 档 iframe 约 404，三区按 708 的间距会把 120px 主开关推出条带。只在窄视口收间距，主开关让出剩余宽度。 */
     '@media (max-width: 520px) {',
@@ -18211,12 +19305,17 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed #btnTimbre { width: auto !important; padding: 0 12px !important; color: var(--dash-panel-text) !important; border-color: var(--dash-ink-a16) !important; }',
     /* 440 档 B 的预设行改折行，不再横滚 */
     'html.cz-fill.cz-feed #psAssignRow, html.cz-fill.cz-feed #psRangeRow { display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; width: 100% !important; max-width: 100% !important; scrollbar-width: none !important; }',
+    /* 预设行横向可滚，右缘渐隐：不然最后一颗 pill 被切一半，看着像排版坏了。 */
+    'html.cz-fill.cz-feed #psAssignRow, html.cz-fill.cz-feed #psRangeRow { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), rgba(0, 0, 0, 0.12) 100%) !important; mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), rgba(0, 0, 0, 0.12) 100%) !important; }',
     'html.cz-fill.cz-feed #psAssignRow::-webkit-scrollbar, html.cz-fill.cz-feed #psRangeRow::-webkit-scrollbar { display: none !important; }',
     'html.cz-fill.cz-feed .preset-chip { flex: 0 0 auto !important; min-width: 0 !important; max-width: none !important; white-space: nowrap !important; height: 32px !important; }',
     'html.cz-fill.cz-feed .metro-card { padding: 10px !important; gap: 8px !important; }',
-    'html.cz-fill.cz-feed .knob-section { min-height: 0 !important; padding: 4px 0 !important; }',
-    'html.cz-fill.cz-feed .rotary-knob { width: 120px !important; height: 120px !important; }',
-    'html.cz-fill.cz-feed .dial-outer-ring { width: 148px !important; height: 148px !important; }',
+    /* 261103：刻度环是绝对定位、不占高度。容器原先被压到 128 而环有 148，
+       环上下各溢出 10px，正好盖住上面的拍点标签和下面的按钮。
+       容器至少要和环一样高，卡高再由内容撑开。 */
+    'html.cz-fill.cz-feed .knob-section { min-height: 168px !important; padding: 10px 0 !important; }',
+    'html.cz-fill.cz-feed .rotary-knob { width: 132px !important; height: 132px !important; }',
+    'html.cz-fill.cz-feed .dial-outer-ring { width: 164px !important; height: 164px !important; }',
     'html.cz-fill.cz-feed .bottom-ops { margin-top: 0 !important; padding-bottom: 8px !important; }',
     /* 224 宽的时长卡仍留四要素，不被矮盒查询藏掉 */
     '@container moduleCard (max-width: 420px) {',
@@ -18323,14 +19422,15 @@ function closeRecordsDrawer() {
     '}',
     '#czSlotHost { display: none !important; }',
     '/* P1-2：画布本体无 ink 皮肤 → 宿主运行时注入深墨重载（画布源文件零改动，sha256 不变）',
-    '   取值按 agy 判决：#14181C 舞台底 / #1E242B 票卡体 / #1A1E22 顶栏 / #FFF8F0 文字 */',
-    ':root { --cz-ink-stage: #14181C; --cz-ink-ticket: #1E242B; --cz-ink-top: #1A1E22; --cz-ink-text: #FFF8F0; --cz-ink-line: rgba(255, 255, 255, 0.12); }',
+    '   取值按柔和夜读态：#1C2127 舞台底 / #232931 票卡体与顶栏 / #DED7CD 文字 */',
+    ':root { --cz-ink-stage: #1C2127; --cz-ink-ticket: #232931; --cz-ink-top: #14181C; --cz-ink-text: #DED7CD; --cz-ink-line: rgba(222, 215, 205, 0.20); }',
     ':root[data-skin="ink"] html, :root[data-skin="ink"] body { background: var(--cz-ink-stage) !important; color: var(--cz-ink-text) !important; }',
     ':root[data-skin="ink"] #practiceStage { background: var(--cz-ink-stage) !important; }',
     '#pkTicketCard { background: linear-gradient(180deg, #FFFFFF 0%, #E8E5E0 100%) !important; }',
-  ':root[data-skin="ink"] #pkTicketCard { background: linear-gradient(180deg, #2E343B 0%, #161A1E 100%) !important; color: var(--cz-ink-text) !important; border-color: var(--cz-ink-line) !important; }',
-  ':root[data-skin="ink"] .card-records-mini { background: #161A1E; color: #FFF8F0; }',
-  ':root[data-skin="ink"] .mini-date, :root[data-skin="ink"] .mini-hero-num, :root[data-skin="ink"] .mini-hero-unit, :root[data-skin="ink"] .mini-sub-row { color: #FFF8F0; }',
+  ':root[data-skin="ink"] #pkTicketCard { background: linear-gradient(180deg, #242A32 0%, #1C2127 100%) !important; color: var(--cz-ink-text) !important; border-color: var(--cz-ink-line) !important; }',
+  ':root[data-skin="ink"] .card-records-mini { background: #232931; color: #DED7CD; }',
+  ':root[data-skin="ink"] .mini-date, :root[data-skin="ink"] .mini-hero-num, :root[data-skin="ink"] .mini-hero-unit { color: #DED7CD; }',
+  ':root[data-skin="ink"] .mini-sub-row { color: #A8A29A; }',
     ':root[data-skin="ink"] .pk-top { background: var(--cz-ink-top) !important; color: var(--cz-ink-text) !important; }',
     ':root[data-skin="ink"] .pk-stage-wrap { background: transparent !important; }',
     NEGCTL ? '/* 负控①：把被 dad 否掉的 slot 壳加回来 */ .cz-mod { border: 1px solid rgba(44, 62, 80, 0.12) !important; border-radius: 20px !important; background: #FFFFFF !important; box-shadow: 0 1px 3px rgba(44, 62, 80, 0.04) !important; overflow: hidden !important; } .cz-mod-col { background: rgba(44, 62, 80, 0.06) !important; border-radius: 24px !important; }' : '',
@@ -18364,13 +19464,13 @@ window.__CZ_TOKENS = '' +
 '--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255,87,34,0.08);--dash-vermilion-line:rgba(255,87,34,0.30);' +
 '--dash-vermilion-text:#A04217;--dash-vermilion-glow:rgba(255,87,34,0.35);--dash-panel-text:#FFF8F0;' +
 '--dash-muted:#666666;--dash-panel:#161A1E;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;}' +
-':root[data-skin="ink"]{--dash-white:#FFFFFF;--dash-surface-soft:#1A1E22;--dash-surface-2:#3E474E;--dash-surface-3:#4A5058;' +
-'--dash-ink:#2C3E50;--dash-ink-a12:rgba(255,248,240,0.10);--dash-ink-a16:rgba(255,248,240,0.14);--dash-text:#FFF8F0;' +
-'--dash-text-soft:rgba(255,248,240,0.68);--dash-shell-hi:#2E343B;--dash-shell-lo:#161A1E;--dash-shell-shadow:rgba(44,62,80,0.35);' +
-'--dash-shell-inset:rgba(44,62,80,0.45);--dash-key-hi:rgba(255,255,255,0.22);--dash-glint:rgba(255,255,255,0.28);' +
-'--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255,87,34,0.08);--dash-vermilion-line:rgba(255,87,34,0.30);' +
-'--dash-vermilion-text:#FF9E7A;--dash-vermilion-glow:rgba(255,87,34,0.35);--dash-panel-text:#FFF8F0;' +
-'--dash-muted:#666666;--dash-panel:#14181C;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#F5D061;}';
+':root[data-skin="ink"]{--dash-white:#FFFFFF;--dash-surface-soft:#232931;--dash-surface-2:#2C333C;--dash-surface-3:#363E48;' +
+'--dash-ink:#2C3E50;--dash-ink-a12:rgba(222, 215, 205, 0.20);--dash-ink-a16:rgba(222, 215, 205, 0.24);--dash-text:#DED7CD;' +
+'--dash-text-soft:#A8A29A;--dash-shell-hi:#2E343B;--dash-shell-lo:#1E242B;--dash-shell-shadow:rgba(44, 62, 80, 0.35);' +
+'--dash-shell-inset:rgba(44, 62, 80, 0.45);--dash-key-hi:rgba(255, 255, 255, 0.16);--dash-glint:rgba(255, 255, 255, 0.22);' +
+'--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255, 87, 34, 0.08);--dash-vermilion-line:rgba(255, 87, 34, 0.30);' +
+'--dash-vermilion-text:#FF9E7A;--dash-vermilion-glow:rgba(255, 87, 34, 0.35);--dash-panel-text:#DED7CD;' +
+'--dash-muted:#A8A29A;--dash-panel:#14181C;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;}';
 
 window.__CZ_CSS = [
   '/* ── 组合轨道 ── */',
@@ -18379,7 +19479,7 @@ window.__CZ_CSS = [
   /* 宽屏：分页单位提升到整个舞台（票夹 + 卡片组合），滑动时票夹一起走 */
   '@media (min-width: 1024px) {',
   '  #practiceStage { position: relative; }',
-  '  .pk-stage-wrap { overflow-x: auto !important; overflow-y: visible !important; scrollbar-width: none; -ms-overflow-style: none; }',
+  '  .pk-stage-wrap { overflow-x: auto !important; overflow-y: visible !important; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }',
   '  .pk-stage-wrap::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }',
   '  .pk-main-col { flex: 0 0 auto !important; width: auto !important; }',
   '  .cz-combo { overflow: visible !important; width: max-content !important; }',
@@ -18396,8 +19496,8 @@ window.__CZ_CSS = [
   '.cz-pagedots > button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 999px; background: rgba(44,62,80,0.34); cursor: pointer; transition: width 0.22s ease, background 0.22s ease; }',
   '.cz-pagedots > button.is-on { width: 20px; background: rgba(44,62,80,0.78); }',
   '.cz-pagedots > button:focus-visible { outline: 2px solid var(--dash-vermilion); outline-offset: 2px; }',
-  ':root[data-skin="ink"] .cz-pagedots > button { background: rgba(255,248,240,0.28); }',
-  ':root[data-skin="ink"] .cz-pagedots > button.is-on { background: rgba(255,248,240,0.78); }',
+  ':root[data-skin="ink"] .cz-pagedots > button { background: rgba(222,215,205,0.30); }',
+  ':root[data-skin="ink"] .cz-pagedots > button.is-on { background: #DED7CD; }',
   '.cz-combo[hidden] { display: none !important; }',
   '#pkPunchSlotWrap[hidden] { display: none !important; }',
   '.cz-astack { display: flex; flex-direction: column; flex: 0 0 auto; min-width: 0; gap: 12px; position: relative; }',
@@ -18408,7 +19508,7 @@ window.__CZ_CSS = [
   '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255,255,255,0.65)); }',
   '.cz-tcard > .cz-mod { width: 100%; min-height: 0; }',
   '@media (min-width: 1024px) { .cz-tcard > .cz-mod + .cz-mod { box-shadow: inset 0 1px 0 var(--dash-ink-a12, rgba(44,62,80,0.12)); } .cz-tcard .card-records-mini { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; } }',
-  ':root[data-skin="ink"] .cz-tcard { background: #161A1E; border-color: rgba(255,255,255,0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }',
+  ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }',
   '.cz-node { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; position: relative; }',
   '.cz-node.cz-brow { flex-direction: row; }',
   '@media (max-width: 1023px) { .cz-brow { flex-direction: column !important; } }',
@@ -18452,13 +19552,11 @@ window.__CZ_CSS = [
   '#pkInsertedHead { display: none !important; }',
   '/* ── 卡片露出条紧凑排版 ── */',
   '#czTicketStage.is-compact .pk-card-exposed-bar, .pk-card-exposed-bar.is-compact { padding: 0 6px !important; }',
-  '#czTicketStage.is-compact .pk-exposed-left, .pk-card-exposed-bar.is-compact .pk-exposed-left, .is-compact .pk-exposed-left { flex: 0 1 auto !important; min-width: 0 !important; gap: 4px !important; }',
-  '#czTicketStage.is-compact #pkCcgSession, .is-compact #pkCcgSession, #czTicketStage.is-compact .pk-exposed-session, .pk-card-exposed-bar.is-compact .pk-exposed-session, .is-compact .pk-exposed-session { display: none !important; }',
-  '#czTicketStage.is-compact .pk-exposed-expand-hint, .pk-card-exposed-bar.is-compact .pk-exposed-expand-hint, .is-compact .pk-exposed-expand-hint { display: none !important; }',
+  '#czTicketStage.is-compact .pk-exposed-left, .pk-card-exposed-bar.is-compact .pk-exposed-left, .is-compact .pk-exposed-left { flex: 1 1 auto !important; min-width: 0 !important; gap: 4px !important; }',
+  '#czTicketStage.is-compact .pk-exposed-expand-hint, .pk-card-exposed-bar.is-compact .pk-exposed-expand-hint, .is-compact .pk-exposed-expand-hint { font-size: 9px !important; padding: 1px 5px !important; flex-shrink: 0 !important; }',
   '#czTicketStage.is-compact .pk-exposed-chip, .pk-card-exposed-bar.is-compact .pk-exposed-chip, .is-compact .pk-exposed-chip { font-size: 8px !important; padding: 1px 4px !important; flex-shrink: 0 !important; }',
-  '#czTicketStage.is-compact .pk-exposed-title, .pk-card-exposed-bar.is-compact .pk-exposed-title, .is-compact .pk-exposed-title { font-size: 11.5px !important; max-width: clamp(76px, 35cqw, 140px) !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; flex-shrink: 1 !important; }',
+  '#czTicketStage.is-compact .pk-exposed-title, .pk-card-exposed-bar.is-compact .pk-exposed-title, .is-compact .pk-exposed-title { font-size: 11.5px !important; max-width: none !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; flex: 1 1 auto !important; }',
   '#czTicketStage.is-compact .pk-exposed-meta, .pk-card-exposed-bar.is-compact .pk-exposed-meta, .is-compact .pk-exposed-meta { gap: 4px !important; flex-shrink: 0 !important; min-width: 0 !important; }',
-  '#czTicketStage.is-compact .pk-exposed-bpm, .pk-card-exposed-bar.is-compact .pk-exposed-bpm, .is-compact .pk-exposed-bpm, #czTicketStage.is-compact .pk-exposed-dur, .pk-card-exposed-bar.is-compact .pk-exposed-dur, .is-compact .pk-exposed-dur { font-size: 10px !important; flex-shrink: 0 !important; }',
   '/* ── 今日练习记录小卡。浅色对齐 D 卡浅银：白瓷底 #FFFDFB + 墨字 #2C3E50。深墨才用深炭 #161A1E。强调色仍是珊瑚/朱，不另造绿。 ── */',
   '.card-records-mini { flex: 0 0 auto; box-sizing: border-box; width: 100%; height: 100%; max-height: 100%; overflow-y: auto; overflow-x: hidden;',
   '  background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); border-radius: 24px; color: var(--dash-text, #2C3E50);',
@@ -18514,11 +19612,11 @@ window.__CZ_CSS = [
   '.card-records-mini.is-compact .pill-popout-btn { min-height: 26px; padding: 3px 8px; font-size: 10.5px; }',
   '.pill-popout-btn:hover { border-color: var(--dash-vermilion); }',
   '.pill-popout-btn:focus-visible { outline: 2px solid var(--dash-vermilion); outline-offset: 2px; }',
-  ':root[data-skin="ink"] .card-records-mini { background: #161A1E !important; color: #FFF8F0 !important; border-color: rgba(255,255,255,0.12) !important; box-shadow: inset 0 1px 1px rgba(255,255,255,0.10), 0 12px 28px rgba(0,0,0,0.35) !important; }',
-  ':root[data-skin="ink"] .card-records-mini .mini-hero-num, :root[data-skin="ink"] .card-records-mini .mini-hero-unit, :root[data-skin="ink"] .card-records-mini .mini-date, :root[data-skin="ink"] .card-records-mini .mini-dist-name, :root[data-skin="ink"] .card-records-mini .mini-dist-dur, :root[data-skin="ink"] .card-records-mini .mini-recent-sub { color: #FFF8F0 !important; }',
-  ':root[data-skin="ink"] .card-records-mini .mini-sub-row, :root[data-skin="ink"] .card-records-mini .mini-section-label, :root[data-skin="ink"] .card-records-mini .mini-dist-pct, :root[data-skin="ink"] .card-records-mini .mini-recent-time, :root[data-skin="ink"] .card-records-mini .mini-recent-dur, :root[data-skin="ink"] .card-records-mini .mini-recent-detail, :root[data-skin="ink"] .card-records-mini .mini-sync-tip, :root[data-skin="ink"] .card-records-mini .mini-empty-hint { color: rgba(255,248,240,0.68) !important; }',
-  ':root[data-skin="ink"] .card-records-mini .mini-gauge-card, :root[data-skin="ink"] .card-records-mini .mini-recent-card { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.10) !important; }',
-  ':root[data-skin="ink"] .card-records-mini .mini-target-track, :root[data-skin="ink"] .card-records-mini .mini-multi-bar, :root[data-skin="ink"] .card-records-mini .mini-divider { background: rgba(255,255,255,0.12) !important; }',
+  ':root[data-skin="ink"] .card-records-mini { background: #232931 !important; color: #DED7CD !important; border-color: rgba(222,215,205,0.20) !important; box-shadow: inset 0 1px 1px rgba(255,255,255,0.10), 0 12px 28px rgba(0,0,0,0.30) !important; }',
+  ':root[data-skin="ink"] .card-records-mini .mini-hero-num, :root[data-skin="ink"] .card-records-mini .mini-hero-unit, :root[data-skin="ink"] .card-records-mini .mini-date, :root[data-skin="ink"] .card-records-mini .mini-dist-name, :root[data-skin="ink"] .card-records-mini .mini-dist-dur, :root[data-skin="ink"] .card-records-mini .mini-recent-sub { color: #DED7CD !important; }',
+  ':root[data-skin="ink"] .card-records-mini .mini-sub-row, :root[data-skin="ink"] .card-records-mini .mini-section-label, :root[data-skin="ink"] .card-records-mini .mini-dist-pct, :root[data-skin="ink"] .card-records-mini .mini-recent-time, :root[data-skin="ink"] .card-records-mini .mini-recent-dur, :root[data-skin="ink"] .card-records-mini .mini-recent-detail, :root[data-skin="ink"] .card-records-mini .mini-sync-tip, :root[data-skin="ink"] .card-records-mini .mini-empty-hint { color: #A8A29A !important; }',
+  ':root[data-skin="ink"] .card-records-mini .mini-gauge-card, :root[data-skin="ink"] .card-records-mini .mini-recent-card { background: #2C333C !important; border-color: rgba(222,215,205,0.20) !important; }',
+  ':root[data-skin="ink"] .card-records-mini .mini-target-track, :root[data-skin="ink"] .card-records-mini .mini-multi-bar, :root[data-skin="ink"] .card-records-mini .mini-divider { background: rgba(222,215,205,0.20) !important; }',
   ':root[data-skin="ink"] .mini-streak-tag { color: #FF6B6B !important; background: rgba(255,107,107,0.15) !important; border-color: rgba(255,107,107,0.30) !important; }',
   '/* ── 记录明细 popout（261015b · z 9999 · blur 12 · 水平居中） ── */',
   '.popout-backdrop { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center;',
@@ -18550,7 +19648,10 @@ window.__CZ_CSS = [
   '',
   '@media (max-width: 1023px) {',
   '  html, body, .pk-stage-wrap { min-height: 0 !important; height: auto !important; }',
-  '  .pk-stage-wrap { flex-direction: column !important; align-items: stretch !important; width: 100% !important; max-width: 100% !important; gap: 12px !important; }',
+  '  .pk-stage-wrap { flex-direction: column !important; align-items: stretch !important; width: 100% !important; max-width: 100% !important; gap: 8px !important; }',
+  '  /* 竖屏堆叠：黑 bar 与 dashboard 同一宽度、间距收紧 */',
+  '  #practiceStage.stage-bar #pkLeftCol, #practiceStage.stage-running #pkLeftCol, #practiceStage.stage-morphing #pkLeftCol { margin-bottom: 4px !important; }',
+  '  #practiceStage.stage-bar .pk-run-rail, #practiceStage.stage-running .pk-run-rail { width: 100% !important; max-width: 100% !important; }',
   '  #practiceStage:not(.stage-running):not(.stage-bar):not(.stage-morphing):not(.cz-ticket-exit):not(.cz-ticket-enter) #pkLeftCol, .pk-main-col { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; height: auto !important; align-self: stretch !important; }',
   '  #practiceStage.stage-morphing #pkLeftCol { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; align-self: stretch !important; }',
   '  #practiceStage.cz-ticket-exit #pkLeftCol, #practiceStage.cz-ticket-enter #pkLeftCol { width: 100% !important; max-width: 100% !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: hidden !important; }',
@@ -18587,14 +19688,38 @@ window.__CZ_CSS = [
   '   是「整篇画布文档」而不是浏览器视口 → 遮罩铺满 3000px、弹窗被 flex 居中到屏幕外，用户只看到一片灰',
   '   （dad 261027 报：点「换曲目」弹窗没出来，只出灰色蒙版）。宿主把浏览器当前看得见的那一截算成',
   '   --cz-band-t / --cz-band-h，弹层按它锚定；滚动时宿主实时刷新这两个变量。 ── */',
-  '.pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask {',
+  '.pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask, .pk-finish-modal {',
   '  top: var(--cz-band-t, 0px) !important; bottom: auto !important; height: var(--cz-band-h, 100%) !important; }',
   '.pk-folio-box { height: min(620px, calc(var(--cz-band-h, 100vh) - 40px)) !important; }',
+  '.pk-finish-box { max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }',
   '.pk-reader { max-height: calc(var(--cz-band-h, 100vh) - 48px) !important; }',
   '.popout-panel { top: calc(var(--cz-band-t, 0px) + var(--cz-band-h, 100%) / 2) !important;',
   '  max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }',
   '.cz-pop-panel { height: min(560px, calc(var(--cz-band-h, 100vh) - 40px)) !important; }'
 ].join('\n'));
+
+  /* popout 挂到「标签页文档」（practice-dsh 本体）而不是画布文档：
+     画布 iframe 被宿主按 scale() 等比缩小，画布里的 position:fixed 会跟着缩，
+     backdrop-filter 还会被放大成一片糊（dad 261103 手机视口截图）。只抽弹层规则注入标签页文档。 */
+  window.__CZ_POP_CSS = [
+    '.popout-backdrop { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center;',
+    '  padding: 0; background: color-mix(in srgb, var(--dash-panel) 65%, transparent);',
+    '  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }',
+    '.popout-backdrop.is-open { display: flex; }',
+    '.popout-panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(880px, 94vw); height: min(620px, 84vh); max-height: 84vh; display: flex; flex-direction: column;',
+    '  background: var(--dash-surface-soft); color: var(--dash-text); border: 1px solid var(--dash-ink-a16);',
+    '  border-radius: 28px; box-shadow: 0 24px 64px var(--dash-shell-shadow); overflow: hidden; z-index: 10000; }',
+    '.popout-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px;',
+    '  border-bottom: 1px solid var(--dash-ink-a12); }',
+    '.popout-title { font-size: 17px; font-weight: 750; }',
+    '.popout-close { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--dash-ink-a12);',
+    '  background: var(--dash-surface-2); color: var(--dash-text); font-size: 17px; line-height: 1; cursor: pointer; }',
+    '.popout-close:focus-visible { outline: 2px solid var(--dash-vermilion); outline-offset: 2px; }',
+    '.popout-body { flex: 1 1 auto; min-height: 0; }',
+    '.popout-body > iframe { display: block; width: 100%; height: 100%; border: 0; }',
+    '.popout-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px;',
+    '  border-top: 1px solid var(--dash-ink-a12); font-size: 12px; font-weight: 600; color: var(--dash-text-soft); }'
+  ].join('\n');
 
   /* ══════════════════════════════════════════════════════════════════
      v3.14（261028）· 开始计时就绪引导（coach mark）
@@ -18837,8 +19962,9 @@ window.__CZ_CSS = [
     var cardH = Math.round(cardW / 1.586);
     /* 露出带 = 卡片全高的 1/5（下面 4/5 完全藏进黑区） */
     var exposedH = Math.max(34, Math.min(96, Math.round(cardH * 0.20)));
-    /* 卡顶高出黑区上沿的一段（S17：卡口只露 16px，其余在孔上方，避免顶到页面头部） */
-    var cardRise = 16;
+    /* 卡顶高出黑区上沿。要能看见上圆角，再多留一条卡面在槽口外，才像插进去。
+       舞台 overflow 会裁掉伸出 #stageWrap 的部分，所以实际高度在冠定位后再夹到可露范围。 */
+    var cardRise = 20;
     var slotH = exposedH + 18;
     var cardTotalH = slotH + cardRise;
     /* S17（dad 261026）：窄孔 = 黑区上沿的一道缝。
@@ -18874,6 +20000,14 @@ window.__CZ_CSS = [
       crown.style.setProperty('height', crownPx + 'px', 'important');
       crown.style.setProperty('overflow', 'visible', 'important');
       crown.style.setProperty('pointer-events', running ? 'auto' : 'none', 'important');
+      /* #stageWrap 的 overflow-x:auto 会把 overflow-y 也算成 auto，卡顶伸出边框就被切成直线。
+         负 margin 把裁切盒上沿抬高，padding 把内容推回原位，圆角落在 padding 里才看得见。 */
+      var stageEl = cd.querySelector('#stageWrap');
+      if (stageEl) {
+        var gutter = 14;
+        stageEl.style.setProperty('margin-top', (-gutter) + 'px', 'important');
+        stageEl.style.setProperty('padding-top', gutter + 'px', 'important');
+      }
     }
     var slot = cd.getElementById('pkPunchSlotWrap');
     if (slot) {
@@ -18901,7 +20035,8 @@ window.__CZ_CSS = [
             var pPadR = pStyle ? (parseFloat(pStyle.paddingRight) || 12) : 12;
             ddEarly.documentElement.style.setProperty('--cz-panel-pad-l', pPadL + 'px');
             ddEarly.documentElement.style.setProperty('--cz-panel-pad-r', pPadR + 'px');
-            ddEarly.documentElement.style.setProperty('--cz-status-pad-left', '0px');
+            /* MIC 左缘对齐卡槽孔（槽孔相对槽体外壳内缩 holeInset），不是槽体外壳左缘 */
+            ddEarly.documentElement.style.setProperty('--cz-status-pad-left', holeInset + 'px');
             ddEarly.documentElement.style.setProperty('--cz-status-pad-right', '0px');
           }
         }
@@ -18922,7 +20057,7 @@ window.__CZ_CSS = [
                 var pr2 = ps2 ? (parseFloat(ps2.paddingRight) || 12) : 12;
                 d2.documentElement.style.setProperty('--cz-panel-pad-l', pl2 + 'px');
                 d2.documentElement.style.setProperty('--cz-panel-pad-r', pr2 + 'px');
-                d2.documentElement.style.setProperty('--cz-status-pad-left', '0px');
+                d2.documentElement.style.setProperty('--cz-status-pad-left', holeInset + 'px');
                 d2.documentElement.style.setProperty('--cz-status-pad-right', '0px');
               }
             }
@@ -19328,12 +20463,11 @@ window.__CZ_CSS = [
     return btn;
   }
 
-  /* ── C: 明细 popout（画布内 · 全画布压暗 + 模糊；三路关闭 + 焦点回归） ── */
-  function popEl() { var cd = canvasDoc(); return cd ? cd.getElementById('czPopBackdrop') : null; }
+  /* ── C: 明细 popout（标签页文档内 · 全屏压暗 + 模糊；三路关闭 + 焦点回归） ── */
+  function popEl() { return document.getElementById('czPopBackdrop'); }
   function buildPop() {
-    var cd = canvasDoc();
-    if (!cd || !cd.body || cd.getElementById('czPopBackdrop')) { return false; }
-    var bd = cd.createElement('div');
+    if (!document.body || document.getElementById('czPopBackdrop')) { return false; }
+    var bd = document.createElement('div');
     bd.className = 'popout-backdrop';
     bd.id = 'czPopBackdrop';
     bd.setAttribute('role', 'dialog');
@@ -19350,7 +20484,7 @@ window.__CZ_CSS = [
     bd.addEventListener('click', function (ev) {
       if (ev.target === bd || (ev.target.closest && ev.target.closest('.popout-close'))) { closeRecordsPop(true); }
     });
-    cd.body.appendChild(bd);
+    document.body.appendChild(bd);
     var dateEl = bd.querySelector('#czPopDate');
     if (dateEl) {
       var now = new Date();
@@ -19360,7 +20494,8 @@ window.__CZ_CSS = [
     var f = bd.querySelector('#czPopFrame');
     f.srcdoc = moduleSource('R');
     f.addEventListener('load', function () {
-      onModuleLoad(f);
+      /* 弹层里的 R 卡只需要皮肤/布局态，不走画布模块那套量高与手势转发 */
+      applyModuleState(f);
       try {
         f.contentWindow.addEventListener('keydown', function (ev) {
           if (ev.key === 'Escape') { closeRecordsPop(true); }
@@ -19368,7 +20503,7 @@ window.__CZ_CSS = [
       } catch (e) {}
       setTimeout(refreshPopSummary, 60);
     });
-    cd.addEventListener('keydown', function (ev) {
+    document.addEventListener('keydown', function (ev) {
       var p = popEl();
       if (ev.key === 'Escape' && p && p.classList.contains('is-open')) { closeRecordsPop(true); }
     });
@@ -19376,98 +20511,105 @@ window.__CZ_CSS = [
   }
   /* 弹窗底栏汇总：从记录卡真实节点读，读不到就保持占位（不编数） */
   function refreshPopSummary() {
-    var cd = canvasDoc();
-    var el = cd ? cd.getElementById('czPopSummary') : null;
+    var el = document.getElementById('czPopSummary');
     if (!el) { return null; }
-    var f = cd.getElementById('czPopFrame');
+    var f = document.getElementById('czPopFrame');
     var d = f ? modDoc(f) : null;
     var out = { sessions: null, minutes: null };
     if (d) {
-      var t = (d.body ? d.body.textContent : '').replace(/\s+/g, ' ');
-      var m1 = t.match(/(\d+)\s*次/); if (m1) { out.sessions = m1[1]; }
-      var m2 = t.match(/(\d+)\s*分/); if (m2) { out.minutes = m2[1]; }
+      /* 读记录卡自己的结构化节点：heroPractice = 练习时长，session 行数 = session 数。
+         退回到文本正则会把「3420 秒」里的数字当成 session 数（曾显示「823 个 Session」）。 */
+      out.sessions = d.querySelectorAll('.rec-row.session').length || null;
+      var hp = d.getElementById('heroPractice');
+      var m = hp ? (hp.textContent || '').match(/(\d+(?:\.\d+)?)/) : null;
+      if (m) { out.minutes = m[1]; }
     }
     el.textContent = '共 ' + (out.sessions || '—') + ' 个 Session ｜ 净练 ' + (out.minutes || '—') + ' 分';
     return out;
   }
 
-  /* 窄档弹窗贴在父页面当前看得见的那一截里。iframe 本身可能有几千像素高，100vh 会把面板钉在画布中段外面。 */
+  /* 弹层已搬到标签页文档：坐标就是浏览器真实像素，窄档直接铺满可视区（8px 安全边），
+     不再需要把画布 iframe 的可视带换算成画布坐标。 */
   function placePopout() {
-    var cd = canvasDoc();
     var bd = popEl();
-    if (!cd || !bd) { return null; }
+    if (!bd) { return null; }
     var panel = bd.querySelector('.popout-panel');
     var body = bd.querySelector('.popout-body');
     if (!panel) { return null; }
-    var narrow = !!(cd.documentElement.clientWidth < NARROW && !NEG_STACK);
+    /* 用最外层浏览器宽度判窄档：标签页 iframe 只有 853 宽（1133 视口下）会误判成手机 */
+    var vpW = window.innerWidth, vpH = window.innerHeight;
+    try { if (window.top && window.top.innerWidth) { vpW = window.top.innerWidth; vpH = window.top.innerHeight; } } catch (e) {}
+    var narrow = vpW < 1024;
     var panelKeys = ['top', 'left', 'right', 'bottom', 'width', 'height', 'max-height', 'transform'];
     if (!narrow) {
       panelKeys.forEach(function (k) { panel.style.removeProperty(k); });
       if (body) { ['overflow', 'min-height', 'flex', 'max-height'].forEach(function (k) { body.style.removeProperty(k); }); }
       return { narrow: false };
     }
-    var ir = canvasIframe.getBoundingClientRect();
-    var visTop = Math.max(0, -ir.top);
-    var visBot = Math.min(ir.height, window.innerHeight - ir.top);
-    if (!(visBot > visTop + 80)) {
-      visBot = Math.min(ir.height, visTop + Math.max(320, window.innerHeight - 32));
-    }
-    var top = Math.round(visTop + 8);
-    var height = Math.max(240, Math.round(visBot - visTop - 16));
-    panel.style.setProperty('top', top + 'px', 'important');
+    panel.style.setProperty('top', '8px', 'important');
     panel.style.setProperty('left', '8px', 'important');
     panel.style.setProperty('right', '8px', 'important');
-    panel.style.setProperty('bottom', 'auto', 'important');
+    panel.style.setProperty('bottom', '8px', 'important');
     panel.style.setProperty('width', 'auto', 'important');
+    panel.style.setProperty('height', 'auto', 'important');
     panel.style.setProperty('transform', 'none', 'important');
-    panel.style.setProperty('height', height + 'px', 'important');
-    panel.style.setProperty('max-height', height + 'px', 'important');
+    panel.style.setProperty('max-height', 'none', 'important');
     if (body) {
       body.style.setProperty('overflow', 'hidden', 'important');
       body.style.setProperty('min-height', '0', 'important');
       body.style.setProperty('flex', '1 1 auto', 'important');
     }
-    return { narrow: true, top: top, height: height, visTop: Math.round(visTop), visBot: Math.round(visBot) };
+    return { narrow: true, vw: vpW, vh: vpH };
   }
   function openRecordsPop() {
-    var cd = canvasDoc();
     var bd = popEl();
-    if (!cd || !bd) { return null; }
-    var pf = cd.getElementById('czPopFrame');
+    if (!bd) { return null; }
+    var pf = document.getElementById('czPopFrame');
     if (pf) { applyModuleState(pf); }
     var placed = placePopout();
     bd.classList.add('is-open');
-    cd.body.style.overflow = 'hidden';
-    var c = cd.getElementById('czPopClose'); if (c) { try { c.focus(); } catch (e) {} }
+    document.body.style.overflow = 'hidden';
+    var c = document.getElementById('czPopClose'); if (c) { try { c.focus(); } catch (e) {} }
     refreshPopSummary();
     bus.emit('parent', 'records-open', {});
-    var view = cd.defaultView || window;
+    var view = window;
     var cs = view.getComputedStyle(bd);
     var panel = bd.querySelector('.popout-panel');
     var ps = panel ? view.getComputedStyle(panel) : null;
-    return { open: true, display: cs.display, position: cs.position, zIndex: cs.zIndex, backdrop: cs.backgroundColor, blur: cs.backdropFilter || cs.webkitBackdropFilter, bodyOverflow: cd.body.style.overflow, placed: placed, panel: ps ? { w: ps.width, h: ps.height, top: ps.top, left: ps.left, transform: ps.transform } : null };
+    return { open: true, display: cs.display, position: cs.position, zIndex: cs.zIndex, backdrop: cs.backgroundColor, blur: cs.backdropFilter || cs.webkitBackdropFilter, bodyOverflow: document.body.style.overflow, placed: placed, panel: ps ? { w: ps.width, h: ps.height, top: ps.top, left: ps.left, transform: ps.transform } : null };
   }
   function closeRecordsPop(restore) {
     var cd = canvasDoc();
     var bd = popEl();
-    if (!cd || !bd) { return null; }
+    if (!bd) { return null; }
     var was = bd.classList.contains('is-open');
     bd.classList.remove('is-open');
-    cd.body.style.overflow = '';
+    document.body.style.overflow = '';
     var focused = null;
-    if (restore) {
+    if (restore && cd) {
       var entry = cd.getElementById('czRecordsMini') || cd.getElementById('czRecordsEntry');
       if (entry) {
         try { entry.focus(); focused = (cd.activeElement === entry) ? (entry.id || 'entry') : String((cd.activeElement && (cd.activeElement.id || cd.activeElement.tagName)) || '(无)'); } catch (e) {}
       }
     }
     if (was) { bus.emit('parent', 'records-close', {}); }
-    return { open: false, bodyOverflow: cd.body.style.overflow, focused: focused };
+    return { open: false, bodyOverflow: document.body.style.overflow, focused: focused };
   }
 
-  /* 票卡视觉盒：.pk-ticket（dad / hermes 量的就是这张），不是会跟着舞台 stretch 的列 */
+  /* 票卡视觉盒：准备态量 .pk-ticket。窄条态票夹是 display:none，
+     getBoundingClientRect 全是 0，alignColTop 会据此给右栏写负 margin，
+     把头（卡槽 / 节拍器顶）推出舞台裁切盒。窄条改量还在的左栏。 */
+  function shownBox(el) {
+    if (!el || !el.ownerDocument || !el.ownerDocument.defaultView) { return false; }
+    var cs = el.ownerDocument.defaultView.getComputedStyle(el);
+    if (!cs || cs.display === 'none' || cs.visibility === 'hidden') { return false; }
+    return el.getBoundingClientRect().height > 1;
+  }
   function ticketCardEl(cd) {
-    return (cd && (cd.querySelector('.pk-ticket') || cd.getElementById('pkLeftCol'))) || null;
+    if (!cd) { return null; }
+    var ticket = cd.querySelector('.pk-ticket');
+    if (shownBox(ticket)) { return ticket; }
+    return cd.getElementById('pkLeftCol') || cd.getElementById('pkRunRail') || ticket;
   }
   function ticketBox(cd) {
     var t = ticketCardEl(cd);
@@ -19605,6 +20747,30 @@ window.__CZ_CSS = [
     });
     var counter = d.getElementById('ttCounter');
     if (counter) { touch(counter, { 'min-height': '60px', height: 'auto', flex: '0 0 auto' }); }
+    /* 纵向 feed 档的 Q 卡：卡壳、舞台、底栏都在文档流里，量高时一起解锁，
+       否则固定高会把量出来的内容高压回去（长卡永远长不高）。 */
+    if (html.classList.contains('cz-feed')) {
+      ['.req-card-chassis', '.req-deck-stage', '.deck-footer-bar'].forEach(function (sel) {
+        [].slice.call(d.querySelectorAll(sel)).forEach(function (el) {
+          touch(el, { height: 'auto', 'max-height': 'none', overflow: 'visible', flex: '0 0 auto' });
+        });
+      });
+      var feedCard = d.querySelector('.deck-card.is-active') || d.querySelector('.deck-card:last-of-type');
+      if (feedCard) {
+        var empty = feedCard.classList.contains('is-empty');
+        touch(feedCard, {
+          position: 'relative', left: 'auto', top: 'auto', transform: 'none',
+          height: 'auto', 'max-height': 'none', overflow: 'visible', opacity: '1',
+          'min-height': (empty ? '132px' : '380px')
+        });
+      }
+      [].slice.call(d.querySelectorAll('.card-req-body')).forEach(function (el) {
+        touch(el, { flex: '0 0 auto', height: 'auto', 'min-height': '0', 'max-height': '760px', overflow: 'auto' });
+      });
+      [].slice.call(d.querySelectorAll('.card-note-box')).forEach(function (el) {
+        touch(el, { flex: '0 0 auto', height: 'auto', 'max-height': 'none', overflow: 'visible' });
+      });
+    }
     var content = 0;
     if (view) {
       var origin = d.body.getBoundingClientRect().top;
@@ -19616,7 +20782,14 @@ window.__CZ_CSS = [
         content = Math.max(content, r.bottom - origin + (parseFloat(cs.marginBottom) || 0));
       });
     }
-    var h = Math.max(d.body.scrollHeight || 0, html.scrollHeight || 0, d.body.offsetHeight || 0, Math.ceil(content));
+    /* Q 卡在 feed 档下，html 的 100% 填满会让 html.scrollHeight 锁死在上一轮的高度（例如 680），
+       这里只认实际测量出的内容底边 content，不被旧外壳高度劫持。 */
+    var h;
+    if (html.classList.contains('cz-feed') && content > 40) {
+      h = Math.ceil(content);
+    } else {
+      h = Math.max(d.body.scrollHeight || 0, html.scrollHeight || 0, d.body.offsetHeight || 0, Math.ceil(content));
+    }
     if (dash && h > 720 && !(opts && opts.uncap)) { h = 720; }
     saved.forEach(function (row) { row.el.style.cssText = row.css; });
     html.classList.remove('cz-natural');
@@ -19687,8 +20860,21 @@ window.__CZ_CSS = [
     }
     var h = measureCardContent(f);
     if (!(h > 40)) { h = 80; }
-    if (h > 860) { h = 860; }
-    var shells = '.dash, .card-wrap, .metro-card, .console, .strip, .stage-frame';
+    /* 纵向 feed 档：卡按内容长高。
+       旧口径给非 Q 卡留了 860 硬顶，「今日练习记录」这种长列表卡会被切掉下半截
+       （.console 被钉在 860，列表溢出被 overflow 裁掉，看起来就是内容少了一截）。
+       feed 档统一放宽到 2400 当跑飞护栏，Q 卡原来单独的 1400 上限也并进这个口径。 */
+    var hCap = 860;
+    try {
+      var dCap = f.contentDocument;
+      if (dCap && dCap.documentElement.classList.contains('cz-feed')) { hCap = 2400; }
+    } catch (eCap) {}
+    if (h > hCap) { h = hCap; }
+    /* Q 卡的 stage-frame 不能钉死像素高：它一钉死，翻到短 stage 时外壳还是上一张的高度，
+       卡下面就空出一块。Q 卡外壳跟着内容走，其余模块仍按测得的像素高填满。 */
+    var shells = (n.dataset.mod === 'Q')
+      ? '.dash, .card-wrap, .metro-card, .console, .strip'
+      : '.dash, .card-wrap, .metro-card, .console, .strip, .stage-frame';
     function applyH(px) {
       var pxText = px + 'px';
       f.style.setProperty('height', pxText, 'important');
@@ -19720,6 +20906,9 @@ window.__CZ_CSS = [
         [].slice.call(d.querySelectorAll('*')).forEach(function (el) {
           if (el.scrollHeight <= el.clientHeight + 1) { return; }
           if (el.id === 'knob' || el.id === 'knobRotor' || (el.closest && el.closest('#knob'))) { return; }
+          /* Q 卡正文本来就是卡内滚动区：把它算进「要长高」会让卡一轮 +80px 顶到 860 上限，
+             卡片下面凭空多出 200px 空白，模块和 iframe 高度也对不上。 */
+          if (el.classList && el.classList.contains('card-req-body')) { return; }
           var cs = view.getComputedStyle(el);
           if (!cs) { return; }
           var oy = cs.overflowY;
@@ -19731,7 +20920,7 @@ window.__CZ_CSS = [
       var gap = Math.max(sh - ch, extra);
       if (gap <= 1) { break; }
       var next = h + Math.min(80, Math.ceil(gap));
-      if (next > 860) { h = 860; break; }
+      if (next > hCap) { h = hCap; break; }
       if (next === h) { break; }
       h = next;
     }
@@ -19743,6 +20932,11 @@ window.__CZ_CSS = [
     n.style.setProperty('max-height', 'none', 'important');
     n.style.setProperty('flex', '0 0 auto', 'important');
     n.style.setProperty('align-self', 'flex-start', 'important');
+    /* 量高循环最后一次可能又长了一截：模块会按新高度走，iframe 还停在上一轮，
+       底部就多出一块空白或裁掉卡片底。这里把 iframe 钉到最终内容高。 */
+    f.style.setProperty('height', h + 'px', 'important');
+    f.style.setProperty('min-height', h + 'px', 'important');
+    f.style.maxHeight = 'none';
     pokeArcFrame(f);
     return (h + crownH);
   }
@@ -19849,7 +21043,19 @@ window.__CZ_CSS = [
     if (!stage || !left) { return col.clientWidth; }
     var cs = getComputedStyle(stage);
     var gap = parseFloat(cs.columnGap || cs.gap) || 24;
-    return Math.max(200, Math.floor(stage.clientWidth - left.getBoundingClientRect().width - gap));
+    var leftW = left.getBoundingClientRect().width;
+    /* 窄条已经是 50px。若按它重算可用宽，minSum 会突然放进一屏，
+       fitWideCombo 从「保持设计宽、右展」切到「压进一屏」，
+       点开始时 dashboard / 节拍器变窄、卡内元素错位（dad 261103 录屏）。
+       布局预算始终扣准备态票夹宽。 */
+    var practice = cd.getElementById('practiceStage');
+    var collapsed = practice && (practice.classList.contains('stage-bar') || practice.classList.contains('stage-running') || practice.classList.contains('stage-morphing'));
+    if (collapsed && leftW < 120 && cd.documentElement.clientWidth >= 1024) {
+      var prepW = parseFloat(practice.dataset.czPrepColW || '');
+      if (!(prepW > 120)) { prepW = cd.documentElement.clientWidth < 1200 ? 360 : 380; }
+      leftW = prepW;
+    }
+    return Math.max(200, Math.floor(stage.clientWidth - leftW - gap));
   }
   /* 宽档右栏只有约 700px，组合规格却是 900–1500。能缩进最小可读宽就压进一屏；
      缩不进就保持设计宽继续往右排，靠横向拖动看后面的卡（dad 261031：不要换行到第二行）。 */
@@ -20056,6 +21262,14 @@ window.__CZ_CSS = [
     return { combo: state.combo, H: H, wide: wide, ticketTop: +tb.top.toFixed(1), ticketW: tb.w, split1: split1, split3: split3 };
   }
 
+  /* 票夹变形结束再排一次分页。卡片宽不跟 50px 窄条走，见 comboAvailWidth。 */
+  window.addEventListener('message', function (ev) {
+    var m = ev.data;
+    if (!m || m.cz !== 'bar-morph') { return; }
+    applyComboSizes();
+    syncComboPager();
+  });
+
   /* 组合切换：可见模块集合 = 该组合定义（与 state.mods 一致），自定义档不改勾选 */
   function markComboSwitch() {
     var cd = canvasDoc();
@@ -20064,6 +21278,11 @@ window.__CZ_CSS = [
   }
   function setCombo(which) {
     state.combo = which || 'off';
+    /* 自检页会来回切组合，不做延时重排（避免拖慢审计） */
+    if (!AUDIT) {
+      setTimeout(function () { if (state.combo === (which || 'off')) { syncAll(); } }, 280);
+      setTimeout(function () { if (state.combo === (which || 'off')) { syncAll(); } }, 650);
+    }
     if (state.combo !== 'off') { markComboSwitch(); }
     if (COMBO_MODS[state.combo]) { state.mods = COMBO_MODS[state.combo].slice(); }
     [].slice.call(document.querySelectorAll('#czComboSeg .cz-btn')).forEach(function (x) {
@@ -20755,9 +21974,7 @@ window.__CZ_CSS = [
       if (!d) { stats.degraded++; out.why = '无仪表盘卡'; return rec(out); }
       var status = d.querySelector('.status');
       if (!status) { out.why = '卡内无 .status'; return rec(out); }
-      var clock = status.querySelector('.clock');
-      if (clock && clock.style.display !== 'none') { clock.style.display = 'none'; out.clockHidden = true; }
-      out.clockHidden = !!(clock && getComputedStyle(clock).display === 'none');
+      out.clockHidden = !status.querySelector('.clock');
       var oldPill = d.getElementById('panelSessionTag');
       if (oldPill) { oldPill.remove(); }
       out.tagText = null;
@@ -20981,25 +22198,6 @@ window.__CZ_CSS = [
         cd.body.appendChild(btn);
       }
     }
-    if (!cd.getElementById('czSkinBtn')) {
-      var topBar = cd.getElementById('pkTop');
-      var sbtn = cd.createElement('button');
-      sbtn.type = 'button';
-      sbtn.className = 'pk-pill mini cz-skin-btn';
-      sbtn.id = 'czSkinBtn';
-      sbtn.textContent = (state.skin === 'ink' ? '深色' : '浅色');
-      sbtn.title = '切换深色/浅色皮肤';
-      sbtn.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        setSkin(state.skin === 'ink' ? 'light' : 'ink');
-      });
-      var recordsBtn = cd.getElementById('pkRecords');
-      if (topBar) {
-        topBar.insertBefore(sbtn, recordsBtn || topBar.lastElementChild);
-      } else {
-        cd.body.appendChild(sbtn);
-      }
-    }
     /* ③ 261012 第二轮：令牌 + 组合/卡槽/记录卡/popout 样式（同名同值，不新增 token 名） */
     var st2 = cd.getElementById('cz-token-style');
     if (!st2) {
@@ -21023,7 +22221,14 @@ window.__CZ_CSS = [
       sg.onerror = function () { cd.documentElement.dataset.czGuideErr = '1'; };
       cd.body.appendChild(sg);
     }
-    /* ④ 记录明细 popout 容器（画布 body 内，fixed 相对画布视口 = 全画布压暗） */
+    /* ④ 记录明细 popout 容器（标签页 body 内，fixed 相对真实视口 = 全屏压暗） */
+    var tabPop = document.getElementById('cz-pop-style');
+    if (!tabPop) {
+      tabPop = document.createElement('style');
+      tabPop.id = 'cz-pop-style';
+      document.head.appendChild(tabPop);
+    }
+    tabPop.textContent = window.__CZ_POP_CSS || '';
     buildPop();
     /* ⑤ 联动总线：注入画布文档执行（同一文档内可达左右栏与各卡 iframe） */
     if (!cd.getElementById('czBusLib')) {
@@ -21145,9 +22350,19 @@ window.__CZ_CSS = [
   var pendingNarrow = false;
   var narrowRemeasureRaf = 0;
   var narrowRemeasureTimer = 0;
+  /* 手机视口是把 1133 画布等比缩进去的，画布 clientWidth 仍 >= 1024。
+     真正该重量的判据是卡片轨已经排成纵向 feed，而不是画布像素宽。 */
+  function canvasIsFeed() {
+    var cd = canvasDoc();
+    if (!cd) { return false; }
+    var track = cd.querySelector('.cz-combo') || cd.querySelector('.cz-rail') || cd.getElementById('czModCol');
+    if (!track || !cd.defaultView) { return cd.documentElement.clientWidth < NARROW; }
+    return cd.defaultView.getComputedStyle(track).flexDirection === 'column';
+  }
   function scheduleNarrowRemeasure() {
     var cd = canvasDoc();
-    if (!cd || cd.documentElement.clientWidth >= NARROW || NEG_STACK) { return; }
+    if (!cd || NEG_STACK) { return; }
+    if (!canvasIsFeed() && cd.documentElement.clientWidth >= NARROW) { return; }
     if (narrowRemeasureRaf) { cancelAnimationFrame(narrowRemeasureRaf); }
     narrowRemeasureRaf = requestAnimationFrame(function () {
       narrowRemeasureRaf = 0;
@@ -21163,7 +22378,8 @@ window.__CZ_CSS = [
     if (NEG_STACK) { return; }
     if (narrowSizing) { pendingNarrow = true; return; }
     var cd = canvasDoc();
-    if (!cd || cd.documentElement.clientWidth >= NARROW) { return; }
+    if (!cd) { return; }
+    if (!canvasIsFeed() && cd.documentElement.clientWidth >= NARROW) { return; }
     narrowSizing = true;
     try {
       if (state.combo === 'off') {
@@ -21191,7 +22407,7 @@ window.__CZ_CSS = [
     applyPanelPad(f);
     syncModuleHeight(f);
     forwardStageGesture(f);
-    /* 真数据回灌：模块卡是 srcdoc iframe，装完就把当天真实练习推给它。*/
+    /* 真数据回灌：A（今日累计）/ D / R 都在 srcdoc 里，装完再推一次。*/
     if (dayPayload) {
       try {
         if (f.contentWindow && typeof f.contentWindow.__czApplyDay === 'function') {
@@ -21319,6 +22535,15 @@ window.__CZ_CSS = [
     /* 宽扁仪表盘只属于 2卡-2 AS（原先的组合 1）。AB 两张都是通高卡，不用这套。 */
     applyLayoutMode(f);
     var feed = (d.documentElement.dataset.layout === 'feed');
+    /* Q 卡空态：纵向 feed 档收成内容高，横版保持组合高度 */
+    if (f.dataset.mod === 'Q') {
+      var chQ = d.getElementById('reqChassis');
+      if (chQ) { chQ.classList.toggle('is-feed', feed); }
+      /* 261103：Q 卡在 feed 档必须能单独按内容长高。给它一个专属类，
+         否则 html.cz-fill .stage-frame 的 height:100% 会对着 auto 父级解析成 0，
+         整张卡被 overflow:hidden 裁没。 */
+      d.documentElement.classList.add('cz-qcard');
+    }
     var cdFeed = canvasDoc();
     var land = state.combo === '2' && f.dataset.mod === 'A' && !feed && f.id !== 'czPopFrame';
     d.documentElement.classList.toggle('cz-land', land);
@@ -21496,8 +22721,10 @@ window.__CZ_CSS = [
       return { stacked: true, ticketTop: +ticketR.top.toFixed(1), targetTop: +anchorR.top.toFixed(1), delta: +(ticketR.top - anchorR.top).toFixed(1), applied: 0 };
     }
     target.style.marginTop = '0px';
-    var d = ticket.getBoundingClientRect().top - anchor.getBoundingClientRect().top;
-    var out = { ticketTop: +ticket.getBoundingClientRect().top.toFixed(1), targetTop: +anchor.getBoundingClientRect().top.toFixed(1), delta: +d.toFixed(1), applied: 0 };
+    var tr = ticket.getBoundingClientRect();
+    if (!(tr.height > 1)) { return { skipped: 'hidden-ticket', applied: 0 }; }
+    var d = tr.top - anchor.getBoundingClientRect().top;
+    var out = { ticketTop: +tr.top.toFixed(1), targetTop: +anchor.getBoundingClientRect().top.toFixed(1), delta: +d.toFixed(1), applied: 0 };
     if (Math.abs(d) > 0.5) { target.style.marginTop = d.toFixed(1) + 'px'; out.applied = +d.toFixed(1); }
     return out;
   }
@@ -21681,6 +22908,10 @@ window.__CZ_CSS = [
       }
       if (o && (o.vp === '1133' || o.vp === '744' || o.vp === '440')) { state.vp = o.vp; }
       if (o && (o.skin === 'ink' || o.skin === 'light')) { state.skin = o.skin; }
+      try {
+        var shared = localStorage.getItem('dizical_skin');
+        if (shared === 'ink' || shared === 'light') { state.skin = shared; }
+      } catch (eS) {}
       /* 组合样式单独记住。预设组合以组合号为准，卡片清单跟组合走，避免和 mods 打架。 */
       if (!AUDIT && o && (o.combo === 'off' || COMBO_MODS[o.combo])) {
         state.combo = o.combo;
@@ -21817,8 +23048,8 @@ window.__CZ_CSS = [
         /* 准备态可能是完整票夹（宽 ≥300）也可能是 S22 的窄条形态（宽 50），两者都算终态 */
         var barNow = !!(w && w.isBarDeformed && w.isBarDeformed());
         var okW = want ? (w !== null && w <= 60) : (w !== null && (w >= 300 || barNow));
-        /* 票夹宽度定稿后重排右栏：舞台分页按「舞台宽 - 票夹宽」算可用宽，
-           计时态票夹收到 50px 时必须重算，否则右栏还按准备态宽度排，白白多出一页 */
+        /* 票夹宽度定稿后再排一次。可用宽仍按准备态票夹宽扣（见 comboAvailWidth），
+           不能因为收到 50px 就把卡片压进一屏。 */
         if (canvasRunning() === want && okW) { applyComboSizes(); syncSlotMode(); return; }
         if (Date.now() - t0 < 520) { setTimeout(tick, 40); return; }
         if (myToken !== czStageSyncToken) { return; }
@@ -21832,14 +23063,25 @@ window.__CZ_CSS = [
     }
     return o;
   }
-  /* 卡 A 侧：点它自己的按钮切态（不伪造 data-mode） */
+  /* 卡 A 侧：点它自己的按钮切态（不伪造 data-mode）。
+     程序性点击不参与反向联动，否则复位/暂停会被当成用户操作再弹一次确认。 */
+  var cardAProgrammaticUntil = 0;
   function setCardAMode(mode) {
     var d = dashDoc();
     var o = { want: mode, before: cardAMode(), clicked: null };
     if (!d) { o.err = '卡 A 未载'; return o; }
     var btn = d.getElementById('btnPrimary'), early = d.getElementById('btnEarly');
     var cur = cardAMode();
-    if (mode === 'prep') { if (cur !== 'prep' && early) { try { early.click(); o.clicked = 'btnEarly'; } catch (e) {} } }
+    cardAProgrammaticUntil = Date.now() + 500;
+    var w = d.defaultView, api = w && w.__czCardA;
+    /* 优先走受控 API：程序性复位不能触发用户确认弹窗。 */
+    if (api) {
+      try {
+        if (mode === 'prep') { api.prep(); o.clicked = 'api:prep'; }
+        else if (mode === 'pause') { api.pause(); o.clicked = 'api:pause'; }
+        else { api.resume(); o.clicked = 'api:resume'; }
+      } catch (e) { o.err = 'api:' + (e && e.message || e); }
+    } else if (mode === 'prep') { if (cur !== 'prep' && early) { try { early.click(); o.clicked = 'btnEarly'; } catch (e) {} } }
     else if (mode === 'run') { if (cur === 'prep' && btn) { try { btn.click(); o.clicked = 'btnPrimary'; } catch (e) {} } }
     else if (mode === 'pause') { if (cur === 'run' && btn) { try { btn.click(); o.clicked = 'btnPrimary'; } catch (e) {} } }
     o.after = cardAMode();
@@ -21873,17 +23115,30 @@ window.__CZ_CSS = [
     } catch (e) {}
     return null;
   }
-  function saveExternalRunIfNeeded() {
-    try {
-      var cw = canvasWin();
-      var info = dashRunInfo();
-      if (!cw || typeof cw.__czSaveExternalRun !== 'function' || !info) { return false; }
-      return !!cw.__czSaveExternalRun(info.lastElapsed || info.elapsed, info.lastStartedAt || info.startedAt);
-    } catch (e) {
-      return false;
-    }
-  }
+  /* 旧兜底直写已废除：写库唯一入口是画布里的结束确认弹窗。 */
+  function saveExternalRunIfNeeded() { return false; }
   window.__czSaveExternalRunIfNeeded = saveExternalRunIfNeeded;
+  /* 画布 → 卡 A 的受控联动（确认弹窗期间停表/续跑/复位）。 */
+  function cardAWin() {
+    try { var d = dashDoc(); return d ? d.defaultView : null; } catch (e) { return null; }
+  }
+  window.__czPauseCardA = function () {
+    var w = cardAWin();
+    if (w && w.__czCardA && typeof w.__czCardA.pause === 'function') { try { w.__czCardA.pause(); return true; } catch (e) {} }
+    return false;
+  };
+  window.__czResumeCardA = function (sec) {
+    var w = cardAWin();
+    if (w && w.__czCardA && typeof w.__czCardA.resume === 'function') { try { w.__czCardA.resume(sec); return true; } catch (e) {} }
+    return false;
+  };
+  /* 画布退到准备态后同步壳层：槽位归位 + 卡 A 复位（不再写库）。 */
+  window.__czSyncAfterCanvasExit = function () {
+    try { syncSlotMode(); syncSlotStat(); applyComboSizes(); } catch (e) {}
+    try { syncTopBarFromCard('prep'); } catch (e) {}
+    if (!NEGCTL_ONESIDED) { try { setCardAMode('prep'); } catch (e) {} }
+    return true;
+  };
   function bridgeCardA() {
     var d = dashDoc();
     if (!d) { return; }
@@ -21895,8 +23150,8 @@ window.__CZ_CSS = [
         setTimeout(function () {
           var mode = cardAMode();
           bus.emit('parent', 'card-a-mode', { mode: mode, btn: id });
+          if (Date.now() < cardAProgrammaticUntil) { syncTopBarFromCard(mode); syncSlotMode(); return; }
           if (mode === 'prep') {
-            saveExternalRunIfNeeded();
             if (canvasRunning()) { var r = setCanvasStage('prep'); bus.emit('canvas', 'stage', { stage: 'prep', from: 'cardA', after: r.after }); }
           } else if (mode === 'pause') {
             /* 仪表盘暂停 → 票夹计时器也要停，否则暂停的那段墙钟时间会被算进入库秒数 */
@@ -21932,6 +23187,12 @@ window.__CZ_CSS = [
       tg.addEventListener('click', function () {
         var last = null, stable = 0, t0 = Date.now();
         (function tick() {
+          /* 结束确认期间画布仍停在 stage-running，但它是「待记录」不是「在跑」：
+             这里若继续镜像，会把刚暂停的 A 卡重新拉回 run。 */
+          try {
+            var cwf = canvasWin();
+            if (cwf && cwf.__czIsFinishing && cwf.__czIsFinishing()) { return; }
+          } catch (e) {}
           var intent = canvasIntent();          /* 画布自述态（class 在虚拟时间下可能跟不上） */
           if (intent === last) { stable++; } else { stable = 0; last = intent; }
           if ((stable >= 2 && Date.now() - t0 > 700) || Date.now() - t0 > 1800) {
@@ -22122,15 +23383,27 @@ window.__CZ_CSS = [
     return cd.documentElement.getAttribute('data-skin') || '(空)';
   }
   /* 主题持久化 key: STORE_KEY = 'dizical_practice_dsh_state' (localStorage.setItem) */
-  function setSkin(skin) {
+  function setSkin(skin, opt) {
+    skin = (skin === 'ink') ? 'ink' : 'light';
     state.skin = skin;
     if (skin === 'ink') { document.documentElement.setAttribute('data-skin', 'ink'); }
     else { document.documentElement.removeAttribute('data-skin'); }
+    try { localStorage.setItem('dizical_skin', skin); } catch (e) {}
     syncCanvasSkin();   /* P1-2：画布本体也挂 data-skin，注入的深墨重载才生效 */
     [].slice.call(document.querySelectorAll('#czSkin .cz-btn')).forEach(function (b) { b.classList.toggle('is-on', b.dataset.skin === skin); });
     syncAll();
     save();
+    /* 外层 practice.html 的全局主题开关是唯一入口：子页切换后回推给父页，父页不再回推防环。 */
+    if (!(opt && opt.fromParent)) {
+      try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'dizical-skin', skin: skin }, '*'); } catch (e2) {}
+    }
   }
+  window.addEventListener('message', function (ev) {
+    var m = ev.data;
+    if (!m || m.type !== 'dizical-skin') { return; }
+    if (m.skin !== 'ink' && m.skin !== 'light') { return; }
+    setSkin(m.skin, { fromParent: true });
+  });
   function applyStateToUi() {
     [].slice.call(checks.querySelectorAll('input[type="checkbox"]')).forEach(function (cb) { cb.checked = state.mods.indexOf(cb.value) >= 0; });
     [].slice.call(document.querySelectorAll('#czVp .cz-btn')).forEach(function (b) { b.classList.toggle('is-on', b.dataset.vp === state.vp); });
@@ -22204,7 +23477,7 @@ window.__CZ_CSS = [
       var cw = canvasWin();
       if (cw && typeof cw.__czApplyDay === 'function') { cw.__czApplyDay(dayPayload); }
     } catch (e) {}
-    ['D', 'R'].forEach(function (k) {
+    ['A', 'D', 'R'].forEach(function (k) {
       var f = cd.querySelector('iframe[data-mod="' + k + '"]');
       try {
         if (f && f.contentWindow && typeof f.contentWindow.__czApplyDay === 'function') {
@@ -22608,8 +23881,13 @@ window.__CZ_CSS = [
           if ((o3.dir1.btn || '').indexOf('暂停') < 0) { fails.push('C3-1 fail [第3条 正向] 仪表盘按钮文案未同步：' + o3.dir1.btn); }
           /* ② 画布顶栏「切回准备态」→ 卡 A 回准备态（负控④ 关掉这一向 → 必红） */
           var tg = cd.getElementById('pkStateToggle');
-          if (tg) { window.__czToggleClicks = 1; tg.click(); }
+          if (tg) {
+            window.__czToggleClicks = 1;
+            try { canvasWin().__czAuditSilentFinish = true; } catch (e) {}
+            tg.click();
+          }
           return waitMs(4500).then(function () {
+            try { canvasWin().__czAuditSilentFinish = false; } catch (e) {}
             o3.dir2 = {
               stage: canvasStageClass(), running: canvasRunning(), ticketW: ticketW(),
               cardMode: cardAMode(), btn: cardABtnText(),
@@ -22989,7 +24267,7 @@ window.__CZ_CSS = [
             var clk = dA2 ? dA2.querySelector('.status .clock') : null;
             var tag = dA2 ? dA2.getElementById('panelSessionText') : null;
             o.session = { picked: picked, tagText: tag ? tag.textContent.trim() : null, clockDisplay: clk ? getComputedStyle(clk).display : null, clockRemoved: !clk, pills: pills.length, log: (api.log().slice(-1)[0] || null) };
-            if (!clk || getComputedStyle(clk).display !== 'none') { fails.push('R2-D3 fail [联动3] 仪表盘黑色区块 clock 未被隐藏（display=' + (clk ? getComputedStyle(clk).display : 'missing') + '）'); }
+            if (clk && getComputedStyle(clk).display !== 'none') { fails.push('R2-D3 fail [联动3] 仪表盘黑色区块 clock 未被隐藏（display=' + getComputedStyle(clk).display + '）'); }
             /* S9：黑屏顶栏不再重复科目（卡槽露头条已展示），只断言不残留旧标签 */
             if (tag) { fails.push('R2-D3 fail [联动3] 黑屏顶栏仍残留 .session-tag-pill/#panelSessionText'); }
           });
@@ -23247,9 +24525,18 @@ window.__CZ_CSS = [
     return readBaseline().then(function () { return step(0); });
   }
 
+  /* 计时/待确认中拦截刷新与关页（生产口径：不让一段练习无声蒸发）。 */
+  window.addEventListener('beforeunload', function (e) {
+    var busy = false;
+    try { var cw = canvasWin(); busy = !!(cw && cw.__czIsPracticeBusy && cw.__czIsPracticeBusy()); } catch (err) {}
+    if (busy) { e.preventDefault(); e.returnValue = ''; }
+  });
+
   /* ── 启动 ── */
   restore();
   applyStateToUi();
+  if (state.skin === 'ink') { document.documentElement.setAttribute('data-skin', 'ink'); }
+  else { document.documentElement.removeAttribute('data-skin'); }
   loadCanvas();
 
   if (AUDIT) {
@@ -23278,7 +24565,9 @@ window.__CZ_CSS = [
       }, 400);
     });
   }
-  window.__cz = { clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
+  window.__czIsBusyProxy = function () { try { var w = canvasWin(); return !!(w && w.__czIsPracticeBusy && w.__czIsPracticeBusy()); } catch (e) { return false; } };
+  window.__czRequestFinishProxy = function (done) { try { var w = canvasWin(); if (w && typeof w.__czRequestFinishFromCardA === 'function') { return w.__czRequestFinishFromCardA({ done: !!done, seconds: 0 }); } } catch (e) {} return false; };
+  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
 })();
 </script>
 </body>

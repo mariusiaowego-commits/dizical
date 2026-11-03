@@ -41,24 +41,32 @@ def test_post_body_has_real_log_fields(html):
 
 def test_selected_duration_is_not_persisted(html):
     """时长只是倒计时长度：body 里不能出现票夹选出来的 duration。"""
-    body = html[html.index("async function postPracticeLog"):html.index("function enterRun()")]
+    body = html[html.index("function buildPracticeLogBody"):html.index("function enterRun()")]
     assert "duration" not in body, "入库 payload 不该带选定的练习时长"
     assert "Math.ceil(seconds / 60)" in body, "分钟必须由实际秒数换算"
 
 
-def test_elapsed_captured_before_reset(html):
-    """exitRun 里必须先抓实际秒数，再把 elapsed 清零。"""
-    seg = html[html.index("function exitRun()"):html.index("function pauseToggle()")]
-    grab = seg.index("Math.round(elapsed)")
-    reset = seg.index("elapsed = 0;")
-    assert grab < reset, "elapsed 必须在清零前抓取"
-    assert "postPracticeLog(finalSeconds)" in seg, "退出时必须写入实际秒数"
+def test_finish_freezes_elapsed_and_defers_write_to_confirm(html):
+    """结束先定格秒数开确认弹窗；exitRun 只做静默复位，不再直写。"""
+    seg = html[html.index("function requestFinish(done)"):html.index("function cancelFinishAndResume()")]
+    assert "finishSavedElapsed = done ? Math.max(secs, Math.round(duration * 60)) : secs;" in seg
+    assert "postPracticeLog" not in seg, "requestFinish 不能直接写库"
+    exit_seg = html[html.index("function exitRun()"):html.index("function pauseToggle()")]
+    assert "postPracticeLog" not in exit_seg, "exitRun 是静默复位，不能写库"
 
 
 def test_bpm_clamped_and_content_required(html):
-    body = html[html.index("async function postPracticeLog"):html.index("function enterRun()")]
+    body = html[html.index("function buildPracticeLogBody"):html.index("function postPracticeLog")]
     assert "Math.min(200, Math.max(40" in body, "BPM 必须夹在 40–200"
-    assert "if (!detail)" in body, "没有练习内容不入库"
+    assert "本次练习没有内容" in body, "没有练习内容不入库"
+
+
+def test_reps_zero_is_omitted_never_sent(html):
+    """后端 REPS_MIN = 1：不记遍数必须省略字段，绝不能传 0。"""
+    body = html[html.index("function buildPracticeLogBody"):html.index("function postPracticeLog")]
+    assert "repNum >= 1" in body
+    assert "body.reps = Math.min(99, Math.round(repNum))" in body
+    assert "body.reps = 0" not in body
 
 
 def test_no_dead_route_and_day_refresh(html):
@@ -67,7 +75,8 @@ def test_no_dead_route_and_day_refresh(html):
     assert "fetch('/api/practices/' + d)" in html
     assert "Promise.all([get(today), get(yesterday)])" in html
     assert "fetch('/api/today-stats" not in html, "today-stats 的服务端日期可能是 UTC，会串日期"
-    assert html.count("window.__czApplyDay = function (payload)") == 3, "画布顶栏 + D / R 三处都要能接真实数据"
+    assert html.count("window.__czApplyDay = function (payload)") == 4, "画布顶栏 + A / D / R 四处都要能接真实数据"
+    assert "['A', 'D', 'R']" in html, "当天数据要推进 A 卡，不能只推 D / R"
 
 
 # ── 端到端：按前端实际 payload 打一次 API ─────────────────────────────────
@@ -146,13 +155,16 @@ def test_dashboard_start_always_enters_ticket_timer(html):
     assert "setCanvasStage('run')" in seg, "run 分支必须调 setCanvasStage('run')"
 
 
-def test_external_run_fallback_is_wired(html):
-    """票夹没计时、只有 A 卡在跑时，用 A 卡的秒数兜底记账。"""
-    assert "window.__czSaveExternalRun = function (seconds, startedAtCst)" in html
+def test_card_a_end_routes_to_confirm_modal(html):
+    """A 卡的提前结束/到点都收口到确认弹窗，不再旁路直写。"""
+    assert "window.__czRequestFinishFromCardA = function (info)" in html
+    assert "function notifyFinishRequest(done)" in html
     assert "window.__czRunInfo = function ()" in html
-    assert "function saveExternalRunIfNeeded()" in html
-    assert "saveExternalRunIfNeeded();" in html, "停止时必须调用兜底记账"
-    assert "lastElapsed: lastRunSeconds" in html, "A 卡要在进准备态前定格秒数"
+    a_seg = html[html.index("function notifyFinishRequest(done)"):html.index("window.__czRunInfo")]
+    assert "__czRequestFinishFromCardA" in a_seg
+    assert "postPracticeLog" not in a_seg, "A 卡不能直接写库"
+    shell_seg = html[html.index("function saveExternalRunIfNeeded()"):html.index("function bridgeCardA()")]
+    assert "return false;" in shell_seg, "旧兜底直写必须为空实现"
 
 
 def test_duration_card_timeline_has_readable_span(html):
@@ -174,11 +186,10 @@ def test_pause_is_synced_to_ticket_timer(html):
     assert "__czPause()" in seg and "__czResume()" in seg
 
 
-def test_card_a_natural_end_triggers_fallback_save(html):
-    """A 卡自己走到点（没有 click）也要触发兜底记账。"""
-    assert "function notifyRunEnd()" in html
-    assert "window.__czOnCardARunEnd = function (info)" in html
-    assert "window.__czSaveExternalRunIfNeeded = saveExternalRunIfNeeded;" in html
+def test_card_a_natural_end_opens_confirm(html):
+    """A 卡自己走到点（没有 click）也要弹确认，而不是静默退 prep。"""
+    assert "if (elapsed >= totalSec) { enterPause(); notifyFinishRequest(true); }" in html
+    assert "function notifyRunEnd()" not in html, "旧直写回调必须移除"
 
 
 def test_yesterday_unavailable_is_not_treated_as_zero(html):

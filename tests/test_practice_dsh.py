@@ -20,16 +20,16 @@ def client(monkeypatch):
     return TestClient(app)
 
 
-def test_practice_page_has_three_tabs(client):
-    """验证 /practice 页面顶部 Tab 栏包含三个 Tab：计时练习、快速补录、练习助手."""
+def test_practice_page_has_two_tabs(client):
+    """dad 261102 拍板：快速补录整页删除，只剩计时练习 / 练习助手两个 Tab."""
     resp = client.get("/practice")
     assert resp.status_code == 200
     html = resp.text
 
-    # Tab 头部按钮
     assert "计时练习" in html
-    assert "快速补录" in html
     assert "练习助手" in html
+    assert "快速补录" not in html
+    assert "tabExtra" not in html
     assert 'class="tab-btn practice-dsh-tab"' in html or "practice-dsh-tab" in html
     assert "switchTab('dsh')" in html or 'switchTab("dsh")' in html
 
@@ -98,6 +98,22 @@ def test_practice_dsh_structure_and_contracts():
 
     # 科目列表走真实接口。打卡 payload 仍在页面外的 practice 壳，不在这份画布模板里。
     assert "fetch('/api/items')" in html, "必须接入 GET /api/items"
+
+
+def test_run_state_keeps_prep_ticket_width():
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    """计时态不能因为票夹收到 50px 就把右栏压进一屏（dad 261103 录屏）。
+
+    可用宽在窄条和计时态下仍按准备态票夹宽扣，这份宽度变形当时记在 czPrepColW。
+    """
+    assert "function comboAvailWidth" in html
+    assert "dataset.czPrepColW" in html, "变形时必须记下准备态票夹宽"
+    assert "stage-bar" in html and "stage-running" in html
+    # 卡槽露出条只留进行中 / 科目全名 / 展开卡片，不再带 BPM 和时长
+    assert 'id="pkCcgBpm"' not in html
+    assert 'id="pkCcgDuration"' not in html
+    assert 'id="pkCcgSession"' not in html
+    assert "pk-exposed-expand-hint" in html
 
 
 def test_post_api_log_with_session_fields(client):
@@ -176,3 +192,91 @@ def test_practice_dsh_category_fallback_and_no_dead_assignments_route():
     assert "ITEM_CATEGORIES[a.category_id]" in html
     assert "fetch(`/api/assignments?" not in html
     assert 'fetch(`/config/api/assignments?weeks=24&item=' in html
+
+
+def test_finish_confirm_modal_contract():
+    """结束确认弹窗是唯一入库入口（P0：提前结束/到点/A 卡都要先确认）。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+
+    for eid in [
+        "pkFinishConfirmModal",
+        "pkFinishScreenMain",
+        "pkFinishScreenZero",
+        "pkFinishDurationVal",
+        "pkFinishSubmitBtn",
+        "pkFinishResumeBtn",
+        "pkFinishAbortBtn",
+        "pkFinishZeroBackBtn",
+        "pkFinishZeroConfirmBtn",
+        "pkRepsReadout",
+        "pkRepsMinus",
+        "pkRepsPlus",
+        "pkFinishErrorBanner",
+    ]:
+        assert f'id="{eid}"' in html, f"缺少结束确认弹窗元素 #{eid}"
+
+    # 状态机与守卫
+    for token in [
+        "finishPending",
+        "finishSubmitting",
+        "finishSavedElapsed",
+        "function requestFinish(done)",
+        "function finalizeExitRun(opts)",
+        "function cancelFinishAndResume()",
+        "function abortFinishAndDiscard()",
+        "function confirmFinish()",
+        "async function submitConfirmedPractice(reps)",
+        "window.__czIsPracticeBusy",
+    ]:
+        assert token in html, f"缺少结束确认状态机片段: {token}"
+
+    # 失败保活：8 秒超时 + sessionStorage 暂存 + 重试
+    assert "AbortController" in html and "8000" in html
+    assert "dsh_pending" in html and "_log_v1" in html
+    assert "重试提交" in html
+
+    # 离开保护
+    assert "beforeunload" in html
+
+
+def test_practice_tab_switch_guards_dsh_busy():
+    """dsh 在计时/待确认时，切页签要先过保护弹窗。"""
+    html = PRACTICE_TPL.read_text(encoding="utf-8")
+    assert "function dshBusy()" in html
+    assert "cw.__cz.isBusy()" in html
+    assert "pendingTab" in html
+    assert "timerProtectText" in html
+
+
+def test_finish_modal_is_anchored_to_visible_band():
+    """画布 iframe 高度 = 内容自然高，fixed 弹层必须锚到 --cz-band-*，否则居中到视口外。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert ".pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask, .pk-finish-modal {" in html
+    assert ".pk-finish-box { max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }" in html
+
+
+def test_bridge_does_not_resume_card_a_during_finish_confirm():
+    """确认弹窗期间 A 卡必须停在 pause，反向桥不能把它拉回 run。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "window.__czIsFinishing = function ()" in html
+    seg = html[html.index("function bridgeCanvas()"):html.index("bridgeCardA();", html.index("function bridgeCanvas()"))]
+    assert "__czIsFinishing()" in seg
+    assert "return;" in seg
+
+
+def test_failure_returns_to_visible_screen_and_replays_pending():
+    """失败时切回第一屏（错误条 / 重试按钮在那），并且启动时能补交暂存 payload。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    seg = html[html.index("async function submitConfirmedPractice"):html.index("function finalizeExitRun")]
+    assert "showFinishScreen('main');" in seg
+    assert "function replayPendingLog()" in html
+    assert "sessionStorage.getItem(PENDING_LOG_KEY)" in html
+    assert "12 * 3600 * 1000" in html
+
+
+def test_audit_reset_is_silent_and_tab_leave_stops_dsh():
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "window.__czAuditSilentFinish" in html
+    page = PRACTICE_TPL.read_text(encoding="utf-8")
+    assert "cw.__cz.abandon()" in page
+    assert "abandon: function ()" in html
