@@ -1284,7 +1284,9 @@ class Database(BaseBackend):
     # 白名单: 只接受 ♪ / ♩ (后续新增音符只改这里)
     _ALLOWED_TEMPO_NOTES = ("♪", "♩")
     _BPM_MIN = 40
-    _BPM_MAX = 150
+    # 与 src/kid_app/schemas.py 的 BPM_MAX 必须一致 (tests/test_bpm_bounds_consistency.py 守门).
+    # 2026-11-03: schemas 已放宽到 200, 这里漏改 → 151-200 被 DB 层拒成 400.
+    _BPM_MAX = 200
     _CONTENT_MAX_LEN = 200
     _REPS_MIN = 1
     _REPS_MAX = 99

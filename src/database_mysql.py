@@ -1094,7 +1094,8 @@ class MySQLBackend(BaseBackend):
     # PR-B: 与 schemas.py 常量对齐 (单一事实源).
     _ALLOWED_TEMPO_NOTES = ('♪', '♩', '♬')
     _BPM_MIN = 40
-    _BPM_MAX = 150
+    # 2026-11-03: schemas.py BPM_MAX 已放宽到 200, 这里漏改 → 生产写入 151-200 被拒.
+    _BPM_MAX = 200
     _CONTENT_MAX_LEN = 200
     _REPS_MIN = 1
     _REPS_MAX = 99

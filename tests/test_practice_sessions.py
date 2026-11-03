@@ -121,7 +121,7 @@ class TestSessionValidation:
             )
 
     def test_tempo_bpm_bounds(self, test_item, test_date):
-        """Case 4: tempo_bpm 越界 39 / 151 都拒"""
+        """Case 4: tempo_bpm 越界 39 / 201 都拒, 40 / 200 通过"""
         item_id, item_name = test_item
         with pytest.raises(ValueError, match="tempo_bpm 必须在"):
             db.create_practice_session(
@@ -131,7 +131,7 @@ class TestSessionValidation:
         with pytest.raises(ValueError, match="tempo_bpm 必须在"):
             db.create_practice_session(
                 test_date, item_id, item_name, 5,
-                tempo_note="♪", tempo_bpm=151, content="test",
+                tempo_note="♪", tempo_bpm=201, content="test",
             )
         # 边界值应通过
         s = db.create_practice_session(
@@ -141,9 +141,15 @@ class TestSessionValidation:
         assert s["tempo_bpm"] == 40
         s2 = db.create_practice_session(
             test_date, item_id, item_name, 5,
-            tempo_note="♪", tempo_bpm=150, content="test",
+            tempo_note="♪", tempo_bpm=200, content="test",
         )
-        assert s2["tempo_bpm"] == 150
+        assert s2["tempo_bpm"] == 200
+        # 2026-11-03: 151-199 曾因 DB 层 _BPM_MAX=150 被拒, schema 放宽后必须能落库
+        s3 = db.create_practice_session(
+            test_date, item_id, item_name, 5,
+            tempo_note="♪", tempo_bpm=160, content="test",
+        )
+        assert s3["tempo_bpm"] == 160
 
     def test_minutes_must_be_positive(self, test_item, test_date):
         """Case 5: duration_minutes <= 0 拒"""
