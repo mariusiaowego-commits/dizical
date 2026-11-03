@@ -13,6 +13,10 @@ EXCLUDE_DIRS = {
     # Sprint 26083001 S5: deepseek audit P0 修复 — 排除下划线开头 _worktrees (之前漏掉, 1.1GB 跟着 deploy 包进 CloudRun 必 create_failed)
     '_worktrees',
     'dizi_helper.egg-info', 'dizical.egg-info',
+    # 2026-11-03 practice-dsh 部署: 以下三个目录会让 deploy 包从 196M 涨到 710M,
+    # tcb 上传 ZIP 必 create_failed (同 _worktrees 事故):
+    #   .local-archive 498M 本地归档 / dizical-ai 37M 生成物 / sprints 632K 过程文档
+    '.local-archive', 'dizical-ai', 'sprints',
 }
 # 顶级 static/ 是 src/kid_app/static/ 的重复 (老的), runtime 走 src/ 那个
 EXCLUDE_ROOT_DIRS = {'static', '.cloudrun-deploy', '.cloudrun-deploy-new'}
@@ -20,8 +24,11 @@ EXCLUDE_ROOT_FILES = {
     'STATUS.md', 'vibe-coding-log.md', 'AGENTS.md', 'DEVELOPMENT_PLAN.md', '.tcbignore',
     'dizi.db', 'dizical.db', 'morning_check.json', 'crop_flutes.py',
     'download_and_rmbg.py', 'remove_bg.py', 'gsap-demo.html',
-    'spike-deploy.sh', '.DS_Store', 'badges.html.bak',
+    'spike-deploy.sh', '.DS_Store', 'badges.html.bak', 'result.md',
 }
+# .tcbignore 是 tcb 上传时的排除清单, 必须随包一起进 .cloudrun-deploy,
+# 否则部署包会带上 700M+ 非运行时文件 (排除在 EXCLUDE_ROOT_FILES 之外)。
+EXCLUDE_ROOT_FILES.discard('.tcbignore')
 
 
 def skip_dir(name, is_root=False):

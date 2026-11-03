@@ -35,3 +35,8 @@ backups/
 logs/
 *.tmp
 .DS_Store
+
+# 2026-11-03: 大体积非运行时目录 (deploy 包 196M -> 710M 会 create_failed)
+.local-archive/
+dizical-ai/
+sprints/
