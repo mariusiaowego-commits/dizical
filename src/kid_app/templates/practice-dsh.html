@@ -1686,6 +1686,7 @@
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none; /* 长按不要弹系统菜单 */
   }
   .pk-mini-stepper-btn:hover {
     background: var(--surface-subtle);
@@ -4711,7 +4712,8 @@
     <span class="pk-grow"></span>
     <button class="pk-pill mini" id="pkStateToggle">切到练习态</button>
     <button class="pk-pill mini" id="pkRelayoutBtn" title="重新测量并排布全部卡片（组合切换/增减卡片后布局走样时使用）">刷新布局</button>
-    <button class="pk-pill mini ok" id="pkRecords">今日记录 15分 · 3次 ▾</button>
+    <!-- 默认中性：真实数据由 __czApplyDay 覆盖，绝不预置演示数字 -->
+    <button class="pk-pill mini ok" id="pkRecords">今日记录 — ▾</button>
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
   </header>
 
@@ -4806,7 +4808,7 @@
           <div class="pk-collapsed-cal-block run-only" id="pkCollapsedCalBlock">
             <div class="pk-collapsed-cal-header">
               <span class="pk-collapsed-cal-title" id="pkCollapsedCalMonth">9月打卡</span>
-              <span class="pk-collapsed-cal-stat" id="pkCollapsedDaysVal">累计 101 天</span>
+              <span class="pk-collapsed-cal-stat" id="pkCollapsedDaysVal">累计 — 天</span>
             </div>
             <div class="pk-cal-weekdays mini">
               <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
@@ -4857,7 +4859,7 @@
               <span class="pk-collapsed-stat-label">连续打卡</span>
             </div>
             <div class="pk-collapsed-card-body">
-              <span class="pk-collapsed-stat-val" id="pkCollapsedStreakVal">61</span>
+              <span class="pk-collapsed-stat-val" id="pkCollapsedStreakVal">—</span>
               <span class="pk-collapsed-stat-unit">天 <span class="pk-collapsed-stat-hint">· 最近 9-23</span></span>
             </div>
           </div>
@@ -4871,7 +4873,7 @@
               <span class="pk-collapsed-stat-label">今日/连续</span>
             </div>
             <div class="pk-collapsed-card-body">
-              <span class="pk-collapsed-stat-val" id="pkCollapsedMergedVal">今日 0 分 · 连续 61 天</span>
+              <span class="pk-collapsed-stat-val" id="pkCollapsedMergedVal">今日 — 分 · 连续 — 天</span>
             </div>
           </div>
 
@@ -5261,40 +5263,18 @@
     <!-- 顶部合计块 -->
     <div class="pk-drawer-summary pk-shrink0">
       <div class="pk-drawer-summary-lead">今日累计练习</div>
-      <div class="pk-drawer-summary-val" id="pkDrawerTotalVal">今日 15 分 · 3 次</div>
+      <div class="pk-drawer-summary-val" id="pkDrawerTotalVal">今日 0 分 · 0 次</div>
     </div>
 
     <!-- 明细列表（按时间倒序） -->
     <div class="pk-drawer-list-wrap pk-grow" id="pkDrawerListWrap">
       <div class="pk-drawer-list" id="pkDrawerList">
-        <!-- 静态真值口径明细记录 -->
-        <article class="pk-drawer-item">
-          <div class="pk-row pk-between pk-drawer-item-head">
-            <span class="pk-drawer-item-time mono">20:45</span>
-            <span class="pk-drawer-item-dur">10 分钟</span>
-          </div>
-          <div class="pk-drawer-item-subject">吸气长音</div>
-          <div class="pk-drawer-item-session">慢板分句练习 · 正常长音保持</div>
-        </article>
-        <article class="pk-drawer-item">
-          <div class="pk-row pk-between pk-drawer-item-head">
-            <span class="pk-drawer-item-time mono">17:15</span>
-            <span class="pk-drawer-item-dur">3 分钟</span>
-          </div>
-          <div class="pk-drawer-item-subject">单吐tuku</div>
-          <div class="pk-drawer-item-session">tu（♩=80）音头颗粒感</div>
-        </article>
-        <article class="pk-drawer-item">
-          <div class="pk-row pk-between pk-drawer-item-head">
-            <span class="pk-drawer-item-time mono">14:02</span>
-            <span class="pk-drawer-item-dur">2 分钟</span>
-          </div>
-          <div class="pk-drawer-item-subject">采茶扑蝶</div>
-          <div class="pk-drawer-item-session">全曲连贯音准练习</div>
-        </article>
+        <!-- 不再放静态演示行：记录一律由 __czApplyDay 从 /api/practices/{date} 灌入。
+             之前这里有 3 条写死的「20:45 吸气长音 10 分钟」等假数据，接口没回或回空时
+             会直接当真实记录展示（也喂给了迷你记录卡）。 -->
       </div>
-      <!-- 空态行（静态默认隐藏，供数据为空时展示） -->
-      <div class="pk-drawer-empty" id="pkDrawerEmpty" style="display:none">
+      <!-- 空态行（默认可见；有真实记录时由 __czApplyDay 隐藏） -->
+      <div class="pk-drawer-empty" id="pkDrawerEmpty" style="display:block">
         今天还没有记录
       </div>
     </div>
@@ -7968,47 +7948,52 @@ function closeRecordsDrawer() {
     syncRunMeta();
   });
 
-  // 3.7 长按加速步进引擎（400ms 后起连发，间隔 120ms，每 300ms 递减至 40ms）
+  /* 长按步进（400ms 后连发，固定 120ms/格）。
+     261103 修：原来每 300ms 把间隔从 120ms 递减到 40ms，长按会一路加速，且
+     指针被系统菜单/别的元素抢走后收不到 pointerup，连发停不下来。
+     现在只做固定节拍连发，并用 pointer capture + 多路兜底保证一定能停。 */
   function attachLongPressStepper(btn, onStep) {
     if (!btn) return;
     let holdTimer = null;
     let repeatTimer = null;
-    let holdStart = 0;
+    let capturedId = -1;
 
     function stop() {
       clearTimeout(holdTimer);
-      clearTimeout(repeatTimer);
+      clearInterval(repeatTimer);
       holdTimer = null;
       repeatTimer = null;
-    }
-
-    function scheduleNext() {
-      const elapsed = Date.now() - holdStart;
-      const decSteps = Math.floor(elapsed / 300);
-      const interval = Math.max(40, 120 - decSteps * 25);
-      repeatTimer = setTimeout(() => {
-        onStep();
-        scheduleNext();
-      }, interval);
+      if (capturedId >= 0 && btn.hasPointerCapture && btn.hasPointerCapture(capturedId)) {
+        try { btn.releasePointerCapture(capturedId); } catch (e) {}
+      }
+      capturedId = -1;
     }
 
     btn.addEventListener('pointerdown', (e) => {
       if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
       stop();
+      try { btn.setPointerCapture(e.pointerId); capturedId = e.pointerId; } catch (err) { capturedId = -1; }
       onStep();
-      holdStart = Date.now();
       holdTimer = setTimeout(() => {
-        scheduleNext();
+        holdTimer = null;
+        repeatTimer = setInterval(onStep, 120);
       }, 400);
     });
 
     btn.addEventListener('pointerup', stop);
-    btn.addEventListener('pointerleave', stop);
     btn.addEventListener('pointercancel', stop);
-    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    btn.addEventListener('lostpointercapture', stop);
+    btn.addEventListener('pointerleave', (e) => {
+      /* 有捕获时指针移出也会来 leave，别误停 */
+      if (capturedId < 0 || !btn.hasPointerCapture || !btn.hasPointerCapture(e.pointerId)) stop();
+    });
+    btn.addEventListener('contextmenu', (e) => { e.preventDefault(); stop(); });
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
   }
 
-  // BPM 增减（长按加速）
+  // BPM 增减（长按连发，固定 120ms/格）
   attachLongPressStepper(document.getElementById('pkBpmUp'), () => {
     bpm = Math.min(200, bpm + 1);
     document.getElementById('pkBpmVal').textContent = bpm;
@@ -8020,7 +8005,7 @@ function closeRecordsDrawer() {
     syncRunMeta();
   });
 
-  // 时长增减（长按加速）
+  // 时长增减（长按连发，固定 120ms/格）
   attachLongPressStepper(document.getElementById('pkTicketDurUp'), () => {
     if (typeof ttStepMin === 'function') ttStepMin(1);
   });
@@ -8190,6 +8175,12 @@ function closeRecordsDrawer() {
     var streak = Number(ov.streak || 0);
     var streakEl = document.getElementById('pkCollapsedStreakVal');
     if (streakEl) streakEl.textContent = String(streak);
+    /* 累计天数来自 /api/practices/overview 的 practice_days。
+       模板里原来是写死的「累计 101 天」，接不上就一直是假数字。 */
+    var daysEl2 = document.getElementById('pkCollapsedDaysVal');
+    if (daysEl2 && ov.practice_days != null) {
+      daysEl2.textContent = '累计 ' + Number(ov.practice_days) + ' 天';
+    }
     var hint = document.querySelector('#pkCollapsedStreakRow .pk-collapsed-stat-hint');
     if (hint && /^\d{4}-\d{2}-\d{2}/.test(String(ov.last_date || ''))) {
       var last = String(ov.last_date);
@@ -9253,7 +9244,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -12460,6 +12451,11 @@ function closeRecordsDrawer() {
     cursor: pointer;
     box-shadow: 0 4px 12px var(--dash-shell-shadow);
     transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 120ms ease-out;
+    /* 长按连发时不要弹系统菜单 / 选中放大镜，也不要双指缩放手势抢事件 */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .knob-row .step-btn:hover { background: var(--dash-shell-hi); }
   .knob-row .step-btn:active {
@@ -12672,7 +12668,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -12731,7 +12727,7 @@ function closeRecordsDrawer() {
         <svg class="dial-outer-ring" viewBox="0 0 240 240" id="dialSvg"></svg>
 
         <div class="knob-row">
-          <button class="step-btn" id="stepDownBtn" onclick="stepBpm(-1)" title="BPM -1">−</button>
+          <button class="step-btn" id="stepDownBtn" title="BPM -1">−</button>
 
           <!-- 真实嵌入 168px Rotary Knob (点击即启停，拖动调速) -->
           <div class="rotary-knob" id="rotaryKnob" title="拖动调速">
@@ -12744,7 +12740,7 @@ function closeRecordsDrawer() {
             </div>
           </div>
 
-          <button class="step-btn" id="stepUpBtn" onclick="stepBpm(+1)" title="BPM +1">+</button>
+          <button class="step-btn" id="stepUpBtn" title="BPM +1">+</button>
         </div>
       </div>
 
@@ -14095,25 +14091,48 @@ function closeRecordsDrawer() {
       });
     }
 
+    /* ±1 步进：400ms 后连发，固定 120ms/格。
+       261103 修（dad 录屏）：原来没有 pointer capture，长按后系统右键菜单一弹，
+       pointerup 被菜单吃掉 → 连发停不下来（BPM 60→112 一路飙）。同时按钮上还挂着
+       inline onclick，pointerdown 的 fn() 与 click 各走一格，单击实际 +2。
+       现在：capture 兜底 + contextmenu 拦截 + 只认键盘/辅助技术的 click(detail 0)。 */
     function bindLongPress(el, fn) {
       if (!el) return;
-      let timer = null, interval = null;
-      const start = (e) => {
-        if (e.button && e.button !== 0) return;
-        e.preventDefault();
-        fn();
-        timer = setTimeout(() => {
-          interval = setInterval(fn, 120);
-        }, 360);
-      };
+      let timer = null, interval = null, capturedId = -1;
       const stop = () => {
         clearTimeout(timer);
         clearInterval(interval);
+        timer = null;
+        interval = null;
+        if (capturedId >= 0 && el.hasPointerCapture && el.hasPointerCapture(capturedId)) {
+          try { el.releasePointerCapture(capturedId); } catch (err) {}
+        }
+        capturedId = -1;
       };
-      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button && e.button !== 0) return;
+        e.preventDefault();
+        stop();
+        try { el.setPointerCapture(e.pointerId); capturedId = e.pointerId; } catch (err) { capturedId = -1; }
+        fn();
+        timer = setTimeout(() => {
+          timer = null;
+          interval = setInterval(fn, 120);
+        }, 360);
+      });
       el.addEventListener('pointerup', stop);
-      el.addEventListener('pointerleave', stop);
       el.addEventListener('pointercancel', stop);
+      el.addEventListener('lostpointercapture', stop);
+      el.addEventListener('pointerleave', (e) => {
+        if (capturedId < 0 || !el.hasPointerCapture || !el.hasPointerCapture(e.pointerId)) stop();
+      });
+      el.addEventListener('contextmenu', (e) => { e.preventDefault(); stop(); });
+      el.addEventListener('click', (e) => {
+        /* 指针已经按过 pointerdown，这里只补键盘（Enter/Space 的 click detail === 0） */
+        if (!e.detail) fn();
+      });
+      window.addEventListener('blur', stop);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
     }
 
     // 初始化
@@ -14687,6 +14706,10 @@ function closeRecordsDrawer() {
     color: var(--dash-btn-glyph);
     font-size: 18px; font-weight: 700;
     line-height: 1;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .bpm {
     font-size: 48px; font-weight: 800; line-height: 0.9;
@@ -14773,7 +14796,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v1 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v1 · 2026-11-03</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -15012,23 +15035,41 @@ function closeRecordsDrawer() {
   });
   function bindStripHold(el, delta) {
     if (!el) return;
-    var timer = null, interval = null;
-    var holding = false;
-    var start = function (e) {
-      if (e.button && e.button !== 0) return;
-      holding = true;
-      e.preventDefault();
-      setBpm(currentBpm + delta);
-      timer = setTimeout(function () { interval = setInterval(function () { setBpm(currentBpm + delta); }, 120); }, 360);
+    var timer = null, interval = null, capturedId = -1;
+    var step = function () { setBpm(currentBpm + delta); };
+    /* 261103 修：和 B 卡同一套坑——没有 pointer capture，菜单/指针溜走就收不到
+       pointerup，连发停不下来。统一改成 capture + contextmenu 拦截 + 固定 120ms。 */
+    var stop = function () {
+      clearTimeout(timer);
+      clearInterval(interval);
+      timer = null;
+      interval = null;
+      if (capturedId >= 0 && el.hasPointerCapture && el.hasPointerCapture(capturedId)) {
+        try { el.releasePointerCapture(capturedId); } catch (e) {}
+      }
+      capturedId = -1;
     };
-    var stop = function () { clearTimeout(timer); clearInterval(interval); setTimeout(function () { holding = false; }, 60); };
-    el.addEventListener('pointerdown', start);
-    el.addEventListener('pointerup', stop);
-    el.addEventListener('pointerleave', stop);
-    el.addEventListener('pointercancel', stop);
-    el.addEventListener('click', function () {
-      if (!holding) { setBpm(currentBpm + delta); }
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      stop();
+      try { el.setPointerCapture(e.pointerId); capturedId = e.pointerId; } catch (err) { capturedId = -1; }
+      step();
+      timer = setTimeout(function () { timer = null; interval = setInterval(step, 120); }, 360);
     });
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointercancel', stop);
+    el.addEventListener('lostpointercapture', stop);
+    el.addEventListener('pointerleave', function (e) {
+      if (capturedId < 0 || !el.hasPointerCapture || !el.hasPointerCapture(e.pointerId)) stop();
+    });
+    el.addEventListener('contextmenu', function (e) { e.preventDefault(); stop(); });
+    el.addEventListener('click', function (e) {
+      /* 指针已经按过 pointerdown；只补键盘（Enter/Space 的 click detail === 0） */
+      if (!e.detail) step();
+    });
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); });
   }
   bindStripHold(document.getElementById('stepUpBtn'), 1);
   bindStripHold(document.getElementById('stepDownBtn'), -1);
@@ -15770,7 +15811,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -15788,14 +15829,14 @@ function closeRecordsDrawer() {
 <!-- 卡片容器 -->
 <article class="card-wrap" id="cardWrap">
   <!-- 顶部日期 -->
-  <div class="date-row" id="dateText">Tuesday 17</div>
+  <div class="date-row" id="dateText">—</div>
 
   <!-- 空心几何细体大时钟 (SVG Monoline 线框字形) -->
   <div class="clock-display">
-    <svg class="hollow-digits-svg" id="clockSvg" viewBox="0 0 162 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="08:26">
+    <svg class="hollow-digits-svg" id="clockSvg" viewBox="0 0 162 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="00:00">
       <!-- 动态由 HOLLOW_DIGITS 生成 -->
     </svg>
-    <svg class="superscript-sec-svg" id="secSvg" viewBox="0 0 72 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="43">
+    <svg class="superscript-sec-svg" id="secSvg" viewBox="0 0 72 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="00">
       <!-- 动态由 HOLLOW_DIGITS 生成 -->
     </svg>
   </div>
@@ -15803,35 +15844,32 @@ function closeRecordsDrawer() {
   <!-- 段落与总量胶囊 -->
   <div class="section-row">
     <span class="section-label">Practice</span>
-    <span class="pill-duration" id="pillVal">2H 45M</span>
+    <span class="pill-duration" id="pillVal">0M</span>
   </div>
 
   <!-- 橙色细长胶囊时间轴 (约 34px 全圆角胶囊) -->
   <div class="timeline-rail-capsule" id="railCapsule">
     <div class="time-ticks-row" id="timeTicksRow">
-      <span style="left: 6%;">07:15</span>
-      <span style="left: 36%;">07:45</span>
-      <span style="left: 68%;">08:15</span>
-      <span class="tick-end" style="left: 92%;">08:45</span>
+      <span style="left: 6%;">—</span>
+      <span style="left: 36%;">—</span>
+      <span style="left: 68%;">—</span>
+      <span class="tick-end" style="left: 92%;">—</span>
     </div>
     <div class="rail-track-line" id="railTrack">
       <!-- D6-1: 纯 1px 细虚线 (去掉长线段，首段 1px，均匀间隙，高对比白线) -->
       <svg class="rail-baseline-dash" viewBox="0 0 100 4" preserveAspectRatio="none">
         <line x1="0" y1="2" x2="100" y2="2" stroke="var(--dash-white)" stroke-opacity="0.8" stroke-width="1.6" stroke-linecap="butt" stroke-dasharray="1 5" class="session-gap-dash" vector-effect="non-scaling-stroke" />
       </svg>
-      <!-- 实线白段：练习区间 (2px 细白线) -->
-      <div class="session-seg-white" style="left: 6%; width: 26%;"></div>
-      <div class="session-seg-white" style="left: 36%; width: 18%;"></div>
-      <div class="session-seg-white" style="left: 68%; width: 24%;"></div>
+      <!-- 实线白段：练习区间，由 __czApplyDay 按真实 session 生成。空态不画。 -->
     </div>
     <div class="rail-duration-row" id="railDurationRow">
-      <span class="rail-duration-text" id="railDurationText">42 分钟</span>
+      <span class="rail-duration-text" id="railDurationText">0 分钟</span>
     </div>
   </div>
 
   <!-- 底部状态与包豪斯单线矢量图标组 -->
   <div class="footer-status-row">
-    <div class="recent-subject" id="subjectText">Piano 45m 20s</div>
+    <div class="recent-subject" id="subjectText">今天还没有练习</div>
     <div class="icons-bauhaus-group">
       <!-- 节拍器：平顶等腰梯形 + 竖直单摆 + 摆中点圆点 (1.5px 线宽) -->
       <svg class="bauhaus-ic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="节拍器">
@@ -15971,12 +16009,31 @@ function closeRecordsDrawer() {
     var day = (payload && payload.today) || {};
     var sessions = (day.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
     var total = Number(day.total_seconds || 0);
-    if (!total && !sessions.length) { return false; }
+    var empty = !total && !sessions.length;
 
+    /* 日期永远按接口给的日期渲染 —— 之前空数据直接 return，卡片停在模板里的
+       「Tuesday 17」，看着像有记录。 */
     if (day.date) {
       var d0 = new Date(String(day.date) + 'T00:00:00');
       var wd = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d0.getDay()];
       document.getElementById('dateText').textContent = wd + ' ' + d0.getDate();
+    }
+
+    if (empty) {
+      /* 今天没练：显示真实的 0，不保留任何演示值。 */
+      curHour = 0; curMin = 0; curSec = 0;
+      updateClockDisplay();
+      if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+      clockSvg.setAttribute('aria-label', '00:00');
+      secSvg.setAttribute('aria-label', '00');
+      document.getElementById('pillVal').textContent = '0M';
+      document.getElementById('railDurationText').textContent = '0 分钟';
+      document.getElementById('subjectText').textContent = '今天还没有练习';
+      var tr0 = document.getElementById('railTrack');
+      if (tr0) { tr0.querySelectorAll('.session-seg-white').forEach(function (n) { n.remove(); }); }
+      var tk0 = document.querySelectorAll('#timeTicksRow span');
+      for (var t = 0; t < tk0.length; t++) { tk0[t].textContent = '—'; }
+      return true;
     }
 
     var hh = Math.floor(total / 3600);
@@ -16645,6 +16702,13 @@ function closeRecordsDrawer() {
   .scroller::-webkit-scrollbar-thumb:hover { background: var(--dash-coral); background-clip: padding-box; }
   .rec-row { padding: 0; border-bottom: 1px solid var(--dash-ink-a12); }
   .rec-row:hover { background: var(--dash-ink-a04); }
+  .rec-empty {
+    padding: 22px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--dash-text-soft);
+    letter-spacing: .02em;
+  }
   .rec-row.subject { min-height: 44px; font-weight: 700; }
   .rec-row.session { min-height: 40px; font-weight: 450; color: var(--dash-text); background: var(--dash-surface-soft); }
   .rec-row.session .c-name { padding-left: 14px; font-weight: 500; color: var(--dash-text-soft); }
@@ -16704,7 +16768,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v1 · 2026-11-03</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v1 · 2026-11-03</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -16764,23 +16828,16 @@ function closeRecordsDrawer() {
   /* 冻结形状里的 summary。span / yesterday 是输入。
      practice 与 delta 不读这里的预计算字段，下面用 sessions 算。 */
   var SUMMARY = {
-    span_minutes: 96,
-    yesterday_seconds: 1800,
+    span_minutes: 0,
+    yesterday_seconds: 0,
     /* 昨天数据是否可用（接口失败时为 false）—— 不可用就不能拿 0 当「昨天没练」。*/
-    yesterday_known: true
+    yesterday_known: false
   };
 
-  var SESSIONS = [
-    { item_id: 1340, item_name: '萨丽哈', duration_seconds: 600, tempo_bpm: 82, content: '第 1-32 小节双吐颗粒度', reps: 3, is_extra: 0, started_at: '2026-10-03 19:10:00' },
-    { item_id: 1034, item_name: '长音', duration_seconds: 480, tempo_bpm: 60, content: '吸满再出声', reps: 4, is_extra: 0, started_at: '2026-10-03 19:12:00' },
-    { item_id: 1343, item_name: '吐音', duration_seconds: 180, tempo_bpm: 96, content: '中音区单吐', reps: 5, is_extra: 0, started_at: '2026-10-03 19:18:00' },
-    { item_id: 1034, item_name: '长音', duration_seconds: 360, tempo_bpm: 60, content: '弱奏保持', reps: 2, is_extra: 0, started_at: '2026-10-03 19:22:00' },
-    { item_id: 1340, item_name: '萨丽哈', duration_seconds: 900, tempo_bpm: 76, content: '慢练连线，先稳后连', reps: 2, is_extra: 0, started_at: '2026-10-03 19:28:00' },
-    { item_id: 1343, item_name: '吐音', duration_seconds: 150, tempo_bpm: 100, content: '低音区单吐', reps: 4, is_extra: 0, started_at: '2026-10-03 19:36:00' },
-    { item_id: 1034, item_name: '长音', duration_seconds: 240, tempo_bpm: 66, content: '收尾不掉气', reps: 2, is_extra: 0, started_at: '2026-10-03 19:40:00' },
-    { item_id: 1340, item_name: '萨丽哈', duration_seconds: 420, tempo_bpm: 82, content: '补一遍气口', reps: 1, is_extra: 1, started_at: '2026-10-03 19:46:00' },
-    { item_id: 1343, item_name: '吐音', duration_seconds: 90, tempo_bpm: 100, content: '收束四拍', reps: 2, is_extra: 0, started_at: '2026-10-03 19:52:00' }
-  ];
+  /* 2026-11-03: 这里原来有 9 条写死的演示 session（萨丽哈 / 长音 / 吐音，2026-10-03）。
+     __czApplyDay 遇到空数据直接 return，演示数据就留在了卡上，被当成今天的真实记录。
+     现在默认空，一律以 /api/practices/{date} 为准。 */
+  var SESSIONS = [];
 
   function practiceSeconds() {
     return SESSIONS.reduce(function (s, row) { return s + row.duration_seconds; }, 0);
@@ -16800,7 +16857,16 @@ function closeRecordsDrawer() {
     /* 昨天拿不到就是 null（不是 {}）—— 空对象会被当成「昨天 0 秒」。*/
     var yest = (payload && payload.yesterday) ? payload.yesterday : null;
     var rows = (today.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
-    if (!rows.length) { return false; }
+    /* 昨天照常更新，即使今天没练 —— 否则「相比昨日」会停在演示值。 */
+    SUMMARY.yesterday_known = !!yest;
+    SUMMARY.yesterday_seconds = yest ? Number(yest.total_seconds || 0) : 0;
+    if (!rows.length) {
+      /* 今天没练：清空成真空态，不保留任何演示 session。 */
+      SESSIONS = [];
+      SUMMARY.span_minutes = 0;
+      render();
+      return true;
+    }
     SESSIONS = rows.map(function (s) {
       return {
         item_id: s.item_id,
@@ -16822,8 +16888,6 @@ function closeRecordsDrawer() {
       var last = Math.max.apply(null, stamps.map(function (x) { return x.en; }));
       SUMMARY.span_minutes = Math.max(1, Math.round((last - first) / 60000));
     }
-    SUMMARY.yesterday_known = !!yest;
-    SUMMARY.yesterday_seconds = yest ? Number(yest.total_seconds || 0) : 0;
     render();
     return true;
   };
@@ -16834,7 +16898,9 @@ function closeRecordsDrawer() {
   }
 
   function minutesOf(seconds) {
-    /* 不足一分钟的练习不能显示 0 分 —— 向上取整，至少 1 分。*/
+    /* 不足一分钟的练习不能显示 0 分 —— 向上取整，至少 1 分。
+       但一秒都没有必须老老实实显示 0（空态），否则「今天没练」会显示成 1 分。 */
+    if (!seconds) { return 0; }
     return Math.max(1, Math.ceil(seconds / 60));
   }
 
@@ -16926,8 +16992,9 @@ function closeRecordsDrawer() {
     var yMin = minutesOf(SUMMARY.yesterday_seconds);
     var focus = SUMMARY.span_minutes ? Math.round(practiceSeconds() / (SUMMARY.span_minutes * 60) * 100) : 0;
     var deltaPct = SUMMARY.yesterday_seconds ? Math.round(Math.abs(signedDelta(practiceSeconds(), SUMMARY.yesterday_seconds)) / SUMMARY.yesterday_seconds * 100) : 0;
+    /* 昨天 0 秒时分母是 0，百分比会算成「多 0%」——那是假数字，直接说今天开始。 */
     document.getElementById('heroDeltaNote').textContent = view.tone === 'up'
-      ? ('昨日 ' + yMin + ' 分 · 多 ' + deltaPct + '%')
+      ? (SUMMARY.yesterday_seconds ? ('昨日 ' + yMin + ' 分 · 多 ' + deltaPct + '%') : ('昨日 0 分 · 今日开始'))
       : view.tone === 'down'
         ? ('昨日 ' + yMin + ' 分 · 少 ' + deltaPct + '%')
         : ('昨日 ' + yMin + ' 分');
@@ -16981,6 +17048,9 @@ function closeRecordsDrawer() {
     paintHero(view);
     var host = document.getElementById('rows');
     host.textContent = '';
+    if (!view.groups.length) {
+      host.appendChild(el('div', 'rec-empty', '今天还没有记录'));
+    }
     view.groups.forEach(function (group, i) {
       host.appendChild(subjectRow(group, view.shares[i]));
       if (expanded) {
@@ -17004,7 +17074,8 @@ function closeRecordsDrawer() {
     var wantTone = practice > SUMMARY.yesterday_seconds ? 'up' : practice < SUMMARY.yesterday_seconds ? 'down' : 'flat';
     if (view.sign !== wantSign) failures.push('ASSERT_FAIL sign: got ' + view.sign + ' want ' + wantSign);
     if (view.tone !== wantTone) failures.push('ASSERT_FAIL tone: got ' + view.tone + ' want ' + wantTone);
-    if (view.shareSum !== 100) failures.push('ASSERT_FAIL shareSum: got ' + view.shareSum + ' want 100');
+    /* 空态没有科目，占比之和自然是 0；只有真有数据时才要求 100。 */
+    if (view.groups.length && view.shareSum !== 100) failures.push('ASSERT_FAIL shareSum: got ' + view.shareSum + ' want 100');
     var dom = document.querySelectorAll('.rec-row').length;
     var wantDom = expanded ? view.expandedRows : view.collapsedRows;
     if (dom !== wantDom) failures.push('ASSERT_FAIL rows: got ' + dom + ' want ' + wantDom);
@@ -17944,7 +18015,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.21</b> · 卡 v3 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -20347,8 +20418,12 @@ window.__CZ_CSS = [
         var tSub = sEl ? sEl.textContent.trim() : '';
         var tSess = mEl ? mEl.textContent.trim() : '';
 
-        var mD = tDurStr.match(/(\d+)\s*分/);
-        var mSec = mD ? parseInt(mD[1], 10) : 1;
+        /* 抽屉里的时长可能是「7 秒」也可能是「3 分钟」。原来只认「分」，
+           不足一分钟的秒数一律按 1 分钟算，12 条 2 秒的 session 会被累加成
+           「12 分」，和顶栏的「今日 1 分」对不上。统一换算成秒再累加。 */
+        var tMinM = tDurStr.match(/(\d+)\s*分/);
+        var tSecM = tDurStr.match(/(\d+)\s*秒/);
+        var tSecs = tMinM ? parseInt(tMinM[1], 10) * 60 : (tSecM ? parseInt(tSecM[1], 10) : 0);
 
         if (idx === 0) {
           recentItem = { time: tTime, dur: tDurStr, subject: tSub, session: tSess };
@@ -20356,16 +20431,16 @@ window.__CZ_CSS = [
 
         if (tSub) {
           if (!subMap[tSub]) {
-            subMap[tSub] = { name: tSub, minutes: 0, count: 0 };
+            subMap[tSub] = { name: tSub, seconds: 0, count: 0 };
             subList.push(subMap[tSub]);
           }
-          subMap[tSub].minutes += mSec;
+          subMap[tSub].seconds += tSecs;
           subMap[tSub].count += 1;
         }
       });
     }
 
-    var totalDistMins = subList.reduce(function (acc, cur) { return acc + cur.minutes; }, 0) || todayNum || 1;
+    var totalDistSecs = subList.reduce(function (acc, cur) { return acc + cur.seconds; }, 0) || (todayNum * 60) || 1;
     var colors = [
       'var(--dash-coral, #FF6B6B)',
       'var(--dash-vermilion, #FF5722)',
@@ -20378,9 +20453,10 @@ window.__CZ_CSS = [
     if (subList.length > 0) {
       subList.forEach(function (sub, idx) {
         var c = colors[idx % colors.length];
-        var realPct = Math.round((sub.minutes / totalDistMins) * 100);
+        var realPct = Math.round((sub.seconds / totalDistSecs) * 100);
         var barWidthPct = Math.max(4, realPct);
-        barSegmentsHtml += '<span class="mini-bar-seg" style="width:' + barWidthPct + '%;background:' + c + ';" title="' + sub.name + ' ' + sub.minutes + '分"></span>';
+        var subMins = Math.max(1, Math.round(sub.seconds / 60));
+        barSegmentsHtml += '<span class="mini-bar-seg" style="width:' + barWidthPct + '%;background:' + c + ';" title="' + sub.name + ' ' + subMins + '分"></span>';
         distListHtml +=
           '<div class="mini-dist-row">' +
             '<div class="mini-dist-lead">' +
@@ -20388,7 +20464,7 @@ window.__CZ_CSS = [
               '<span class="mini-dist-name">' + sub.name + '</span>' +
             '</div>' +
             '<div class="mini-dist-meta">' +
-              '<span class="mini-dist-dur">' + sub.minutes + '分</span>' +
+              '<span class="mini-dist-dur">' + subMins + '分</span>' +
               '<span class="mini-dist-pct">' + realPct + '%</span>' +
             '</div>' +
           '</div>';
@@ -23485,6 +23561,17 @@ window.__CZ_CSS = [
         }
       } catch (e) {}
     });
+    /* 迷你记录卡是从票夹抽屉的 DOM 反读的（buildMiniCard）。抽屉刚被真数据重写，
+       必须按当前宽高重建一次，否则迷你卡会停在首屏那次（空态或占位）。 */
+    [].slice.call(cd.querySelectorAll('#czRecordsMini')).forEach(function (old) {
+      var w = Math.round(parseFloat(old.style.width) || old.getBoundingClientRect().width || 0);
+      var h = Math.round(parseFloat(old.style.height) || old.getBoundingClientRect().height || 0);
+      if (!w || !h) { return; }
+      try {
+        var fresh = buildMiniCard(cd, w, h);
+        if (old.parentNode) { old.parentNode.replaceChild(fresh, old); }
+      } catch (e) {}
+    });
   }
   function reloadDay() {
     try {
@@ -23504,6 +23591,12 @@ window.__CZ_CSS = [
     }).catch(function () { return null; });
   }
   window.__czReloadDay = reloadDay;
+  /* 调试/自检入口：不重新请求接口，直接把一份 payload 灌进所有卡（含迷你记录卡重建）。 */
+  window.__czApplyDayAll = function (payload) {
+    if (payload) { dayPayload = payload; }
+    applyDayToModules();
+    return dayPayload;
+  };
 
   function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
   /* 造主线程抖动：阻塞式忙等 N ms（不引依赖；用来复现 agy 的「轻度抖动」场景） */
