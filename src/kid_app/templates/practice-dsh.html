@@ -1686,6 +1686,7 @@
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none; /* 长按不要弹系统菜单 */
   }
   .pk-mini-stepper-btn:hover {
     background: var(--surface-subtle);
@@ -7947,47 +7948,52 @@ function closeRecordsDrawer() {
     syncRunMeta();
   });
 
-  // 3.7 长按加速步进引擎（400ms 后起连发，间隔 120ms，每 300ms 递减至 40ms）
+  /* 长按步进（400ms 后连发，固定 120ms/格）。
+     261103 修：原来每 300ms 把间隔从 120ms 递减到 40ms，长按会一路加速，且
+     指针被系统菜单/别的元素抢走后收不到 pointerup，连发停不下来。
+     现在只做固定节拍连发，并用 pointer capture + 多路兜底保证一定能停。 */
   function attachLongPressStepper(btn, onStep) {
     if (!btn) return;
     let holdTimer = null;
     let repeatTimer = null;
-    let holdStart = 0;
+    let capturedId = -1;
 
     function stop() {
       clearTimeout(holdTimer);
-      clearTimeout(repeatTimer);
+      clearInterval(repeatTimer);
       holdTimer = null;
       repeatTimer = null;
-    }
-
-    function scheduleNext() {
-      const elapsed = Date.now() - holdStart;
-      const decSteps = Math.floor(elapsed / 300);
-      const interval = Math.max(40, 120 - decSteps * 25);
-      repeatTimer = setTimeout(() => {
-        onStep();
-        scheduleNext();
-      }, interval);
+      if (capturedId >= 0 && btn.hasPointerCapture && btn.hasPointerCapture(capturedId)) {
+        try { btn.releasePointerCapture(capturedId); } catch (e) {}
+      }
+      capturedId = -1;
     }
 
     btn.addEventListener('pointerdown', (e) => {
       if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
       stop();
+      try { btn.setPointerCapture(e.pointerId); capturedId = e.pointerId; } catch (err) { capturedId = -1; }
       onStep();
-      holdStart = Date.now();
       holdTimer = setTimeout(() => {
-        scheduleNext();
+        holdTimer = null;
+        repeatTimer = setInterval(onStep, 120);
       }, 400);
     });
 
     btn.addEventListener('pointerup', stop);
-    btn.addEventListener('pointerleave', stop);
     btn.addEventListener('pointercancel', stop);
-    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    btn.addEventListener('lostpointercapture', stop);
+    btn.addEventListener('pointerleave', (e) => {
+      /* 有捕获时指针移出也会来 leave，别误停 */
+      if (capturedId < 0 || !btn.hasPointerCapture || !btn.hasPointerCapture(e.pointerId)) stop();
+    });
+    btn.addEventListener('contextmenu', (e) => { e.preventDefault(); stop(); });
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
   }
 
-  // BPM 增减（长按加速）
+  // BPM 增减（长按连发，固定 120ms/格）
   attachLongPressStepper(document.getElementById('pkBpmUp'), () => {
     bpm = Math.min(200, bpm + 1);
     document.getElementById('pkBpmVal').textContent = bpm;
@@ -7999,7 +8005,7 @@ function closeRecordsDrawer() {
     syncRunMeta();
   });
 
-  // 时长增减（长按加速）
+  // 时长增减（长按连发，固定 120ms/格）
   attachLongPressStepper(document.getElementById('pkTicketDurUp'), () => {
     if (typeof ttStepMin === 'function') ttStepMin(1);
   });
@@ -9238,7 +9244,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.22</b> · 卡 v3 · 2026-11-03</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -12445,6 +12451,11 @@ function closeRecordsDrawer() {
     cursor: pointer;
     box-shadow: 0 4px 12px var(--dash-shell-shadow);
     transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 120ms ease-out;
+    /* 长按连发时不要弹系统菜单 / 选中放大镜，也不要双指缩放手势抢事件 */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .knob-row .step-btn:hover { background: var(--dash-shell-hi); }
   .knob-row .step-btn:active {
@@ -12657,7 +12668,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.22</b> · 卡 v3 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -12716,7 +12727,7 @@ function closeRecordsDrawer() {
         <svg class="dial-outer-ring" viewBox="0 0 240 240" id="dialSvg"></svg>
 
         <div class="knob-row">
-          <button class="step-btn" id="stepDownBtn" onclick="stepBpm(-1)" title="BPM -1">−</button>
+          <button class="step-btn" id="stepDownBtn" title="BPM -1">−</button>
 
           <!-- 真实嵌入 168px Rotary Knob (点击即启停，拖动调速) -->
           <div class="rotary-knob" id="rotaryKnob" title="拖动调速">
@@ -12729,7 +12740,7 @@ function closeRecordsDrawer() {
             </div>
           </div>
 
-          <button class="step-btn" id="stepUpBtn" onclick="stepBpm(+1)" title="BPM +1">+</button>
+          <button class="step-btn" id="stepUpBtn" title="BPM +1">+</button>
         </div>
       </div>
 
@@ -14080,25 +14091,48 @@ function closeRecordsDrawer() {
       });
     }
 
+    /* ±1 步进：400ms 后连发，固定 120ms/格。
+       261103 修（dad 录屏）：原来没有 pointer capture，长按后系统右键菜单一弹，
+       pointerup 被菜单吃掉 → 连发停不下来（BPM 60→112 一路飙）。同时按钮上还挂着
+       inline onclick，pointerdown 的 fn() 与 click 各走一格，单击实际 +2。
+       现在：capture 兜底 + contextmenu 拦截 + 只认键盘/辅助技术的 click(detail 0)。 */
     function bindLongPress(el, fn) {
       if (!el) return;
-      let timer = null, interval = null;
-      const start = (e) => {
-        if (e.button && e.button !== 0) return;
-        e.preventDefault();
-        fn();
-        timer = setTimeout(() => {
-          interval = setInterval(fn, 120);
-        }, 360);
-      };
+      let timer = null, interval = null, capturedId = -1;
       const stop = () => {
         clearTimeout(timer);
         clearInterval(interval);
+        timer = null;
+        interval = null;
+        if (capturedId >= 0 && el.hasPointerCapture && el.hasPointerCapture(capturedId)) {
+          try { el.releasePointerCapture(capturedId); } catch (err) {}
+        }
+        capturedId = -1;
       };
-      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button && e.button !== 0) return;
+        e.preventDefault();
+        stop();
+        try { el.setPointerCapture(e.pointerId); capturedId = e.pointerId; } catch (err) { capturedId = -1; }
+        fn();
+        timer = setTimeout(() => {
+          timer = null;
+          interval = setInterval(fn, 120);
+        }, 360);
+      });
       el.addEventListener('pointerup', stop);
-      el.addEventListener('pointerleave', stop);
       el.addEventListener('pointercancel', stop);
+      el.addEventListener('lostpointercapture', stop);
+      el.addEventListener('pointerleave', (e) => {
+        if (capturedId < 0 || !el.hasPointerCapture || !el.hasPointerCapture(e.pointerId)) stop();
+      });
+      el.addEventListener('contextmenu', (e) => { e.preventDefault(); stop(); });
+      el.addEventListener('click', (e) => {
+        /* 指针已经按过 pointerdown，这里只补键盘（Enter/Space 的 click detail === 0） */
+        if (!e.detail) fn();
+      });
+      window.addEventListener('blur', stop);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
     }
 
     // 初始化
@@ -14672,6 +14706,10 @@ function closeRecordsDrawer() {
     color: var(--dash-btn-glyph);
     font-size: 18px; font-weight: 700;
     line-height: 1;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .bpm {
     font-size: 48px; font-weight: 800; line-height: 0.9;
@@ -14758,7 +14796,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.22</b> · 卡 v1 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v1 · 2026-11-03</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -14997,23 +15035,41 @@ function closeRecordsDrawer() {
   });
   function bindStripHold(el, delta) {
     if (!el) return;
-    var timer = null, interval = null;
-    var holding = false;
-    var start = function (e) {
-      if (e.button && e.button !== 0) return;
-      holding = true;
-      e.preventDefault();
-      setBpm(currentBpm + delta);
-      timer = setTimeout(function () { interval = setInterval(function () { setBpm(currentBpm + delta); }, 120); }, 360);
+    var timer = null, interval = null, capturedId = -1;
+    var step = function () { setBpm(currentBpm + delta); };
+    /* 261103 修：和 B 卡同一套坑——没有 pointer capture，菜单/指针溜走就收不到
+       pointerup，连发停不下来。统一改成 capture + contextmenu 拦截 + 固定 120ms。 */
+    var stop = function () {
+      clearTimeout(timer);
+      clearInterval(interval);
+      timer = null;
+      interval = null;
+      if (capturedId >= 0 && el.hasPointerCapture && el.hasPointerCapture(capturedId)) {
+        try { el.releasePointerCapture(capturedId); } catch (e) {}
+      }
+      capturedId = -1;
     };
-    var stop = function () { clearTimeout(timer); clearInterval(interval); setTimeout(function () { holding = false; }, 60); };
-    el.addEventListener('pointerdown', start);
-    el.addEventListener('pointerup', stop);
-    el.addEventListener('pointerleave', stop);
-    el.addEventListener('pointercancel', stop);
-    el.addEventListener('click', function () {
-      if (!holding) { setBpm(currentBpm + delta); }
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      stop();
+      try { el.setPointerCapture(e.pointerId); capturedId = e.pointerId; } catch (err) { capturedId = -1; }
+      step();
+      timer = setTimeout(function () { timer = null; interval = setInterval(step, 120); }, 360);
     });
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointercancel', stop);
+    el.addEventListener('lostpointercapture', stop);
+    el.addEventListener('pointerleave', function (e) {
+      if (capturedId < 0 || !el.hasPointerCapture || !el.hasPointerCapture(e.pointerId)) stop();
+    });
+    el.addEventListener('contextmenu', function (e) { e.preventDefault(); stop(); });
+    el.addEventListener('click', function (e) {
+      /* 指针已经按过 pointerdown；只补键盘（Enter/Space 的 click detail === 0） */
+      if (!e.detail) step();
+    });
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); });
   }
   bindStripHold(document.getElementById('stepUpBtn'), 1);
   bindStripHold(document.getElementById('stepDownBtn'), -1);
@@ -15755,7 +15811,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.22</b> · 卡 v3 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -16712,7 +16768,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.22</b> · 卡 v1 · 2026-11-03</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v1 · 2026-11-03</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -17959,7 +18015,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.22</b> · 卡 v3 · 2026-11-03</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.23</b> · 卡 v3 · 2026-11-03</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
