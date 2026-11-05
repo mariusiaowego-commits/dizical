@@ -94,5 +94,65 @@ for root, dirs, files in os.walk(SRC):
         total_bytes += os.path.getsize(dst)
 
 print(f"copied {count} files, {total_bytes / (1024*1024):.1f} MB")
+
+
+def write_build_info():
+    """镜像里没有 .git，构建信息只能在打包时落盘成静态 JSON。"""
+    import datetime
+    import json
+    import subprocess
+
+    def git(*args):
+        try:
+            out = subprocess.run(
+                ["git", "-C", SRC, *args],
+                capture_output=True, text=True, check=False,
+            )
+            return out.stdout.strip()
+        except Exception:
+            return ""
+
+    branch = git("rev-parse", "--abbrev-ref", "HEAD") or "unknown"
+    if branch == "HEAD":
+        branch = "detached"
+    commit = git("rev-parse", "--short", "HEAD") or "unknown"
+    top = git("rev-parse", "--show-toplevel")
+    # linked worktree 下 --show-toplevel 就是 worktree 根目录，跟 SRC 永远相等，
+    # 只能靠 git-dir 与 common-dir 是否同一目录来区分「主 checkout」与「worktree」。
+    git_dir = git("rev-parse", "--absolute-git-dir")
+    common_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
+    source = "main checkout"
+    if git_dir and common_dir and os.path.realpath(git_dir) != os.path.realpath(common_dir):
+        source = "worktree:" + os.path.basename(top)
+    # 只看已跟踪文件的改动：打包目录 .cloudrun-deploy-new 本身就是产物，
+    # 用默认的 untracked 统计会让 dirty 永远是 true。
+    dirty = "1" if git("status", "--porcelain", "--untracked-files=no") else "0"
+    version = "unknown"
+    tpl = os.path.join(SRC, "src/kid_app/templates/practice-dsh.html")
+    try:
+        import re
+        with open(tpl, encoding="utf-8") as fh:
+            m = re.search(r"var DSH_VERSION = '([^']+)'", fh.read())
+        if m:
+            version = m.group(1)
+    except OSError:
+        pass
+
+    info = {
+        "version": version,
+        "branch": branch,
+        "commit": commit,
+        "source": source,
+        "dirty": dirty == "1",
+        "built_at": datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z"),
+    }
+    dst = os.path.join(DST, "src/kid_app/static/build-info.json")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "w", encoding="utf-8") as fh:
+        json.dump(info, fh, ensure_ascii=False, indent=2)
+    print("build-info:", json.dumps(info, ensure_ascii=False))
+
+
+write_build_info()
 print(f"size on disk (incl dir overhead):")
 os.system(f"du -sh {DST}")
