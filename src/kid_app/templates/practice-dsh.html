@@ -23015,6 +23015,10 @@ window.__CZ_CSS = [
     var pad = parseFloat(getComputedStyle(cd.body).paddingBottom) || 0;
     return Math.ceil(maxB + pad);
   }
+  /* 等比缩放的「高度基准」：本档见过最大的画布自然高。
+     用最大高（准备态）而不是当前高（计时态黑条矮），否则一按开始 scale 就变大、结束再缩回。 */
+  var canvasFitBaseH = 0;
+  var canvasFitKey = '';
   function syncCanvasHeight() {
     var cd = canvasDoc();
     /* 嵌进练习页时，宿主已经把这一屏高度给定。画布跟宿主走，不再按内容往下长出滚动。 */
@@ -23039,9 +23043,20 @@ window.__CZ_CSS = [
         }
         var designW = parseFloat(canvasIframe.dataset.vpApplied) || canvasIframe.clientWidth || 1133;
         var kW = hostW / designW;
-        /* 只按宽度缩放，不按高度。准备态票夹高、计时态黑条矮，nat 会变。
-           以前 k = min(宽比, 高比)，点开始 nat 变小，整页 scale 变大，结束再缩回去。 */
-        var k = Math.min(1, kW);
+        /* 宽度比例之外再看高度：1024×768 这类宽高比比画布更方的档，按宽缩完仍比可视区高 8px，
+           整页会多出一条滚动条。高比用稳定基准 canvasFitBaseH（见函数上方），不用当前 nat。 */
+        var fitKey = Math.round(hostW) + '@' + Math.round(hostH) + '@' + Math.round(designW);
+        if (fitKey !== canvasFitKey) { canvasFitKey = fitKey; canvasFitBaseH = 0; }
+        canvasFitBaseH = Math.max(canvasFitBaseH, nat);
+        var kH = hostH / Math.max(1, canvasFitBaseH);
+        /* feed 流（744 / 440 纵向堆叠）本来就要长出页面让用户往下滚，不能压成一屏。
+           只有横排档才吃高度约束。 */
+        var feedMode = false;
+        try {
+          var trackEl = cd.querySelector('.cz-combo') || cd.querySelector('.cz-rail') || cd.getElementById('czModCol');
+          feedMode = !!(trackEl && cd.defaultView && cd.defaultView.getComputedStyle(trackEl).flexDirection === 'column');
+        } catch (eFeed) {}
+        var k = feedMode ? Math.min(1, kW) : Math.min(1, kW, kH);
         canvasIframe.style.transformOrigin = 'top left';
         canvasIframe.style.transform = k < 0.9999 ? ('scale(' + k.toFixed(4) + ')') : '';
         canvasIframe.style.height = nat + 'px';
