@@ -4771,7 +4771,7 @@
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
     <span class="pk-ver-wrap" id="pkVerWrap">
       <button type="button" class="pk-ver" id="pkVer" aria-expanded="false" aria-controls="pkVerPop" title="查看构建信息"></button>
-      <div class="pk-ver-pop" id="pkVerPop" role="tooltip" hidden>
+      <div class="pk-ver-pop" id="pkVerPop" role="dialog" aria-label="构建信息" hidden>
         <dl class="pk-ver-rows" id="pkVerRows"></dl>
       </div>
     </span>
@@ -23768,12 +23768,14 @@ window.__CZ_CSS = [
   }
   function buildBadgeRows() {
     var b = DSH_BUILD || {};
+    var src = b.source || '本地开发';
+    if (b.dirty) { src += '（有未提交改动）'; }
     return [
       ['版本', b.version || DSH_VERSION],
       ['分支', b.branch || '本地 / 未知'],
       ['提交', b.commit || '—'],
       ['构建', b.built_at || '—'],
-      ['来源', b.source || '本地开发']
+      ['来源', src]
     ];
   }
   function renderBuildBadge() {
@@ -23818,19 +23820,32 @@ window.__CZ_CSS = [
     if (!els || els.wrap.dataset.wired === '1') { return; }
     els.wrap.dataset.wired = '1';
     var hoverTimer = 0;
-    els.wrap.addEventListener('mouseenter', function () {
-      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
-      setBuildBadgeOpen(true);
-    });
-    els.wrap.addEventListener('mouseleave', function () {
-      hoverTimer = setTimeout(function () { setBuildBadgeOpen(false); }, 160);
-    });
-    /* 触屏没有 hover：点一下开，再点一下关 */
+    var openedByHover = false;
+    /* 触屏（iPad/iPhone）点一下会合成 mouseenter 再 click，
+       若两种手势共用一个开关，首次点击会「先开再关」＝永远打不开。
+       按设备能力分流：能 hover 的走悬停，触屏只认点击。 */
+    var canHover = !!(els.wrap.ownerDocument.defaultView.matchMedia &&
+      els.wrap.ownerDocument.defaultView.matchMedia('(hover: hover) and (pointer: fine)').matches);
+    if (canHover) {
+      els.wrap.addEventListener('mouseenter', function () {
+        if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
+        openedByHover = true;
+        setBuildBadgeOpen(true);
+      });
+      els.wrap.addEventListener('mouseleave', function () {
+        hoverTimer = setTimeout(function () {
+          setBuildBadgeOpen(false);
+          openedByHover = false;
+        }, 160);
+      });
+    }
+    /* 触屏：点一下开，再点一下关；鼠标：悬停已开，点击不误关（便于读/复制） */
     els.wrap.addEventListener('click', function (ev) {
       if (ev && ev.preventDefault) { ev.preventDefault(); }
+      if (openedByHover) { return; }
       setBuildBadgeOpen(els.pop.hidden);
     });
-    els.wrap.addEventListener('keydown', function (ev) {
+    canvasDoc().addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape') { setBuildBadgeOpen(false); }
     });
     canvasDoc().addEventListener('click', function (ev) {

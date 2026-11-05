@@ -113,10 +113,16 @@ def write_build_info():
             return ""
 
     branch = git("rev-parse", "--abbrev-ref", "HEAD") or "unknown"
+    if branch == "HEAD":
+        branch = "detached"
     commit = git("rev-parse", "--short", "HEAD") or "unknown"
     top = git("rev-parse", "--show-toplevel")
+    # linked worktree 下 --show-toplevel 就是 worktree 根目录，跟 SRC 永远相等，
+    # 只能靠 git-dir 与 common-dir 是否同一目录来区分「主 checkout」与「worktree」。
+    git_dir = git("rev-parse", "--absolute-git-dir")
+    common_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     source = "main checkout"
-    if top and os.path.realpath(top) != os.path.realpath(SRC):
+    if git_dir and common_dir and os.path.realpath(git_dir) != os.path.realpath(common_dir):
         source = "worktree:" + os.path.basename(top)
     # 只看已跟踪文件的改动：打包目录 .cloudrun-deploy-new 本身就是产物，
     # 用默认的 untracked 统计会让 dirty 永远是 true。
@@ -138,7 +144,7 @@ def write_build_info():
         "commit": commit,
         "source": source,
         "dirty": dirty == "1",
-        "built_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "built_at": datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z"),
     }
     dst = os.path.join(DST, "src/kid_app/static/build-info.json")
     os.makedirs(os.path.dirname(dst), exist_ok=True)
