@@ -2568,10 +2568,11 @@
   #czTicketStage {
     position: absolute;
     left: 50%;
-    top: -60px;
+    /* 抬升量跟 --cz-card-rise（20px）走。写死 -60px 会把卡头抬进 #stageWrap 裁切盒和顶栏里。 */
+    top: var(--cz-card-rise, -20px);
     bottom: 0;
     width: 100%;
-    height: calc(100% + 60px);
+    height: auto;
     max-height: none;
     transform: translateX(-50%);
     opacity: 0;
@@ -3190,7 +3191,8 @@
     }
     #czTicketStage {
       width: clamp(210px, 50%, 320px);
-      height: calc(100% + 60px) !important;
+      top: var(--cz-card-rise, -20px) !important;
+      height: auto !important;
       max-height: none !important;
     }
   }
@@ -19758,7 +19760,7 @@ window.__CZ_CSS = [
   '#pkPunchSlotWrap { background: transparent !important; border-radius: 0 !important; box-shadow: none !important; }',
   '#pkPunchSlotWrap::before { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 46 !important; pointer-events: none !important; border-radius: 0 0 7px 7px !important; background: linear-gradient(180deg, #0B0E11 0%, #000000 100%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -2px 4px rgba(0,0,0,0.92) !important; }',
   '#pkPunchSlotWrap::after { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 42 !important; pointer-events: none !important; border-radius: 7px 7px 0 0 !important; background: linear-gradient(180deg, #05070A 0%, #0B0E11 100%) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,0.9) !important; }',
-  '#czTicketStage { z-index: 44 !important; top: -60px !important; bottom: 0 !important; height: calc(100% + 60px) !important; max-height: none !important; }',
+  '#czTicketStage { z-index: 44 !important; top: var(--cz-card-rise, -20px) !important; bottom: 0 !important; height: auto !important; max-height: none !important; }',
   '#pkPunchSlotWrap > .cz-slot-led { z-index: 49 !important; }',
   '#pkPunchSlotWrap .pk-slot-cavity, #pkSlotCavity { display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: var(--pk-slot-hole-h, 18px) !important; z-index: 41 !important; border-radius: 7px !important; background: #000000 !important; box-shadow: inset 0 2px 6px rgba(0,0,0,0.95) !important; }',
   /* 卡槽右侧机体指示灯：留在槽体外的留白里，不被卡片全宽压到底边 */
@@ -20300,9 +20302,9 @@ window.__CZ_CSS = [
       /* S17（dad 261026）：卡底与孔底齐平（冠底 = 孔底 = 卡底），
          下半孔层（z46）盖住卡底，卡不再从孔下方露出一截。 */
       card.style.setProperty('width', cardW + 'px', 'important');
-      card.style.setProperty('height', 'calc(100% + 60px)', 'important');
+      card.style.setProperty('height', 'auto', 'important');
       card.style.setProperty('max-height', 'none', 'important');
-      card.style.setProperty('top', '-60px', 'important');
+      card.style.setProperty('top', 'var(--cz-card-rise, -20px)', 'important');
       card.style.setProperty('bottom', '0px', 'important');
       card.style.removeProperty('transform');
       card.style.setProperty('left', '50%', 'important');
