@@ -6264,17 +6264,8 @@ async function loadSubjectRequirements(item) {
       if (reqText) {
         item.fetchedRequirements = reqText;
         var listEl = document.getElementById('pkReqList');
-        if (listEl) {
-          var reqLines = reqText.split(/[;\n；]/).map(function(s) { return s.trim(); }).filter(Boolean);
-          if (!reqLines.length) reqLines = [reqText];
-          listEl.innerHTML = reqLines.map(function(t) { return '<li>' + t + '</li>'; }).join('');
-        }
-        var readerList = document.getElementById('pkReaderList');
-        if (readerList) {
-          var reqLines2 = reqText.split(/[;\n；]/).map(function(s) { return s.trim(); }).filter(Boolean);
-          if (!reqLines2.length) reqLines2 = [reqText];
-          readerList.innerHTML = reqLines2.map(function(t) { return '<li>' + t + '</li>'; }).join('');
-        }
+        fillReqList(listEl, reqText);
+        fillReqList(document.getElementById('pkReaderList'), reqText);
         var popupReq = document.getElementById('czPopupRequirement');
         if (popupReq) {
           popupReq.textContent = reqText;
@@ -6670,22 +6661,30 @@ function closeFolio() {
   document.getElementById('pkFolioModal').classList.remove('open');
 }
 
-/* 老师要求渲染 */
+/* 老师要求渲染。原文走 textContent，不拼 innerHTML：老师写的 < 与 & 不能变成标签。 */
+function fillReqList(listEl, source) {
+  if (!listEl) return;
+  var lines = Array.isArray(source)
+    ? source
+    : String(source || '').split(/[;\n；]/).map(function(s) { return s.trim(); }).filter(Boolean);
+  if (!lines.length && source) lines = [String(source)];
+  listEl.replaceChildren();
+  lines.forEach(function(t) {
+    var li = document.createElement('li');
+    li.textContent = t;
+    listEl.appendChild(li);
+  });
+}
 function renderReq() {
   const reqName = cur ? cur.name : '未选择科目';
   const nameEl = document.getElementById('pkReqItemName');
   if (nameEl) nameEl.textContent = reqName;
   const listEl = document.getElementById('pkReqList');
   if (cur && cur.fetchedRequirements) {
-    const reqLines = cur.fetchedRequirements.split(/[;\n；]/).map(s => s.trim()).filter(Boolean);
-    if (listEl) {
-      listEl.innerHTML = reqLines.length ? reqLines.map(t => '<li>' + t + '</li>').join('') : ('<li>' + cur.fetchedRequirements + '</li>');
-    }
+    fillReqList(listEl, cur.fetchedRequirements);
   } else {
     const items = cur ? (cur.reqItems || []) : [];
-    if (listEl) {
-      listEl.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
-    }
+    fillReqList(listEl, items.length ? items : (cur ? '无课后特别要求记录。' : '请先在左侧选择练习科目与内容。'));
   }
 
   const readerItem = document.getElementById('pkReaderItem');
@@ -6695,15 +6694,10 @@ function renderReq() {
 
   const readerList = document.getElementById('pkReaderList');
   if (cur && cur.fetchedRequirements) {
-    const reqLines = cur.fetchedRequirements.split(/[;\n；]/).map(s => s.trim()).filter(Boolean);
-    if (readerList) {
-      readerList.innerHTML = reqLines.length ? reqLines.map(t => '<li>' + t + '</li>').join('') : ('<li>' + cur.fetchedRequirements + '</li>');
-    }
+    fillReqList(readerList, cur.fetchedRequirements);
   } else {
     const items = cur ? (cur.reqItems || []) : [];
-    if (readerList) {
-      readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
-    }
+    fillReqList(readerList, items.length ? items : (cur ? '无课后特别要求记录。' : '请先在左侧选择练习科目与内容。'));
   }
 }
 
@@ -22556,6 +22550,9 @@ window.__CZ_CSS = [
     var col = railEl();
     if (!col) { return; }
     var cd = canvasDoc();
+    /* 换组合后按新内容重算高度基准。计时态不重置：基准若被压到计时态的矮高度，
+       回到准备态会把整页放大（261105 回归）。 */
+    if (!canvasRunning()) { canvasFitBaseH = 0; canvasFitKey = ''; }
     parkSlot(cd);
     applyDCollapsedWidth();
     applyDCollapsedWidth();
