@@ -764,12 +764,15 @@
     }
   }
 
-  /* iPad mini / iPad 沉浸式一屏适配（1133x744 / 1024x768 零页面滚动） */
+  /* iPad mini / iPad 适配（1133x744 / 1024x768 纵向自然滚动，保留明确滚动条指示） */
   @media (min-width: 1024px) and (max-height: 800px) {
     html, body {
       height: auto;
       min-height: 100vh;
       overflow-y: auto !important;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(44, 62, 80, 0.28) transparent;
     }
     body {
       padding: 3px 6px;
@@ -1125,11 +1128,24 @@
     }
   }
 
-  /* 宽屏舞台放开 1280px 锁死，铺满画布（261030） */
-  @media (min-width: 1200px) {
-    .pk-top,
-    .pk-stage-wrap {
+  /* 宽屏舞台放开 1280px 锁死，顶栏与卡片列同宽居中对齐（P1-4） */
+  @media (min-width: 1024px) {
+    #practiceStage {
+      width: fit-content !important;
       max-width: 100% !important;
+      margin: 0 auto !important;
+    }
+    .pk-top {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .pk-stage-wrap {
+      width: fit-content !important;
+      max-width: 100% !important;
+    }
+    .pk-main-col {
+      flex: 0 0 auto !important;
+      width: auto !important;
     }
   }
 
@@ -1334,7 +1350,7 @@
   /* ③ 窄屏（< 1024px，如 iPad 竖屏 744×1133、手机 440×956）：单列堆叠（与 pk-top 同宽对齐） */
   @media (max-width: 1023px) {
     .pk-top {
-      max-width: 580px;
+      max-width: 100%;
       width: 100%;
       margin: 0 auto 10px;
       padding: 0 10px;
@@ -1344,7 +1360,7 @@
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      max-width: 580px;
+      max-width: 100%;
       width: 100%;
       margin: 0 auto;
       padding: 0;
@@ -2428,9 +2444,13 @@
     line-height: 1.4;
     letter-spacing: .08em;
     color: rgba(255,248,240,.84);
-    max-height: none;
-    overflow: visible;
-    text-overflow: clip;
+    max-height: 90px;
+    max-width: 2.8em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     white-space: normal;
     padding: 2px 0;
   }
@@ -2548,10 +2568,10 @@
   #czTicketStage {
     position: absolute;
     left: 50%;
-    top: var(--cz-card-rise, -20px);
-    bottom: auto;
+    top: -60px;
+    bottom: 0;
     width: 100%;
-    height: var(--pk-card-total-h, 86px);
+    height: calc(100% + 60px);
     max-height: none;
     transform: translateX(-50%);
     opacity: 0;
@@ -2585,10 +2605,17 @@
   @keyframes pkCardToSlot {
     0% {
       opacity: 0;
-      transform: translate(-50%, -40px);
+      transform: translate(-50%, -44px);
     }
-    60% {
-      opacity: 0.85;
+    30% {
+      opacity: 0.72;
+    }
+    72% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    85% {
+      transform: translate(-50%, -2px);
     }
     100% {
       opacity: 1;
@@ -2610,10 +2637,17 @@
   @keyframes pkCardToSlotFeed {
     0% {
       opacity: 0;
-      transform: translate(-50%, -40px);
+      transform: translate(-50%, -44px);
     }
-    60% {
-      opacity: 0.85;
+    30% {
+      opacity: 0.72;
+    }
+    72% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    85% {
+      transform: translate(-50%, -2px);
     }
     100% {
       opacity: 1;
@@ -3156,8 +3190,8 @@
     }
     #czTicketStage {
       width: clamp(210px, 50%, 320px);
-      height: var(--pk-card-exposed-h, 27px);
-      max-height: 48px;
+      height: calc(100% + 60px) !important;
+      max-height: none !important;
     }
   }
   /* S22-P1：窄屏（≤600）横条信息位不够，科目/剩余/BPM/内容/重选五段把内容区挤到
@@ -5375,12 +5409,23 @@
   var FALLBACK = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
   var seq = 0;
 
+  function cleanSessionText(s) {
+    if (!s) return '';
+    return String(s)
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/^[\s"'“”‘’]+|[\s"'“”‘’]+$/g, '')
+      .replace(/["'“”‘’]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  window.cleanSessionText = cleanSessionText;
+
   function parseContentOptions(raw) {
     var list = Array.isArray(raw) ? raw : String(raw == null ? '' : raw).split(/[,，]/);
     var seen = Object.create(null);
     var out = [];
     for (var i = 0; i < list.length; i++) {
-      var text = String(list[i]).trim();
+      var text = cleanSessionText(list[i]);
       if (!text || seen[text]) continue;
       seen[text] = true;
       out.push(text);
@@ -6153,12 +6198,102 @@ function updatePillSelection() {
 }
 window.renderSessionPills = renderSessionPills;
 
+function getSubjectHeroImg(item) {
+  if (!item) return '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315';
+  var name = item.name || '';
+  var cat = item.category || (typeof ITEM_CATEGORIES !== 'undefined' && ITEM_CATEGORIES[item.id]) || '';
+
+  // 1. By Item Name Keyword
+  if (name.includes('双吐')) return '/static/badges/tech_shuang_tu_v1.png';
+  if (name.includes('单吐')) return '/static/badges/tech_dan_tu_v1.png';
+  if (name.includes('吸气长音') || name.includes('长音')) return '/static/badges/tech_chang_yin_v1.png';
+  if (name.includes('颤音')) return '/static/badges/tech_chan_yin_v1.png';
+  if (name.includes('滑音')) return '/static/badges/tech_hua_yin_v1.png';
+  if (name.includes('循环换气')) return '/static/badges/tech_xun_huan_qi_v1.png';
+  if (name.includes('春耕曲')) return '/static/badges/rep_chun_geng_qu_v1.png';
+  if (name.includes('茉莉花')) return '/static/badges/rep_moli_hua_v1.png';
+  if (name.includes('紫竹调')) return '/static/badges/rep_zi_zhu_diao_v1.png';
+  if (name.includes('西藏舞曲')) return '/static/badges/rep_xizang_wuqu_v1.png';
+  if (name.includes('回娘家')) return '/static/badges/rep_hui_niangjia_v1.png';
+  if (name.includes('小看戏')) return '/static/badges/rep_xiao_kanxi_v1.png';
+  if (name.includes('采茶扑蝶')) return '/static/badges/rep_caicha_pudie_v1.png';
+  if (name.includes('萨丽哈') || name.includes('萨利哈')) return '/static/badges/rep_saliha_v1.png';
+
+  // 2. By Category Default
+  if (cat.includes('基本功') || cat.includes('练习曲') || cat.includes('音阶') || cat.includes('吐音') || cat.includes('气息')) {
+    return '/static/badges/tech_ji_ben_gong_v1.png';
+  }
+  if (cat.includes('曲目') || cat.includes('乐曲') || cat.includes('传统')) {
+    return '/static/badges/rep_xin_qu_kai_huang_v1.png';
+  }
+
+  // 3. Fallback
+  return '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315';
+}
+window.getSubjectHeroImg = getSubjectHeroImg;
+
+var _curReqFetchKey = '';
+async function loadSubjectRequirements(item) {
+  if (!item) return;
+  var itemName = (item.name || '').trim();
+  var itemId = item.id != null ? String(item.id) : itemName;
+  var fetchKey = itemName || itemId;
+  _curReqFetchKey = fetchKey;
+  try {
+    var res = await fetch('/config/api/assignments?weeks=24&item=' + encodeURIComponent(itemName || itemId));
+    if (!res || !res.ok) return;
+    var data = await res.json();
+    if (_curReqFetchKey !== fetchKey) return;
+    var asgList = Array.isArray(data.assignments) ? data.assignments : [];
+    if (asgList.length === 0 && itemId && itemId !== itemName) {
+      var res2 = await fetch('/config/api/assignments?weeks=24&item=' + encodeURIComponent(itemId));
+      if (res2 && res2.ok) {
+        var data2 = await res2.json();
+        if (_curReqFetchKey === fetchKey && Array.isArray(data2.assignments) && data2.assignments.length > 0) {
+          asgList = data2.assignments;
+        }
+      }
+    }
+    if (asgList.length > 0) {
+      var firstAsg = asgList[0] || {};
+      var items = Array.isArray(firstAsg.items) ? firstAsg.items : [];
+      var targetItem = items[0] || {};
+      var reqText = (targetItem.requirements || '').trim();
+      if (reqText) {
+        item.fetchedRequirements = reqText;
+        var listEl = document.getElementById('pkReqList');
+        if (listEl) {
+          var reqLines = reqText.split(/[;\n；]/).map(function(s) { return s.trim(); }).filter(Boolean);
+          if (!reqLines.length) reqLines = [reqText];
+          listEl.innerHTML = reqLines.map(function(t) { return '<li>' + t + '</li>'; }).join('');
+        }
+        var readerList = document.getElementById('pkReaderList');
+        if (readerList) {
+          var reqLines2 = reqText.split(/[;\n；]/).map(function(s) { return s.trim(); }).filter(Boolean);
+          if (!reqLines2.length) reqLines2 = [reqText];
+          readerList.innerHTML = reqLines2.map(function(t) { return '<li>' + t + '</li>'; }).join('');
+        }
+        var popupReq = document.getElementById('czPopupRequirement');
+        if (popupReq) {
+          popupReq.textContent = reqText;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('loadSubjectRequirements error', e);
+  }
+}
+window.loadSubjectRequirements = loadSubjectRequirements;
+
 /* 渲染票卡各部 */
 function renderTicket() {
   if (!cur) {
     renderEmptyTicket();
     return;
   }
+  const heroImg = document.getElementById('pkTicketHeroImg');
+  if (heroImg) heroImg.src = getSubjectHeroImg(cur);
+
   const isFocus = (cur.id === 1034 || cur.id === 1343);
   const isArch = ITEMS.archived.some(x => x.id === cur.id);
 
@@ -6214,6 +6349,9 @@ function renderTicket() {
 }
 
 function renderEmptyTicket() {
+  const heroImg = document.getElementById('pkTicketHeroImg');
+  if (heroImg) heroImg.src = '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315';
+
   const hole = document.getElementById('pkTicketHoleTopLeft');
   if (hole) hole.className = 'pk-hole-punch status-other';
 
@@ -6504,6 +6642,9 @@ function selectItem(id, isArchived) {
   userReselecting = false;
   renderTicket();
   checkAutoDeform();
+  if (typeof loadSubjectRequirements === 'function') {
+    loadSubjectRequirements(cur);
+  }
   /* 科目自带默认速度（如春耕曲 ♪=110）必须同步给仪表盘/节拍器 ——
      旧路径只有票夹 ± 按钮走总线，选科目这条路径没推，
      会出现「票夹 110 / 仪表盘 60」两个数字（dad 261029 复现）。 */
@@ -6533,9 +6674,16 @@ function renderReq() {
   const nameEl = document.getElementById('pkReqItemName');
   if (nameEl) nameEl.textContent = reqName;
   const listEl = document.getElementById('pkReqList');
-  const items = cur ? (cur.reqItems || []) : [];
-  if (listEl) {
-    listEl.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
+  if (cur && cur.fetchedRequirements) {
+    const reqLines = cur.fetchedRequirements.split(/[;\n；]/).map(s => s.trim()).filter(Boolean);
+    if (listEl) {
+      listEl.innerHTML = reqLines.length ? reqLines.map(t => '<li>' + t + '</li>').join('') : ('<li>' + cur.fetchedRequirements + '</li>');
+    }
+  } else {
+    const items = cur ? (cur.reqItems || []) : [];
+    if (listEl) {
+      listEl.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
+    }
   }
 
   const readerItem = document.getElementById('pkReaderItem');
@@ -6544,8 +6692,16 @@ function renderReq() {
   if (readerTempo) readerTempo.textContent = NOTES[noteIdx].sym + ' = ' + bpm;
 
   const readerList = document.getElementById('pkReaderList');
-  if (readerList) {
-    readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
+  if (cur && cur.fetchedRequirements) {
+    const reqLines = cur.fetchedRequirements.split(/[;\n；]/).map(s => s.trim()).filter(Boolean);
+    if (readerList) {
+      readerList.innerHTML = reqLines.length ? reqLines.map(t => '<li>' + t + '</li>').join('') : ('<li>' + cur.fetchedRequirements + '</li>');
+    }
+  } else {
+    const items = cur ? (cur.reqItems || []) : [];
+    if (readerList) {
+      readerList.innerHTML = items.length ? items.map(t => '<li>' + t + '</li>').join('') : (cur ? '<li>无课后特别要求记录。</li>' : '<li>请先在左侧选择练习科目与内容。</li>');
+    }
   }
 }
 
@@ -6567,20 +6723,21 @@ function syncRunMeta() {
   const ins = document.getElementById('pkInsertedName');
   if (ins) ins.textContent = name;
   const runSessionTag = document.getElementById('pkRunSessionTag');
-  if (runSessionTag) runSessionTag.textContent = content || '待选择本次练习内容';
+  const dispContent = (typeof cleanSessionText === 'function') ? cleanSessionText(content) : (content ? String(content).trim() : '');
+  if (runSessionTag) runSessionTag.textContent = dispContent || '待选择本次练习内容';
   const runSpeedVal = document.getElementById('pkRunSpeedVal');
   if (runSpeedVal) runSpeedVal.textContent = NOTES[noteIdx].sym + ' = ' + bpm;
 
   const collapsedSession = document.getElementById('pkCollapsedSessionVal');
-  if (collapsedSession) collapsedSession.textContent = content || '待选择本次练习内容';
+  if (collapsedSession) collapsedSession.textContent = dispContent || '待选择本次练习内容';
   const railSubject = document.getElementById('pkRailSubject');
   if (railSubject) railSubject.textContent = cur ? (cur.name || cur.subject || '练习') : '未选科目';
   const railBpm = document.getElementById('pkRailBpm');
   if (railBpm) railBpm.textContent = String(bpm);
   const railContent = document.getElementById('pkRailContent');
-  if (railContent) railContent.textContent = content || '选一个或输入本次练习内容';
+  if (railContent) railContent.textContent = dispContent || '选一个或输入本次练习内容';
   const railSession = document.getElementById('pkRailSession');
-  if (railSession) railSession.textContent = content || '未选内容';
+  if (railSession) railSession.textContent = dispContent || '未选内容';
   const railTodayVal = document.getElementById('pkRailTodayVal');
   if (railTodayVal) {
     const todayEl = document.getElementById('pkCollapsedTodayVal') || document.getElementById('todayTotal');
@@ -6750,13 +6907,18 @@ function syncRunRailCard() {
   // Overlay popup fields
   set('czPopupTitle', cur ? (cur.name || '练习曲目') : '未选择科目');
   set('czPopupNo', 'No.' + (cur ? (cur.id || '—') : '----'));
-  set('czPopupSession', content || '未选内容');
+  set('czPopupSession', ((typeof cleanSessionText === 'function') ? cleanSessionText(content) : (content || '未选内容')) || '未选内容');
   set('czPopupBpm', bpm + ' BPM');
   set('czPopupDuration', duration + ' 分钟');
   set('czPopupCategory', cur ? (cur.category || ITEM_CATEGORIES[cur.id] || '曲目') : '—');
   set('czPopupNote', NOTES[noteIdx] ? NOTES[noteIdx].cap : '四分音符');
 
-  const reqRaw = cur ? ((cur.reqItems && cur.reqItems.length) ? cur.reqItems.join(' ') : (cur.reqSnippet || '按老师要求完成今天的练习。')) : '按老师要求完成今天的练习。';
+  const popupHeroImg = cd.getElementById('czPopupHeroImg') || cd.querySelector('.cz-popup-art img');
+  if (popupHeroImg && typeof getSubjectHeroImg === 'function') {
+    popupHeroImg.src = getSubjectHeroImg(cur);
+  }
+
+  const reqRaw = cur ? (cur.fetchedRequirements || ((cur.reqItems && cur.reqItems.length) ? cur.reqItems.join(' ') : (cur.reqSnippet || '按老师要求完成今天的练习。'))) : '按老师要求完成今天的练习。';
   const req = String(reqRaw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   set('czPopupRequirement', req);
 }
@@ -7531,6 +7693,9 @@ function exitRun() {
   elapsed = 0;
   if (typeof ttRenderDigits === 'function') ttRenderDigits(duration * 60, true);
   if (typeof paintRulerSelect === 'function') paintRulerSelect(duration);
+  if (typeof syncRunMeta === 'function') syncRunMeta();
+  if (typeof updateCollapsedProgress === 'function') updateCollapsedProgress();
+  if (typeof syncStartState === 'function') syncStartState();
 
   /* S22：计时结束 → 回到「窄条准备态」（票夹仍是 bar，选择保留）。
      只有点「重新选择」才展开成完整票夹。 */
@@ -7869,6 +8034,9 @@ function closeRecordsDrawer() {
   }
 
   renderTicket();
+  if (cur && typeof loadSubjectRequirements === 'function') {
+    loadSubjectRequirements(cur);
+  }
   updateReselectBtnState();
 
   const railReselectBtn = document.getElementById('pkRailReselectBtn');
@@ -15843,8 +16011,8 @@ function closeRecordsDrawer() {
 
   <!-- 段落与总量胶囊 -->
   <div class="section-row">
-    <span class="section-label">Practice</span>
-    <span class="pill-duration" id="pillVal">0M</span>
+    <span class="section-label">今日累计</span>
+    <span class="pill-duration" id="pillVal">0 分钟</span>
   </div>
 
   <!-- 橙色细长胶囊时间轴 (约 34px 全圆角胶囊) -->
@@ -16015,8 +16183,8 @@ function closeRecordsDrawer() {
        「Tuesday 17」，看着像有记录。 */
     if (day.date) {
       var d0 = new Date(String(day.date) + 'T00:00:00');
-      var wd = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d0.getDay()];
-      document.getElementById('dateText').textContent = wd + ' ' + d0.getDate();
+      var wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d0.getDay()];
+      document.getElementById('dateText').textContent = (d0.getMonth() + 1) + '月' + d0.getDate() + '日 ' + wd;
     }
 
     if (empty) {
@@ -16026,7 +16194,7 @@ function closeRecordsDrawer() {
       if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
       clockSvg.setAttribute('aria-label', '00:00');
       secSvg.setAttribute('aria-label', '00');
-      document.getElementById('pillVal').textContent = '0M';
+      document.getElementById('pillVal').textContent = '0 分钟';
       document.getElementById('railDurationText').textContent = '0 分钟';
       document.getElementById('subjectText').textContent = '今天还没有练习';
       var tr0 = document.getElementById('railTrack');
@@ -16047,7 +16215,7 @@ function closeRecordsDrawer() {
     secSvg.setAttribute('aria-label', padZero(ss));
 
     document.getElementById('pillVal').textContent =
-      total < 60 ? (total + 'S') : (hh ? (hh + 'H ' + mm + 'M') : (mm + 'M'));
+      total < 60 ? (total + ' 秒') : (hh ? (hh + '小时 ' + mm + '分') : (mm + ' 分钟'));
     document.getElementById('railDurationText').textContent =
       total < 60 ? (total + ' 秒') : (Math.ceil(total / 60) + ' 分钟');
 
@@ -18983,20 +19151,6 @@ function closeRecordsDrawer() {
       if (mod) { mod.style.width = (w + 12) + 'px'; }
     });
   }
-  /* S14 批注2：自定义档（off）下今日时长卡过高过宽、大片空白——收窄成竖条卡（宽 288），
-     内容竖排（@container 既有断点接管）。老实例重渲染由 applySelection 拆轨重建兜底。 */
-  var D_COLLAPSED_W = 288;
-  function applyDCollapsedWidth() {
-    var cd = canvasDoc();
-    if (!cd) { return; }
-    MODS.forEach(function (m) {
-      if (m.k !== 'D') { return; }
-      var w = (state.combo === 'off') ? D_COLLAPSED_W : 380;
-      if (m.w !== w) { m.w = w; }
-      var mod = cd.querySelector('.cz-rail .cz-mod[data-mod="D"]');
-      if (mod) { mod.style.width = (w + 12) + 'px'; }
-    });
-  }
   /* pk-main-col 里必须消失的原画布块（DOM 查询断言用） */
   var GONE_SELECTORS = ['#pkInstrCard', '#pkReqCard', '.timer-block', '#pkStartBtn', '.pk-running-telemetry', '.pk-slot4-box'];
 
@@ -19441,7 +19595,7 @@ function closeRecordsDrawer() {
   '.cz-picker-mods label.is-on { background: rgba(255,107,107,.08); }',
   '@media (max-width: 1023px) { .cz-mod-col { flex-direction: column !important; } }',
     '/* 卡片单行轨：塞不下在轨内自己横滑 */',
-    '.cz-rail { position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 24px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: auto; padding: 56px 2px 12px; margin-top: -56px; }',
+    '.cz-rail { position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 16px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: auto; padding: 56px 2px 12px; margin-top: -56px; }',
     '.cz-mod { flex: 0 0 auto; margin: 0; padding: 0; border: 0; border-radius: 24px; background: transparent; box-shadow: 0 2px 8px rgba(44, 62, 80, 0.04); }',
     ':root[data-skin="ink"] .cz-mod { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }',
     '.cz-mod[hidden], .cz-mod.is-off { display: none !important; }',
@@ -19451,8 +19605,8 @@ function closeRecordsDrawer() {
     '   票卡只留源样式 min-height 地板，高度=内容自然高，不随 iframe、不随右栏模块涨。 */',
     'html, body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow-y: auto !important; scrollbar-gutter: stable; }',
     'body { padding-top: 10px !important; }',
-    /* dad 261031：pk-top 与下方卡片组合原来只隔 2px，重新给一段呼吸位；顶部标签到 pk-top 收紧 */
-    '#pkTop { margin-bottom: 16px !important; }',
+    /* dad 261031：pk-top 与下方卡片组合原来只隔 2px，重新给一段呼吸位（≥22px）；顶部标签到 pk-top 收紧 */
+    '#pkTop { margin-bottom: 24px !important; }',
     '#practiceStage { height: auto !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; }',
     '.pk-stage-wrap { align-items: flex-start !important; height: auto !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; overflow: visible !important; }',
     /* stage-bar 必须排除：窄条高度由 --cz-bar-h 写入，这里 height:auto 会把它压成 0
@@ -19504,6 +19658,7 @@ function closeRecordsDrawer() {
   ':root[data-skin="ink"] .mini-sub-row { color: #A8A29A; }',
     ':root[data-skin="ink"] .pk-top { background: var(--cz-ink-top) !important; color: var(--cz-ink-text) !important; }',
     ':root[data-skin="ink"] .pk-stage-wrap { background: transparent !important; }',
+    '@media (min-width: 1024px) { #practiceStage { width: fit-content !important; max-width: 100% !important; margin: 0 auto !important; } .pk-stage-wrap { width: fit-content !important; max-width: 100% !important; } .pk-top { width: 100% !important; max-width: 100% !important; } .pk-main-col { flex: 0 0 auto !important; width: auto !important; } }',
     NEGCTL ? '/* 负控①：把被 dad 否掉的 slot 壳加回来 */ .cz-mod { border: 1px solid rgba(44, 62, 80, 0.12) !important; border-radius: 20px !important; background: #FFFFFF !important; box-shadow: 0 1px 3px rgba(44, 62, 80, 0.04) !important; overflow: hidden !important; } .cz-mod-col { background: rgba(44, 62, 80, 0.06) !important; border-radius: 24px !important; }' : '',
     NEGCTL_ROW ? '/* 负控③：窄屏也强撑单行横滑（必须让「窄屏纵向堆叠 + 无横向溢出」报红） */ .cz-rail { flex-direction: row !important; overflow-x: auto !important; } .cz-mod { width: auto !important; } .cz-mod > iframe { width: auto !important; }' : ''
   ].join('\n');
@@ -19594,19 +19749,18 @@ window.__CZ_CSS = [
   /* 独立槽体：只保留咬住卡片下缘的前唇与暗腔；不再用深色圆角块冒充卡槽。 */
   '#pkPunchSlotWrap, .dash-integrated-slot, .dash-slot-cavity { position: relative !important; z-index: 40 !important; width: 100% !important; margin: 0 !important; height: 100% !important; min-height: 0 !important; max-height: none !important; padding: 0 !important; box-sizing: border-box !important; background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; display: block !important; overflow: visible !important; transform: none !important; }',
   '#pkPunchSlotWrap[data-mode="run"] { overflow: visible !important; }',
-  '#pkPunchSlotWrap::before, #pkPunchSlotWrap::after { display: none !important; }',
   /* S13 批注1：只留「卡槽孔」——比黑区略窄的细孔 + 孔内遮罩，去掉厚面包槽体。feed 流（cz-feed 卡）不套用，保持既有黑 bar→卡形态 */
   /* S17 批注1（dad 261026）：卡槽 = 黑区上沿的一道「窄缝」，不再是整块黑屏。
      槽体本身透明（黑区原样透出来），只在孔位画上下两半：
      上半孔 z42（垫在卡片后面，被卡片盖住）→ 卡片 z44 → 下半孔 z46（盖住卡底）
      = 卡片从窄孔中穿过。孔左右各留 28px 槽肩，孔比黑区窄、卡片比孔再窄 8px。
      --pk-hole-inset / --pk-slot-hole-h 由 updateCardSlotGeometry() 写入。 */
-  '#pkPunchSlotWrap[data-hole="1"] { background: transparent !important; border-radius: 0 !important; box-shadow: none !important; }',
-  '#pkPunchSlotWrap[data-hole="1"]::before { content: ""; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 46 !important; pointer-events: none !important; border-radius: 0 0 7px 7px !important; background: linear-gradient(180deg, #0B0E11 0%, #000000 100%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -2px 4px rgba(0,0,0,0.92) !important; }',
-  '#pkPunchSlotWrap[data-hole="1"]::after { content: ""; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 42 !important; pointer-events: none !important; border-radius: 7px 7px 0 0 !important; background: linear-gradient(180deg, #05070A 0%, #0B0E11 100%) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,0.9) !important; }',
-
+  '#pkPunchSlotWrap { background: transparent !important; border-radius: 0 !important; box-shadow: none !important; }',
+  '#pkPunchSlotWrap::before { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 46 !important; pointer-events: none !important; border-radius: 0 0 7px 7px !important; background: linear-gradient(180deg, #0B0E11 0%, #000000 100%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -2px 4px rgba(0,0,0,0.92) !important; }',
+  '#pkPunchSlotWrap::after { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 42 !important; pointer-events: none !important; border-radius: 7px 7px 0 0 !important; background: linear-gradient(180deg, #05070A 0%, #0B0E11 100%) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,0.9) !important; }',
+  '#czTicketStage { z-index: 44 !important; top: -60px !important; bottom: 0 !important; height: calc(100% + 60px) !important; max-height: none !important; }',
   '#pkPunchSlotWrap > .cz-slot-led { z-index: 49 !important; }',
-  '#pkPunchSlotWrap .pk-slot-cavity, #pkSlotCavity { display: none !important; }',
+  '#pkPunchSlotWrap .pk-slot-cavity, #pkSlotCavity { display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: var(--pk-slot-hole-h, 18px) !important; z-index: 41 !important; border-radius: 7px !important; background: #000000 !important; box-shadow: inset 0 2px 6px rgba(0,0,0,0.95) !important; }',
   /* 卡槽右侧机体指示灯：留在槽体外的留白里，不被卡片全宽压到底边 */
   '.cz-slot-led { position: absolute !important; width: 7px !important; height: 7px !important; border-radius: 50% !important; background: #E0A15A !important; box-shadow: 0 0 0 1px rgba(10,12,14,0.9), 0 0 7px #E0A15A !important; z-index: 47 !important; pointer-events: none !important; }',
   /* S13 批注2 + S16 卡槽常驻：LED 始终落脚在孔下肩右侧，准备态与计时态同位；feed 流无孔肩则隐藏 */
@@ -19719,6 +19873,7 @@ window.__CZ_CSS = [
   '',
   '@media (max-width: 1023px) {',
   '  html, body, .pk-stage-wrap { min-height: 0 !important; height: auto !important; }',
+  '  .pk-top { width: 100% !important; max-width: 100% !important; }',
   '  .pk-stage-wrap { flex-direction: column !important; align-items: stretch !important; width: 100% !important; max-width: 100% !important; gap: 8px !important; }',
   '  /* 竖屏堆叠：黑 bar 与 dashboard 同一宽度、间距收紧 */',
   '  #practiceStage.stage-bar #pkLeftCol, #practiceStage.stage-running #pkLeftCol, #practiceStage.stage-morphing #pkLeftCol { margin-bottom: 4px !important; }',
@@ -19883,13 +20038,11 @@ window.__CZ_CSS = [
     return f;
   }
 
-  /* 拆组合/轨道前把卡槽与卡片浮层挪回左列，否则它挂在顶冠里会跟着旧节点被删掉 */
+  /* 拆组合/轨道前把卡槽与卡片浮层挪回左列，保持卡槽常驻（P1-5） */
   function parkSlot(cd) {
     if (!cd) { return; }
     var slot = cd.getElementById('pkPunchSlotWrap');
     if (slot) {
-      slot.style.setProperty('display', 'none', 'important');
-      slot.hidden = true;
       var host = stubHost(cd) || cd.getElementById('pkLeftCol') || cd.body;
       if (slot.parentElement !== host) { host.appendChild(slot); }
     }
@@ -20086,6 +20239,11 @@ window.__CZ_CSS = [
       slot.style.setProperty('width', slotW + 'px', 'important');
       slot.style.setProperty('height', slotFullH + 'px', 'important');
       slot.style.setProperty('overflow', 'visible', 'important');
+      slot.style.setProperty('display', 'block', 'important');
+    }
+    var cardEl = cd.getElementById('czTicketStage');
+    if (cardEl) {
+      cardEl.style.setProperty('width', cardW + 'px', 'important');
     }
     var ledNow = slot ? slot.querySelector(':scope > .cz-slot-led') : null;
     if (ledNow) {
@@ -20141,12 +20299,11 @@ window.__CZ_CSS = [
     if (card) {
       /* S17（dad 261026）：卡底与孔底齐平（冠底 = 孔底 = 卡底），
          下半孔层（z46）盖住卡底，卡不再从孔下方露出一截。 */
-      var cardStopIn = exposedH + insertDepth;
       card.style.setProperty('width', cardW + 'px', 'important');
-      card.style.setProperty('height', cardStopIn + 'px', 'important');
+      card.style.setProperty('height', 'calc(100% + 60px)', 'important');
       card.style.setProperty('max-height', 'none', 'important');
-      card.style.setProperty('top', (-cardRise) + 'px', 'important');
-      card.style.setProperty('bottom', 'auto', 'important');
+      card.style.setProperty('top', '-60px', 'important');
+      card.style.setProperty('bottom', '0px', 'important');
       card.style.removeProperty('transform');
       card.style.setProperty('left', '50%', 'important');
       card.style.setProperty('--cz-card-inset', cardInset + 'px');
@@ -20326,6 +20483,13 @@ window.__CZ_CSS = [
     var head = cd.getElementById('pkInsertedHead');
     var idle = cd.getElementById('pkSlotIdle');
     var card = cd.getElementById('czTicketStage');
+    if ((!running || isExiting) && card) {
+      try {
+        if (typeof card.getAnimations === 'function') {
+          card.getAnimations().forEach(function (a) { a.finish(); });
+        }
+      } catch (eAnim) {}
+    }
     if (head) { head.style.display = 'none'; }
     if (idle) { idle.style.display = (running && !isExiting) ? 'none' : 'flex'; }
     if (stageEl) {
@@ -21131,7 +21295,7 @@ window.__CZ_CSS = [
       if (!(prepW > 120)) { prepW = cd.documentElement.clientWidth < 1200 ? 360 : 380; }
       leftW = prepW;
     }
-    return Math.max(200, Math.floor(stage.clientWidth - leftW - gap));
+    return Math.max(200, Math.floor(stage.clientWidth - leftW - gap - 10));
   }
   /* 宽档右栏只有约 700px，组合规格却是 900–1500。能缩进最小可读宽就压进一屏；
      缩不进就保持设计宽继续往右排，靠横向拖动看后面的卡（dad 261031：不要换行到第二行）。 */
@@ -21148,6 +21312,12 @@ window.__CZ_CSS = [
     var avail = comboAvailWidth(col);
     if (!(avail > 200)) { return null; }
     var items = kids.map(function (el) { return { el: el, nat: fitNat(el), min: fitMin(el) }; });
+    var aItem = items.find(function (it) { return fitKey(it.el) === 'A'; });
+    if (aItem && items.length > 1) {
+      var otherNat = items.filter(function (it) { return it !== aItem; }).reduce(function (a, it) { return a + it.nat; }, 0) + gap * (items.length - 1);
+      var remain = avail - otherNat;
+      aItem.nat = Math.max(aItem.min, Math.min(remain, aItem.nat || 472));
+    }
     var sum = items.reduce(function (a, it) { return a + it.nat; }, 0) + gap * (items.length - 1);
     var minSum = items.reduce(function (a, it) { return a + it.min; }, 0) + gap * (items.length - 1);
     col.style.flexWrap = 'nowrap';
@@ -22353,7 +22523,9 @@ window.__CZ_CSS = [
       var mod = cd.createElement('div');
       mod.className = 'cz-mod';
       mod.dataset.mod = spec.k;
-      mod.style.width = (spec.w + 12) + 'px';
+      var wPx = (spec.k === 'D') ? D_COLLAPSED_W : (spec.w + 12);
+      mod.dataset.czW = String(wPx);
+      mod.style.width = wPx + 'px';
       if (spec.k === 'A') {
         var crown = cd.createElement('div');
         crown.className = 'cz-astack-crown';
@@ -22742,6 +22914,10 @@ window.__CZ_CSS = [
       [].slice.call(col.querySelectorAll('.cz-mod:not([hidden]) > iframe')).forEach(syncModuleHeight);
       var tbOff = ticketBox(canvasDoc());
       sizeLooseTCards(tbOff && tbOff.h);
+      var rail = cardsRailEl();
+      if (rail && canvasDoc() && canvasDoc().documentElement.clientWidth >= 1024) {
+        fitWideCombo(rail, tbOff && tbOff.h);
+      }
     } else {
       applyComboSizes();
     }
@@ -22752,6 +22928,10 @@ window.__CZ_CSS = [
       [].slice.call(col.querySelectorAll('.cz-mod:not([hidden]) > iframe')).forEach(syncModuleHeight);
       var tbOff2 = ticketBox(canvasDoc());
       sizeLooseTCards(tbOff2 && tbOff2.h);
+      var rail2 = cardsRailEl();
+      if (rail2 && canvasDoc() && canvasDoc().documentElement.clientWidth >= 1024) {
+        fitWideCombo(rail2, tbOff2 && tbOff2.h);
+      }
     } else {
       applyComboSizes();
     }
@@ -23387,7 +23567,12 @@ window.__CZ_CSS = [
       '<div class="cz-picker-title">卡片</div><div class="cz-picker-mods">' + mods + '</div>';
     pop.addEventListener('click', function (ev) {
       var b = ev.target.closest('.cz-picker-presets button');
-      if (b) { setCombo(b.dataset.combo); refreshPicker(); return; }
+      if (b) {
+        setCombo(b.dataset.combo);
+        refreshPicker();
+        pop.hidden = true;
+        return;
+      }
       ev.stopPropagation();
     });
     pop.addEventListener('change', function (ev) {
@@ -23396,6 +23581,7 @@ window.__CZ_CSS = [
       setCombo('off');
       setMods(picked);
       refreshPicker();
+      pop.hidden = true;
     });
     cd.body.appendChild(pop);
     cd.addEventListener('click', function () { pop.hidden = true; });
