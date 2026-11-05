@@ -641,8 +641,15 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
-  /* 构建版本角标：只用来对线上是哪一版，刻意做小做淡，不参与信息层级 */
+  /* 构建版本角标：只用来对线上是哪一版，刻意做小做淡，不参与信息层级。
+     hover（鼠标）或点一下（触屏）弹出完整构建信息。 */
+  .pk-ver-wrap {
+    position: relative;
+    flex-shrink: 0;
+    display: inline-flex;
+  }
   .pk-ver {
+    font: inherit;
     font-size: 10px;
     font-weight: 600;
     line-height: 1;
@@ -650,10 +657,38 @@
     color: var(--text-muted);
     opacity: .5;
     white-space: nowrap;
-    flex-shrink: 0;
+    border: 0;
+    background: none;
+    padding: 4px 2px;
+    cursor: pointer;
     font-variant-numeric: tabular-nums;
     user-select: none;
   }
+  .pk-ver:hover, .pk-ver:focus-visible { opacity: .85; outline: none; }
+  .pk-ver-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 60;
+    min-width: 208px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-card);
+    background: var(--surface-card);
+    box-shadow: 0 8px 24px rgba(44, 62, 80, .16);
+    text-align: left;
+  }
+  .pk-ver-pop[hidden] { display: none; }
+  .pk-ver-rows {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .pk-ver-rows dt { color: var(--text-muted); white-space: nowrap; }
+  .pk-ver-rows dd { margin: 0; color: var(--text-strong, var(--text-muted)); font-weight: 600; word-break: break-all; }
   .pk-server-clock {
     font-size: 12px;
     font-weight: 600;
@@ -920,9 +955,6 @@
     .pk-tele-pill-session {
       font-size: 11.5px;
       padding: 2px 10px;
-    }
-    .pk-footer-note {
-      display: none !important;
     }
   }
 
@@ -1328,9 +1360,6 @@
       padding: 14px 20px;
       gap: 6px;
     }
-    .pk-footer-note {
-      display: none !important;
-    }
   }
 
   /* PC 超高屏适配（1728x1117）：卡片按内容收缩，票根 hero 承接剩余高度，大数字 64px */
@@ -1432,6 +1461,10 @@
     .pk-ver {
       font-size: 9px;
       opacity: .45;
+    }
+    .pk-ver-pop {
+      min-width: 188px;
+      font-size: 10.5px;
     }
     .pk-top .pk-pill {
       font-size: 11px;
@@ -4720,38 +4753,6 @@
     white-space: nowrap;
   }
 
-  .pk-footer-note {
-    display: flex;
-    justify-content: center;
-    max-width: 1280px;
-    margin: 4px auto 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  .pk-demo-notes-fold {
-    text-align: center;
-  }
-  .pk-demo-notes-summary {
-    list-style: none;
-    font-size: 10.5px;
-    color: var(--text-muted);
-    opacity: 0.55;
-    cursor: pointer;
-    padding: 2px 8px;
-    border-radius: 4px;
-    transition: opacity 0.15s ease;
-  }
-  .pk-demo-notes-summary::-webkit-details-marker { display: none; }
-  .pk-demo-notes-summary:hover { opacity: 0.9; }
-  .pk-demo-notes-text {
-    margin: 4px auto 0;
-    font-size: 10.5px;
-    line-height: 1.4;
-    color: var(--text-muted);
-    opacity: 0.7;
-    max-width: 860px;
-    text-align: left;
-  }
 </style>
 </head>
 <body>
@@ -4768,7 +4769,12 @@
     <!-- 默认中性：真实数据由 __czApplyDay 覆盖，绝不预置演示数字 -->
     <button class="pk-pill mini ok" id="pkRecords">今日记录 — ▾</button>
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
-    <span class="pk-ver" id="pkVer" title="练习助手构建版本"></span>
+    <span class="pk-ver-wrap" id="pkVerWrap">
+      <button type="button" class="pk-ver" id="pkVer" aria-expanded="false" aria-controls="pkVerPop" title="查看构建信息"></button>
+      <div class="pk-ver-pop" id="pkVerPop" role="tooltip" hidden>
+        <dl class="pk-ver-rows" id="pkVerRows"></dl>
+      </div>
+    </span>
   </header>
 
   <!-- ══════════ 主舞台 ══════════ -->
@@ -5248,17 +5254,6 @@
     </div>
 
   </main>
-
-  <footer class="pk-footer-note">
-    <details class="pk-demo-notes-fold">
-      <summary class="pk-demo-notes-summary">demo 架构说明 ▾</summary>
-      <div class="pk-demo-notes-text">
-        高保真 demo v4：艺术展票务卡片形态（练习票卡）+ 顶部名画插图 + 并排大数字 + 撕裂虚线 + 票根条形码；<br>
-        点击「检票 · 开始练习」触发打卡机式插卡动效，露出的票卡头部与单字打孔成为唯一识别体；<br>
-        仪表盘核心参数总线（曲目、分句、速度）居于第一焦点；刻度尺走动与交互 100% 保持未改动真件逻辑。
-      </div>
-    </details>
-  </footer>
 
 </div>
 
@@ -19046,8 +19041,10 @@ function closeRecordsDrawer() {
   var DEMO_BASE = new URL('./', location.href).href;    /* 模块 srcdoc 基准 = 本目录 */
   var DOCS_BASE = new URL('../', location.href).href;   /* 画布 srcdoc 基准 = docs/demos/ */
   var STORE_KEY = 'canvas01_state';
-  /* 练习助手构建版本：发版只改这一处，页面顶栏右上角角标读它 */
+  /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
+     完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
   var DSH_VERSION = 'v3.24';
+  var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
   var MODS = [
@@ -23744,6 +23741,7 @@ window.__CZ_CSS = [
       var verEl = canvasDoc() && canvasDoc().getElementById('pkVer');
       if (verEl) { verEl.textContent = DSH_VERSION; }
     } catch (eVer) {}
+    wireBuildBadge();
     applySelection();
     syncAll();
     syncHint();
@@ -23753,6 +23751,104 @@ window.__CZ_CSS = [
     /* 画布就绪后拉当天真实练习记录，回灌 D / R 两张卡。*/
     reloadDay();
   });
+
+  /* ══════════ 构建版本角标 ══════════
+     角标只显示版本号；hover（鼠标）或点一下（触屏）弹出完整信息：
+     版本 / 分支 / 提交 / 构建时间 / 来源 checkout。
+     分支与提交在部署时由 scripts/_sync_cloudrun_deploy.py 写进 build-info.json，
+     运行时不读 git（镜像里没有 .git）。 */
+  function buildBadgeEls() {
+    var cd = canvasDoc();
+    if (!cd) { return null; }
+    var wrap = cd.getElementById('pkVerWrap');
+    var pop = cd.getElementById('pkVerPop');
+    var rows = cd.getElementById('pkVerRows');
+    if (!wrap || !pop || !rows) { return null; }
+    return { wrap: wrap, pop: pop, rows: rows, btn: cd.getElementById('pkVer') };
+  }
+  function buildBadgeRows() {
+    var b = DSH_BUILD || {};
+    return [
+      ['版本', b.version || DSH_VERSION],
+      ['分支', b.branch || '本地 / 未知'],
+      ['提交', b.commit || '—'],
+      ['构建', b.built_at || '—'],
+      ['来源', b.source || '本地开发']
+    ];
+  }
+  function renderBuildBadge() {
+    var els = buildBadgeEls();
+    if (!els) { return; }
+    if (els.btn) { els.btn.textContent = DSH_VERSION; }
+    els.rows.replaceChildren();
+    buildBadgeRows().forEach(function(pair) {
+      var dt = els.wrap.ownerDocument.createElement('dt');
+      dt.textContent = pair[0];
+      var dd = els.wrap.ownerDocument.createElement('dd');
+      dd.textContent = pair[1];
+      els.rows.appendChild(dt);
+      els.rows.appendChild(dd);
+    });
+  }
+  function setBuildBadgeOpen(open) {
+    var els = buildBadgeEls();
+    if (!els) { return; }
+    els.pop.hidden = !open;
+    if (els.btn) { els.btn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    if (open) { positionBuildBadge(); }
+  }
+  /* 弹层跟着角标走，但必须留在画布可视范围内：窄屏顶栏换行后角标不在右缘，
+     直接 right:0 会把弹层推到屏幕左边外面，这里按画布宽度夹一次。 */
+  function positionBuildBadge() {
+    var els = buildBadgeEls();
+    if (!els) { return; }
+    var cd = els.wrap.ownerDocument;
+    var viewW = cd.documentElement.clientWidth;
+    var wrapRect = els.wrap.getBoundingClientRect();
+    var popRect = els.pop.getBoundingClientRect();
+    if (!popRect.width) { return; }
+    var left = wrapRect.left + wrapRect.width - popRect.width;
+    if (left < 4) { left = 4; }
+    if (left + popRect.width > viewW - 4) { left = Math.max(4, viewW - 4 - popRect.width); }
+    els.pop.style.left = (left - wrapRect.left) + 'px';
+    els.pop.style.right = 'auto';
+  }
+  function wireBuildBadge() {
+    var els = buildBadgeEls();
+    if (!els || els.wrap.dataset.wired === '1') { return; }
+    els.wrap.dataset.wired = '1';
+    var hoverTimer = 0;
+    els.wrap.addEventListener('mouseenter', function () {
+      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
+      setBuildBadgeOpen(true);
+    });
+    els.wrap.addEventListener('mouseleave', function () {
+      hoverTimer = setTimeout(function () { setBuildBadgeOpen(false); }, 160);
+    });
+    /* 触屏没有 hover：点一下开，再点一下关 */
+    els.wrap.addEventListener('click', function (ev) {
+      if (ev && ev.preventDefault) { ev.preventDefault(); }
+      setBuildBadgeOpen(els.pop.hidden);
+    });
+    els.wrap.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { setBuildBadgeOpen(false); }
+    });
+    canvasDoc().addEventListener('click', function (ev) {
+      if (!els.wrap.contains(ev.target)) { setBuildBadgeOpen(false); }
+    });
+    renderBuildBadge();
+  }
+  /* 部署时写的构建信息；本地开发没有这个文件 → 只显示版本 + 「本地开发」 */
+  function loadBuildInfo() {
+    fetch('/static/build-info.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (info) {
+        DSH_BUILD = info && typeof info === 'object' ? info : null;
+        renderBuildBadge();
+      })
+      .catch(function () { renderBuildBadge(); });
+  }
+  loadBuildInfo();
 
   /* ══════════ 自检 ══════════ */
   var VP_LIST = ['1133', '744', '440'];

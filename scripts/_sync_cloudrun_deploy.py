@@ -94,5 +94,57 @@ for root, dirs, files in os.walk(SRC):
         total_bytes += os.path.getsize(dst)
 
 print(f"copied {count} files, {total_bytes / (1024*1024):.1f} MB")
+
+
+def write_build_info():
+    """镜像里没有 .git，构建信息只能在打包时落盘成静态 JSON。"""
+    import datetime
+    import json
+    import subprocess
+
+    def git(*args):
+        try:
+            out = subprocess.run(
+                ["git", "-C", SRC, *args],
+                capture_output=True, text=True, check=False,
+            )
+            return out.stdout.strip()
+        except Exception:
+            return ""
+
+    branch = git("rev-parse", "--abbrev-ref", "HEAD") or "unknown"
+    commit = git("rev-parse", "--short", "HEAD") or "unknown"
+    top = git("rev-parse", "--show-toplevel")
+    source = "main checkout"
+    if top and os.path.realpath(top) != os.path.realpath(SRC):
+        source = "worktree:" + os.path.basename(top)
+    dirty = "1" if git("status", "--porcelain") else "0"
+    version = "unknown"
+    tpl = os.path.join(SRC, "src/kid_app/templates/practice-dsh.html")
+    try:
+        import re
+        with open(tpl, encoding="utf-8") as fh:
+            m = re.search(r"var DSH_VERSION = '([^']+)'", fh.read())
+        if m:
+            version = m.group(1)
+    except OSError:
+        pass
+
+    info = {
+        "version": version,
+        "branch": branch,
+        "commit": commit,
+        "source": source,
+        "dirty": dirty == "1",
+        "built_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    dst = os.path.join(DST, "src/kid_app/static/build-info.json")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "w", encoding="utf-8") as fh:
+        json.dump(info, fh, ensure_ascii=False, indent=2)
+    print("build-info:", json.dumps(info, ensure_ascii=False))
+
+
+write_build_info()
 print(f"size on disk (incl dir overhead):")
 os.system(f"du -sh {DST}")
