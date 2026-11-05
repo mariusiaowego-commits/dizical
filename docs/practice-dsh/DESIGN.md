@@ -32,11 +32,13 @@
 |---|---|---|
 | 宿主页 | `practice-dsh.html:287–346` | `#czBar` 调试条 / `#czStage > iframe#czCanvas` / `#czHint` / `template#tpl-canvas` |
 | 画布（真 UI） | `practice-dsh.html:349–8473` | 顶栏、舞台、票夹、黑条、弹窗、抽屉；`loadCanvas()` 写入 iframe srcdoc（`:19679`） |
-| 卡模板 | `tpl-A`（仪表盘 `:8475–12097`）/ `tpl-B`（节拍器卡 `:12100–14600`）/ `tpl-S`（竖条节拍器 `:14600–15700`）/ `tpl-D`（今日时长 `:15700–16590`）/ `tpl-R`（今日记录 `:16591–17346`）/ `tpl-Q`（老师要求 `:17350–18940`） | 全部内联在同文件，不是独立文件 |
-| 宿主脚本 | `practice-dsh.html:18940–25003` | 组合、布局、缩放、联动、审计自检 |
-| 状态记忆 | `localStorage` 键 `dizical_practice_dsh_state`（`:23678`），皮肤另存 `dizical_skin`（`:23199`） | 组合 / 视口 / 皮肤；`?audit=1` 不写用户上次选择（`:21551`） |
+| 卡模板 | `tpl-A` 仪表盘 `:8475–12098` / `tpl-B` 节拍器卡 `:12099–14517` / `tpl-S` 竖条节拍器 `:14518–15486` / `tpl-D` 今日时长 `:15487–16590` / `tpl-R` 今日记录 `:16591–17347` / `tpl-Q` 老师要求 `:17348–19026` | 全部内联在同文件，不是独立文件 |
+| 宿主脚本 | `:19028–25001` | 组合、布局、缩放、联动、审计自检 |
+| 状态记忆 | 运行时主键常量 `STORE_KEY`（`:19043`）；顶层初始化另有对字面量 `dizical_practice_dsh_state` 的向后兼容读取（`:11`）；皮肤另存 `dizical_skin`（`:23199`） | 组合 / 视口 / 皮肤；`?audit=1` 不写用户上次选择（`:21551`） |
 
-关键函数（宿主侧）：`applyCanvasViewport()` `:23146`、`syncCanvasHeight()` `:23020`、`applyLayoutMode()` `:22759`、`canvasIsFeed()` `:22622`、`setCombo()` `:21539`、`buildCombo()` `:20092`、`collapseFolioToBar()` `:7221`、`expandBarToFolio()` `:7456`、`wireBuildBadge()` `:23816`。
+关键函数（宿主侧）：`applyCanvasViewport()` `:23148`、`syncCanvasHeight()` `:23036`、`applyLayoutMode()` `:22752`、`canvasIsFeed()` `:22619`、`setCombo()` `:21538`、`buildCombo()` `:20091`、`morphTicketToBar()` `:7123`、`expandBarToFolio()` `:7303`、`wireBuildBadge()` `:23818`。
+
+> 折叠方向的函数实名是 **`morphTicketToBar`**（票夹→黑条）—— 代码里没有 `collapseFolioToBar` 这个函数；文档、注释、提交信息都按实名写，别再造一个不存在的名字。
 
 ---
 
@@ -148,8 +150,9 @@ body（宿主页）
 
 - 正文：`-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei"`，14px / 行高 1.5
 - 衬线 `--font-serif`：`"Songti SC", "STSong", Georgia, "Times New Roman"` —— 票面铭文 12/600、科目名 26/700/1.2、黑条竖排内容 11/700
-- 等宽 `--font-mono`：`ui-monospace, SFMono-Regular, Menlo` —— 票面大数字 30/700、黑条剩余 13/800、BPM 18/800、结束弹窗时长 40/700
-- **所有数字必须同时具备** mono 家族 + `tabular-nums`（票面大数字、仪表盘 `.clock`、BPM、节拍器 bpm、结束弹窗时长与遍数）
+- 等宽 `--font-mono`：`ui-monospace, SFMono-Regular, Menlo` —— 票面大数字 30/700、黑条剩余 13/800、BPM 18/800
+- **所有数字必须同时具备** mono 家族 + `tabular-nums`（票面大数字、仪表盘 `.clock`、BPM、节拍器 bpm）
+- 例外：结束弹窗时长 `.pk-finish-dur-val`（`:4292`）**没有显式写 mono 家族**，靠继承 + `tabular-nums` 等宽排布；要彻底收敛到 mono 需另开重构，别在这条规则下假装它已经统一
 - 上下标不是 `<sup>`：D 卡主时钟 SVG 高 68px、秒 SVG 高 30px + `margin-top:4px`，顶对齐；仪表盘「分钟」用 `.readout-unit`，字号 `calc(var(--readout-digits-h,60px)/2)`，与数字 `align-items:flex-end`
 
 ### 4.5 动效时长
@@ -174,7 +177,7 @@ body（宿主页）
 展开态：左栏 380px（1024–1199 → 360px），票卡圆角 18px，`min-height: 520px`。
 结构：抬头行 / 打孔 / 票面主图 / 科目块（标题 26px + 副 11px）/ 大数字网格（mono 30/700）/ 齿孔线 / 本次内容槽 + 标签 pill 组。
 
-**依赖契约**：科目、练习内容（session）、速度、时长四项都选齐，票夹才允许变形。缺哪一项，「开始」时按 **科目 > 练习内容 > BPM** 的优先级只提醒一项。
+**依赖契约**：科目、练习内容（session）、速度、时长四项都选齐，票夹才允许变形。缺哪一项，「开始」时按 **科目 > 练习内容 > BPM > 时长** 的优先级只提醒一项（`missingField()` `:21610`）。
 
 ### 5.2 黑色窄条 bar（已选 / 计时）`aside.pk-run-rail` `:5061`
 
@@ -195,7 +198,7 @@ body（宿主页）
 
 卡槽是仪表盘的组件 —— 仪表盘隐藏时卡槽必须一起隐藏。
 卡片从卡槽穿出的效果 = 卡槽分上下两层，上半在下、卡在中间、下半在最上；卡片比孔槽略窄，插入后盖住上半，并在下缘被下半遮罩遮住。
-插卡动画 `pkCardToSlot` / `pkCardToSlotFeed` `:2656`：`translate(-50%,-44px)` → 30% opacity .72 → 72% 归位 → 85% `translate(-50%,-2px)` → 100% 归位，`0.7s cubic-bezier(0.16,1,0.3,1)`，**delay 0.78s**（必须等票夹变形结束）。
+插卡动画 `pkCardToSlot` / `pkCardToSlotFeed` `:2656`：`translate(-50%,-44px)` → 30% opacity .72 → 72% 归位 → 85% `translate(-50%,-2px)` → 100% 归位，时长 `--s6-enter-slot-dur`（0.7s）、缓动 `cubic-bezier(0.16,1,0.3,1)`、**delay `--s6-enter-slot-delay`（0.78s，必须等票夹变形结束）**。
 退卡 `pkCardFromSlot` `:2712`：`0.20s cubic-bezier(.55,0,.86,.35)`；feed 版位移用 `var(--cz-feed-travel, 90px)`。
 
 ### 5.5 节拍器
@@ -210,7 +213,7 @@ body（宿主页）
 宽随视口 1133→600 / 744→440 / 440→408。子：`m-title`、`m-meta-chip`（stage / date / latest）、`m-counter-badge`（历史张数 `1/2`）、`req-deck-stage`（`.deck-card` 圆角 20px）、`deck-dots`、`deck-btn`。
 
 排版规则（2026-11 定案）：
-- 只用**两套字号**：标题 17px/800，正文 / 日期 / 分段 / 要点 14px/500。不要大小混排，不要彩色底块。
+- 只用**两套字号**：标题 17px/800，正文 / 日期 / 分段 / 要点 14px/500。不要大小混排，不要彩色底块。（例外：计数徽标 `--counter-sz` 13px、落款 `--sig-sz` 12px `:17439`，属装饰性元信息，不算正文级）
 - 标题与正文要有明确间距；标题左上角不许被圆角裁掉；`1/2` 这类计数不许换行把标题顶上去。
 - 卡片高度要吃满：feed 档可以长卡纵向发展，不锁高。
 - 底部「下一张」按钮在深色下不许被遮盖（padding-bottom 要留够）。
@@ -254,9 +257,11 @@ body（宿主页）
 
 ## 6. 动效时序（准备 → 计时 → 结束）
 
-### 6.1 票夹 ⇄ 黑条（GSAP，`collapseFolioToBar` `:7221` / `expandBarToFolio` `:7456`）
+### 6.1 票夹 ⇄ 黑条（GSAP，`morphTicketToBar` `:7123` / `expandBarToFolio` `:7303`）
 
 变形期间 `stage-morphing` 禁 CSS transition（`:2374`）。
+
+> **delay 口径**：下表的 delay 是 **GSAP timeline 内的绝对插入位置（秒）**，不是相对前一段的累加。改动画按绝对位置填，别把相对 delay 串起来（会越串越长）。
 
 | 方向 | 动作 | 时长 / 缓动 | delay |
 |---|---|---|---|
@@ -275,7 +280,7 @@ body（宿主页）
 
 1. 票夹选中四项 → 触发「变形为黑色窄条 bar」（不再等点开始）。
 2. 点开始 → **黑条变形动画先执行**，计时同时开始。
-3. 黑条变形结束 → **延迟 0.5s** → 卡片插入卡槽（插卡整体速度比原动画慢 30%，但必须连贯不掉帧）。
+3. 黑条变形结束 → 卡片插入卡槽。实现口径是 `--s6-enter-slot-delay`（**0.78s**）+ `--s6-enter-slot-dur`（**0.7s**），缓动 `cubic-bezier(0.16,1,0.3,1)`；需求原话是「变形结束后延迟约 0.5s、比原动画慢 30%」，落到代码就是这组 token —— **改时序改 token，不要把 0.5s / 30% 写死进 CSS**。
 4. 计时态展开卡片 = 卡片从卡槽里出来，不是蒙层直接弹全屏。
 
 ### 6.3 仪表盘内部
