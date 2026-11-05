@@ -118,7 +118,9 @@ def write_build_info():
     source = "main checkout"
     if top and os.path.realpath(top) != os.path.realpath(SRC):
         source = "worktree:" + os.path.basename(top)
-    dirty = "1" if git("status", "--porcelain") else "0"
+    # 只看已跟踪文件的改动：打包目录 .cloudrun-deploy-new 本身就是产物，
+    # 用默认的 untracked 统计会让 dirty 永远是 true。
+    dirty = "1" if git("status", "--porcelain", "--untracked-files=no") else "0"
     version = "unknown"
     tpl = os.path.join(SRC, "src/kid_app/templates/practice-dsh.html")
     try:
