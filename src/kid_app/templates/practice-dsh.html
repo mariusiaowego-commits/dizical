@@ -641,6 +641,19 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
+  /* 构建版本角标：只用来对线上是哪一版，刻意做小做淡，不参与信息层级 */
+  .pk-ver {
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: .02em;
+    color: var(--text-muted);
+    opacity: .5;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
   .pk-server-clock {
     font-size: 12px;
     font-weight: 600;
@@ -1415,6 +1428,10 @@
     }
     .pk-run-stat {
       display: none;
+    }
+    .pk-ver {
+      font-size: 9px;
+      opacity: .45;
     }
     .pk-top .pk-pill {
       font-size: 11px;
@@ -4751,6 +4768,7 @@
     <!-- 默认中性：真实数据由 __czApplyDay 覆盖，绝不预置演示数字 -->
     <button class="pk-pill mini ok" id="pkRecords">今日记录 — ▾</button>
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
+    <span class="pk-ver" id="pkVer" title="练习助手构建版本"></span>
   </header>
 
   <!-- ══════════ 主舞台 ══════════ -->
@@ -19028,6 +19046,8 @@ function closeRecordsDrawer() {
   var DEMO_BASE = new URL('./', location.href).href;    /* 模块 srcdoc 基准 = 本目录 */
   var DOCS_BASE = new URL('../', location.href).href;   /* 画布 srcdoc 基准 = docs/demos/ */
   var STORE_KEY = 'canvas01_state';
+  /* 练习助手构建版本：发版只改这一处，页面顶栏右上角角标读它 */
+  var DSH_VERSION = 'v3.24';
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
   var MODS = [
@@ -23719,6 +23739,11 @@ window.__CZ_CSS = [
     if (!injectCanvas()) { return; }
     applyCanvasViewport();
     syncCanvasSkin();
+    /* 版本角标由外层常量盖进去，避免模板里再抄一份版本号 */
+    try {
+      var verEl = canvasDoc() && canvasDoc().getElementById('pkVer');
+      if (verEl) { verEl.textContent = DSH_VERSION; }
+    } catch (eVer) {}
     applySelection();
     syncAll();
     syncHint();
