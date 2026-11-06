@@ -1,7 +1,7 @@
 # practice-dsh UI 文案定案表（MRD 3.2.5）
 
 > 归属项目：dizical · 练习助手（practice-dsh）  
-> 对应版本：MRD 3.2.5 · Sprint 26110603 · 段 B1 文案定案  
+> 对应版本：MRD 3.2.5 · Sprint 26110603 · 段 B1 + 段 B2-A 文案定案  
 > 权威规范：`AGENTS.md` · `docs/practice-dsh/DESIGN.md` §5.9  
 
 ---
@@ -16,9 +16,12 @@
 | C4 | 谱架模式辅助提示 | `大屏看谱` | **并入按钮 title**（`title="谱架模式 · 大屏看谱"`） | `#standBtn[title]` | 段 B1 本次实现 | 原独立提示标签 `.stand-badge-tip#standTip` 随 `transport-caps` 整行删除；将「大屏看谱」作为辅助说明注入 `#standBtn` 的 `title` 属性，既保持监视条精简克制，又无损保留儿童/家长操作指引。 |
 | C5 | 仪表盘计时文字 | `00:00 · 待开始`<br>`XX:XX · 练习中`<br>`待选择票夹科目与时长` | **由主读数与刻度尺全面承接**<br>（DOM 保留无障碍辅助节点） | `#opsTimerText`<br>（主视觉已由 `#readoutDigits` 覆盖） | 段 B1 本次实现 | 原 `transport-caps .ops-kicker#opsTimerText` 视觉展示行整块移除（MRD §2.3.5）。功能论证：准备态目标时长已由中心空心数字显式展示，计时态运行读数（`MM:SS`）由 `#readoutDigits` / `#metaVal` 每秒实时渲染，进度由 `.ruler` 刻度指针与卷草纹生长呈现，未准备就绪由开始按钮就绪门禁与 spotlight 引导承接；DOM 保留 `#opsTimerText` 作为辅助状态节点，防止既有脚本空指针。 |
 | C6 | 底栏补充说明行 | `Dizical` 品牌 Logo<br>`00:00 · 待开始`<br>`大屏看谱` | **整块删除** | `.transport-caps.grid-3col` | 段 B1 本次实现 | MRD §2.3.5 明确定案：deck 区域的所有底部的补充说明文字（`transport-caps grid-3col`）全部移除，让仪表盘更加简洁聚焦。原 Dizical logo、计时文字行、大屏看谱独立标签全部下线。 |
-| C7 | 麦克风监听与收音 | 面板顶部：`MIC 关` / `MIC 开`<br>监视条左侧：`监听关` / `监听中`<br>监视条右侧：`收音` | **合并至监视条**<br>状态：`监听关` / `监听中`<br>动作：`收音` | `#panelMicBtn`<br>`#diagMicStatus`<br>`#micToggleBtn` | 段 B2 待实现 | 代码勘察事实证明：三处均由同一个 `toggleMic()`（`:10206`）驱动同一 `micActive` 状态。段 B2 将面板顶部 `#panelMicBtn` 迁移合并至下方 `diag-status`，去重冗余入口，本批保持现有运行不提前改动。 |
-| C8 | 仪表盘底部 c-left 昨日时长 | 现状：`今日 42分`（`#todayTotal`） | 准备态未选科目：**无文案**<br>选中科目后：**`昨天练了 x.x分`** | `panel-foot .c-left` | 段 B2 待实现 | MRD §2.3.3.1 明确要求 c-left 改造为科目累计练习记录入口，文案展示昨日时长。依赖段 A/B2 架构设计与科目联调，本批保持现状，留待段 B2 接入。 |
-| C9 | 仪表盘底部 c-right 音符节奏 | 现状：`BPM 60 · 静音`（`#bpmRead`） | 展示：**`♩=xx ♪=xx`**<br>点击：弹窗选音符与速度 | `panel-foot .c-right` | 段 B2 待实现 | MRD §2.3.3.2 要求重新设计并弹出全局音符节奏选择弹窗。方案需经 orchestrator / 用户拍板，本批保持现状，留待段 B2 实现。 |
+| C7 | 麦克风监听与收音 | 面板顶部：`MIC 关` / `MIC 开`<br>监视条左侧：`监听关` / `监听中`<br>监视条右侧：`收音` | **合并至监视条**<br>文案：`MIC 关` / `MIC 开`（带呼吸点与激活状态） | `section.diag-card .diag-status > #panelMicBtn` | 段 B2-A 本次实现 | MRD §2.3.2.1 第一分支定案：将面板顶部 `.panel-head` 的 `#panelMicBtn` 移除，合并迁移至下方监视条 `section.diag-card` 的 `.diag-status` 内，与 `#micToggleBtn` 逻辑整合为单按钮操作与状态反馈。保留隐藏 `#diagMicStatus`/`#diagMicDot`/`#micToggleBtn` 兼容测试。 |
+| C8 | 仪表盘底部 c-left 昨日时长 | 现状：`今日 42分`（`#todayTotal`） | 准备态未选科目：**无文案**<br>选中科目后：**`昨天练了 x.x分`**（点击打开科目累计弹窗） | `panel-foot .c-left > #yesterdaySubjBtn` | 段 B2-A 本次实现 | MRD §2.3.3.1 与 2026-11-06 拍板（ARCH §4.0 C7）：c-left 作为科目累计记录弹窗（`#pkSubjectStatsModal`）唯一触发入口。未选科目时无文案，选中后展示「昨天练了 x.x分」（昨日秒数 ÷ 60，保留 1 位小数）。保留隐藏 `#todayTotal` 兼容测试。 |
+| C9 | 仪表盘底部 c-right 音符节奏 | 现状：`BPM 60 · 静音`（`#bpmRead`） | 展示：**`♩=96`** 或 **`♪=192`**（单读数）<br>点击：打开全局音符节奏弹窗（`#pkTempoModal`） | `panel-foot .c-right > #bpmToggleBtn` | 段 B2-A 本次实现 | MRD §2.3.3.2 与 2026-11-06 拍板（ARCH §4.0 C19）：废弃双读数并列方案，采用单读数聚焦展示。点击唤起全局 `#pkTempoModal`，支持四分音符/八分音符分段选择、40–200 BPM 步进与 60/80/96/108/120 常用预设，取消与确认更新。 |
+| C10 | 票夹去重瘦身 | 票夹内存在 BPM 调节网格、时长调节网格、打开票夹按钮等 | **整块删除**<br>（保留票头编号与 Hero 封面，删除重复的 BPM/时长调节网格） | `#pkTicketCard`<br>（删除 `.pk-ticket-digits-grid`、`#pkFolioBtn`） | 段 B2-A 本次实现 | MRD §2.3.1 / C4 定案：票夹内与仪表盘重复的 BPM 调节（`#pkBpmVal`, `#pkBpmDown`, `#pkBpmUp`, `#pkTicketNoteBtn`）和时长调节（`#pkTicketDurVal` 等）整块移除，彻底精简为纯粹票卡外观，避免双重输入混淆。相关 JS 引用平滑重构。 |
+| C11 | 科目选择入口迁移 | 票夹内多处点击打开票夹弹窗 | **仪表盘封面作为唯一入口**（`title="点击更换科目"`） | `tpl-A .cover-frame > #dashCoverFrame` / `#dashCoverImg` | 段 B2-A 本次实现 | MRD §2.3.1 / C5 / C9 定案：收敛科目选择入口至仪表盘封面 `.cover-frame`，点击呼出 `#pkFolioModal`，移除票夹内 `#pkFolioBtn` 与 `#pkTicketHeroFrame` 的点击打开逻辑。 |
+| C12 | 科目弹窗承接 Session 标签 | 仅在票夹附券展示 session pills | **科目弹窗各科目内展示全部 session 药丸网格** | `#pkFolioModal .pk-folio-item > .pk-folio-item-sessions` | 段 B2-A 本次实现 | MRD §2.3.1 / C6 + C24 定案：将 session 标签选择前置到 `#pkFolioModal`，弹窗升级为大尺寸沉浸视窗，每个科目卡片展开展示其全部 session 药丸，点击药丸一键选中科目与目标 session 并完成数据绑定。 |
 
 ---
 
