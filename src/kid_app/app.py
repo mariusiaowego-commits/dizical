@@ -3,6 +3,7 @@
 import datetime as dt
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -407,6 +408,27 @@ _env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
 def render(tpl, **kwargs):
     template = _env.get_template(tpl + ".html")
     return template.render(**kwargs)
+
+
+# ─── 练习助手 (dsh) 版本号 ─────────────────────────────────────────────────
+# 唯一真相源 = practice-dsh.html 里的 DSH_VERSION 常量。X-Dsh-Build 响应头与
+# iframe 的 ?v= 缓存绕过参数都从它派生，改版本号只需改模板一处。
+_DSH_TPL = Path(__file__).parent / "templates" / "practice-dsh.html"
+
+
+def dsh_version() -> str:
+    """练习助手版本号，如 'v3.24'。解析失败降级为 'unknown'，不影响页面渲染。"""
+    try:
+        m = re.search(r"var DSH_VERSION = '([^']+)'", _DSH_TPL.read_text(encoding="utf-8"))
+        return m.group(1) if m else "unknown"
+    except OSError:
+        return "unknown"
+
+
+def dsh_cache_bust() -> str:
+    """iframe 的 ?v= 缓存绕过参数：'v3.24' -> '324'。值只需随版本变化即可。"""
+    return re.sub(r"[^0-9]", "", dsh_version())
+
 
 # ─── 数据 helpers ───────────────────────────────────────────────────────────
 def child_name():
@@ -2860,18 +2882,20 @@ def practice_page():
         assign_json=assign_json,
         today_date=today.isoformat(),
         subject_info_json=subject_info_json,
+        dsh_v=dsh_cache_bust(),  # 练习助手 iframe 的 ?v= 缓存绕过参数
     )
 
 @app.get("/practice-dsh", response_class=HTMLResponse)
 def practice_dsh_page():
     # demo v3.21 落地页：这份 HTML 与配套静态资源在迭代中被反复替换，
     # 浏览器缓存旧版会表现为「破图 + 原生滑杆 + 数字消失」（卡片内 CSS/JS 未加载）。
-    # 页面本体禁用缓存，iframe 用 ?v=324 强制取新。
+    # 页面本体禁用缓存，iframe 的 ?v= 强制取新（值从 DSH_VERSION 自动派生）。
+    # X-Dsh-Build 同样从 DSH_VERSION 派生，升版时不会与页面显示的版本脱节。
     return HTMLResponse(
         content=render("practice-dsh"),
         headers={
             "Cache-Control": "no-store, must-revalidate",
-            "X-Dsh-Build": "v3.23",
+            "X-Dsh-Build": dsh_version(),
         },
     )
 
