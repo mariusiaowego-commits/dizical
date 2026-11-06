@@ -434,3 +434,29 @@ def test_version_regex_matches_deploy_packager():
     m = re.search(r're\.search\((r"[^"]+")', src)
     assert m, "打包脚本里应有一处 re.search(r\"...\") 解析 DSH_VERSION"
     assert ast.literal_eval(m.group(1)) == _DSH_VERSION_RE.pattern
+
+
+def test_asset_cache_version_follows_dsh_version(client):
+    """22 处静态资源的 ?v= 必须跟 DSH_VERSION 走。
+
+    早先写死 `?v=315`，资源文件改了它也不变 —— 浏览器启发式缓存下会看到旧样式。
+    引用数写成常量而不是从模板现数：现数的话，删掉一处引用期望值也跟着降，
+    断言永远成立，等于没测。
+    """
+    ver = quote(_template_dsh_version(), safe="")
+
+    html = client.get("/practice-dsh").text
+    asset_urls = re.findall(r'/static/practice-dsh-assets/[^"\')\s]+', html)
+
+    assert "?v=315" not in html
+    assert len(asset_urls) == 22, "增删资源引用时同步改这个数（并确认新引用带 ?v=）"
+    assert [u for u in asset_urls if not u.endswith(f"?v={ver}")] == []
+    assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {ver}
+
+
+def test_asset_cache_version_negative_control(client, monkeypatch, tmp_path):
+    """负控：版本号变了，资源 ?v= 必须跟着变 —— 证明它不是又一个写死的字面量。"""
+    _point_app_at(monkeypatch, tmp_path, "  var DSH_VERSION = 'v9.99';\n")
+    html = client.get("/practice-dsh").text
+    assert "?v=315" not in html
+    assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {"v9.99"}

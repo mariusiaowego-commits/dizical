@@ -376,6 +376,7 @@ body（宿主页）
 - 解析按 `(mtime_ns, ctime_ns, size)` 缓存，模板没改不重读 1MB 文件。`ctime` 必须一起进 key：保留 mtime 的换文件方式（拷贝/解包/同步工具）只改 ctime，少了它会把旧版本号读成新版本。
 - 读文件失败不进缓存（`lru_cache` 不缓存异常），权限/IO 恢复后下一次请求即自愈；降级时 `X-Dsh-Build` 与 `?v=` 同为 `unknown`，不会出现 `?v=` 空参。
 - 正则锚定行首 `^\s*var DSH_VERSION = '...'`，与 `scripts/_sync_cloudrun_deploy.py` 字节相同 —— 注释里的同名行不会污染响应头或打包出的 `build-info.json`。
+- 模板内 22 处静态资源（CSS / JS / 图片）的 `?v=` 也走同一个值：写 `?v={{ dsh_v }}`，由 `/practice-dsh` 路由注入。早先是手写死的 `?v=315`，资源文件改过它也不变，浏览器启发式缓存下会看到旧样式。新增资源引用照此写，不要写死数字。
 - 部署打包时 `scripts/_sync_cloudrun_deploy.py` 写 `src/kid_app/static/build-info.json`（version / branch / commit / source / dirty / built_at）。
 - 改模板后**必须重跑该脚本再 deploy**，否则线上角标的 `commit` 是旧的。
 - 线上验证：`curl -s https://dizical-prod-.../static/build-info.json`。
