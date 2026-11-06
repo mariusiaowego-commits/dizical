@@ -377,18 +377,55 @@ def test_commented_version_is_ignored(monkeypatch, tmp_path):
     assert dsh_version() == "v7.7"
 
 
-def test_version_is_cached_and_invalidated_by_mtime(monkeypatch, tmp_path):
-    """1.08MB 模板不该每次请求都重读：mtime/size 不变就命中缓存，变了才重解析。"""
+def test_version_is_cached_between_calls(monkeypatch, tmp_path):
+    """1.08MB 模板不该每次请求都重读：同一份文件连续调用只读一次。"""
+    _point_app_at(monkeypatch, tmp_path, "  var DSH_VERSION = 'v1.1';\n")
+
+    reads = []
+    real_read = Path.read_text
+
+    def counting_read(self, *args, **kwargs):
+        reads.append(self)
+        return real_read(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counting_read)
+    assert dsh_version() == "v1.1"
+    assert dsh_version() == "v1.1"
+    assert len(reads) == 1
+
+
+def test_content_change_with_preserved_mtime_is_not_stale(monkeypatch, tmp_path):
+    """换文件时 mtime 被保留（copy2 / rsync -a）也必须读到新值 —— ctime 兜住这一维。"""
     tpl = _point_app_at(monkeypatch, tmp_path, "  var DSH_VERSION = 'v1.1';\n")
     assert dsh_version() == "v1.1"
 
     st = tpl.stat()
     tpl.write_text("  var DSH_VERSION = 'v2.2';\n", encoding="utf-8")
     os.utime(tpl, ns=(st.st_atime_ns, st.st_mtime_ns))
-    assert dsh_version() == "v1.1", "mtime/size 未变时应命中缓存"
-
-    os.utime(tpl, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))
+    after = tpl.stat()
+    assert after.st_mtime_ns == st.st_mtime_ns, "前提：mtime 被保留"
+    assert after.st_size == st.st_size, "前提：size 未变"
+    assert after.st_ctime_ns != st.st_ctime_ns, "前提：ctime 变了"
     assert dsh_version() == "v2.2"
+
+
+def test_read_failure_is_not_cached(monkeypatch, tmp_path):
+    """模板暂时读不了时降级 unknown，但不得把这个结果缓存住（否则权限修好也不自愈）。"""
+    _point_app_at(monkeypatch, tmp_path, "  var DSH_VERSION = 'v5.5';\n")
+
+    real_read = Path.read_text
+    state = {"fail": True}
+
+    def flaky_read(self, *args, **kwargs):
+        if state["fail"]:
+            raise OSError("boom")
+        return real_read(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", flaky_read)
+    assert dsh_version() == "unknown"
+
+    state["fail"] = False
+    assert dsh_version() == "v5.5", "读失败不该被缓存，下一次请求要能自愈"
 
 
 def test_version_regex_matches_deploy_packager():

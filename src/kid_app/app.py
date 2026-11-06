@@ -422,11 +422,10 @@ _DSH_VERSION_RE = re.compile(r"^\s*var DSH_VERSION = '([^']+)'", re.MULTILINE)
 
 
 @lru_cache(maxsize=8)
-def _dsh_version_cached(path: str, mtime_ns: int, size: int) -> str:
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except OSError:
-        return "unknown"
+def _dsh_version_cached(path: str, mtime_ns: int, ctime_ns: int, size: int) -> str:
+    # 读失败不在这里兜底：lru_cache 不缓存异常，让下一次请求重新尝试，
+    # 否则「模板存在但暂时读不了」会把 unknown 粘到 mtime/size 变化为止。
+    text = Path(path).read_text(encoding="utf-8")
     m = _DSH_VERSION_RE.search(text)
     return m.group(1) if m else "unknown"
 
@@ -434,13 +433,18 @@ def _dsh_version_cached(path: str, mtime_ns: int, size: int) -> str:
 def dsh_version() -> str:
     """练习助手版本号，如 'v3.24'。解析失败降级为 'unknown'，不影响页面渲染。
 
-    模板 1.08MB，每次请求全文重读要 1.7ms，故按 (路径, mtime, 大小) 缓存。
+    模板 1.08MB，每次请求全文重读要 1.7ms，故按 (路径, mtime, ctime, 大小) 缓存。
+    ctime 一并入 key：保留 mtime 的拷贝方式换文件后 mtime 不变，
+    只有 ctime 能反映「inode 变过」，否则版本号升版可能读不到新值。
     """
     try:
         st = _DSH_TPL.stat()
     except OSError:
         return "unknown"
-    return _dsh_version_cached(str(_DSH_TPL), st.st_mtime_ns, st.st_size)
+    try:
+        return _dsh_version_cached(str(_DSH_TPL), st.st_mtime_ns, st.st_ctime_ns, st.st_size)
+    except OSError:
+        return "unknown"
 
 
 def dsh_cache_bust() -> str:
