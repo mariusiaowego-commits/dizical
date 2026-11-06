@@ -280,3 +280,52 @@ def test_audit_reset_is_silent_and_tab_leave_stops_dsh():
     page = PRACTICE_TPL.read_text(encoding="utf-8")
     assert "cw.__cz.abandon()" in page
     assert "abandon: function ()" in html
+
+
+def _template_dsh_version() -> str:
+    """从模板里的 DSH_VERSION 常量读版本号（与 app.dsh_version 同源）。"""
+    m = re.search(
+        r"var DSH_VERSION = '([^']+)'",
+        PRACTICE_DSH_TPL.read_text(encoding="utf-8"),
+    )
+    assert m, "practice-dsh.html 里必须有 DSH_VERSION 常量"
+    return m.group(1)
+
+
+def test_x_dsh_build_header_matches_template_version(client):
+    """X-Dsh-Build 响应头必须等于模板里的 DSH_VERSION（原来手写 v3.23 会漂移）。"""
+    ver = _template_dsh_version()
+    resp = client.get("/practice-dsh")
+    assert resp.status_code == 200
+    assert resp.headers["X-Dsh-Build"] == ver
+    assert resp.headers["X-Dsh-Build"] == "v3.24"
+
+
+def test_iframe_cache_bust_matches_template_version(client):
+    """练习助手 iframe 的 ?v= 缓存绕过参数从 DSH_VERSION 派生。"""
+    ver = _template_dsh_version()
+    expected = re.sub(r"[^0-9]", "", ver)
+    html = client.get("/practice").text
+    assert f"/practice-dsh?v={expected}" in html
+    assert expected == "324"
+
+
+def test_version_derivation_is_dynamic_not_coincidental(client, monkeypatch, tmp_path):
+    """负控：把模板里的 DSH_VERSION 改掉，响应头与 ?v= 必须跟着变。
+
+    这是本组测试的价值所在 —— 证明是真动态派生，而不是 v3.24 恰好等于 324 的巧合。
+    """
+    original = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    patched = original.replace("var DSH_VERSION = 'v3.24'", "var DSH_VERSION = 'v9.99'")
+    assert patched != original, "负控前提失败：模板里没找到待替换的 DSH_VERSION 行"
+
+    fake_tpl = tmp_path / "practice-dsh.html"
+    fake_tpl.write_text(patched, encoding="utf-8")
+    monkeypatch.setattr("src.kid_app.app._DSH_TPL", fake_tpl)
+
+    resp = client.get("/practice-dsh")
+    assert resp.headers["X-Dsh-Build"] == "v9.99"
+
+    html = client.get("/practice").text
+    assert "/practice-dsh?v=999" in html
+    assert "/practice-dsh?v=324" not in html

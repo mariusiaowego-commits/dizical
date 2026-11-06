@@ -251,7 +251,7 @@ body（宿主页）
 顶栏最右 `#pkVerWrap > button#pkVer + #pkVerPop`：平时只显示 `v3.24`（10px / opacity .5 / tabular-nums）；悬停或点一下弹出 5 行构建信息（版本 / 分支 / 提交 / 构建时间 / 来源 checkout）。
 - **按设备能力分流**：`hover:hover` 设备走 mouseenter/mouseleave（160ms 延时收起），点击不再 toggle；触屏只认点击 —— 触屏 tap 会合成 mouseenter 再 click，共用一个开关会「先开再关」＝永远打不开。
 - 弹层必须按画布宽度夹取（窄屏顶栏换行时 `right:0` 会跑出屏幕）。
-- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:19044`。
+- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:19046`。
 
 ---
 
@@ -369,7 +369,10 @@ body（宿主页）
 
 ## 11. 版本与发布
 
-- `DSH_VERSION`（`:19044`）是唯一手改的版本号常量，当前 `v3.24`。
+- `DSH_VERSION`（`:19046`）是唯一手改的版本号常量，当前 `v3.24`。
+- 两处派生值都从 `DSH_VERSION` 自动派生，改版本号只需改模板这一处：
+  - `X-Dsh-Build` 响应头 —— `app.py` 的 `dsh_version()` 解析模板常量
+  - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()`（`v3.24` → `324`）
 - 部署打包时 `scripts/_sync_cloudrun_deploy.py` 写 `src/kid_app/static/build-info.json`（version / branch / commit / source / dirty / built_at）。
 - 改模板后**必须重跑该脚本再 deploy**，否则线上角标的 `commit` 是旧的。
 - 线上验证：`curl -s https://dizical-prod-.../static/build-info.json`。
