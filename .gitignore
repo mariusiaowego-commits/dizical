@@ -80,6 +80,10 @@ channels/**/Package.resolved
 # 本地 ad-hoc 验证产物, 不进 git (防止 dad 数据变更后基线跟实际漂移污染 git)
 data/_baseline_*.json
 .cloudrun-deploy/
+# 部署打包脚本 (scripts/_sync_cloudrun_deploy.py) 的暂存目录, 每次打包重新生成
+.cloudrun-deploy-new/
+# 报告图片产物 (运行时由 report 生成, /data/reports 静态挂载给用户下载)
+data/reports/
 
 # 2026-08-12 安全加固:
 # - agent 私货 (.hermes/ .agents/) 永远本地, 不进 git
