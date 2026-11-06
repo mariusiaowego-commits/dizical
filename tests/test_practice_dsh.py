@@ -68,19 +68,17 @@ def test_practice_dsh_structure_and_contracts():
     html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
 
     # 规范关键组件 ID（Brief 必须）：
-    # 票夹卡片、票夹窄条（竖）、票夹窄条（横）、仪表盘黑区、空心数字、刻度尺、旋钮、圆弧、就绪引导
+    # 仪表盘黑区、空心数字、刻度尺、旋钮、圆弧、卡槽、科目弹窗
+    # MRD 3.2.5 §2.2 + C4：整块票夹（#pkTicketCard / #ticketBarVert / #ticketBarHoriz）
+    # 与旧运行轨 #pkRunRail 已删除，#czGuide / #czGuideSpot 改由 __czGuideShow 动态注入，
+    # 不再作为静态 DOM 契约。
     required_ids = [
-        "pkTicketCard",
-        "ticketBarVert",
-        "ticketBarHoriz",
         "dash",
         "metaDigits",
         "readoutDigits",
         "ruler",
         "knob",
         "arc",
-        "czGuide",
-        "czGuideSpot",
         "btnPrimary",
         "btnEarly",
         "pkPunchSlotWrap",
@@ -449,7 +447,8 @@ def test_asset_cache_version_follows_dsh_version(client):
     asset_urls = re.findall(r'/static/practice-dsh-assets/[^"\')\s]+', html)
 
     assert "?v=315" not in html
-    assert len(asset_urls) == 22, "增删资源引用时同步改这个数（并确认新引用带 ?v=）"
+    # MRD 3.2.5：票夹删除后少了一处 hero 图引用（21 处）；仪表盘同图仍在。
+    assert len(asset_urls) == 21, "增删资源引用时同步改这个数（并确认新引用带 ?v=）"
     assert [u for u in asset_urls if not u.endswith(f"?v={ver}")] == []
     assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {ver}
 

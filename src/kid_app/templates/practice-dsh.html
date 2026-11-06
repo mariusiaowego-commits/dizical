@@ -759,7 +759,8 @@
     display: flex;
     gap: 24px;
     align-items: stretch;
-    justify-content: flex-start;
+    /* MRD 3.2.5：票夹删除后只剩主栏，居中而不是贴左留一大片空白 */
+    justify-content: center;
     max-width: 1280px;
     width: 100%;
     margin: 0 auto;
@@ -5167,182 +5168,6 @@
   <main class="pk-stage-wrap" id="stageWrap">
 
     <!-- ─── 左侧：练习票卡（Museum Ticket 390px） ─── -->
-    <aside class="pk-left-col" id="pkLeftCol">
-
-      <article class="pk-ticket" id="pkTicketCard" aria-label="练习准备票卡">
-
-        <!-- 蒙版锁定层（练习态票卡变淡 + 灰蒙版锁定） -->
-        <div class="pk-ticket-lock-overlay" id="pkTicketLockOverlay"></div>
-
-        <!-- 顶部票头：左上打孔 + 展务铭文 -->
-        <div class="pk-ticket-header-row">
-          <div class="pk-row" style="gap:8px">
-            <!-- 左上打孔：反映科目状态（实心珊瑚红＝本周作业） -->
-            <div class="pk-hole-punch status-focus" id="pkTicketHoleTopLeft" title="科目状态打孔"></div>
-            <span class="pk-ticket-header-label">dizical practice ticket</span>
-          </div>
-        </div>
-
-        <!-- 顶部大图块：沉浸名画手绘笔触竹笛（42% 高度） -->
-        <div class="pk-ticket-hero-frame" id="pkTicketHeroFrame">
-          <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt="竹笛名画手绘" class="pk-ticket-hero-img" id="pkTicketHeroImg">
-          <!-- 艺术家姓名位浮层：叠压在 hero 上（半透明浅底 + 档案编号小字） -->
-          <div class="pk-ticket-subject-block" id="pkTicketSubjectBlock">
-            <div class="pk-ticket-subject-title" id="pkTicketSubjectName">吸气长音</div>
-            <div class="pk-ticket-subject-sub" id="pkTicketSubjectSub">档案编号 No.1034</div>
-          </div>
-        </div>
-
-        <!-- 撕裂虚线（带两侧半圆切口） -->
-        <div class="pk-perforation-line">
-          <div class="pk-perf-notch-left"></div>
-          <div class="pk-perf-notch-right"></div>
-        </div>
-
-        <!-- 票根区：手写批注 + 细线参数网格 + 底部印章条码打孔条 -->
-        <div class="pk-ticket-stub-col">
-
-          <!-- 计时态核心单行 Session 胶囊展示 -->
-          <div class="pk-collapsed-session-row run-only" id="pkCollapsedSessionRow">
-            <span class="pk-collapsed-session-label">本次内容</span>
-            <span class="pk-collapsed-session-val" id="pkCollapsedSessionVal">未选内容</span>
-          </div>
-
-          <!-- 计时态收拢卡自然月点阵图（充实下半段，保持卡片高度 0 差） -->
-          <div class="pk-collapsed-cal-block run-only" id="pkCollapsedCalBlock">
-            <div class="pk-collapsed-cal-header">
-              <span class="pk-collapsed-cal-title" id="pkCollapsedCalMonth">9月打卡</span>
-              <span class="pk-collapsed-cal-stat" id="pkCollapsedDaysVal">累计 — 天</span>
-            </div>
-            <div class="pk-cal-weekdays mini">
-              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-            </div>
-            <div class="pk-collapsed-cal-grid" id="pkCollapsedDotMatrix" aria-label="收拢态自然月练习日历"></div>
-          </div>
-
-          <!-- (A) 今日累计块 (Variant B: 微卡片) -->
-          <div class="pk-collapsed-stat-card pk-collapsed-stat-row run-only" id="pkCollapsedTodayRow">
-            <div class="pk-collapsed-card-head">
-              <span class="pk-info-icon-disc mini disc-dur">
-                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
-              </span>
-              <span class="pk-collapsed-stat-label">今日已练</span>
-            </div>
-            <div class="pk-collapsed-card-body">
-              <span class="pk-collapsed-stat-val" id="pkCollapsedTodayVal">0</span>
-              <span class="pk-collapsed-stat-unit">分 · 0 次</span>
-            </div>
-          </div>
-
-          <div class="pk-collapsed-divider run-only" id="pkCollapsedDivider1"></div>
-
-          <!-- (B) 本次进度块 (Variant B: 微卡片) -->
-          <div class="pk-collapsed-progress-card pk-collapsed-progress-block run-only" id="pkCollapsedProgressBlock">
-            <div class="pk-collapsed-card-head">
-              <span class="pk-info-icon-disc mini disc-max">
-                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 0a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3zM8 3a6 6 0 1 0 0 12A6 6 0 0 0 8 3zm-4.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zm4.25-2.75a.75.75 0 0 1 1.5 0v2.44l1.28.77a.75.75 0 1 1-.76 1.3l-1.75-1.05A.75.75 0 0 1 7.75 9V6.25z"/></svg>
-              </span>
-              <span class="pk-collapsed-progress-label">本次进度</span>
-            </div>
-            <div class="pk-collapsed-card-body">
-              <span class="pk-collapsed-progress-val" id="pkCollapsedProgressVal">已练 00:00 / 目标 10 分</span>
-            </div>
-            <div class="pk-collapsed-progress-bar-track">
-              <div class="pk-collapsed-progress-bar-fill" id="pkCollapsedProgressBarFill"></div>
-            </div>
-          </div>
-
-          <div class="pk-collapsed-divider run-only" id="pkCollapsedDivider2"></div>
-
-          <!-- (C) 连续打卡块 (Variant B: 微卡片) -->
-          <div class="pk-collapsed-stat-card pk-collapsed-stat-row run-only" id="pkCollapsedStreakRow">
-            <div class="pk-collapsed-card-head">
-              <span class="pk-info-icon-disc mini disc-count">
-                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm10.854 3.646a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 10.293l3.646-3.647a.5.5 0 0 1 .708 0z"/></svg>
-              </span>
-              <span class="pk-collapsed-stat-label">连续打卡</span>
-            </div>
-            <div class="pk-collapsed-card-body">
-              <span class="pk-collapsed-stat-val" id="pkCollapsedStreakVal">—</span>
-              <span class="pk-collapsed-stat-unit">天 <span class="pk-collapsed-stat-hint">· 最近 9-23</span></span>
-            </div>
-          </div>
-
-          <!-- (A+C 矮档合并块) 今日与连续合并 (Variant B: 微卡片) -->
-          <div class="pk-collapsed-stat-card pk-collapsed-stat-row pk-collapsed-merged-card pk-collapsed-merged-row run-only" id="pkCollapsedMergedRow">
-            <div class="pk-collapsed-card-head">
-              <span class="pk-info-icon-disc mini disc-dur">
-                <svg class="pk-info-icon-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-4.25a.75.75 0 0 1 .75.75V8h2.5a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1-.75-.75V4.5A.75.75 0 0 1 8 3.75z"/></svg>
-              </span>
-              <span class="pk-collapsed-stat-label">今日/连续</span>
-            </div>
-            <div class="pk-collapsed-card-body">
-              <span class="pk-collapsed-stat-val" id="pkCollapsedMergedVal">今日 — 分 · 连续 — 天</span>
-            </div>
-          </div>
-
-          <!-- ③ 科目档案信息区（按 Dad Option B：仅 档案编号 + 真实分类字段，无要求文本） -->
-          <div class="pk-stub-memo-block" id="pkStubMemoBlock">
-            <div class="pk-memo-row memo-cat">
-              <span class="pk-memo-label">科目分类</span>
-              <span class="pk-memo-val" id="pkMemoCategory">基本功</span>
-            </div>
-            <div class="pk-memo-rule" aria-hidden="true"></div>
-            <div class="pk-memo-row memo-id">
-              <div class="pk-memo-num-wrap">
-                <span class="pk-memo-label">档案编号</span>
-                <span class="pk-memo-val mono" id="pkMemoIdVal">No.1034</span>
-              </div>
-              <div class="pk-barcode-wrap" title="科目条码档案">
-                <svg class="pk-barcode-svg" viewBox="0 0 56 10" fill="#2C3E50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <rect x="0" y="0" width="1.5" height="10"/><rect x="3" y="0" width="1" height="10"/><rect x="6" y="0" width="2" height="10"/><rect x="10" y="0" width="1" height="10"/><rect x="13" y="0" width="2.5" height="10"/><rect x="17" y="0" width="1" height="10"/><rect x="20" y="0" width="2" height="10"/><rect x="24" y="0" width="1.5" height="10"/><rect x="27" y="0" width="2" height="10"/><rect x="31" y="0" width="1" height="10"/><rect x="34" y="0" width="2" height="10"/><rect x="38" y="0" width="1" height="10"/><rect x="41" y="0" width="2" height="10"/><rect x="45" y="0" width="1.5" height="10"/><rect x="48" y="0" width="2" height="10"/><rect x="52" y="0" width="1.5" height="10"/>
-                </svg>
-                <span class="pk-barcode-code" id="pkTicketBarcodeCode">DZ-1034-W</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </article>
-
-      <aside class="pk-run-rail" id="pkRunRail" aria-label="计时中核心信息">
-        <div class="pk-run-rail-subject">
-          <span class="pk-run-rail-subject-text" id="pkRailSubject">吸气长音</span>
-        </div>
-        <div class="pk-run-rail-remain">
-          <span class="pk-run-rail-remain-label">剩余</span>
-          <span class="pk-run-rail-remain-val" id="pkRailRemain">10:00</span>
-          <span id="pkRailClock" style="display:none">00:00</span>
-        </div>
-        <div class="pk-run-rail-bpm">
-          <span class="pk-run-rail-bpm-num" id="pkRailBpm">60</span>
-          <span class="pk-run-rail-bpm-unit">BPM</span>
-        </div>
-        <div class="pk-run-rail-content">
-          <span class="pk-run-rail-content-label">本次内容</span>
-          <div class="pk-run-rail-content-text" id="pkRailContent">选一个或输入本次练习内容</div>
-          <span id="pkRailSession" style="display:none">未选内容</span>
-        </div>
-        <div class="pk-run-rail-today" id="pkRunRailToday">
-          <span class="pk-run-rail-today-label">今日已练</span>
-          <span class="pk-run-rail-today-val" id="pkRailTodayVal">0分</span>
-        </div>
-        <div class="pk-run-rail-progress" id="pkRunRailProgress">
-          <span class="pk-run-rail-progress-label">本次进度</span>
-          <span class="pk-run-rail-progress-val" id="pkRailProgressVal">0%</span>
-          <div class="pk-run-rail-progress-track">
-            <div class="pk-run-rail-progress-fill" id="pkRailProgressFill"></div>
-          </div>
-        </div>
-        <span id="ticketBarVert" aria-hidden="true" style="display:none"></span>
-        <span id="ticketBarHoriz" aria-hidden="true" style="display:none"></span>
-        <span id="czGuide" aria-hidden="true" style="display:none"></span>
-        <span id="czGuideSpot" aria-hidden="true" style="display:none"></span>
-        <button type="button" class="pk-run-rail-reselect-btn" id="pkRailReselectBtn" aria-label="重新选择练习科目与内容" title="重新选择练习科目与内容">重新选择</button>
-      </aside>
-
-    </aside>
-
     <!-- ─── 右侧：中轴主栏（654px） ─── -->
     <div class="pk-main-col" id="pkMainCol">
 
@@ -6488,11 +6313,8 @@ function updateReselectBtnState() {
 }
 
 function checkAutoDeform() {
-  if (cur && content && content.trim().length > 0) {
-    if (!isBarDeformed && !userReselecting) {
-      morphTicketToBar();
-    }
-  }
+  /* MRD 3.2.5：票夹已整体移除，旧的「选完科目自动收成黑条」形态不再存在。 */
+  return;
 }
 
 /* 渲染 2 排 Session 胶囊标签（可视即点，双向同步） */
@@ -7161,9 +6983,6 @@ window.closeTempoModal = closeTempoModal;
 function openFolio() {
   const stage = document.getElementById('practiceStage');
   if ((stage && stage.classList.contains('stage-running')) || started || timerRunning) return;
-  /* S22：窄条形态下票夹本体是 display:none，展开入口只有「重新选择」按钮。
-     这里再挡一道，避免残留的键盘/回车路径把票夹弹层从窄条态打开。 */
-  if (isBarDeformed) return;
   renderFolioModal();
   document.getElementById('pkFolioModal').classList.add('open');
 }
@@ -7626,11 +7445,11 @@ function notifyBarMorph() {
   try { if (window.parent && window.parent !== window) window.parent.postMessage({ cz: 'bar-morph' }, '*'); } catch (e) {}
 }
 function morphTicketToBar(callback, instant) {
-  if (isBarDeformed) {
-    notifyBarMorph();
-      if (typeof callback === 'function') callback();
-    return;
-  }
+  /* MRD 3.2.5：票夹已删除，收条动画停用（保留签名兼容旧调用点）。 */
+  isBarDeformed = true;
+  notifyBarMorph();
+  if (typeof callback === 'function') callback();
+  return;
   isBarDeformed = true;
   userReselecting = false;
   updateReselectBtnState();
@@ -7806,10 +7625,10 @@ function morphTicketToBar(callback, instant) {
 }
 
 function expandBarToFolio(callback, instant) {
-  if (!isBarDeformed) {
-    if (typeof callback === 'function') callback();
-    return;
-  }
+  /* MRD 3.2.5：票夹已删除，展开动画停用。 */
+  isBarDeformed = false;
+  if (typeof callback === 'function') callback();
+  return;
   isBarDeformed = false;
   closeCardOverlay();
 
@@ -19742,7 +19561,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.25';
+  var DSH_VERSION = 'v3.26';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20372,7 +20191,8 @@ function closeRecordsDrawer() {
   ':root[data-skin="ink"] .mini-sub-row { color: #A8A29A; }',
     ':root[data-skin="ink"] .pk-top { background: var(--cz-ink-top) !important; color: var(--cz-ink-text) !important; }',
     ':root[data-skin="ink"] .pk-stage-wrap { background: transparent !important; }',
-    '@media (min-width: 1024px) { #practiceStage { width: fit-content !important; max-width: 100% !important; margin: 0 auto !important; } .pk-stage-wrap { width: fit-content !important; max-width: 100% !important; } .pk-top { width: 100% !important; max-width: 100% !important; } .pk-main-col { flex: 0 0 auto !important; width: auto !important; } }',
+    /* MRD 3.2.5：票夹删除后不能再 width:fit-content（会把舞台缩到卡片自然宽 ~606px），改为撑满可用宽。 */
+    '@media (min-width: 1024px) { #practiceStage { width: 100% !important; max-width: 100% !important; margin: 0 auto !important; } .pk-stage-wrap { width: 100% !important; max-width: 100% !important; } .pk-top { width: 100% !important; max-width: 100% !important; } .pk-main-col { flex: 1 1 auto !important; width: 100% !important; } }',
     NEGCTL ? '/* 负控①：把被 dad 否掉的 slot 壳加回来 */ .cz-mod { border: 1px solid rgba(44, 62, 80, 0.12) !important; border-radius: 20px !important; background: #FFFFFF !important; box-shadow: 0 1px 3px rgba(44, 62, 80, 0.04) !important; overflow: hidden !important; } .cz-mod-col { background: rgba(44, 62, 80, 0.06) !important; border-radius: 24px !important; }' : '',
     NEGCTL_ROW ? '/* 负控③：窄屏也强撑单行横滑（必须让「窄屏纵向堆叠 + 无横向溢出」报红） */ .cz-rail { flex-direction: row !important; overflow-x: auto !important; } .cz-mod { width: auto !important; } .cz-mod > iframe { width: auto !important; }' : ''
   ].join('\n');
@@ -20470,11 +20290,12 @@ window.__CZ_CSS = [
      = 卡片从窄孔中穿过。孔左右各留 28px 槽肩，孔比黑区窄、卡片比孔再窄 8px。
      --pk-hole-inset / --pk-slot-hole-h 由 updateCardSlotGeometry() 写入。 */
   '#pkPunchSlotWrap { background: transparent !important; border-radius: 0 !important; box-shadow: none !important; }',
-  '#pkPunchSlotWrap::before { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 46 !important; pointer-events: none !important; border-radius: 0 0 7px 7px !important; background: linear-gradient(180deg, #0B0E11 0%, #000000 100%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -2px 4px rgba(0,0,0,0.92) !important; }',
-  '#pkPunchSlotWrap::after { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 42 !important; pointer-events: none !important; border-radius: 7px 7px 0 0 !important; background: linear-gradient(180deg, #05070A 0%, #0B0E11 100%) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,0.9) !important; }',
+  '#pkPunchSlotWrap::before { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 46 !important; pointer-events: none !important; border-radius: 0 0 7px 7px !important; background: var(--dash-surface-soft, #FFFDFB) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 2px rgba(44,62,80,0.16) !important; }',
+  '#pkPunchSlotWrap::after { content: "" !important; display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; height: calc(var(--pk-slot-hole-h, 18px) * 0.5) !important; z-index: 42 !important; pointer-events: none !important; border-radius: 7px 7px 0 0 !important; background: var(--dash-surface-soft, #FFFDFB) !important; box-shadow: inset 0 1px 2px rgba(44,62,80,0.14) !important; }',
   '#czTicketStage { z-index: 44 !important; top: var(--cz-card-rise, -20px) !important; bottom: 0 !important; height: auto !important; max-height: none !important; }',
   '#pkPunchSlotWrap > .cz-slot-led { z-index: 49 !important; }',
-  '#pkPunchSlotWrap .pk-slot-cavity, #pkSlotCavity { display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: var(--pk-slot-hole-h, 18px) !important; z-index: 41 !important; border-radius: 7px !important; background: #000000 !important; box-shadow: inset 0 2px 6px rgba(0,0,0,0.95) !important; }',
+  /* MRD 3.2.5：卡槽内腔不再用黑色条（用户明确要求去掉），改为机体同色浅槽 + 细内阴影。 */
+  '#pkPunchSlotWrap .pk-slot-cavity, #pkSlotCavity { display: block !important; position: absolute !important; left: var(--pk-hole-inset, 28px) !important; right: var(--pk-hole-inset, 28px) !important; bottom: 0 !important; height: var(--pk-slot-hole-h, 18px) !important; z-index: 41 !important; border-radius: 7px !important; background: var(--dash-surface-soft, #FFFDFB) !important; box-shadow: inset 0 1px 2px rgba(44,62,80,0.18) !important; }',
   /* 卡槽右侧机体指示灯：留在槽体外的留白里，不被卡片全宽压到底边 */
   '.cz-slot-led { position: absolute !important; width: 7px !important; height: 7px !important; border-radius: 50% !important; background: #E0A15A !important; box-shadow: 0 0 0 1px rgba(10,12,14,0.9), 0 0 7px #E0A15A !important; z-index: 47 !important; pointer-events: none !important; }',
   /* S13 批注2 + S16 卡槽常驻：LED 始终落脚在孔下肩右侧，准备态与计时态同位；feed 流无孔肩则隐藏 */
@@ -22001,7 +21822,13 @@ window.__CZ_CSS = [
     var cd = canvasDoc();
     var stage = cd && cd.querySelector('.pk-stage-wrap');
     var left = cd && cd.getElementById('pkLeftCol');
-    if (!stage || !left) { return col.clientWidth; }
+    if (!stage) { return col.clientWidth; }
+    /* MRD 3.2.5：票夹已删除，可用宽直接取舞台宽（不能再拿 cz-combo 的 max-content 宽当预算）。 */
+    if (!left) {
+      var csNoLeft = getComputedStyle(stage);
+      var padNoLeft = (parseFloat(csNoLeft.paddingLeft) || 0) + (parseFloat(csNoLeft.paddingRight) || 0);
+      return Math.max(200, Math.floor(stage.clientWidth - padNoLeft - 10));
+    }
     var cs = getComputedStyle(stage);
     var gap = parseFloat(cs.columnGap || cs.gap) || 24;
     var leftW = left.getBoundingClientRect().width;
@@ -22171,8 +21998,9 @@ window.__CZ_CSS = [
     var cd = canvasDoc();
     var col = comboEl();
     var tb = cd ? ticketBox(cd) : null;
-    if (!cd || !col || !tb || tb.h < 40) { return null; }
-    var H = tb.h;
+    if (!cd || !col) { return null; }
+    /* MRD 3.2.5：票夹删除后没有「票卡高度」可抄，回落到画布设计高 744。 */
+    var H = (tb && tb.h >= 40) ? tb.h : 744;
     if (cd.documentElement.clientWidth < 1024 && !NEG_STACK) {
       return applyComboSizesNarrow(cd, col, tb);
     }
@@ -22226,7 +22054,7 @@ window.__CZ_CSS = [
     mountSlot();
     syncSlotMode();
     syncComboPager();
-    return { combo: state.combo, H: H, wide: wide, ticketTop: +tb.top.toFixed(1), ticketW: tb.w, split1: split1, split3: split3 };
+    return { combo: state.combo, H: H, wide: wide, ticketTop: tb ? +tb.top.toFixed(1) : null, ticketW: tb ? tb.w : null, split1: split1, split3: split3 };
   }
 
   /* 票夹变形结束再排一次分页。卡片宽不跟 50px 窄条走，见 comboAvailWidth。 */
@@ -23648,7 +23476,7 @@ window.__CZ_CSS = [
       sizeLooseTCards(tbOff && tbOff.h);
       var rail = cardsRailEl();
       if (rail && canvasDoc() && canvasDoc().documentElement.clientWidth >= 1024) {
-        fitWideCombo(rail, tbOff && tbOff.h);
+        fitWideCombo(rail, (tbOff && tbOff.h) || 744);
       }
     } else {
       applyComboSizes();
@@ -23662,7 +23490,7 @@ window.__CZ_CSS = [
       sizeLooseTCards(tbOff2 && tbOff2.h);
       var rail2 = cardsRailEl();
       if (rail2 && canvasDoc() && canvasDoc().documentElement.clientWidth >= 1024) {
-        fitWideCombo(rail2, tbOff2 && tbOff2.h);
+        fitWideCombo(rail2, (tbOff2 && tbOff2.h) || 744);
       }
     } else {
       applyComboSizes();
@@ -23760,6 +23588,17 @@ window.__CZ_CSS = [
            这里先量「按设计宽度渲染的自然高」，再用 k = min(可用高/自然高, 可用宽/设计宽) 等比缩放，
            正好整屏铺满、不裁切、不出现滚动条。 */
         applyCanvasViewport();
+        /* MRD 3.2.5：票夹删除后组合自然宽只有 616（A+S），PC 大屏上画布只占中间一条、
+           下方留一大片空白。组合宽远小于可用宽时把设计宽收到「组合宽 + 两侧留白」，
+           再由下面的等比缩放放大铺满宿主高度。 */
+        var comboForFit = cd.querySelector('.cz-combo') || cd.querySelector('.cz-rail') || cd.getElementById('czModCol');
+        var comboNeedW = comboForFit ? Math.ceil(comboForFit.scrollWidth) + 32 : 0;
+        var designCur = parseFloat(canvasIframe.dataset.vpApplied) || 0;
+        if (comboNeedW > 0 && designCur > 1133 && comboNeedW < designCur) {
+          var designFit = Math.max(1133, comboNeedW);
+          canvasIframe.style.width = designFit + 'px';
+          canvasIframe.dataset.vpApplied = String(designFit);
+        }
         var stageEl = document.getElementById('czStage');
         if (stageEl) { stageEl.style.overflow = 'hidden'; }
         /* 可用宽 = 舞台宽（不是 iframe 自身宽：iframe 已被设成设计宽 1133，拿它会算出 kW=1，右边被裁） */
@@ -23786,9 +23625,11 @@ window.__CZ_CSS = [
           var trackEl = cd.querySelector('.cz-combo') || cd.querySelector('.cz-rail') || cd.getElementById('czModCol');
           feedMode = !!(trackEl && cd.defaultView && cd.defaultView.getComputedStyle(trackEl).flexDirection === 'column');
         } catch (eFeed) {}
-        var k = feedMode ? Math.min(1, kW) : Math.min(1, kW, kH);
+        var K_MAX = 1.6;
+        var k = feedMode ? Math.min(1, kW) : Math.min(K_MAX, kW, kH);
         canvasIframe.style.transformOrigin = 'top left';
-        canvasIframe.style.transform = k < 0.9999 ? ('scale(' + k.toFixed(4) + ')') : '';
+        /* 允许放大后不能用 k < 1 判断，否则 k > 1 时会把 transform 清空。 */
+        canvasIframe.style.transform = Math.abs(k - 1) > 0.0002 ? ('scale(' + k.toFixed(4) + ')') : '';
         canvasIframe.style.height = nat + 'px';
         var visualH = Math.max(1, Math.round(nat * k));
         var visualW = Math.round(designW * k);
