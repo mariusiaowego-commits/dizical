@@ -372,7 +372,10 @@ body（宿主页）
 - `DSH_VERSION`（`:19046`）是唯一手改的版本号常量，当前 `v3.24`。
 - 两处派生值都从 `DSH_VERSION` 自动派生，改版本号只需改模板这一处：
   - `X-Dsh-Build` 响应头 —— `app.py` 的 `dsh_version()` 解析模板常量
-  - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()`（`v3.24` → `324`）
+  - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()` 直接透出版本号（`v3.24` → `?v=v3.24`，`quote` 编码）。早期的「只留数字」派生（`v3.24` → `324`）已废弃：`v3.24` / `v3.24-beta` / `v3.2.4` 会撞成同一个 `324`，版本变了缓存不失效。
+- 解析按 `(mtime_ns, ctime_ns, size)` 缓存，模板没改不重读 1MB 文件。`ctime` 必须一起进 key：保留 mtime 的换文件方式（拷贝/解包/同步工具）只改 ctime，少了它会把旧版本号读成新版本。
+- 读文件失败不进缓存（`lru_cache` 不缓存异常），权限/IO 恢复后下一次请求即自愈；降级时 `X-Dsh-Build` 与 `?v=` 同为 `unknown`，不会出现 `?v=` 空参。
+- 正则锚定行首 `^\s*var DSH_VERSION = '...'`，与 `scripts/_sync_cloudrun_deploy.py` 字节相同 —— 注释里的同名行不会污染响应头或打包出的 `build-info.json`。
 - 部署打包时 `scripts/_sync_cloudrun_deploy.py` 写 `src/kid_app/static/build-info.json`（version / branch / commit / source / dirty / built_at）。
 - 改模板后**必须重跑该脚本再 deploy**，否则线上角标的 `commit` 是旧的。
 - 线上验证：`curl -s https://dizical-prod-.../static/build-info.json`。

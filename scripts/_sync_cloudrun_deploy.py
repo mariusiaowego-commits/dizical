@@ -132,7 +132,7 @@ def write_build_info():
     try:
         import re
         with open(tpl, encoding="utf-8") as fh:
-            m = re.search(r"var DSH_VERSION = '([^']+)'", fh.read())
+            m = re.search(r"^\s*var DSH_VERSION = '([^']+)'", fh.read(), re.MULTILINE)
         if m:
             version = m.group(1)
     except OSError:
