@@ -298,7 +298,6 @@ def test_x_dsh_build_header_matches_template_version(client):
     resp = client.get("/practice-dsh")
     assert resp.status_code == 200
     assert resp.headers["X-Dsh-Build"] == ver
-    assert resp.headers["X-Dsh-Build"] == "v3.24"
 
 
 def test_iframe_cache_bust_matches_template_version(client):
@@ -307,7 +306,6 @@ def test_iframe_cache_bust_matches_template_version(client):
     expected = re.sub(r"[^0-9]", "", ver)
     html = client.get("/practice").text
     assert f"/practice-dsh?v={expected}" in html
-    assert expected == "324"
 
 
 def test_version_derivation_is_dynamic_not_coincidental(client, monkeypatch, tmp_path):
@@ -315,8 +313,11 @@ def test_version_derivation_is_dynamic_not_coincidental(client, monkeypatch, tmp
 
     这是本组测试的价值所在 —— 证明是真动态派生，而不是 v3.24 恰好等于 324 的巧合。
     """
+    expected = re.sub(r"[^0-9]", "", _template_dsh_version())
     original = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
-    patched = original.replace("var DSH_VERSION = 'v3.24'", "var DSH_VERSION = 'v9.99'")
+    patched = re.sub(
+        r"var DSH_VERSION = '[^']*'", "var DSH_VERSION = 'v9.99'", original, count=1
+    )
     assert patched != original, "负控前提失败：模板里没找到待替换的 DSH_VERSION 行"
 
     fake_tpl = tmp_path / "practice-dsh.html"
@@ -328,4 +329,4 @@ def test_version_derivation_is_dynamic_not_coincidental(client, monkeypatch, tmp
 
     html = client.get("/practice").text
     assert "/practice-dsh?v=999" in html
-    assert "/practice-dsh?v=324" not in html
+    assert f"/practice-dsh?v={expected}" not in html
