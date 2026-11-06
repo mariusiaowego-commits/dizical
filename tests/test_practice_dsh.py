@@ -1,11 +1,15 @@
 """Tests for /practice-dsh page and 3rd Tab in /practice (sprint practice-dsh-page)."""
+import ast
 import json
+import os
 import re
 from pathlib import Path
+from urllib.parse import quote
+
 import pytest
 from fastapi.testclient import TestClient
 
-from src.kid_app.app import app
+from src.kid_app.app import _DSH_VERSION_RE, app, dsh_cache_bust, dsh_version
 
 ROOT = Path(__file__).resolve().parents[1]
 PRACTICE_TPL = ROOT / "src" / "kid_app" / "templates" / "practice.html"
@@ -285,11 +289,20 @@ def test_audit_reset_is_silent_and_tab_leave_stops_dsh():
 def _template_dsh_version() -> str:
     """从模板里的 DSH_VERSION 常量读版本号（与 app.dsh_version 同源）。"""
     m = re.search(
-        r"var DSH_VERSION = '([^']+)'",
+        r"^\s*var DSH_VERSION = '([^']+)'",
         PRACTICE_DSH_TPL.read_text(encoding="utf-8"),
+        re.MULTILINE,
     )
     assert m, "practice-dsh.html 里必须有 DSH_VERSION 常量"
     return m.group(1)
+
+
+def _point_app_at(monkeypatch, tmp_path, content: str, name: str = "practice-dsh.html") -> Path:
+    """把 app 的模板指针挪到一份临时模板上（不动仓库里的真模板）。"""
+    fake = tmp_path / name
+    fake.write_text(content, encoding="utf-8")
+    monkeypatch.setattr("src.kid_app.app._DSH_TPL", fake)
+    return fake
 
 
 def test_x_dsh_build_header_matches_template_version(client):
@@ -303,30 +316,84 @@ def test_x_dsh_build_header_matches_template_version(client):
 def test_iframe_cache_bust_matches_template_version(client):
     """练习助手 iframe 的 ?v= 缓存绕过参数从 DSH_VERSION 派生。"""
     ver = _template_dsh_version()
-    expected = re.sub(r"[^0-9]", "", ver)
     html = client.get("/practice").text
-    assert f"/practice-dsh?v={expected}" in html
+    assert f"/practice-dsh?v={quote(ver, safe='')}" in html
 
 
 def test_version_derivation_is_dynamic_not_coincidental(client, monkeypatch, tmp_path):
     """负控：把模板里的 DSH_VERSION 改掉，响应头与 ?v= 必须跟着变。
 
-    这是本组测试的价值所在 —— 证明是真动态派生，而不是 v3.24 恰好等于 324 的巧合。
+    这是本组测试的价值所在 —— 证明是真动态派生，而不是版本号恰好等于某个字面量。
     """
-    expected = re.sub(r"[^0-9]", "", _template_dsh_version())
+    ver = _template_dsh_version()
     original = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
     patched = re.sub(
         r"var DSH_VERSION = '[^']*'", "var DSH_VERSION = 'v9.99'", original, count=1
     )
     assert patched != original, "负控前提失败：模板里没找到待替换的 DSH_VERSION 行"
 
-    fake_tpl = tmp_path / "practice-dsh.html"
-    fake_tpl.write_text(patched, encoding="utf-8")
-    monkeypatch.setattr("src.kid_app.app._DSH_TPL", fake_tpl)
+    _point_app_at(monkeypatch, tmp_path, patched)
 
     resp = client.get("/practice-dsh")
     assert resp.headers["X-Dsh-Build"] == "v9.99"
 
     html = client.get("/practice").text
-    assert "/practice-dsh?v=999" in html
-    assert f"/practice-dsh?v={expected}" not in html
+    assert "/practice-dsh?v=v9.99" in html
+    assert f"/practice-dsh?v={quote(ver, safe='')}" not in html
+
+
+@pytest.mark.parametrize(
+    "versions",
+    [
+        ("v3.24", "v3.2.4", "v3.24-beta"),
+        ("v1.0.0", "v10.0"),
+    ],
+)
+def test_cache_bust_does_not_collide_across_versions(monkeypatch, tmp_path, versions):
+    """近义版本号必须映射到不同 ?v= —— 只留数字的老规则会让它们撞成同一个值。"""
+    derived = {}
+    for i, ver in enumerate(versions):
+        _point_app_at(
+            monkeypatch, tmp_path, f"  var DSH_VERSION = '{ver}';\n", name=f"tpl{i}.html"
+        )
+        derived[ver] = dsh_cache_bust()
+    assert len(set(derived.values())) == len(versions), derived
+
+
+def test_degraded_version_is_symmetric_and_non_empty(client, monkeypatch, tmp_path):
+    """解析失败时响应头与 ?v= 都降级成 unknown —— 不能一边 unknown 一边空串。"""
+    monkeypatch.setattr("src.kid_app.app._DSH_TPL", tmp_path / "missing.html")
+    assert client.get("/practice-dsh").headers["X-Dsh-Build"] == "unknown"
+    assert "/practice-dsh?v=unknown" in client.get("/practice").text
+
+
+def test_commented_version_is_ignored(monkeypatch, tmp_path):
+    """注释掉的旧版本号不得参与匹配（正则锚行首，注释行不算声明）。"""
+    _point_app_at(
+        monkeypatch,
+        tmp_path,
+        "// var DSH_VERSION = 'v0.01';\n  var DSH_VERSION = 'v7.7';\n",
+    )
+    assert dsh_version() == "v7.7"
+
+
+def test_version_is_cached_and_invalidated_by_mtime(monkeypatch, tmp_path):
+    """1.08MB 模板不该每次请求都重读：mtime/size 不变就命中缓存，变了才重解析。"""
+    tpl = _point_app_at(monkeypatch, tmp_path, "  var DSH_VERSION = 'v1.1';\n")
+    assert dsh_version() == "v1.1"
+
+    st = tpl.stat()
+    tpl.write_text("  var DSH_VERSION = 'v2.2';\n", encoding="utf-8")
+    os.utime(tpl, ns=(st.st_atime_ns, st.st_mtime_ns))
+    assert dsh_version() == "v1.1", "mtime/size 未变时应命中缓存"
+
+    os.utime(tpl, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))
+    assert dsh_version() == "v2.2"
+
+
+def test_version_regex_matches_deploy_packager():
+    """打包时写 build-info.json 用的 pattern 必须与运行时逐字节相同，否则两处会漂。"""
+    src = (ROOT / "scripts" / "_sync_cloudrun_deploy.py").read_text(encoding="utf-8")
+    m = re.search(r're\.search\((r"[^"]+")', src)
+    assert m, "打包脚本里应有一处 re.search(r\"...\") 解析 DSH_VERSION"
+    assert ast.literal_eval(m.group(1)) == _DSH_VERSION_RE.pattern

@@ -7,8 +7,10 @@ import re
 import sqlite3
 import sys
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict
+from urllib.parse import quote
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -414,20 +416,41 @@ def render(tpl, **kwargs):
 # 唯一真相源 = practice-dsh.html 里的 DSH_VERSION 常量。X-Dsh-Build 响应头与
 # iframe 的 ?v= 缓存绕过参数都从它派生，改版本号只需改模板一处。
 _DSH_TPL = Path(__file__).parent / "templates" / "practice-dsh.html"
+# 锚定行首（可缩进）：注释里出现的旧版本号不参与匹配。pattern 与
+# scripts/_sync_cloudrun_deploy.py 字节相同，否则 build-info.json 会与响应头对不上。
+_DSH_VERSION_RE = re.compile(r"^\s*var DSH_VERSION = '([^']+)'", re.MULTILINE)
+
+
+@lru_cache(maxsize=8)
+def _dsh_version_cached(path: str, mtime_ns: int, size: int) -> str:
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return "unknown"
+    m = _DSH_VERSION_RE.search(text)
+    return m.group(1) if m else "unknown"
 
 
 def dsh_version() -> str:
-    """练习助手版本号，如 'v3.24'。解析失败降级为 'unknown'，不影响页面渲染。"""
+    """练习助手版本号，如 'v3.24'。解析失败降级为 'unknown'，不影响页面渲染。
+
+    模板 1.08MB，每次请求全文重读要 1.7ms，故按 (路径, mtime, 大小) 缓存。
+    """
     try:
-        m = re.search(r"var DSH_VERSION = '([^']+)'", _DSH_TPL.read_text(encoding="utf-8"))
-        return m.group(1) if m else "unknown"
+        st = _DSH_TPL.stat()
     except OSError:
         return "unknown"
+    return _dsh_version_cached(str(_DSH_TPL), st.st_mtime_ns, st.st_size)
 
 
 def dsh_cache_bust() -> str:
-    """iframe 的 ?v= 缓存绕过参数：'v3.24' -> '324'。值只需随版本变化即可。"""
-    return re.sub(r"[^0-9]", "", dsh_version())
+    """iframe 的 ?v= 缓存绕过参数：直接透出版本号（'v3.24' -> 'v3.24'）。
+
+    早先用 re.sub 只留数字，'v3.24' / 'v3.2.4' / 'v3.24-beta' 会撞成同一个
+    '324'，升版后浏览器仍拿旧缓存。quote 无损且只输出 URL 安全字符，
+    practice.html 是 autoescape=False 环境，这里同时钉死注入面。
+    """
+    return quote(dsh_version(), safe="")
 
 
 # ─── 数据 helpers ───────────────────────────────────────────────────────────
