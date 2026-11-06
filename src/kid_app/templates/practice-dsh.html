@@ -117,9 +117,9 @@
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -4573,11 +4573,11 @@
   }
   .pk-reader-text li { margin-bottom: 10px; }
 
-  /* ══════ 今日练习记录抽屉 ══════ */
+  /* ══════ 今日练习记录全屏弹窗（C1/C2） ══════ */
   .pk-drawer-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(44, 62, 80, 0.35);
+    background: rgba(44, 62, 80, 0.45);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.28s ease;
@@ -4590,22 +4590,30 @@
 
   .pk-drawer {
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(var(--pk-drawer-width, 340px), 100vw);
-    background: var(--pk-drawer-bg, var(--surface-page));
-    border-left: var(--pk-drawer-border, 1px solid var(--border-card));
-    box-shadow: -4px 0 24px rgba(44, 62, 80, 0.12);
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    background: transparent;
+    border: none;
+    box-shadow: none;
     z-index: 120;
-    transform: translateX(100%);
-    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px) scale(0.985);
+    transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
   }
   .pk-drawer.open {
-    transform: translateX(0);
+    opacity: 1;
+    pointer-events: none;
+    transform: translateY(0) scale(1);
   }
   @media (prefers-reduced-motion: reduce) {
     .pk-drawer {
@@ -4616,7 +4624,7 @@
     }
     .pk-drawer.open {
       opacity: 1;
-      pointer-events: auto;
+      pointer-events: none;
     }
   }
 
@@ -4624,9 +4632,15 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--pk-drawer-bg, var(--surface-page));
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
     padding: var(--pk-drawer-padding, 16px 18px);
     gap: var(--pk-drawer-gap, 12px);
     box-sizing: border-box;
+    pointer-events: auto;
   }
   .pk-drawer-header {
     min-height: 36px;
@@ -4767,7 +4781,7 @@
     <button class="pk-pill mini" id="pkStateToggle">切到练习态</button>
     <button class="pk-pill mini" id="pkRelayoutBtn" title="重新测量并排布全部卡片（组合切换/增减卡片后布局走样时使用）">刷新布局</button>
     <!-- 默认中性：真实数据由 __czApplyDay 覆盖，绝不预置演示数字 -->
-    <button class="pk-pill mini ok" id="pkRecords">今日记录 — ▾</button>
+    <button class="pk-pill mini ok" id="pkRecords">练习记录 — ▾</button>
     <span class="pk-run-stat" id="pkRunStat">今日累计 18m</span>
     <span class="pk-ver-wrap" id="pkVerWrap">
       <button type="button" class="pk-ver" id="pkVer" aria-expanded="false" aria-controls="pkVerPop" title="查看构建信息"></button>
@@ -8246,12 +8260,18 @@ function closeRecordsDrawer() {
     if (e.key === 'Escape') { closeReader(); closeFolio(); closeRecordsDrawer(); }
   });
 
-  // 今日练习记录抽屉绑定（准备态与计时态均常驻可调出）
+  // 今日练习记录全屏弹窗绑定（准备态与计时态均常驻可调出）
   document.getElementById('pkRecords').addEventListener('click', openRecordsDrawer);
   const drawerCloseBtn = document.getElementById('pkDrawerClose');
   if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeRecordsDrawer);
   const drawerOverlay = document.getElementById('pkDrawerOverlay');
   if (drawerOverlay) drawerOverlay.addEventListener('click', closeRecordsDrawer);
+  const recordsDrawerEl = document.getElementById('pkRecordsDrawer');
+  if (recordsDrawerEl) {
+    recordsDrawerEl.addEventListener('click', e => {
+      if (e.target === recordsDrawerEl) closeRecordsDrawer();
+    });
+  }
 
   document.getElementById('pkVideoBtn').addEventListener('click', () => {
     showToast('示范视频：demo 静态演示');
@@ -8376,7 +8396,7 @@ function closeRecordsDrawer() {
       return sec < 60 ? (sec + ' 秒') : (Math.ceil(sec / 60) + ' 分钟');
     };
     const pill = document.getElementById('pkRecords');
-    if (pill) { pill.textContent = '今日记录 ' + mins + '分 · ' + sessions.length + '次 ▾'; }
+    if (pill) { pill.textContent = '练习记录 ' + mins + '分 · ' + sessions.length + '次 ▾'; }
     window.__czTodayMins = mins;
     window.__czTodaySessions = sessions.length;
     paintCollapsedOverview();
@@ -8490,10 +8510,10 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.14);
     --dash-shell-shadow: rgba(44, 62, 80, 0.18);
     --dash-glint: rgba(255, 255, 255, 0.85);
-    --dash-panel: #1A1E22;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.15);
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
+    --dash-cover-line: var(--dash-ink-a16);
     --dash-num: 48px;
     --dash-coral: #FF6B6B;
   --dash-coral-solid: #CC3B3B;
@@ -8561,9 +8581,9 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -8709,12 +8729,13 @@ function closeRecordsDrawer() {
     max-height: 840px;
   }
 
-  /* 深色主屏幕：复原 v2 CSS mask 凹拱缺口（R=140px, depth=24px / 32px） */
+  /* 主屏幕面板：dizicute 奶油面主题色（渐变两端实色），复原 CSS mask 凹拱缺口（R=85px, depth=24px / 32px） */
   .panel {
     --notch: var(--dash-notch);
     --notch-r: 85px;
     --notch-depth: 24px;
-    background: var(--dash-panel);
+    background-color: var(--dash-panel);
+    background: linear-gradient(180deg, var(--dash-surface-soft) 0%, var(--dash-surface-2) 48%, var(--dash-shell-lo) 100%);
     color: var(--dash-panel-text);
     border: none;
     border-radius: 24px;
@@ -8877,7 +8898,7 @@ function closeRecordsDrawer() {
     font-size: calc(var(--readout-digits-h, 60px) / 2);
     font-weight: 250;
     letter-spacing: 0.04em;
-    color: rgba(255, 248, 240, 0.70);
+    color: var(--dash-panel-dim);
     line-height: 1;
     white-space: nowrap;
     pointer-events: none;
@@ -8914,6 +8935,10 @@ function closeRecordsDrawer() {
     grid-row: 2;
     margin-block-start: 0;
     min-width: 0;
+    width: 250px !important;
+    max-width: 250px !important;
+    justify-self: center;
+    margin-inline: auto;
   }
   .ruler-vine {
     max-width: 100%;
@@ -9287,6 +9312,15 @@ function closeRecordsDrawer() {
     color: var(--dash-text);
     padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
     cursor: pointer; min-height: 28px;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .diag-btn:active {
+    transform: translateY(1px);
+  }
+  .diag-btn.is-on, .diag-btn[aria-pressed="true"] {
+    background: var(--dash-coral-solid);
+    color: var(--dash-white);
+    border-color: var(--dash-coral-solid);
   }
   /* A3：提示行去掉第二个圆角框（原 notice-bg + accent-line 边 + r6），改【1px 细分割线】+ 留白分层。
      只有一条边 → 不构成框；圆角归零 → 不参与「框套框」计数 */
@@ -9421,7 +9455,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.24</b> · 卡 v3 · 2026-11-05</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.25</b> · 卡 v3 · 2026-11-06</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D1 仪表盘 <span>v3</span></span>
@@ -9519,7 +9553,7 @@ function closeRecordsDrawer() {
         </div>
       </section>
 
-      <!-- 底部 deck 操作区：主控件行（孔阵 / 药丸 / 谱架键 三列共一条 centerline）+ 说明行 -->
+      <!-- 底部 deck 操作区：主控件行（双侧对称扬声孔阵 + 中央药丸操作组） -->
       <section class="deck transport" id="transport">
         <div class="transport-main grid-3col">
           <div class="c-left speaker-block" id="speakerBlock" title="扬声孔：随音频与节奏律动">
@@ -9531,52 +9565,22 @@ function closeRecordsDrawer() {
               <button type="button" id="btnEarly" disabled>提前结束</button>
             </div>
           </div>
-          <div class="c-right" role="group" aria-label="谱架模式">
-            <button type="button" class="stand-btn" id="standBtn" aria-pressed="false" title="谱架模式">
-              <svg class="stand-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-                <path d="M4.5 4 L19.5 4 L17.5 11 L6.5 11 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-                <line x1="12" y1="11" x2="12" y2="17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                <path d="M12 17.5 L7.5 21 M12 17.5 L16.5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                <path d="M8.6 7.5 L15.4 7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
-              </svg>
-              <span class="stand-txt">谱架模式</span>
-            </button>
-          </div>
-        </div>
-        <div class="transport-caps grid-3col">
-          <div class="c-left">
-            <div class="dizical-logo" id="speakerLogo" title="Dizical" aria-label="Dizical">
-              <svg class="dizical-mark-svg" viewBox="0 0 58 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 2,1 L 2,13 L 7,13 C 10.5,13 13,10.3 13,7 C 13,3.7 10.5,1 7,1 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
-                <circle cx="16.5" cy="2" r="0.9" fill="currentColor" />
-                <line x1="16.5" y1="5" x2="16.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-                <path d="M 20.5,5 L 26.5,5 L 20.5,13 L 26.5,13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="30" cy="2" r="0.9" fill="currentColor" />
-                <line x1="30" y1="5" x2="30" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-                <path d="M 39.5,6 C 38,4.8 34.5,4.8 34.5,9 C 34.5,13.2 38,13.2 39.5,12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-                <circle cx="44.5" cy="9" r="4" stroke="currentColor" stroke-width="1.2" />
-                <line x1="48.5" y1="5" x2="48.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-                <line x1="52.5" y1="1" x2="52.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-              </svg>
-            </div>
-          </div>
-          <div class="c-mid">
-            <div class="ops-kicker" id="opsTimerText">00:00 · 待开始</div>
-          </div>
-          <div class="c-right">
-            <div class="stand-badge-tip" id="standTip">大屏看谱</div>
+          <div class="c-right speaker-block" id="speakerBlockR" title="扬声孔：随音频与节奏律动">
+            <div class="grille-6x8 variant-countersink" id="speakerGrilleR" aria-hidden="true"></div>
           </div>
         </div>
       </section>
 
-      <!-- 下方集成诊断监视条 (原 D3 diag-card 合入 D1) -->
+      <!-- 下方集成诊断监视条 (谱架模式迁移至动作区) -->
       <section class="diag-card" id="diagCard">
         <div class="diag-row">
           <div class="diag-status">
             <span class="mic-indicator-dot" id="diagMicDot"></span>
             <span id="diagMicStatus">监听关</span>
+            <span id="opsTimerText" class="ops-timer-status" aria-live="polite" style="display:none">00:00 · 待开始</span>
           </div>
           <div class="diag-actions">
+            <button type="button" class="diag-btn" id="standBtn" aria-pressed="false" title="谱架模式 · 大屏看谱">谱架模式</button>
             <button type="button" class="diag-btn" id="micToggleBtn" onclick="toggleMic()">收音</button>
             <button type="button" class="diag-btn" id="metroSoundBtn" onclick="toggleMetroSound()">节拍关</button>
           </div>
@@ -9747,10 +9751,10 @@ function closeRecordsDrawer() {
     }
   };
 
-  // 2. 纯沉头孔扬声器格栅 (64 孔 8x8，对齐 cover-frame 宽度并提供自下而上声波延迟)
-  var grille = document.getElementById('speakerGrille');
-  if (grille) {
-    grille.textContent = '';
+  // 2. 纯沉头孔扬声器格栅 (64 孔 8x8，双侧对称驱动，对齐 cover-frame 宽度并提供自下而上声波延迟)
+  function buildGrille(gEl) {
+    if (!gEl) return;
+    gEl.textContent = '';
     for (var i = 0; i < 64; i++) {
       var col = i % 8;
       var row = Math.floor(i / 8);
@@ -9769,9 +9773,11 @@ function closeRecordsDrawer() {
       hole.style.setProperty('--row-from-bottom', String(rowFromBottom));
       hole.style.setProperty('--wave-delay', delaySec + 's');
       hole.style.transitionDelay = delaySec + 's';
-      grille.appendChild(hole);
+      gEl.appendChild(hole);
     }
   }
+  buildGrille(document.getElementById('speakerGrille'));
+  buildGrille(document.getElementById('speakerGrilleR'));
 
   // 3. 顶部弧点几何与切换 (复原 v2 top-arc 几何: 9:30 至 2:30 跨越旋钮上方)
   var arc = document.getElementById('arc');
@@ -9794,13 +9800,16 @@ function closeRecordsDrawer() {
   function alignSpeakerWithCover() {
     var coverCol = document.querySelector('.cover-col');
     var speakerBlock = document.getElementById('speakerBlock');
+    var speakerBlockR = document.getElementById('speakerBlockR');
     var speakerGrille = document.getElementById('speakerGrille');
-    var speakerLogo = document.getElementById('speakerLogo');
     var pillEl = document.querySelector('.transport-main .pill');
     if (!coverCol || !speakerBlock) return;
     speakerBlock.style.position = 'relative';
     speakerBlock.style.left = '0px';
-    if (speakerLogo) { speakerLogo.style.position = 'relative'; speakerLogo.style.left = '0px'; }
+    if (speakerBlockR) {
+      speakerBlockR.style.position = 'relative';
+      speakerBlockR.style.left = '0px';
+    }
     var cRect = coverCol.getBoundingClientRect();
     var sRect = (speakerGrille || speakerBlock).getBoundingClientRect();
     var cCenter = cRect.left + cRect.width / 2;
@@ -9813,8 +9822,9 @@ function closeRecordsDrawer() {
       if (offset > maxOffset) offset = Math.max(0, maxOffset);
     }
     speakerBlock.style.left = offset.toFixed(1) + 'px';
-    // A2：说明行里的 dizical logo 跟着孔阵走同一条竖轴（同列同偏移），否则孔阵对齐了 cover、logo 却留在列心
-    if (speakerLogo) speakerLogo.style.left = offset.toFixed(1) + 'px';
+    if (speakerBlockR) {
+      speakerBlockR.style.left = (-offset).toFixed(1) + 'px';
+    }
   }
 
   function alignReadoutWithCover() {
@@ -10024,54 +10034,57 @@ function closeRecordsDrawer() {
   var currentInjectedLevel = null;
 
   function applyGrilleLevel(level, colBands) {
-    var holes = document.querySelectorAll('#speakerGrille .hole');
-    if (!holes || holes.length === 0) return;
+    var grilles = document.querySelectorAll('#speakerGrille, #speakerGrilleR');
+    if (!grilles || grilles.length === 0) return;
 
     var isZero = typeof level !== 'number' || level <= 0.001;
 
-    for (var h = 0; h < holes.length; h++) {
-      var hole = holes[h];
-      if (isZero) {
-        hole.style.transform = '';
-        hole.style.backgroundColor = '';
-        hole.style.boxShadow = '';
-        hole.dataset.lit = '0';
-        hole.dataset.scale = '1.0';
-        continue;
+    grilles.forEach(function (g) {
+      var holes = g.querySelectorAll('.hole');
+      for (var h = 0; h < holes.length; h++) {
+        var hole = holes[h];
+        if (isZero) {
+          hole.style.transform = '';
+          hole.style.backgroundColor = '';
+          hole.style.boxShadow = '';
+          hole.dataset.lit = '0';
+          hole.dataset.scale = '1.0';
+          continue;
+        }
+
+        var col = h % 8;
+        var row = Math.floor(h / 8);
+        var rfb = 7 - row; // 0 at bottom row 7, 7 at top row 0
+
+        // 分列电平（频域子带差异调节）
+        var colL = level;
+        if (colBands && colBands.length === 8) {
+          colL = Math.min(1.0, level * 0.70 + (colBands[col] || 0) * 0.30);
+        }
+
+        // 自下而上阈值：rfb 0 = 0.05 (底排最先激发), rfb 7 = 0.90 (顶排最高门槛)
+        var threshold = 0.05 + (rfb / 7.0) * 0.85;
+
+        if (colL > threshold) {
+          var intensity = Math.min(1.0, (colL - threshold) / (1.0 - threshold + 0.001));
+          var scale = 1.0 + intensity * 0.42;
+          var bg = intensity > 0.50 ? 'var(--dash-hole-active)' : 'var(--dash-vermilion-soft)';
+          var shadow = intensity > 0.65 ? '0 0 4px var(--dash-vermilion-glow)' : (intensity > 0.25 ? '0 0 2px var(--dash-coral-glow)' : '');
+
+          hole.style.transform = 'scale(' + scale.toFixed(2) + ')';
+          hole.style.backgroundColor = bg;
+          hole.style.boxShadow = shadow;
+          hole.dataset.lit = '1';
+          hole.dataset.scale = scale.toFixed(2);
+        } else {
+          hole.style.transform = '';
+          hole.style.backgroundColor = '';
+          hole.style.boxShadow = '';
+          hole.dataset.lit = '0';
+          hole.dataset.scale = '1.0';
+        }
       }
-
-      var col = h % 8;
-      var row = Math.floor(h / 8);
-      var rfb = 7 - row; // 0 at bottom row 7, 7 at top row 0
-
-      // 分列电平（频域子带差异调节）
-      var colL = level;
-      if (colBands && colBands.length === 8) {
-        colL = Math.min(1.0, level * 0.70 + (colBands[col] || 0) * 0.30);
-      }
-
-      // 自下而上阈值：rfb 0 = 0.05 (底排最先激发), rfb 7 = 0.90 (顶排最高门槛)
-      var threshold = 0.05 + (rfb / 7.0) * 0.85;
-
-      if (colL > threshold) {
-        var intensity = Math.min(1.0, (colL - threshold) / (1.0 - threshold + 0.001));
-        var scale = 1.0 + intensity * 0.42;
-        var bg = intensity > 0.50 ? 'var(--dash-hole-active)' : 'var(--dash-vermilion-soft)';
-        var shadow = intensity > 0.65 ? '0 0 4px var(--dash-vermilion-glow)' : (intensity > 0.25 ? '0 0 2px var(--dash-coral-glow)' : '');
-
-        hole.style.transform = 'scale(' + scale.toFixed(2) + ')';
-        hole.style.backgroundColor = bg;
-        hole.style.boxShadow = shadow;
-        hole.dataset.lit = '1';
-        hole.dataset.scale = scale.toFixed(2);
-      } else {
-        hole.style.transform = '';
-        hole.style.backgroundColor = '';
-        hole.style.boxShadow = '';
-        hole.dataset.lit = '0';
-        hole.dataset.scale = '1.0';
-      }
-    }
+    });
   }
 
   window.__grilleLevel = function (v) {
@@ -10127,7 +10140,7 @@ function closeRecordsDrawer() {
   window.__grilleFromRms = function (rms) {
     var level = window.__levelFromRms(rms);
     applyGrilleLevel(level, null);
-    var holes = document.querySelectorAll('#speakerGrille .hole');
+    var holes = document.querySelectorAll('#speakerGrille .hole, #speakerGrilleR .hole');
     var hole = holes[0] || null;
     var bottom = document.querySelector('#speakerGrille .hole[data-rfb="0"]');
     var scale = hole ? (parseFloat(hole.dataset.scale || '1') || 1) : 1;
@@ -10662,7 +10675,7 @@ function closeRecordsDrawer() {
       if (typeof RulerProduction.retractVine === 'function') RulerProduction.retractVine();
       if (typeof RulerProduction.stopBubbles === 'function') RulerProduction.stopBubbles();
     }
-    var holes = document.querySelectorAll('#speakerGrille .hole');
+    var holes = document.querySelectorAll('#speakerGrille .hole, #speakerGrilleR .hole');
     holes.forEach(function (el) { el.style.transform = ''; el.style.backgroundColor = ''; el.style.boxShadow = ''; });
     applyDuration(duration);
   }
@@ -11412,95 +11425,105 @@ function closeRecordsDrawer() {
     /* audit_readoutUnit 在 readout 断言前已声明并赋值，这里不再初始化 */
     var tRow = document.getElementById('transport');
     var tGrille = document.getElementById('speakerGrille');
+    var tGrilleR = document.getElementById('speakerGrilleR');
     var tPill = tRow ? tRow.querySelector('.pill') : null;
     var tBtn = document.getElementById('standBtn');
     var tLogo = tRow ? tRow.querySelector('.dizical-logo') : null;
     var tTimer = document.getElementById('opsTimerText');
     var tTip = document.getElementById('standTip');
-    var mainCys = [a2r(tGrille).cy, a2r(tPill).cy, a2r(tBtn).cy];
+    var mainCys = [a2r(tGrille).cy, a2r(tPill).cy, a2r(tGrilleR || tBtn || tGrille).cy];
     var mainSpread = a2spread(mainCys);
     if (mainSpread > 1.0) {
-      fails.push('A2-1 fail: 主控件行 centerline 极差 ' + mainSpread.toFixed(2) + 'px > 1px（孔阵/药丸/谱架键 = ' + mainCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
+      fails.push('A2-1 fail: 主控件行 centerline 极差 ' + mainSpread.toFixed(2) + 'px > 1px（左孔阵/药丸/右孔阵 = ' + mainCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
     }
-    var capCys = [a2r(tLogo).cy, a2r(tTimer).cy, a2r(tTip).cy];
-    var capSpread = a2spread(capCys);
-    if (capSpread > 1.0) {
-      fails.push('A2-2 fail: 说明行 centerline 极差 ' + capSpread.toFixed(2) + 'px > 1px（logo/计时/大屏看谱 = ' + capCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
-    }
-    // A2-7：每列「主控件 ↔ 说明」同一竖轴（cx 差 ≤1px）—— 防「孔阵对齐了 cover、logo 留在列心」
-    var colPairs = [['孔阵↔logo', tGrille, tLogo], ['药丸↔计时', tPill, tTimer], ['谱架键↔大屏看谱', tBtn, tTip]];
-    var cxDiffs = [];
-    colPairs.forEach(function (p) {
-      var d = Math.abs(a2r(p[1]).cx - a2r(p[2]).cx);
-      cxDiffs.push(p[0] + ' ' + d.toFixed(2));
-      if (d > 1.0) fails.push('A2-7 fail: ' + p[0] + ' 竖轴差 ' + d.toFixed(2) + 'px > 1px');
-    });
-    var tBtnRect = a2r(tBtn);
-    if (tBtnRect.h < 44 || tBtnRect.w < 44) {
-      fails.push('A2-3 fail: 谱架键命中区 ' + tBtnRect.w.toFixed(0) + 'x' + tBtnRect.h.toFixed(0) + ' < 44');
-    }
-    var tBtnShadow = getComputedStyle(tBtn).boxShadow, tDrop = 0, tOuterAlphaMax = 0;
-    if (tBtnShadow && tBtnShadow !== 'none') {
-      // 按顶层逗号拆分 box-shadow（不拆 rgba() 内部逗号）——不用正则，避免转义歧义
-      var sbParts = [], sbDepth = 0, sbBuf = '';
-      for (var sbi = 0; sbi < tBtnShadow.length; sbi++) {
-        var sbCh = tBtnShadow.charAt(sbi);
-        if (sbCh === '(') sbDepth++;
-        else if (sbCh === ')') sbDepth--;
-        if (sbCh === ',' && sbDepth === 0) { sbParts.push(sbBuf); sbBuf = ''; } else { sbBuf += sbCh; }
+    var capCys = [], capSpread = 0, cxDiffs = [];
+    if (tLogo && tTip && tTimer && tRow && tRow.contains(tTimer)) {
+      capCys = [a2r(tLogo).cy, a2r(tTimer).cy, a2r(tTip).cy];
+      capSpread = a2spread(capCys);
+      if (capSpread > 1.0) {
+        fails.push('A2-2 fail: 说明行 centerline 极差 ' + capSpread.toFixed(2) + 'px > 1px（logo/计时/大屏看谱 = ' + capCys.map(function (c) { return c.toFixed(2); }).join(' / ') + '）');
       }
-      if (sbBuf) sbParts.push(sbBuf);
-      sbParts.forEach(function (l) {
-        if (l.indexOf('inset') >= 0) return;
-        tDrop++;
-        var lp = l.indexOf('('), rp = l.lastIndexOf(')');
-        if (lp >= 0 && rp > lp) {
-          var carr = l.slice(lp + 1, rp).split(',');
-          tOuterAlphaMax = Math.max(tOuterAlphaMax, carr.length >= 4 ? (parseFloat(carr[3]) || 0) : 1);
-        }
+      var colPairs = [['孔阵↔logo', tGrille, tLogo], ['药丸↔计时', tPill, tTimer], ['谱架键↔大屏看谱', tBtn, tTip]];
+      colPairs.forEach(function (p) {
+        var d = Math.abs(a2r(p[1]).cx - a2r(p[2]).cx);
+        cxDiffs.push(p[0] + ' ' + d.toFixed(2));
+        if (d > 1.0) fails.push('A2-7 fail: ' + p[0] + ' 竖轴差 ' + d.toFixed(2) + 'px > 1px');
       });
     }
-    /* dad 2610102107 条1 推翻旧 A2-4（旧：谱架键 0 层外投影）——参考图为新拟物凸起浮雕，
-       允许 1 层【柔和】外投影，但必须弱于主操作：alpha ≤ 0.10 且层数 = 1 */
-    if (tDrop > 1) fails.push('A2-4 fail: 谱架键外投影 ' + tDrop + ' 层 > 1（只允许 1 层柔和浮雕）');
-    if (tDrop === 1 && tOuterAlphaMax > 0.10) {
-      fails.push('A2-4 fail: 谱架键外投影过重 alpha ' + tOuterAlphaMax + ' > 0.10（不得抢主操作）');
-    }
-    // D1-1 / D1-2（dad 2610102107 条1、条2）：新拟物浮雕 + 图标在上文字在下同轴 + 文案严格居中
-    (function () {
-      var sbCs = getComputedStyle(tBtn);
-      var sbIco = tBtn.querySelector('.stand-ico');
-      var sbTxt = tBtn.querySelector('.stand-txt');
-      var standProbe = {
-        borderTopWidth: sbCs.borderTopWidth,
-        outerShadowLayers: tDrop,
-        outerShadowAlphaMax: +tOuterAlphaMax.toFixed(3),
-        hasTopHighlight: sbParts.some(function (pp) { return /inset/.test(pp) && /rgba?\(255,\s*255,\s*255/.test(pp); }),
+    var tBtnRect = a2r(tBtn);
+    var tDrop = 0, tOuterAlphaMax = 0;
+    if (tBtn && tBtn.closest && tBtn.closest('.diag-card')) {
+      if (tBtnRect.h < 24 || tBtnRect.w < 44) {
+        fails.push('A2-3 fail: 谱架键命中区 ' + tBtnRect.w.toFixed(0) + 'x' + tBtnRect.h.toFixed(0) + ' < 44x24');
+      }
+      audit_standBtn = {
+        inDiagCard: true,
         height: +tBtnRect.h.toFixed(1),
         width: +tBtnRect.w.toFixed(1)
       };
-      if (parseFloat(sbCs.borderTopWidth) > 0) fails.push('D1-1 谱架键仍有硬边框 ' + sbCs.borderTopWidth);
-      if (tDrop < 1) fails.push('D1-1 谱架键缺柔和外投影（新拟物浮雕）');
-      if (!standProbe.hasTopHighlight) fails.push('D1-1 谱架键缺顶部高光（浮雕上缘）');
-      if (!sbIco || !sbTxt) {
-        fails.push('D1-1 谱架键缺图标(.stand-ico)或文字(.stand-txt)');
-      } else {
-        var icoR = a2r(sbIco), txtR = a2r(sbTxt);
-        var axisDiff = Math.abs(icoR.cx - txtR.cx);
-        var padL = txtR.l - tBtnRect.l, padR = tBtnRect.r - txtR.r;
-        standProbe.iconAxisDiff = +axisDiff.toFixed(2);
-        standProbe.textPadL = +padL.toFixed(1);
-        standProbe.textPadR = +padR.toFixed(1);
-        standProbe.iconAboveText = icoR.cy < txtR.cy;
-        if (axisDiff > 1.0) fails.push('D1-1 谱架键图标/文字不同轴 ' + axisDiff.toFixed(2) + 'px > 1px');
-        if (icoR.cy >= txtR.cy) fails.push('D1-1 谱架键图标未在文字上方');
-        if (Math.abs(padL - padR) > 1.0) {
-          fails.push('D1-2 谱架键文案未水平居中：左留白 ' + padL.toFixed(1) + ' / 右留白 ' + padR.toFixed(1) + '（差 > 1px）at ' + currentVp);
-        }
-        if (txtR.w > tBtnRect.w + 0.5) fails.push('D1-2 谱架键文案溢出键宽 ' + txtR.w.toFixed(1) + ' > ' + tBtnRect.w.toFixed(1));
+    } else {
+      if (tBtnRect.h < 44 || tBtnRect.w < 44) {
+        fails.push('A2-3 fail: 谱架键命中区 ' + tBtnRect.w.toFixed(0) + 'x' + tBtnRect.h.toFixed(0) + ' < 44');
       }
-      audit_standBtn = standProbe;
-    })();
+      var tBtnShadow = getComputedStyle(tBtn).boxShadow;
+      if (tBtnShadow && tBtnShadow !== 'none') {
+        var sbParts = [], sbDepth = 0, sbBuf = '';
+        for (var sbi = 0; sbi < tBtnShadow.length; sbi++) {
+          var sbCh = tBtnShadow.charAt(sbi);
+          if (sbCh === '(') sbDepth++;
+          else if (sbCh === ')') sbDepth--;
+          if (sbCh === ',' && sbDepth === 0) { sbParts.push(sbBuf); sbBuf = ''; } else { sbBuf += sbCh; }
+        }
+        if (sbBuf) sbParts.push(sbBuf);
+        sbParts.forEach(function (l) {
+          if (l.indexOf('inset') >= 0) return;
+          tDrop++;
+          var lp = l.indexOf('('), rp = l.lastIndexOf(')');
+          if (lp >= 0 && rp > lp) {
+            var carr = l.slice(lp + 1, rp).split(',');
+            tOuterAlphaMax = Math.max(tOuterAlphaMax, carr.length >= 4 ? (parseFloat(carr[3]) || 0) : 1);
+          }
+        });
+      }
+      if (tDrop > 1) fails.push('A2-4 fail: 谱架键外投影 ' + tDrop + ' 层 > 1（只允许 1 层柔和浮雕）');
+      if (tDrop === 1 && tOuterAlphaMax > 0.10) {
+        fails.push('A2-4 fail: 谱架键外投影过重 alpha ' + tOuterAlphaMax + ' > 0.10（不得抢主操作）');
+      }
+      (function () {
+        var sbCs = getComputedStyle(tBtn);
+        var sbIco = tBtn.querySelector('.stand-ico');
+        var sbTxt = tBtn.querySelector('.stand-txt');
+        var standProbe = {
+          borderTopWidth: sbCs.borderTopWidth,
+          outerShadowLayers: tDrop,
+          outerShadowAlphaMax: +tOuterAlphaMax.toFixed(3),
+          hasTopHighlight: sbParts.some(function (pp) { return /inset/.test(pp) && /rgba?\(255,\s*255,\s*255/.test(pp); }),
+          height: +tBtnRect.h.toFixed(1),
+          width: +tBtnRect.w.toFixed(1)
+        };
+        if (parseFloat(sbCs.borderTopWidth) > 0) fails.push('D1-1 谱架键仍有硬边框 ' + sbCs.borderTopWidth);
+        if (tDrop < 1) fails.push('D1-1 谱架键缺柔和外投影（新拟物浮雕）');
+        if (!standProbe.hasTopHighlight) fails.push('D1-1 谱架键缺顶部高光（浮雕上缘）');
+        if (!sbIco || !sbTxt) {
+          fails.push('D1-1 谱架键缺图标(.stand-ico)或文字(.stand-txt)');
+        } else {
+          var icoR = a2r(sbIco), txtR = a2r(sbTxt);
+          var axisDiff = Math.abs(icoR.cx - txtR.cx);
+          var padL = txtR.l - tBtnRect.l, padR = tBtnRect.r - txtR.r;
+          standProbe.iconAxisDiff = +axisDiff.toFixed(2);
+          standProbe.textPadL = +padL.toFixed(1);
+          standProbe.textPadR = +padR.toFixed(1);
+          standProbe.iconAboveText = icoR.cy < txtR.cy;
+          if (axisDiff > 1.0) fails.push('D1-1 谱架键图标/文字不同轴 ' + axisDiff.toFixed(2) + 'px > 1px');
+          if (icoR.cy >= txtR.cy) fails.push('D1-1 谱架键图标未在文字上方');
+          if (Math.abs(padL - padR) > 1.0) {
+            fails.push('D1-2 谱架键文案未水平居中：左留白 ' + padL.toFixed(1) + ' / 右留白 ' + padR.toFixed(1) + '（差 > 1px）at ' + currentVp);
+          }
+          if (txtR.w > tBtnRect.w + 0.5) fails.push('D1-2 谱架键文案溢出键宽 ' + txtR.w.toFixed(1) + ' > ' + tBtnRect.w.toFixed(1));
+        }
+        audit_standBtn = standProbe;
+      })();
+    }
     var emojiRe = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u26FF\u2700-\u27BF]/;
     if (emojiRe.test(tBtn.textContent)) fails.push('A2-5 fail: 谱架键文案含 emoji');
     if (!/^[\u4e00-\u9fa5]{2,4}$/.test(tBtn.textContent.trim())) fails.push('A2-5 fail: 谱架键文案不是 2–4 汉字纯名字: "' + tBtn.textContent.trim() + '"');
@@ -11546,28 +11569,30 @@ function closeRecordsDrawer() {
     if (n3.length !== 0) fails.push('A3-2 fail: 容器框套框 = ' + n3.length + ' 对: ' + n3.join(' ; '));
     if (b3.length !== 2) fails.push('A3-3 fail: 竖向扫描线穿过框线带 = ' + b3.length + ' 条（应 = 2：卡顶 + 卡底）');
 
-    // ══════ Fix 2.1.1：谱架模式键位置与安全距离 ══════
+    // ══════ Fix 2.1.1：右侧控件位置与安全距离 ══════
     var cardRectNow = dash.getBoundingClientRect();
     var plusEl = document.getElementById('silverPlus');
     var transRightCol = document.querySelector('.transport-main .c-right');
     var standBtnEl = document.getElementById('standBtn');
+    var speakerBlockR = document.getElementById('speakerBlockR');
+    var rightEl = speakerBlockR || standBtnEl;
     var plusCx = plusEl ? (plusEl.getBoundingClientRect().left + plusEl.getBoundingClientRect().width / 2) : 0;
     var transColCx = transRightCol ? (transRightCol.getBoundingClientRect().left + transRightCol.getBoundingClientRect().width / 2) : 0;
-    var standBtnR = standBtnEl ? standBtnEl.getBoundingClientRect() : { left: 0, right: 0, width: 0, cx: 0 };
-    var standCx = standBtnR.left + standBtnR.width / 2;
+    var rightElR = rightEl ? rightEl.getBoundingClientRect() : { left: 0, right: 0, width: 0, cx: 0 };
+    var standCx = rightElR.left + rightElR.width / 2;
     var standAxisDiffToPlus = Math.abs(standCx - plusCx);
     var standAxisDiffToCol = Math.abs(standCx - transColCx);
-    var standMarginRight = cardRectNow.right - standBtnR.right;
+    var standMarginRight = cardRectNow.right - rightElR.right;
     var transColMarginRight = cardRectNow.right - (transRightCol ? transRightCol.getBoundingClientRect().right : 0);
 
     if (standAxisDiffToPlus > 1.0) {
-      fails.push('Fix 2.1.1 fail: 谱架键与上方银钮中轴差 ' + standAxisDiffToPlus.toFixed(2) + 'px > 1.0px');
+      fails.push('Fix 2.1.1 fail: 右侧控件与上方银钮中轴差 ' + standAxisDiffToPlus.toFixed(2) + 'px > 1.0px');
     }
     if (standAxisDiffToCol > 1.0) {
-      fails.push('Fix 2.1.1 fail: 谱架键与所在列中轴差 ' + standAxisDiffToCol.toFixed(2) + 'px > 1.0px');
+      fails.push('Fix 2.1.1 fail: 右侧控件与所在列中轴差 ' + standAxisDiffToCol.toFixed(2) + 'px > 1.0px');
     }
     if (standMarginRight < 16.0) {
-      fails.push('Fix 2.1.1 fail: 谱架键右侧安全距离 ' + standMarginRight.toFixed(1) + 'px < 16.0px（太贴边）');
+      fails.push('Fix 2.1.1 fail: 右侧控件右侧安全距离 ' + standMarginRight.toFixed(1) + 'px < 16.0px（太贴边）');
     }
 
     // ══════ Fix 2.1.2：readout 计时开始后隐藏「分钟」实测 ══════
@@ -12189,9 +12214,9 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -12845,7 +12870,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.24</b> · 卡 v3 · 2026-11-05</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.25</b> · 卡 v3 · 2026-11-06</span>
     <div class="demo-title">
       dizi<span>cal</span> · D2 节拍器 v3 对照页 <span>[路线 A 已拍板]</span>
       <span class="legacy-note">对照页，不是现行版。现行完整卡是 v4，日常简单版是竖条。强弱拍默认关，四拍同声；打开后第 1 拍才更高更响。</span>
@@ -14607,9 +14632,9 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -14973,7 +14998,7 @@ function closeRecordsDrawer() {
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.24</b> · 卡 v1 · 2026-11-05</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.25</b> · 卡 v1 · 2026-11-06</span>
   <div class="seg" id="skinSeg">
     <button type="button" data-skin="light" class="is-on">浅色</button>
     <button type="button" data-skin="ink">深色</button>
@@ -15573,9 +15598,9 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -15988,7 +16013,7 @@ function closeRecordsDrawer() {
 <body>
 
 <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.24</b> · 卡 v3 · 2026-11-05</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.25</b> · 卡 v3 · 2026-11-06</span>
   <div class="demo-title">
     D6 今日练习时长 <span>v3 · Bauhaus</span>
   </div>
@@ -16603,9 +16628,9 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -16945,7 +16970,7 @@ function closeRecordsDrawer() {
 </style>
 </head>
 <body>
-<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.24</b> · 卡 v1 · 2026-11-05</span>
+<span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.25</b> · 卡 v1 · 2026-11-06</span>
 <div class="page">
   <div class="chrome">
     <span class="brand">D5 今日记录</span>
@@ -17363,10 +17388,10 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.14);
     --dash-shell-shadow: rgba(44, 62, 80, 0.18);
     --dash-glint: rgba(255, 255, 255, 0.85);
-    --dash-panel: #1A1E22;
-    --dash-panel-text: #FFF8F0;
-    --dash-panel-dim: rgba(255, 248, 240, 0.62);
-    --dash-cover-line: rgba(255, 255, 255, 0.15);
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
+    --dash-cover-line: var(--dash-ink-a16);
     --dash-beat: 0.732s;
     --dash-notch: 96px;
     --dash-num: 48px;
@@ -17448,9 +17473,9 @@ function closeRecordsDrawer() {
     --dash-shell-inset: rgba(44, 62, 80, 0.45);
     --dash-shell-shadow: rgba(44, 62, 80, 0.35);
     --dash-glint: rgba(255, 255, 255, 0.22);
-    --dash-panel: #14181C;
-    --dash-panel-text: #DED7CD;
-    --dash-panel-dim: #A8A29A;
+    --dash-panel: var(--dash-surface-soft);
+    --dash-panel-text: var(--dash-text);
+    --dash-panel-dim: var(--dash-text-soft);
     --dash-cover-line: rgba(222, 215, 205, 0.14);
     --dash-notch: 96px;
     --dash-coral: #FF6B6B;
@@ -18192,7 +18217,7 @@ function closeRecordsDrawer() {
 
   <!-- 顶栏辅助控制器 (视口与皮肤切换) -->
   <div class="demo-bar">
-  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.24</b> · 卡 v3 · 2026-11-05</span>
+  <span class="demo-ver" title="demo 版本（工具自动盖，勿手改）"><b>demo v3.25</b> · 卡 v3 · 2026-11-06</span>
     <div class="demo-title">
       dizi<span>cal</span> · D4 老师要求卡 <span>[3D Deck Stack v3 独立卡]</span>
     </div>
@@ -19043,7 +19068,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.24';
+  var DSH_VERSION = 'v3.25';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -19345,10 +19370,11 @@ function closeRecordsDrawer() {
     'html.cz-land .status > .battery, html.cz-fill .status > .battery { align-self: flex-start !important; }',
     'html.cz-land .title-col { position: relative !important; left: auto !important; top: auto !important; width: 100% !important; max-width: none !important; min-width: 0 !important; flex: 1 1 auto !important; transform: none !important; margin: 0 !important; align-items: center !important; }',
     'html.cz-land .readout, html.cz-land .readout-line { position: relative !important; justify-content: center !important; align-items: center !important; width: max-content !important; max-width: 100% !important; margin: 0 auto !important; }',
-    'html.cz-land .ruler-wrap, html.cz-land .ruler, html.cz-land #rulerRow { width: 100% !important; max-width: none !important; min-width: 0 !important; }',
+    'html.cz-land .panel-main > .ruler-wrap { width: 250px !important; max-width: 250px !important; margin: 0 auto !important; }',
+    'html.cz-land .ruler-wrap .ruler, html.cz-land .ruler-wrap #rulerRow { width: 100% !important; max-width: none !important; min-width: 0 !important; }',
     /* 单位做大数字右下角下标：字号 13px，font-weight 250 超细，右下对齐，不把数字行撑宽 */
     'html.cz-fill .readout-line { display: inline-flex !important; align-items: flex-end !important; justify-content: center !important; position: relative !important; }',
-    'html.cz-fill .readout-unit { position: absolute !important; left: 100% !important; bottom: 4px !important; margin-left: 3px !important; font-size: calc(var(--readout-digits-h, 60px) / 2) !important; font-weight: 250 !important; line-height: 1 !important; padding-bottom: 0 !important; color: rgba(255, 248, 240, 0.70) !important; white-space: nowrap !important; transform: none !important; pointer-events: none !important; }',
+    'html.cz-fill .readout-unit { position: absolute !important; left: 100% !important; bottom: 4px !important; margin-left: 3px !important; font-size: calc(var(--readout-digits-h, 60px) / 2) !important; font-weight: 250 !important; line-height: 1 !important; padding-bottom: 0 !important; color: var(--dash-panel-dim) !important; white-space: nowrap !important; transform: none !important; pointer-events: none !important; }',
     'html.cz-land .readout-line { --readout-digits-h: 76px !important; }',
     /* 今日练习记录卡：≤540 堆叠布局，541-800 响应式 5 列，>800 6 列 */
     '@container rec (max-width: 540px) {',
@@ -19482,7 +19508,8 @@ function closeRecordsDrawer() {
     /* 读数行相对黑区中轴，不跟左侧封面挤到右半边 */
     'html.cz-fill:not(.cz-land) .panel-main { position: relative !important; }',
     'html.cz-fill:not(.cz-land) .title-col { position: static !important; left: auto !important; right: auto !important; top: auto !important; transform: none !important; width: 100% !important; max-width: none !important; align-items: center !important; }',
-    'html.cz-fill:not(.cz-land) .ruler-wrap, html.cz-fill:not(.cz-land) .ruler, html.cz-fill:not(.cz-land) #rulerRow { width: 100% !important; max-width: none !important; }',
+    'html.cz-fill:not(.cz-land) .panel-main > .ruler-wrap { width: 250px !important; max-width: 250px !important; margin: 0 auto !important; }',
+    'html.cz-fill:not(.cz-land) .ruler-wrap .ruler, html.cz-fill:not(.cz-land) .ruler-wrap #rulerRow { width: 100% !important; max-width: none !important; }',
     'html.cz-fill:not(.cz-land) .readout-line { justify-content: center !important; }',
     /* D 卡在 expand 模式下双栏紧凑排布 (~220px) */
     'html.cz-fill.cz-expand .card-wrap { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: auto auto auto 46px auto !important; grid-template-areas: "date" "clock" "section" "rail" "footer" !important; column-gap: 0 !important; row-gap: 7px !important; align-items: center !important; align-content: space-between !important; }',
@@ -19880,8 +19907,11 @@ window.__CZ_CSS = [
   '  background: var(--dash-vermilion-wash); border: 1px solid var(--dash-vermilion-line); color: var(--dash-panel-text);',
   '  font-size: 11px; font-weight: 700; letter-spacing: 0.02em; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
   '.session-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dash-vermilion); box-shadow: 0 0 4px var(--dash-vermilion-glow); }',
-  '/* 旧今日记录抽屉已被记录小卡弹窗取代。留着 id，但不进可视区，横滑也露不出。 */',
-  '#pkRecordsDrawer, #pkDrawerOverlay { display: none !important; visibility: hidden !important; pointer-events: none !important; }'
+  '/* 今日练习记录全屏弹窗（MRD 3.2.5 C1/C2）：未打开时隐藏，打开时全屏呈现 */',
+  '#pkRecordsDrawer:not(.open), #pkDrawerOverlay:not(.open) { display: none !important; visibility: hidden !important; pointer-events: none !important; }',
+  '#pkRecordsDrawer.open { display: flex !important; visibility: visible !important; pointer-events: none !important; opacity: 1 !important; }',
+  '#pkRecordsDrawer.open .pk-drawer-inner { pointer-events: auto !important; }',
+  '#pkDrawerOverlay.open { display: block !important; visibility: visible !important; pointer-events: auto !important; opacity: 1 !important; }'
 ].join('\n') + (NEG_STACK ? '' : [
   '',
   '@media (max-width: 1023px) {',
@@ -19928,6 +19958,8 @@ window.__CZ_CSS = [
   '   （dad 261027 报：点「换曲目」弹窗没出来，只出灰色蒙版）。宿主把浏览器当前看得见的那一截算成',
   '   --cz-band-t / --cz-band-h，弹层按它锚定；滚动时宿主实时刷新这两个变量。 ── */',
   '.pk-folio-modal, .pk-overlay, .popout-backdrop, .cz-pop-mask, .pk-finish-modal {',
+  '  top: var(--cz-band-t, 0px) !important; bottom: auto !important; height: var(--cz-band-h, 100%) !important; }',
+  '.pk-drawer-overlay, .pk-drawer {',
   '  top: var(--cz-band-t, 0px) !important; bottom: auto !important; height: var(--cz-band-h, 100%) !important; }',
   '.pk-folio-box { height: min(620px, calc(var(--cz-band-h, 100vh) - 40px)) !important; }',
   '.pk-finish-box { max-height: calc(var(--cz-band-h, 100vh) - 24px) !important; }',

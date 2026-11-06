@@ -1,7 +1,7 @@
 # practice-dsh 设计规范（练习助手 · 拟物仪表盘）
 
-> 版本：v3.24 · 2026-11-05 · 对应代码 `src/kid_app/templates/practice-dsh.html`（25003 行，单文件）
-> 合并提交：`8da6ffe`（PR #392）· 生产 Deploy #155
+> 版本：v3.25 · 2026-11-06 · 对应代码 `src/kid_app/templates/practice-dsh.html`（25035 行，单文件）
+> 上一版合并提交：`8da6ffe`（PR #392，v3.24）· 本版在 `practice-frontend` 分支，待合并
 > 镜像：`/Users/mt16/dev/uiux-asset-library/design-system/practice-dsh/`
 
 ## 0. 这份文档是什么
@@ -248,10 +248,10 @@ body（宿主页）
 
 ### 5.10 版本角标（2026-11 新增）
 
-顶栏最右 `#pkVerWrap > button#pkVer + #pkVerPop`：平时只显示 `v3.24`（10px / opacity .5 / tabular-nums）；悬停或点一下弹出 5 行构建信息（版本 / 分支 / 提交 / 构建时间 / 来源 checkout）。
+顶栏最右 `#pkVerWrap > button#pkVer + #pkVerPop`：平时只显示 `v3.25`（10px / opacity .5 / tabular-nums）；悬停或点一下弹出 5 行构建信息（版本 / 分支 / 提交 / 构建时间 / 来源 checkout）。
 - **按设备能力分流**：`hover:hover` 设备走 mouseenter/mouseleave（160ms 延时收起），点击不再 toggle；触屏只认点击 —— 触屏 tap 会合成 mouseenter 再 click，共用一个开关会「先开再关」＝永远打不开。
 - 弹层必须按画布宽度夹取（窄屏顶栏换行时 `right:0` 会跑出屏幕）。
-- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:19046`。
+- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:19071`。
 
 ---
 
@@ -369,10 +369,10 @@ body（宿主页）
 
 ## 11. 版本与发布
 
-- `DSH_VERSION`（`:19046`）是唯一手改的版本号常量，当前 `v3.24`。
+- `DSH_VERSION`（`:19071`）是唯一手改的版本号常量，当前 `v3.25`。
 - 两处派生值都从 `DSH_VERSION` 自动派生，改版本号只需改模板这一处：
   - `X-Dsh-Build` 响应头 —— `app.py` 的 `dsh_version()` 解析模板常量
-  - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()` 直接透出版本号（`v3.24` → `?v=v3.24`，`quote` 编码）。早期的「只留数字」派生（`v3.24` → `324`）已废弃：`v3.24` / `v3.24-beta` / `v3.2.4` 会撞成同一个 `324`，版本变了缓存不失效。
+  - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()` 直接透出版本号（`v3.25` → `?v=v3.25`，`quote` 编码）。早期的「只留数字」派生（`v3.24` → `324`）已废弃：`v3.24` / `v3.24-beta` / `v3.2.4` 会撞成同一个 `324`，版本变了缓存不失效。
 - 解析按 `(mtime_ns, ctime_ns, size)` 缓存，模板没改不重读 1MB 文件。`ctime` 必须一起进 key：保留 mtime 的换文件方式（拷贝/解包/同步工具）只改 ctime，少了它会把旧版本号读成新版本。
 - 读文件失败不进缓存（`lru_cache` 不缓存异常），权限/IO 恢复后下一次请求即自愈；降级时 `X-Dsh-Build` 与 `?v=` 同为 `unknown`，不会出现 `?v=` 空参。
 - 正则锚定行首 `^\s*var DSH_VERSION = '...'`，与 `scripts/_sync_cloudrun_deploy.py` 字节相同 —— 注释里的同名行不会污染响应头或打包出的 `build-info.json`。
@@ -380,3 +380,32 @@ body（宿主页）
 - 部署打包时 `scripts/_sync_cloudrun_deploy.py` 写 `src/kid_app/static/build-info.json`（version / branch / commit / source / dirty / built_at）。
 - 改模板后**必须重跑该脚本再 deploy**，否则线上角标的 `commit` 是旧的。
 - 线上验证：`curl -s https://dizical-prod-.../static/build-info.json`。
+
+---
+
+## 12. MRD 3.2.5 架构设计
+
+> **完整架构规范**：详见 [`docs/practice-dsh/ARCH-MRD325.md`](ARCH-MRD325.md)（覆盖 `V1–V4`、`C1–C24` 及 `MRD §2.3.2.1`）。
+
+### 12.1 多视口 4 档固定布局（`V1–V4`）
+- **双层共存映射**：外层由 `applyCanvasViewport()`（`src/kid_app/templates/practice-dsh.html:23148`）写入 4 档布局类 `data-layout-tier="pc-layout | ipad-h | ipad-s | phone-layout"`；底层组件尺寸 `data-vp` 由 4 档确定性派生（`pc-layout` → `'1133'`、`ipad-h` → `'1133'`、`ipad-s` → `'744'`、`phone-layout` → `'440'`），兼容 6 张卡片内联 `[data-vp]` 选择器。
+- **宽 > 高（`pc-layout`: `landscape and min-width: 1180px`；`ipad-h`: `landscape and max-width: 1179px`）**：横向扩展无限卡片模式，单屏最多呈现 **2 张顶层卡片**（`fitWideCombo` `:21315` 不再将 >2 卡挤压进同屏）；底部 `.cz-pagedots`（`:19730`）就地升级为 `.cz-spotlight-bar`（高 `36px`），支持点击跳页、轨道指针拖拽滑动（Scrubbing）与手势换屏（`V2`、`V3`）。
+- **高 > 宽（`ipad-s`: `portrait and min-width: 600px`；`phone-layout`: `portrait and max-width: 599px`）**：`canvasIsFeed()`（`:22619`）判定为纵向瀑布流，卡片 `width: 100%` 等宽单列排列，高度由 `sizeFeedCard()`（`:21061`）按内容自然向下生长，零重叠（`V4`）。
+- **缩放基准锁定**：`syncCanvasHeight()`（`:23036`）的 `fitKey` 纳入 `state.layoutTier`，在选择态/准备态锁定 `canvasFitBaseH`，跨 4 档阈值、横竖屏翻转或切换 Combo 时重置 `canvasFitBaseH = 0`。
+
+### 12.2 卡槽 3 态状态机与几何参数（`C10–C15`）
+- **三态定义（`#pkPunchSlotWrap[data-slot-state]`）**：
+  - `select`（选择态）：`!cur || !content.trim()`；
+  - `prep`（准备态）：`cur && content.trim() && (!started || paused || !timerRunning)`，**显式包含从计时态点击暂停（`started && paused`）**；
+  - `run`（计时态）：`cur && content.trim() && started && timerRunning && !paused`。
+- **卡槽几何（`updateCardSlotGeometry` `:20164`）**：`select`/`prep` 露出高度 `136px`、上拔位移 `--cz-card-pull-y: -28px`（`360ms cubic-bezier(0.22, 1, 0.36, 1)`），露出上部累计记录胶囊（`C7`）、`重新选择` 按钮（`C15`）与**前 3 个 session 快捷标签**（`C13`）；`run` 露出高度 `88px`、下插位移 `0px`（`300ms cubic-bezier(0.32, 0.72, 0, 1)`）并设置 `#czTicketStage { pointer-events: none }`（`C14`）。`#pkSlotCavity` 下移 `22px`（`slotOverlap = 60px`），Card A `section.panel` 顶部内边距 `--cz-panel-pt` 增至 `74px`（`C10`、`C11`）。
+
+### 12.3 票夹瘦身、Dashboard 改造与全屏记录弹窗（`C1–C9`、`C17–C24`、`§2.3.2.1`）
+- **今日练习记录全屏化（`C1–C3`）**：顶部 `#pkRecords`（`:4770`）固定为「练习记录」按钮，点击打开全屏化 `.popout-backdrop`（`tpl-R` `:16591`），支持右上角关闭、底部完成与遮罩点击无损关闭。
+- **票夹瘦身与 `.pk-folio-box` 扩容（`C4–C6`、`C8`、`C9`、`C24`）**：移除 `pk-ticket` 内科目选择器、BPM 步进器与时长步进器；`.pk-folio-box`（`:5262`）扩容至 `min(680px, 94vw) × min(720px, calc(var(--cz-band-h, 100vh) - 24px))`，内嵌各科目的 session 胶囊组与自定义输入；触发入口收敛至 Card A `.cover-frame` / `#dashCoverName`（`C9`）与卡槽 `.pk-exposed-expand-hint`（「重新选择」，`C8`/`C15`）。
+- **Dashboard 面板与控制区改造（`C17`、`C20–C23`、`§2.3.2.1`）**：`#ruler` 宽度收窄为 `250px`（`C17`）；`section.panel` 默认皮肤切换为 `dizicute` 暖色 token（`var(--cream)` / `var(--paper)` / `var(--ink)` / `var(--coral)`），同步维护 `ink` 皮肤（`C20`）；清空 `transport-caps` 辅助文字与 Logo（`C21`）；`#standBtn` 移入 `diag-card`（`C22`），左扬声器 `#speakerBlock` 对称复制到 `transport-main .c-right`（`C23`）；`#panelMicBtn` 下移合并至 `diag-card` 替换原 `.diag-status` 与 `#micToggleBtn`（`§2.3.2.1`）。
+
+### 12.4 三个待拍板交互方案摘要（`C7`、`C16`、`C19`）
+- **`C7` + `C18` 科目累计练习记录 Pop-out**：双入口触发（`#pkCardExposedBar` 上部 `#pkExposedStatsTrigger` 与 `panel-foot .c-left` 的 `昨天练了 x.x分` 按钮 `#yesterdaySubjBtn`），共享挂载于 `#canvasBody`（`--cz-band-t` / `--cz-band-h`）的 `#pkSubjectStatsModal`（`width: min(520px, 92vw)`，打开 `280ms cubic-bezier(0.22, 1, 0.36, 1)`，关闭 `200ms cubic-bezier(0.55, 0, 0.86, 0.35)`）。
+- **`C16` 换科目卡片动画**：跨科目切换时执行 `540ms` 双段式换卡动画 —— Phase 1 旧卡上拔退场（`220ms cubic-bezier(0.55, 0, 0.86, 0.35)`，`translateY(-28px -> -68px)`）→ Midpoint 刷新 DOM → Phase 2 新卡从上方落槽回弹停靠在 `-28px` 准备态悬停位（`320ms cubic-bezier(0.16, 1, 0.3, 1)`），不叠加 `0.78s` 折叠延迟。
+- **`C19` 音符节奏与 BPM 全局小弹窗**：`panel-foot .c-right` 显示 `♩=xx ♪=xx`，点击通过 `DizicalPracticeBus` 呼出挂载在 `#canvasBody` 的全局小弹窗 `#pkTempoModal`（`width: min(340px, 90vw)`），内含 `♩ / ♪` 二选一分段胶囊、`40–200` BPM 长按步进器与快捷预设，确认后广播同步 Card A 与 Card B 节拍器。
