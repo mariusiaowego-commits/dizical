@@ -353,7 +353,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>practice 练习票卡 demo v4 — 艺术展门票形态与打卡机动效（2026-09-22）</title>
 <!-- 生产页真样式（逐字抽取自 main 44fe6c1，包含 60 格刻度尺、三档 tick、红针、卷草纹、气泡等完整定义） -->
-<link rel="stylesheet" href="/static/practice-dsh-assets/practice-skeleton-260920/real-practice.css?v=315">
+<link rel="stylesheet" href="/static/practice-dsh-assets/practice-skeleton-260920/real-practice.css?v={{ dsh_v }}">
 <style>
   /* ══════ Token（严格限定 dizicute 6 色及 alpha 派生，无任何新增 hex）══════ */
   :root {
@@ -4800,7 +4800,7 @@
 
         <!-- 顶部大图块：沉浸名画手绘笔触竹笛（42% 高度） -->
         <div class="pk-ticket-hero-frame" id="pkTicketHeroFrame" tabindex="0" role="button" aria-label="打开票夹换曲目">
-          <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315" alt="竹笛名画手绘" class="pk-ticket-hero-img" id="pkTicketHeroImg">
+          <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt="竹笛名画手绘" class="pk-ticket-hero-img" id="pkTicketHeroImg">
           <!-- 艺术家姓名位浮层：叠压在 hero 上（半透明浅底 + 档案编号小字） -->
           <div class="pk-ticket-subject-block" id="pkTicketSubjectBlock" title="点击打开票夹换曲目">
             <div class="pk-ticket-subject-title" id="pkTicketSubjectName">吸气长音</div>
@@ -5130,7 +5130,7 @@
             <!-- 下方 4/5 卡身（硬遮罩挡住，槽口下和黑色读数区零可见） -->
             <div class="pk-card-body-masked" aria-hidden="true">
               <div class="pk-card-body-masked-art">
-                <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315" alt="">
+                <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt="">
               </div>
               <div class="pk-card-body-masked-info">
                 <span id="pkCcgNo">No.1034</span>
@@ -5153,7 +5153,7 @@
             </div>
             <div class="cz-popup-hero">
               <div class="cz-popup-art">
-                <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315" alt="">
+                <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt="">
               </div>
               <div class="cz-popup-meta">
                 <h3 class="cz-popup-title" id="czPopupTitle">吸气长音</h3>
@@ -5409,13 +5409,13 @@
   let selectedReps = 0;
 </script>
 
-<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
+<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v={{ dsh_v }}"></script>
 <script>
   if (typeof gsap === 'undefined') {
     document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');
   }
 </script>
-<script src="/static/practice-dsh-assets/practice-skeleton-260920/real-timer-visual.js?v=315"></script>
+<script src="/static/practice-dsh-assets/practice-skeleton-260920/real-timer-visual.js?v={{ dsh_v }}"></script>
 
 <!-- ══════════ Grok Session Selector 组件 ══════════ -->
 <script>
@@ -6214,7 +6214,7 @@ function updatePillSelection() {
 window.renderSessionPills = renderSessionPills;
 
 function getSubjectHeroImg(item) {
-  if (!item) return '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315';
+  if (!item) return '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}';
   var name = item.name || '';
   var cat = item.category || (typeof ITEM_CATEGORIES !== 'undefined' && ITEM_CATEGORIES[item.id]) || '';
 
@@ -6243,7 +6243,7 @@ function getSubjectHeroImg(item) {
   }
 
   // 3. Fallback
-  return '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315';
+  return '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}';
 }
 window.getSubjectHeroImg = getSubjectHeroImg;
 
@@ -6356,7 +6356,7 @@ function renderTicket() {
 
 function renderEmptyTicket() {
   const heroImg = document.getElementById('pkTicketHeroImg');
-  if (heroImg) heroImg.src = '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315';
+  if (heroImg) heroImg.src = '/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}';
 
   const hole = document.getElementById('pkTicketHoleTopLeft');
   if (hole) hole.className = 'pk-hole-punch status-other';
@@ -8478,7 +8478,7 @@ function closeRecordsDrawer() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>D1 仪表盘卡片 · v3</title>
-<link rel="stylesheet" href="/static/practice-dsh-assets/shared/ruler-production.css?v=315">
+<link rel="stylesheet" href="/static/practice-dsh-assets/shared/ruler-production.css?v={{ dsh_v }}">
 <style>
   :root {
     --font-base: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -9463,7 +9463,7 @@ function closeRecordsDrawer() {
           <div class="cover-col">
             <div class="cover-halo">
               <div class="cover-frame">
-                <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315" alt="萨丽哈">
+                <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt="萨丽哈">
               </div>
             </div>
             <div class="cover-name" id="dashCoverName">萨丽哈</div>
@@ -9590,7 +9590,7 @@ function closeRecordsDrawer() {
   </div>
 </div>
 
-<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
+<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v={{ dsh_v }}"></script>
 <script>
   var duration = 10, elapsed = 0, timerRunning = false, paused = false, started = false;
   /* 本段计时的开始时刻（CST ISO）。票夹没在计时、只有这张卡在跑时，用它兜底记账。*/
@@ -9631,9 +9631,9 @@ function closeRecordsDrawer() {
     return label;
   }
 </script>
-<script src="/static/practice-dsh-assets/practice-skeleton-260920/real-timer-visual.js?v=315"></script>
-<script src="/static/practice-dsh-assets/shared/hollow-digits.js?v=315"></script>
-<script src="/static/practice-dsh-assets/shared/ruler-production.js?v=315"></script>
+<script src="/static/practice-dsh-assets/practice-skeleton-260920/real-timer-visual.js?v={{ dsh_v }}"></script>
+<script src="/static/practice-dsh-assets/shared/hollow-digits.js?v={{ dsh_v }}"></script>
+<script src="/static/practice-dsh-assets/shared/ruler-production.js?v={{ dsh_v }}"></script>
 <script>
 (function () {
   window.__dashErrors = [];
@@ -12837,9 +12837,9 @@ function closeRecordsDrawer() {
   .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
 </style>
 <!-- 本地 GSAP 引用 (严格禁止外链 CDN) -->
-<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
+<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v={{ dsh_v }}"></script>
 <!-- 节拍音色库（单一真源，与竖条节拍器共用） -->
-<script src="/static/practice-dsh-assets/shared/beat-timbres.js?v=315"></script>
+<script src="/static/practice-dsh-assets/shared/beat-timbres.js?v={{ dsh_v }}"></script>
 </head>
 <body>
 
@@ -14967,8 +14967,8 @@ function closeRecordsDrawer() {
   .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
 </style>
 <!-- 节拍音色库（与全卡节拍器共用的单一真源） -->
-<script src="/static/practice-dsh-assets/shared/beat-timbres.js?v=315"></script>
-<script src="/static/practice-dsh-assets/shared/beat-engine.js?v=315"></script>
+<script src="/static/practice-dsh-assets/shared/beat-timbres.js?v={{ dsh_v }}"></script>
+<script src="/static/practice-dsh-assets/shared/beat-engine.js?v={{ dsh_v }}"></script>
 </head>
 <body>
 <div id="gaugeHost" aria-hidden="true"><div id="dashGauge"></div></div>
@@ -16996,7 +16996,7 @@ function closeRecordsDrawer() {
     </article>
   </div>
 </div>
-<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
+<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v={{ dsh_v }}"></script>
 <script>
 (function () {
   var qs = new URLSearchParams(location.search);
@@ -18186,7 +18186,7 @@ function closeRecordsDrawer() {
     background:var(--dash-surface-soft)}
   .demo-ver b{color:var(--dash-vermilion-text);font-weight:600}
 </style>
-<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v=315"></script>
+<script src="/static/practice-dsh-assets/vendor/gsap.min.js?v={{ dsh_v }}"></script>
 </head>
 <body>
 
@@ -20438,7 +20438,7 @@ window.__CZ_CSS = [
             '<button type="button" class="cz-popup-close-btn" id="czPopupCloseBtn" aria-label="收回槽内">收回槽内 ✕</button>' +
           '</div>' +
           '<div class="cz-popup-hero">' +
-            '<div class="cz-popup-art"><img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v=315" alt=""></div>' +
+            '<div class="cz-popup-art"><img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt=""></div>' +
             '<div class="cz-popup-meta">' +
               '<h3 class="cz-popup-title" id="czPopupTitle">吸气长音</h3>' +
               '<div class="cz-popup-session-line"><span class="k">本次内容</span><span class="v" id="czPopupSession">未选内容</span></div>' +

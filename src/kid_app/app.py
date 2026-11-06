@@ -2919,7 +2919,7 @@ def practice_dsh_page():
     # 页面本体禁用缓存，iframe 的 ?v= 强制取新（值从 DSH_VERSION 自动派生）。
     # X-Dsh-Build 同样从 DSH_VERSION 派生，升版时不会与页面显示的版本脱节。
     return HTMLResponse(
-        content=render("practice-dsh"),
+        content=render("practice-dsh", dsh_v=dsh_cache_bust()),
         headers={
             "Cache-Control": "no-store, must-revalidate",
             "X-Dsh-Build": dsh_version(),

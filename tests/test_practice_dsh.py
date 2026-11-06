@@ -434,3 +434,26 @@ def test_version_regex_matches_deploy_packager():
     m = re.search(r're\.search\((r"[^"]+")', src)
     assert m, "打包脚本里应有一处 re.search(r\"...\") 解析 DSH_VERSION"
     assert ast.literal_eval(m.group(1)) == _DSH_VERSION_RE.pattern
+
+
+def test_asset_cache_version_follows_dsh_version(client):
+    """22 处静态资源的 ?v= 必须跟 DSH_VERSION 走。
+
+    早先写死 `?v=315`，资源文件改了它也不变 —— 浏览器启发式缓存下会看到旧样式。
+    """
+    ver = quote(_template_dsh_version(), safe="")
+    expected_refs = PRACTICE_DSH_TPL.read_text(encoding="utf-8").count("?v={{ dsh_v }}")
+    assert expected_refs > 0, "模板里应有 ?v={{ dsh_v }} 占位"
+
+    html = client.get("/practice-dsh").text
+    assert "?v=315" not in html
+    assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {ver}
+    assert html.count(f"?v={ver}") == expected_refs
+
+
+def test_asset_cache_version_negative_control(client, monkeypatch, tmp_path):
+    """负控：版本号变了，资源 ?v= 必须跟着变 —— 证明它不是又一个写死的字面量。"""
+    _point_app_at(monkeypatch, tmp_path, "  var DSH_VERSION = 'v9.99';\n")
+    html = client.get("/practice-dsh").text
+    assert "?v=315" not in html
+    assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {"v9.99"}
