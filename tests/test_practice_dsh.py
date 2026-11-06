@@ -440,15 +440,18 @@ def test_asset_cache_version_follows_dsh_version(client):
     """22 处静态资源的 ?v= 必须跟 DSH_VERSION 走。
 
     早先写死 `?v=315`，资源文件改了它也不变 —— 浏览器启发式缓存下会看到旧样式。
+    引用数写成常量而不是从模板现数：现数的话，删掉一处引用期望值也跟着降，
+    断言永远成立，等于没测。
     """
     ver = quote(_template_dsh_version(), safe="")
-    expected_refs = PRACTICE_DSH_TPL.read_text(encoding="utf-8").count("?v={{ dsh_v }}")
-    assert expected_refs > 0, "模板里应有 ?v={{ dsh_v }} 占位"
 
     html = client.get("/practice-dsh").text
+    asset_urls = re.findall(r'/static/practice-dsh-assets/[^"\')\s]+', html)
+
     assert "?v=315" not in html
+    assert len(asset_urls) == 22, "增删资源引用时同步改这个数（并确认新引用带 ?v=）"
+    assert [u for u in asset_urls if not u.endswith(f"?v={ver}")] == []
     assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {ver}
-    assert html.count(f"?v={ver}") == expected_refs
 
 
 def test_asset_cache_version_negative_control(client, monkeypatch, tmp_path):
