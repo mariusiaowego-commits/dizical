@@ -18754,6 +18754,81 @@ function closeRecordsDrawer() {
     color: var(--dash-text);
   }
 
+  /* 老师补充说明：独立信息层。与正文同字号但换承载（浅朱底 + 左色条 + 标签），
+     超过 2 行折叠，提供「展开全文 / 收起」；展开后块内滚动，不撑高固定卡。 */
+  .card-teacher-note {
+    flex: 0 0 auto;
+    margin-top: 8px;
+    padding: 6px 10px 8px 12px;
+    border-radius: 12px;
+    border-left: 3px solid var(--dash-vermilion-line);
+    background: var(--dash-vermilion-wash);
+  }
+  .ctn-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ctn-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--dash-vermilion-text);
+  }
+  .ctn-toggle {
+    display: none;
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: var(--dash-vermilion-text);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .card-teacher-note.is-clampable .ctn-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+  .ctn-toggle:focus-visible {
+    outline: 2px solid var(--dash-vermilion-text);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .ctn-body {
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--dash-text);
+    overflow: hidden;
+  }
+  .ctn-body.is-clamped {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .ctn-body.is-measuring {
+    display: block;
+    -webkit-line-clamp: unset;
+    max-height: none;
+  }
+  .card-teacher-note.is-open .ctn-body {
+    display: block;
+    -webkit-line-clamp: unset;
+    max-height: 168px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .ctn-line + .ctn-line {
+    margin-top: 2px;
+  }
+  @media (pointer: coarse) {
+    .ctn-toggle { min-height: 44px; }
+  }
+
   /* 卡底 */
   .card-footer-row {
     display: flex;
@@ -18990,19 +19065,56 @@ function closeRecordsDrawer() {
       return lines.map(s => `<div class="req-p">${s}</div>`).join('');
     }
 
-    /* card-note-box 设计：无造假、真实课堂要点或基于练习数据的中性小结（humanizer-zh 语言精简） */
-    function formatNoteBox(item) {
+    /* 老师补充说明：单独的信息层，不再混进正文；长文折叠 + 展开全文 */
+    function formatTeacherNote(item) {
       const rawNotes = (item.notes || item.teacher_note || '').trim();
-      if (rawNotes) {
-        const lines = rawNotes.split('\n').map(l => l.trim()).filter(Boolean);
-        return `<div class="card-note-box">要点：${lines.join('；')}</div>`;
-      }
+      if (!rawNotes) { return ''; }
+      const lines = rawNotes.split('\n').map(l => l.trim()).filter(Boolean);
+      const body = lines.map(l => `<div class="ctn-line">${l}</div>`).join('');
+      return `
+        <div class="card-teacher-note" data-no-drag>
+          <div class="ctn-head">
+            <span class="ctn-label">老师补充说明</span>
+            <button type="button" class="ctn-toggle" aria-expanded="false">展开全文</button>
+          </div>
+          <div class="ctn-body is-clamped">${body}</div>
+        </div>`;
+    }
+
+    /* 练习小结：无课堂备注时补一条基于真实练习数据的中性说明 */
+    function formatPracticeSummary(item) {
+      if ((item.notes || item.teacher_note || '').trim()) { return ''; }
       const dur = item.stage_duration_text;
       const range = (item.stage_start && item.stage_end) ? `（${item.stage_start} ~ ${item.stage_end}）` : '';
       if (dur && dur !== '0秒') {
         return `<div class="card-note-box">本阶段已练 ${dur}${range ? ' ' + range : ''}。</div>`;
       }
       return '';
+    }
+
+    /* 只有真正被折叠的说明才挂「展开全文」，按实测高度判定而不是按字数 */
+    function setupTeacherNotes(root) {
+      root.querySelectorAll('.card-teacher-note').forEach(note => {
+        const body = note.querySelector('.ctn-body');
+        const btn = note.querySelector('.ctn-toggle');
+        if (!body || !btn) { return; }
+        note.classList.remove('is-open', 'is-clampable');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.textContent = '展开全文';
+        body.classList.add('is-measuring');
+        const fullH = body.scrollHeight;
+        body.classList.remove('is-measuring');
+        if (fullH > body.clientHeight + 1) {
+          note.classList.add('is-clampable');
+          btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const open = note.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            btn.textContent = open ? '收起' : '展开全文';
+          };
+        }
+      });
     }
 
     function createCardMarkup(item, index) {
@@ -19014,7 +19126,7 @@ function closeRecordsDrawer() {
       }).join(' · ');
 
       const paragraphsHtml = formatRequirementsToParagraphs(item.requirements);
-      const noteBoxHtml = formatNoteBox(item);
+      const noteBoxHtml = formatTeacherNote(item) + formatPracticeSummary(item);
 
       return `
         <div class="card-top-row">
@@ -19165,7 +19277,7 @@ function closeRecordsDrawer() {
     function bindFeedFlip(card) {
       let sx = 0, sy = 0, tracking = false;
       card.addEventListener('pointerdown', (e) => {
-        if (e.target.closest && e.target.closest('button, a, .card-req-body')) { tracking = false; return; }
+        if (e.target.closest && e.target.closest('button, a, .card-req-body, .card-teacher-note')) { tracking = false; return; }
         tracking = true; sx = e.clientX; sy = e.clientY;
       });
       card.addEventListener('pointerup', (e) => {
@@ -19202,6 +19314,7 @@ function closeRecordsDrawer() {
           card.dataset.index = String(currentIndex);
           bindFeedFlip(card);
           stage.appendChild(card);
+          setupTeacherNotes(stage);
         }
         updateControls();
         requestAnimationFrame(() => { requestAnimationFrame(pokeFeedReflow); });
@@ -19239,6 +19352,7 @@ function closeRecordsDrawer() {
         stage.appendChild(card);
       }
 
+      setupTeacherNotes(stage);
       updateControls();
     }
 
@@ -19252,7 +19366,7 @@ function closeRecordsDrawer() {
       let currentX = 0, currentY = 0;
 
       const onPointerDown = (e) => {
-        if (e.target.closest && e.target.closest('.card-req-body')) return;
+        if (e.target.closest && e.target.closest('.card-req-body, .card-teacher-note')) return;
         isDragging = true;
         isCurrentlyDragging = true;
         startX = e.clientX;
@@ -19741,7 +19855,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.30';
+  var DSH_VERSION = 'v3.31';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -19951,7 +20065,7 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed .deck-card.is-empty { min-height: 132px !important; }',
     'html.cz-fill.cz-feed .deck-card:not(.is-active) { display: none !important; }',
     'html.cz-fill.cz-feed .card-req-body { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; max-height: 760px !important; overflow-y: auto !important; }',
-    'html.cz-fill.cz-feed .card-note-box { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed .card-note-box, html.cz-fill.cz-feed .card-teacher-note { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
     /* Q 卡专属：feed 档不许有 100% 高度链条，否则 stage-frame 100% × body auto = 0，整卡被裁 */
     'html.cz-fill.cz-feed.cz-qcard, html.cz-fill.cz-feed.cz-qcard body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
     'html.cz-fill.cz-feed.cz-qcard .stage-frame { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; container-type: inline-size !important; }',
@@ -19966,7 +20080,7 @@ function closeRecordsDrawer() {
     'html.cz-fill .m-title-group { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 2px !important; min-width: 0 !important; grid-column: 1 !important; grid-row: 1 !important; }',
     'html.cz-fill .m-counter-badge { grid-column: 2 !important; grid-row: 1 !important; justify-self: end !important; align-self: start !important; margin: 0 !important; white-space: nowrap !important; }',
     'html.cz-fill .m-meta-row { display: flex !important; flex-wrap: wrap !important; width: auto !important; max-width: 100% !important; order: 0 !important; flex: none !important; }',
-    'html.cz-fill .card-date-badge, html.cz-fill .card-subject-tag, html.cz-fill .m-title, html.cz-fill .m-subtitle, html.cz-fill .card-metro-val, html.cz-fill .card-seg-chip, html.cz-fill .req-p, html.cz-fill .card-note-box, html.cz-fill .card-teacher-sig { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; white-space: normal !important; }',
+    'html.cz-fill .card-date-badge, html.cz-fill .card-subject-tag, html.cz-fill .m-title, html.cz-fill .m-subtitle, html.cz-fill .card-metro-val, html.cz-fill .card-seg-chip, html.cz-fill .req-p, html.cz-fill .card-note-box, html.cz-fill .card-teacher-note, html.cz-fill .ctn-body, html.cz-fill .ctn-line, html.cz-fill .card-teacher-sig { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; white-space: normal !important; }',
     'html.cz-fill .card-date-badge { font-size: 14px !important; font-weight: 500 !important; }',
     /* 261015b R5：B/D/R/Q 外壳 container-type，内层只用 flex / clamp / cqh。矮盒靠 @container 收敛，元素仍在盒内。 */
     'html.cz-fill .stage-frame, html.cz-fill .metro-card, html.cz-fill .card-wrap, html.cz-fill .strip, html.cz-fill .console, html.cz-fill .page { container: moduleCard / size !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; height: 100% !important; min-height: 0 !important; max-height: 100% !important; overflow: hidden !important; box-sizing: border-box !important; }',
@@ -20018,7 +20132,7 @@ function closeRecordsDrawer() {
     '  .hollow-digits-svg { height: 44px !important; }',
     '  .footer-status-row { flex-wrap: wrap !important; }',
     '  .bpm-hero-val { font-size: 32px !important; }',
-    '  .req-p, .card-note-box { font-size: 12px !important; }',
+    '  .req-p, .card-note-box, .ctn-body { font-size: 12px !important; }',
     '}',
     '@container moduleCard (max-height: 360px) {',
     '  .hollow-digits-svg { height: 44px !important; }',
@@ -22019,7 +22133,11 @@ window.__CZ_CSS = [
     });
     mountSlot();
     syncSlotMode();
-    return { combo: state.combo, H: tb.h, wide: false, natural: true, bands: bands, feed: heights, ticketTop: +tb.top.toFixed(1), ticketW: tb.w };
+    /* MRD 3.2.5 票夹已删除：ticketBox() 返回 null，这里必须回落设计高。
+       以前直接读 tb.h 会让 applyComboSizes 抛错，syncAll 中断在第二次 syncCanvasHeight 之前，
+       画布高度停在数据加载前的旧值，老师要求卡下半段被裁（dad 261108 反馈）。 */
+    var H = (tb && tb.h >= 40) ? tb.h : DESIGN_H;
+    return { combo: state.combo, H: H, wide: false, natural: true, bands: bands, feed: heights, ticketTop: (tb && tb.top) ? +tb.top.toFixed(1) : null, ticketW: (tb && tb.w) || null };
   }
   /* ── B: 组合尺寸。H = 票卡自然高。不读 scrollHeight，不把模块高回灌 iframe。 ── */
   var FIT_MIN = { A: 360, B: 260, S: 120, R: 280, Q: 280, T: 280, D: 200 };
@@ -23833,12 +23951,18 @@ window.__CZ_CSS = [
     try { cd.defaultView.scrollTo(0, 0); } catch (e) {}
     var maxB = 0;
     var view = cd.defaultView;
-    ['.pk-top', '.pk-ticket', '#practiceStage', '.pk-stage-wrap', '.cz-mod', '.card-records-mini'].forEach(function (sel) {
-      var el = cd.querySelector(sel);
+    function bump(el) {
       if (!el) { return; }
       var r = el.getBoundingClientRect();
       if (r.height > 0) { maxB = Math.max(maxB, r.bottom + (view.scrollY || 0)); }
+    }
+    ['.pk-top', '.pk-ticket', '#practiceStage', '.pk-stage-wrap', '.card-records-mini'].forEach(function (sel) {
+      var el = cd.querySelector(sel);
+      bump(el);
     });
+    /* 组合/轨档是纵向堆叠：querySelector('.cz-mod') 只拿到第一个模块，
+       画布高度就会停在 A 卡底，后面 Q/R 的下半截被裁（dad 261108 反馈）。逐个模块取最大底边。 */
+    [].slice.call(cd.querySelectorAll('.cz-mod, .cz-rail, .cz-combo')).forEach(bump);
     var pad = parseFloat(getComputedStyle(cd.body).paddingBottom) || 0;
     return Math.ceil(maxB + pad);
   }
