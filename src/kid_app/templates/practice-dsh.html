@@ -2735,7 +2735,7 @@
     pointer-events: auto !important;
     animation: none;
   }
-  /* 结束练习 / 收回卡片时，卡片回到槽位后轻轻沉一下，像真的被放回卡槽。 */
+  /* 收回弹窗：卡片落回槽位后轻轻沉一下。 */
   #practiceStage.cz-ticket-settle #czTicketStage {
     animation: pkCardSettle 0.46s cubic-bezier(0.22, 1, 0.36, 1) both !important;
   }
@@ -2743,6 +2743,16 @@
     0% { transform: translate(-50%, 0); }
     38% { transform: translate(-50%, 7px); }
     70% { transform: translate(-50%, -2px); }
+    100% { transform: translate(-50%, 0); }
+  }
+  /* 结束练习：卡片从插入位往回升，先向上过冲再落定，绝不能先往下沉。 */
+  #practiceStage.cz-ticket-rise #czTicketStage {
+    animation: pkCardRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+  }
+  @keyframes pkCardRise {
+    0% { transform: translate(-50%, 0); }
+    46% { transform: translate(-50%, -7px); }
+    76% { transform: translate(-50%, 2px); }
     100% { transform: translate(-50%, 0); }
   }
 
@@ -7428,18 +7438,20 @@ function openCardOverlay() {
   }
 }
 
-/* 卡片归位的小回弹：结束练习、收回弹窗时都走这一下，强化「卡片被放回卡槽」。 */
+/* 卡片归位的小回弹。up=true：结束练习，卡片从插入位往回升；
+   up=false：收回弹窗，卡片落回槽位后轻沉一下。 */
 let cardSettleTimer = 0;
-function playCardSettle() {
+function playCardSettle(up) {
   const cd = (typeof canvasDoc === 'function' ? canvasDoc() : null) || document;
   const st = cd.getElementById('practiceStage');
   if (!st) return;
+  const cls = up ? 'cz-ticket-rise' : 'cz-ticket-settle';
   if (cardSettleTimer) { window.clearTimeout(cardSettleTimer); }
-  st.classList.remove('cz-ticket-settle');
+  st.classList.remove('cz-ticket-settle', 'cz-ticket-rise');
   void st.offsetWidth;
-  st.classList.add('cz-ticket-settle');
+  st.classList.add(cls);
   cardSettleTimer = window.setTimeout(() => {
-    st.classList.remove('cz-ticket-settle');
+    st.classList.remove('cz-ticket-settle', 'cz-ticket-rise');
     cardSettleTimer = 0;
   }, 520);
 }
@@ -7454,7 +7466,8 @@ function closeCardOverlay() {
   const popup = overlay.querySelector('.cz-card-popup');
   const backdrop = overlay.querySelector('.cz-card-overlay-backdrop');
 
-  if (slotStage && popup && !overlay.classList.contains('is-closing')) {
+  /* 只有弹窗真的开着才做「收缩回卡片 + 落位回弹」；否则会把结束练习的上升动画顶掉。 */
+  if (overlay.classList.contains('is-open') && slotStage && popup && !overlay.classList.contains('is-closing')) {
     overlay.classList.add('is-closing');
     overlay.style.pointerEvents = 'none';
 
@@ -7487,7 +7500,7 @@ function closeCardOverlay() {
         backdrop.style.transition = '';
         backdrop.style.opacity = '';
       }
-      playCardSettle();
+      playCardSettle(false);
     }, dur + 30);
   } else {
     overlay.classList.remove('is-open');
@@ -8201,8 +8214,8 @@ function exitRun() {
   if (lockEl) { lockEl.style.display = 'none'; lockEl.style.opacity = '0'; }
   updateReselectBtnState();
   try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
-  /* 计时结束/提前结束且不留练：卡片从插入位回升到准备位，落位时轻沉一下。 */
-  try { playCardSettle(); } catch (eSettle) {}
+  /* 计时结束/提前结束且不留练：卡片从插入位往回升到准备位（向上过冲，不下沉）。 */
+  try { playCardSettle(true); } catch (eSettle) {}
   /* 槽位/卡 A 的复位在壳层：通知它同步一次，否则 data-mode 会停在 run。 */
   try {
     if (window.parent && typeof window.parent.__czSyncAfterCanvasExit === 'function') {
@@ -19728,7 +19741,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.29';
+  var DSH_VERSION = 'v3.30';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20966,10 +20979,11 @@ window.__CZ_CSS = [
       crown.style.setProperty('overflow', 'visible', 'important');
       crown.style.setProperty('pointer-events', running ? 'auto' : 'none', 'important');
       /* #stageWrap 的 overflow-x:auto 会把 overflow-y 也算成 auto，卡顶伸出边框就被切成直线。
-         负 margin 把裁切盒上沿抬高，padding 把内容推回原位，圆角落在 padding 里才看得见。 */
+         负 margin 把裁切盒上沿抬高，padding 把内容推回原位。
+         gutter 必须 >= 准备态卡顶的上探量（prepRise 40），否则卡片会被裁在 top 下面。 */
       var stageEl = cd.querySelector('#stageWrap');
       if (stageEl) {
-        var gutter = 14;
+        var gutter = 48;
         stageEl.style.setProperty('margin-top', (-gutter) + 'px', 'important');
         stageEl.style.setProperty('padding-top', gutter + 'px', 'important');
       }
@@ -21250,7 +21264,9 @@ window.__CZ_CSS = [
     var head = cd.getElementById('pkInsertedHead');
     var idle = cd.getElementById('pkSlotIdle');
     var card = cd.getElementById('czTicketStage');
-    if ((!running || isExiting) && card) {
+    /* 归位回弹（rise/settle）不能被这里 finish 掉，否则动画只闪一帧就归零。 */
+    var keepSettleAnim = !!(stageEl && (stageEl.classList.contains('cz-ticket-rise') || stageEl.classList.contains('cz-ticket-settle')));
+    if ((!running || isExiting) && card && !keepSettleAnim) {
       try {
         if (typeof card.getAnimations === 'function') {
           card.getAnimations().forEach(function (a) { a.finish(); });
