@@ -2720,11 +2720,18 @@
       transform: translate(-50%, -26px);
     }
   }
+  /* MRD 2.3.1.5/6：选择态 & 准备态把卡片从槽里拔出一点，卡面多露一行 session 标签，
+     右侧「展开卡片」换成「重新选择」。计时态仍按原样插回槽内。 */
   #practiceStage.stage-prep:not(.cz-ticket-exit) #czTicketStage {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    animation: pkCardOutOfSlot 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes pkCardOutOfSlot {
+    0% { opacity: 0.35; transform: translate(-50%, 12px); }
+    100% { opacity: 1; transform: translate(-50%, 0); }
   }
 
   /* 露出部分（约 1/5）：只留「进行中」+ 科目全名 + 展开胶囊。
@@ -2733,6 +2740,10 @@
     height: var(--pk-card-exposed-h, 54px);
     flex: 0 0 var(--pk-card-exposed-h, 54px);
     display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 4px;
+    column-gap: 8px;
     align-items: center;
     justify-content: space-between;
     padding: 0 14px;
@@ -2742,9 +2753,16 @@
     box-shadow: inset 0 1px 0 var(--dash-key-hi), inset 0 -1px 0 var(--dash-ink-a12);
     color: var(--dash-text);
     box-sizing: border-box;
-    cursor: pointer;
     overflow: hidden;
   }
+  /* 计时态：卡片已插入槽内，只留一行（收起标签行） */
+  #practiceStage.stage-running:not(.cz-ticket-exit) #czTicketStage .pk-card-exposed-bar,
+  #practiceStage.cz-ticket-live:not(.cz-ticket-exit) #czTicketStage .pk-card-exposed-bar {
+    height: var(--pk-card-exposed-h-run, 46px);
+    flex: 0 0 var(--pk-card-exposed-h-run, 46px);
+  }
+  #practiceStage.stage-running .pk-exposed-tags,
+  #practiceStage.cz-ticket-live .pk-exposed-tags { display: none !important; }
   .pk-exposed-left {
     display: flex;
     align-items: center;
@@ -2788,6 +2806,7 @@
     min-width: 0;
   }
   .pk-exposed-expand-hint {
+    font: inherit;
     font-size: 9.5px;
     color: var(--dash-text-soft);
     padding: 2px 6px;
@@ -2795,6 +2814,44 @@
     background: var(--dash-surface-3);
     border: 1px solid var(--dash-ink-a12);
     white-space: nowrap;
+    cursor: pointer;
+  }
+  .pk-exposed-expand-hint:hover {
+    color: var(--dash-text);
+    border-color: var(--dash-ink-a16);
+  }
+  .pk-exposed-expand-hint:active { transform: translateY(1px); }
+  /* 准备态卡面：前 3 个 session 标签，占满第二行 */
+  .pk-exposed-tags {
+    flex: 1 0 100%;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .pk-exposed-tags[hidden] { display: none !important; }
+  .pk-exposed-tag {
+    font: inherit;
+    font-size: 9.5px;
+    font-weight: 650;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--dash-ink-a12);
+    background: var(--dash-surface-3);
+    color: var(--dash-text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 33%;
+    cursor: pointer;
+  }
+  .pk-exposed-tag:hover { color: var(--dash-text); border-color: var(--dash-ink-a16); }
+  .pk-exposed-tag.is-active {
+    background: var(--dash-accent-wash);
+    border-color: var(--dash-vermilion-line);
+    color: var(--dash-text);
   }
   @media (max-width: 600px) {
     .pk-exposed-chip { font-size: 8px !important; padding: 1px 4px !important; }
@@ -5192,12 +5249,14 @@
           <div id="czTicketStage" role="button" tabindex="0" aria-label="练习票卡，点击展开完整卡片覆盖层">
             <div class="pk-card-exposed-bar" id="pkCardExposedBar">
               <div class="pk-exposed-left">
-                <span class="pk-exposed-chip">进行中</span>
+                <span class="pk-exposed-chip" id="pkExposedChip">进行中</span>
                 <span class="pk-exposed-title" id="pkCcgName">吸气长音</span>
               </div>
               <div class="pk-exposed-meta">
-                <span class="pk-exposed-expand-hint">展开卡片 ▾</span>
+                <button type="button" class="pk-exposed-expand-hint" id="pkExposedHint" data-mode="expand">展开卡片 ▾</button>
               </div>
+              <!-- MRD 2.3.1.5：准备态卡面多露出一行 session 标签（只放前 3 个，可直接点选） -->
+              <div class="pk-exposed-tags" id="pkExposedTags" hidden></div>
             </div>
             <!-- 下方 4/5 卡身（硬遮罩挡住，槽口下和黑色读数区零可见） -->
             <div class="pk-card-body-masked" aria-hidden="true">
@@ -7237,6 +7296,34 @@ function syncRunRailCard() {
   set('pkCcgDays', stats.days || 0);
   set('pkCcgSessions', stats.sessions || 0);
 
+  /* MRD 2.3.1.5/6：卡槽露出条。准备态 = 「重新选择」+ 前 3 个 session 标签；
+     计时态 = 原来的「展开卡片」，标签收起。 */
+  const stageCls = (cd.getElementById('practiceStage') || {}).className || '';
+  const isRun = /(^|\s)stage-running(\s|$)/.test(stageCls) || /(^|\s)cz-ticket-live(\s|$)/.test(stageCls);
+  const dispContent = (typeof cleanSessionText === 'function') ? cleanSessionText(content) : (content ? String(content).trim() : '');
+  set('pkExposedChip', isRun ? '进行中' : (cur ? '准备' : '待选'));
+  const exposedHint = cd.getElementById('pkExposedHint');
+  if (exposedHint) {
+    exposedHint.textContent = isRun ? '展开卡片 ▾' : (cur ? '重新选择' : '选择科目');
+    exposedHint.dataset.mode = isRun ? 'expand' : 'reselect';
+  }
+  const exposedTags = cd.getElementById('pkExposedTags');
+  if (exposedTags) {
+    const rawTags = (cur && window.PracticeSessionSelector) ? PracticeSessionSelector.parse(cur.content_options || '') : [];
+    const tags = isRun ? [] : rawTags.slice(0, 3);
+    exposedTags.innerHTML = '';
+    tags.forEach((tag) => {
+      const b = cd.createElement('button');
+      b.type = 'button';
+      b.className = 'pk-exposed-tag' + (dispContent === tag ? ' is-active' : '');
+      b.dataset.session = tag;
+      b.textContent = tag;
+      exposedTags.appendChild(b);
+    });
+    if (!tags.length) exposedTags.setAttribute('hidden', '');
+    else exposedTags.removeAttribute('hidden');
+  }
+
   // Overlay popup fields
   set('czPopupTitle', cur ? (cur.name || '练习曲目') : '未选择科目');
   set('czPopupNo', 'No.' + (cur ? (cur.id || '—') : '----'));
@@ -7368,20 +7455,36 @@ function toggleCardOverlay() {
   }
 }
 
+/* 露出条上的 session 快捷标签：和票夹弹窗里的 session pill 走同一条链路。 */
+function applyExposedSession(tag) {
+  if (!cur || !tag) return;
+  content = tag;
+  selectItem(cur.id, false);
+  if (sessionUI) sessionUI.setValue(tag);
+  syncRunMeta();
+  syncStartState();
+  syncRunRailCard();
+}
+window.applyExposedSession = applyExposedSession;
+
 function initRunRailCard() {
   const cd = (typeof canvasDoc === 'function' ? canvasDoc() : null) || document;
   const stage = cd.getElementById('czTicketStage');
   if (stage && stage.dataset.bound !== '1') {
     stage.dataset.bound = '1';
+    /* MRD 2.2：命中区只保留「展开卡片」胶囊；其余位置是 session 标签 / 重新选择。 */
     stage.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      toggleCardOverlay();
-    });
-    stage.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
-        toggleCardOverlay();
+      const tagBtn = ev.target.closest ? ev.target.closest('.pk-exposed-tag') : null;
+      if (tagBtn) {
+        ev.stopPropagation();
+        applyExposedSession(tagBtn.dataset.session);
+        return;
       }
+      const hint = ev.target.closest ? ev.target.closest('#pkExposedHint') : null;
+      if (!hint) return;
+      ev.stopPropagation();
+      if (hint.dataset.mode === 'reselect') { openFolio(); return; }
+      toggleCardOverlay();
     });
   }
   const overlay = cd.getElementById('czCardOverlay');
@@ -19565,7 +19668,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.27';
+  var DSH_VERSION = 'v3.28';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20306,7 +20409,8 @@ window.__CZ_CSS = [
   /* 卡槽右侧机体指示灯：留在槽体外的留白里，不被卡片全宽压到底边 */
   '.cz-slot-led { position: absolute !important; width: 7px !important; height: 7px !important; border-radius: 50% !important; background: #E0A15A !important; box-shadow: 0 0 0 1px rgba(10,12,14,0.9), 0 0 7px #E0A15A !important; z-index: 47 !important; pointer-events: none !important; }',
   /* S13 批注2 + S16 卡槽常驻：LED 始终落脚在孔下肩右侧，准备态与计时态同位；feed 流无孔肩则隐藏 */
-  '#pkPunchSlotWrap > .cz-slot-led { top: auto !important; bottom: calc(var(--pk-slot-hole-drop, 10px) * 0.5 - 3.5px) !important; right: var(--pk-led-right, 10.5px) !important; transform: none !important; }',
+  /* 琥珀点对齐孔唇上下两半的接缝（bottom = 孔高的一半），不再贴槽底 */
+  '#pkPunchSlotWrap > .cz-slot-led { top: auto !important; bottom: calc(var(--pk-slot-hole-h, 18px) * 0.5 - 3.5px) !important; right: var(--pk-led-right, 10.5px) !important; transform: none !important; }',
   '#pkPunchSlotWrap[data-hole="0"] > .cz-slot-led { display: none !important; }',
   '#pkPunchSlotWrap > .cz-slot-led { transition: top 0.2s ease, bottom 0.2s ease, right 0.2s ease; }',
   '.cz-slot-led[data-live="1"] { background: #3DDC84 !important; box-shadow: 0 0 0 1px rgba(10,12,14,0.9), 0 0 9px #3DDC84 !important; animation: cz-slot-lamp .7s ease; }',
@@ -20735,6 +20839,10 @@ window.__CZ_CSS = [
     var cardH = Math.round(cardW / 1.586);
     /* 露出带 = 卡片全高的 1/5（下面 4/5 完全藏进黑区） */
     var exposedH = Math.max(34, Math.min(96, Math.round(cardH * 0.20)));
+    /* MRD 2.3.1.5：准备态把卡片往上拔出，多露出一行 session 标签。
+       计时态仍用 exposedH（只露 1/5），两档各自的露出高度分开写。 */
+    var prepExtra = 34;
+    var exposedPrepH = exposedH + prepExtra;
     /* 卡顶高出黑区上沿。要能看见上圆角，再多留一条卡面在槽口外，才像插进去。
        舞台 overflow 会裁掉伸出 #stageWrap 的部分，所以实际高度在冠定位后再夹到可露范围。 */
     var cardRise = 20;
@@ -20749,13 +20857,16 @@ window.__CZ_CSS = [
     /* 槽体（冠）高度 = 卡片可见高度（露出带 + 插入深度）− 高出黑区上沿的那段：
        槽底 = 卡底 = 孔底，冠顶 = 黑区上沿。 */
     var slotFullH = exposedH + insertDepth - cardRise;
-    var crownPx = slotFullH;
+    var slotFullPrepH = exposedPrepH + insertDepth - cardRise;
+    /* 冠高按当前状态取：准备态高、计时态矮，卡片插入后槽体跟着收起。 */
+    var crownPx = running ? slotFullH : slotFullPrepH;
     var slotSafeGap = 10;
 
     var root = cd.documentElement;
     root.style.setProperty('--cz-crown-h', crownPx + 'px');
     root.style.setProperty('--pk-slot-w', slotW.toFixed(1) + 'px');
-    root.style.setProperty('--pk-card-exposed-h', exposedH + 'px');
+    root.style.setProperty('--pk-card-exposed-h', exposedPrepH + 'px');
+    root.style.setProperty('--pk-card-exposed-h-run', exposedH + 'px');
     root.style.setProperty('--cz-card-rise', (-cardRise) + 'px');
     root.style.setProperty('--pk-card-total-h', cardTotalH + 'px');
     root.style.setProperty('--pk-slot-lip-h', slotLipH + 'px');
@@ -20763,7 +20874,7 @@ window.__CZ_CSS = [
     root.style.setProperty('--pk-slot-hole-drop', holeDrop + 'px');
     root.style.setProperty('--pk-hole-inset', holeInset + 'px');
     root.style.setProperty('--pk-led-right', ((holeInset - 7) * 0.5).toFixed(1) + 'px');
-    root.style.setProperty('--pk-slot-full-h', slotFullH + 'px');
+    root.style.setProperty('--pk-slot-full-h', crownPx + 'px');
 
     var crown = cd.querySelector('.cz-astack-crown');
     if (crown) {
@@ -20786,7 +20897,7 @@ window.__CZ_CSS = [
     if (slot) {
       slot.dataset.hole = '1';
       slot.style.setProperty('width', slotW + 'px', 'important');
-      slot.style.setProperty('height', slotFullH + 'px', 'important');
+      slot.style.setProperty('height', crownPx + 'px', 'important');
       slot.style.setProperty('overflow', 'visible', 'important');
       slot.style.setProperty('display', 'block', 'important');
     }
@@ -20805,7 +20916,7 @@ window.__CZ_CSS = [
       try {
         var ddEarly = aFrameEarly.contentDocument;
         if (ddEarly && ddEarly.documentElement) {
-          ddEarly.documentElement.style.setProperty('--cz-panel-pt', (slotFullH + slotSafeGap) + 'px');
+          ddEarly.documentElement.style.setProperty('--cz-panel-pt', (crownPx + (running ? 10 : 16)) + 'px');
           var panelEl = ddEarly.getElementById('panel');
           if (panelEl) {
             var pStyle = ddEarly.defaultView ? ddEarly.defaultView.getComputedStyle(panelEl) : null;
@@ -20820,6 +20931,7 @@ window.__CZ_CSS = [
         }
       } catch (e3) {}
       aFrameEarly.__czSlotFullH = slotFullH;
+      aFrameEarly.__czPanelPt = crownPx + (running ? 10 : 16);
       if (!aFrameEarly.__czPadBound) {
         aFrameEarly.__czPadBound = 1;
         aFrameEarly.addEventListener('load', function () {
@@ -20827,7 +20939,7 @@ window.__CZ_CSS = [
           try {
             var d2 = aFrameEarly.contentDocument;
             if (d2 && d2.documentElement) {
-              d2.documentElement.style.setProperty('--cz-panel-pt', (h2 + slotSafeGap) + 'px');
+              d2.documentElement.style.setProperty('--cz-panel-pt', (aFrameEarly.__czPanelPt || (h2 + slotSafeGap)) + 'px');
               var pe2 = d2.getElementById('panel');
               if (pe2) {
                 var ps2 = d2.defaultView ? d2.defaultView.getComputedStyle(pe2) : null;
@@ -20920,6 +21032,29 @@ window.__CZ_CSS = [
         }
       } catch (e2) {}
     }
+  }
+
+  /* 卡槽高度分两档（准备态拔出 / 计时态插入）：stage 的 class 一变就重量一次，
+     否则进/出计时态后冠高与面板让位停在上一档。
+     只认「是否处于计时态」这一个布尔位：syncSlotMode 自己也会改 class，
+     不比对布尔位就会自触发成死循环。 */
+  function watchStageMode() {
+    var cd = canvasDoc();
+    var st = cd ? cd.getElementById('practiceStage') : null;
+    if (!st || st.dataset.czModeWatch === '1' || !window.MutationObserver) { return false; }
+    st.dataset.czModeWatch = '1';
+    new MutationObserver(function () {
+      var cv = canvasDoc();
+      var stageEl = cv ? cv.getElementById('practiceStage') : null;
+      if (!stageEl) { return; }
+      var run = stageEl.classList.contains('stage-running') ? '1' : '0';
+      if (stageEl.dataset.czRunSeen === run) { return; }
+      stageEl.dataset.czRunSeen = run;
+      updateCardSlotGeometry(cv);
+      applyPanelPad(cv.querySelector('.cz-mod[data-mod="A"] > iframe'));
+      syncSlotMode();
+    }).observe(st, { attributes: true, attributeFilter: ['class'] });
+    return true;
   }
 
   function mountSlot() {
@@ -21059,7 +21194,8 @@ window.__CZ_CSS = [
     var slotLed = cd.querySelector('#pkPunchSlotWrap > .cz-slot-led');
     if (slotLed) { slotLed.dataset.live = (running && !isExiting) ? '1' : '0'; }
     if (card) {
-      card.style.display = (running || isExiting) ? 'block' : '';
+      /* 准备态也要露卡（MRD 2.3.1.5），高度/显隐由 .stage-prep 的样式接管，这里只清内联值。 */
+      card.style.display = (running || isExiting) ? 'flex' : '';
       card.style.visibility = (running || isExiting) ? 'visible' : '';
       card.style.pointerEvents = (running && !isExiting) ? 'auto' : '';
     }
@@ -23334,9 +23470,11 @@ window.__CZ_CSS = [
     if (!cd) { return; }
     var h = parseFloat(cd.documentElement.style.getPropertyValue('--cz-crown-h')) || 0;
     if (!(h > 0)) { return; }
+    /* 计时态沿用改前让位量（冠高 + 10），准备态卡片拔出后才多让 6px。 */
+    var extra = canvasRunning() ? 10 : 16;
     try {
       var d = f.contentDocument;
-      if (d && d.documentElement) { d.documentElement.style.setProperty('--cz-panel-pt', (h + 16) + 'px'); }
+      if (d && d.documentElement) { d.documentElement.style.setProperty('--cz-panel-pt', (h + extra) + 'px'); }
     } catch (e) {}
   }
 
@@ -23512,6 +23650,7 @@ window.__CZ_CSS = [
     syncRailBudget();
     mountSlot();
     syncSlotMode();
+    watchStageMode();
     rebindBus();
     /* S17：cover-name 联动函数定义在画布文档里，这里跨文档调用一次（模块重建后重挂） */
     syncDashCoverOuter();
