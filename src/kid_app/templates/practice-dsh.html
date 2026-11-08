@@ -8544,9 +8544,13 @@ function closeRecordsDrawer() {
   if (relayoutBtn) {
     relayoutBtn.addEventListener('click', () => {
       try {
-        if (window.parent && typeof window.parent.__cz !== 'undefined' && typeof window.parent.__cz.syncAll === 'function') {
-          window.parent.__cz.syncAll();
-        }
+        /* 按钮在画布文档里执行：window.parent 是 dsh 页（有 __cz）。
+           原来只调 syncAll，自定义档没有高度来源时怎么点都修不回来；
+           现在优先用 relayout（先清掉写坏的 inline 高再重排），没有才回落。 */
+        const cz = (window.__cz && typeof window.__cz.relayout === 'function') ? window.__cz
+          : (window.parent && window.parent !== window ? window.parent.__cz : null);
+        if (cz && typeof cz.relayout === 'function') { cz.relayout(); }
+        else if (cz && typeof cz.syncAll === 'function') { cz.syncAll(); }
       } catch (e) {}
       relayoutBtn.classList.add('busy');
       setTimeout(() => relayoutBtn.classList.remove('busy'), 600);
@@ -19561,7 +19565,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.26';
+  var DSH_VERSION = 'v3.27';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -19577,6 +19581,9 @@ function closeRecordsDrawer() {
     { k: 'T', name: 'T 时长+记录', composite: true, w: 360 }
   ];
   var GAP_H = 16;
+  /* MRD 3.2.5：票夹删除后没有「票卡自然高」可抄。组合档与自定义档统一回落到画布设计高，
+     避免量不到票卡时把模块写成 0 / 80px（用户 261108 反馈：首开卡片只剩一条）。 */
+  var DESIGN_H = 744;
   /* 组合表（dad 261031）。C 已确认 = S。
      T 是「今日时长 D + 今日记录 R 合成的一张卡」，只出现在横排右展档；
      纵向 feed 里 T 的壳 display:contents，D 与 R 各自成行，不用合并版。
@@ -20878,8 +20885,10 @@ window.__CZ_CSS = [
     /* 窄档卡片高度由 sizeFeedCard() 按内容测量并锁定。
        这里不再读 iframe 内联的 height:100%（parseFloat 会误当成 100px），
        否则组合切换时新 iframe 会在 load 前被提前锁成 100px。 */
-    /* 宽档组合 1：卡冠塞进原高度后，底部暂停/结束会被裁掉。按实际溢出把盒子加高。 */
-    if (aFrame) {
+    /* 宽档组合 1：卡冠塞进原高度后，底部暂停/结束会被裁掉。按实际溢出把盒子加高。
+       只在组合 1 用：其余档 A 的高是确定的（组合 744 / 自定义 DESIGN_H / 窄档 sizeFeedCard）。
+       以前不设条件，首开 A 还是默认 150 时会被这条「补高」算成半截（525），deck 压进喇叭区。 */
+    if (aFrame && state.combo === '1') {
       try {
         var dd = aFrame.contentDocument;
         var need = 0;
@@ -21641,7 +21650,9 @@ window.__CZ_CSS = [
       return bar;
     }
     var h = measureCardContent(f);
-    if (!(h > 40)) { h = 80; }
+    /* 量到 0 = srcdoc 卡还没装载完（首开常见）。按窄档规格下限兜底；
+       写 80 会把这卡锁成一条，要等下一次 remeasure 才回来（用户 261108 反馈）。 */
+    if (!(h > 40)) { h = bandFor(n.dataset.mod || '', narrowBands(n.ownerDocument)); }
     /* 纵向 feed 档：卡按内容长高。
        旧口径给非 Q 卡留了 860 硬顶，「今日练习记录」这种长列表卡会被切掉下半截
        （.console 被钉在 860，列表溢出被 overflow 裁掉，看起来就是内容少了一截）。
@@ -21999,8 +22010,8 @@ window.__CZ_CSS = [
     var col = comboEl();
     var tb = cd ? ticketBox(cd) : null;
     if (!cd || !col) { return null; }
-    /* MRD 3.2.5：票夹删除后没有「票卡高度」可抄，回落到画布设计高 744。 */
-    var H = (tb && tb.h >= 40) ? tb.h : 744;
+    /* MRD 3.2.5：票夹删除后没有「票卡高度」可抄，回落到画布设计高。 */
+    var H = (tb && tb.h >= 40) ? tb.h : DESIGN_H;
     if (cd.documentElement.clientWidth < 1024 && !NEG_STACK) {
       return applyComboSizesNarrow(cd, col, tb);
     }
@@ -23437,9 +23448,12 @@ window.__CZ_CSS = [
       wrap.style.overflow = 'hidden';
       return;
     }
+    /* 票夹删除后 ticketBox 恒为 null。以前在这里 return，结果自定义档除 A 以外的卡
+       没有高度来源：.cz-mod 高 auto + iframe height:100% 塌成默认 150（窄档量不到内容时 80），
+       而 A 卡只能靠 updateCardSlotGeometry 的「溢出补高」凑出半截高（525），deck 就叠在一起。
+       现在统一回落到设计高，和组合档同一个基准。 */
     var tb = ticketBox(cd);
-    if (!tb || tb.h < 40) { return; }
-    sizeBox(wrap, tb.h);
+    sizeBox(wrap, (tb && tb.h >= 40) ? tb.h : DESIGN_H);
   }
 
   /* 自定义档里勾了 T：横排合成一张，高度跟票卡走。feed 档不锁高。 */
@@ -23450,7 +23464,7 @@ window.__CZ_CSS = [
     [].slice.call(cd.querySelectorAll('.cz-rail .cz-tcard, .cz-mod-col > .cz-tcard')).forEach(function (tcard) {
       if (!wide) { clearLock(tcard); return; }
       var dH = 220;
-      var rH = Math.max(180, (H > 40 ? H : 520) - dH);
+      var rH = Math.max(180, (H > 40 ? H : DESIGN_H) - dH);
       lockCol(tcard, dH + rH);
       sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="D"]'), dH);
       sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="R"]'), rH);
@@ -23473,10 +23487,10 @@ window.__CZ_CSS = [
       releaseTicketBand(canvasDoc());
       [].slice.call(col.querySelectorAll('.cz-mod:not([hidden]) > iframe')).forEach(syncModuleHeight);
       var tbOff = ticketBox(canvasDoc());
-      sizeLooseTCards(tbOff && tbOff.h);
+      sizeLooseTCards((tbOff && tbOff.h) || DESIGN_H);
       var rail = cardsRailEl();
       if (rail && canvasDoc() && canvasDoc().documentElement.clientWidth >= 1024) {
-        fitWideCombo(rail, (tbOff && tbOff.h) || 744);
+        fitWideCombo(rail, (tbOff && tbOff.h) || DESIGN_H);
       }
     } else {
       applyComboSizes();
@@ -23487,10 +23501,10 @@ window.__CZ_CSS = [
       releaseTicketBand(canvasDoc());
       [].slice.call(col.querySelectorAll('.cz-mod:not([hidden]) > iframe')).forEach(syncModuleHeight);
       var tbOff2 = ticketBox(canvasDoc());
-      sizeLooseTCards(tbOff2 && tbOff2.h);
+      sizeLooseTCards((tbOff2 && tbOff2.h) || DESIGN_H);
       var rail2 = cardsRailEl();
       if (rail2 && canvasDoc() && canvasDoc().documentElement.clientWidth >= 1024) {
-        fitWideCombo(rail2, (tbOff2 && tbOff2.h) || 744);
+        fitWideCombo(rail2, (tbOff2 && tbOff2.h) || DESIGN_H);
       }
     } else {
       applyComboSizes();
@@ -23503,6 +23517,26 @@ window.__CZ_CSS = [
     syncDashCoverOuter();
     pokeArcAll();
     setTimeout(pokeArcAll, 60);
+  }
+
+  /* 手动「刷新布局」：先清掉上一轮可能写坏的 inline 高度，再从设计高重排。
+     只清高不动宽 —— 宽是 [data-cz-w] 的设计值，清成 auto 会被 fitWideCombo 当成自然宽。 */
+  function relayoutAll() {
+    var cd = canvasDoc();
+    if (!cd) { return null; }
+    [].slice.call(cd.querySelectorAll('.cz-mod, .cz-tcard, .cz-astack, .cz-brow')).forEach(function (n) {
+      ['height', 'max-height', 'min-height', 'flex', 'align-self'].forEach(function (k) { n.style.removeProperty(k); });
+    });
+    [].slice.call(cd.querySelectorAll('.cz-mod > iframe')).forEach(function (f) {
+      ['height', 'min-height', 'max-height', 'flex'].forEach(function (k) { f.style.removeProperty(k); });
+      f.style.width = '100%';
+    });
+    applyCanvasViewport();
+    syncAll();
+    /* srcdoc 卡还没 load 完时量到的是空文档，等装载完再排两次。 */
+    setTimeout(syncAll, 120);
+    setTimeout(syncAll, 420);
+    return { combo: state.combo, canvasW: cd.documentElement.clientWidth };
   }
 
   /* feed 流插卡行程 = 票夹黑 bar 底到卡槽顶的实际距离（行程终点即卡槽，起点即 bar） */
@@ -24285,7 +24319,32 @@ window.__CZ_CSS = [
     var b = e.target.closest('.cz-btn');
     if (b) { setSkin(b.dataset.skin); }
   });
+  /* 首开时 dsh 常常先在 display:none 的 tab 里加载：stage 宽 0 → 画布被排成 440 窄档，
+     等 tab 显示出来如果只靠 window resize，某些路径收不到事件，页面就永远停在窄档（卡片只剩一条）。
+     这里直接盯 stage 自己的盒子尺寸，尺寸变了就重排一屏。syncCanvasHeight 也会改 stage 高，
+     所以用「宽 × 视口高」做去重键，避免自触发死循环。 */
+  var stageFitKey = '';
+  var stageFitTimer = 0;
+  function scheduleStageFit() {
+    clearTimeout(stageFitTimer);
+    stageFitTimer = setTimeout(function () {
+      var key = stage.clientWidth + 'x' + (window.innerHeight || 0);
+      if (key === stageFitKey) { return; }
+      stageFitKey = key;
+      applyCanvasViewport();
+      syncCanvasHeight();
+      syncAll();
+      syncHint();
+      syncCanvasBand();
+    }, 80);
+  }
   window.addEventListener('resize', function () { applyCanvasViewport(); syncCanvasHeight(); syncAll(); syncHint(); syncCanvasBand(); });
+  if (window.ResizeObserver && stage) {
+    new ResizeObserver(function () { scheduleStageFit(); }).observe(stage);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { scheduleStageFit(); }
+  });
   /* 画布 iframe 高 = 内容自然高，fixed 弹层靠 --cz-band-* 锚到浏览器可视带 → 滚动时必须实时刷新 */
   window.addEventListener('scroll', syncCanvasBand, { passive: true });
 
@@ -25553,7 +25612,7 @@ window.__CZ_CSS = [
   }
   window.__czIsBusyProxy = function () { try { var w = canvasWin(); return !!(w && w.__czIsPracticeBusy && w.__czIsPracticeBusy()); } catch (e) { return false; } };
   window.__czRequestFinishProxy = function (done) { try { var w = canvasWin(); if (w && typeof w.__czRequestFinishFromCardA === 'function') { return w.__czRequestFinishFromCardA({ done: !!done, seconds: 0 }); } } catch (e) {} return false; };
-  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
+  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, relayout: relayoutAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
 })();
 </script>
 </body>
