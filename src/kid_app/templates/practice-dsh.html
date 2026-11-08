@@ -313,6 +313,7 @@
       <button class="cz-btn" data-combo="3">3卡-1 ASR</button>
       <button class="cz-btn" data-combo="4">3卡-2 AST</button>
       <button class="cz-btn" data-combo="5">5卡 ABQT</button>
+      <button class="cz-btn" data-combo="6">3卡-3 AQR</button>
     </div>
 
     <div class="cz-seg" id="czVp">
@@ -2619,11 +2620,11 @@
   #czTicketStage {
     position: absolute;
     left: 50%;
-    /* 抬升量跟 --cz-card-rise（20px）走。写死 -60px 会把卡头抬进 #stageWrap 裁切盒和顶栏里。 */
-    top: var(--cz-card-rise, -20px);
+    /* 卡底始终贴着孔底；卡顶随「准备/计时」两档高度上下移动 = 插入/拔出。 */
+    top: auto;
     bottom: 0;
     width: 100%;
-    height: auto;
+    height: var(--pk-card-visible-h, 98px);
     max-height: none;
     transform: translateX(-50%);
     opacity: 0;
@@ -2643,6 +2644,9 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* 卡槽不动，只有卡片自己在槽里下沉/回升。 */
+    transition: height 0.46s cubic-bezier(0.22, 0.9, 0.26, 1);
+    will-change: height;
   }
   :root[data-skin="ink"] #czTicketStage,
   html[data-skin="ink"] #czTicketStage {
@@ -2650,9 +2654,11 @@
   }
   #practiceStage.stage-running:not(.cz-ticket-exit) #czTicketStage,
   #practiceStage.cz-ticket-live:not(.cz-ticket-exit) #czTicketStage {
+    opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    animation: pkCardToSlot var(--s6-enter-slot-dur, 0.7s) cubic-bezier(0.16, 1, 0.3, 1) var(--s6-enter-slot-delay, 0.22s) both;
+    /* 卡片从准备态开始一直在槽里，这里不再淡入/飞入，只靠高度过渡完成插入。 */
+    animation: none;
   }
   @keyframes pkCardToSlot {
     0% {
@@ -2681,7 +2687,7 @@
   }
   /* feed 流（纵向无限流）：票夹黑 bar 在上、卡槽在下，插卡改为「从 bar 处下行入槽」的连续行程 */
   html.cz-feed #practiceStage.stage-running:not(.cz-ticket-exit) #czTicketStage {
-    animation-name: pkCardToSlotFeed;
+    animation-name: none;
   }
   html.cz-feed #practiceStage.cz-ticket-exit #czTicketStage {
     animation-name: pkCardFromSlotFeed;
@@ -2727,11 +2733,17 @@
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: auto !important;
-    animation: pkCardOutOfSlot 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: none;
   }
-  @keyframes pkCardOutOfSlot {
-    0% { opacity: 0.35; transform: translate(-50%, 12px); }
-    100% { opacity: 1; transform: translate(-50%, 0); }
+  /* 结束练习 / 收回卡片时，卡片回到槽位后轻轻沉一下，像真的被放回卡槽。 */
+  #practiceStage.cz-ticket-settle #czTicketStage {
+    animation: pkCardSettle 0.46s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+  }
+  @keyframes pkCardSettle {
+    0% { transform: translate(-50%, 0); }
+    38% { transform: translate(-50%, 7px); }
+    70% { transform: translate(-50%, -2px); }
+    100% { transform: translate(-50%, 0); }
   }
 
   /* 露出部分（约 1/5）：只留「进行中」+ 科目全名 + 展开胶囊。
@@ -2754,6 +2766,7 @@
     color: var(--dash-text);
     box-sizing: border-box;
     overflow: hidden;
+    transition: height 0.46s cubic-bezier(0.22, 0.9, 0.26, 1), flex-basis 0.46s cubic-bezier(0.22, 0.9, 0.26, 1);
   }
   /* 计时态：卡片已插入槽内，只留一行（收起标签行） */
   #practiceStage.stage-running:not(.cz-ticket-exit) #czTicketStage .pk-card-exposed-bar,
@@ -2936,9 +2949,9 @@
     align-items: center !important;
     justify-content: center !important;
     padding: 20px !important;
-    background: rgba(14, 18, 22, 0.82) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+    background: rgba(44, 62, 80, 0.28) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
     border-radius: 24px !important;
     box-sizing: border-box !important;
     opacity: 0;
@@ -2968,10 +2981,10 @@
     justify-content: space-between;
     padding: 16px 20px;
     border-radius: 16px;
-    background: linear-gradient(145deg, #252D37 0%, #161A1F 100%);
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 24px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.12);
-    color: #FFF8F0;
+    background: linear-gradient(160deg, var(--dash-surface-soft, #FFF8F0) 0%, var(--dash-surface-2, #F5F2EE) 100%);
+    border: 1px solid var(--dash-ink-a16, rgba(44, 62, 80, 0.16));
+    box-shadow: 0 24px 48px rgba(44, 62, 80, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    color: var(--dash-text, #2C3E50);
     cursor: default;
   }
   .cz-popup-head {
@@ -2991,15 +3004,17 @@
     letter-spacing: .12em;
     padding: 2px 7px;
     border-radius: 999px;
-    background: rgba(255, 107, 107, 0.22);
-    color: #FF8A7A;
-    border: 1px solid rgba(255, 107, 107, 0.35);
+    background: rgba(255, 87, 34, 0.12);
+    color: var(--dash-vermilion-solid, #B8531F);
+    border: 1px solid rgba(255, 87, 34, 0.28);
+    white-space: nowrap;
   }
   .cz-popup-no {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 9.5px;
     font-weight: 700;
-    color: rgba(255,248,240,0.55);
+    color: var(--dash-text-soft, #666);
+    white-space: nowrap;
   }
   .cz-popup-close-btn {
     font-family: inherit;
@@ -3007,14 +3022,15 @@
     font-weight: 700;
     padding: 4px 10px;
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.22);
-    background: rgba(255,255,255,0.08);
-    color: #FFF8F0;
+    border: 1px solid var(--dash-ink-a16, rgba(44, 62, 80, 0.16));
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--dash-text, #2C3E50);
     cursor: pointer;
     transition: background .15s ease;
+    white-space: nowrap;
   }
   .cz-popup-close-btn:hover {
-    background: rgba(255,255,255,0.16);
+    background: #FFFFFF;
   }
   .cz-popup-hero {
     display: flex;
@@ -3028,8 +3044,8 @@
     flex: 0 0 68px;
     border-radius: 10px;
     overflow: hidden;
-    background: #1B2128;
-    border: 1px solid rgba(255,255,255,0.12);
+    background: var(--dash-surface-3, #EFEAE2);
+    border: 1px solid var(--dash-ink-a12, rgba(44, 62, 80, 0.12));
   }
   .cz-popup-art img {
     width: 100%;
@@ -3048,7 +3064,7 @@
     font-family: var(--font-serif, serif);
     font-size: 18px;
     font-weight: 800;
-    color: #FFE29A;
+    color: var(--dash-vermilion-solid, #B8531F);
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -3058,78 +3074,96 @@
     display: flex;
     gap: 6px;
     font-size: 11px;
-    color: rgba(255,248,240,0.7);
+    color: var(--dash-text-soft, #666);
+    white-space: nowrap;
+    min-width: 0;
   }
   .cz-popup-session-line .k {
     opacity: 0.6;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
   .cz-popup-session-line .v {
-    color: #FFF8F0;
+    color: var(--dash-text, #2C3E50);
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }
   .cz-popup-grid {
-    display: flex;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
     margin-top: 4px;
+    min-width: 0;
   }
   .cz-popup-stat {
     display: flex;
     flex-direction: column;
     gap: 1px;
+    min-width: 0;
   }
   .cz-popup-stat .k {
     font-size: 8px;
-    color: rgba(255,248,240,0.5);
+    color: var(--dash-text-soft, #666);
     letter-spacing: .06em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cz-popup-stat .v {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px;
     font-weight: 700;
-    color: #FFE29A;
+    color: var(--dash-vermilion-solid, #B8531F);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cz-popup-req {
-    background: rgba(0,0,0,0.22);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid var(--dash-ink-a12, rgba(44, 62, 80, 0.12));
     border-radius: 8px;
     padding: 6px 10px;
     font-size: 11px;
+    min-width: 0;
   }
   .cz-popup-req .k {
     font-size: 8.5px;
     font-weight: 700;
-    color: #FF9E7A;
+    color: var(--dash-vermilion-solid, #B8531F);
     letter-spacing: .08em;
     display: block;
     margin-bottom: 2px;
+    white-space: nowrap;
   }
   .cz-popup-req p {
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: rgba(255,248,240,0.85);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    color: var(--dash-text, #2C3E50);
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cz-popup-foot {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 9px;
-    color: rgba(255,248,240,0.45);
-    border-top: 1px solid rgba(255,255,255,0.08);
+    color: var(--dash-text-soft, #666);
+    border-top: 1px solid var(--dash-ink-a12, rgba(44, 62, 80, 0.12));
     padding-top: 6px;
     margin-top: 4px;
+    white-space: nowrap;
+    gap: 10px;
   }
   .cz-popup-hint {
     font-weight: 800;
     letter-spacing: .12em;
-    color: #FF9E7A;
+    color: var(--dash-vermilion-solid, #B8531F);
+    white-space: nowrap;
   }
 
   /* 纵向瀑布流（744、440及所有窄屏）：计时态票夹改横向黑条 */
@@ -5277,10 +5311,10 @@
           <div class="cz-card-popup" id="czCardPopup" role="dialog" aria-modal="true">
             <div class="cz-popup-head">
               <div class="cz-popup-badge-group">
-                <span class="cz-popup-tag">DIZICAL PRACTICE</span>
-                <span class="cz-popup-no" id="czPopupNo">No.1034</span>
+                <span class="cz-popup-tag">竹笛练习卡</span>
+                <span class="cz-popup-no" id="czPopupNo">第1034号</span>
               </div>
-              <button type="button" class="cz-popup-close-btn" id="czPopupCloseBtn" aria-label="收回槽内">收回槽内 ✕</button>
+              <button type="button" class="cz-popup-close-btn" id="czPopupCloseBtn" aria-label="收回卡槽">收起 ✕</button>
             </div>
             <div class="cz-popup-hero">
               <div class="cz-popup-art">
@@ -5289,24 +5323,24 @@
               <div class="cz-popup-meta">
                 <h3 class="cz-popup-title" id="czPopupTitle">吸气长音</h3>
                 <div class="cz-popup-session-line">
-                  <span class="k">本次内容</span>
+                  <span class="k">今天练</span>
                   <span class="v" id="czPopupSession">未选内容</span>
                 </div>
                 <div class="cz-popup-grid">
-                  <div class="cz-popup-stat"><span class="k">速度</span><span class="v" id="czPopupBpm">60 BPM</span></div>
-                  <div class="cz-popup-stat"><span class="k">时长</span><span class="v" id="czPopupDuration">10 分钟</span></div>
-                  <div class="cz-popup-stat"><span class="k">分类</span><span class="v" id="czPopupCategory">曲目</span></div>
+                  <div class="cz-popup-stat"><span class="k">快慢</span><span class="v" id="czPopupBpm">60 BPM</span></div>
+                  <div class="cz-popup-stat"><span class="k">练多久</span><span class="v" id="czPopupDuration">10 分钟</span></div>
+                  <div class="cz-popup-stat"><span class="k">种类</span><span class="v" id="czPopupCategory">曲目</span></div>
                   <div class="cz-popup-stat"><span class="k">音符</span><span class="v" id="czPopupNote">四分音符</span></div>
                 </div>
               </div>
             </div>
             <div class="cz-popup-req">
-              <span class="k">老师要求</span>
-              <p id="czPopupRequirement">按老师要求完成今天的练习。</p>
+              <span class="k">老师提醒</span>
+              <p id="czPopupRequirement">按老师说的完成今天的练习。</p>
             </div>
             <div class="cz-popup-foot">
-              <span>点击任意位置或按钮收回卡槽</span>
-              <span class="cz-popup-hint">CARD OVERLAY</span>
+              <span>点空白处或按钮就能收起</span>
+              <span class="cz-popup-hint">完整卡片</span>
             </div>
           </div>
         </div>
@@ -7300,8 +7334,9 @@ function syncRunRailCard() {
      计时态 = 原来的「展开卡片」，标签收起。 */
   const stageCls = (cd.getElementById('practiceStage') || {}).className || '';
   const isRun = /(^|\s)stage-running(\s|$)/.test(stageCls) || /(^|\s)cz-ticket-live(\s|$)/.test(stageCls);
+  const isPaused = isRun && (typeof paused !== 'undefined' ? !!paused : (typeof window.isPaused === 'function' ? window.isPaused() : false));
   const dispContent = (typeof cleanSessionText === 'function') ? cleanSessionText(content) : (content ? String(content).trim() : '');
-  set('pkExposedChip', isRun ? '进行中' : (cur ? '准备' : '待选'));
+  set('pkExposedChip', isRun ? (isPaused ? '暂停' : '进行中') : (cur ? '准备' : '待选'));
   const exposedHint = cd.getElementById('pkExposedHint');
   if (exposedHint) {
     exposedHint.textContent = isRun ? '展开卡片 ▾' : (cur ? '重新选择' : '选择科目');
@@ -7326,7 +7361,7 @@ function syncRunRailCard() {
 
   // Overlay popup fields
   set('czPopupTitle', cur ? (cur.name || '练习曲目') : '未选择科目');
-  set('czPopupNo', 'No.' + (cur ? (cur.id || '—') : '----'));
+  set('czPopupNo', cur && cur.id ? ('第' + cur.id + '号') : '第----号');
   set('czPopupSession', ((typeof cleanSessionText === 'function') ? cleanSessionText(content) : (content || '未选内容')) || '未选内容');
   set('czPopupBpm', bpm + ' BPM');
   set('czPopupDuration', duration + ' 分钟');
@@ -7338,9 +7373,11 @@ function syncRunRailCard() {
     popupHeroImg.src = getSubjectHeroImg(cur);
   }
 
-  const reqRaw = cur ? (cur.fetchedRequirements || ((cur.reqItems && cur.reqItems.length) ? cur.reqItems.join(' ') : (cur.reqSnippet || '按老师要求完成今天的练习。'))) : '按老师要求完成今天的练习。';
+  const reqRaw = cur ? (cur.fetchedRequirements || ((cur.reqItems && cur.reqItems.length) ? cur.reqItems.join(' ') : (cur.reqSnippet || '按老师说的完成今天的练习。'))) : '按老师说的完成今天的练习。';
   const req = String(reqRaw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   set('czPopupRequirement', req);
+  const reqEl = cd.getElementById('czPopupRequirement');
+  if (reqEl) { reqEl.title = req; }
 }
 
 function openCardOverlay() {
@@ -7391,6 +7428,23 @@ function openCardOverlay() {
   }
 }
 
+/* 卡片归位的小回弹：结束练习、收回弹窗时都走这一下，强化「卡片被放回卡槽」。 */
+let cardSettleTimer = 0;
+function playCardSettle() {
+  const cd = (typeof canvasDoc === 'function' ? canvasDoc() : null) || document;
+  const st = cd.getElementById('practiceStage');
+  if (!st) return;
+  if (cardSettleTimer) { window.clearTimeout(cardSettleTimer); }
+  st.classList.remove('cz-ticket-settle');
+  void st.offsetWidth;
+  st.classList.add('cz-ticket-settle');
+  cardSettleTimer = window.setTimeout(() => {
+    st.classList.remove('cz-ticket-settle');
+    cardSettleTimer = 0;
+  }, 520);
+}
+window.playCardSettle = playCardSettle;
+
 function closeCardOverlay() {
   const cd = (typeof canvasDoc === 'function' ? canvasDoc() : null) || document;
   let overlay = cd.getElementById('czCardOverlay');
@@ -7433,6 +7487,7 @@ function closeCardOverlay() {
         backdrop.style.transition = '';
         backdrop.style.opacity = '';
       }
+      playCardSettle();
     }, dur + 30);
   } else {
     overlay.classList.remove('is-open');
@@ -8146,6 +8201,8 @@ function exitRun() {
   if (lockEl) { lockEl.style.display = 'none'; lockEl.style.opacity = '0'; }
   updateReselectBtnState();
   try { if (typeof syncSlotMode === 'function') syncSlotMode(); } catch (e) {}
+  /* 计时结束/提前结束且不留练：卡片从插入位回升到准备位，落位时轻沉一下。 */
+  try { playCardSettle(); } catch (eSettle) {}
   /* 槽位/卡 A 的复位在壳层：通知它同步一次，否则 data-mode 会停在 run。 */
   try {
     if (window.parent && typeof window.parent.__czSyncAfterCanvasExit === 'function') {
@@ -8171,6 +8228,7 @@ function pauseToggle() {
     pauseBtn.classList.remove('paused-on');
     if (typeof ttPauseLabel === 'function') ttPauseLabel(false);
   }
+  if (typeof syncRunRailCard === 'function') syncRunRailCard();
 }
 
 function finish(done) {
@@ -8312,6 +8370,7 @@ function requestFinish(done) {
   if (pauseBtn) { pauseBtn.textContent = '继续练习'; pauseBtn.classList.add('paused-on'); }
   const brand = document.getElementById('pkBrand');
   if (brand) { brand.textContent = '待记录'; brand.classList.remove('running'); }
+  if (typeof syncRunRailCard === 'function') syncRunRailCard();
   closeCardOverlay();
   /* A 卡跟着停在暂停态（不退 prep，否则「继续练」时读数已归零）。 */
   try {
@@ -8338,6 +8397,7 @@ function cancelFinishAndResume() {
   if (typeof ttPauseLabel === 'function') { ttPauseLabel(false); }
   const brand = document.getElementById('pkBrand');
   if (brand) { brand.textContent = '进行中'; brand.classList.add('running'); }
+  if (typeof syncRunRailCard === 'function') syncRunRailCard();
   try {
     if (window.parent && typeof window.parent.__czResumeCardA === 'function') { window.parent.__czResumeCardA(elapsed); }
   } catch (e) {}
@@ -19668,7 +19728,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.28';
+  var DSH_VERSION = 'v3.29';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -19750,6 +19810,18 @@ function closeRecordsDrawer() {
           { kind: 'tcard', w: 360 }
         ]
       }
+    },
+    '6': {
+      code: 'COMBO_6_AQR',
+      label: '3卡-3 · AQR',
+      mods: ['A', 'Q', 'R'],
+      tree: {
+        kind: 'row', gap: GAP_H, kids: [
+          { kind: 'astack', w: 430, label: '仪表盘', kids: [] },
+          { kind: 'mod', k: 'Q', w: 360 },
+          { kind: 'mod', k: 'R', w: 420, full: 1 }
+        ]
+      }
     }
   };
 
@@ -19760,21 +19832,24 @@ function closeRecordsDrawer() {
     '2': COMBO_SCHEMA['2'].mods.slice(),
     '3': COMBO_SCHEMA['3'].mods.slice(),
     '4': COMBO_SCHEMA['4'].mods.slice(),
-    '5': COMBO_SCHEMA['5'].mods.slice()
+    '5': COMBO_SCHEMA['5'].mods.slice(),
+    '6': COMBO_SCHEMA['6'].mods.slice()
   };
   var COMBO_MODS = {
     '1': COMBO_SCHEMA['1'].mods.slice(),
     '2': COMBO_SCHEMA['2'].mods.slice(),
     '3': COMBO_SCHEMA['3'].mods.slice(),
     '4': COMBO_SCHEMA['4'].mods.slice(),
-    '5': COMBO_SCHEMA['5'].mods.slice()
+    '5': COMBO_SCHEMA['5'].mods.slice(),
+    '6': COMBO_SCHEMA['6'].mods.slice()
   };
   var COMBO_DEFS = {
     '1': { code: COMBO_SCHEMA['1'].code, tree: COMBO_SCHEMA['1'].tree },
     '2': { code: COMBO_SCHEMA['2'].code, tree: COMBO_SCHEMA['2'].tree },
     '3': { code: COMBO_SCHEMA['3'].code, tree: COMBO_SCHEMA['3'].tree },
     '4': { code: COMBO_SCHEMA['4'].code, tree: COMBO_SCHEMA['4'].tree },
-    '5': { code: COMBO_SCHEMA['5'].code, tree: COMBO_SCHEMA['5'].tree }
+    '5': { code: COMBO_SCHEMA['5'].code, tree: COMBO_SCHEMA['5'].tree },
+    '6': { code: COMBO_SCHEMA['6'].code, tree: COMBO_SCHEMA['6'].tree }
   };
   var MOD_KEYS = MODS.map(function (m) { return m.k; });
   var MOD_BY_KEY = {}; MODS.forEach(function (m) { MOD_BY_KEY[m.k] = m; });
@@ -20807,7 +20882,7 @@ window.__CZ_CSS = [
     if (!aWrap) { return; }
     var W = aWrap.offsetWidth;
     if (!W || W < 100) {
-      W = (state.combo === '5' ? 430 : 460);
+      W = ((state.combo === '5' || state.combo === '6') ? 430 : 460);
     }
     var crownInset = 12;
     var crownLeft = crownInset;
@@ -20858,8 +20933,13 @@ window.__CZ_CSS = [
        槽底 = 卡底 = 孔底，冠顶 = 黑区上沿。 */
     var slotFullH = exposedH + insertDepth - cardRise;
     var slotFullPrepH = exposedPrepH + insertDepth - cardRise;
-    /* 冠高按当前状态取：准备态高、计时态矮，卡片插入后槽体跟着收起。 */
-    var crownPx = running ? slotFullH : slotFullPrepH;
+    /* 卡槽是固定件：冠高永远按准备态算，仪表盘排版不随卡片插入/拔出变化。
+       卡片自己在槽内上下移动（--pk-card-visible-h），槽体与面板让位都不动。 */
+    var crownPx = slotFullPrepH;
+    /* 准备态让卡顶再高出槽口 40px（允许压住 pk-top 一点），计时态仍只露 20px。 */
+    var prepRise = 40;
+    var cardVisiblePrepH = crownPx + prepRise;
+    var cardVisibleRunH = slotFullH + cardRise;
     var slotSafeGap = 10;
 
     var root = cd.documentElement;
@@ -20867,6 +20947,7 @@ window.__CZ_CSS = [
     root.style.setProperty('--pk-slot-w', slotW.toFixed(1) + 'px');
     root.style.setProperty('--pk-card-exposed-h', exposedPrepH + 'px');
     root.style.setProperty('--pk-card-exposed-h-run', exposedH + 'px');
+    root.style.setProperty('--pk-card-visible-h', (running ? cardVisibleRunH : cardVisiblePrepH) + 'px');
     root.style.setProperty('--cz-card-rise', (-cardRise) + 'px');
     root.style.setProperty('--pk-card-total-h', cardTotalH + 'px');
     root.style.setProperty('--pk-slot-lip-h', slotLipH + 'px');
@@ -20916,7 +20997,7 @@ window.__CZ_CSS = [
       try {
         var ddEarly = aFrameEarly.contentDocument;
         if (ddEarly && ddEarly.documentElement) {
-          ddEarly.documentElement.style.setProperty('--cz-panel-pt', (crownPx + (running ? 10 : 16)) + 'px');
+          ddEarly.documentElement.style.setProperty('--cz-panel-pt', (crownPx + 16) + 'px');
           var panelEl = ddEarly.getElementById('panel');
           if (panelEl) {
             var pStyle = ddEarly.defaultView ? ddEarly.defaultView.getComputedStyle(panelEl) : null;
@@ -20931,7 +21012,7 @@ window.__CZ_CSS = [
         }
       } catch (e3) {}
       aFrameEarly.__czSlotFullH = slotFullH;
-      aFrameEarly.__czPanelPt = crownPx + (running ? 10 : 16);
+      aFrameEarly.__czPanelPt = crownPx + 16;
       if (!aFrameEarly.__czPadBound) {
         aFrameEarly.__czPadBound = 1;
         aFrameEarly.addEventListener('load', function () {
@@ -20961,15 +21042,15 @@ window.__CZ_CSS = [
       /* S17（dad 261026）：卡底与孔底齐平（冠底 = 孔底 = 卡底），
          下半孔层（z46）盖住卡底，卡不再从孔下方露出一截。 */
       card.style.setProperty('width', cardW + 'px', 'important');
-      card.style.setProperty('height', 'auto', 'important');
+      card.style.setProperty('height', (running ? cardVisibleRunH : cardVisiblePrepH) + 'px', 'important');
       card.style.setProperty('max-height', 'none', 'important');
-      card.style.setProperty('top', 'var(--cz-card-rise, -20px)', 'important');
+      card.style.setProperty('top', 'auto', 'important');
       card.style.setProperty('bottom', '0px', 'important');
       card.style.removeProperty('transform');
       card.style.setProperty('left', '50%', 'important');
       card.style.setProperty('--cz-card-inset', cardInset + 'px');
       /* 孔上沿在冠内的坐标 = 冠高 − 孔高（S17+S19：全视口统一窄孔，孔贴在冠底，卡从孔中穿过） */
-      var holeTopInWrap = slotFullH - slotLipH;
+      var holeTopInWrap = crownPx - slotLipH;
       var maskTopPx = cardRise + holeTopInWrap + slotLipH * 0.5;
       card.style.setProperty('--cz-card-mask-top', maskTopPx.toFixed(1) + 'px');
       card.dataset.cardMaskTop = maskTopPx.toFixed(1);
@@ -21105,26 +21186,26 @@ window.__CZ_CSS = [
         '<div class="cz-card-popup" id="czCardPopup" role="dialog" aria-modal="true">' +
           '<div class="cz-popup-head">' +
             '<div class="cz-popup-badge-group">' +
-              '<span class="cz-popup-tag">DIZICAL PRACTICE</span>' +
-              '<span class="cz-popup-no" id="czPopupNo">No.1034</span>' +
+              '<span class="cz-popup-tag">竹笛练习卡</span>' +
+              '<span class="cz-popup-no" id="czPopupNo">第1034号</span>' +
             '</div>' +
-            '<button type="button" class="cz-popup-close-btn" id="czPopupCloseBtn" aria-label="收回槽内">收回槽内 ✕</button>' +
+            '<button type="button" class="cz-popup-close-btn" id="czPopupCloseBtn" aria-label="收回卡槽">收起 ✕</button>' +
           '</div>' +
           '<div class="cz-popup-hero">' +
             '<div class="cz-popup-art"><img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt=""></div>' +
             '<div class="cz-popup-meta">' +
               '<h3 class="cz-popup-title" id="czPopupTitle">吸气长音</h3>' +
-              '<div class="cz-popup-session-line"><span class="k">本次内容</span><span class="v" id="czPopupSession">未选内容</span></div>' +
+              '<div class="cz-popup-session-line"><span class="k">今天练</span><span class="v" id="czPopupSession">未选内容</span></div>' +
               '<div class="cz-popup-grid">' +
-                '<div class="cz-popup-stat"><span class="k">速度</span><span class="v" id="czPopupBpm">60 BPM</span></div>' +
-                '<div class="cz-popup-stat"><span class="k">时长</span><span class="v" id="czPopupDuration">10 分钟</span></div>' +
-                '<div class="cz-popup-stat"><span class="k">分类</span><span class="v" id="czPopupCategory">曲目</span></div>' +
+                '<div class="cz-popup-stat"><span class="k">快慢</span><span class="v" id="czPopupBpm">60 BPM</span></div>' +
+                '<div class="cz-popup-stat"><span class="k">练多久</span><span class="v" id="czPopupDuration">10 分钟</span></div>' +
+                '<div class="cz-popup-stat"><span class="k">种类</span><span class="v" id="czPopupCategory">曲目</span></div>' +
                 '<div class="cz-popup-stat"><span class="k">音符</span><span class="v" id="czPopupNote">四分音符</span></div>' +
               '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="cz-popup-req"><div class="k">练习要求</div><p id="czPopupRequirement">按老师要求完成今天的练习，保持口型稳定与气息均匀。</p></div>' +
-          '<div class="cz-popup-foot"><span class="cz-popup-hint">点击任意处或右上角收回卡槽</span></div>' +
+          '<div class="cz-popup-req"><div class="k">老师提醒</div><p id="czPopupRequirement">按老师说的完成今天的练习。</p></div>' +
+          '<div class="cz-popup-foot"><span>点空白处或按钮就能收起</span><span class="cz-popup-hint">完整卡片</span></div>' +
         '</div>';
       aWrap.appendChild(overlay);
     } else if (aWrap && overlay && overlay.parentElement !== aWrap) {
@@ -23470,11 +23551,10 @@ window.__CZ_CSS = [
     if (!cd) { return; }
     var h = parseFloat(cd.documentElement.style.getPropertyValue('--cz-crown-h')) || 0;
     if (!(h > 0)) { return; }
-    /* 计时态沿用改前让位量（冠高 + 10），准备态卡片拔出后才多让 6px。 */
-    var extra = canvasRunning() ? 10 : 16;
     try {
       var d = f.contentDocument;
-      if (d && d.documentElement) { d.documentElement.style.setProperty('--cz-panel-pt', (h + extra) + 'px'); }
+      /* 冠高固定，让位量也固定：仪表盘只有一种高度。 */
+      if (d && d.documentElement) { d.documentElement.style.setProperty('--cz-panel-pt', (h + 16) + 'px'); }
     } catch (e) {}
   }
 
@@ -24307,7 +24387,8 @@ window.__CZ_CSS = [
     { id: '2', label: '2卡-2 AS', combo: '2' },
     { id: '3', label: '3卡-1 ASR', combo: '3' },
     { id: '4', label: '3卡-2 AST', combo: '4' },
-    { id: '5', label: '5卡 ABQT', combo: '5' }
+    { id: '5', label: '5卡 ABQT', combo: '5' },
+    { id: '6', label: '3卡-3 AQR', combo: '6' }
   ];
   function pickerPop() {
     var cd = canvasDoc();
