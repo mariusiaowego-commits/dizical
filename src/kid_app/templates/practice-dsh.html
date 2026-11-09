@@ -2785,6 +2785,9 @@
   #practiceStage.cz-ticket-live:not(.cz-ticket-exit) #czTicketStage .pk-card-exposed-bar {
     height: var(--pk-card-exposed-h-run, 46px);
     flex: 0 0 var(--pk-card-exposed-h-run, 46px);
+    /* 计时态只允许一行：科目名长到把「展开卡片」挤下去时，条高固定 46px 会把首行裁掉。
+       锁定单行后由 .pk-exposed-title 自己 ellipsis，条高与内容永远一致。 */
+    flex-wrap: nowrap;
   }
   #practiceStage.stage-running .pk-exposed-tags,
   #practiceStage.cz-ticket-live .pk-exposed-tags { display: none !important; }
@@ -7318,6 +7321,22 @@ function pkTick() {
   }, 1000);
 }
 
+/* 计时态露出条锁成单行后，科目名放不下时先降字号，实在放不下才交给 CSS ellipsis；
+   全名同时写进 title，长名还能靠展开卡片 / hover 看全。 */
+function fitExposedTitle(cd, isRun) {
+  const bar = cd.getElementById('pkCardExposedBar');
+  const t = cd.getElementById('pkCcgName');
+  if (!bar || !t) return;
+  /* 样式表里 font-size 带 !important，内联改字号也必须带 priority 才生效 */
+  t.style.removeProperty('font-size');
+  t.title = t.textContent || '';
+  if (!isRun || !bar.offsetWidth) return;
+  const steps = ['11.5px', '10.5px'];
+  for (let i = 0; i < steps.length && t.scrollWidth > t.clientWidth; i++) {
+    t.style.setProperty('font-size', steps[i], 'important');
+  }
+}
+
 /* 计时态信用卡：主机挂载在 dashboard 卡槽上方，数据来自同一份画布状态。 */
 function syncRunRailCard() {
   const cd = (typeof canvasDoc === 'function' ? canvasDoc() : null) || document;
@@ -7347,6 +7366,7 @@ function syncRunRailCard() {
   const stageCls = (cd.getElementById('practiceStage') || {}).className || '';
   const isRun = /(^|\s)stage-running(\s|$)/.test(stageCls) || /(^|\s)cz-ticket-live(\s|$)/.test(stageCls);
   const isPaused = isRun && (typeof paused !== 'undefined' ? !!paused : (typeof window.isPaused === 'function' ? window.isPaused() : false));
+  fitExposedTitle(cd, isRun);
   const dispContent = (typeof cleanSessionText === 'function') ? cleanSessionText(content) : (content ? String(content).trim() : '');
   set('pkExposedChip', isRun ? (isPaused ? '暂停' : '进行中') : (cur ? '准备' : '待选'));
   const exposedHint = cd.getElementById('pkExposedHint');
@@ -7610,7 +7630,8 @@ function refreshBarHeight() {
     stage.style.setProperty('--cz-bar-h', h + 'px');
   }
 }
-window.addEventListener('resize', refreshBarHeight);
+/* 视口变化后露出条宽度也变了：单行锁定的科目名要重新决定字号档位。 */
+window.addEventListener('resize', function () { refreshBarHeight(); syncRunRailCard(); });
 
 /* 变形结束时通知外层页再排一次。可用宽仍按准备态票夹宽扣（comboAvailWidth），
    所以这里只是对齐分页，不会把卡片压进一屏。 */
@@ -19993,7 +20014,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.33';
+  var DSH_VERSION = 'v3.34';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
