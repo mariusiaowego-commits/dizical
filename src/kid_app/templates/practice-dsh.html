@@ -17630,19 +17630,6 @@ function closeRecordsDrawer() {
   .delta.up { color: var(--dash-delta-up); }
   .delta.down { color: var(--dash-delta-down); }
   .sheet { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
-  .cols {
-    display: grid;
-    grid-template-columns: minmax(54px, 1.2fr) minmax(48px, auto) minmax(56px, auto) minmax(44px, auto) minmax(130px, 2.5fr) minmax(50px, auto);
-    gap: 8px 12px; align-items: center;
-    min-width: 0;
-  }
-  .c-meta { display: contents; }
-  .thead {
-    min-height: 34px; padding: 0 0 0 0; color: var(--dash-text-soft); font-size: 11.5px; font-weight: 750;
-    letter-spacing: 0.04em; background: var(--dash-surface-2);
-    border-bottom: 1px solid var(--dash-ink-a12);
-    align-items: center;
-  }
   /* S15 批注1（dad 261025）：去掉默认系统滚动条，uiverse 风格细滚动条（6px 圆角细轨道） */
   .scroller {
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
@@ -17659,8 +17646,9 @@ function closeRecordsDrawer() {
     background-clip: padding-box;
   }
   .scroller::-webkit-scrollbar-thumb:hover { background: var(--dash-coral); background-clip: padding-box; }
-  .rec-row { padding: 0; border-bottom: 1px solid var(--dash-ink-a12); }
-  .rec-row:hover { background: var(--dash-ink-a04); }
+  /* ══════ 记录列表：科目手风琴 + 时间豆（dad 261109 方案二） ══════
+     一条 session = 一行，去掉 6 列表头、重复科目名和所有「—」占位。
+     行距 42px = 原 40px 基础上 +6%；折叠态不丢信息，改用时间豆预览。 */
   .rec-empty {
     padding: 22px 16px;
     text-align: center;
@@ -17668,43 +17656,95 @@ function closeRecordsDrawer() {
     color: var(--dash-text-soft);
     letter-spacing: .02em;
   }
-  .rec-row.subject { min-height: 44px; font-weight: 700; }
-  .rec-row.session { min-height: 40px; font-weight: 450; color: var(--dash-text); background: var(--dash-surface-soft); }
-  .rec-row.session .c-name { padding-left: 14px; font-weight: 500; color: var(--dash-text-soft); }
-  .c-name, .c-total, .c-tempo, .c-once, .c-share { white-space: nowrap !important; }
-  .c-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .c-detail { min-width: 0; word-break: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.35; font-size: 12px; font-weight: 450; color: var(--dash-text); }
   .num { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .c-share { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .bar { display: block; width: 48px; height: 4px; border-radius: 999px; background: var(--dash-ink-a12); overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 999px; background: var(--dash-coral); }
   .tag {
     display: inline-block; margin-right: 4px; padding: 0 5px; border-radius: 4px;
     font-size: 11px; font-weight: 700; color: var(--dash-vermilion-text);
     background: var(--dash-vermilion-wash);
   }
-  /* S15 批注2（dad 261025）：宽表 6 列在窄卡里必然把右侧列挤出台面——
-     紧凑堆叠布局的断点从 540 提到 700，popout / feed / 组合卡全部走堆叠行，右侧列不再被裁 */
-  /* 断点取 760：记录弹窗窄档 console 实测 724-726px（dad 截图场景），必须覆盖到 */
-  @container rec (max-width: 760px) {
-    .thead { display: none; }
-    .rec-row.subject, .rec-row.session { min-height: 0; }
-    .rec-row.cols {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-rows: auto auto auto;
-      grid-template-areas: "name total" "meta share" "detail detail";
-      row-gap: 6px;
-      column-gap: 12px;
-      padding: 10px 0;
-      align-items: center;
-    }
-    .c-name { grid-area: name; font-size: 15px; line-height: 22px; white-space: nowrap; }
-    .c-total { grid-area: total; justify-self: end; line-height: 22px; white-space: nowrap; }
-    .c-meta { display: flex; gap: 10px; grid-area: meta; align-items: center; height: 22px; line-height: 22px; white-space: nowrap; }
-    .c-share { grid-area: share; flex-direction: row; align-items: center; gap: 6px; justify-self: end; height: 22px; align-self: start; white-space: nowrap; }
-    .c-detail { grid-area: detail; display: block; font-size: 12px; line-height: 18px; min-height: 18px; word-break: break-word; }
+
+  .rec-subj { border-bottom: 1px solid var(--dash-ink-a12); }
+  .rec-subj-head {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; min-height: 40px; padding: 7px 2px;
+    border: 0; background: transparent; font-family: inherit; text-align: left;
+    color: var(--dash-text); cursor: pointer;
+  }
+  .rec-subj-head:hover { background: var(--dash-ink-a04); }
+  .rec-subj-name {
+    flex: 1 1 auto; min-width: 0;
+    font-size: 14.5px; font-weight: 800; letter-spacing: -0.01em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rec-subj-count { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: var(--dash-text-soft); }
+  .rec-subj-min { flex: 0 0 auto; font-size: 14px; font-weight: 800; color: var(--dash-vermilion-text); }
+  .rec-subj-bar {
+    flex: 0 0 auto; width: 40px; height: 4px; border-radius: 999px;
+    background: var(--dash-ink-a12); overflow: hidden;
+  }
+  .rec-subj-bar i { display: block; height: 100%; border-radius: 999px; background: var(--dash-coral); }
+  .rec-subj-pct { flex: 0 0 auto; width: 30px; text-align: right; font-size: 11px; color: var(--dash-text-soft); }
+  .rec-subj-caret {
+    flex: 0 0 auto; width: 7px; height: 7px; margin-right: 2px;
+    border-right: 1.5px solid var(--dash-text-soft); border-bottom: 1.5px solid var(--dash-text-soft);
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 140ms ease-out;
+  }
+  .rec-subj[data-open="0"] .rec-subj-caret { transform: rotate(-45deg) translate(-2px, -2px); }
+  .rec-subj[data-open="0"] .rec-sess-list { display: none; }
+  .rec-subj[data-open="1"] .rec-beans { display: none; }
+
+  .rec-row.session {
+    display: grid; align-items: center;
+    grid-template-columns: 6px 34px minmax(0, 1fr) auto auto;
+    gap: 8px; width: 100%;
+    min-height: 42px; padding: 6px 2px;
+    border: 0; border-top: 1px solid var(--dash-ink-a04);
+    background: transparent; font-family: inherit; text-align: left;
+    color: var(--dash-text); font-size: 13px; line-height: 1.43;
+    cursor: pointer;
+  }
+  .rec-sess-list .rec-row.session:first-child { border-top: 0; }
+  .rec-row.session:hover { background: var(--dash-ink-a04); }
+  .rec-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--dash-coral); }
+  .rec-time { font-size: 11.5px; color: var(--dash-text-soft); }
+  .rec-title {
+    min-width: 0; font-weight: 650;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rec-meta { font-size: 11.5px; color: var(--dash-text-soft); white-space: nowrap; }
+  .rec-min { font-size: 13px; font-weight: 800; color: var(--dash-vermilion-text); white-space: nowrap; }
+  .rec-note {
+    display: none; padding: 0 2px 8px 48px;
+    font-size: 11.5px; line-height: 1.43; color: var(--dash-text-soft);
+  }
+  .rec-row.session.is-open + .rec-note { display: block; }
+  .rec-beans { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px 9px; }
+  .rec-bean {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--dash-surface-2); color: var(--dash-text-soft);
+    font-size: 11px; line-height: 1.43;
+  }
+  .rec-bean b { color: var(--dash-text); font-weight: 750; }
+
+  /* 视口适配：卡内 iframe 视口宽 = 卡片宽。
+     （宿主 fill 档把 .console 的 container 名改成 moduleCard，@container rec 在组合档根本不会命中，
+       所以这里一律用 @media，量到多少宽就是多少宽。）
+     354 = PC 组合卡，440 = 手机，690 = pad / 记录弹窗。 */
+  @media (max-width: 340px) {
+    /* 极窄卡：科目头让出「n 次」，名称与分钟不打架 */
+    .rec-subj-count { display: none; }
+  }
+  @media (max-width: 480px) {
     .hero .v { font-size: 22px; }
-    .hero .s { white-space: normal; }
+  }
+  @media (min-width: 520px) {
+    /* 宽卡有富余：行高与字号一起放大，单行信息不挤 */
+    .rec-subj-head { min-height: 44px; }
+    .rec-subj-name { font-size: 15px; }
+    .rec-row.session { min-height: 46px; padding: 8px 2px; }
+    .rec-bean { font-size: 11.5px; }
   }
 
   button:focus-visible {
@@ -17746,7 +17786,7 @@ function closeRecordsDrawer() {
       <header class="head">
         <h1>今日练习记录</h1>
         <div class="fold" role="group" aria-label="列表层级">
-          <button type="button" id="btnFold">折叠</button>
+          <button type="button" id="btnFold">收起</button>
           <button type="button" id="btnOpen">展开</button>
         </div>
       </header>
@@ -17768,9 +17808,6 @@ function closeRecordsDrawer() {
         </div>
       </section>
       <div class="sheet">
-      <div class="cols thead">
-        <span class="c-name">科目</span><span class="c-total">总时长</span><span class="c-tempo">速度</span><span class="c-once">单次</span><span class="c-detail">明细</span><span class="c-share">占比</span>
-      </div>
       <div class="scroller" id="scroller">
         <div id="rows"></div>
       </div>
@@ -17960,46 +17997,101 @@ function closeRecordsDrawer() {
     document.getElementById('heroPractice').nextElementSibling.textContent = '累计 ' + practiceSeconds() + ' 秒 · 专注 ' + focus + '%';
   }
 
-  function shareCell(share) {
-    var cell = el('span', 'c-share');
-    cell.appendChild(el('span', 'num', share + '%'));
-    var track = el('span', 'bar');
-    var fill = document.createElement('i');
-    fill.dataset.pct = String(share);
-    fill.style.width = Math.round(share * 48 / 100) + 'px'; /* BAR_PX */
-    track.appendChild(fill);
-    cell.appendChild(track);
-    return cell;
+  /* HH:MM（本地时区）。没有 started_at 的历史数据留空，不编时间。 */
+  function clockLabel(stamp) {
+    var t = parseStampR(stamp);
+    if (t == null) { return ''; }
+    var d = new Date(t);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function endClockLabel(session) {
+    var t = parseStampR(session.started_at);
+    if (t == null) { return ''; }
+    var d = new Date(t + session.duration_seconds * 1000);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
-  function metaCell(tempoText, onceText) {
-    var meta = el('span', 'c-meta');
-    meta.appendChild(el('span', 'c-tempo num', tempoText));
-    meta.appendChild(el('span', 'c-once num', onceText));
-    return meta;
+  /* 行内副信息只留读数：♩=速度 · 遍数（裸数字读不出是速度，dad 261109 拍板要 ♩=xx 格式）。 */
+  function sessionMeta(session) {
+    var bits = [];
+    if (session.tempo_bpm) { bits.push('♩=' + session.tempo_bpm); }
+    if (session.reps) { bits.push(session.reps + '遍'); }
+    return bits.join(' · ');
+  }
+
+  /* 二级信息（点开一行才看）：起止时间 · 时长 · 速度 · 遍数。 */
+  function sessionNote(session) {
+    var from = clockLabel(session.started_at);
+    var to = endClockLabel(session);
+    var bits = [(from && to ? from + '–' + to + ' · ' : '') + minutesOf(session.duration_seconds) + ' 分'];
+    if (session.tempo_bpm) { bits.push(session.tempo_bpm + ' BPM'); }
+    if (session.reps) { bits.push(session.reps + ' 遍'); }
+    return bits.join(' · ');
+  }
+
+  function toggleSubject(card, force) {
+    var open = (force == null) ? card.dataset.open !== '1' : !!force;
+    card.dataset.open = open ? '1' : '0';
+    var head = card.querySelector('.rec-subj-head');
+    if (head) { head.setAttribute('aria-expanded', open ? 'true' : 'false'); }
   }
 
   function subjectRow(group, share) {
-    var row = el('div', 'rec-row subject cols');
-    row.appendChild(el('span', 'c-name', group.item_name));
-    row.appendChild(el('span', 'c-total num', minutesOf(group.seconds) + ' 分'));
-    row.appendChild(metaCell(tempoLabel(group.sessions), group.sessions.length + ' 次'));
-    row.appendChild(el('span', 'c-detail', '—'));
-    row.appendChild(shareCell(share));
-    return row;
-  }
+    var card = el('section', 'rec-subj');
+    card.dataset.open = '1';
 
-  function sessionRow(session) {
-    var row = el('div', 'rec-row session cols');
-    row.appendChild(el('span', 'c-name', session.item_name));
-    row.appendChild(el('span', 'c-total num', '—'));
-    row.appendChild(metaCell(session.tempo_bpm ? String(session.tempo_bpm) : '—', minutesOf(session.duration_seconds) + ' 分'));
-    var detail = el('span', 'c-detail');
-    if (session.is_extra) detail.appendChild(el('span', 'tag', '补录'));
-    detail.appendChild(document.createTextNode(session.content + (session.reps ? ' · ' + session.reps + ' 遍' : '')));
-    row.appendChild(detail);
-    row.appendChild(el('span', 'c-share num', '—'));
-    return row;
+    var head = el('button', 'rec-subj-head');
+    head.type = 'button';
+    head.setAttribute('aria-expanded', 'true');
+    head.appendChild(el('span', 'rec-subj-name', group.item_name));
+    head.appendChild(el('span', 'rec-subj-count', group.sessions.length + ' 次'));
+    head.appendChild(el('span', 'rec-subj-min num', minutesOf(group.seconds) + ' 分'));
+    var track = el('span', 'rec-subj-bar');
+    var fill = document.createElement('i');
+    fill.dataset.pct = String(share);
+    fill.style.width = Math.round(share * 40 / 100) + 'px'; /* BAR_PX = 40，见 .rec-subj-bar */
+    track.appendChild(fill);
+    head.appendChild(track);
+    head.appendChild(el('span', 'rec-subj-pct num', share + '%'));
+    head.appendChild(el('span', 'rec-subj-caret'));
+    head.addEventListener('click', function () {
+      toggleSubject(card);
+      syncExpandedFlag();
+    });
+    card.appendChild(head);
+
+    var list = el('div', 'rec-sess-list');
+    group.sessions.forEach(function (session) {
+      var row = el('button', 'rec-row session');
+      row.type = 'button';
+      row.setAttribute('aria-expanded', 'false');
+      row.appendChild(el('span', 'rec-dot'));
+      row.appendChild(el('span', 'rec-time num', clockLabel(session.started_at)));
+      var title = el('span', 'rec-title');
+      if (session.is_extra) { title.appendChild(el('span', 'tag', '补')); }
+      title.appendChild(document.createTextNode(session.content || '练习'));
+      row.appendChild(title);
+      row.appendChild(el('span', 'rec-meta num', sessionMeta(session)));
+      row.appendChild(el('span', 'rec-min num', minutesOf(session.duration_seconds) + ' 分'));
+      row.addEventListener('click', function () {
+        var open = row.classList.toggle('is-open');
+        row.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      list.appendChild(row);
+      list.appendChild(el('div', 'rec-note', sessionNote(session)));
+    });
+    card.appendChild(list);
+
+    /* 折叠态的「时间豆」：不展开也能看到每段练了几分钟、练的是什么 */
+    var beans = el('div', 'rec-beans');
+    group.sessions.forEach(function (session) {
+      var bean = el('span', 'rec-bean');
+      bean.appendChild(el('b', 'num', minutesOf(session.duration_seconds) + ' 分'));
+      bean.appendChild(document.createTextNode(session.content || ''));
+      beans.appendChild(bean);
+    });
+    card.appendChild(beans);
+    return card;
   }
 
   function render() {
@@ -18011,16 +18103,26 @@ function closeRecordsDrawer() {
       host.appendChild(el('div', 'rec-empty', '今天还没有记录'));
     }
     view.groups.forEach(function (group, i) {
-      host.appendChild(subjectRow(group, view.shares[i]));
-      if (expanded) {
-        group.sessions.forEach(function (session) { host.appendChild(sessionRow(session)); });
-      }
+      var card = subjectRow(group, view.shares[i]);
+      if (!expanded) { toggleSubject(card, false); }
+      host.appendChild(card);
     });
-    document.getElementById('btnFold').classList.toggle('is-on', !expanded);
-    document.getElementById('btnOpen').classList.toggle('is-on', expanded);
-    document.getElementById('btnFold').setAttribute('aria-pressed', expanded ? 'false' : 'true');
-    document.getElementById('btnOpen').setAttribute('aria-pressed', expanded ? 'true' : 'false');
+    syncFoldButtons();
     return view;
+  }
+
+  /* 「收起/展开」是全局意图；用户单独点开/收起某个科目后，按实际状态回写 */
+  function syncExpandedFlag() {
+    var cards = [].slice.call(document.querySelectorAll('.rec-subj'));
+    expanded = cards.every(function (c) { return c.dataset.open === '1'; });
+    syncFoldButtons();
+  }
+
+  function syncFoldButtons() {
+    var fold = document.getElementById('btnFold');
+    var open = document.getElementById('btnOpen');
+    if (fold) { fold.classList.toggle('is-on', !expanded); fold.setAttribute('aria-pressed', expanded ? 'false' : 'true'); }
+    if (open) { open.classList.toggle('is-on', expanded); open.setAttribute('aria-pressed', expanded ? 'true' : 'false'); }
   }
 
   /* 261015b：卡内边缘模糊层和展开遮罩已删除。列表只在 popout 里阅读。 */
@@ -18035,8 +18137,9 @@ function closeRecordsDrawer() {
     if (view.tone !== wantTone) failures.push('ASSERT_FAIL tone: got ' + view.tone + ' want ' + wantTone);
     /* 空态没有科目，占比之和自然是 0；只有真有数据时才要求 100。 */
     if (view.groups.length && view.shareSum !== 100) failures.push('ASSERT_FAIL shareSum: got ' + view.shareSum + ' want 100');
-    var dom = document.querySelectorAll('.rec-row').length;
-    var wantDom = expanded ? view.expandedRows : view.collapsedRows;
+    /* 手风琴只切显隐，DOM 里始终是「科目卡 + 全部 session 行」，与 expandedRows 对齐 */
+    var dom = document.querySelectorAll('.rec-subj').length + document.querySelectorAll('.rec-row.session').length;
+    var wantDom = view.expandedRows;
     if (dom !== wantDom) failures.push('ASSERT_FAIL rows: got ' + dom + ' want ' + wantDom);
     return failures;
   }
@@ -18044,10 +18147,10 @@ function closeRecordsDrawer() {
   function writeAudit(view) {
     var failures = specFailures(view);
     var shareBars = [];
-    document.querySelectorAll('.rec-row.subject .bar i').forEach(function (fill) {
+    document.querySelectorAll('.rec-subj-bar i').forEach(function (fill) {
       var pct = parseInt(fill.dataset.pct, 10);
       var barPx = Math.round(fill.getBoundingClientRect().width);
-      var want = Math.round(pct * 48 / 100);
+      var want = Math.round(pct * 40 / 100); /* BAR_PX = 40 */
       shareBars.push({ pct: pct, barPx: barPx });
       if (Math.abs(barPx - want) > 1) {
         failures.push('ASSERT_FAIL shareBar: pct ' + pct + ' barPx ' + barPx + ' want ' + want);
@@ -18057,7 +18160,7 @@ function closeRecordsDrawer() {
       ok: failures.length === 0,
       collapsedRows: view.collapsedRows,
       expandedRows: view.expandedRows,
-      domRows: document.querySelectorAll('.rec-row').length,
+      domRows: document.querySelectorAll('.rec-row.session').length,
       expanded: expanded,
       hero: {
         spanMinutes: view.spanMinutes,
@@ -18092,16 +18195,20 @@ function closeRecordsDrawer() {
   }
 
   function switchExpanded(next) {
-    if (next === expanded) return;
     expanded = next;
-    var view = render();
+    [].slice.call(document.querySelectorAll('.rec-subj')).forEach(function (card) { toggleSubject(card, next); });
+    syncFoldButtons();
     if (!reduceMotion && window.gsap) {
       gsap.fromTo(document.getElementById('rows'), { opacity: 0.7, y: next ? 4 : -4 }, { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' });
     }
-    publishAudit(view);
+    publishAudit(buildView());
   }
 
-  /* 261015b：折叠/展开按钮不再改卡内列表。明细在 popout。 */
+  var foldBtn = document.getElementById('btnFold');
+  var openBtn = document.getElementById('btnOpen');
+  if (foldBtn) { foldBtn.addEventListener('click', function () { switchExpanded(false); }); }
+  if (openBtn) { openBtn.addEventListener('click', function () { switchExpanded(true); }); }
+
   document.getElementById('scroller').addEventListener('scroll', publishAudit, { passive: true });
 
   var VP = { '1133x744': [1133, 744], '744x1133': [744, 1133], '440x956': [440, 956] };
@@ -19986,7 +20093,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.43';
+  var DSH_VERSION = 'v3.44';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20318,104 +20425,6 @@ function closeRecordsDrawer() {
     'html.cz-fill .readout-line { display: inline-flex !important; align-items: flex-end !important; justify-content: center !important; position: relative !important; }',
     'html.cz-fill .readout-unit { position: absolute !important; left: 100% !important; bottom: 4px !important; margin-left: 3px !important; font-size: calc(var(--readout-digits-h, 60px) / 2) !important; font-weight: 250 !important; line-height: 1 !important; padding-bottom: 0 !important; color: var(--dash-panel-dim) !important; white-space: nowrap !important; transform: none !important; pointer-events: none !important; }',
     'html.cz-land .readout-line { --readout-digits-h: 76px !important; }',
-    /* 今日练习记录卡：≤540 堆叠布局，541-800 响应式 5 列，>800 6 列 */
-    '@container rec (max-width: 540px) {',
-    '  .thead { display: none !important; }',
-    '  .rec-row.subject, .rec-row.session { min-height: 0 !important; }',
-    '  .rec-row.cols, .cols.rec-row {',
-    '    display: grid !important;',
-    '    grid-template-columns: minmax(0, 1fr) auto !important;',
-    '    grid-template-rows: auto auto auto !important;',
-    '    grid-template-areas: "name total" "meta share" "detail detail" !important;',
-    '    row-gap: 6px !important;',
-    '    column-gap: 12px !important;',
-    '    padding: 10px 0 !important;',
-    '    align-items: center !important;',
-    '    width: 100% !important;',
-    '    box-sizing: border-box !important;',
-    '  }',
-    '  .c-name { grid-area: name !important; font-size: 15px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-total { grid-area: total !important; justify-self: end !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-meta { display: flex !important; gap: 10px !important; grid-area: meta !important; align-items: center !important; height: 22px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-share { grid-area: share !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; justify-self: end !important; height: 22px !important; align-self: start !important; white-space: nowrap !important; }',
-    '  .c-detail { grid-area: detail !important; display: block !important; font-size: 12px !important; line-height: 18px !important; min-height: 18px !important; word-break: break-word !important; width: 100% !important; overflow-wrap: anywhere !important; }',
-    '  .hero .v { font-size: 22px !important; }',
-    '  .hero .s { white-space: normal !important; }',
-    '}',
-    '@media (max-width: 540px) {',
-    '  .thead { display: none !important; }',
-    '  .rec-row.subject, .rec-row.session { min-height: 0 !important; }',
-    '  .rec-row.cols, .cols.rec-row {',
-    '    display: grid !important;',
-    '    grid-template-columns: minmax(0, 1fr) auto !important;',
-    '    grid-template-rows: auto auto auto !important;',
-    '    grid-template-areas: "name total" "meta share" "detail detail" !important;',
-    '    row-gap: 6px !important;',
-    '    column-gap: 12px !important;',
-    '    padding: 10px 0 !important;',
-    '    align-items: center !important;',
-    '    width: 100% !important;',
-    '    box-sizing: border-box !important;',
-    '  }',
-    '  .c-name { grid-area: name !important; font-size: 15px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-total { grid-area: total !important; justify-self: end !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-meta { display: flex !important; gap: 10px !important; grid-area: meta !important; align-items: center !important; height: 22px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-share { grid-area: share !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; justify-self: end !important; height: 22px !important; align-self: start !important; white-space: nowrap !important; }',
-    '  .c-detail { grid-area: detail !important; display: block !important; font-size: 12px !important; line-height: 18px !important; min-height: 18px !important; word-break: break-word !important; width: 100% !important; overflow-wrap: anywhere !important; }',
-    '}',
-    /* S15 批注2（dad 261025）：541-800 断层的「压缩 6 列」就是右侧列被裁的元凶
-       （弹窗 console 实测 724-726px 正落在这档）——并入堆叠布局，>800 才用 6 列宽表 */
-    '@container rec (min-width: 541px) and (max-width: 800px) {',
-    '  .thead { display: none !important; }',
-    '  .rec-row.subject, .rec-row.session { min-height: 0 !important; }',
-    '  .rec-row.cols, .cols.rec-row {',
-    '    display: grid !important;',
-    '    grid-template-columns: minmax(0, 1fr) auto !important;',
-    '    grid-template-rows: auto auto auto !important;',
-    '    grid-template-areas: "name total" "meta share" "detail detail" !important;',
-    '    row-gap: 6px !important;',
-    '    column-gap: 12px !important;',
-    '    padding: 10px 0 !important;',
-    '    align-items: center !important;',
-    '    width: 100% !important;',
-    '    box-sizing: border-box !important;',
-    '  }',
-    '  .c-name { grid-area: name !important; font-size: 15px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-total { grid-area: total !important; justify-self: end !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-meta { display: flex !important; gap: 10px !important; grid-area: meta !important; align-items: center !important; height: 22px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-share { grid-area: share !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; justify-self: end !important; height: 22px !important; align-self: start !important; white-space: nowrap !important; }',
-    '  .c-detail { grid-area: detail !important; display: block !important; font-size: 12px !important; line-height: 18px !important; min-height: 18px !important; word-break: break-word !important; width: 100% !important; overflow-wrap: anywhere !important; }',
-    '}',
-    '@media (min-width: 541px) and (max-width: 800px) {',
-    '  .thead { display: none !important; }',
-    '  .rec-row.subject, .rec-row.session { min-height: 0 !important; }',
-    '  .rec-row.cols, .cols.rec-row {',
-    '    display: grid !important;',
-    '    grid-template-columns: minmax(0, 1fr) auto !important;',
-    '    grid-template-rows: auto auto auto !important;',
-    '    grid-template-areas: "name total" "meta share" "detail detail" !important;',
-    '    row-gap: 6px !important;',
-    '    column-gap: 12px !important;',
-    '    padding: 10px 0 !important;',
-    '    align-items: center !important;',
-    '    width: 100% !important;',
-    '    box-sizing: border-box !important;',
-    '  }',
-    '  .c-name { grid-area: name !important; font-size: 15px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-total { grid-area: total !important; justify-self: end !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-meta { display: flex !important; gap: 10px !important; grid-area: meta !important; align-items: center !important; height: 22px !important; line-height: 22px !important; white-space: nowrap !important; }',
-    '  .c-share { grid-area: share !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; justify-self: end !important; height: 22px !important; align-self: start !important; white-space: nowrap !important; }',
-    '  .c-detail { grid-area: detail !important; display: block !important; font-size: 12px !important; line-height: 18px !important; min-height: 18px !important; word-break: break-word !important; width: 100% !important; overflow-wrap: anywhere !important; }',
-    '}',
-    '@container rec (min-width: 801px) {',
-    '  .cols { display: grid !important; grid-template-columns: minmax(54px, 1.2fr) minmax(48px, auto) minmax(56px, auto) minmax(44px, auto) minmax(130px, 2.5fr) minmax(50px, auto) !important; width: 100% !important; gap: 8px 12px !important; align-items: center !important; }',
-    '}',
-    '@media (min-width: 801px) {',
-    '  .cols { display: grid !important; grid-template-columns: minmax(54px, 1.2fr) minmax(48px, auto) minmax(56px, auto) minmax(44px, auto) minmax(130px, 2.5fr) minmax(50px, auto) !important; width: 100% !important; gap: 8px 12px !important; align-items: center !important; }',
-    '}',
-    '.rec-row, .rec-row.cols, .cols.thead { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }',
-    '.c-total, .c-tempo, .c-once, .c-share, .c-name { white-space: nowrap !important; font-variant-numeric: tabular-nums !important; }',
-    '.c-detail { min-width: 0 !important; word-break: break-word !important; overflow-wrap: break-word !important; white-space: normal !important; line-height: 1.35 !important; font-size: 12px !important; }',
     'html.cz-land .hollow-digits-svg, html.cz-land .readout-digits .hollow-digits-svg, html.cz-land .ac-root#metaDigits .hollow-digits-svg { height: 76px !important; }',
     'html.cz-land .ac-root#metaDigits { min-height: 76px !important; font-size: 36px !important; }',
     'html.cz-fill:not(.cz-land) .panel { margin-bottom: 8px !important; }',
@@ -20473,12 +20482,6 @@ function closeRecordsDrawer() {
     'html.cz-fill .scroller::-webkit-scrollbar { width: 6px !important; }',
     'html.cz-fill .scroller::-webkit-scrollbar-track { background: transparent !important; }',
     'html.cz-fill .scroller::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #E2DDD5 0%, #CFC9BF 100%) !important; background-clip: padding-box !important; border-radius: 999px !important; }',
-    'html.cz-fill .rec-row.cols { grid-template-columns: minmax(0, 1fr) auto !important; grid-template-rows: auto auto auto !important; grid-template-areas: "name total" "meta share" "detail detail" !important; row-gap: 6px !important; }',
-    'html.cz-fill .rec-row.cols .c-name { grid-area: name !important; }',
-    'html.cz-fill .rec-row.cols .c-total { grid-area: total !important; justify-self: end !important; }',
-    'html.cz-fill .rec-row.cols .c-meta { display: flex !important; gap: 10px !important; grid-area: meta !important; align-items: center !important; }',
-    'html.cz-fill .rec-row.cols .c-share { grid-area: share !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; justify-self: end !important; }',
-    'html.cz-fill .rec-row.cols .c-detail { grid-area: detail !important; display: block !important; }',
     /* 744/440 节拍器竖条转横条 (88~96px)。宽屏仍在卡片内竖排。 */
     'html.cz-fill.cz-feed .strip { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; height: 92px !important; min-height: 88px !important; max-height: 96px !important; padding: 10px 16px !important; gap: 12px !important; box-sizing: border-box !important; background: var(--dash-panel) !important; color: var(--dash-panel-text) !important; border-radius: 20px !important; overflow: hidden !important; }',
     'html.cz-fill.cz-feed .strip .top, html.cz-fill.cz-feed .strip .mid, html.cz-fill.cz-feed .strip .bot { flex-direction: row !important; align-items: center !important; justify-content: center !important; width: auto !important; height: auto !important; flex: 0 1 auto !important; gap: 8px !important; writing-mode: horizontal-tb !important; }',
@@ -25053,6 +25056,12 @@ window.__CZ_CSS = [
     });
     /* 迷你记录卡是从票夹抽屉的 DOM 反读的（buildMiniCard）。抽屉刚被真数据重写，
        必须按当前宽高重建一次，否则迷你卡会停在首屏那次（空态或占位）。 */
+    /* feed 档（<1024）：卡片高度是按「空态内容」量出来的。真数据进来后内容变高，
+       不重新量就把列表下半截裁在卡外（dad 261109 手机 440 实测 iframe 241 / 内容 375）。
+       宽档模块高是设计高、卡内自己滚，不需要重排。 */
+    try {
+      if (cd.documentElement.clientWidth < 1024) { syncAll(); }
+    } catch (e) {}
     [].slice.call(cd.querySelectorAll('#czRecordsMini')).forEach(function (old) {
       var w = Math.round(parseFloat(old.style.width) || old.getBoundingClientRect().width || 0);
       var h = Math.round(parseFloat(old.style.height) || old.getBoundingClientRect().height || 0);
