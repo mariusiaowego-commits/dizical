@@ -2761,16 +2761,16 @@
   /* 露出部分（约 1/5）：只留「进行中」+ 科目全名 + 展开胶囊。
      速度和时长不放这里，长科目名才能排开。 */
   .pk-card-exposed-bar {
-    height: var(--pk-card-exposed-h, 54px);
-    flex: 0 0 var(--pk-card-exposed-h, 54px);
+    height: var(--pk-card-visible-h, 118px);
+    flex: 0 0 var(--pk-card-visible-h, 118px);
     display: flex;
     flex-wrap: wrap;
-    align-content: center;
-    row-gap: 4px;
+    align-content: space-evenly;
+    row-gap: 0;
     column-gap: 8px;
     align-items: center;
     justify-content: space-between;
-    padding: 0 14px;
+    padding: 10px 14px;
     background: linear-gradient(180deg, var(--dash-surface-soft) 0%, var(--dash-surface-2) 52%, var(--dash-shell-lo) 120%);
     border-radius: 12px 12px 0 0;
     border-bottom: none;
@@ -2855,7 +2855,9 @@
     width: 24px;
     height: 24px;
     padding: 0;
-    border-radius: 50%;
+    border-color: transparent;
+    background: transparent;
+    border-radius: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2869,6 +2871,7 @@
     border-bottom: 1.6px solid currentColor;
     transform: rotate(45deg);
   }
+  .pk-exposed-expand-hint.is-arrow:hover { border-color: transparent; }
   /* 准备态卡面：前 3 个 session 标签，占满第二行 */
   .pk-exposed-tags {
     flex: 1 0 100%;
@@ -7202,7 +7205,7 @@ function syncRunMeta() {
   const collapsedSpeedSym = document.getElementById('pkCollapsedSpeedSym');
   if (collapsedSpeedSym) collapsedSpeedSym.textContent = NOTES[noteIdx].sym;
 
-  /* S14 批注6 / S17 批注（dad 261026）：仪表盘黑屏 cover-name 与左票夹当前 item 联动。
+  /* S14 批注6 / S17 批注（dad 261026）：仪表盘封面图与左票夹当前 item 联动。
      注意：本函数运行在「画布文档」里（票夹与 A 卡 iframe 同层），
      所以直接 document.querySelector('.cz-mod[data-mod="A"] > iframe') 取 A 卡文档，
      不要再经 #czCanvas（那是外层页，票夹不在那儿）。 */
@@ -7216,8 +7219,6 @@ function syncDashCover() {
   try {
     var dashFrameEl = document.querySelector('.cz-mod[data-mod="A"] > iframe') || document.querySelector('.cz-astack > iframe');
     var dashInner = dashFrameEl ? dashFrameEl.contentDocument : null;
-    var dashCoverName = dashInner ? dashInner.getElementById('dashCoverName') : null;
-    if (dashCoverName) dashCoverName.textContent = cur ? (cur.name || '练习曲目') : '未选择练习';
     var dashCoverImg = dashInner ? dashInner.getElementById('dashCoverImg') : null;
     if (dashCoverImg && cur && cur.hero_img) dashCoverImg.src = cur.hero_img;
     if (dashFrameEl && dashFrameEl.contentWindow && typeof dashFrameEl.contentWindow.updateYesterdaySubjBtn === 'function') {
@@ -9373,27 +9374,6 @@ function closeRecordsDrawer() {
     transform: scale(1.03);
   }
   .cover-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 35%; display: block; }
-  .cover-name {
-    font-size: clamp(11px, 2.5cqw, 12px);
-    line-height: 1.25;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-align: center;
-    text-wrap: balance;
-    word-break: break-all;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 88px;
-    max-height: 30px;
-    cursor: pointer;
-  }
-  .cover-name:hover {
-    text-decoration: underline;
-  }
 
   .title-col {
     grid-column: 2; grid-row: 1; align-self: center;
@@ -10080,7 +10060,6 @@ function closeRecordsDrawer() {
                 <img src="/static/practice-dsh-assets/assets/practice-hero-ticket-260922.png?v={{ dsh_v }}" alt="萨丽哈" id="dashCoverImg">
               </div>
             </div>
-            <div class="cover-name" id="dashCoverName" onclick="triggerOpenFolio()" style="cursor:pointer" title="点击选择曲目">萨丽哈</div>
           </div>
           <div class="title-col">
             <div class="readout">
@@ -20025,7 +20004,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.36';
+  var DSH_VERSION = 'v3.37';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20351,7 +20330,6 @@ function closeRecordsDrawer() {
     'html.cz-land .panel-main { position: relative !important; display: grid !important; grid-template-columns: 96px minmax(0, 1fr) !important; grid-template-rows: auto auto !important; align-items: center !important; align-content: space-between !important; justify-content: stretch !important; min-height: 132px !important; height: auto !important; overflow: visible !important; column-gap: 14px !important; row-gap: 10px !important; flex: 1 1 auto !important; }',
     'html.cz-land .cover-col { position: static !important; left: auto !important; top: auto !important; transform: none !important; width: 96px !important; flex: 0 0 auto !important; z-index: 1 !important; }',
     'html.cz-land .cover-frame { width: 56px !important; height: 56px !important; }',
-    'html.cz-land .cover-name, html.cz-fill .cover-name { display: -webkit-box !important; -webkit-box-orient: vertical !important; -webkit-line-clamp: 2 !important; line-clamp: 2 !important; overflow: hidden !important; text-overflow: ellipsis !important; font-size: clamp(11px, 2.5cqw, 12px) !important; line-height: 1.25 !important; text-align: center !important; text-wrap: balance !important; word-break: break-all !important; max-width: 88px !important; max-height: 30px !important; }',
     'html.cz-land .status, html.cz-fill .status { margin-left: calc(-1 * var(--cz-panel-pad-l, 12px)) !important; margin-right: calc(-1 * var(--cz-panel-pad-r, 12px)) !important; width: calc(100% + var(--cz-panel-pad-l, 12px) + var(--cz-panel-pad-r, 12px)) !important; padding-left: var(--cz-status-pad-left, 0px) !important; padding-right: var(--cz-status-pad-right, 0px) !important; align-items: flex-start !important; }',
     'html.cz-land .status > .mic-status-btn, html.cz-fill .status > .mic-status-btn { align-self: flex-start !important; }',
     'html.cz-land .status > .battery, html.cz-fill .status > .battery { align-self: flex-start !important; }',
@@ -21254,7 +21232,6 @@ window.__CZ_CSS = [
     var root = cd.documentElement;
     root.style.setProperty('--cz-crown-h', crownPx + 'px');
     root.style.setProperty('--pk-slot-w', slotW.toFixed(1) + 'px');
-    root.style.setProperty('--pk-card-exposed-h', exposedPrepH + 'px');
     root.style.setProperty('--pk-card-exposed-h-run', exposedH + 'px');
     root.style.setProperty('--pk-card-visible-h', (running ? cardVisibleRunH : cardVisiblePrepH) + 'px');
     root.style.setProperty('--cz-card-rise', (-cardRise) + 'px');
@@ -23825,7 +23802,7 @@ window.__CZ_CSS = [
     w.addEventListener('touchend', function () { tracking = false; horizontal = false; }, { passive: true });
   }
 
-  /* S17：仪表盘黑屏标题（dashCoverName）与票夹当前练习项目联动。
+  /* S17：仪表盘封面图与票夹当前练习项目联动。
      联动函数 syncDashCover 定义在画布文档（票夹与 Card A 同层），
      这里从外层页跨文档调一次。 */
   function syncDashCoverOuter() {
@@ -24048,7 +24025,7 @@ window.__CZ_CSS = [
     syncSlotMode();
     watchStageMode();
     rebindBus();
-    /* S17：cover-name 联动函数定义在画布文档里，这里跨文档调用一次（模块重建后重挂） */
+    /* S17：封面图联动函数定义在画布文档里，这里跨文档调用一次（模块重建后重挂） */
     syncDashCoverOuter();
     pokeArcAll();
     setTimeout(pokeArcAll, 60);
