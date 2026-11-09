@@ -9997,6 +9997,7 @@ function closeRecordsDrawer() {
     /* dad 2610102107 条2：440 档列宽 58 → 键撑满列宽、对称 padding，文字严格居中 */
     .stand-btn { min-width: 0; width: 100%; height: 46px; padding: 4px 3px; gap: 2px; font-size: 10.5px; border-radius: 12px; }
     .stand-btn .stand-ico { width: 15px; height: 15px; }
+    .pill { --cz-pill-btn-pad: 12px; }
     .pill button { padding: 0 12px; font-size: 13px; }
     .cover-frame { width: 72px; height: 72px; }
     .readout-sub { font-size: 18px; font-weight: 750; }
@@ -10503,7 +10504,6 @@ function closeRecordsDrawer() {
     var speakerBlock = document.getElementById('speakerBlock');
     var speakerBlockR = document.getElementById('speakerBlockR');
     var speakerGrille = document.getElementById('speakerGrille');
-    var pillEl = document.querySelector('.transport-main .pill');
     if (!coverCol || !speakerBlock) return;
     speakerBlock.style.position = 'relative';
     speakerBlock.style.left = '0px';
@@ -10516,12 +10516,10 @@ function closeRecordsDrawer() {
     var cCenter = cRect.left + cRect.width / 2;
     var sCenter = sRect.left + sRect.width / 2;
     var offset = cCenter - sCenter;
-    /* S19 批注4（dad 261027）：440 窄屏下孔阵向右对齐封面时严禁压到中央开始/结束药丸按钮，保留 ≥12px 安全间距 */
-    if (pillEl) {
-      var pillRect = pillEl.getBoundingClientRect();
-      var maxOffset = pillRect.left - 12 - sRect.right;
-      if (offset > maxOffset) offset = Math.max(0, maxOffset);
-    }
+    /* 261109：原来为了对齐封面列会把孔阵往中央药丸推，440 档净距被这 12–16px 吃光。
+       现在只允许向外（≤0）：孔阵留在自己那一列的中心，与上方 − / + 圆钮同轴，
+       中央药丸的呼吸位不再靠 clamp 抢救。 */
+    if (offset > 0) offset = 0;
     speakerBlock.style.left = offset.toFixed(1) + 'px';
     if (speakerBlockR) {
       speakerBlockR.style.left = (-offset).toFixed(1) + 'px';
@@ -12006,8 +12004,14 @@ function closeRecordsDrawer() {
     var coverCol = document.querySelector('.cover-col');
     var speakerBlock = document.getElementById('speakerBlock');
     var cCenter = coverCol.getBoundingClientRect().left + coverCol.getBoundingClientRect().width / 2;
+    /* 261109：孔阵不再向封面列内推（会挤中央药丸），轴线参照物改成上方 − 圆钮，
+       与右侧 Fix 2.1.1（对 + 圆钮）镜像对称。 */
+    var minusBtnAudit = document.getElementById('silverMinus');
+    var axisCenter = minusBtnAudit
+      ? (minusBtnAudit.getBoundingClientRect().left + minusBtnAudit.getBoundingClientRect().width / 2)
+      : cCenter;
     var sCenter = speakerBlock.getBoundingClientRect().left + speakerBlock.getBoundingClientRect().width / 2;
-    var csDiff = Math.abs(cCenter - sCenter);
+    var csDiff = Math.abs(axisCenter - sCenter);
     if (csDiff > 1.0) {
       fails.push('A1.3 fail: speaker centerline diff got ' + csDiff.toFixed(1) + 'px > 1px');
     }
@@ -20021,7 +20025,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.35';
+  var DSH_VERSION = 'v3.36';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20204,12 +20208,15 @@ function closeRecordsDrawer() {
     'html.cz-fill .panel { flex: 1.05 1 0% !important; min-height: 0 !important; overflow: hidden !important; padding: var(--cz-panel-pt, clamp(4px, 1cqh, 10px)) 12px 12px !important; gap: clamp(2px, 0.6cqh, 8px) !important; }',
     'html.cz-fill .panel-main { min-height: 0 !important; }',
     'html.cz-fill .mid { flex: 0 0 auto !important; min-height: 0 !important; overflow: visible !important; height: auto !important; }',
-    'html.cz-fill .deck.transport { flex: 0.85 1 auto !important; min-height: 0 !important; padding-top: clamp(2px, 0.6cqh, 6px) !important; }',
+    /* 261109：孔阵收窄后这一行有余量，顶部补一段呼吸位，和上方 ± 旋钮行拉开（原来只有 4px）。 */
+    'html.cz-fill .deck.transport { flex: 0.85 1 auto !important; min-height: 0 !important; padding-top: clamp(6px, 1.6cqh, 14px) !important; }',
     'html.cz-fill .diag-card { flex: 0 0 auto !important; }',
     'html.cz-fill .knob { width: min(144px, 32cqh) !important; height: min(144px, 32cqh) !important; overflow: hidden !important; }',
     'html.cz-fill.cz-feed .knob { width: min(176px, 32cqh) !important; height: min(176px, 32cqh) !important; }',
     'html.cz-fill .cover-frame, html.cz-fill .grille-6x8 { width: min(72px, max(48px, 16cqh)) !important; height: min(72px, max(48px, 16cqh)) !important; }',
-    'html.cz-fill .pill button { min-height: min(44px, 10cqh) !important; padding-left: 22px !important; padding-right: 22px !important; }',
+    /* 261109：写死 22px 会把窄档的紧凑内边距盖掉，药丸虚胖 20–40px 直接吃掉两边净距；
+       改成变量，窄档（≤440 容器）由下面的容器查询给 12px。 */
+    'html.cz-fill .pill button { min-height: min(44px, 10cqh) !important; padding-left: var(--cz-pill-btn-pad, 22px) !important; padding-right: var(--cz-pill-btn-pad, 22px) !important; }',
     'html.cz-fill .stand-btn { height: min(50px, 12cqh) !important; }',
     'html.cz-fill .ac-root#metaDigits { display: inline-flex !important; align-items: flex-end !important; justify-content: center !important; min-width: 1.5em !important; min-height: min(var(--readout-digits-h, 60px), 16cqh) !important; font-size: min(var(--dash-num, 48px), 12cqh) !important; flex: 0 0 auto !important; }',
     'html.cz-fill .ac-root#metaDigits .hollow-digits-svg, html.cz-fill .readout-digits .hollow-digits-svg { height: min(var(--readout-digits-h, 60px), 16cqh) !important; width: auto !important; }',
@@ -20292,6 +20299,15 @@ function closeRecordsDrawer() {
     '  .cover-frame, .grille-6x8 { width: 44px !important; height: 44px !important; }',
     '  .deck.transport { padding-top: 0 !important; }',
     '  .panel { padding: 4px 8px 2px !important; }',
+    '}',
+    /* 261109：卡宽 ≤400 时点阵仍是 56px、药丸最小内容宽 ~140px，两面一挤净距只剩 3–13px。
+       这一档把点阵缩到 44px（孔径 6→5，仍 8×8 保持 8 段频段与镜像律动），药丸内边距降到 10px。 */
+    '@container dash (max-width: 400px) {',
+    '  html.cz-fill .transport-main .grille-6x8,',
+    '  html.cz-fill.cz-feed .transport-main .grille-6x8 { width: 44px !important; height: 44px !important; grid-template-columns: repeat(8, 5px) !important; grid-template-rows: repeat(8, 5px) !important; }',
+    '  html.cz-fill .transport-main .grille-6x8 .hole,',
+    '  html.cz-fill.cz-feed .transport-main .grille-6x8 .hole { width: 5px !important; height: 5px !important; }',
+    '  html.cz-fill .pill { --cz-pill-btn-pad: 10px; }',
     '}',
     '@container moduleCard (max-width: 280px) {',
     '  .date-row, .section-label { font-size: 12px !important; }',
