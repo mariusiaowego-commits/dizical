@@ -629,6 +629,8 @@
     white-space: nowrap;
     flex: 0 0 auto;
   }
+  /* 空闲态没有副标题时不占位，避免多出一段 12px 间距 */
+  .pk-mid:empty { display: none; }
   .pk-mid b {
     color: var(--text-main);
   }
@@ -5249,8 +5251,8 @@
 
   <!-- ══════════ 顶栏 40px ══════════ -->
   <header class="pk-top" id="pkTop">
-    <span class="pk-brand" id="pkBrand">练习准备</span>
-    <span class="pk-mid" id="pkMid">女儿竹笛早课</span>
+    <span class="pk-brand" id="pkBrand">练习助手</span>
+    <span class="pk-mid" id="pkMid"></span>
     <span class="pk-grow"></span>
     <button class="pk-pill mini" id="pkStateToggle">切到练习态</button>
     <button class="pk-pill mini" id="pkRelayoutBtn" title="重新测量并排布全部卡片（组合切换/增减卡片后布局走样时使用）">刷新布局</button>
@@ -8188,9 +8190,9 @@ function exitRun() {
   if (typeof ttOnExit === 'function') ttOnExit();
 
   const brand = document.getElementById('pkBrand');
-  if (brand) { brand.textContent = '练习准备'; brand.classList.remove('running'); }
+  if (brand) { brand.textContent = '练习助手'; brand.classList.remove('running'); }
   const mid = document.getElementById('pkMid');
-  if (mid) mid.textContent = '女儿竹笛早课';
+  if (mid) mid.textContent = '';
   const toggle = document.getElementById('pkStateToggle');
   if (toggle) toggle.textContent = '切到练习态';
 
@@ -9532,8 +9534,10 @@ function closeRecordsDrawer() {
   .panel-foot.grid-3col .c-left,
   .panel-foot.grid-3col .c-right {
     position: absolute;
-    bottom: 0 !important;
-    top: auto !important;
+    /* 窄档 .panel-foot 被 cz-natural 改成 height:auto -> 0，用 bottom 锚会让两块上浮 20px；
+       统一用 top 锚定，宽窄两档落位一致。 */
+    top: 0 !important;
+    bottom: auto !important;
     height: 20px;
     display: flex;
     align-items: center;
@@ -10630,10 +10634,11 @@ function closeRecordsDrawer() {
       dots[i].dataset.deg = dotDeg.toFixed(1);
     }
 
-    /* S17 批注3（dad 261026）+ S18 批注 5/6 + S22 261029：
-       「今日 xx分 / BPM xx」整体上移，距底边约 21px（h - 41 + 20px 盒高），底边严格对齐。 */
+    /* S17 批注3（dad 261026）+ S18 批注 5/6 + S22 261029 + 261109：
+       「今日 xx分 / BPM xx」贴 panel 下缘落在凹拱左右两侧（20%/83% 拱肩），
+       盒底距 panel 下边 7px（h - 27 + 20px 盒高），不再悬在弧顶上方。 */
     try {
-      var footTop = Math.max(0, h - 41);
+      var footTop = Math.max(0, h - 27);
       panelEl.style.setProperty('--cz-foot-top', footTop.toFixed(1) + 'px');
     } catch (eFootTop) {}
 
@@ -19988,7 +19993,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.32';
+  var DSH_VERSION = 'v3.33';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20416,7 +20421,7 @@ function closeRecordsDrawer() {
     'html.cz-land .ac-root#metaDigits { min-height: 76px !important; font-size: 36px !important; }',
     'html.cz-fill:not(.cz-land) .panel { margin-bottom: 8px !important; }',
     'html.cz-fill .panel-foot { position: absolute !important; left: 12px !important; right: 12px !important; top: var(--cz-foot-top, auto) !important; bottom: auto !important; margin-top: 0 !important; width: calc(100% - 24px) !important; padding: 0 !important; }',
-    'html.cz-fill .panel-foot.grid-3col .c-left, html.cz-fill .panel-foot.grid-3col .c-right { position: absolute !important; bottom: 0 !important; top: auto !important; height: 20px !important; display: flex !important; align-items: center !important; }',
+    'html.cz-fill .panel-foot.grid-3col .c-left, html.cz-fill .panel-foot.grid-3col .c-right { position: absolute !important; top: 0 !important; bottom: auto !important; height: 20px !important; display: flex !important; align-items: center !important; }',
     'html.cz-fill .mid { flex: 0 0 auto !important; min-height: 0 !important; overflow: visible !important; height: auto !important; padding-top: 0 !important; margin-bottom: 8px !important; box-sizing: border-box !important; }',
     'html.cz-land .knob { width: 104px !important; height: 104px !important; }',
     'html.cz-land .arc { top: 0 !important; inset: 0 !important; }',
@@ -24359,7 +24364,7 @@ window.__CZ_CSS = [
     var lock = cd.getElementById('pkTicketLockOverlay');
     if (lock) { lock.style.display = want ? 'flex' : 'none'; lock.style.opacity = want ? '1' : '0'; }
     var brand = cd.getElementById('pkBrand');
-    if (brand) { brand.textContent = want ? '进行中' : '练习准备'; if (want) { brand.classList.add('running'); } else { brand.classList.remove('running'); } }
+    if (brand) { brand.textContent = want ? '进行中' : '练习助手'; if (want) { brand.classList.add('running'); } else { brand.classList.remove('running'); } }
     var tg = cd.getElementById('pkStateToggle');
     if (tg) { tg.textContent = want ? '切回准备态' : '切到练习态'; }
     try { window.__czForce = (window.__czForce || 0) + 1; } catch (e) {}
@@ -24469,7 +24474,7 @@ window.__CZ_CSS = [
       if (brand) { brand.textContent = '已暂停'; }
     } else if (mode === 'run') {
       if (brand && canvasRunning()) { brand.textContent = '进行中'; }
-    } else if (brand) { brand.textContent = canvasRunning() ? '进行中' : '练习准备'; }
+    } else if (brand) { brand.textContent = canvasRunning() ? '进行中' : '练习助手'; }
     o.brand = brand ? brand.textContent : null;
     o.toggle = tg ? tg.textContent : null;
     return o;
