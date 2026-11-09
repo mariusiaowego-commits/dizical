@@ -17609,7 +17609,24 @@ function closeRecordsDrawer() {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   #heroPractice { color: var(--dash-vermilion-text); }
-  .hero .s { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--dash-text-soft); }
+  /* 数字说明从版面移到二级：默认不占高度，hover（桌面）/ 长按（触摸）才浮出 */
+  .hero { position: relative; }
+  .hero .s {
+    position: absolute; left: 10px; top: calc(100% - 8px); z-index: 6;
+    display: block; width: max-content; max-width: 200px;
+    margin: 0; padding: 6px 10px; border-radius: 8px;
+    background: var(--dash-surface-3); color: var(--dash-text);
+    border: 1px solid var(--dash-ink-a12);
+    font-size: 11px; line-height: 1.4; font-weight: 650;
+    white-space: normal; overflow-wrap: anywhere;
+    box-shadow: 0 8px 20px var(--dash-ink-a25);
+    opacity: 0; visibility: hidden; transform: translateY(-4px);
+    transition: opacity 130ms ease-out, transform 130ms ease-out;
+    pointer-events: none;
+  }
+  .hero:hover .s, .hero.is-tip .s { opacity: 1; visibility: visible; transform: translateY(0); }
+  /* 触摸屏没有 hover：只认长按，避免点一下就挂着不动 */
+  @media (hover: none) { .hero:hover .s { opacity: 0; visibility: hidden; transform: translateY(-4px); } }
   .delta.up { color: var(--dash-delta-up); }
   .delta.down { color: var(--dash-delta-down); }
   .sheet { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
@@ -18104,6 +18121,20 @@ function closeRecordsDrawer() {
     document.querySelectorAll('#skinSeg button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
   });
 
+  /* 触摸屏没有 hover：按住数字把说明浮出来，松手 1.4s 后收起。
+     桌面端由 :hover 负责，这里多一层长按不会互相打架。 */
+  document.querySelectorAll('.hero').forEach(function (h) {
+    var timer = 0;
+    var hide = function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { h.classList.remove('is-tip'); }, 1400);
+    };
+    h.addEventListener('pointerdown', function () { clearTimeout(timer); h.classList.add('is-tip'); });
+    h.addEventListener('pointerup', hide);
+    h.addEventListener('pointercancel', hide);
+    h.addEventListener('pointerleave', function () { clearTimeout(timer); h.classList.remove('is-tip'); });
+  });
+
   publishAudit(render());
 })();
 </script>
@@ -18514,7 +18545,8 @@ function closeRecordsDrawer() {
     height: calc(100% - 16px);
     max-height: calc(100% - 16px);
   }
-  html.cz-fill:not(.cz-feed) .deck-card.is-empty { justify-content: center; }
+  /* 空态不再上下居中：标题要贴卡顶，和右侧「今日练习记录」卡同一条标题线 */
+  html.cz-fill:not(.cz-feed) .deck-card.is-empty { justify-content: flex-start; }
   .deck-card.is-empty {
     justify-content: flex-start;
   }
@@ -18524,9 +18556,8 @@ function closeRecordsDrawer() {
   .deck-card.is-empty .latest-tag {
     display: none;
   }
-  .deck-card.is-empty .card-top-row {
-    margin-bottom: 0;
-  }
+  /* 空态的标题由 .card-head 承担（「老师要求」），科目行整块收起，避免出现两个标题 */
+  .deck-card.is-empty .card-top-row { display: none; }
   .deck-card.is-empty .card-req-body {
     flex: 0 0 auto;
     margin: 10px 0 0;
@@ -18614,6 +18645,23 @@ function closeRecordsDrawer() {
   }
 
   /* 卡头 */
+  /* 卡头标题：与右侧「今日练习记录」卡 .head h1 同一套尺寸（15px / 800），贴卡顶左缘 */
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    /* 卡身内边距（18/16）比记录卡 console 的 14 多 4/2 px：用负外边距把标题线拉齐 */
+    margin: -4px 0 10px -2px;
+  }
+  .card-head-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--dash-text);
+  }
   .card-top-row {
     display: flex;
     align-items: baseline;
@@ -19236,6 +19284,7 @@ function closeRecordsDrawer() {
       const noteBoxHtml = formatTeacherNote(item) + formatPracticeSummary(item);
 
       return `
+        <div class="card-head"><h1 class="card-head-title">老师要求</h1></div>
         <div class="card-top-row">
           <div class="card-subject-tag">
             ${item.subject || ''}
@@ -19279,7 +19328,7 @@ function closeRecordsDrawer() {
         currentFetchSubject = null;
         ASSIGNMENTS_DATA = [{
           id: "empty",
-          subject: "未选练习",
+          subject: "老师要求",
           lesson_date: "暂无要求",
           stage_order: null,
           stage_start: null,
@@ -19937,7 +19986,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.42';
+  var DSH_VERSION = 'v3.43';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
