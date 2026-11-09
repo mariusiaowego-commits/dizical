@@ -17574,6 +17574,34 @@ function closeRecordsDrawer() {
     display: flex; flex-direction: column;
     overflow: hidden;
   }
+  /* v3.39：今天没记录（空态）时卡面只包住内容，下方透出页面底色。
+     宽档（AQR 横排）宿主把 iframe 钉在 744，卡内 .console 若跟 100% 就会顶出一大片白。
+     这里让 .page / .frame / .console 一起按内容收高，iframe 剩余区域由 body 底色补上。 */
+  /* 宿主注入的 html.cz-fill .page { height:100% !important } 权重更高，这里必须同用
+     !important 并多带一个 .is-rec-empty 类才压得住。html/body 保持 100%，让 iframe
+     剩余区域仍铺满 --dash-page，和 Q 卡收高后的观感一致。 */
+  html.is-rec-empty .page,
+  html.is-rec-empty .frame,
+  html.is-rec-empty .console,
+  html.cz-fill.is-rec-empty .page,
+  html.cz-fill.is-rec-empty .frame,
+  html.cz-fill.is-rec-empty .console {
+    height: auto !important;
+    max-height: none !important;
+  }
+  /* 宿主还给 .page / .console 打了 container-type: size —— 尺寸隔离下内容不参与定高，
+     auto 只会算成 0。空态退回 inline-size（只留宽度查询），高度才能跟着内容走。 */
+  html.cz-fill.is-rec-empty .page,
+  html.cz-fill.is-rec-empty .console { container-type: inline-size !important; }
+  /* v3.38：列表区同样收为内容高，不再向下撑 500px+ 空白 */
+  .console.is-empty .sheet,
+  .console.is-empty .scroller {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+  }
   :root[data-skin="ink"] .console { background: var(--dash-surface-soft); }
   .head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -17988,9 +18016,14 @@ function closeRecordsDrawer() {
   function render() {
     var view = buildView();
     paintHero(view);
+    /* 空态收高：卡面只包住内容，别把整列白底一直铺到 744。 */
+    var isEmptyDay = !view.groups.length;
+    document.documentElement.classList.toggle('is-rec-empty', isEmptyDay);
+    var consoleEl = document.getElementById('console');
+    if (consoleEl) { consoleEl.classList.toggle('is-empty', isEmptyDay); }
     var host = document.getElementById('rows');
     host.textContent = '';
-    if (!view.groups.length) {
+    if (isEmptyDay) {
       host.appendChild(el('div', 'rec-empty', '今天还没有记录'));
     }
     view.groups.forEach(function (group, i) {
@@ -18574,16 +18607,24 @@ function closeRecordsDrawer() {
     pointer-events: none;
   }
 
-  /* 空态：未选科目时不要把 3 行字顶在卡头、下面留 300px 空白 */
-  /* 只在纵向 feed 档收高；横版（cz-expand）仍按组合高度铺满 */
+  /* 空态：未选科目时不要把 3 行字顶在卡头、下面留 300px 空白。
+     纵向 feed 与横向组合（cz-expand / 普通 cz-fill）都收成内容高，只留一条呼吸。 */
+  .req-card-chassis.is-empty .req-deck-stage,
   .req-card-chassis.is-feed.is-empty .req-deck-stage,
-  html.cz-feed .req-card-chassis.is-empty .req-deck-stage {
+  html.cz-feed .req-card-chassis.is-empty .req-deck-stage,
+  html.cz-expand .req-card-chassis.is-empty .req-deck-stage,
+  html.cz-fill .req-card-chassis.is-empty .req-deck-stage {
     height: auto;
+    min-height: 0;
   }
+  .req-card-chassis.is-empty .deck-card,
   .req-card-chassis.is-feed.is-empty .deck-card,
-  html.cz-feed .req-card-chassis.is-empty .deck-card {
+  html.cz-feed .req-card-chassis.is-empty .deck-card,
+  html.cz-expand .req-card-chassis.is-empty .deck-card,
+  html.cz-fill .req-card-chassis.is-empty .deck-card {
     position: relative;
     height: auto;
+    max-height: none;
     min-height: 132px;
   }
   .deck-card.is-empty {
@@ -20055,7 +20096,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.38';
+  var DSH_VERSION = 'v3.39';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
