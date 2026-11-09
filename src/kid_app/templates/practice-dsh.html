@@ -2904,10 +2904,24 @@
     border-color: var(--dash-vermilion-line);
     color: var(--dash-text);
   }
+  /* v3.38 空态「常练快选」：虚线朱砂描边 = 可点、是推荐入口，与已选 session 实线区分 */
+  .pk-exposed-tag.is-quick-pick {
+    border-style: dashed;
+    border-color: var(--dash-vermilion-line);
+    background: var(--dash-surface-soft);
+    color: var(--dash-text);
+  }
+  .pk-exposed-tag.is-quick-pick:hover {
+    background: var(--dash-vermilion-wash);
+    color: var(--dash-vermilion-text);
+  }
   @media (max-width: 600px) {
     .pk-exposed-chip { font-size: 8px !important; padding: 1px 4px !important; }
     .pk-exposed-title { font-size: 11.5px !important; max-width: none !important; }
     .pk-exposed-expand-hint { font-size: 9px !important; padding: 1px 5px !important; }
+  }
+  @media (max-width: 400px) {
+    .pk-exposed-tags .pk-exposed-tag.is-quick-pick:nth-child(3) { display: none; }
   }
   #czTicketStage.is-compact .pk-card-exposed-bar,
   .pk-card-exposed-bar.is-compact,
@@ -7343,6 +7357,20 @@ function pkTick() {
 }
 
 /* 计时态信用卡：主机挂载在 dashboard 卡槽上方，数据来自同一份画布状态。 */
+/* v3.38：空态「常练快选」取最近练最多的 3 个科目（历史统计优先，退而取科目列表前 3）。 */
+function quickPickItems() {
+  const list = (ITEMS.focus || []).concat(ITEMS.other || [], ITEMS.archived || []);
+  const known = list.filter(i => i && i.id != null);
+  if (!known.length) return [];
+  const withStats = known.filter(i => ITEM_STATS[i.id] && (ITEM_STATS[i.id].sessions || 0) > 0);
+  if (withStats.length >= 3) {
+    return withStats.slice().sort((a, b) =>
+      (ITEM_STATS[b.id].sessions || 0) - (ITEM_STATS[a.id].sessions || 0)
+    ).slice(0, 3);
+  }
+  return known.slice(0, 3);
+}
+
 function syncRunRailCard() {
   const cd = (typeof canvasDoc === 'function' ? canvasDoc() : null) || document;
   const stage = cd.getElementById('czTicketStage');
@@ -7385,19 +7413,36 @@ function syncRunRailCard() {
   }
   const exposedTags = cd.getElementById('pkExposedTags');
   if (exposedTags) {
-    const rawTags = (cur && window.PracticeSessionSelector) ? PracticeSessionSelector.parse(cur.content_options || '') : [];
-    const tags = isRun ? [] : rawTags.slice(0, 3);
     exposedTags.innerHTML = '';
-    tags.forEach((tag) => {
-      const b = cd.createElement('button');
-      b.type = 'button';
-      b.className = 'pk-exposed-tag' + (dispContent === tag ? ' is-active' : '');
-      b.dataset.session = tag;
-      b.textContent = tag;
-      exposedTags.appendChild(b);
-    });
-    if (!tags.length) exposedTags.setAttribute('hidden', '');
-    else exposedTags.removeAttribute('hidden');
+    if (!cur && !isRun) {
+      /* v3.38：未选科目时卡槽第二行改放「常练快选」（最近练最多的 3 个科目），
+         点一下直达开练，替代原本空白的 session 标签位。 */
+      const picks = quickPickItems();
+      picks.forEach((it) => {
+        const b = cd.createElement('button');
+        b.type = 'button';
+        b.className = 'pk-exposed-tag is-quick-pick';
+        b.dataset.quickItemId = String(it.id);
+        b.textContent = it.name;
+        b.title = it.name;
+        exposedTags.appendChild(b);
+      });
+      if (!picks.length) exposedTags.setAttribute('hidden', '');
+      else exposedTags.removeAttribute('hidden');
+    } else {
+      const rawTags = (cur && window.PracticeSessionSelector) ? PracticeSessionSelector.parse(cur.content_options || '') : [];
+      const tags = isRun ? [] : rawTags.slice(0, 3);
+      tags.forEach((tag) => {
+        const b = cd.createElement('button');
+        b.type = 'button';
+        b.className = 'pk-exposed-tag' + (dispContent === tag ? ' is-active' : '');
+        b.dataset.session = tag;
+        b.textContent = tag;
+        exposedTags.appendChild(b);
+      });
+      if (!tags.length) exposedTags.setAttribute('hidden', '');
+      else exposedTags.removeAttribute('hidden');
+    }
   }
 
   // Overlay popup fields
@@ -7576,6 +7621,12 @@ function initRunRailCard() {
       const tagBtn = ev.target.closest ? ev.target.closest('.pk-exposed-tag') : null;
       if (tagBtn) {
         ev.stopPropagation();
+        if (tagBtn.dataset.quickItemId) {
+          if (typeof window.selectItem === 'function') {
+            window.selectItem(Number(tagBtn.dataset.quickItemId), false);
+          }
+          return;
+        }
         applyExposedSession(tagBtn.dataset.session);
         return;
       }
@@ -20004,7 +20055,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.37';
+  var DSH_VERSION = 'v3.38';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
