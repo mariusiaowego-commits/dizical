@@ -17581,16 +17581,6 @@ function closeRecordsDrawer() {
     min-width: 0;
   }
   .head h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; }
-  .fold-mini {
-    display: flex; background: var(--dash-surface-2); border-radius: 8px; padding: 2px; flex: 0 0 auto;
-  }
-  .fold-mini button {
-    border: 0; background: transparent; color: var(--dash-text-soft);
-    height: 24px; padding: 0 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
-    transition: background-color 120ms ease-out, color 120ms ease-out;
-  }
-  .fold-mini button.is-on { background: var(--dash-white); color: var(--dash-text); box-shadow: 0 1px 2px var(--dash-tray-inset); }
-  :root[data-skin="ink"] .fold-mini button.is-on { background: var(--dash-coral); color: var(--dash-page); }
   .heroes {
     flex: 0 0 66px; height: 66px;
     display: grid; grid-template-columns: repeat(3, 1fr);
@@ -17744,9 +17734,8 @@ function closeRecordsDrawer() {
 
   /* 折叠态：时间豆胶囊（22px） */
   .s2-beans-tray {
-    display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px;
     border-top: 1px dashed var(--dash-ink-a12);
-    overflow-x: auto; scrollbar-width: none;
   }
   .s2-beans-tray::-webkit-scrollbar { display: none; }
   .s2-group-card.is-open .s2-beans-tray { display: none; }
@@ -17851,10 +17840,6 @@ function closeRecordsDrawer() {
     <article class="console" id="console">
       <header class="head">
         <h1>今日练习记录</h1>
-        <div class="fold-mini" role="group" aria-label="列表层级">
-          <button type="button" id="btnFold" class="is-on">智能折</button>
-          <button type="button" id="btnOpen">全展开</button>
-        </div>
       </header>
       <section class="heroes" aria-label="今日三个时长">
         <div class="hero">
@@ -18103,9 +18088,6 @@ function closeRecordsDrawer() {
     return when ? when + ' · ' + body : body;
   }
 
-  /* 折叠模式：智能折（第一科展开、其余时间豆）/ 全展开 */
-  var FOLD_MODE = 'smart';
-
   function toggleGroup(card, force) {
     var open = (force == null) ? !card.classList.contains('is-open') : !!force;
     card.classList.toggle('is-open', open);
@@ -18193,20 +18175,11 @@ function closeRecordsDrawer() {
     if (!view.groups.length) {
       host.appendChild(el('div', 'rec-empty', '今天还没有记录'));
     }
+    /* 全部科目默认展开（不做智能折）；单卡手风琴保留。 */
     view.groups.forEach(function (group, i) {
-      var open = (FOLD_MODE === 'all') || i === 0;
-      host.appendChild(groupCard(group, view.shares[i], open));
+      host.appendChild(groupCard(group, view.shares[i], true));
     });
-    syncFoldButtons();
     return view;
-  }
-
-  /* 「智能折 / 全展开」是全局意图；用户单独点开某个科目后不回写模式，避免按钮乱跳 */
-  function syncFoldButtons() {
-    var fold = document.getElementById('btnFold');
-    var open = document.getElementById('btnOpen');
-    if (fold) { fold.classList.toggle('is-on', FOLD_MODE !== 'all'); fold.setAttribute('aria-pressed', FOLD_MODE !== 'all' ? 'true' : 'false'); }
-    if (open) { open.classList.toggle('is-on', FOLD_MODE === 'all'); open.setAttribute('aria-pressed', FOLD_MODE === 'all' ? 'true' : 'false'); }
   }
 
   /* 261015b：卡内边缘模糊层和展开遮罩已删除。列表只在 popout 里阅读。 */
@@ -18281,23 +18254,6 @@ function closeRecordsDrawer() {
     clearTimeout(auditTimer);
     auditTimer = setTimeout(function () { writeAudit(buildView()); }, 200);
   }
-
-  function switchFoldMode(mode) {
-    FOLD_MODE = mode;
-    [].slice.call(document.querySelectorAll('.s2-group-card')).forEach(function (card, i) {
-      toggleGroup(card, mode === 'all' ? true : i === 0);
-    });
-    syncFoldButtons();
-    if (!reduceMotion && window.gsap) {
-      gsap.fromTo(document.getElementById('rows'), { opacity: 0.7, y: mode === 'all' ? 4 : -4 }, { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' });
-    }
-    publishAudit(buildView());
-  }
-
-  var foldBtn = document.getElementById('btnFold');
-  var openBtn = document.getElementById('btnOpen');
-  if (foldBtn) { foldBtn.addEventListener('click', function () { switchFoldMode('smart'); }); }
-  if (openBtn) { openBtn.addEventListener('click', function () { switchFoldMode('all'); }); }
 
   document.getElementById('scroller').addEventListener('scroll', publishAudit, { passive: true });
 
@@ -20183,7 +20139,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.45';
+  var DSH_VERSION = 'v3.46';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
