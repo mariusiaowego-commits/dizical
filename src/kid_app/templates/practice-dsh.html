@@ -17623,6 +17623,8 @@ function closeRecordsDrawer() {
     pointer-events: none;
   }
   .hero:hover .s, .hero.is-tip .s { opacity: 1; visibility: visible; transform: translateY(0); }
+  /* 末格靠右对齐：气泡从右向左展开，避免窄档（1133 下 console 368px）右侧溢出被裁。 */
+  .hero:last-child .s { left: auto; right: 10px; }
   /* 触摸屏没有 hover：只认长按，避免点一下就挂着不动 */
   @media (hover: none) { .hero:hover .s { opacity: 0; visibility: hidden; transform: translateY(-4px); } }
   .delta.up { color: var(--dash-delta-up); }
@@ -17633,7 +17635,7 @@ function closeRecordsDrawer() {
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
     padding-right: 8px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(44, 62, 80, 0.28) transparent;
+    scrollbar-color: var(--dash-surface-3) transparent;
   }
   .scroller::-webkit-scrollbar { width: 6px; }
   .scroller::-webkit-scrollbar-track { background: transparent; }
@@ -19331,6 +19333,16 @@ function closeRecordsDrawer() {
     let isCurrentlyDragging = false;
     let currentFetchSubject = null;
 
+    /* 老师填的曲目名/要求/备注都是自由文本，进 innerHTML 前统一转义，否则 < 与 & 会变成标签。 */
+    function escHtml(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     /* 正文条目：编号清单。最新一周的第一条提权（字号/字重/左色条），不加新文案。 */
     function formatRequirementItems(item) {
       const rawText = item.requirements;
@@ -19348,7 +19360,7 @@ function closeRecordsDrawer() {
       return lines.map((s, i) => {
         const hero = allowHero && i === 0;
         const num = String(i + 1).padStart(2, '0');
-        return `<div class="qc-item${hero ? ' is-hero' : ''}"><span class="qc-idx">${num}</span><div class="req-p">${s}</div></div>`;
+        return `<div class="qc-item${hero ? ' is-hero' : ''}"><span class="qc-idx">${num}</span><div class="req-p">${escHtml(s)}</div></div>`;
       }).join('');
     }
 
@@ -19357,7 +19369,7 @@ function closeRecordsDrawer() {
       const rawNotes = (item.notes || item.teacher_note || '').trim();
       if (!rawNotes) { return ''; }
       const lines = rawNotes.split('\n').map(l => l.trim()).filter(Boolean);
-      const body = lines.map(l => `<div class="ctn-line">${l}</div>`).join('');
+      const body = lines.map(l => `<div class="ctn-line">${escHtml(l)}</div>`).join('');
       return `
         <div class="card-teacher-note" data-no-drag>
           <div class="ctn-head">
@@ -19372,9 +19384,9 @@ function closeRecordsDrawer() {
     function formatPracticeSummary(item) {
       if ((item.notes || item.teacher_note || '').trim()) { return ''; }
       const dur = item.stage_duration_text;
-      const range = (item.stage_start && item.stage_end) ? `（${item.stage_start} ~ ${item.stage_end}）` : '';
+      const range = (item.stage_start && item.stage_end) ? `（${escHtml(item.stage_start)} ~ ${escHtml(item.stage_end)}）` : '';
       if (dur && dur !== '0秒') {
-        return `<div class="card-note-box">本阶段已练 ${dur}${range ? ' ' + range : ''}。</div>`;
+        return `<div class="card-note-box">本阶段已练 ${escHtml(dur)}${range ? ' ' + range : ''}。</div>`;
       }
       return '';
     }
@@ -19430,7 +19442,7 @@ function closeRecordsDrawer() {
       const segHtml = segList.map(s => {
         const label = s.part || s.label || '';
         const tempo = s.tempo || (s.note ? `${s.note}=${s.bpm}` : '');
-        return `<span class="card-seg-chip">${label ? `<span class="qc-seg-name">${label}</span> ` : ''}${tempo}</span>`;
+        return `<span class="card-seg-chip">${label ? `<span class="qc-seg-name">${escHtml(label)}</span> ` : ''}${escHtml(tempo)}</span>`;
       }).join('');
 
       const paragraphsHtml = formatRequirementItems(item);
@@ -19440,16 +19452,16 @@ function closeRecordsDrawer() {
         <div class="card-head"><h1 class="card-head-title">老师要求</h1></div>
         <div class="card-top-row">
           <div class="card-subject-tag">
-            ${item.subject || ''}
+            ${escHtml(item.subject || '')}
             ${item.is_latest ? '<span class="latest-tag">最新</span>' : ''}
           </div>
-          <div class="card-date-badge">${item.lesson_date || ''}</div>
+          <div class="card-date-badge">${escHtml(item.lesson_date || '')}</div>
         </div>
 
         <div class="qc-bay">
           <div class="qc-bay-row">
             <span class="qc-bay-lbl">速度</span>
-            <span class="qc-bay-val">${item.metronome || '按曲目要求'}</span>
+            <span class="qc-bay-val">${escHtml(item.metronome || '按曲目要求')}</span>
           </div>
           ${segHtml ? `<div class="qc-bay-row qc-bay-seg">
             <span class="qc-bay-lbl">分段</span>
@@ -19464,8 +19476,8 @@ function closeRecordsDrawer() {
         ${noteBoxHtml}
 
         <div class="card-footer-row">
-          <div class="card-teacher-sig">No.${item.item_id || item.target_item_id || '----'}</div>
-          <div>${item.stage_duration_text || '0秒'}</div>
+          <div class="card-teacher-sig">No.${escHtml(item.item_id || item.target_item_id || '----')}</div>
+          <div>${escHtml(item.stage_duration_text || '0秒')}</div>
         </div>
       `;
     }
@@ -20139,7 +20151,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.46';
+  var DSH_VERSION = 'v3.47';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20381,7 +20393,6 @@ function closeRecordsDrawer() {
     'html.cz-fill .preset-scroll { max-width: 100% !important; min-width: 0 !important; overflow: hidden !important; }',
     'html.cz-fill .ps-section, html.cz-fill .ps-row { max-width: 100% !important; min-width: 0 !important; flex-wrap: wrap !important; overflow: visible !important; }',
     'html.cz-fill .console { display: flex !important; flex-direction: column !important; }',
-    'html.cz-fill .fold { display: none !important; }',
     'html.cz-fill .scroller { flex: 1 1 auto !important; min-height: 0 !important; overflow: auto !important; }',
     /* 744/440 喂流：外壳不再被 100% 锁死，滚动层摊开，卡高由内容决定。1133 不加这个类。 */
     'html.cz-fill.cz-feed, html.cz-fill.cz-feed body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: hidden !important; }',
@@ -20522,12 +20533,6 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-expand.cz-dcol .clock-display .hollow-digits-svg { height: 56px !important; }',
     'html.cz-fill.cz-expand.cz-dcol .timeline-rail-capsule { height: 46px !important; }',
     'html.cz-fill.cz-expand.cz-dcol .footer-status-row { flex-wrap: wrap !important; row-gap: 4px !important; }',
-    /* S15 批注1/2（dad 261025）：R 卡细滚动条（uiverse 风格）+ 堆叠布局断点提到 700px，
-       窄卡宽表 6 列右侧「总时长/占比」列被裁的旧问题随断点一并解决 */
-    'html.cz-fill .scroller { padding-right: 8px !important; scrollbar-width: thin !important; scrollbar-color: rgba(44, 62, 80, 0.28) transparent !important; }',
-    'html.cz-fill .scroller::-webkit-scrollbar { width: 6px !important; }',
-    'html.cz-fill .scroller::-webkit-scrollbar-track { background: transparent !important; }',
-    'html.cz-fill .scroller::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #E2DDD5 0%, #CFC9BF 100%) !important; background-clip: padding-box !important; border-radius: 999px !important; }',
     /* 744/440 节拍器竖条转横条 (88~96px)。宽屏仍在卡片内竖排。 */
     'html.cz-fill.cz-feed .strip { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; height: 92px !important; min-height: 88px !important; max-height: 96px !important; padding: 10px 16px !important; gap: 12px !important; box-sizing: border-box !important; background: var(--dash-panel) !important; color: var(--dash-panel-text) !important; border-radius: 20px !important; overflow: hidden !important; }',
     'html.cz-fill.cz-feed .strip .top, html.cz-fill.cz-feed .strip .mid, html.cz-fill.cz-feed .strip .bot { flex-direction: row !important; align-items: center !important; justify-content: center !important; width: auto !important; height: auto !important; flex: 0 1 auto !important; gap: 8px !important; writing-mode: horizontal-tb !important; }',
@@ -22676,48 +22681,53 @@ window.__CZ_CSS = [
     var doc = document, win = window;
     var FIELDS = {
       subject: {
-        step: 0, title: '先选择练习科目',
-        body: '票夹还没定下科目。点亮的那一块就是当前曲目，点它打开票夹挑一个。',
-        cta: '打开票夹选科目',
-        target: '#pkTicketSubjectBlock',
-        act: '#pkTicketSubjectBlock'
+        step: 0, title: '先选今天练的曲目',
+        body: '点开曲目册挑一首，速度和练习要求会自动带出来。',
+        cta: '去选科目 →',
+        targets: ['#pkExposedHint', '#czTicketStage', '#pkPunchSlotWrap'],
+        act: function () {
+          if (typeof win.openFolio === 'function') { win.openFolio(); return; }
+          var b = doc.getElementById('pkExposedHint');
+          if (b) { b.click(); }
+        }
       },
       content: {
-        step: 1, title: '再选本次练习内容',
-        body: '科目定了，还得说明这次练哪一段 —— 点胶囊标签，或在输入框里直接写。',
-        cta: '选择练习内容',
-        target: '#pkSessionSlot .pss',
-        act: '#pkSessionSlot input'
-      },
-      bpm: {
-        step: 2, title: '最后定一个练习速度',
-        body: '用票面左侧的 −／+ 调一个 BPM，节拍器会跟着走。',
-        cta: '去定速度',
-        target: '#pkBpmVal',
-        act: null
-      },
-      duration: {
-        step: 3, title: '还差一个练习时长',
-        body: '票面上的分钟数决定这次练多久，先定一个时长再开始。',
-        cta: '去定时长',
-        target: '#pkTicketDurVal',
-        act: null
+        step: 1, title: '挑一下这次练哪一段',
+        body: '点曲目册里的段落标签，或者自己写一句这次要练的内容。',
+        cta: '去选练习段落 →',
+        targets: ['#pkExposedTags', '#pkExposedHint', '#czTicketStage', '#pkPunchSlotWrap'],
+        act: function () {
+          var firstTag = doc.querySelector('#pkExposedTags .pk-exposed-tag');
+          if (firstTag) { firstTag.click(); return; }
+          var hint = doc.getElementById('pkExposedHint');
+          if (hint) { hint.click(); }
+        }
       }
     };
-    var STEP_LABELS = ['科目', '内容', '速度', '时长'];
+    var STEP_LABELS = ['科目', '内容'];
     var el = null, spot = null, cur = null, tick = null;
 
-    /* 缺哪一项：优先级 科目 > 内容 > 速度 > 时长（dad 261028）。
+    /* 缺哪一项：优先级 科目 > 内容。速度和时长跟着曲目/会话预设走，不单独拦。
        一次只报一项 —— 前面的没补上就不轮到后面。 */
     function missingField() {
       var r = (typeof win.__czPracticeReady === 'function') ? win.__czPracticeReady() : null;
       if (!r) { return null; }
       if (!r.subjectId) { return 'subject'; }
       if (!r.content || !String(r.content).trim()) { return 'content'; }
-      var bpmEl = doc.getElementById('pkBpmVal');
-      var bpm = bpmEl ? parseInt(bpmEl.textContent, 10) : (win.bpm || 80);
-      if (!bpm || bpm < 30 || bpm > 240) { return 'bpm'; }
-      if (!r.durationMin) { return 'duration'; }
+      return null;
+    }
+
+    /* 锚点必须真实可指：节点存在、没被 hidden、且有非零矩形。
+       #pkExposedTags 在科目没有分段标签时是 hidden（0×0），必须跳过落到下一个候选。 */
+    function findTarget(f) {
+      var cfg = FIELDS[f];
+      if (!cfg) { return null; }
+      for (var i = 0; i < cfg.targets.length; i++) {
+        var t = doc.querySelector(cfg.targets[i]);
+        if (!t || t.hidden) { continue; }
+        var r = t.getBoundingClientRect();
+        if (r.width >= 1 && r.height >= 1) { return t; }
+      }
       return null;
     }
 
@@ -22765,9 +22775,19 @@ window.__CZ_CSS = [
     /* 落位：默认贴在目标下方（箭头朝上），下方放不下就翻到上方（箭头朝下）；
        左右都不越出票夹的横向范围。 */
     function place(f) {
-      var cfg = FIELDS[f];
-      var t = doc.querySelector(cfg.target);
-      if (!t) { return false; }
+      var arrow = el.querySelector('.cz-guide-arrow');
+      var gw = el.offsetWidth, gh = el.offsetHeight;
+      var t = findTarget(f);
+      if (!t) {
+        /* 找不到可指的锚点也不能静默：气泡照常出现，只是不高亮任何目标。 */
+        var vw = doc.documentElement.clientWidth;
+        el.style.left = Math.max(12, Math.round((vw - gw) / 2)) + 'px';
+        el.style.top = '72px';
+        el.classList.remove('is-arrow-bottom');
+        if (arrow) { arrow.style.display = 'none'; }
+        return false;
+      }
+      if (arrow) { arrow.style.display = ''; }
       var tr = t.getBoundingClientRect();
       var sx = win.scrollX || 0, sy = win.scrollY || 0;
       var L = tr.left + sx, T = tr.top + sy, W = tr.width, H = tr.height;
@@ -22776,36 +22796,30 @@ window.__CZ_CSS = [
       spot.style.width = (W + 10) + 'px';
       spot.style.height = (H + 10) + 'px';
       spot.style.borderRadius = Math.max(8, Math.min(14, H / 2)) + 'px';
-      var gw = el.offsetWidth, gh = el.offsetHeight;
       var gap = 14;
       var gy = T + H + gap, below = true;
-      var ticket = doc.getElementById('pkTicketCard');
-      var limit = ticket ? (ticket.getBoundingClientRect().bottom + sy) : (sy + win.innerHeight);
+      var limit = sy + win.innerHeight;
       if (gy + gh > limit - 6) { gy = T - gh - gap; below = false; }
       if (gy < sy + 6) { gy = sy + 6; below = true; }
       var docW = doc.documentElement.clientWidth;
       /* 水平居中于目标（引导是「指哪儿」的提示，居中比贴左更贴切），
-         再夹进票夹与视口范围；箭头单独对准目标中心，两者解耦。 */
+         再夹进视口范围；箭头单独对准目标中心，两者解耦。 */
       var gx = L + W / 2 - gw / 2;
       gx = Math.max(8, Math.min(gx, docW - gw - 8));
-      var tk = doc.getElementById('pkTicketCard');
-      if (tk) {
-        var tkr = tk.getBoundingClientRect();
-        gx = Math.max(tkr.left + sx + 8, Math.min(gx, tkr.right + sx - gw - 8));
-      }
       el.style.left = gx + 'px';
       el.style.top = gy + 'px';
       el.classList.toggle('is-arrow-bottom', !below);
-      el.querySelector('.cz-guide-arrow').style.left =
+      if (arrow) { arrow.style.left =
         Math.max(16, Math.min(L + W / 2 - gx - 6, gw - 28)) + 'px';
+      }
       return true;
     }
 
     function onCta() {
       var cfg = cur ? FIELDS[cur] : null;
-      var t = cfg && cfg.act ? doc.querySelector(cfg.act) : null;
+      if (!cfg || typeof cfg.act !== 'function') { hide(); return; }
       hide();
-      if (t) { win.setTimeout(function () { t.click(); }, 60); }
+      win.setTimeout(cfg.act, 60);
     }
 
     /* ── 跨屏回视野（v3.14b）─────────────────────────────────────────────────
@@ -22841,11 +22855,11 @@ window.__CZ_CSS = [
       var again = (cur === f);
       cur = f;
       render(f);
-      var t = doc.querySelector(FIELDS[f].target);
+      var t = findTarget(f);
       if (t) { scrollTargetIntoView(t); }
-      place(f);
+      var placed = place(f);
       el.classList.add('is-open');
-      spot.classList.add('is-on');
+      if (placed) { spot.classList.add('is-on'); } else { spot.classList.remove('is-on'); }
       if (again) {   /* 重复点同一条：重播脉冲，让「又点了还是这条」有回应 */
         spot.style.animation = 'none';
         void spot.offsetWidth;
