@@ -439,21 +439,21 @@
     --pk-tele-speed-weight: 800;
     --pk-tele-speed-color: var(--text-main);
 
-    /* 3. 今日练习记录抽屉 */
+    /* 3. 今日练习记录弹窗（圆角浮层，与仪表盘卡片共用 dash 色板） */
     --pk-drawer-width: 340px;
-    --pk-drawer-bg: var(--surface-page);
-    --pk-drawer-card-bg: var(--surface-card);
-    --pk-drawer-border: 1px solid var(--border-card);
-    --pk-drawer-radius: 18px 0 0 18px;
-    --pk-drawer-padding: 16px 18px;
-    --pk-drawer-gap: 12px;
-    --pk-drawer-title-size: 16px;
-    --pk-drawer-summary-bg: var(--surface-subtle);
-    --pk-drawer-summary-border: 1px solid rgba(255, 107, 107, 0.20);
-    --pk-drawer-summary-radius: 12px;
-    --pk-drawer-item-bg: var(--surface-card);
-    --pk-drawer-item-border: 1px solid var(--border-card);
-    --pk-drawer-item-radius: 10px;
+    --pk-drawer-bg: var(--dash-surface-soft);
+    --pk-drawer-card-bg: var(--dash-white);
+    --pk-drawer-border: 1px solid var(--dash-ink-a12);
+    --pk-drawer-radius: 0;
+    --pk-drawer-padding: 20px 22px;
+    --pk-drawer-gap: 14px;
+    --pk-drawer-title-size: 18px;
+    --pk-drawer-summary-bg: var(--dash-vermilion-wash);
+    --pk-drawer-summary-border: 1px solid var(--dash-vermilion-line);
+    --pk-drawer-summary-radius: 14px;
+    --pk-drawer-item-bg: var(--dash-white);
+    --pk-drawer-item-border: 1px solid var(--dash-ink-a12);
+    --pk-drawer-item-radius: 12px;
   }
   [data-theme="dizicute"][data-skin="ink"] {
     --surface-page: #1C2127;
@@ -5111,6 +5111,8 @@
     height: 100vh;
     max-width: 100vw;
     max-height: 100vh;
+    padding: 24px;
+    box-sizing: border-box;
     background: transparent;
     border: none;
     box-shadow: none;
@@ -5149,14 +5151,18 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
-    max-width: 720px;
+    max-width: 640px;
+    max-height: 100%;
     margin: 0 auto;
-    background: var(--pk-drawer-bg, var(--surface-page));
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
-    padding: var(--pk-drawer-padding, 16px 18px);
-    gap: var(--pk-drawer-gap, 12px);
+    background: var(--pk-drawer-bg, var(--dash-surface-soft));
+    border: var(--pk-drawer-border, 1px solid var(--dash-ink-a12));
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(44, 62, 80, 0.22), 0 2px 6px rgba(44, 62, 80, 0.06);
+    padding: var(--pk-drawer-padding, 20px 22px);
+    gap: var(--pk-drawer-gap, 14px);
     box-sizing: border-box;
     pointer-events: auto;
+    overflow: hidden;
   }
   .pk-drawer-header {
     min-height: 36px;
@@ -5164,13 +5170,13 @@
   .pk-drawer-title {
     font-size: var(--pk-drawer-title-size, 16px);
     font-weight: 700;
-    color: var(--text-main);
+    color: var(--dash-text);
   }
   .pk-drawer-badge {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
-    color: var(--c-primary);
-    background: rgba(255, 107, 107, 0.10);
+    color: var(--dash-vermilion-text);
+    background: var(--dash-vermilion-wash);
     padding: 2px 8px;
     border-radius: 9999px;
   }
@@ -5184,22 +5190,22 @@
   }
   .pk-drawer-summary {
     background: var(--pk-drawer-summary-bg, var(--surface-subtle));
-    border: var(--pk-drawer-summary-border, 1px solid rgba(255, 107, 107, 0.20));
-    border-radius: var(--pk-drawer-summary-radius, 12px);
-    padding: 12px 14px;
+    border: var(--pk-drawer-summary-border, 1px solid var(--dash-vermilion-line));
+    border-radius: var(--pk-drawer-summary-radius, 14px);
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
   .pk-drawer-summary-lead {
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--dash-text-soft);
   }
   .pk-drawer-summary-val {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 800;
-    color: var(--c-primary);
+    color: var(--dash-vermilion-text);
     font-variant-numeric: tabular-nums;
   }
   .pk-drawer-list-wrap {
@@ -5215,52 +5221,62 @@
     gap: 10px;
   }
   .pk-drawer-item {
-    background: var(--pk-drawer-item-bg, var(--surface-card));
-    border: var(--pk-drawer-item-border, 1px solid var(--border-card));
-    border-radius: var(--pk-drawer-item-radius, 10px);
-    padding: 10px 12px;
-    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.03);
+    background: var(--pk-drawer-item-bg, var(--dash-white));
+    border: var(--pk-drawer-item-border, 1px solid var(--dash-ink-a12));
+    border-radius: var(--pk-drawer-item-radius, 12px);
+    padding: 12px 14px;
+    box-shadow: 0 1px 2px var(--dash-ink-a04);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
   }
   .pk-drawer-item-head {
-    font-size: 12px;
+    font-size: 13px;
   }
   .pk-drawer-item-time {
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--dash-text-soft);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   .pk-drawer-item-dur {
     font-weight: 700;
-    color: var(--c-primary);
+    color: var(--dash-vermilion-text);
     font-variant-numeric: tabular-nums;
   }
   .pk-drawer-item-subject {
-    font-size: 14.5px;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--text-main);
+    color: var(--dash-text);
   }
   .pk-drawer-item-session {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 13.5px;
+    color: var(--dash-text-soft);
     line-height: 1.4;
   }
   .pk-drawer-empty {
     padding: 32px 16px;
     text-align: center;
-    color: var(--text-muted);
-    font-size: 13px;
+    color: var(--dash-text-soft);
+    font-size: 14px;
   }
   .pk-drawer-foot {
     padding-top: 8px;
-    border-top: 1px solid rgba(44, 62, 80, 0.06);
+    border-top: 1px solid var(--dash-ink-a04);
     text-align: center;
   }
   .pk-drawer-foot-text {
-    font-size: 11px;
-    color: var(--text-muted);
+    font-size: 12px;
+    color: var(--dash-text-soft);
+  }
+
+  @media (max-width: 560px) {
+    .pk-drawer { padding: 12px; }
+    .pk-drawer-inner {
+      border-radius: 16px;
+      padding: 16px 16px;
+      gap: 12px;
+    }
+    .pk-drawer-title { font-size: 17px; }
   }
 
   /* 提示条 */
@@ -17716,7 +17732,7 @@ function closeRecordsDrawer() {
   }
   .s2-group-card.is-open .s2-arrow { transform: rotate(90deg); }
   .s2-subj-title {
-    font-size: 13.5px; font-weight: 800; color: var(--dash-text);
+    font-size: 15px; font-weight: 800; color: var(--dash-text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .s2-badge-cnt {
@@ -17724,15 +17740,15 @@ function closeRecordsDrawer() {
     background: var(--dash-vermilion-wash);
     border: 1px solid var(--dash-vermilion-line);
     color: var(--dash-vermilion-text);
-    font-size: 10.5px; font-weight: 800;
+    font-size: 11.5px; font-weight: 800;
   }
   .s2-head-right {
     display: flex; align-items: baseline; gap: 6px; flex: 0 0 auto;
     font-variant-numeric: tabular-nums;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  .s2-total-min { font-size: 13.5px; font-weight: 850; color: var(--dash-text); }
-  .s2-share-pct { font-size: 11px; font-weight: 700; color: var(--dash-text-soft); }
+  .s2-total-min { font-size: 15px; font-weight: 850; color: var(--dash-text); }
+  .s2-share-pct { font-size: 12px; font-weight: 700; color: var(--dash-text-soft); }
 
   /* 折叠态：时间豆胶囊（22px） */
   .s2-beans-tray {
@@ -17745,7 +17761,7 @@ function closeRecordsDrawer() {
     display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px;
     border-radius: 999px; background: var(--dash-surface-2);
     border: 1px solid var(--dash-ink-a12);
-    font-size: 11px; font-weight: 600; color: var(--dash-text); white-space: nowrap;
+    font-size: 12px; font-weight: 600; color: var(--dash-text); white-space: nowrap;
   }
   .s2-bean b {
     color: var(--dash-vermilion-text);
@@ -17777,17 +17793,17 @@ function closeRecordsDrawer() {
     background: var(--dash-coral); flex-shrink: 0;
   }
   .s2-step-content {
-    font-size: 12.5px; font-weight: 700; color: var(--dash-text);
+    font-size: 14px; font-weight: 700; color: var(--dash-text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .s2-step-meta {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11px; font-weight: 600; color: var(--dash-text-soft); white-space: nowrap;
+    font-size: 12px; font-weight: 600; color: var(--dash-text-soft); white-space: nowrap;
   }
   .s2-step-dur {
     text-align: right;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13px; font-weight: 850; color: var(--dash-vermilion-text);
+    font-size: 14px; font-weight: 850; color: var(--dash-vermilion-text);
   }
   .s2-step-note {
     display: none; padding: 3px 8px 5px 14px; margin-bottom: 4px;
@@ -19115,28 +19131,28 @@ function closeRecordsDrawer() {
   /* 卡宽三档降级：字号先降，装饰后让（容器查询按内容盒：卡宽 400 / 368 ↔ 内容 368 / 336） */
   @container qcard (max-width: 468px) {
     .card-subject-tag { font-size: 18px; }
-    .card-date-badge { font-size: 12px; }
+    .card-date-badge { font-size: 12.5px; }
     .latest-tag { font-size: 11px; }
-    .qc-bay-val { font-size: 14.5px; }
+    .qc-bay-val { font-size: 15.5px; }
     .card-seg-chip { font-size: 12px; }
     .card-req-body { gap: 9px; }
-    .qc-item .req-p { font-size: 15px; }
-    .qc-item.is-hero .req-p { font-size: 16px; }
-    .ctn-body { font-size: 14px; }
+    .qc-item .req-p { font-size: 16px; }
+    .qc-item.is-hero .req-p { font-size: 17px; }
+    .ctn-body { font-size: 15px; }
   }
   @container qcard (max-width: 348px) {
     .card-subject-tag { font-size: 17px; }
-    .card-date-badge { font-size: 11.5px; }
+    .card-date-badge { font-size: 12px; }
     .latest-tag { font-size: 10.5px; }
     .qc-bay { padding: 7px 10px; }
-    .qc-bay-val { font-size: 13.5px; }
+    .qc-bay-val { font-size: 14.5px; }
     .card-seg-chip { font-size: 11.5px; }
     .card-req-body { gap: 8px; }
-    .qc-item .req-p { font-size: 15px; }
-    .qc-item.is-hero .req-p { font-size: 15.5px; }
+    .qc-item .req-p { font-size: 15.5px; }
+    .qc-item.is-hero .req-p { font-size: 16.5px; }
     .qc-item.is-hero { padding-left: 8px; }
     .qc-idx { width: 16px; height: 16px; line-height: 16px; font-size: 9.5px; border-radius: 5px; }
-    .ctn-body { font-size: 13.5px; }
+    .ctn-body { font-size: 14.5px; }
     .card-footer-row { font-size: 11px; }
   }
 
@@ -20151,7 +20167,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.47';
+  var DSH_VERSION = 'v3.48';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
