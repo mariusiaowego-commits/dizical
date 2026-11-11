@@ -18369,12 +18369,15 @@ function closeRecordsDrawer() {
     var node = document.getElementById('s2EditErr');
     if (node) node.textContent = msg || '';
   }
-  function closeStepEdit() {
+  /* restoreFocus=false 用于保存/删除：父页重拉会重建整行，被聚焦的铅笔节点随即被移除 */
+  function closeStepEdit(restoreFocus) {
     EDIT_SESSION = null;
     var ov = document.getElementById('s2EditOverlay');
     if (ov) ov.classList.remove('open');
     showEditError('');
-    if (EDIT_TRIGGER && document.contains(EDIT_TRIGGER)) { EDIT_TRIGGER.focus(); }
+    if (restoreFocus !== false && EDIT_TRIGGER && document.contains(EDIT_TRIGGER)) {
+      EDIT_TRIGGER.focus();
+    }
     EDIT_TRIGGER = null;
   }
   function openStepEdit(session) {
@@ -18398,10 +18401,16 @@ function closeRecordsDrawer() {
     var target = EDIT_SESSION;
     var content = document.getElementById('s2EditContent').value.trim();
     if (!content) { showEditError('内容不能为空'); return null; }
-    var bpm = parseInt(document.getElementById('s2EditBpm').value, 10);
-    if (!(bpm >= 40 && bpm <= 200)) { showEditError('速度要在 40–200 之间'); return null; }
-    var minutes = parseInt(document.getElementById('s2EditMinutes').value, 10);
-    if (!(minutes >= 1 && minutes <= 600)) { showEditError('时长要在 1–600 分钟之间'); return null; }
+    var bpm = Number(document.getElementById('s2EditBpm').value);
+    if (!Number.isInteger(bpm) || bpm < 40 || bpm > 200) {
+      showEditError('速度要在 40–200 之间');
+      return null;
+    }
+    var minutes = Number(document.getElementById('s2EditMinutes').value);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) {
+      showEditError('时长要在 1–600 分钟之间');
+      return null;
+    }
     var repsRaw = document.getElementById('s2EditReps').value.trim();
     var reps = null;
     if (repsRaw) {
@@ -18464,7 +18473,8 @@ function closeRecordsDrawer() {
     }).then(function (r) { return r.json(); }).then(function (res) {
       if (!res || !res.ok) { showEditError('保存失败：' + ((res && res.error) || '未知错误')); return; }
       patchCachedSession(sessionId, res.session);
-      closeStepEdit();
+      closeStepEdit(false);
+      if (LAST_PAYLOAD) { window.__czApplyDay(LAST_PAYLOAD); }
       reloadDayFromParent();
     }).catch(function () { showEditError('网络错误，请重试'); });
   }
@@ -18476,7 +18486,8 @@ function closeRecordsDrawer() {
       .then(function (r) { return r.json(); }).then(function (res) {
         if (!res || !res.ok) { showEditError('删除失败：' + ((res && res.error) || '未知错误')); return; }
         patchCachedSession(sessionId, null);
-        closeStepEdit();
+        closeStepEdit(false);
+        if (LAST_PAYLOAD) { window.__czApplyDay(LAST_PAYLOAD); }
         reloadDayFromParent();
       }).catch(function () { showEditError('网络错误，请重试'); });
   }
@@ -18493,6 +18504,13 @@ function closeRecordsDrawer() {
     ov.addEventListener('click', function (ev) { if (ev.target === ov) closeStepEdit(); });
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape' && EDIT_SESSION) closeStepEdit();
+      if (ev.key !== 'Tab' || !EDIT_SESSION) return;
+      var items = [].slice.call(ov.querySelectorAll('button, input'));
+      if (!items.length) return;
+      var first = items[0];
+      var last = items[items.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
     });
   })();
 

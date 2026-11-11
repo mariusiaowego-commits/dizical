@@ -1,9 +1,9 @@
 """今日练习记录单条编辑/删除的前端契约（v3.50）。
 
 事故线索（2026-11-11 审计）：
-- 编辑弹窗把 BPM 边界写成 30–240，后端是 40–200 → 合法 UI 输入直接 400。
-- 保存时把 tempo_note 拼成 '♩=84'，后端只接受单字符 → 必 400。
-- 刷新找的是 window.parent（画布层），__czReloadDay 在宿主上 → 编辑后界面不更新。
+- 编辑弹窗把 BPM 边界写成 30–240，而后端 schemas/database 是 40–200 → UI 合法输入被 400。
+- tempo_note 存量格式混乱（'♪=96' 与单字符 '♪' 并存），速度来源需要显式取一个真相。
+- 刷新目标要跨「宿主 > 画布 > 卡」三层 iframe，只找 window.parent 会落空。
 
 这些断言都是静态契约，不碰数据库；真机行为由 /api/practice-sessions 的接口测试守。
 """
@@ -31,7 +31,8 @@ def test_edit_dialog_writes_through_session_api():
 def test_bpm_input_matches_backend_bounds():
     src = _html()
     assert f'id="s2EditBpm" type="number" inputmode="numeric" min="{BPM_MIN}" max="{BPM_MAX}"' in src
-    assert f"bpm >= {BPM_MIN} && bpm <= {BPM_MAX}" in src
+    assert "var bpm = Number(document.getElementById('s2EditBpm').value);" in src
+    assert f"!Number.isInteger(bpm) || bpm < {BPM_MIN} || bpm > {BPM_MAX}" in src
 
 
 def test_tempo_note_sent_as_single_symbol():
@@ -44,6 +45,8 @@ def test_reload_walks_ancestor_frames():
     src = _html()
     assert "win !== win.top" in src
     assert "typeof win.__czReloadDay === 'function'" in src
+    assert "win = win.parent" in src
+    assert "if (LAST_PAYLOAD) { window.__czApplyDay(LAST_PAYLOAD); }" in src
 
 
 def test_record_row_renders_real_note_symbol():
