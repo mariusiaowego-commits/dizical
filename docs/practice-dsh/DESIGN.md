@@ -6,7 +6,9 @@
 
 ## 0. 这份文档是什么
 
-`practice-dsh` 是 dizical kid-app 里「练习助手」标签页的完整前端实现 —— 一个**拟物仪表盘 + 展票**界面：左侧是练习票夹（选科目 / 练习内容 / 速度 / 时长），右侧是仪表盘与可组合的卡片横排。
+`practice-dsh` 是 dizical kid-app 里左侧导航「练习」目录下「练习助手NEW」子项（`/practice?tab=dsh`）的完整前端实现 —— 一个**拟物仪表盘 + 展票**界面：左侧是练习票夹（选科目 / 练习内容 / 速度 / 时长），右侧是仪表盘与可组合的卡片横排。
+
+261111 起，practice 页不再用顶部 tab 切换两个练习入口；改为左侧「练习」目录下的两个子项：「练习助手」(`/practice?tab=timer`，旧计时练习页) 与「练习助手NEW」(`/practice?tab=dsh`，本页)。页面顶部只保留皮肤切换按钮。
 
 本文是它的**产品层设计规范**：布局系统、token、组件、动效、交互契约、多视口验收清单。
 品牌层（珊瑚红 / 朱橙 / 苹方 / 圆角 / 间距）以 `dizicute` 为准，见 `DESIGN.md`（仓根）与 `uiux-asset-library/design-system/dizicute/DESIGN.md`。
