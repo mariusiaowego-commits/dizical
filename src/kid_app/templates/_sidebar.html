@@ -223,6 +223,31 @@
 }
 .sidebar.expanded .sidebar-item .label { opacity: 1; }
 
+/* ── 「练习」目录下的子项（练习助手 / 练习助手NEW）────────── */
+/* 收起态放不下子项：只留父级图标，子项隐藏。 */
+.sidebar-subnav {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 4px 20px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+}
+.sidebar.expanded .sidebar-subnav { display: flex; }
+.sidebar-subitem {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted, #666666);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sidebar-subitem:hover { background: rgba(255, 107, 107, 0.06); color: var(--secondary, #2C3E50); }
+.sidebar-subitem.active { background: var(--primary, #FF6B6B); color: #fff; font-weight: 500; }
+/* 父级「练习」在练习页内只做定位提示，不抢子项的红色高亮 */
+.sidebar-item.practice-section-active { color: var(--primary, #FF6B6B); }
+
 /* ── Sidebar footer ─────────────────────────────────────── */
 .sidebar-footer {
   margin: 0;
@@ -232,18 +257,28 @@
   transition: opacity 200ms ease 80ms;
 }
 .sidebar.expanded .sidebar-footer { opacity: 1; }
-.sidebar-footer a {
+.sidebar-footer a,
+.sidebar-skin-toggle {
   display: flex; align-items: center; gap: 12px;
   height: 36px;
   padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
   color: var(--muted, #666666);
   text-decoration: none;
   font-size: 13px;
   border-radius: 9999px;
+  white-space: nowrap;
+  cursor: pointer;
 }
-.sidebar-footer a:hover { background: rgba(0,0,0,0.04); }
+.sidebar-footer a:hover,
+.sidebar-skin-toggle:hover { background: rgba(0,0,0,0.04); }
 .sidebar-footer .icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
 .sidebar-footer .icon svg { width: 24px; height: 24px; }
+.sidebar-footer .label { opacity: 0; transition: opacity 200ms ease 80ms; }
+.sidebar.expanded .sidebar-footer .label { opacity: 1; }
+.sidebar:not(.expanded) .sidebar-footer .label { display: none; }
 
 /* ── Content shift + gap (主内容让出 sidebar 宽度 + 间距) ─── */
 .has-sidebar { padding-left: 64px; transition: padding-left 240ms cubic-bezier(0.16, 1, 0.3, 1); }
@@ -426,7 +461,7 @@
       <line x1="4" y1="17" x2="20" y2="17"></line>
     </svg>
   </button>
-  <h1 class="mobile-topbar-title">{{ _nav_titles.get(active_nav|default(''), 'dizical') }}</h1>
+  <h1 class="mobile-topbar-title">{% if active_nav == 'practice' %}{{ '练习助手NEW' if practice_sub == 'dsh' else '练习助手' }}{% else %}{{ _nav_titles.get(active_nav|default(''), 'dizical') }}{% endif %}</h1>
   <span class="mobile-topbar-aside" id="mobileTopbarAside"></span>
 </header>
 
@@ -514,7 +549,7 @@
       </span>
       <span class="label">准备</span>
     </a>
-    <a href="/practice" class="sidebar-item {% if active_nav == 'practice' %}active{% endif %}">
+    <a href="/practice?tab=timer" class="sidebar-item sidebar-practice-parent {% if active_nav == 'practice' %}practice-section-active{% endif %}">
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="6" y1="12" x2="20" y2="12"></line>
@@ -524,6 +559,10 @@
       </span>
       <span class="label">练习</span>
     </a>
+    <div class="sidebar-subnav">
+      <a href="/practice?tab=timer" class="sidebar-subitem {% if active_nav == 'practice' and practice_sub == 'timer' %}active{% endif %}">练习助手</a>
+      <a href="/practice?tab=dsh" class="sidebar-subitem {% if active_nav == 'practice' and practice_sub == 'dsh' %}active{% endif %}">练习助手NEW</a>
+    </div>
     <a href="/report" class="sidebar-item {% if active_nav == 'dashboard' %}active{% endif %}">
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -569,6 +608,25 @@
       </span>
       <span class="label">呦呦成就殿堂</span>
     </a>
+    {# 深浅色皮肤目前只在 practice 页有样式与脚本，别的页面不渲染这个按钮 #}
+    {% if active_nav == 'practice' %}
+    <button type="button" class="sidebar-skin-toggle" id="sidebarSkinToggle" aria-pressed="false">
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2" x2="12" y2="5"></line>
+          <line x1="12" y1="19" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93" x2="7.05" y2="7.05"></line>
+          <line x1="16.95" y1="16.95" x2="19.07" y2="19.07"></line>
+          <line x1="2" y1="12" x2="5" y2="12"></line>
+          <line x1="19" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93" y1="19.07" x2="7.05" y2="16.95"></line>
+          <line x1="16.95" y1="7.05" x2="19.07" y2="4.93"></line>
+        </svg>
+      </span>
+      <span class="label" id="sidebarSkinLabel">浅色</span>
+    </button>
+    {% endif %}
   </div>
 </aside>
 

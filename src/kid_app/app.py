@@ -2801,7 +2801,7 @@ def prepare_page():
     )
 
 @app.get("/practice", response_class=HTMLResponse)
-def practice_page():
+def practice_page(request: Request):
     today = dt.date.today()
     items = db.get_practice_items(active_only=True, include_archived=False)
     categories = practice_module.get_categories()
@@ -2902,9 +2902,14 @@ def practice_page():
 
     subject_info_json = json.dumps(subject_info_dict, ensure_ascii=False)
 
+    # 左侧「练习」目录下的子项：练习助手(timer) / 练习助手NEW(dsh)。
+    # 子项靠 query 参数定位，未带参数时落在 timer 上。
+    practice_sub = request.query_params.get("tab") if request.query_params.get("tab") in ("timer", "dsh") else "timer"
+
     return render(
         "practice",
         active_nav="practice",  # sidebar: 练习
+        practice_sub=practice_sub,
         child_name=child_name(),
         items_html=items_html,
         today_seconds=today_secs,

@@ -1396,14 +1396,9 @@
     }
 
     /* ── V4 Tab header (卡片内部标签) ── */
-    .v4-tab-header { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; background: #F5EDE0; padding: 3px; }
-    .v4-tab-header .tab-btn { flex: 1; padding: 8px 0; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: transparent; color: #A09080; }
-    .v4-tab-header .tab-btn.timer-tab.active { background: #FF6B6B; color: #fff; box-shadow: 0 1px 3px rgba(255,107,107,0.3); }
-    .v4-tab-header .tab-btn.practice-dsh-tab.active { background: #2C3E50; color: #fff; box-shadow: 0 1px 3px rgba(44,62,80,0.3); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    .v4-tab-header { position: sticky; top: 0; z-index: 40; }
     body.practice-dsh-on { overflow: hidden; height: 100vh; }
     body.practice-dsh-on .item-section,
     body.practice-dsh-on #reselectFloat,
@@ -1421,16 +1416,6 @@
 
 
     /* 261102：practice 页全局浅色/深色。浅色规则不动，只在 html[data-skin=ink] 覆盖。 */
-    .practice-tab-row {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 12px; position: sticky; top: 0; z-index: 40;
-    }
-    .practice-tab-row .v4-tab-header { flex: 1 1 auto; margin-bottom: 0; position: static; }
-    .theme-toggle-btn {
-      flex: 0 0 auto; height: 36px; padding: 0 14px; border-radius: 999px;
-      border: 1px solid #E0D0A0; background: #FFFDF8; color: #2C3E50;
-      font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-    }
     html[data-skin="ink"] {
       --bg: #0E1216; --card: #161B22; --text: #F0F6FC; --text-light: #8B949E;
       --surface: #161B22;
@@ -1444,15 +1429,17 @@
     html[data-skin="ink"] .sidebar-item,
     html[data-skin="ink"] .mobile-topbar-title,
     html[data-skin="ink"] .mobile-topbar-menu { color: #F0F6FC; }
+    html[data-skin="ink"] .sidebar-subitem { color: #8B949E; }
+    html[data-skin="ink"] .sidebar-subitem:hover { color: #F0F6FC; }
+    html[data-skin="ink"] .sidebar-subnav { border-left-color: rgba(255, 255, 255, 0.12); }
+    html[data-skin="ink"] .sidebar-item.practice-section-active { color: #FF6B6B; }
+    html[data-skin="ink"] .sidebar-footer a,
+    html[data-skin="ink"] .sidebar-skin-toggle { color: #8B949E; }
+    html[data-skin="ink"] .sidebar-footer a:hover,
+    html[data-skin="ink"] .sidebar-skin-toggle:hover { color: #F0F6FC; background: rgba(255, 255, 255, 0.06); }
     html[data-skin="ink"] .sidebar-userrole,
     html[data-skin="ink"] .sidebar-account-chevron { color: #8B949E; }
     html[data-skin="ink"] .top-bar .server-clock { background: #161B22; color: #8B949E; }
-    html[data-skin="ink"] .theme-toggle-btn {
-      background: #212830; color: #F0F6FC; border-color: #30363D;
-    }
-    html[data-skin="ink"] .v4-tab-header { background: #212830; }
-    html[data-skin="ink"] .v4-tab-header .tab-btn { color: #8B949E; }
-    html[data-skin="ink"] .v4-tab-header .tab-btn.practice-dsh-tab.active { background: #388BFD; color: #fff; }
     html[data-skin="ink"] .card,
     html[data-skin="ink"] .floor,
     html[data-skin="ink"] .floor-pickers,
@@ -1745,14 +1732,6 @@
     <div class="server-clock" id="serverClock"></div>
   </div>
 
-  <!-- 老练习 / 新练习助手并列。助手页自带票夹，不再叠旧的科目选择。 -->
-      <div class="practice-tab-row">
-      <div class="v4-tab-header">
-        <button class="tab-btn timer-tab active" onclick="switchTab('timer')">计时练习</button>
-        <button class="tab-btn practice-dsh-tab" onclick="switchTab('dsh')">练习助手</button>
-      </div>
-      <button type="button" class="theme-toggle-btn" id="globalThemeToggle" aria-pressed="false">浅色</button>
-      </div>
 
 
   <!-- 练习科目选择 -->
@@ -2017,9 +1996,10 @@
       if (skin === 'ink') document.documentElement.setAttribute('data-skin', 'ink');
       else document.documentElement.removeAttribute('data-skin');
       try { localStorage.setItem('dizical_skin', skin); } catch (e) {}
-      var btn = document.getElementById('globalThemeToggle');
+      var btn = document.getElementById('sidebarSkinToggle');
       if (btn) {
-        btn.textContent = skin === 'ink' ? '深色' : '浅色';
+        var label = document.getElementById('sidebarSkinLabel');
+        if (label) label.textContent = skin === 'ink' ? '深色' : '浅色';
         btn.setAttribute('aria-pressed', skin === 'ink' ? 'true' : 'false');
       }
       if (!(opt && opt.fromChild)) pushSkinToDsh();
@@ -2037,7 +2017,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       applyGlobalSkin(readPracticeSkin(), { boot: true });
-      var themeBtn = document.getElementById('globalThemeToggle');
+      var themeBtn = document.getElementById('sidebarSkinToggle');
       if (themeBtn) {
         themeBtn.addEventListener('click', function () {
           applyGlobalSkin(document.documentElement.getAttribute('data-skin') === 'ink' ? 'light' : 'ink');
@@ -2049,6 +2029,15 @@
       if (want === 'dsh' || want === 'timer') switchTab(want);
       if (want === 'extra') switchTab('timer');
       if (want === 'dsh') { setTimeout(fitDshLayout, 60); setTimeout(fitDshLayout, 400); }
+      /* 左侧「练习」目录下的子项：页内切换，不重载（重载会丢掉助手 iframe 里的进行中练习） */
+      document.querySelectorAll('.sidebar-subitem, .sidebar-practice-parent').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          const tab = new URL(link.getAttribute('href'), location.origin).searchParams.get('tab');
+          if (tab !== 'timer' && tab !== 'dsh') return;
+          e.preventDefault();
+          switchTab(tab);
+        });
+      });
       const videoEl = document.getElementById('videoPreviewEl');
       if (videoEl) {
         videoEl.addEventListener('webkitendfullscreen', function() {
@@ -3443,19 +3432,21 @@
         }
       }
       dshLeaveConfirmed = false;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       if (tab === 'timer') {
-        document.querySelector('.tab-btn.timer-tab').classList.add('active');
         document.getElementById('tabTimer').classList.add('active');
       } else if (tab === 'dsh') {
-        const dshBtn = document.querySelector('.tab-btn.practice-dsh-tab');
-        if (dshBtn) dshBtn.classList.add('active');
         const dshPnl = document.getElementById('tabDsh');
         if (dshPnl) dshPnl.classList.add('active');
         fitDshLayout();
       }
       document.body.classList.toggle('practice-dsh-on', tab === 'dsh');
+      /* URL 与左侧子项高亮跟着面板走 */
+      history.replaceState(null, '', '/practice?tab=' + tab);
+      document.querySelectorAll('.sidebar-subitem').forEach(function (el) {
+        const elTab = new URL(el.getAttribute('href'), location.origin).searchParams.get('tab');
+        el.classList.toggle('active', elTab === tab);
+      });
     }
 
     /* 练习助手页占满「视口剩余高度」：容器顶到视口底之间的全部空间都给 iframe。

@@ -24,18 +24,45 @@ def client(monkeypatch):
     return TestClient(app)
 
 
-def test_practice_page_has_two_tabs(client):
-    """dad 261102 拍板：快速补录整页删除，只剩计时练习 / 练习助手两个 Tab."""
+def test_practice_page_has_no_top_tab_row(client):
+    """261111 dad 拍板：两个练习入口移出顶部 tab，改为左侧「练习」目录下的子项。"""
     resp = client.get("/practice")
     assert resp.status_code == 200
     html = resp.text
 
-    assert "计时练习" in html
-    assert "练习助手" in html
+    # 顶部不再有 tab 按钮
+    assert "计时练习" not in html
+    assert "practice-tab-row" not in html
+    assert "theme-toggle-btn" not in html
+    assert "sidebarSkinToggle" in html
+    assert "v4-tab-header" not in html
+    assert "tab-btn" not in html
+    # 面板与切页逻辑仍在
+    assert 'id="tabTimer"' in html
+    assert 'id="tabDsh"' in html
     assert "快速补录" not in html
     assert "tabExtra" not in html
-    assert 'class="tab-btn practice-dsh-tab"' in html or "practice-dsh-tab" in html
-    assert "switchTab('dsh')" in html or 'switchTab("dsh")' in html
+    # 面板切换由 ?tab= 参数驱动，不再有 onclick 按钮
+    assert "switchTab(want)" in html
+
+
+def test_skin_toggle_only_on_practice_page(client):
+    """皮肤按钮只在 practice 页渲染（ink 样式只在该页），其它页 footer 不出现死按钮。"""
+    assert "sidebarSkinToggle" not in client.get("/prepare").text
+    assert "sidebarSkinToggle" not in client.get("/report").text
+
+
+def test_sidebar_practice_has_two_subitems(client):
+    """左侧「练习」目录下有「练习助手」/「练习助手NEW」两个子项，且当前子项高亮。"""
+    html = client.get("/practice?tab=dsh").text
+    assert 'href="/practice?tab=timer"' in html
+    assert 'href="/practice?tab=dsh"' in html
+    assert "练习助手" in html
+    assert "练习助手NEW" in html
+    assert 'class="sidebar-subitem active"' in html
+
+    timer_html = client.get("/practice?tab=timer").text
+    assert 'href="/practice?tab=timer" class="sidebar-subitem active"' in timer_html
 
 
 def test_practice_page_embeds_practice_dsh_iframe(client):
