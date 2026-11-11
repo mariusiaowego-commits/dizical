@@ -126,3 +126,13 @@ def monkeypatch_session():
     mp = MonkeyPatch()
     yield mp
     mp.undo()
+
+
+@pytest.fixture
+def auth_as(monkeypatch):
+    """把 get_current_user 换成指定角色的登录用户（中间件每次请求重新 import，patch 生效）."""
+    def _set(role, username=None):
+        async def _mock_user(*args, **kwargs):
+            return {"id": 1, "username": username or role, "role": role}
+        monkeypatch.setattr("src.kid_app.auth.get_current_user", _mock_user)
+    return _set
