@@ -1,7 +1,7 @@
 # practice-dsh 设计规范（练习助手 · 拟物仪表盘）
 
-> 版本：v3.25 · 2026-11-06 · 对应代码 `src/kid_app/templates/practice-dsh.html`（25035 行，单文件）
-> 上一版合并提交：`8da6ffe`（PR #392，v3.24）· 本版在 `practice-frontend` 分支，待合并
+> 版本：v3.48 · 2026-11-11 · 对应代码 `src/kid_app/templates/practice-dsh.html`（26243 行，单文件）
+> 上一版合并提交：`d7f9f6c`（PR #399，v3.47）· 本版在 `feat/practice-dsh-v3.48` 分支（PR #400），待合并
 > 镜像：`/Users/mt16/dev/uiux-asset-library/design-system/practice-dsh/`
 
 ## 0. 这份文档是什么
@@ -233,7 +233,7 @@ body（宿主页）
 | 换曲目 `.pk-folio-box` | `rgba(44,62,80,.45)` | `min(540px,92vw)` × `min(620px,85vh)`，圆角 20px，内边距 `22px 24px` |
 | 提前结束 `.pk-finish-box` | 38% + `blur(3px)` | `min(420px,100%)`，圆角 22px，内边距 `20px 20px 16px`，时长 40px tabular |
 | 全文阅读 `.pk-reader` | — | `min(860px,94vw)`，圆角 20px，内边距 `28px 32px` |
-| 今日记录弹窗 `.pk-drawer` | `opacity .28s ease` | 居中浮层：宽 `min(640px,100vw - 48px)`，圆角 20px（≤560px 视口 16px），描边 `--dash-ink-a12`，阴影 `0 24px 60px var(--dash-shell-shadow)`；面板底 `--dash-surface-soft`，条目底 `--dash-white`，ink 皮肤条目改 `--dash-surface-2` |
+| 今日记录弹窗 `.pk-drawer` | `opacity .28s ease` | 居中浮层：宽 `min(640px,100vw - 48px)`（≤560px 视口外边距 12px → `100vw - 24px`），圆角 20px（≤560px 视口 16px），描边 `--dash-ink-a12`，阴影 `0 24px 60px var(--dash-shell-shadow)` + `0 2px 6px var(--dash-ink-a04)`；面板底 `--dash-surface-soft`，条目底 `--dash-white`，ink 皮肤条目改 `--dash-surface-2` |
 | 引导 `.cz-guide` | 无（spotlight 描边） | 238px，圆角 15px，内边距 `10px 12px`；`.cz-guide-spot` 2px 朱橙描边 + `czGuidePulse` 1.9s |
 
 **浅色 + 深色两套弹窗 UI 都要有**，不能只有黑色。
@@ -248,10 +248,10 @@ body（宿主页）
 
 ### 5.10 版本角标（2026-11 新增）
 
-顶栏最右 `#pkVerWrap > button#pkVer + #pkVerPop`：平时只显示 `v3.25`（10px / opacity .5 / tabular-nums）；悬停或点一下弹出 5 行构建信息（版本 / 分支 / 提交 / 构建时间 / 来源 checkout）。
+顶栏最右 `#pkVerWrap > button#pkVer + #pkVerPop`：平时只显示 `v3.48`（10px / opacity .5 / tabular-nums）；悬停或点一下弹出 5 行构建信息（版本 / 分支 / 提交 / 构建时间 / 来源 checkout）。
 - **按设备能力分流**：`hover:hover` 设备走 mouseenter/mouseleave（160ms 延时收起），点击不再 toggle；触屏只认点击 —— 触屏 tap 会合成 mouseenter 再 click，共用一个开关会「先开再关」＝永远打不开。
 - 弹层必须按画布宽度夹取（窄屏顶栏换行时 `right:0` 会跑出屏幕）。
-- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:19071`。
+- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:20169`。
 
 ---
 
@@ -369,7 +369,7 @@ body（宿主页）
 
 ## 11. 版本与发布
 
-- `DSH_VERSION`（`:19071`）是唯一手改的版本号常量，当前 `v3.25`。
+- `DSH_VERSION`（`:20169`）是唯一手改的版本号常量，当前 `v3.48`。
 - 两处派生值都从 `DSH_VERSION` 自动派生，改版本号只需改模板这一处：
   - `X-Dsh-Build` 响应头 —— `app.py` 的 `dsh_version()` 解析模板常量
   - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()` 直接透出版本号（`v3.25` → `?v=v3.25`，`quote` 编码）。早期的「只留数字」派生（`v3.24` → `324`）已废弃：`v3.24` / `v3.24-beta` / `v3.2.4` 会撞成同一个 `324`，版本变了缓存不失效。
