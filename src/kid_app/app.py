@@ -165,7 +165,9 @@ async def _auth_guard_middleware(request, call_next):
         or path.startswith("/api/items")
         or path.startswith("/api/practices/")
         # 只放行读：PUT/DELETE 落在下面的角色检查里（未登录 401，非 student/dad 403）
-        or (path.startswith("/api/practice-sessions") and request.method == "GET")
+        or (request.method == "GET" and (
+            path == "/api/practice-sessions" or path.startswith("/api/practice-sessions/")
+        ))
         # Sprint 26091101 feat/badge-3d-ccg: 徽章领取 API kid-facing 弹窗数据源
         # 跟 /api/achievements 同级公开, kid app 直接调
         or path.startswith("/api/badge/unclaimed")
