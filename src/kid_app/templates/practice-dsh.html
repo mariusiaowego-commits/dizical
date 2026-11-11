@@ -17781,7 +17781,7 @@ function closeRecordsDrawer() {
   .s2-step-row {
     height: 34px;
     display: grid; align-items: center; gap: 6px;
-    grid-template-columns: 48px minmax(0, 1fr) auto 36px;
+    grid-template-columns: 48px minmax(0, 1fr) auto 36px 24px;
   }
   .s2-step-time {
     display: inline-flex; align-items: center; gap: 5px;
@@ -17813,10 +17813,92 @@ function closeRecordsDrawer() {
   }
   .s2-step-wrap.show-note .s2-step-note { display: block; }
 
+  /* 单条记录编辑入口：只有在今天真实落库的记录（有 session id）才出现 */
+  .s2-step-edit {
+    width: 24px; height: 24px; padding: 0; margin: 0;
+    position: relative;
+    border: 1px solid var(--dash-ink-a12); border-radius: 8px;
+    background: var(--dash-white); color: var(--dash-text-soft);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; flex: 0 0 auto; box-sizing: border-box;
+  }
+  .s2-step-edit:hover {
+    color: var(--dash-vermilion-text);
+    border-color: var(--dash-vermilion-line);
+    background: var(--dash-vermilion-wash);
+  }
+  .s2-step-edit.is-empty {
+    border-color: transparent; background: transparent; pointer-events: none;
+  }
+  .s2-step-edit svg { display: block; pointer-events: none; }
+  /* 24px 的视觉尺寸太小不好点，命中区扩到 40×40（不占布局） */
+  .s2-step-edit::after {
+    content: ""; position: absolute; inset: -8px -8px;
+  }
+
+  /* 编辑弹窗（浅色，dash 色板） */
+  .s2-edit-overlay {
+    position: fixed; inset: 0; z-index: 60;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px; background: rgba(44, 62, 80, 0.45);
+  }
+  .s2-edit-overlay.open { display: flex; }
+  .s2-edit-box {
+    width: min(380px, 100%); max-height: 100%; overflow: auto;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 18px 18px 14px;
+    background: var(--dash-surface-soft);
+    border: 1px solid var(--dash-ink-a12); border-radius: 18px;
+    box-shadow: 0 20px 48px var(--dash-shell-shadow);
+    box-sizing: border-box;
+  }
+  .s2-edit-title { font-size: 16px; font-weight: 850; color: var(--dash-text); }
+  .s2-edit-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .s2-edit-label {
+    font-size: 12px; font-weight: 700; color: var(--dash-text-soft);
+    white-space: nowrap; flex: 0 0 auto;
+  }
+  .s2-edit-input {
+    flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 10px;
+    border: 1px solid var(--dash-ink-a12); border-radius: 10px;
+    background: var(--dash-white); color: var(--dash-text);
+    font-size: 14px; font-weight: 650; font-family: inherit;
+    box-sizing: border-box;
+  }
+  .s2-edit-input.is-num { flex: 0 0 78px; text-align: center; }
+  .s2-edit-note { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+  .s2-edit-note-btn {
+    width: 34px; height: 34px; padding: 0;
+    border: 1px solid var(--dash-ink-a12); border-radius: 10px;
+    background: var(--dash-white); color: var(--dash-text-soft);
+    font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer;
+  }
+  .s2-edit-note-btn.is-on {
+    background: var(--dash-vermilion-wash);
+    border-color: var(--dash-vermilion-line);
+    color: var(--dash-vermilion-text);
+  }
+  .s2-edit-err { min-height: 14px; font-size: 12px; font-weight: 650; color: var(--dash-vermilion-text); }
+  .s2-edit-actions { display: flex; align-items: center; gap: 8px; }
+  .s2-edit-btn {
+    height: 34px; padding: 0 14px; border-radius: 999px;
+    border: 1px solid var(--dash-ink-a12); background: var(--dash-white);
+    color: var(--dash-text); font-size: 13px; font-weight: 750;
+    font-family: inherit; cursor: pointer;
+  }
+  .s2-edit-btn.danger {
+    margin-right: auto; background: var(--dash-vermilion-wash);
+    border-color: var(--dash-vermilion-line); color: var(--dash-vermilion-text);
+  }
+  .s2-edit-btn.primary {
+    background: var(--dash-vermilion); border-color: var(--dash-vermilion);
+    color: var(--dash-white);
+  }
+
   /* 视口适配：卡内 iframe 视口宽 = 卡片宽（宿主 fill 档把 .console 的 container 名
      改成 moduleCard，@container rec 在组合档不会命中，这里一律用 @media） */
   @media (max-width: 340px) {
-    .s2-step-row { grid-template-columns: 44px minmax(0, 1fr) auto 32px; gap: 4px; }
+    .s2-step-row { grid-template-columns: 44px minmax(0, 1fr) auto 32px 24px; gap: 4px; }
     .s2-share-pct { display: none; }
   }
 
@@ -17885,6 +17967,39 @@ function closeRecordsDrawer() {
     </article>
   </div>
 </div>
+
+<!-- 单条记录编辑弹窗：走 PUT /api/practice-sessions/{id} 与 DELETE 同路径 -->
+<div class="s2-edit-overlay" id="s2EditOverlay" role="dialog" aria-modal="true" aria-label="编辑练习记录">
+  <div class="s2-edit-box">
+    <div class="s2-edit-title">编辑练习记录</div>
+    <div class="s2-edit-row">
+      <span class="s2-edit-label">内容</span>
+      <input class="s2-edit-input" id="s2EditContent" type="text" maxlength="60" autocomplete="off" aria-label="练习内容" placeholder="这一段练的是什么">
+    </div>
+    <div class="s2-edit-row">
+      <span class="s2-edit-label">节拍</span>
+      <div class="s2-edit-note" id="s2EditNoteGroup" role="group" aria-label="音符时值">
+        <button type="button" class="s2-edit-note-btn is-on" data-note="♩" aria-label="四分音符" aria-pressed="true">♩</button>
+        <button type="button" class="s2-edit-note-btn" data-note="♪" aria-label="八分音符" aria-pressed="false">♪</button>
+      </div>
+      <span class="s2-edit-label">=</span>
+      <input class="s2-edit-input is-num" id="s2EditBpm" type="number" inputmode="numeric" min="40" max="200" step="1" aria-label="每分钟拍数" placeholder="80">
+    </div>
+    <div class="s2-edit-row">
+      <span class="s2-edit-label">遍数</span>
+      <input class="s2-edit-input is-num" id="s2EditReps" type="number" inputmode="numeric" min="1" max="99" step="1" aria-label="练习遍数，可留空" placeholder="—">
+      <span class="s2-edit-label">时长</span>
+      <input class="s2-edit-input is-num" id="s2EditMinutes" type="number" inputmode="numeric" min="1" max="600" step="1" aria-label="练习时长（分钟）" placeholder="1">
+      <span class="s2-edit-label">分钟</span>
+    </div>
+    <div class="s2-edit-err" id="s2EditErr" role="status" aria-live="polite"></div>
+    <div class="s2-edit-actions">
+      <button type="button" class="s2-edit-btn danger" id="s2EditDelete">删除</button>
+      <button type="button" class="s2-edit-btn" id="s2EditCancel">取消</button>
+      <button type="button" class="s2-edit-btn primary" id="s2EditSave">保存</button>
+    </div>
+  </div>
+</div>
 <script src="/static/practice-dsh-assets/vendor/gsap.min.js?v={{ dsh_v }}"></script>
 <script>
 (function () {
@@ -17904,6 +18019,7 @@ function closeRecordsDrawer() {
      __czApplyDay 遇到空数据直接 return，演示数据就留在了卡上，被当成今天的真实记录。
      现在默认空，一律以 /api/practices/{date} 为准。 */
   var SESSIONS = [];
+  var LAST_PAYLOAD = null;   /* 最近一次 __czApplyDay 的入参：编辑后父页不可用时兜底重绘 */
 
   function practiceSeconds() {
     return SESSIONS.reduce(function (s, row) { return s + row.duration_seconds; }, 0);
@@ -17919,6 +18035,7 @@ function closeRecordsDrawer() {
     return isNaN(t) ? null : t;
   }
   window.__czApplyDay = function (payload) {
+    LAST_PAYLOAD = payload || LAST_PAYLOAD;
     var today = (payload && payload.today) || {};
     /* 昨天拿不到就是 null（不是 {}）—— 空对象会被当成「昨天 0 秒」。*/
     var yest = (payload && payload.yesterday) ? payload.yesterday : null;
@@ -17935,10 +18052,12 @@ function closeRecordsDrawer() {
     }
     SESSIONS = rows.map(function (s) {
       return {
+        id: s.id == null ? null : Number(s.id),
         item_id: s.item_id,
         item_name: s.item_name || s.item || '练习',
         duration_seconds: Number(s.duration_seconds || 0),
         tempo_bpm: s.tempo_bpm == null ? 0 : Number(s.tempo_bpm),
+        tempo_note: s.tempo_note || '',
         content: s.content || '',
         reps: s.reps || 0,
         is_extra: s.is_extra || 0,
@@ -18092,7 +18211,8 @@ function closeRecordsDrawer() {
   /* 行内副信息只留读数：♩=速度 · 遍数（裸数字读不出是速度，dad 261109 拍板要 ♩=xx 格式）。 */
   function sessionMeta(session) {
     var bits = [];
-    if (session.tempo_bpm) { bits.push('♩=' + session.tempo_bpm); }
+    var bpm = bpmFromSession(session);
+    if (bpm) { bits.push(noteFromSession(session) + '=' + bpm); }
     if (session.reps) { bits.push(session.reps + '遍'); }
     return bits.join(' · ');
   }
@@ -18132,6 +18252,24 @@ function closeRecordsDrawer() {
     strip.title = groups.map(function (group, i) { return group.item_name + ' ' + shares[i] + '%'; }).join(' · ');
   }
 
+  /* 行内编辑入口用矢量铅笔：文字字形（✎）在 12px 下发虚，像乱码 */
+  function pencilGlyph() {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '13');
+    svg.setAttribute('height', '13');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    var path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M4 20l4-1 9.5-9.5a2.1 2.1 0 0 0-3-3L5 16l-1 4z');
+    svg.appendChild(path);
+    return svg;
+  }
+
   function groupCard(group, share, open) {
     var card = el('section', 's2-group-card' + (open ? ' is-open' : ''));
 
@@ -18165,6 +18303,21 @@ function closeRecordsDrawer() {
       row.appendChild(content);
       row.appendChild(el('span', 's2-step-meta', sessionMeta(session)));
       row.appendChild(el('span', 's2-step-dur', minutesOf(session.duration_seconds) + '分'));
+      if (session.id) {
+        var editBtn = el('button', 's2-step-edit');
+        editBtn.type = 'button';
+        editBtn.appendChild(pencilGlyph());
+        editBtn.setAttribute('aria-label', '编辑 ' + (session.content || '这条记录'));
+        editBtn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          EDIT_TRIGGER = editBtn;
+          openStepEdit(session);
+        });
+        row.appendChild(editBtn);
+      } else {
+        row.appendChild(el('span', 's2-step-edit is-empty'));
+      }
       wrap.appendChild(row);
       wrap.appendChild(el('div', 's2-step-note', sessionNote(session)));
       wrap.addEventListener('click', function () { wrap.classList.toggle('show-note'); });
@@ -18183,6 +18336,183 @@ function closeRecordsDrawer() {
     card.appendChild(tray);
     return card;
   }
+
+  /* ── 单条记录编辑 / 删除 ─────────────────────────────────────────
+     后端：PUT /api/practice-sessions/{id}（内容 / 节拍 / 遍数 / 时长），
+           DELETE 同路径。成功与否都以父页重拉当天数据为准，两张卡一起刷新。 */
+  var EDIT_SESSION = null;
+  var EDIT_TRIGGER = null;
+
+  function editNoteValue() {
+    var on = document.querySelector('#s2EditNoteGroup .s2-edit-note-btn.is-on');
+    return on ? on.getAttribute('data-note') : '♩';
+  }
+  function setEditNote(note) {
+    var want = note === '♪' ? '♪' : '♩';
+    [].slice.call(document.querySelectorAll('#s2EditNoteGroup .s2-edit-note-btn')).forEach(function (b) {
+      var on = b.getAttribute('data-note') === want;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  function noteFromSession(session) {
+    var m = String(session.tempo_note || '').match(/[♩♪]/);
+    return m ? m[0] : '♩';
+  }
+  /* 老记录把速度拼在 tempo_note 里（'♪=96'），新记录只存音符字符，速度在 tempo_bpm */
+  function bpmFromSession(session) {
+    var m = String(session.tempo_note || '').match(/=\s*(\d{1,3})/);
+    if (m) { return Number(m[1]); }
+    return session.tempo_bpm ? Number(session.tempo_bpm) : 0;
+  }
+  function showEditError(msg) {
+    var node = document.getElementById('s2EditErr');
+    if (node) node.textContent = msg || '';
+  }
+  /* restoreFocus=false 用于保存/删除：父页重拉会重建整行，被聚焦的铅笔节点随即被移除 */
+  function closeStepEdit(restoreFocus) {
+    EDIT_SESSION = null;
+    var ov = document.getElementById('s2EditOverlay');
+    if (ov) ov.classList.remove('open');
+    showEditError('');
+    if (restoreFocus !== false && EDIT_TRIGGER && document.contains(EDIT_TRIGGER)) {
+      EDIT_TRIGGER.focus();
+    }
+    EDIT_TRIGGER = null;
+  }
+  function openStepEdit(session) {
+    if (!session || !session.id) return;
+    EDIT_SESSION = session;
+    EDIT_TRIGGER = EDIT_TRIGGER || document.activeElement;
+    document.getElementById('s2EditContent').value = session.content || '';
+    var bpm = bpmFromSession(session);
+    document.getElementById('s2EditBpm').value = bpm ? String(bpm) : '';
+    document.getElementById('s2EditReps').value = session.reps ? String(session.reps) : '';
+    document.getElementById('s2EditMinutes').value = String(Math.max(1, minutesOf(session.duration_seconds)));
+    setEditNote(noteFromSession(session));
+    showEditError('');
+    var ov = document.getElementById('s2EditOverlay');
+    if (ov) ov.classList.add('open');
+    var input = document.getElementById('s2EditContent');
+    if (input) { setTimeout(function () { input.focus(); }, 30); }
+  }
+  /* 只改内容或节拍时保留原记录的秒数，1 分 30 秒不能被抹成 2 分钟 */
+  function stepEditBody() {
+    var target = EDIT_SESSION;
+    var content = document.getElementById('s2EditContent').value.trim();
+    if (!content) { showEditError('内容不能为空'); return null; }
+    var bpm = Number(document.getElementById('s2EditBpm').value);
+    if (!Number.isInteger(bpm) || bpm < 40 || bpm > 200) {
+      showEditError('速度要在 40–200 之间');
+      return null;
+    }
+    var minutes = Number(document.getElementById('s2EditMinutes').value);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) {
+      showEditError('时长要在 1–600 分钟之间');
+      return null;
+    }
+    var repsRaw = document.getElementById('s2EditReps').value.trim();
+    var reps = null;
+    if (repsRaw) {
+      var rn = Number(repsRaw);
+      if (!Number.isInteger(rn) || rn < 1 || rn > 99) {
+        showEditError('遍数要填 1–99 的整数，或留空');
+        return null;
+      }
+      reps = rn;
+    }
+    var origSeconds = Number(target.duration_seconds || 0);
+    var origMinutes = Math.max(1, minutesOf(origSeconds));
+    return {
+      tempo_note: editNoteValue(),
+      tempo_bpm: bpm,
+      content: content,
+      duration_minutes: minutes,
+      duration_seconds: minutes === origMinutes ? origSeconds : minutes * 60,
+      reps: reps
+    };
+  }
+  function reloadDayFromParent() {
+    /* 记录卡是「宿主 > 画布 > 卡」三层 iframe，__czReloadDay 在宿主上，往上逐层找 */
+    var win = window;
+    while (win && win !== win.top) {
+      try {
+        if (typeof win.__czReloadDay === 'function') { win.__czReloadDay(); return; }
+      } catch (e) {}
+      win = win.parent;
+    }
+    try {
+      if (win && typeof win.__czReloadDay === 'function') { win.__czReloadDay(); return; }
+    } catch (e) {}
+    if (LAST_PAYLOAD) { window.__czApplyDay(LAST_PAYLOAD); }
+  }
+  /* 找不到宿主刷新入口时（demo/独立打开）兜底重绘要用新数据，不能重放编辑前的快照 */
+  function patchCachedSession(id, session) {
+    var today = LAST_PAYLOAD && LAST_PAYLOAD.today;
+    if (!today || !today.sessions) { return; }
+    if (session) {
+      today.sessions = today.sessions.map(function (s) {
+        return Number(s.id) === Number(id) ? Object.assign({}, s, session) : s;
+      });
+    } else {
+      today.sessions = today.sessions.filter(function (s) { return Number(s.id) !== Number(id); });
+    }
+    today.total_seconds = today.sessions.reduce(function (t, s) {
+      return t + Number(s.duration_seconds || 0);
+    }, 0);
+  }
+  function saveStepEdit() {
+    if (!EDIT_SESSION) return;
+    var body = stepEditBody();
+    if (!body) return;
+    var sessionId = EDIT_SESSION.id;
+    fetch('/api/practice-sessions/' + sessionId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (!res || !res.ok) { showEditError('保存失败：' + ((res && res.error) || '未知错误')); return; }
+      patchCachedSession(sessionId, res.session);
+      closeStepEdit(false);
+      if (LAST_PAYLOAD) { window.__czApplyDay(LAST_PAYLOAD); }
+      reloadDayFromParent();
+    }).catch(function () { showEditError('网络错误，请重试'); });
+  }
+  function deleteStepEdit() {
+    if (!EDIT_SESSION) return;
+    if (!window.confirm('确定要删除这条练习记录吗？')) return;
+    var sessionId = EDIT_SESSION.id;
+    fetch('/api/practice-sessions/' + sessionId, { method: 'DELETE' })
+      .then(function (r) { return r.json(); }).then(function (res) {
+        if (!res || !res.ok) { showEditError('删除失败：' + ((res && res.error) || '未知错误')); return; }
+        patchCachedSession(sessionId, null);
+        closeStepEdit(false);
+        if (LAST_PAYLOAD) { window.__czApplyDay(LAST_PAYLOAD); }
+        reloadDayFromParent();
+      }).catch(function () { showEditError('网络错误，请重试'); });
+  }
+
+  (function wireStepEdit() {
+    var ov = document.getElementById('s2EditOverlay');
+    if (!ov) return;
+    document.getElementById('s2EditSave').addEventListener('click', saveStepEdit);
+    document.getElementById('s2EditCancel').addEventListener('click', closeStepEdit);
+    document.getElementById('s2EditDelete').addEventListener('click', deleteStepEdit);
+    [].slice.call(ov.querySelectorAll('.s2-edit-note-btn')).forEach(function (btn) {
+      btn.addEventListener('click', function () { setEditNote(btn.getAttribute('data-note')); });
+    });
+    ov.addEventListener('click', function (ev) { if (ev.target === ov) closeStepEdit(); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && EDIT_SESSION) closeStepEdit();
+      if (ev.key !== 'Tab' || !EDIT_SESSION) return;
+      var items = [].slice.call(ov.querySelectorAll('button, input'));
+      if (!items.length) return;
+      var first = items[0];
+      var last = items[items.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    });
+  })();
 
   function render() {
     var view = buildView();
@@ -20167,7 +20497,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.49';
+  var DSH_VERSION = 'v3.50';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
