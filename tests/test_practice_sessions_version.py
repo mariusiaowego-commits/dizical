@@ -25,6 +25,12 @@ import sqlite3
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _auth_as_dad(auth_as):
+    """PUT/DELETE 收紧鉴权后（v3.51），端点测试必须带 student/dad 身份。"""
+    auth_as("dad")
+
+
 # 2026-08-05 修正: 之前这里定义了一个从未赋值给 pytestmark 的 skip 标记,
 # 导致 handoff 误报 "10 个测试 skip". 实际是 8 failed / 2 passed.
 # 真路径测试 (If-Match → 409) 现在由 _use_test_db() 正确注入 app.py 的 db 单例, 全绿.
