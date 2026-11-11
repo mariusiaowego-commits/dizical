@@ -440,11 +440,9 @@
     --pk-tele-speed-color: var(--text-main);
 
     /* 3. 今日练习记录弹窗（圆角浮层，与仪表盘卡片共用 dash 色板） */
-    --pk-drawer-width: 340px;
     --pk-drawer-bg: var(--dash-surface-soft);
-    --pk-drawer-card-bg: var(--dash-white);
     --pk-drawer-border: 1px solid var(--dash-ink-a12);
-    --pk-drawer-radius: 0;
+    --pk-drawer-radius: 20px;
     --pk-drawer-padding: 20px 22px;
     --pk-drawer-gap: 14px;
     --pk-drawer-title-size: 18px;
@@ -5112,7 +5110,6 @@
     max-width: 100vw;
     max-height: 100vh;
     padding: 24px;
-    box-sizing: border-box;
     background: transparent;
     border: none;
     box-shadow: none;
@@ -5156,8 +5153,8 @@
     margin: 0 auto;
     background: var(--pk-drawer-bg, var(--dash-surface-soft));
     border: var(--pk-drawer-border, 1px solid var(--dash-ink-a12));
-    border-radius: 20px;
-    box-shadow: 0 24px 60px rgba(44, 62, 80, 0.22), 0 2px 6px rgba(44, 62, 80, 0.06);
+    border-radius: var(--pk-drawer-radius, 20px);
+    box-shadow: 0 24px 60px var(--dash-shell-shadow), 0 2px 6px var(--dash-ink-a04);
     padding: var(--pk-drawer-padding, 20px 22px);
     gap: var(--pk-drawer-gap, 14px);
     box-sizing: border-box;
@@ -5230,6 +5227,8 @@
     flex-direction: column;
     gap: 6px;
   }
+  /* ink 皮肤：白底配浅色字读不清（1.43:1），条目改用随皮肤翻转的深色面 */
+  html[data-skin="ink"] .pk-drawer-item { background: var(--dash-surface-2); }
   .pk-drawer-item-head {
     font-size: 13px;
   }
@@ -5272,11 +5271,11 @@
   @media (max-width: 560px) {
     .pk-drawer { padding: 12px; }
     .pk-drawer-inner {
-      border-radius: 16px;
-      padding: 16px 16px;
-      gap: 12px;
+      --pk-drawer-radius: 16px;
+      --pk-drawer-padding: 16px;
+      --pk-drawer-gap: 12px;
+      --pk-drawer-title-size: 17px;
     }
-    .pk-drawer-title { font-size: 17px; }
   }
 
   /* 提示条 */
@@ -20738,14 +20737,16 @@ function closeRecordsDrawer() {
 window.__CZ_TOKENS = '' +
 ':root{--dash-white:#FFFFFF;--dash-surface-soft:#FFFDFB;--dash-surface-2:#ECE8E1;--dash-surface-3:#DFDAD1;' +
 '--dash-ink:#2C3E50;--dash-ink-a12:rgba(44,62,80,0.12);--dash-ink-a16:rgba(44,62,80,0.16);--dash-text:#2C3E50;' +
-'--dash-text-soft:#666666;--dash-shell-hi:#FFFFFF;--dash-shell-lo:#E8E5E0;--dash-shell-shadow:rgba(44,62,80,0.18);' +
+'--dash-ink-a04:rgba(44,62,80,0.04);--dash-text-soft:#666666;--dash-shell-hi:#FFFFFF;--dash-shell-lo:#E8E5E0;' +
+'--dash-shell-shadow:rgba(44,62,80,0.18);' +
 '--dash-shell-inset:rgba(44,62,80,0.14);--dash-key-hi:rgba(255,255,255,0.65);--dash-glint:rgba(255,255,255,0.85);' +
 '--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255,87,34,0.08);--dash-vermilion-line:rgba(255,87,34,0.30);' +
 '--dash-vermilion-text:#A04217;--dash-vermilion-glow:rgba(255,87,34,0.35);--dash-panel-text:#FFF8F0;' +
 '--dash-muted:#666666;--dash-panel:#161A1E;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;}' +
 ':root[data-skin="ink"]{--dash-white:#FFFFFF;--dash-surface-soft:#232931;--dash-surface-2:#2C333C;--dash-surface-3:#363E48;' +
 '--dash-ink:#2C3E50;--dash-ink-a12:rgba(222, 215, 205, 0.20);--dash-ink-a16:rgba(222, 215, 205, 0.24);--dash-text:#DED7CD;' +
-'--dash-text-soft:#A8A29A;--dash-shell-hi:#2E343B;--dash-shell-lo:#1E242B;--dash-shell-shadow:rgba(44, 62, 80, 0.35);' +
+'--dash-ink-a04:rgba(222, 215, 205, 0.05);--dash-text-soft:#A8A29A;--dash-shell-hi:#2E343B;--dash-shell-lo:#1E242B;' +
+'--dash-shell-shadow:rgba(44, 62, 80, 0.35);' +
 '--dash-shell-inset:rgba(44, 62, 80, 0.45);--dash-key-hi:rgba(255, 255, 255, 0.16);--dash-glint:rgba(255, 255, 255, 0.22);' +
 '--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255, 87, 34, 0.08);--dash-vermilion-line:rgba(255, 87, 34, 0.30);' +
 '--dash-vermilion-text:#FF9E7A;--dash-vermilion-glow:rgba(255, 87, 34, 0.35);--dash-panel-text:#DED7CD;' +

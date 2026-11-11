@@ -233,7 +233,7 @@ body（宿主页）
 | 换曲目 `.pk-folio-box` | `rgba(44,62,80,.45)` | `min(540px,92vw)` × `min(620px,85vh)`，圆角 20px，内边距 `22px 24px` |
 | 提前结束 `.pk-finish-box` | 38% + `blur(3px)` | `min(420px,100%)`，圆角 22px，内边距 `20px 20px 16px`，时长 40px tabular |
 | 全文阅读 `.pk-reader` | — | `min(860px,94vw)`，圆角 20px，内边距 `28px 32px` |
-| 右抽屉 `.pk-drawer` | `opacity .28s ease` | 宽 `min(340px,100vw)`，圆角 `18px 0 0 18px`，`transform .28s cubic-bezier(0.16,1,0.3,1)` |
+| 今日记录弹窗 `.pk-drawer` | `opacity .28s ease` | 居中浮层：宽 `min(640px,100vw - 48px)`，圆角 20px（≤560px 视口 16px），描边 `--dash-ink-a12`，阴影 `0 24px 60px var(--dash-shell-shadow)`；面板底 `--dash-surface-soft`，条目底 `--dash-white`，ink 皮肤条目改 `--dash-surface-2` |
 | 引导 `.cz-guide` | 无（spotlight 描边） | 238px，圆角 15px，内边距 `10px 12px`；`.cz-guide-spot` 2px 朱橙描边 + `czGuidePulse` 1.9s |
 
 **浅色 + 深色两套弹窗 UI 都要有**，不能只有黑色。
