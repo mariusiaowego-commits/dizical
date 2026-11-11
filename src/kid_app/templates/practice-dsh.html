@@ -270,6 +270,38 @@
   :root[data-skin="ink"] .cz-hint { background: var(--dash-stand); }
   .cz-hint.is-on { opacity: 1; }
 
+  /* 计时中切换卡片布局：二次确认 */
+  .cz-layout-guard {
+    position: fixed; inset: 0; z-index: 100000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box;
+  }
+  .cz-layout-guard[hidden] { display: none !important; }
+  .cz-layout-guard-mask {
+    position: absolute; inset: 0;
+    background: rgba(28, 30, 33, 0.46);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  }
+  .cz-layout-guard-box {
+    position: relative; width: min(360px, 100%);
+    padding: 20px 20px 16px; border-radius: 18px;
+    background: var(--dash-white); color: var(--dash-text);
+    border: 1px solid var(--dash-ink-a16);
+    box-shadow: 0 22px 60px var(--dash-shell-shadow);
+  }
+  :root[data-skin="ink"] .cz-layout-guard-box { background: var(--dash-surface-soft); }
+  .cz-layout-guard-box h3 { margin: 0; font-size: 16px; line-height: 1.35; }
+  .cz-layout-guard-box p { margin: 8px 0 0; font-size: 13px; line-height: 1.65; color: var(--dash-text-soft); }
+  .cz-layout-guard-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .cz-layout-guard-actions button {
+    flex: 1 1 0; min-height: 42px; padding: 0 14px;
+    border-radius: 999px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; touch-action: manipulation;
+  }
+  #czLayoutGuardCancel { border: 1px solid var(--dash-ink-a16); background: var(--dash-surface-2); color: var(--dash-text); }
+  #czLayoutGuardOk { border: 1px solid transparent; background: var(--dash-vermilion); color: #fff; }
+  #czLayoutGuardOk:focus-visible, #czLayoutGuardCancel:focus-visible { outline: 2px solid var(--dash-vermilion); outline-offset: 2px; }
+
   /* 审计输出 */
   .audit-out {
     margin: 0; padding: 12px 14px;
@@ -280,6 +312,7 @@
   }
   .audit-nofx, .audit-nofx * { transition-duration: 0s !important; animation-duration: 0s !important; }
 </style>
+<script src="/static/js/duration-fmt.js"></script>
 </head>
 <body>
 
@@ -342,6 +375,18 @@
       <path d="M0 5H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
       <path d="M14 1.5L18.5 5L14 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
     </svg>
+  </div>
+
+  <div class="cz-layout-guard" id="czLayoutGuard" hidden>
+    <div class="cz-layout-guard-mask" id="czLayoutGuardMask"></div>
+    <div class="cz-layout-guard-box" role="dialog" aria-modal="true" aria-labelledby="czLayoutGuardTitle">
+      <h3 id="czLayoutGuardTitle">计时中切换卡片布局？</h3>
+      <p>切换会重建仪表盘卡，当前计时显示会重置。票夹仍会继续计时，但建议先结束本次练习再换布局。</p>
+      <div class="cz-layout-guard-actions">
+        <button type="button" id="czLayoutGuardCancel">继续计时</button>
+        <button type="button" id="czLayoutGuardOk">仍要切换</button>
+      </div>
+    </div>
   </div>
 
   <pre class="audit-out" id="audit" hidden></pre>
@@ -5756,6 +5801,7 @@
   let finishSubmitting = false;
   let finishReason = null;
   let finishSavedElapsed = 0;
+  let finishDurationMin = null;
   let selectedReps = 0;
 </script>
 
@@ -8217,6 +8263,7 @@ function enterRun() {
   finishSubmitting = false;
   finishReason = null;
   finishSavedElapsed = 0;
+  finishDurationMin = null;
   selectedReps = 0;
   runEnterTime = nowCstLocal();
   sessionSaved = false;
@@ -8273,6 +8320,7 @@ function exitRun() {
   finishSubmitting = false;
   finishReason = null;
   finishSavedElapsed = 0;
+  finishDurationMin = null;
   selectedReps = 0;
   hideFinishModal();
   started = false;
@@ -8470,10 +8518,14 @@ function requestFinish(done) {
   tickIv = null;
   timerRunning = false;
   paused = true;
+  if (typeof ttRenderDigits === 'function') { ttRenderDigits(elapsed); }
   finishPending = true;
   finishSubmitting = false;
   finishReason = done ? 'normal' : 'early';
-  finishSavedElapsed = done ? Math.max(secs, Math.round(duration * 60)) : secs;
+  const plannedMin = (typeof finishDurationMin === 'number' && finishDurationMin > 0)
+    ? finishDurationMin : duration;
+  finishSavedElapsed = done ? Math.max(secs, Math.round(plannedMin * 60)) : secs;
+  finishDurationMin = null;
   selectedReps = 0;
 
   if (typeof ttPauseLabel === 'function') { ttPauseLabel(true); }
@@ -8486,6 +8538,11 @@ function requestFinish(done) {
   /* A 卡跟着停在暂停态（不退 prep，否则「继续练」时读数已归零）。 */
   try {
     if (window.parent && typeof window.parent.__czPauseCardA === 'function') { window.parent.__czPauseCardA(); }
+  } catch (e) {}
+  try {
+    if (window.parent && typeof window.parent.__czSyncCardAElapsed === 'function') {
+      window.parent.__czSyncCardAElapsed(finishSavedElapsed);
+    }
   } catch (e) {}
   openFinishModal();
 }
@@ -8935,6 +8992,8 @@ function closeRecordsDrawer() {
     paused = true;
     elapsed = sec;
     runEnterTime = payload.startedAt || nowCstLocal();
+    var dm = Number(payload.durationMin);
+    finishDurationMin = (dm > 0) ? dm : null;
     sessionSaved = false;
     finishPending = false;
     finishSubmitting = false;
@@ -8950,6 +9009,8 @@ function closeRecordsDrawer() {
   });
   window.isPaused = function () { return !!paused; };
   window.isTimingRunning = function () { return timerRunning; };
+  window.__czTicketElapsed = function () { return Math.max(0, Math.round(elapsed)); };
+  window.__czTicketDuration = function () { return Math.max(1, Math.round(duration)); };
   window.isBarDeformed = function () { return isBarDeformed; };
   window.morphTicketToBar = morphTicketToBar;
   window.expandBarToFolio = expandBarToFolio;
@@ -8990,17 +9051,25 @@ function closeRecordsDrawer() {
     const sessions = (day.sessions || []).filter(function (s) { return (s.duration_seconds || 0) > 0; });
     const totalSec = Number(day.total_seconds || 0);
     const mins = Math.max(0, Math.ceil(totalSec / 60));
+    const totalLabel = (window.DizicalDur && typeof DizicalDur.fmt === 'function')
+      ? (DizicalDur.fmt(totalSec) || '0分')
+      : (totalSec < 60 ? (totalSec + ' 秒') : (mins + ' 分'));
     const durText = function (sec) {
-      sec = Number(sec || 0);
-      return sec < 60 ? (sec + ' 秒') : (Math.ceil(sec / 60) + ' 分钟');
+      const s = Math.max(0, Math.round(Number(sec) || 0));
+      if (window.DizicalDur && typeof DizicalDur.fmt === 'function') {
+        return DizicalDur.fmt(s) || '0 秒';
+      }
+      if (s < 60) return s + ' 秒';
+      const m = Math.floor(s / 60), r = s % 60;
+      return r ? (m + ' 分 ' + r + ' 秒') : (m + ' 分钟');
     };
     const pill = document.getElementById('pkRecords');
-    if (pill) { pill.textContent = '练习记录 ' + mins + '分 · ' + sessions.length + '次 ▾'; }
+    if (pill) { pill.textContent = '练习记录 ' + totalLabel + ' · ' + sessions.length + '次 ▾'; }
     window.__czTodayMins = mins;
     window.__czTodaySessions = sessions.length;
     paintCollapsedOverview();
     const sumVal = document.getElementById('pkDrawerTotalVal');
-    if (sumVal) { sumVal.textContent = '今日 ' + mins + ' 分 · ' + sessions.length + ' 次'; }
+    if (sumVal) { sumVal.textContent = '今日 ' + totalLabel + ' · ' + sessions.length + ' 次'; }
     const list = document.getElementById('pkDrawerList');
     const empty = document.getElementById('pkDrawerEmpty');
     if (!list) { return false; }
@@ -10042,15 +10111,27 @@ function closeRecordsDrawer() {
     .grille-6x8 { width: 56px; height: 56px; }
     .round { width: 58px; height: 58px; font-size: 26px; }
     /* dad 2610102107 条2：440 档列宽 58 → 键撑满列宽、对称 padding，文字严格居中 */
-    .stand-btn { min-width: 0; width: 100%; height: 46px; padding: 4px 3px; gap: 2px; font-size: 10.5px; border-radius: 12px; }
+    .stand-btn { min-width: 0; width: 100%; height: 50px; padding: 4px 3px; gap: 2px; font-size: 12.5px; border-radius: 12px; }
     .stand-btn .stand-ico { width: 15px; height: 15px; }
     .pill { --cz-pill-btn-pad: 12px; }
-    .pill button { padding: 0 12px; font-size: 13px; }
+    .pill button { padding: 0 12px; font-size: 15px; }
     .cover-frame { width: 72px; height: 72px; }
     .readout-sub { font-size: 18px; font-weight: 750; }
     .readout-sub small { font-size: 12px; }
     .readout-digits { --readout-digits-h: 54px; }
     .knob { width: 130px; height: 130px; }
+    /* 手机档整体抬一档字号（dad 261111：仪表盘字太小，眼睛酸） */
+    .status { font-size: 12.5px; min-height: 24px; }
+    #bpmRead { font-size: 13px; }
+    .ops-kicker { font-size: 12px; }
+    #todayTotal { font-size: 13px; }
+    #yesterdaySubjBtn, .panel-foot-link { font-size: 12.5px; }
+    .diag-card { font-size: 12.5px; }
+    .diag-status { font-size: 12.5px; }
+    .diag-btn { font-size: 12.5px; min-height: 32px; padding: 5px 9px; }
+    .diag-card .mic-status-btn { font-size: 13px; }
+    .metro-sound-toggle { font-size: 12.5px; }
+    .bat-pct { font-size: 11.5px; }
   }
 
   /* compose-02 等窄槽自适应 (<= 280px) */
@@ -11260,9 +11341,11 @@ function closeRecordsDrawer() {
   window.__czApplyDay = function (payload) {
     var day = (payload && payload.today) || {};
     var totalSec = Number(day.total_seconds || 0);
-    var mins = totalSec > 0 ? Math.max(1, Math.ceil(totalSec / 60)) : 0;
     var el = document.getElementById('todayTotal');
-    if (el) { el.textContent = '今日 ' + mins + '分'; }
+    var label = (window.DizicalDur && typeof DizicalDur.fmt === 'function')
+      ? (DizicalDur.fmt(totalSec) || '0分')
+      : (totalSec > 0 ? Math.max(1, Math.ceil(totalSec / 60)) + '分' : '0分');
+    if (el) { el.textContent = '今日 ' + label; }
     if (payload && payload.yesterday && payload.yesterday.items) {
       cachedYesterdayItems = payload.yesterday.items;
       updateYesterdaySubjBtn();
@@ -11280,7 +11363,9 @@ function closeRecordsDrawer() {
     try {
       var p = window.parent;
       if (p && typeof p.__czRequestFinishFromCardA === 'function') {
-        return !!p.__czRequestFinishFromCardA({ done: !!done, seconds: sec, startedAt: runStartedAtCst });
+        return !!p.__czRequestFinishFromCardA({
+          done: !!done, seconds: sec, startedAt: runStartedAtCst, durationMin: duration
+        });
       }
     } catch (e) {}
     return false;
@@ -11297,6 +11382,11 @@ function closeRecordsDrawer() {
     prep: function () { if (mode !== 'prep') { enterPrep(); } return mode; },
     setElapsed: function (sec) {
       if (typeof sec === 'number' && isFinite(sec) && sec >= 0) { elapsed = Math.round(sec); }
+      if (mode === 'pause') {
+        var mm = Math.floor(elapsed / 60), ss = elapsed % 60;
+        opsTimerText.textContent =
+          (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss + ' · 已暂停';
+      }
       return elapsed;
     }
   };
@@ -11387,6 +11477,9 @@ function closeRecordsDrawer() {
     stopMetroAudio();
     var m = Math.floor(elapsed / 60);
     var s = elapsed % 60;
+    /* 暂停（含到点）时读数行要跟着定格，否则一直挂着「练习中」的字样。 */
+    opsTimerText.textContent =
+      (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + ' · 已暂停';
     var metaVal = document.getElementById('metaVal');
     if (metaVal) {
       renderMetaDigits((m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s);
@@ -17004,10 +17097,11 @@ function closeRecordsDrawer() {
     clockSvg.setAttribute('aria-label', padZero(hh) + ':' + padZero(mm));
     secSvg.setAttribute('aria-label', padZero(ss));
 
-    document.getElementById('pillVal').textContent =
-      total < 60 ? (total + ' 秒') : (hh ? (hh + '小时 ' + mm + '分') : (mm + ' 分钟'));
-    document.getElementById('railDurationText').textContent =
-      total < 60 ? (total + ' 秒') : (Math.ceil(total / 60) + ' 分钟');
+    var totalLabel = (window.DizicalDur && typeof DizicalDur.fmt === 'function')
+      ? (DizicalDur.fmt(total) || '0 分钟')
+      : (total < 60 ? (total + ' 秒') : (Math.ceil(total / 60) + ' 分钟'));
+    document.getElementById('pillVal').textContent = totalLabel;
+    document.getElementById('railDurationText').textContent = totalLabel;
 
     /* 时间轴：按 session 的真实起止时间铺白段 */
     var track = document.getElementById('railTrack');
@@ -17043,9 +17137,11 @@ function closeRecordsDrawer() {
       }
       var lastOne = stamps[stamps.length - 1].s;
       var lastSec = Number(lastOne.duration_seconds || 0);
+      var lastDur = (window.DizicalDur && typeof DizicalDur.fmt === 'function')
+        ? (DizicalDur.fmt(lastSec) || '0秒')
+        : (lastSec < 60 ? (lastSec + 's') : (Math.ceil(lastSec / 60) + 'm'));
       document.getElementById('subjectText').textContent =
-        (lastOne.item_name || lastOne.item || '练习') + ' ' +
-        (lastSec < 60 ? (lastSec + 's') : (Math.ceil(lastSec / 60) + 'm'));
+        (lastOne.item_name || lastOne.item || '练习') + ' ' + lastDur;
     }
     return true;
   };
@@ -18089,6 +18185,17 @@ function closeRecordsDrawer() {
     return Math.max(1, Math.ceil(seconds / 60));
   }
 
+  /* 单条/单科记录按秒展示（口径 B）：110 秒 = 1分50秒，不再向上取整成 2 分钟。 */
+  function durLabel(seconds) {
+    var s = Math.max(0, Math.round(Number(seconds) || 0));
+    if (window.DizicalDur && typeof DizicalDur.fmt === 'function') {
+      return DizicalDur.fmt(s) || '0秒';
+    }
+    if (s < 60) { return s + '秒'; }
+    var m = Math.floor(s / 60), r = s % 60;
+    return r ? (m + '分' + r + '秒') : (m + '分');
+  }
+
   function groupSubjects() {
     var order = [];
     var map = {};
@@ -18283,7 +18390,7 @@ function closeRecordsDrawer() {
     left.appendChild(el('span', 's2-badge-cnt', group.sessions.length + '次'));
     head.appendChild(left);
     var right = el('div', 's2-head-right');
-    right.appendChild(el('span', 's2-total-min', minutesOf(group.seconds) + '分'));
+    right.appendChild(el('span', 's2-total-min', durLabel(group.seconds)));
     right.appendChild(el('span', 's2-share-pct', '占比 ' + share + '%'));
     head.appendChild(right);
     head.addEventListener('click', function () { toggleGroup(card); });
@@ -18302,7 +18409,7 @@ function closeRecordsDrawer() {
       content.appendChild(document.createTextNode(session.content || '练习'));
       row.appendChild(content);
       row.appendChild(el('span', 's2-step-meta', sessionMeta(session)));
-      row.appendChild(el('span', 's2-step-dur', minutesOf(session.duration_seconds) + '分'));
+      row.appendChild(el('span', 's2-step-dur', durLabel(session.duration_seconds)));
       if (session.id) {
         var editBtn = el('button', 's2-step-edit');
         editBtn.type = 'button';
@@ -18329,7 +18436,7 @@ function closeRecordsDrawer() {
     var tray = el('div', 's2-beans-tray');
     group.sessions.forEach(function (session, idx) {
       var bean = el('span', 's2-bean');
-      bean.appendChild(el('b', null, '#' + (idx + 1) + ' ' + minutesOf(session.duration_seconds) + '分'));
+      bean.appendChild(el('b', null, '#' + (idx + 1) + ' ' + durLabel(session.duration_seconds)));
       bean.appendChild(document.createTextNode(' · ' + (session.content || '练习')));
       tray.appendChild(bean);
     });
@@ -20497,7 +20604,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.51';
+  var DSH_VERSION = 'v3.52';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -20949,7 +21056,8 @@ function closeRecordsDrawer() {
   function moduleSource(key) {
     var raw = tplSource('tpl-' + key);
     return '<!DOCTYPE html><head><base href="' + DEMO_BASE + '"><meta charset="utf-8">' +
-      '<style id="cz-scope">' + MODULE_SCOPE + '</style></head>' + raw +
+      '<style id="cz-scope">' + MODULE_SCOPE + '</style>' +
+      '<script src="/static/js/duration-fmt.js"><\/script></head>' + raw +
       '<style id="cz-scope-tail">' + MODULE_SCOPE + '</style>';
   }
 
@@ -21048,7 +21156,8 @@ function closeRecordsDrawer() {
 
   /* ── 画布装载 + 注入 ── */
   function loadCanvas() {
-    canvasIframe.srcdoc = '<!DOCTYPE html><head><base href="' + DOCS_BASE + '"><meta charset="utf-8"></head>' + tplSource('tpl-canvas');
+    canvasIframe.srcdoc = '<!DOCTYPE html><head><base href="' + DOCS_BASE + '"><meta charset="utf-8">' +
+      '<script src="/static/js/duration-fmt.js"><\/script></head>' + tplSource('tpl-canvas');
   }
   function canvasDoc() {
     try { return canvasIframe.contentDocument; } catch (e) { return null; }
@@ -22023,7 +22132,8 @@ window.__CZ_CSS = [
            「12 分」，和顶栏的「今日 1 分」对不上。统一换算成秒再累加。 */
         var tMinM = tDurStr.match(/(\d+)\s*分/);
         var tSecM = tDurStr.match(/(\d+)\s*秒/);
-        var tSecs = tMinM ? parseInt(tMinM[1], 10) * 60 : (tSecM ? parseInt(tSecM[1], 10) : 0);
+        var tSecs = (tMinM ? parseInt(tMinM[1], 10) * 60 : 0) +
+          (tSecM ? parseInt(tSecM[1], 10) : 0);
 
         if (idx === 0) {
           recentItem = { time: tTime, dur: tDurStr, subject: tSub, session: tSess };
@@ -22055,8 +22165,10 @@ window.__CZ_CSS = [
         var c = colors[idx % colors.length];
         var realPct = Math.round((sub.seconds / totalDistSecs) * 100);
         var barWidthPct = Math.max(4, realPct);
-        var subMins = Math.max(1, Math.round(sub.seconds / 60));
-        barSegmentsHtml += '<span class="mini-bar-seg" style="width:' + barWidthPct + '%;background:' + c + ';" title="' + sub.name + ' ' + subMins + '分"></span>';
+        var subDur = (window.DizicalDur && typeof DizicalDur.fmt === 'function')
+          ? (DizicalDur.fmt(sub.seconds) || '0秒')
+          : (Math.max(1, Math.ceil(sub.seconds / 60)) + '分');
+        barSegmentsHtml += '<span class="mini-bar-seg" style="width:' + barWidthPct + '%;background:' + c + ';" title="' + sub.name + ' ' + subDur + '"></span>';
         distListHtml +=
           '<div class="mini-dist-row">' +
             '<div class="mini-dist-lead">' +
@@ -22064,7 +22176,7 @@ window.__CZ_CSS = [
               '<span class="mini-dist-name">' + sub.name + '</span>' +
             '</div>' +
             '<div class="mini-dist-meta">' +
-              '<span class="mini-dist-dur">' + subMins + '分</span>' +
+              '<span class="mini-dist-dur">' + subDur + '</span>' +
               '<span class="mini-dist-pct">' + realPct + '%</span>' +
             '</div>' +
           '</div>';
@@ -22992,17 +23104,90 @@ window.__CZ_CSS = [
   });
 
   /* 组合切换：可见模块集合 = 该组合定义（与 state.mods 一致），自定义档不改勾选 */
+  var pendingLayoutSwitch = null;
+  var allowLayoutSwitch = false;
+  function layoutSwitchBlocked() {
+    if (allowLayoutSwitch || AUDIT || window.__czAllowLayoutSwitchWhileRunning) { return false; }
+    var cw = canvasWin();
+    try {
+      if (cw && typeof cw.__czIsPracticeBusy === 'function' && cw.__czIsPracticeBusy()) { return true; }
+    } catch (e) {}
+    return canvasRunning();
+  }
+  function closeLayoutGuard() {
+    pendingLayoutSwitch = null;
+    var g = document.getElementById('czLayoutGuard');
+    if (g) { g.hidden = true; }
+    try { applyStateToUi(); refreshPicker(); syncStat(); } catch (e) {}
+  }
+  function askLayoutSwitch(kind, value) {
+    pendingLayoutSwitch = { kind: kind, value: value };
+    var g = document.getElementById('czLayoutGuard');
+    if (!g) { pendingLayoutSwitch = null; return false; }
+    g.hidden = false;
+    var ok = document.getElementById('czLayoutGuardOk');
+    if (ok) { try { ok.focus(); } catch (e) {} }
+    return true;
+  }
+  /* 切换会重建卡 A；切完按票夹秒数把仪表盘读数接回去，避免显示从 0 重新开始。 */
+  function restoreCardAAfterRelayout() {
+    var cw = canvasWin();
+    if (!cw) { return; }
+    var sec = (typeof cw.__czTicketElapsed === 'function') ? cw.__czTicketElapsed() : 0;
+    var dur = (typeof cw.__czTicketDuration === 'function') ? cw.__czTicketDuration() : 0;
+    if (!(sec > 0)) { return; }
+    function apply() {
+      var w = cardAWin();
+      if (!w || !w.__czCardA) { return false; }
+      try { if (dur > 0) { bus.duration(dur, 'left_ticket'); } } catch (e) {}
+      try { w.__czCardA.resume(sec); return true; } catch (e) { return false; }
+    }
+    setTimeout(apply, 120);
+    setTimeout(apply, 420);
+    setTimeout(apply, 900);
+  }
+  function applyPendingLayoutSwitch() {
+    var p = pendingLayoutSwitch;
+    pendingLayoutSwitch = null;
+    var g = document.getElementById('czLayoutGuard');
+    if (g) { g.hidden = true; }
+    if (!p) { return false; }
+    allowLayoutSwitch = true;
+    try {
+      if (p.kind === 'mods') { setMods(p.value); }
+      else { setCombo(p.value); }
+    } finally {
+      setTimeout(function () { allowLayoutSwitch = false; }, 0);
+    }
+    restoreCardAAfterRelayout();
+    return true;
+  }
+  (function bindLayoutGuard() {
+    var g = document.getElementById('czLayoutGuard');
+    if (!g) { return; }
+    var cancel = document.getElementById('czLayoutGuardCancel');
+    var ok = document.getElementById('czLayoutGuardOk');
+    var mask = document.getElementById('czLayoutGuardMask');
+    if (cancel) { cancel.addEventListener('click', closeLayoutGuard); }
+    if (mask) { mask.addEventListener('click', closeLayoutGuard); }
+    if (ok) { ok.addEventListener('click', applyPendingLayoutSwitch); }
+  })();
   function markComboSwitch() {
     var cd = canvasDoc();
     var api = cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null;
     if (api && api.beginSwitch) { try { api.beginSwitch(); } catch (e) {} }
   }
   function setCombo(which) {
-    state.combo = which || 'off';
+    var next = which || 'off';
+    if (next !== state.combo && layoutSwitchBlocked()) {
+      askLayoutSwitch('combo', next);
+      return { combo: state.combo, blocked: true, needConfirm: true };
+    }
+    state.combo = next;
     /* 自检页会来回切组合，不做延时重排（避免拖慢审计） */
     if (!AUDIT) {
-      setTimeout(function () { if (state.combo === (which || 'off')) { syncAll(); } }, 280);
-      setTimeout(function () { if (state.combo === (which || 'off')) { syncAll(); } }, 650);
+      setTimeout(function () { if (state.combo === next) { syncAll(); } }, 280);
+      setTimeout(function () { if (state.combo === next) { syncAll(); } }, 650);
     }
     if (state.combo !== 'off') { markComboSwitch(); }
     if (COMBO_MODS[state.combo]) { state.mods = COMBO_MODS[state.combo].slice(); }
@@ -24080,6 +24265,7 @@ window.__CZ_CSS = [
     syncStat();
     syncAll();
     setTimeout(syncFeedTravel, 80);
+    restoreCardAAfterRelayout();
   }
 
   function modDoc(f) { try { return f.contentDocument; } catch (e) { return null; } }
@@ -24960,6 +25146,16 @@ window.__CZ_CSS = [
     if (w && w.__czCardA && typeof w.__czCardA.pause === 'function') { try { w.__czCardA.pause(); return true; } catch (e) {} }
     return false;
   };
+  /* 结束时把仪表盘读数对齐到实际入账秒数（票夹与 A 卡各自计时，末秒可能差 1）。 */
+  window.__czSyncCardAElapsed = function (sec) {
+    var w = cardAWin();
+    if (!w || !w.__czCardA) { return false; }
+    try {
+      if (typeof w.__czCardA.setElapsed === 'function') { w.__czCardA.setElapsed(sec); }
+      if (typeof w.__czCardA.pause === 'function') { w.__czCardA.pause(); }
+      return true;
+    } catch (e) { return false; }
+  };
   window.__czResumeCardA = function (sec) {
     var w = cardAWin();
     if (w && w.__czCardA && typeof w.__czCardA.resume === 'function') { try { w.__czCardA.resume(sec); return true; } catch (e) {} }
@@ -25201,7 +25397,13 @@ window.__CZ_CSS = [
   }
 
   function setMods(mods, saveIt) {
-    state.mods = MOD_KEYS.filter(function (k) { return mods.indexOf(k) >= 0; });
+    var next = MOD_KEYS.filter(function (k) { return mods.indexOf(k) >= 0; });
+    if (saveIt !== false && !allowLayoutSwitch && layoutSwitchBlocked() &&
+        next.join(',') !== state.mods.join(',')) {
+      askLayoutSwitch('mods', next);
+      return;
+    }
+    state.mods = next;
     applySelection();
     refreshPicker();
     if (saveIt !== false) { save(); }

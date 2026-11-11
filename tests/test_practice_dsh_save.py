@@ -49,7 +49,8 @@ def test_selected_duration_is_not_persisted(html):
 def test_finish_freezes_elapsed_and_defers_write_to_confirm(html):
     """结束先定格秒数开确认弹窗；exitRun 只做静默复位，不再直写。"""
     seg = html[html.index("function requestFinish(done)"):html.index("function cancelFinishAndResume()")]
-    assert "finishSavedElapsed = done ? Math.max(secs, Math.round(duration * 60)) : secs;" in seg
+    assert "finishSavedElapsed = done ? Math.max(secs, Math.round(plannedMin * 60)) : secs;" in seg
+    assert "finishDurationMin" in seg, "仪表盘单独跑完时要用它自己的时长兜底"
     assert "postPracticeLog" not in seg, "requestFinish 不能直接写库"
     exit_seg = html[html.index("function exitRun()"):html.index("function pauseToggle()")]
     assert "postPracticeLog" not in exit_seg, "exitRun 是静默复位，不能写库"
@@ -77,6 +78,45 @@ def test_no_dead_route_and_day_refresh(html):
     assert "fetch('/api/today-stats" not in html, "today-stats 的服务端日期可能是 UTC，会串日期"
     assert html.count("window.__czApplyDay = function (payload)") == 4, "画布顶栏 + A / D / R 四处都要能接真实数据"
     assert "['A', 'D', 'R']" in html, "当天数据要推进 A 卡，不能只推 D / R"
+
+
+def test_layout_switch_is_blocked_while_timing(html):
+    """计时中切卡片布局必须先二次确认，不能直接切断读数。"""
+    assert 'id="czLayoutGuard"' in html, "缺布局切换二次确认弹层"
+    assert "function layoutSwitchBlocked()" in html
+    assert "function askLayoutSwitch(" in html
+    assert "needConfirm: true" in html, "被拦下时要告诉调用方需要确认"
+    set_combo = html[html.index("function setCombo(which)"):]
+    set_combo = set_combo[:set_combo.index("\n  }\n") + 4]
+    assert "layoutSwitchBlocked()" in set_combo, "切组合没走拦截"
+    set_mods = html[html.index("function setMods(mods, saveIt)"):]
+    set_mods = set_mods[:set_mods.index("\n  }\n") + 4]
+    assert "layoutSwitchBlocked()" in set_mods, "勾选自定义没走拦截"
+    assert "function restoreCardAAfterRelayout()" in html, "确认切换后要把读数接回去"
+
+
+def test_duration_labels_are_second_accurate(html):
+    """不满 1 分钟的余数必须按秒显示，不能向上取整成整分钟。"""
+    assert "DizicalDur.fmt" in html, "时长展示要走秒级口径"
+    assert "function durLabel(seconds)" in html
+    dur = html[html.index("function durLabel(seconds)"):html.index("function groupSubjects()")]
+    assert "Math.floor(s / 60)" in dur and "s % 60" in dur, "必须拆成分+秒"
+    assert "Math.ceil" not in dur, "秒级展示不能向上取整"
+    assert "minutesOf(session.duration_seconds) + '分'" not in html, "旧向上取整口径要清干净"
+
+
+def test_dashboard_finish_uses_its_own_duration(html):
+    """仪表盘单独跑完时，弹窗时长用它自己的分钟数兜底。"""
+    assert "durationMin: duration" in html, "A 卡结束要把自己的时长传给外壳"
+    assert "finishDurationMin = (dm > 0) ? dm : null;" in html
+    assert "const plannedMin = (typeof finishDurationMin === 'number' && finishDurationMin > 0)" in html
+
+
+def test_card_a_timer_freezes_on_pause(html):
+    """到点/暂停后仪表盘读数要定格，不能一直挂着「练习中」。"""
+    pause = html[html.index("function enterPause()"):html.index("function enterPrep()")]
+    assert "' · 已暂停'" in pause, "暂停态读数行要换成已暂停"
+    assert "window.__czSyncCardAElapsed" in html, "结束时要把仪表盘读数对齐到实际秒数"
 
 
 # ── 端到端：按前端实际 payload 打一次 API ─────────────────────────────────
