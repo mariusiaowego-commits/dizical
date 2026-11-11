@@ -20497,7 +20497,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.50';
+  var DSH_VERSION = 'v3.51';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -22172,6 +22172,13 @@ window.__CZ_CSS = [
     f.addEventListener('load', function () {
       /* 弹层里的 R 卡只需要皮肤/布局态，不走画布模块那套量高与手势转发 */
       applyModuleState(f);
+      /* 弹层在宿主文档里，不在 czCanvas，收不到 applyDayToModules 的 iframe 遍历。
+         装载完成先推一次当前数据，否则「查看记录明细」永远停在空态。 */
+      if (dayPayload) {
+        try {
+          if (typeof f.contentWindow.__czApplyDay === 'function') { f.contentWindow.__czApplyDay(dayPayload); }
+        } catch (e) {}
+      }
       try {
         f.contentWindow.addEventListener('keydown', function (ev) {
           if (ev.key === 'Escape') { closeRecordsPop(true); }
@@ -25462,6 +25469,15 @@ window.__CZ_CSS = [
         }
       } catch (e) {}
     });
+    /* 弹层 iframe 挂在宿主 document 上，不在 czCanvas 里，上面这轮遍历够不到；
+       不单独推就会一直显示空态（含单条编辑入口不可达）。 */
+    try {
+      var pf = document.getElementById('czPopFrame');
+      if (pf && pf.contentWindow && typeof pf.contentWindow.__czApplyDay === 'function') {
+        pf.contentWindow.__czApplyDay(dayPayload);
+        refreshPopSummary();
+      }
+    } catch (e) {}
     /* 迷你记录卡是从票夹抽屉的 DOM 反读的（buildMiniCard）。抽屉刚被真数据重写，
        必须按当前宽高重建一次，否则迷你卡会停在首屏那次（空态或占位）。 */
     /* feed 档（<1024）：卡片高度是按「空态内容」量出来的。真数据进来后内容变高，

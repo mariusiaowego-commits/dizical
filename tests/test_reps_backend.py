@@ -18,6 +18,12 @@ _SESSION_DB = db_module.db
 
 
 @pytest.fixture(autouse=True)
+def _auth_as_dad(auth_as):
+    """PUT /api/practice-sessions/{id} 收紧鉴权后（v3.51），端点测试需 dad 身份。"""
+    auth_as("dad")
+
+
+@pytest.fixture(autouse=True)
 def _pin_session_db():
     import src.kid_app.app as app_module
     import src.kid_app.routes.config as config_module
