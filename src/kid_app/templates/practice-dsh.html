@@ -23601,6 +23601,15 @@ window.__CZ_CSS = [
       return setLeftBpmAbsolute(cur + delta);
     }
     function leftDur() {
+      /* 票夹真源：practice-dsh 没有 #pkTicketDurVal（那是 practice.html 的旧件），
+         只有刻度尺 #rulerInput。读不到真值就会回落到硬编码 10 —— 仪表盘改的时长
+         也就永远同步不过来（dad 2026-11-12：仪表盘选 1 分钟，开始后跑成 10 分钟）。 */
+      var ri = id('rulerInput');
+      if (ri && ri.value !== '') { return parseInt(ri.value, 10) || 0; }
+      var w = doc.defaultView;
+      if (w && typeof w.__czTicketDuration === 'function') {
+        try { return Math.max(1, Math.round(w.__czTicketDuration())); } catch (e) {}
+      }
       var el = id('pkTicketDurVal');
       if (el) return parseInt(txt(el, '0'), 10) || 0;
       return (typeof window !== 'undefined' && window.duration) ? window.duration : (doc.defaultView && doc.defaultView.duration ? doc.defaultView.duration : 10);
@@ -23852,6 +23861,14 @@ window.__CZ_CSS = [
       if (source === 'right_dash') {
         var lv = leftDur();
         if (lv === target) { return rec({ op: 'duration', dir: 'R2L', from: lv, to: target, steps: 0, readBack: lv }); }
+        /* practice-dsh 的票夹没有 ± 时长按钮（#pkTicketDurUp/Down 只存在于 practice.html），
+           直接调票夹自己的 ttSetDuration，避免 poke() 点到空节点、改动被静默吞掉。 */
+        var setDur = doc.defaultView && doc.defaultView.ttSetDuration;
+        if (typeof setDur === 'function') {
+          try { setDur(target); } catch (e) {}
+          stats.applied++;
+          return rec({ op: 'duration', dir: 'R2L', from: lv, to: target, steps: 1, readBack: leftDur() });
+        }
         var st = poke(id('pkTicketDurUp'), id('pkTicketDurDown'), lv, target, 60);
         stats.applied++;
         return rec({ op: 'duration', dir: 'R2L', from: lv, to: target, steps: st, readBack: leftDur() });

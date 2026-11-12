@@ -119,6 +119,20 @@ def test_card_a_timer_freezes_on_pause(html):
     assert "window.__czSyncCardAElapsed" in html, "结束时要把仪表盘读数对齐到实际秒数"
 
 
+def test_dash_duration_sync_to_ticket(html):
+    """仪表盘改时长必须回写票夹真源；票夹在 practice-dsh 里只有 #rulerInput。
+
+    dad 2026-11-12：仪表盘选 1 分钟，开始后跑成 10 分钟、进度条到不了终点。
+    根因是总线读 #pkTicketDurVal / 点 #pkTicketDurUp|Down —— 这两个元素只存在于
+    practice.html，practice-dsh 里没有，同步被静默吞掉后回落硬编码 10。
+    """
+    left_dur = html[html.index("function leftDur()"):html.index("function dashDoc2()")]
+    assert "id('rulerInput')" in left_dur, "票夹时长真源必须是刻度尺 #rulerInput"
+    right_dash = html[html.index("if (source === 'right_dash') {"):]
+    right_dash = right_dash[:right_dash.index("return rec({ op: 'duration', dir: 'self'")]
+    assert "ttSetDuration" in right_dash, "右栏改时长要直接调票夹 ttSetDuration，不能只 poke 空按钮"
+
+
 # ── 端到端：按前端实际 payload 打一次 API ─────────────────────────────────
 
 def _frontend_payload(item_id, item_name, seconds, practice_at, content="连吐 1-16 小节"):
