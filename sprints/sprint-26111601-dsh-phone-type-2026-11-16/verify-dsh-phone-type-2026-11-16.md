@@ -2,7 +2,7 @@
 type: sprint
 sprint: "26111601"
 date: 2026-11-16
-status: 进行中
+status: 已完成
 ---
 
 # 验收 · 手机端字号 v3.53
@@ -45,3 +45,12 @@ status: 进行中
 ## 测试
 
 `pytest tests/test_practice_dsh.py tests/test_practice_dsh_save.py tests/test_practice_dsh_popout_data.py` → 53 passed。
+
+
+## 生产
+
+- 部署包 `.cloudrun-deploy` 196M，无 `*.db`。`practice-dsh.html` md5 `c4f766beb001f39edaec543adc3a2465` 与 `main` `c8d8da9` 一致。Dockerfile / .dockerignore / schema_mysql.sql / cloudrun.yaml / requirements.txt 与 HEAD 一致。
+- `tcb cloudrun deploy` 选了不灰度。新版本 `dizical-prod-163`，Status `normal`，FlowRatio `100`，CurrentReplicas 1。BuildId `2612858672`，RunId `multi_tenant_1xSmmTKeFn0wAG`。旧版 162 FlowRatio 0。
+- `GET /health/live` → 200 `{"status":"alive"}`
+- `GET /health/ready` → 200 database ok，lesson_count 37，cos_ok true，badge_store cos。
+- `GET /practice-dsh` → 302 `/login?redirect=/practice-dsh`，无 `X-Dsh-Build`。记 **skipped**，不是 passed。

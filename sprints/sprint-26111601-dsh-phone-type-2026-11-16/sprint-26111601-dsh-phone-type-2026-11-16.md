@@ -3,7 +3,7 @@ type: sprint
 sprint: "26111601"
 topic: dsh-phone-type
 date: 2026-11-16
-status: 进行中
+status: 已完成
 branch: feat/practice-dsh-phone-type-v353
 base: main@3844727 (v3.52)
 ---
@@ -60,3 +60,12 @@ v3.52（PR #406）已把手机仪表盘内部字号抬过一档（`.stand-btn` 1
 - 不改缩放基准与 `canvasFitBaseH`。
 - 不引入新 hex；字号沿用现有 px 体系。
 - 不跨仓库改 dizical-minip（纯 CSS/JS，无 API 变化）。
+
+
+## 发布
+
+- PR #408 squash → `main` `c8d8da9`。基线当时等于 `origin/main` `3844727`。开放 PR 只剩无关的 #230。
+- CloudRun `dizical-prod-163`：Status `normal`，FlowRatio `100`，162 已降为 0。BuildId `2612858672`，RunId `multi_tenant_1xSmmTKeFn0wAG`。创建 2026-11-16 10:49:18，流量切完 10:55:51 CST。
+- `/health/live` 200 `alive`；`/health/ready` 200，database ok，lesson_count 37，cos_ok true。
+- `/practice-dsh` 302 到登录，`X-Dsh-Build` 未取到，记 skipped。
+- 本机 8765 未重启。
