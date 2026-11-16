@@ -1492,10 +1492,10 @@
       flex: 0 0 auto;
     }
     .pk-brand {
-      font-size: 13px;
+      font-size: 18px;
     }
     .pk-mid {
-      font-size: 11.5px;
+      font-size: 15px;
     }
     .pk-grow {
       flex-basis: 100%;
@@ -1506,7 +1506,7 @@
       display: none;
     }
     .pk-ver {
-      font-size: 9px;
+      font-size: 12px;
       opacity: .45;
     }
     .pk-ver-pop {
@@ -1514,14 +1514,14 @@
       font-size: 10.5px;
     }
     .pk-top .pk-pill {
-      font-size: 11px;
+      font-size: 14px;
       padding: 3px 8px;
       height: 26px;
       min-height: 24px;
       white-space: nowrap;
     }
     .pk-top .pk-server-clock {
-      font-size: 11px;
+      font-size: 14px;
       padding: 2px 6px;
       height: 24px;
       line-height: 20px;
@@ -2959,10 +2959,10 @@
     color: var(--dash-vermilion-text);
   }
   @media (max-width: 600px) {
-    .pk-exposed-chip { font-size: 8px !important; padding: 1px 4px !important; }
-    .pk-exposed-title { font-size: 11.5px !important; max-width: none !important; }
-    .pk-exposed-tag { font-size: 11.5px !important; padding: 4px 8px !important; }
-    .pk-exposed-expand-hint { font-size: 9px !important; padding: 1px 5px !important; }
+    .pk-exposed-chip { font-size: 12px !important; padding: 1px 4px !important; }
+    .pk-exposed-title { font-size: 16px !important; max-width: none !important; }
+    .pk-exposed-tag { font-size: 15px !important; padding: 4px 8px !important; }
+    .pk-exposed-expand-hint { font-size: 13px !important; padding: 1px 5px !important; }
   }
   @media (max-width: 400px) {
     .pk-exposed-tags .pk-exposed-tag.is-quick-pick:nth-child(3) { display: none; }
@@ -3242,6 +3242,18 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* 写在基线之后：前面的 @media (max-width: 480px) 同优先级会被这里的 8–11px 盖回去。 */
+  @media (max-width: 480px) {
+    .cz-popup-tag { font-size: 12px; }
+    .cz-popup-no { font-size: 13px; }
+    .cz-popup-stat .k,
+    .cz-popup-req .k { font-size: 12px; }
+    .cz-popup-stat .v { font-size: 16px; }
+    .cz-popup-session-line,
+    .cz-popup-req,
+    .cz-popup-req p,
+    .cz-popup-close-btn { font-size: 15px; }
   }
   .cz-popup-foot {
     display: flex;
@@ -5322,6 +5334,9 @@
       --pk-drawer-gap: 12px;
       --pk-drawer-title-size: 17px;
     }
+    .pk-drawer-empty { font-size: 16px; }
+    .pk-drawer-badge { font-size: 13px; }
+    .pk-drawer-foot-text { font-size: 13px; }
   }
 
   /* 提示条 */
@@ -10111,24 +10126,24 @@ function closeRecordsDrawer() {
     .grille-6x8 { width: 56px; height: 56px; }
     .round { width: 58px; height: 58px; font-size: 26px; }
     /* dad 2610102107 条2：440 档列宽 58 → 键撑满列宽、对称 padding，文字严格居中 */
-    .stand-btn { min-width: 0; width: 100%; height: 50px; padding: 4px 3px; gap: 2px; font-size: 12.5px; border-radius: 12px; }
+    .stand-btn { min-width: 0; width: 100%; height: 50px; padding: 4px 3px; gap: 2px; font-size: 14px; border-radius: 12px; }
     .stand-btn .stand-ico { width: 15px; height: 15px; }
     .pill { --cz-pill-btn-pad: 12px; }
-    .pill button { padding: 0 12px; font-size: 15px; }
+    .pill button { padding: 0 12px; font-size: 16px; }
     .cover-frame { width: 72px; height: 72px; }
     .readout-sub { font-size: 18px; font-weight: 750; }
-    .readout-sub small { font-size: 12px; }
+    .readout-sub small { font-size: 14px; }
     .readout-digits { --readout-digits-h: 54px; }
     .knob { width: 130px; height: 130px; }
     /* 手机档整体抬一档字号（dad 261111：仪表盘字太小，眼睛酸） */
     .status { font-size: 12.5px; min-height: 24px; }
-    #bpmRead { font-size: 13px; }
+    #bpmRead { font-size: 14px; }
     .ops-kicker { font-size: 12px; }
     #todayTotal { font-size: 13px; }
     #yesterdaySubjBtn, .panel-foot-link { font-size: 12.5px; }
     .diag-card { font-size: 12.5px; }
-    .diag-status { font-size: 12.5px; }
-    .diag-btn { font-size: 12.5px; min-height: 32px; padding: 5px 9px; }
+    .diag-status { font-size: 14px; }
+    .diag-btn { font-size: 14px; min-height: 36px; padding: 5px 9px; }
     .diag-card .mic-status-btn { font-size: 13px; }
     .metro-sound-toggle { font-size: 12.5px; }
     .bat-pct { font-size: 11.5px; }
@@ -13642,6 +13657,10 @@ function closeRecordsDrawer() {
   .preset-chip.active { background: var(--dash-text); color: var(--dash-page); border-color: var(--dash-text); box-shadow: none; }
   .preset-chip .pc-label { display: inline; }
   .preset-chip .pc-note { font-size: 11px; opacity: .85; font-weight: 700; }
+  .stage-frame[data-vp="440"] .preset-chip { font-size: 15px; }
+  .stage-frame[data-vp="440"] .preset-chip .pc-note { font-size: 13px; }
+  .stage-frame[data-vp="440"] .led-label { font-size: 13px; }
+  .stage-frame[data-vp="440"] .bpm-hero-unit { font-size: 13px; }
 
   /* ══════ 精度自检面板 (Audit Terminal) ══════ */
   .audit-panel {
@@ -15707,6 +15726,10 @@ function closeRecordsDrawer() {
       width: 100%;
       max-width: 100px;
     }
+  }
+  @media (min-width: 360px) and (max-width: 480px) {
+    html.cz-feed #tempoTerm,
+    html.cz-feed #btnTimbre { font-size: 15px; }
   }
 
   .strip {
@@ -17908,6 +17931,18 @@ function closeRecordsDrawer() {
     font-size: 11px; font-weight: 600;
   }
   .s2-step-wrap.show-note .s2-step-note { display: block; }
+  html.cz-vp440 .head h1 { font-size: 18px; }
+  html.cz-vp440 .hero .k { font-size: 13px; }
+  html.cz-vp440 .rec-empty { font-size: 15px; }
+  html.cz-vp440 .s2-subj-title,
+  html.cz-vp440 .s2-total-min { font-size: 16px; }
+  html.cz-vp440 .s2-step-content,
+  html.cz-vp440 .s2-step-dur { font-size: 15px; }
+  html.cz-vp440 .s2-step-time,
+  html.cz-vp440 .s2-step-meta,
+  html.cz-vp440 .s2-step-note,
+  html.cz-vp440 .s2-share-pct,
+  html.cz-vp440 .s2-bean { font-size: 13px; }
 
   /* 单条记录编辑入口：只有在今天真实落库的记录（有 session id）才出现 */
   .s2-step-edit {
@@ -19592,6 +19627,10 @@ function closeRecordsDrawer() {
     .ctn-body { font-size: 14.5px; }
     .card-footer-row { font-size: 11px; }
   }
+  html.cz-vp440 .card-head-title { font-size: 18px; }
+  html.cz-vp440 .req-p { font-size: 17px; }
+  html.cz-vp440 .deck-btn { font-size: 16px; }
+  html.cz-vp440 .qc-idx { font-size: 12px; width: 22px; height: 22px; line-height: 22px; }
 
   /* ══════ 底部控制器与指示点 ══════ */
   .deck-footer-bar {
@@ -20604,7 +20643,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.52';
+  var DSH_VERSION = 'v3.53';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -21050,7 +21089,10 @@ function closeRecordsDrawer() {
     '  .card-wrap .rail-duration-text { position: static !important; left: auto !important; display: inline-block !important; font-size: 8.5px !important; line-height: 1 !important; }',
     '  .card-wrap .footer-status-row { display: flex !important; margin-top: 0 !important; align-items: center !important; }',
     '  .card-wrap .recent-subject { font-size: 13px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }',
-    '}'
+    '}',
+    'html.cz-vp440 .card-wrap .time-ticks-row { font-size: 12px !important; }',
+    'html.cz-vp440 .card-wrap .pill-duration { font-size: 14px !important; }',
+    'html.cz-vp440 .card-wrap .date-row, html.cz-vp440 #subjectText, html.cz-vp440 .card-wrap .recent-subject { font-size: 15px !important; }'
   ].join('\n');
 
   function moduleSource(key) {
@@ -21407,6 +21449,11 @@ window.__CZ_CSS = [
   /* 440/375：科目卡（标题+副标题）要完整落在 hero 里，72px 会贴边裁切 */
   '  .pk-ticket-hero-frame { height: 88px !important; max-height: 88px !important; }',
   '  .pk-ticket-subject-title { font-size: 22px !important; }',
+  '  .mini-date { font-size: 16px !important; }',
+  '  .mini-hero-unit { font-size: 16px !important; }',
+  '  .mini-sessions { font-size: 13px !important; }',
+  '  .mini-sub-row, .mini-section-label, .mini-empty-hint, .mini-dist-row, .mini-sync-tip { font-size: 14px !important; }',
+  '  .pill-popout-btn { font-size: 15px !important; min-height: 36px !important; }',
   '}',
   '/* ── v3.9（261027）：画布内 fixed 弹层锚到浏览器可视带 ──',
   '   画布 iframe 的高度 = 票卡带自然高（组合 3 可达 3000+px），而 iframe 内 position:fixed 的包含块',
@@ -24546,6 +24593,7 @@ window.__CZ_CSS = [
       vpEff = String(Math.min(parseInt(state.vp, 10) || 1133, fit));
     }
     f.dataset.vpEffective = vpEff;
+    d.documentElement.classList.toggle('cz-vp440', vpEff === '440');
     f.dataset.vpStacked = stacked ? '1' : '0';
     var mode = vpEff === '440' ? '440x956' : (vpEff === '744' ? '744x1133' : '1133x744');
     var els = d.querySelectorAll('[data-vp]');
