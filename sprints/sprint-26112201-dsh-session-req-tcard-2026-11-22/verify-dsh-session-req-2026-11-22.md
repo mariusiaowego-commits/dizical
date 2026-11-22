@@ -195,7 +195,7 @@ skipped：
 
 ```
 node --check <13 个 inline script> → 全部通过
-pytest <10 个 practice-dsh 目标文件> → 177 passed
+pytest <10 个 practice-dsh 目标文件> → 187 passed
 pytest tests/ → 1234 passed, 5 failed, 8 skipped in 42.81s
 ```
 
