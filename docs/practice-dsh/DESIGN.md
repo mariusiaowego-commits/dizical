@@ -1,6 +1,6 @@
 # practice-dsh 设计规范（练习助手 · 拟物仪表盘）
 
-> 版本：v3.48 · 2026-11-11 · 对应代码 `src/kid_app/templates/practice-dsh.html`（26243 行，单文件）
+> 版本：v3.54 · 2026-11-22 · 对应代码 `src/kid_app/templates/practice-dsh.html`（单文件）
 > 上一版合并提交：`d7f9f6c`（PR #399，v3.47）· 本版在 `feat/practice-dsh-v3.48` 分支（PR #400），待合并
 > 镜像：`/Users/mt16/dev/uiux-asset-library/design-system/practice-dsh/`
 
@@ -371,7 +371,7 @@ body（宿主页）
 
 ## 11. 版本与发布
 
-- `DSH_VERSION`（`:20169`）是唯一手改的版本号常量，当前 `v3.48`。
+- `DSH_VERSION`（`:20942`）是唯一手改的版本号常量，当前 `v3.54`。
 - 两处派生值都从 `DSH_VERSION` 自动派生，改版本号只需改模板这一处：
   - `X-Dsh-Build` 响应头 —— `app.py` 的 `dsh_version()` 解析模板常量
   - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()` 直接透出版本号（`v3.25` → `?v=v3.25`，`quote` 编码）。早期的「只留数字」派生（`v3.24` → `324`）已废弃：`v3.24` / `v3.24-beta` / `v3.2.4` 会撞成同一个 `324`，版本变了缓存不失效。
@@ -411,3 +411,31 @@ body（宿主页）
 - **`C7` + `C18` 科目累计练习记录 Pop-out**：双入口触发（`#pkCardExposedBar` 上部 `#pkExposedStatsTrigger` 与 `panel-foot .c-left` 的 `昨天练了 x.x分` 按钮 `#yesterdaySubjBtn`），共享挂载于 `#canvasBody`（`--cz-band-t` / `--cz-band-h`）的 `#pkSubjectStatsModal`（`width: min(520px, 92vw)`，打开 `280ms cubic-bezier(0.22, 1, 0.36, 1)`，关闭 `200ms cubic-bezier(0.55, 0, 0.86, 0.35)`）。
 - **`C16` 换科目卡片动画**：跨科目切换时执行 `540ms` 双段式换卡动画 —— Phase 1 旧卡上拔退场（`220ms cubic-bezier(0.55, 0, 0.86, 0.35)`，`translateY(-28px -> -68px)`）→ Midpoint 刷新 DOM → Phase 2 新卡从上方落槽回弹停靠在 `-28px` 准备态悬停位（`320ms cubic-bezier(0.16, 1, 0.3, 1)`），不叠加 `0.78s` 折叠延迟。
 - **`C19` 音符节奏与 BPM 全局小弹窗**：`panel-foot .c-right` 显示 `♩=xx ♪=xx`，点击通过 `DizicalPracticeBus` 呼出挂载在 `#canvasBody` 的全局小弹窗 `#pkTempoModal`（`width: min(340px, 90vw)`），内含 `♩ / ♪` 二选一分段胶囊、`40–200` BPM 长按步进器与快捷预设，确认后广播同步 Card A 与 Card B 节拍器。
+
+---
+
+## 13. v3.54 · 结构化练习环节（sessions）与 T 卡重构
+
+### 13.1 数据契约（零 schema 变更）
+- 练习环节存在 `practice_items.content_options`：JSON 数组 `[{name, bpm, note, requirement}]`；历史逗号/换行文本仍可解析。BPM 40–200，note ∈ `♩ / ♪ / ♬`。
+- 历史文本解析 BPM 时先认显式 `♩/♪/♬=nn`，没有才取最后一个合法数字：`80乐段 ♪=90` 取 90，不再被名称前缀的 80 抢走（这正是过去「写了 ♪=98 实际录入还是 80」的根因）。
+- 老师要求在 `weekly_assignments.items[]` 内带可选 `sessions`（同上结构）。保存时同步聚合平铺的 `metronome`（`♩=60 / ♪=98`）与 `requirements`，老消费者不用改。
+- API：`GET /config/api/practice/items`、`GET /api/items`、`GET /config/api/assignments`、`GET /config/api/assignments/by-item` 都补 `sessions`；`PUT /config/api/practice/items/{id}/content-options` 接受 `sessions`（纯文本仍兼容）。
+
+### 13.2 速度联动（消灭回落 ♪=80）
+- `selectItem` / session 选择器 / 票夹胶囊都经 `resolveSessionTempo` + `applySessionTempo`：选中环节立即写 `bpm / noteIdx / currentBeatNote`，经 `DizicalPracticeBus.tempo` 与广播同步节拍器、A 卡读数；`buildPracticeLogBody` 直接用这组真值。
+- 用户手动改速度（节奏弹窗）仍以手动值为准；手输自定义内容不套环节速度。
+
+### 13.3 Q 卡（老师要求）
+- 删除 `.qc-item.is-hero`：第一条要求不再提权，层级由环节名承担。
+- 按 `sessions` 分组：环节名 + 速度胶囊 + 该环节要求；无结构化 requirement 时按环节名归属正文，归属失败退回纯编号清单。
+- 归属比对会先剥掉环节名里的速度后缀与引号再比核心名；多环节时只命中 1 个视为对不上，直接退回编号清单，不硬塞「通用要求」。
+- 环节自带 BPM 时不再显示全局「速度」行，避免与环节速度打架。
+- 底栏（进度点 + 上一张/下一张）移进 `.deck-card` 内，`margin-top:auto` + 独立浅底 + 顶部分隔线；卡高与兄弟卡一致（`html.cz-fill:not(.cz-feed) .deck-card { height:100% }`）。
+- 圆角描边：`border` 由 `.deck-card::before` 统一绘制（1px，深浅皮肤各自取值）；Q 模块 iframe 不再用宿主 24px 圆角裁切（`.cz-mod[data-mod="Q"] > iframe { border-radius:0 }`），否则窄档卡角连描边一起被切。
+- 翻页动画：`navTo()` 统一按钮 / 指示点 / 拖拽，`isAnimating` 门闩防连点；旧卡飞出 + 下一张抬升 240ms。
+
+### 13.4 T 卡（今日时间轴）
+- 删除内嵌 D 卡 iframe 与 R 迷你卡拼接；改为原生 DOM：头部「今日时间轴 + 日期」、总时长 + 目标进度、按时间倒序的今日每段（时间 / 科目 / 环节 / 时长）、底部「查看记录明细 ↗」。
+- 数据从票夹抽屉真节点反读（`pkRecords` / `.pk-drawer-item` / `pkCollapsedProgressVal`），`applyDayToModules` 后 `refreshTCard` 同步重绘。
+- 卡高锁到票卡高 H（与 A/B/Q 一致），列表内部滚动；窄档 feed 下保持整卡，不再 `display:contents` 拆成 D/R。

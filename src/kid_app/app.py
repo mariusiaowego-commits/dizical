@@ -2256,6 +2256,8 @@ def api_practice_stage(date_str: str):
 def api_items(include_archived: bool = False):
     items = db.get_practice_items(active_only=True, include_archived=include_archived)
     categories = practice_module.get_categories()
+    for item in items:
+        item["sessions"] = practice_module.parse_practice_sessions(item.get("content_options"))
     return JSONResponse({"items": items, "categories": categories})
 
 

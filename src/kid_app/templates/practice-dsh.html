@@ -5846,17 +5846,78 @@
   }
   window.cleanSessionText = cleanSessionText;
 
-  function parseContentOptions(raw) {
-    var list = Array.isArray(raw) ? raw : String(raw == null ? '' : raw).split(/[,，]/);
+  var TEMPO_RE = /[♩♪♬]\s*=\s*(\d{2,3})/;
+  var BPM_RE = /(\d{2,3})/g;
+  var NOTE_RE = /[♩♪♬]/;
+  var ALLOWED_NOTES = { '♩': 1, '♪': 1, '♬': 1 };
+
+  function extractBpm(text) {
+    var str = String(text == null ? '' : text);
+    /* 先认「♪=90」显式速度，避免「80乐段 ♪=90」被名称里的 80 抢走；
+       没有显式速度时取最后一个合法数字（历史名称习惯把速度放末尾）。 */
+    var explicit = str.match(TEMPO_RE);
+    if (explicit) {
+      var t = parseInt(explicit[1], 10);
+      if (t >= 40 && t <= 200) return t;
+    }
+    var all = str.match(BPM_RE) || [];
+    for (var i = all.length - 1; i >= 0; i--) {
+      var n = parseInt(all[i], 10);
+      if (n >= 40 && n <= 200) return n;
+    }
+    return null;
+  }
+
+  function extractNote(text, fallback) {
+    var m = String(text == null ? '' : text).match(NOTE_RE);
+    return m && ALLOWED_NOTES[m[0]] ? m[0] : (fallback || '♩');
+  }
+
+  function normalizeSession(raw) {
+    var isObj = raw && typeof raw === 'object' && !Array.isArray(raw);
+    var name = cleanSessionText(isObj
+      ? (raw.name || raw.label || raw.text || raw.title)
+      : raw);
+    if (!name) return null;
+    var bpm = isObj && raw.bpm != null && String(raw.bpm).trim() !== ''
+      ? parseInt(raw.bpm, 10)
+      : extractBpm(name);
+    if (!(bpm >= 40 && bpm <= 200)) bpm = null;
+    return {
+      name: name,
+      bpm: bpm,
+      note: extractNote(isObj ? (raw.note || raw.tempo || name) : name),
+      requirement: cleanSessionText(isObj
+        ? (raw.requirement || raw.req || raw.description || raw.note_text || '')
+        : '')
+    };
+  }
+
+  function parseStructured(raw) {
+    var data = raw;
+    if (typeof raw === 'string') {
+      var text = raw.trim();
+      if (text.charAt(0) === '[') {
+        try { data = JSON.parse(text); } catch (e) { data = text; }
+      } else {
+        data = text.split(/[,，\n]/);
+      }
+    }
+    if (data && typeof data === 'object' && !Array.isArray(data)) data = [data];
+    if (!Array.isArray(data)) data = [];
     var seen = Object.create(null);
     var out = [];
-    for (var i = 0; i < list.length; i++) {
-      var text = cleanSessionText(list[i]);
-      if (!text || seen[text]) continue;
-      seen[text] = true;
-      out.push(text);
+    for (var i = 0; i < data.length; i++) {
+      var session = normalizeSession(data[i]);
+      if (!session || seen[session.name]) continue;
+      seen[session.name] = true;
+      out.push(session);
     }
     return out;
+  }
+
+  function parseContentOptions(raw) {
+    return parseStructured(raw).map(function (s) { return s.name; });
   }
 
   function iconPlus() {
@@ -5876,6 +5937,7 @@
     var id = 'pss' + (++seq);
     var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
     var options = [];
+    var sessionMap = Object.create(null);
     var usingFallback = false;
     var value = '';
     var open = false;
@@ -5948,7 +6010,8 @@
       onChange(value, {
         source: source,
         fallback: usingFallback,
-        optionCount: options.length
+        optionCount: options.length,
+        session: sessionMap[value] || null
       });
     }
 
@@ -6104,9 +6167,16 @@
     }
 
     function setOptions(raw) {
-      var parsed = parseContentOptions(raw);
+      var parsed = parseStructured(raw);
       usingFallback = parsed.length === 0;
-      options = usingFallback ? FALLBACK.slice() : parsed;
+      var list = usingFallback
+        ? FALLBACK.map(function (name) { return { name: name, bpm: null, note: '♩', requirement: '' }; })
+        : parsed;
+      sessionMap = Object.create(null);
+      options = list.map(function (session) {
+        sessionMap[session.name] = session;
+        return session.name;
+      });
       render();
     }
 
@@ -6200,6 +6270,8 @@
       setOptions: setOptions,
       setValue: setValue,
       getValue: function () { return value; },
+      getSession: function (name) { return sessionMap[name || value] || null; },
+      getSessions: function () { return options.map(function (name) { return sessionMap[name]; }); },
       open: function () { browseAll = true; active = 0; engaged = false; openPanel(); },
       close: closePanel,
       isOpen: function () { return open; },
@@ -6214,6 +6286,7 @@
   window.PracticeSessionSelector = {
     mount: mount,
     parse: parseContentOptions,
+    parseStructured: parseStructured,
     fallback: FALLBACK.slice()
   };
 })();
@@ -6462,6 +6535,7 @@ async function loadLiveItemsData() {
         name: a.name,
         sub: '档案编号 No.' + a.item_id,
         content_options: a.content_options || '',
+        sessions: Array.isArray(a.sessions) ? a.sessions : [],
         category: a.category_name || ITEM_CATEGORIES[a.category_id] || '',
         last_session_at: a.last_session_at || '',
         metro: '♩=' + (a.last_tempo_bpm || 60),
@@ -6505,6 +6579,8 @@ Object.defineProperty(window, '__czCur', { get: function () { return cur; }, con
 Object.defineProperty(window, 'cur', { get: function () { return cur; }, configurable: true });
 let bpm = 60;
 let noteIdx = 0;
+let currentBeatNote = 'quarter';
+try { currentBeatNote = localStorage.getItem('dsh_beat_note_v1') || 'quarter'; } catch (e) {}
 let content = "";
 let cat = "all";
 let sessionUI = null;
@@ -6577,6 +6653,7 @@ function renderSessionPills() {
     btn.addEventListener('click', () => {
       content = tag;
       if (sessionUI) sessionUI.setValue(tag);
+      applySessionTempo(tag, false);
       syncRunMeta();
       syncStartState();
       updatePillSelection();
@@ -7107,15 +7184,101 @@ function renderFolioModal() {
   });
 }
 
+/* 练习 session 与速度/音符联动。
+   真源：practice_items.content_options 里的结构化 session（name/bpm/note/requirement）。
+   目的：选中 session 时自动把 bpm + 音符带进节拍器、练习记录与各卡片，
+   不再回落 ♪=80。没有 session 或 session 没写 bpm 时才保留科目 metro 兜底。 */
+function beatNoteFromSym(sym) {
+  if (sym === '♪') return 'eighth';
+  if (sym === '♬') return 'sixteenth';
+  return 'quarter';
+}
+function noteIndexFromSym(sym) {
+  if (sym === '♪') return 1;
+  if (sym === '♬') return 2;
+  return 0;
+}
+function symFromBeatNote(note) {
+  if (note === 'eighth') return '♪';
+  if (note === 'sixteenth') return '♬';
+  return '♩';
+}
+function activeSessionList() {
+  if (!cur || !window.PracticeSessionSelector) return [];
+  return PracticeSessionSelector.parseStructured(cur.content_options || '');
+}
+function getSessionByName(name) {
+  const list = activeSessionList();
+  const norm = function (v) {
+    const s = String(v == null ? '' : v).trim();
+    return typeof cleanSessionText === 'function' ? cleanSessionText(s) : s;
+  };
+  /* PracticeSessionSelector 解析时会把名称里的引号等修饰字符清洗掉
+     （吹高音“6” → 吹高音6），这里两边都按同一规则比对，
+     否则从历史草稿/旧数据带进来的原始名称查不到 session，速度就停在上一次的值。 */
+  const key = norm(name);
+  if (!key) return null;
+  return list.find(function (s) { return norm(s.name) === key; }) || null;
+}
+function resolveSessionTempo(name) {
+  const session = getSessionByName(name);
+  if (session && session.bpm >= 40 && session.bpm <= 200) {
+    return { bpm: session.bpm, noteIdx: noteIndexFromSym(session.note), beatNote: beatNoteFromSym(session.note) };
+  }
+  const matchBpm = cur ? (String(cur.metro || '').match(/=(\d+)/) || [0, ''])[1] : '';
+  const fallbackBpm = parseInt(matchBpm, 10);
+  return {
+    bpm: (fallbackBpm >= 40 && fallbackBpm <= 200) ? fallbackBpm : bpm,
+    noteIdx: session ? noteIndexFromSym(session.note) : noteIdx,
+    beatNote: session ? beatNoteFromSym(session.note) : currentBeatNote
+  };
+}
+/* 把速度真源推到节拍器（总线/广播）与 A 卡读数。 */
+function pushTempoToFrames() {
+  try {
+    const bus = window.DizicalPracticeBus;
+    if (bus && typeof bus.tempo === 'function') { bus.tempo(bpm, currentBeatNote); }
+  } catch (e) {}
+  try {
+    if (window.bus && typeof window.bus.broadcast === 'function') {
+      window.bus.broadcast({ bpm: bpm, beatNote: currentBeatNote });
+    }
+  } catch (e) {}
+  try { syncDashCover(); } catch (e) {}
+}
+/* 选中 session 后应用它的 bpm/note；只在 session 明确带 bpm 时覆盖当前速度。
+   fromCustom=true（用户手输内容）时不套 session 速度，避免覆盖用户手动调的速度。 */
+function applySessionTempo(name, fromCustom) {
+  if (fromCustom) return false;
+  const session = getSessionByName(name);
+  if (!session) return false;
+  let changed = false;
+  if (session.bpm >= 40 && session.bpm <= 200 && session.bpm !== bpm) {
+    bpm = session.bpm;
+    changed = true;
+  }
+  const idx = noteIndexFromSym(session.note);
+  if (idx !== noteIdx) {
+    noteIdx = idx;
+    currentBeatNote = beatNoteFromSym(session.note);
+    try { localStorage.setItem('dsh_beat_note_v1', currentBeatNote); } catch (e) {}
+    changed = true;
+  }
+  if (changed) pushTempoToFrames();
+  return changed;
+}
+
 function selectItem(id, isArchived) {
   const all = ITEMS.focus.concat(ITEMS.other, ITEMS.archived);
   cur = all.find(i => i.id === id) || cur || all[0];
-  const matchBpm = (cur.metro.match(/=(\d+)/) || [0, '80'])[1];
-  bpm = parseInt(matchBpm, 10) || 80;
   if (!content) {
-    const rawSessions = window.PracticeSessionSelector ? PracticeSessionSelector.parse(cur.content_options || '') : [];
-    content = rawSessions.length ? rawSessions[0] : '';
+    const list = activeSessionList();
+    content = list.length ? list[0].name : '';
   }
+  const tempo = resolveSessionTempo(content);
+  bpm = tempo.bpm;
+  noteIdx = tempo.noteIdx;
+  currentBeatNote = tempo.beatNote;
   if (sessionUI) {
     sessionUI.setOptions(cur.content_options || '');
     sessionUI.setValue(content || '');
@@ -7127,10 +7290,7 @@ function selectItem(id, isArchived) {
     loadSubjectRequirements(cur);
   }
   syncDashCover();
-  try {
-    const bus = window.DizicalPracticeBus;
-    if (bus && typeof bus.tempo === 'function') { bus.tempo(bpm, currentBeatNote); }
-  } catch (e) {}
+  pushTempoToFrames();
   window.selectItem = selectItem;
 }
 
@@ -7679,9 +7839,10 @@ function toggleCardOverlay() {
 /* 露出条上的 session 快捷标签：和票夹弹窗里的 session pill 走同一条链路。 */
 function applyExposedSession(tag) {
   if (!cur || !tag) return;
-  content = tag;
+  const session = getSessionByName(tag);
+  content = session ? session.name : tag;
   selectItem(cur.id, false);
-  if (sessionUI) sessionUI.setValue(tag);
+  if (sessionUI) sessionUI.setValue(content);
   syncRunMeta();
   syncStartState();
   syncRunRailCard();
@@ -8701,6 +8862,7 @@ function closeRecordsDrawer() {
       value: content,
       onChange: function(val, meta) {
         content = val;
+        applySessionTempo(val, !!(meta && meta.source === 'custom'));
         syncRunMeta();
         syncStartState();
         updatePillSelection();
@@ -19126,8 +19288,10 @@ function closeRecordsDrawer() {
     max-height: calc(100% - 20px);
     border-radius: 20px;
     background: var(--dash-surface-soft);
-    /* 卡缘用中性墨色描边：浅色下 --dash-tray-inset 只有 8% 黑，手机视口看不出边界 */
-    border: 1px solid var(--dash-ink-a16, rgba(44, 62, 80, 0.16));
+    /* 描边改由 ::before 统一画在圆角内侧：card 本体不再带 border，
+       避免顶部高光叠加在 1px border 上把圆角描边吃掉（dad 261122 截图 4）。 */
+    border: 0;
+    background-clip: padding-box;
     box-shadow: 0 16px 36px var(--dash-ink-a12), 0 2px 8px var(--dash-ink-a04);
     display: flex;
     flex-direction: column;
@@ -19151,11 +19315,14 @@ function closeRecordsDrawer() {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 19px;
-    /* 去掉金色内圈（dad 261103：卡片不要黄色边缘）；只留 1px 顶部高光 */
-    border: 0;
-    box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255, 255, 255, 0.65));
+    border-radius: inherit;
+    /* 全周 1px 描边：圆角闭合，深浅皮肤都能看到边。不再叠顶部白色高光（会把顶边洗白）。 */
+    border: 1px solid rgba(44, 62, 80, 0.22);
     pointer-events: none;
+    z-index: 5;
+  }
+  :root[data-skin="ink"] .deck-card::before {
+    border-color: rgba(222, 215, 205, 0.28);
   }
 
   /* 空态只有纵向 feed 档收成内容高（手机单卡长页）。
@@ -19176,17 +19343,17 @@ function closeRecordsDrawer() {
   html.cz-fill:not(.cz-feed) .req-card-chassis { height: 100%; }
   html.cz-fill:not(.cz-feed) .req-deck-stage {
     flex: 1 1 auto;
-    height: auto;
+    height: 100%;
     min-height: 0;
     align-items: flex-start;
     /* 卡投影要落在舞台外才不会被矩形裁成一条灰块 */
     overflow: visible;
   }
   html.cz-fill:not(.cz-feed) .deck-card {
-    /* 顶边贴齐仪表盘；下缘留 16px 给投影 */
+    /* 顶边贴齐仪表盘，卡高吃满槽位高度，与 D / T / R 卡等高（底栏已收进卡内） */
     top: 0;
-    height: calc(100% - 16px);
-    max-height: calc(100% - 16px);
+    height: 100%;
+    max-height: 100%;
   }
   /* 空态不再上下居中：标题要贴卡顶，和右侧「今日练习记录」卡同一条标题线 */
   html.cz-fill:not(.cz-feed) .deck-card.is-empty { justify-content: flex-start; }
@@ -19468,16 +19635,50 @@ function closeRecordsDrawer() {
     min-width: 0;
     font-size: 16px;
   }
-  /* 最新一周的第一条提权：只加强调，不新增任何标签/文案 */
-  .qc-item.is-hero {
-    border-left: 3px solid var(--dash-coral);
-    padding-left: 10px;
+
+  /* 练习环节分组：环节名是正文的大标题，速度以胶囊跟在标题后，条目回到普通编号清单。 */
+  .qc-session {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
   }
-  .qc-item.is-hero .qc-idx { display: none; }
-  .qc-item.is-hero .req-p {
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.55;
+  .qc-session + .qc-session {
+    padding-top: 12px;
+    border-top: 1px solid var(--dash-ink-a12);
+  }
+  .qc-session-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .qc-session-name {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: var(--dash-text);
+    overflow-wrap: anywhere;
+  }
+  .qc-session-tempo {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--dash-coral-a25);
+    color: var(--dash-vermilion-text);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .01em;
+  }
+  .qc-session-reqs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
   }
   .req-p {
     font-size: 16px;
@@ -19609,7 +19810,7 @@ function closeRecordsDrawer() {
     .card-seg-chip { font-size: 12px; }
     .card-req-body { gap: 9px; }
     .qc-item .req-p { font-size: 16px; }
-    .qc-item.is-hero .req-p { font-size: 17px; }
+    .qc-session-name { font-size: 16px; }
     .ctn-body { font-size: 15px; }
   }
   @container qcard (max-width: 348px) {
@@ -19621,8 +19822,8 @@ function closeRecordsDrawer() {
     .card-seg-chip { font-size: 11.5px; }
     .card-req-body { gap: 8px; }
     .qc-item .req-p { font-size: 15.5px; }
-    .qc-item.is-hero .req-p { font-size: 16.5px; }
-    .qc-item.is-hero { padding-left: 8px; }
+    .qc-session-name { font-size: 15.5px; }
+    .qc-session-tempo { font-size: 11px; padding: 1px 7px; }
     .qc-idx { width: 16px; height: 16px; line-height: 16px; font-size: 9.5px; border-radius: 5px; }
     .ctn-body { font-size: 14.5px; }
     .card-footer-row { font-size: 11px; }
@@ -19632,14 +19833,24 @@ function closeRecordsDrawer() {
   html.cz-vp440 .deck-btn { font-size: 16px; }
   html.cz-vp440 .qc-idx { font-size: 12px; width: 22px; height: 22px; line-height: 22px; }
 
-  /* ══════ 底部控制器与指示点 ══════ */
+  /* ══════ 卡内底部隔离区：指示点 + 上一张/下一张 ══════
+     移进 .deck-card 内部，margin-top:auto 贴卡底，独立浅底 + 顶部分隔线，
+     与正文形成清晰分区；卡高由卡片统一，不再靠卡外 footer 撑高。 */
   .deck-footer-bar {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* 底栏控制点和上/下一张按钮跟 3D 卡左右对齐：
-       卡宽是 --deck-card-w，卡在舞台里居中，两侧留白就是 (容器宽 - 卡宽) / 2。 */
-    padding: 2px max(4px, calc((100% - var(--deck-card-w)) / 2));
+    flex-wrap: wrap;
+    row-gap: 8px;
+    gap: 12px;
+    margin-top: auto;
+    margin-left: -4px;
+    margin-right: -4px;
+    padding: 10px 10px 8px;
+    border-top: 1px solid var(--dash-ink-a12);
+    border-radius: 12px;
+    background: var(--dash-surface-2);
   }
   .deck-dots {
     display: flex;
@@ -19648,8 +19859,8 @@ function closeRecordsDrawer() {
   }
   .deck-dot {
     position: relative;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--dash-text);
     opacity: 0.85;
@@ -19658,16 +19869,18 @@ function closeRecordsDrawer() {
     transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
   }
   .deck-dot.active {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--dash-coral);
     opacity: 1;
-    box-shadow: 0 0 6px var(--dash-coral-glow);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.2);
+    transform: scale(1.25);
   }
   .deck-nav-btns {
     display: flex;
     gap: 8px;
+    margin-left: auto;
   }
   .deck-btn {
     padding: 10px 18px;
@@ -19777,15 +19990,6 @@ function closeRecordsDrawer() {
       <!-- 3D 卡叠 Deck 舞台 -->
       <section class="req-deck-stage" id="deckStage" aria-label="课后要求 3D 卡叠"></section>
 
-      <!-- 底部控制器与导航 -->
-      <footer class="deck-footer-bar">
-        <div class="deck-dots" id="deckDots" aria-label="卡片切换指示点"></div>
-        <div class="deck-nav-btns">
-          <button class="deck-btn" id="prevBtn" onclick="navPrev()">上一张</button>
-          <button class="deck-btn" id="nextBtn" onclick="navNext()">下一张</button>
-        </div>
-      </footer>
-
     </article>
 
     <!-- 精度自检面板 (含 ?audit=1 输出) -->
@@ -19823,6 +20027,8 @@ function closeRecordsDrawer() {
     let currentIndex = 0;
     const stage = document.getElementById('deckStage');
     let isCurrentlyDragging = false;
+    /* 翻页动画门闩：补间期间屏蔽连点 / 拖拽，避免索引与 DOM 打架 */
+    let isAnimating = false;
     let currentFetchSubject = null;
 
     /* 老师填的曲目名/要求/备注都是自由文本，进 innerHTML 前统一转义，否则 < 与 & 会变成标签。 */
@@ -19835,25 +20041,89 @@ function closeRecordsDrawer() {
         .replace(/'/g, '&#39;');
     }
 
-    /* 正文条目：编号清单。最新一周的第一条提权（字号/字重/左色条），不加新文案。 */
-    function formatRequirementItems(item) {
-      const rawText = item.requirements;
-      let lines = [];
-      if (!rawText) {
-        lines = ['常规进度练习。'];
-      } else if (rawText.includes('\n')) {
-        lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
-      } else if (rawText.includes('。')) {
-        lines = rawText.split('。').map(s => s.trim()).filter(Boolean).map(s => s + '。');
-      } else {
-        lines = [rawText.trim()];
-      }
-      const allowHero = item.is_latest && item.id !== 'empty';
+    /* 把老师要求正文拆成行：换行优先，其次按句号，最后整段一行。 */
+    function splitRequirementLines(rawText) {
+      const text = String(rawText == null ? '' : rawText).trim();
+      if (!text) { return ['常规进度练习。']; }
+      if (text.includes('\n')) { return text.split('\n').map(s => s.trim()).filter(Boolean); }
+      if (text.includes('。')) { return text.split('。').map(s => s.trim()).filter(Boolean).map(s => s + '。'); }
+      return [text];
+    }
+
+    function formatRequirementLines(lines) {
       return lines.map((s, i) => {
-        const hero = allowHero && i === 0;
         const num = String(i + 1).padStart(2, '0');
-        return `<div class="qc-item${hero ? ' is-hero' : ''}"><span class="qc-idx">${num}</span><div class="req-p">${escHtml(s)}</div></div>`;
+        return `<div class="qc-item"><span class="qc-idx">${num}</span><div class="req-p">${escHtml(s)}</div></div>`;
       }).join('');
+    }
+
+    function sessionTempoText(session) {
+      if (!session || !session.bpm) { return ''; }
+      return `${session.note || '♩'}=${session.bpm}`;
+    }
+
+    /* 按练习环节（session）分组。大标题归位到环节名，不再把第一条要求拔成标题。
+       1) 有结构化 requirement 的环节：直接分组；
+       2) 只有环节名/bpm：按环节名在老师要求正文里做一次归属，成功才分组；
+       3) 都没有：退回纯编号清单（老数据）。 */
+    function sessionBlocks(item) {
+      const sessions = (Array.isArray(item.sessions) ? item.sessions : []).filter(s => s && s.name);
+      if (!sessions.length) { return null; }
+      const structured = sessions.filter(s => String(s.requirement || '').trim());
+      if (structured.length) {
+        return sessions.map((s) => ({
+          name: s.name,
+          tempo: sessionTempoText(s),
+          lines: String(s.requirement || '').trim() ? splitRequirementLines(s.requirement) : []
+        }));
+      }
+      const lines = splitRequirementLines(item.requirements);
+      /* 环节名常带「♪=110」这类速度后缀，正文里写的是「主题（田园风味）」，
+         比对前把速度与引号去掉，只比核心名称。 */
+      const core = (v) => String(v == null ? '' : v)
+        .replace(/[♩♪♬]\s*=\s*\d+/g, '')
+        .replace(/[“”"'‘’]/g, '')
+        .replace(/\s+/g, '')
+        .trim();
+      const buckets = sessions.map(s => ({ name: s.name, tempo: sessionTempoText(s), lines: [], matched: false }));
+      const used = new Set();
+      buckets.forEach((bucket) => {
+        const key = core(bucket.name);
+        if (key.length < 2) { return; }
+        lines.forEach((line, li) => {
+          if (used.has(li) || core(line).indexOf(key) === -1) { return; }
+          bucket.lines.push(line);
+          bucket.matched = true;
+          used.add(li);
+        });
+      });
+      /* 只命中 1 个环节（多环节时）说明名称体系对不上，硬分组会把其余要求
+         全塞进「通用要求」，不如老实退回编号清单。 */
+      const matchedCount = buckets.filter(b => b.matched).length;
+      if (!matchedCount || (sessions.length > 1 && matchedCount < 2)) { return null; }
+      const out = buckets.filter(b => b.lines.length);
+      const rest = lines.filter((_, li) => !used.has(li));
+      if (rest.length) { out.push({ name: '通用要求', tempo: '', lines: rest }); }
+      return out;
+    }
+
+    function formatSessionBlocks(blocks) {
+      return blocks.map((block, bi) => {
+        const head = '<div class="qc-session-head">' +
+          `<span class="qc-session-name">${escHtml(block.name)}</span>` +
+          (block.tempo ? `<span class="qc-session-tempo">${escHtml(block.tempo)}</span>` : '') +
+          '</div>';
+        const body = block.lines.length
+          ? `<div class="qc-session-reqs">${formatRequirementLines(block.lines)}</div>`
+          : '';
+        return `<div class="qc-session" data-session-index="${bi}">${head}${body}</div>`;
+      }).join('');
+    }
+
+    function formatRequirementItems(item) {
+      const blocks = sessionBlocks(item);
+      if (blocks && blocks.length) { return formatSessionBlocks(blocks); }
+      return formatRequirementLines(splitRequirementLines(item.requirements));
     }
 
     /* 老师补充说明：单独的信息层，不再混进正文；长文折叠 + 展开全文 */
@@ -19939,6 +20209,31 @@ function closeRecordsDrawer() {
 
       const paragraphsHtml = formatRequirementItems(item);
       const noteBoxHtml = formatTeacherNote(item) + formatPracticeSummary(item);
+      /* 环节各自带 BPM 时，顶部再放一个全局「速度」会和环节速度打架；
+         这种情况下速度只在各环节标题上出现。 */
+      const hasSessionBpm = (item.sessions || []).some(s => s && s.bpm);
+      const metroRowHtml = hasSessionBpm ? '' : `
+          <div class="qc-bay-row">
+            <span class="qc-bay-lbl">速度</span>
+            <span class="qc-bay-val">${escHtml(item.metronome || '按曲目要求')}</span>
+          </div>`;
+      const segRowHtml = segHtml ? `<div class="qc-bay-row qc-bay-seg">
+            <span class="qc-bay-lbl">分段</span>
+            <span class="qc-bay-chips">${segHtml}</span>
+          </div>` : '';
+      const bayHtml = (metroRowHtml || segRowHtml)
+        ? `<div class="qc-bay">${metroRowHtml}${segRowHtml}</div>`
+        : '';
+      /* 翻页控制与指示点移入卡内独立底栏：只挂在当前卡上，避免多张卡重复 id。
+         视觉上是一条和正文分隔的隔离区，卡高由外层统一，不再靠卡外 footer 撑。 */
+      const dockHtml = (index === currentIndex) ? `
+        <div class="deck-footer-bar" data-no-drag>
+          <div class="deck-dots" id="deckDots" aria-label="卡片切换指示点"></div>
+          <div class="deck-nav-btns">
+            <button class="deck-btn" id="prevBtn" type="button" onclick="navPrev()">上一张</button>
+            <button class="deck-btn" id="nextBtn" type="button" onclick="navNext()">下一张</button>
+          </div>
+        </div>` : '';
 
       return `
         <div class="card-head"><h1 class="card-head-title">老师要求</h1></div>
@@ -19950,16 +20245,7 @@ function closeRecordsDrawer() {
           <div class="card-date-badge">${escHtml(item.lesson_date || '')}</div>
         </div>
 
-        <div class="qc-bay">
-          <div class="qc-bay-row">
-            <span class="qc-bay-lbl">速度</span>
-            <span class="qc-bay-val">${escHtml(item.metronome || '按曲目要求')}</span>
-          </div>
-          ${segHtml ? `<div class="qc-bay-row qc-bay-seg">
-            <span class="qc-bay-lbl">分段</span>
-            <span class="qc-bay-chips">${segHtml}</span>
-          </div>` : ''}
-        </div>
+        ${bayHtml}
 
         <div class="card-req-body">
           ${paragraphsHtml}
@@ -19971,6 +20257,7 @@ function closeRecordsDrawer() {
           <div class="card-teacher-sig">No.${escHtml(item.item_id || item.target_item_id || '----')}</div>
           <div>${escHtml(item.stage_duration_text || '0秒')}</div>
         </div>
+        ${dockHtml}
       `;
     }
 
@@ -20032,6 +20319,10 @@ function closeRecordsDrawer() {
                 metronome: targetItem.metronome || '按曲目要求',
                 requirements: targetItem.requirements || '按曲目常规进度练习。',
                 metronome_segments: targetItem.metronome_segments || [],
+                /* 环节结构：优先老师要求里带的结构化 sessions，退回科目预置环节 */
+                sessions: Array.isArray(targetItem.sessions) && targetItem.sessions.length
+                  ? targetItem.sessions
+                  : (Array.isArray(itemData.sessions) ? itemData.sessions : []),
                 notes: asg.notes || '',
                 total_seconds_per_stage: asg.total_seconds_per_stage || 0,
                 stage_duration_text: asg.stage_duration_text || '0秒'
@@ -20063,6 +20354,7 @@ function closeRecordsDrawer() {
         metronome: itemData.metro || '按曲目要求',
         requirements: reqText || '该科目本周暂无特定课后要求。请按常规进度完成日常基本功练习。',
         metronome_segments: reqText ? [{ part: '重点练习', note: '♩', bpm: parseInt(bpmMatch[0], 10) }] : [],
+        sessions: Array.isArray(itemData.sessions) ? itemData.sessions : [],
         notes: '',
         total_seconds_per_stage: 0,
         stage_duration_text: '0秒'
@@ -20095,7 +20387,8 @@ function closeRecordsDrawer() {
     function bindFeedFlip(card) {
       let sx = 0, sy = 0, tracking = false;
       card.addEventListener('pointerdown', (e) => {
-        if (e.target.closest && e.target.closest('button, a, .card-req-body, .card-teacher-note')) { tracking = false; return; }
+        if (isAnimating) { tracking = false; return; }
+        if (e.target.closest && e.target.closest('button, a, .card-req-body, .card-teacher-note, .deck-footer-bar')) { tracking = false; return; }
         tracking = true; sx = e.clientX; sy = e.clientY;
       });
       card.addEventListener('pointerup', (e) => {
@@ -20187,7 +20480,8 @@ function closeRecordsDrawer() {
       let currentX = 0, currentY = 0;
 
       const onPointerDown = (e) => {
-        if (e.target.closest && e.target.closest('.card-req-body, .card-teacher-note')) return;
+        if (isAnimating) return;
+        if (e.target.closest && e.target.closest('.card-req-body, .card-teacher-note, .deck-footer-bar, button, a')) return;
         isDragging = true;
         isCurrentlyDragging = true;
         startX = e.clientX;
@@ -20245,6 +20539,7 @@ function closeRecordsDrawer() {
             });
           }
           if (window.gsap) {
+            isAnimating = true;
             gsap.to(card, {
               x: dir * 550,
               y: currentY * 0.15 + 20,
@@ -20254,6 +20549,7 @@ function closeRecordsDrawer() {
               ease: "power2.in",
               onComplete: () => {
                 currentIndex++;
+                isAnimating = false;
                 renderDeck();
               }
             });
@@ -20316,26 +20612,61 @@ function closeRecordsDrawer() {
           const dot = document.createElement('div');
           dot.className = 'deck-dot' + (idx === currentIndex ? ' active' : '');
           dot.onclick = () => {
-            currentIndex = idx;
-            renderDeck();
+            navTo(idx);
           };
           dotsContainer.appendChild(dot);
         });
       }
     }
 
-    function navPrev() {
-      if (currentIndex > 0) {
-        currentIndex--;
+    /* 统一翻页过渡：按钮点击 / 指示点 / 拖拽松手都走这里，不再出现「按钮瞬切、只有拖拽有动画」。
+       slideDir：目标索引更大 → 顶层卡向左飞（-1），更小 → 向右飞（+1）。 */
+    function navTo(targetIdx) {
+      if (isAnimating || targetIdx === currentIndex) { return; }
+      if (targetIdx < 0 || targetIdx >= ASSIGNMENTS_DATA.length) { return; }
+      const slideDir = targetIdx > currentIndex ? -1 : 1;
+      const card = stage.querySelector('.deck-card.is-active');
+      const nextCard = stage.querySelector('.deck-card.is-next-card');
+      if (!window.gsap || !card) {
+        currentIndex = targetIdx;
         renderDeck();
+        return;
+      }
+      isAnimating = true;
+      stage.classList.add('is-deck-dragging');
+      const tl = gsap.timeline({
+        onComplete: () => {
+          isAnimating = false;
+          currentIndex = targetIdx;
+          stage.classList.remove('is-deck-dragging');
+          renderDeck();
+        }
+      });
+      tl.to(card, {
+        x: slideDir * 520,
+        y: 14,
+        rotationZ: slideDir * 14,
+        opacity: 0,
+        duration: 0.24,
+        ease: 'power2.in'
+      }, 0);
+      if (nextCard) {
+        tl.to(nextCard, {
+          y: 0,
+          scale: 1,
+          opacity: 1,
+          duration: 0.24,
+          ease: 'power2.out'
+        }, 0.03);
       }
     }
 
+    function navPrev() {
+      navTo(currentIndex - 1);
+    }
+
     function navNext() {
-      if (currentIndex < ASSIGNMENTS_DATA.length - 1) {
-        currentIndex++;
-        renderDeck();
-      }
+      navTo(currentIndex + 1);
     }
 
     window.addEventListener('keydown', (e) => {
@@ -20643,7 +20974,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.53';
+  var DSH_VERSION = 'v3.54';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -21132,6 +21463,9 @@ function closeRecordsDrawer() {
     ':root[data-skin="ink"] .cz-mod { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }',
     '.cz-mod[hidden], .cz-mod.is-off { display: none !important; }',
     '.cz-mod > iframe { display: block; border: 0; border-radius: inherit; overflow: hidden !important; background: transparent; width: 100%; height: 100%; filter: none !important; }',
+    /* Q 卡自带 3D 卡圆角与 1px 描边；宿主再用 24px 圆角裁 iframe 会把卡角连描边一起切掉
+       （窄模块卡宽=模块宽时最明显）。这里只给 Q 摘掉宿主圆角裁剪，轮廓由卡自己负责。 */
+    '.cz-mod[data-mod="Q"] > iframe { border-radius: 0 !important; }',
     '.cz-mod-empty { padding: 10px 2px; font-size: 12px; font-weight: 600; color: var(--text-muted); }',
     '/* 261013 等高：切断「iframe 高 → 100vh/stretch/flex:1 → 票卡更高 → scrollHeight → iframe 再高」。',
     '   票卡只留源样式 min-height 地板，高度=内容自然高，不随 iframe、不随右栏模块涨。 */',
@@ -21267,10 +21601,34 @@ window.__CZ_CSS = [
   '.cz-comp { display: flex; flex-direction: column; gap: 12px; flex: 0 0 auto; min-width: 0; }',
   /* T 卡：横排右展档把 D 与记录合成一张。外壳只有一道圆角和一道边，里面两段去掉各自的框。
      纵向 feed（≤1023）里壳 display:contents，D 与 R 仍是两张原卡。 */
-  '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255,255,255,0.65)); }',
-  '.cz-tcard > .cz-mod { width: 100%; min-height: 0; }',
-  '@media (min-width: 1024px) { .cz-tcard > .cz-mod + .cz-mod { box-shadow: inset 0 1px 0 var(--dash-ink-a12, rgba(44,62,80,0.12)); } .cz-tcard .card-records-mini { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; } }',
-  ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }',
+  /* T 卡：今日时间轴。不再内嵌 D 卡 iframe（与 A 重复），也不重复 R 的编辑明细，
+     只回答「今天的时间花在哪」；明细入口仍打开记录抽屉。 */
+  '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: 0 2px 8px rgba(44,62,80,0.04); }',
+  ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }',
+  '.cz-t-head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 18px 18px 4px; }',
+  '.cz-t-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; color: var(--dash-text, #2C3E50); }',
+  '.cz-t-date { font-size: 12px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-hero { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 18px 12px; }',
+  '.cz-t-num { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--dash-text, #2C3E50); font-variant-numeric: tabular-nums; }',
+  '.cz-t-unit { font-size: 13px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-goal { flex: 1 1 auto; min-width: 52px; height: 8px; border-radius: 999px; background: var(--dash-surface-2, #ECE8E1); overflow: hidden; }',
+  '.cz-t-goal-fill { height: 100%; width: 0; border-radius: 999px; background: var(--dash-coral, #FF6B6B); transition: width .35s ease; }',
+  '.cz-t-goal-text { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 12px 10px; display: flex; flex-direction: column; gap: 2px; overscroll-behavior: contain; }',
+  '.cz-t-row { display: grid; grid-template-columns: 42px 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 10px; }',
+  '.cz-t-row:hover { background: var(--dash-surface-2, #ECE8E1); }',
+  '.cz-t-time { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dash-coral, #FF6B6B); }',
+  '.cz-t-body { min-width: 0; }',
+  '.cz-t-subject { font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--dash-text, #2C3E50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-session { font-size: 11.5px; font-weight: 500; line-height: 1.35; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-dur { font-size: 12px; font-weight: 700; color: var(--dash-vermilion-text, #E64A19); font-variant-numeric: tabular-nums; }',
+  '.cz-t-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 20px 16px; font-size: 13px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-empty small { font-size: 11.5px; font-weight: 500; }',
+  '.cz-t-foot { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); }',
+  '.cz-t-meta { font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-open { border: 1px solid var(--dash-ink-a16, rgba(44,62,80,0.16)); background: transparent; color: var(--dash-text, #2C3E50); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }',
+  '.cz-t-open:hover { background: var(--dash-surface-2, #ECE8E1); }',
   '.cz-node { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; position: relative; }',
   '.cz-node.cz-brow { flex-direction: row; }',
   '@media (max-width: 1023px) { .cz-brow { flex-direction: column !important; } }',
@@ -21425,7 +21783,9 @@ window.__CZ_CSS = [
   /* S22：票夹窄条形态（未计时）在纵向视口也必须压成 52px 横条 */
   '  #practiceStage.stage-bar #pkLeftCol { width: 100% !important; max-width: 100% !important; height: 52px !important; min-height: 52px !important; max-height: 52px !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: visible !important; }',
   '  .cz-mod-col { display: flex !important; flex-direction: column !important; gap: 12px !important; width: 100% !important; }',
-  '  .cz-combo, .cz-astack, .cz-comp, .cz-brow, .cz-tcard { display: contents !important; }',
+  '  .cz-combo, .cz-astack, .cz-comp, .cz-brow { display: contents !important; }',
+  /* T 卡在窄档是一张独立的原生时间轴卡，不再拆成 D/R 两段 */
+  '  .cz-tcard { display: flex !important; width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 300px !important; overflow: visible !important; }',
   '  .cz-mod { width: 100% !important; max-width: 100% !important; }',
   '  .cz-mod { align-self: flex-start !important; flex: 0 0 auto !important; }',
   '  .cz-mod[data-mod="A"] { order: 1; }',
@@ -21434,8 +21794,6 @@ window.__CZ_CSS = [
   '  .cz-mod[data-mod="D"] { order: 4; }',
   '  .cz-mod[data-mod="R"] { order: 5; }',
   '  .cz-mod[data-mod="Q"] { order: 6; }',
-  '  .cz-tcard > .cz-mod[data-mod="D"] { order: 7; }',
-  '  .cz-tcard > .cz-mod[data-mod="R"] { order: 8; }',
   '  .cz-mod > iframe { width: 100% !important; }',
   '  .cz-mod { height: auto !important; max-height: none !important; overflow: visible !important; }',
   '  .card-records-mini { height: auto !important; max-height: none !important; overflow: visible !important; width: 100% !important; }',
@@ -21602,28 +21960,91 @@ window.__CZ_CSS = [
       if (overlay.parentElement !== home) { home.appendChild(overlay); }
     }
   }
-  /* T 卡：横排把今日时长(D)和今日记录拼进同一张壳。D、R 的模板一个字不改，
-     只在壳里去掉它们各自的外框。纵向 feed 由 CSS 把壳拆成两张原卡。 */
+  /* T 卡：今日时间轴（原生 DOM）。只回答「今天的时间花在哪」：
+     头部总时长 + 目标进度，中部按时间倒序列出今日每一段，底部打开记录明细。
+     不再内嵌 D 卡 iframe（与 A 的今日累计重复），也不重画 R 的编辑明细。 */
   function buildTCard(cd, w) {
     var box = cd.createElement('div');
     box.className = 'cz-node cz-tcard';
     box.dataset.mod = 'T';
     box.dataset.czW = String(w);
     box.style.width = w + 'px';
-    var dWrap = cd.createElement('div');
-    dWrap.className = 'cz-node cz-mod';
-    dWrap.dataset.mod = 'D';
-    dWrap.style.width = '100%';
-    dWrap.appendChild(mkFrame(cd, MOD_BY_KEY['D']));
-    var rWrap = cd.createElement('div');
-    rWrap.className = 'cz-node cz-mod';
-    rWrap.dataset.mod = 'R';
-    rWrap.dataset.mini = '1';
-    rWrap.style.width = '100%';
-    rWrap.appendChild(buildMiniCard(cd, w, 160));
-    box.appendChild(dWrap);
-    box.appendChild(rWrap);
+    box.innerHTML =
+      '<div class="cz-t-head"><span class="cz-t-title">今日时间轴</span><span class="cz-t-date" data-t-date></span></div>' +
+      '<div class="cz-t-hero"><span class="cz-t-num" data-t-num>0</span><span class="cz-t-unit">分</span>' +
+        '<div class="cz-t-goal"><div class="cz-t-goal-fill" data-t-fill></div></div>' +
+        '<span class="cz-t-goal-text" data-t-goal>目标 —</span></div>' +
+      '<div class="cz-t-list" data-t-list></div>' +
+      '<div class="cz-t-foot"><span class="cz-t-meta" data-t-meta>今日 0 段</span>' +
+        '<button type="button" class="cz-t-open" data-t-open>查看记录明细 ↗</button></div>';
+    box.querySelector('[data-t-open]').addEventListener('click', function () { openRecordsPop(); });
+    refreshTCard(cd, box);
     return box;
+  }
+  function tEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  /* 从票夹抽屉的真节点反读今日每段与总量，避免另起一份数据源。 */
+  function refreshTCard(cd, box) {
+    if (!cd || !box) { return; }
+    var pill = cd.getElementById('pkRecords');
+    var pillText = pill ? pill.textContent.replace(/\s+/g, ' ') : '';
+    var mMin = pillText.match(/(\d+)\s*分/);
+    var mSes = pillText.match(/(\d+)\s*次/);
+    var todayMin = mMin ? parseInt(mMin[1], 10) : 0;
+    var sessCount = mSes ? parseInt(mSes[1], 10) : 0;
+    var targetText = (cd.getElementById('pkCollapsedProgressVal') || {}).textContent || '';
+    var mTarget = targetText.match(/目标\s*(\d+)\s*分/);
+    var target = mTarget ? parseInt(mTarget[1], 10) : 10;
+    var pct = target > 0 ? Math.max(0, Math.min(100, Math.round((todayMin / target) * 100))) : 0;
+
+    var rows = [].slice.call(cd.querySelectorAll('.pk-drawer-item')).map(function (el) {
+      var t = el.querySelector('.pk-drawer-item-time');
+      var d = el.querySelector('.pk-drawer-item-dur');
+      var s = el.querySelector('.pk-drawer-item-subject');
+      var n = el.querySelector('.pk-drawer-item-session');
+      return {
+        time: t ? t.textContent.trim() : '',
+        dur: d ? d.textContent.trim() : '',
+        subject: s ? s.textContent.trim() : '',
+        session: n ? n.textContent.trim() : ''
+      };
+    });
+    if (!sessCount && rows.length) { sessCount = rows.length; }
+
+    var now = (cd.defaultView && cd.defaultView.Date) ? new cd.defaultView.Date() : new Date();
+    var week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
+    var dateEl = box.querySelector('[data-t-date]');
+    if (dateEl) { dateEl.textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + week; }
+
+    var numEl = box.querySelector('[data-t-num]');
+    if (numEl) { numEl.textContent = String(todayMin); }
+    var fillEl = box.querySelector('[data-t-fill]');
+    if (fillEl) { fillEl.style.width = pct + '%'; }
+    var goalEl = box.querySelector('[data-t-goal]');
+    if (goalEl) { goalEl.textContent = '目标 ' + target + ' 分'; }
+    var metaEl = box.querySelector('[data-t-meta]');
+    if (metaEl) { metaEl.textContent = '今日 ' + (sessCount || 0) + ' 段'; }
+
+    var listEl = box.querySelector('[data-t-list]');
+    if (!listEl) { return; }
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="cz-t-empty">今天还没有练习<small>在左侧选好科目，开始第一段</small></div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function (r) {
+      return '<div class="cz-t-row">' +
+        '<span class="cz-t-time">' + tEsc(r.time) + '</span>' +
+        '<span class="cz-t-dot"></span>' +
+        '<div class="cz-t-body">' +
+          '<div class="cz-t-subject">' + tEsc(r.subject || '练习') + '</div>' +
+          (r.session ? '<div class="cz-t-session">' + tEsc(r.session) + '</div>' : '') +
+        '</div>' +
+        '<span class="cz-t-dur">' + tEsc(r.dur) + '</span>' +
+      '</div>';
+    }).join('');
   }
   function buildCombo(force) {
     var cd = canvasDoc();
@@ -23128,13 +23549,9 @@ window.__CZ_CSS = [
     }
     var split3 = null;
     [].slice.call(col.querySelectorAll(':scope > .cz-tcard')).forEach(function (tcard) {
-      /* 一张卡，中间不留 12px 缝。上段时长 220，余量给记录。 */
-      var dH = 220;
-      var rH = Math.max(160, H - dH);
-      split3 = { top: dH, bot: rH };
+      /* 原生时间轴单卡：整卡锁到 H，内部列表自己滚，不再切成 D/R 两段。 */
+      split3 = { top: H, bot: 0 };
       lockCol(tcard, H);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="D"]'), dH);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="R"]'), rH);
     });
     mountSlot();
     syncSlotMode();
@@ -24662,11 +25079,7 @@ window.__CZ_CSS = [
     var wide = cd.documentElement.clientWidth >= NARROW;
     [].slice.call(cd.querySelectorAll('.cz-rail .cz-tcard, .cz-mod-col > .cz-tcard')).forEach(function (tcard) {
       if (!wide) { clearLock(tcard); return; }
-      var dH = 220;
-      var rH = Math.max(180, (H > 40 ? H : DESIGN_H) - dH);
-      lockCol(tcard, dH + rH);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="D"]'), dH);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="R"]'), rH);
+      lockCol(tcard, H > 40 ? H : DESIGN_H);
     });
   }
   function syncAll() {
@@ -25761,6 +26174,10 @@ window.__CZ_CSS = [
         var fresh = buildMiniCard(cd, w, h);
         if (old.parentNode) { old.parentNode.replaceChild(fresh, old); }
       } catch (e) {}
+    });
+    /* T 卡（今日时间轴）同样从抽屉真节点反读，抽屉刚重写就同步重绘一次。 */
+    [].slice.call(cd.querySelectorAll('.cz-tcard')).forEach(function (tcard) {
+      try { refreshTCard(cd, tcard); } catch (e) {}
     });
   }
   function reloadDay() {

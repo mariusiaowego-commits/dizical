@@ -397,6 +397,74 @@
       color: #fff;
     }
 
+    .item-content-panel .panel-btn.ghost {
+      margin-right: auto;
+      background: rgba(168, 213, 186, 0.20);
+      color: #4F7A58;
+    }
+
+    /* 结构化练习环节行：名称 / BPM / 音符 / 要求，一行一个 session */
+    .session-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .session-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.2fr) 78px 64px minmax(160px, 2fr) 30px;
+      gap: 8px;
+      align-items: center;
+    }
+    .session-row input,
+    .session-row select {
+      width: 100%;
+      height: 38px;
+      border: 1.5px solid #D5E8D8;
+      border-radius: 10px;
+      padding: 0 10px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      box-sizing: border-box;
+    }
+    .session-row input:focus,
+    .session-row select:focus {
+      outline: none;
+      border-color: var(--sage);
+      box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.25);
+    }
+    .session-row .sr-bpm,
+    .session-row .sr-note {
+      text-align: center;
+      padding: 0 4px;
+    }
+    .session-row .sr-del {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(0,0,0,0.05);
+      color: #8A9A8A;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .session-row-head {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.2fr) 78px 64px minmax(160px, 2fr) 30px;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #8A9A8A;
+      padding: 0 2px;
+    }
+    @media (max-width: 640px) {
+      .session-row, .session-row-head { grid-template-columns: 1fr 64px 52px 30px; }
+      .session-row .sr-req { grid-column: 1 / -1; }
+      .session-row-head .sr-req-h { display: none; }
+    }
+
     .item-content-badge {
       font-size: 11px;
       color: #6B8F71;
@@ -1217,18 +1285,15 @@
       const catName = item.category_name || '未归属';
       const isArchived = item.is_archived;
       const rawOpts = (item.content_options || '').trim();
-      const optLines = rawOpts
-        ? rawOpts.split(/[,，]/).map(s => s.trim()).filter(Boolean)
-        : [];
-      const textareaValue = optLines.join('\n')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+      const sessions = Array.isArray(item.sessions) && item.sessions.length
+        ? item.sessions
+        : (rawOpts ? rawOpts.split(/[,，\n]/).map(s => s.trim()).filter(Boolean)
+            .map(name => ({ name, bpm: null, note: '♩', requirement: '' })) : []);
       const safeName = String(item.name || '')
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'");
-      const badge = optLines.length
-        ? `<span class="item-content-badge">${optLines.length} 个预设</span>`
+      const badge = sessions.length
+        ? `<span class="item-content-badge">${sessions.length} 个环节</span>`
         : '';
 
       return `
@@ -1262,10 +1327,12 @@
             </div>
           </div>
           <div class="item-content-panel" id="contentPanel-${item.item_id}">
-            <label>练习内容预置选项</label>
-            <textarea id="contentOpts-${item.item_id}" placeholder="每行一个，例如：&#10;第一分句&#10;第二分句&#10;整首连奏">${textareaValue}</textarea>
-            <div class="panel-hint">每行一个选项。留空 = 练习页用默认（长音/吐音/连吐/换气）。最多 20 个，每个 ≤50 字。</div>
+            <label>练习环节预置（每个环节 = 一个练习 session，速度会联动节拍器与练习记录）</label>
+            <div class="session-row-head"><span>环节名称</span><span>BPM</span><span>音符</span><span class="sr-req-h">环节要求</span><span></span></div>
+            <div class="session-rows" id="sessionRows-${item.item_id}">${sessions.map(s => sessionRowHtml(s)).join('')}</div>
+            <div class="panel-hint">名称必填，≤50 字；BPM 40–200，可空；要求 ≤200 字。清空全部 = 练习页用默认环节。最多 20 个。</div>
             <div class="panel-actions">
+              <button type="button" class="panel-btn ghost" onclick="addSessionRow(${item.item_id})">+ 加一个环节</button>
               <button type="button" class="panel-btn cancel" onclick="toggleContentOptions(${item.item_id}, false)">取消</button>
               <button type="button" class="panel-btn save" onclick="saveContentOptions(${item.item_id})">保存</button>
             </div>
@@ -1274,19 +1341,64 @@
       `;
     }
 
+    function escAttr(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function sessionRowHtml(session) {
+      const s = session || {};
+      const note = ['♩', '♪', '♬'].includes(s.note) ? s.note : '♩';
+      const notes = ['♩', '♪', '♬']
+        .map(n => `<option value="${n}"${n === note ? ' selected' : ''}>${n}</option>`)
+        .join('');
+      return `<div class="session-row" data-session-row>
+        <input class="sr-name" maxlength="50" placeholder="环节名称" value="${escAttr(s.name)}">
+        <input class="sr-bpm" type="number" min="40" max="200" step="1" placeholder="BPM" value="${s.bpm ? Number(s.bpm) : ''}">
+        <select class="sr-note" aria-label="音符">${notes}</select>
+        <input class="sr-req" maxlength="200" placeholder="该环节要求（可空）" value="${escAttr(s.requirement)}">
+        <button type="button" class="sr-del" onclick="removeSessionRow(this)" aria-label="删除环节">×</button>
+      </div>`;
+    }
+
+    function addSessionRow(itemId) {
+      const box = document.getElementById(`sessionRows-${itemId}`);
+      if (!box) return;
+      box.insertAdjacentHTML('beforeend', sessionRowHtml({ name: '', bpm: null, note: '♩', requirement: '' }));
+      const rows = box.querySelectorAll('[data-session-row]');
+      const last = rows[rows.length - 1];
+      if (last) last.querySelector('.sr-name').focus();
+    }
+
+    function removeSessionRow(btn) {
+      const row = btn.closest('[data-session-row]');
+      if (row) row.remove();
+    }
+
     async function saveContentOptions(itemId) {
-      const ta = document.getElementById(`contentOpts-${itemId}`);
-      if (!ta) return;
-      const text = ta.value || '';
+      const box = document.getElementById(`sessionRows-${itemId}`);
+      if (!box) return;
+      const sessions = Array.from(box.querySelectorAll('[data-session-row]')).map(row => {
+        const bpmRaw = row.querySelector('.sr-bpm').value.trim();
+        return {
+          name: row.querySelector('.sr-name').value.trim(),
+          bpm: bpmRaw ? parseInt(bpmRaw, 10) : null,
+          note: row.querySelector('.sr-note').value,
+          requirement: row.querySelector('.sr-req').value.trim(),
+        };
+      }).filter(s => s.name);
       try {
         const res = await fetch(`/config/api/practice/items/${itemId}/content-options`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content_options: text }),
+          body: JSON.stringify(sessions.length ? { sessions } : { content_options: '' }),
         });
         const data = await res.json();
         if (data.ok) {
-          showToast('success', data.options?.length ? `已保存 ${data.options.length} 个选项` : '已清空，将用默认选项');
+          showToast('success', data.options?.length ? `已保存 ${data.options.length} 个环节` : '已清空，将用默认环节');
           await fetchItems();
         } else {
           showToast('error', data.error || '保存失败');
@@ -1313,8 +1425,8 @@
         card.classList.toggle('open');
       }
       if (card.classList.contains('open')) {
-        const ta = document.getElementById(`contentOpts-${itemId}`);
-        if (ta) setTimeout(() => ta.focus(), 50);
+        const first = card.querySelector('.session-row .sr-name');
+        if (first) setTimeout(() => first.focus(), 50);
       }
     }
 
