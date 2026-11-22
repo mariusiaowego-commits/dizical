@@ -19874,8 +19874,7 @@ function closeRecordsDrawer() {
     border-radius: 50%;
     background: var(--dash-coral);
     opacity: 1;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.2);
-    transform: scale(1.25);
+    box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.18);
   }
   .deck-nav-btns {
     display: flex;
@@ -20120,8 +20119,8 @@ function closeRecordsDrawer() {
       }).join('');
     }
 
-    function formatRequirementItems(item) {
-      const blocks = sessionBlocks(item);
+    function formatRequirementItems(item, blocks) {
+      blocks = blocks || sessionBlocks(item);
       if (blocks && blocks.length) { return formatSessionBlocks(blocks); }
       return formatRequirementLines(splitRequirementLines(item.requirements));
     }
@@ -20207,11 +20206,13 @@ function closeRecordsDrawer() {
         return `<span class="card-seg-chip">${label ? `<span class="qc-seg-name">${escHtml(label)}</span> ` : ''}${escHtml(tempo)}</span>`;
       }).join('');
 
-      const paragraphsHtml = formatRequirementItems(item);
+      const blocks = sessionBlocks(item);
+      const paragraphsHtml = formatRequirementItems(item, blocks);
       const noteBoxHtml = formatTeacherNote(item) + formatPracticeSummary(item);
       /* 环节各自带 BPM 时，顶部再放一个全局「速度」会和环节速度打架；
-         这种情况下速度只在各环节标题上出现。 */
-      const hasSessionBpm = (item.sessions || []).some(s => s && s.bpm);
+         这种情况下速度只在各环节标题上出现。分组没成功（退回编号清单）时
+         环节速度不可见，必须保留顶部速度行，否则卡片彻底丢失速度信息。 */
+      const hasSessionBpm = !!(blocks && blocks.length && blocks.some(b => b.tempo));
       const metroRowHtml = hasSessionBpm ? '' : `
           <div class="qc-bay-row">
             <span class="qc-bay-lbl">速度</span>
@@ -20221,8 +20222,9 @@ function closeRecordsDrawer() {
             <span class="qc-bay-lbl">分段</span>
             <span class="qc-bay-chips">${segHtml}</span>
           </div>` : '';
-      const bayHtml = (metroRowHtml || segRowHtml)
-        ? `<div class="qc-bay">${metroRowHtml}${segRowHtml}</div>`
+      /* 分段/环节速度已经写清速度时，全局「速度」行只会重复同一串。 */
+      const bayHtml = (segRowHtml || (!hasSessionBpm && metroRowHtml))
+        ? `<div class="qc-bay">${segRowHtml || metroRowHtml}</div>`
         : '';
       /* 翻页控制与指示点移入卡内独立底栏：只挂在当前卡上，避免多张卡重复 id。
          视觉上是一条和正文分隔的隔离区，卡高由外层统一，不再靠卡外 footer 撑。 */
@@ -20402,6 +20404,16 @@ function closeRecordsDrawer() {
       card.addEventListener('pointercancel', () => { tracking = false; });
     }
 
+    function makeDeckCard(i) {
+      const item = ASSIGNMENTS_DATA[i];
+      const card = document.createElement('div');
+      card.className = 'deck-card';
+      if (item.id === 'empty') { card.classList.add('is-empty'); }
+      card.innerHTML = createCardMarkup(item, i);
+      card.dataset.index = i;
+      return card;
+    }
+
     function renderDeck() {
       stage.innerHTML = '';
       stage.classList.remove('is-deck-dragging');
@@ -20435,12 +20447,7 @@ function closeRecordsDrawer() {
 
       // 逆序插入 DOM，确保 index 小的在最上面
       for (let i = Math.min(total - 1, currentIndex + visibleCount - 1); i >= currentIndex; i--) {
-        const item = ASSIGNMENTS_DATA[i];
-        const card = document.createElement('div');
-        card.className = 'deck-card';
-        if (item.id === 'empty') { card.classList.add('is-empty'); }
-        card.innerHTML = createCardMarkup(item, i);
-        card.dataset.index = i;
+        const card = makeDeckCard(i);
 
         const stackOffset = i - currentIndex; // 0 是最顶层卡片
         if (stackOffset === 0) { card.classList.add('is-active'); }
@@ -20624,16 +20631,45 @@ function closeRecordsDrawer() {
     function navTo(targetIdx) {
       if (isAnimating || targetIdx === currentIndex) { return; }
       if (targetIdx < 0 || targetIdx >= ASSIGNMENTS_DATA.length) { return; }
+      /* 自检模式（?audit=1）读 currentIndex 是同步的，动画会把它拖后一拍。 */
+      if (window.__czNavInstant) {
+        currentIndex = targetIdx;
+        renderDeck();
+        return;
+      }
+      /* feed 档只有一张长卡，3D 甩出会把整张卡甩没，直接换内容。 */
+      if (isFeedDeck()) {
+        currentIndex = targetIdx;
+        renderDeck();
+        return;
+      }
       const slideDir = targetIdx > currentIndex ? -1 : 1;
       const card = stage.querySelector('.deck-card.is-active');
-      const nextCard = stage.querySelector('.deck-card.is-next-card');
+      let nextCard = stage.querySelector('.deck-card.is-next-card');
       if (!window.gsap || !card) {
         currentIndex = targetIdx;
         renderDeck();
         return;
       }
+      /* 往回翻时渲染层里没有上一张卡，临时补一张垫在当前卡后面，
+         否则「上一张」只剩当前卡飞出、下一周的卡抬起来的错动作。 */
+      if (slideDir === 1 && currentIndex > 0) {
+        const prevIdx = currentIndex - 1;
+        let prevCard = stage.querySelector('.deck-card[data-index="' + prevIdx + '"]');
+        if (!prevCard) {
+          prevCard = makeDeckCard(prevIdx);
+          prevCard.classList.add('is-next-card');
+          prevCard.style.transform = 'translate3d(0px, -10px, -28px) scale(0.965)';
+          prevCard.style.opacity = '0.85';
+          stage.appendChild(prevCard);
+        }
+        nextCard = prevCard;
+      }
       isAnimating = true;
       stage.classList.add('is-deck-dragging');
+      /* 拖动期 CSS 会隐藏非 .is-dragging 卡；不加这个类，gsap 的位移和旋转
+         会被 !important 的 opacity:0/visibility:hidden 当场吃掉，按钮翻页看起来还是瞬切。 */
+      card.classList.add('is-dragging');
       const tl = gsap.timeline({
         onComplete: () => {
           isAnimating = false;
@@ -20699,6 +20735,8 @@ function closeRecordsDrawer() {
     function runContractAudit() {
       const chassis = document.getElementById('reqChassis');
       const fails = [];
+      /* 翻页断言同步读 currentIndex；动画版本会晚一拍，自检期改走瞬时切换。 */
+      window.__czNavInstant = true;
 
       // 若处于空态占位，填充测试 stage 数据以完整执行 deck 拖动/多层/尺寸契约自检
       if (ASSIGNMENTS_DATA.length <= 1 && ASSIGNMENTS_DATA[0].id === 'empty') {
@@ -20888,6 +20926,7 @@ function closeRecordsDrawer() {
         verdictEl.textContent = verdict;
         verdictEl.style.color = (verdict === 'ASSERT_OK') ? 'var(--dash-battery)' : 'var(--dash-coral)';
       }
+      window.__czNavInstant = false;
       return out;
     }
 
@@ -21611,9 +21650,7 @@ window.__CZ_CSS = [
   '.cz-t-hero { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 18px 12px; }',
   '.cz-t-num { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--dash-text, #2C3E50); font-variant-numeric: tabular-nums; }',
   '.cz-t-unit { font-size: 13px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); }',
-  '.cz-t-goal { flex: 1 1 auto; min-width: 52px; height: 8px; border-radius: 999px; background: var(--dash-surface-2, #ECE8E1); overflow: hidden; }',
-  '.cz-t-goal-fill { height: 100%; width: 0; border-radius: 999px; background: var(--dash-coral, #FF6B6B); transition: width .35s ease; }',
-  '.cz-t-goal-text { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-goal-text { margin-left: auto; flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
   '.cz-t-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 12px 10px; display: flex; flex-direction: column; gap: 2px; overscroll-behavior: contain; }',
   '.cz-t-row { display: grid; grid-template-columns: 42px 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 10px; }',
   '.cz-t-row:hover { background: var(--dash-surface-2, #ECE8E1); }',
@@ -21971,9 +22008,8 @@ window.__CZ_CSS = [
     box.style.width = w + 'px';
     box.innerHTML =
       '<div class="cz-t-head"><span class="cz-t-title">今日时间轴</span><span class="cz-t-date" data-t-date></span></div>' +
-      '<div class="cz-t-hero"><span class="cz-t-num" data-t-num>0</span><span class="cz-t-unit">分</span>' +
-        '<div class="cz-t-goal"><div class="cz-t-goal-fill" data-t-fill></div></div>' +
-        '<span class="cz-t-goal-text" data-t-goal>目标 —</span></div>' +
+      '<div class="cz-t-hero"><span class="cz-t-num" data-t-num>0</span><span class="cz-t-unit" data-t-unit>分</span>' +
+        '<span class="cz-t-goal-text" data-t-goal>今日 0 段</span></div>' +
       '<div class="cz-t-list" data-t-list></div>' +
       '<div class="cz-t-foot"><span class="cz-t-meta" data-t-meta>今日 0 段</span>' +
         '<button type="button" class="cz-t-open" data-t-open>查看记录明细 ↗</button></div>';
@@ -21991,15 +22027,25 @@ window.__CZ_CSS = [
     if (!cd || !box) { return; }
     var pill = cd.getElementById('pkRecords');
     var pillText = pill ? pill.textContent.replace(/\s+/g, ' ') : '';
-    var mMin = pillText.match(/(\d+)\s*分/);
     var mSes = pillText.match(/(\d+)\s*次/);
-    var todayMin = mMin ? parseInt(mMin[1], 10) : 0;
     var sessCount = mSes ? parseInt(mSes[1], 10) : 0;
-    var targetText = (cd.getElementById('pkCollapsedProgressVal') || {}).textContent || '';
-    var mTarget = targetText.match(/目标\s*(\d+)\s*分/);
-    var target = mTarget ? parseInt(mTarget[1], 10) : 10;
-    var pct = target > 0 ? Math.max(0, Math.min(100, Math.round((todayMin / target) * 100))) : 0;
-
+    /* 今日总量以 todayTotal 的秒级口径为准（<60s 显示「N秒」），
+       pkRecords 只有整分，会把 45 秒显示成 0 分。 */
+    /* todayTotal 挂在 A 卡 iframe 内，不在画布本体。 */
+    var aFrame = cd.querySelector('iframe[data-mod="A"]');
+    var aDoc = null;
+    try { aDoc = aFrame ? aFrame.contentDocument : null; } catch (e) { aDoc = null; }
+    var totalEl = aDoc ? aDoc.getElementById('todayTotal') : cd.getElementById('todayTotal');
+    var totalText = totalEl ? totalEl.textContent.replace(/\s+/g, '') : '';
+    var todaySec = 0;
+    if (totalText) {
+      var tmMin = totalText.match(/(\d+)分/);
+      var tmSec = totalText.match(/(\d+)秒/);
+      todaySec = (tmMin ? parseInt(tmMin[1], 10) * 60 : 0) + (tmSec ? parseInt(tmSec[1], 10) : 0);
+    } else {
+      var pm = pillText.match(/(\d+)\s*分/);
+      todaySec = pm ? parseInt(pm[1], 10) * 60 : 0;
+    }
     var rows = [].slice.call(cd.querySelectorAll('.pk-drawer-item')).map(function (el) {
       var t = el.querySelector('.pk-drawer-item-time');
       var d = el.querySelector('.pk-drawer-item-dur');
@@ -22020,13 +22066,16 @@ window.__CZ_CSS = [
     if (dateEl) { dateEl.textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + week; }
 
     var numEl = box.querySelector('[data-t-num]');
-    if (numEl) { numEl.textContent = String(todayMin); }
-    var fillEl = box.querySelector('[data-t-fill]');
-    if (fillEl) { fillEl.style.width = pct + '%'; }
+    var unitEl = box.querySelector('[data-t-unit]');
+    var showSec = todaySec > 0 && todaySec < 60;
+    if (numEl) { numEl.textContent = String(showSec ? todaySec : Math.floor(todaySec / 60)); }
+    if (unitEl) { unitEl.textContent = showSec ? '秒' : '分'; }
     var goalEl = box.querySelector('[data-t-goal]');
-    if (goalEl) { goalEl.textContent = '目标 ' + target + ' 分'; }
+    /* 不再编「目标 N 分」：票卡没有可靠的目标节点，目标数字会失真。
+       这里只报真实段数，时间轴细节在下面列表。 */
+    if (goalEl) { goalEl.textContent = '今日 ' + (sessCount || 0) + ' 段'; }
     var metaEl = box.querySelector('[data-t-meta]');
-    if (metaEl) { metaEl.textContent = '今日 ' + (sessCount || 0) + ' 段'; }
+    if (metaEl) { metaEl.textContent = rows.length && rows[0].time ? ('最近 ' + rows[0].time) : '今天还没有记录'; }
 
     var listEl = box.querySelector('[data-t-list]');
     if (!listEl) { return; }
@@ -27267,7 +27316,7 @@ window.__CZ_CSS = [
   }
   window.__czIsBusyProxy = function () { try { var w = canvasWin(); return !!(w && w.__czIsPracticeBusy && w.__czIsPracticeBusy()); } catch (e) { return false; } };
   window.__czRequestFinishProxy = function (done) { try { var w = canvasWin(); if (w && typeof w.__czRequestFinishFromCardA === 'function') { return w.__czRequestFinishFromCardA({ done: !!done, seconds: 0 }); } } catch (e) {} return false; };
-  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, relayout: relayoutAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
+  window.__cz = { refreshTCardNow: function () { var cd = canvasDoc(); var t = cd && cd.querySelector('.cz-tcard'); if (t) { refreshTCard(cd, t); return true; } return false; }, isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, relayout: relayoutAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
 })();
 </script>
 </body>

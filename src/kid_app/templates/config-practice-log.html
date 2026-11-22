@@ -1734,8 +1734,14 @@ function renderSubRowHtml(parentIdx, subIdx, s, entry) {
   const presets = [s.tempo_bpm, 60, 80, 100, 120].filter((v, i, a) => a.indexOf(v) === i).slice(0, 5);
   const item = practiceItems.find(it => it.item_id == entry.item_id);
   let options = [];
-  if (item && item.content_options) {
-    options = String(item.content_options).split(/[,，]/).map(x => x.trim()).filter(Boolean);
+  if (item && Array.isArray(item.sessions) && item.sessions.length) {
+    options = item.sessions.map(x => (x && x.name) || '').map(x => String(x).trim()).filter(Boolean);
+  } else if (item && item.content_options) {
+    const raw = String(item.content_options).trim();
+    // content_options 已可能是结构化 JSON，不能按逗号切
+    if (raw.charAt(0) !== '[') {
+      options = raw.split(/[,，\n]/).map(x => x.trim()).filter(Boolean);
+    }
   }
   if (!options.length) options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
   const idsx = parentIdx + '-' + subIdx;
@@ -2101,6 +2107,10 @@ function renderAssignEntries() {
       assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
+      /* 换科目必须清掉上一个科目的环节，否则 A 的环节会跟着 B 的 item_id 一起提交。 */
+      if (newId !== oldId) {
+        assignEntries[idx].sessions = [];
+      }
       /* 选中科目时把该科目的预置练习环节带进「环节要求」，速度随环节走。 */
       if (item && Array.isArray(item.sessions) && item.sessions.length && !(assignEntries[idx].sessions || []).length) {
         assignEntries[idx].sessions = item.sessions.map(s => ({

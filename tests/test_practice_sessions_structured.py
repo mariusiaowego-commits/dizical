@@ -26,7 +26,8 @@ def client():
 
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
-    os.environ["DATABASE_URL"] = ""
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setenv("DATABASE_URL", "")
     new_db = Database(db_path=path)
     # worktree 的 Database() 只建基础表；content_options / is_archived 由生产迁移补列，
     # 这里补上，否则 get_practice_items 的 SELECT 直接报 no such column。
@@ -38,7 +39,6 @@ def client():
             conn.execute("ALTER TABLE practice_items ADD COLUMN is_archived INTEGER DEFAULT 0")
         conn.commit()
 
-    monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(models.settings, "db_path", path)
     monkeypatch.setattr(db_module, "db", new_db)
     monkeypatch.setattr(app_module, "db", new_db)
@@ -97,6 +97,21 @@ def test_extract_bpm_prefers_explicit_tempo(text, expect):
     assert practice_module.extract_session_bpm(text) == expect
 
 
+def test_parse_legacy_text_starting_with_bracket():
+    """以 [ 开头但不是合法 JSON 的历史文本，按逗号切分而不是整段丢弃。"""
+    sessions = practice_module.parse_practice_sessions("[基础]长音,吐音")
+    assert [s["name"] for s in sessions] == ["[基础]长音", "吐音"]
+
+
+def test_parse_accepts_bpm_with_spaces_and_dedupes():
+    sessions = practice_module.parse_practice_sessions(
+        [{"name": "长音", "bpm": " 72 "}, {"name": "长音", "bpm": 80}]
+    )
+    assert sessions == [{"name": "长音", "bpm": 72, "note": "♩", "requirement": ""}]
+    dumped = practice_module.serialize_practice_sessions(sessions + sessions)
+    assert json.loads(dumped) == sessions
+
+
 def test_content_options_sessions_roundtrip(client, auth_as):
     test_client, db = client
     item_id = _insert_item(db)
@@ -124,6 +139,7 @@ def test_content_options_sessions_roundtrip(client, auth_as):
 @pytest.mark.parametrize("sessions,expect", [
     ([{"name": "越界", "bpm": 260}], "速度需在 40–200"),
     ([{"name": "名" * 51}], "超过 50 字"),
+    ([{"name": ""}], "环节名称不能为空"),
 ])
 def test_content_options_rejects_invalid_session(client, auth_as, sessions, expect):
     test_client, db = client

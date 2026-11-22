@@ -28,4 +28,4 @@ base: 0cd6874
 
 ## 状态
 
-代码与本地验收完成，待 PR 合并授权。合并前需独立只读 audit 确认 `base == latest main`。
+代码与本地验收完成（含审计后修复），PR #410，待合并授权。合并前需独立只读 audit 确认 `base == latest main`。

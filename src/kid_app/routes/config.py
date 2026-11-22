@@ -447,6 +447,8 @@ async def api_update_item_content_options(item_id: int, request: Request):
 
             if len(normalized) > 20:
                 return JSONResponse({"ok": False, "error": "最多 20 个环节"}, status_code=400)
+            if raw_sessions and not normalized:
+                return JSONResponse({"ok": False, "error": "环节名称不能为空"}, status_code=400)
 
             content_options = practice_module.serialize_practice_sessions(normalized)
             names = practice_module.session_names(content_options)
@@ -1037,7 +1039,7 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
     assignments = practice_module.query_assignments(weeks=weeks)
 
     # 建立科目映射表（补齐老记录缺失的 item_id，支持名称与 id 双向匹配）
-    items_meta = db.get_practice_items()
+    items_meta = db.get_practice_items(active_only=False, include_archived=True)
     name_to_id = {it["name"]: it["item_id"] for it in items_meta}
     sessions_by_id = {
         it["item_id"]: practice_module.parse_practice_sessions(it.get("content_options"))
@@ -1177,10 +1179,12 @@ def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] =
     assignments = db.get_weekly_assignments_in_range(
         _dt.date(2000, 1, 1), _dt.date.today() + _dt.timedelta(days=365)
     )
+    item_rows = db.get_practice_items(active_only=False, include_archived=True)
     sessions_by_id = {
         it["item_id"]: practice_module.parse_practice_sessions(it.get("content_options"))
-        for it in db.get_practice_items(active_only=False, include_archived=True)
+        for it in item_rows
     }
+    sessions_by_name = {it["name"]: sessions_by_id.get(it["item_id"], []) for it in item_rows}
     matches = []
     for a in assignments:
         for it in a.get("items", []):
@@ -1197,7 +1201,10 @@ def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] =
                 "metronome": it.get("metronome") or "",
                 "requirements": it.get("requirements") or it.get("requirement") or "",
                 "metronome_segments": it.get("metronome_segments") or [],  # 需求4: 多档速度
-                "sessions": (it.get("sessions") if isinstance(it.get("sessions"), list) and it.get("sessions") else sessions_by_id.get(it.get("item_id"), [])),
+                "sessions": (
+                    it.get("sessions") if isinstance(it.get("sessions"), list) and it.get("sessions")
+                    else (sessions_by_id.get(it.get("item_id")) or sessions_by_name.get(it.get("item"), []))
+                ),
             })
             break  # 同一条记录该科目只算一次
     matches.sort(key=lambda x: x["lesson_date"], reverse=True)

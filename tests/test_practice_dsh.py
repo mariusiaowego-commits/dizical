@@ -204,7 +204,7 @@ def test_stage_duration_reads_mysql_json_string(client, monkeypatch):
     monkeypatch.setattr(
         config_routes.db,
         "get_practice_items",
-        lambda: [{"item_id": 1350, "name": "春耕曲"}],
+        lambda **kwargs: [{"item_id": 1350, "name": "春耕曲"}],
     )
 
     resp = client.get("/config/api/assignments?weeks=24&item=1350")

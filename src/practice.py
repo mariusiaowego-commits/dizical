@@ -58,7 +58,7 @@ def _normalize_session(raw: object) -> Optional[Dict]:
             raw.get("requirement") or raw.get("req") or raw.get("description") or raw.get("note_text")
         )
         bpm_raw = raw.get("bpm")
-        bpm = int(bpm_raw) if str(bpm_raw or "").isdigit() else extract_session_bpm(name)
+        bpm = int(str(bpm_raw).strip()) if str(bpm_raw or "").strip().isdigit() else extract_session_bpm(name)
         note = extract_session_note(raw.get("note") or raw.get("tempo") or name)
     else:
         name = _clean_session_text(raw)
@@ -88,7 +88,8 @@ def parse_practice_sessions(raw: object) -> List[Dict]:
             try:
                 data = json.loads(text)
             except (TypeError, ValueError):
-                data = text
+                # 以 [ 开头但不是合法 JSON 的历史文本，按逗号/换行切，别整段丢掉
+                data = re.split(r"[,，\n]", text)
         else:
             data = re.split(r"[,，\n]", text)
     if isinstance(data, dict):
@@ -115,10 +116,13 @@ def serialize_practice_sessions(sessions: object) -> str:
     if not isinstance(sessions, list):
         sessions = parse_practice_sessions(sessions)
     normalized = []
+    seen = set()
     for raw_session in sessions:
         session = _normalize_session(raw_session)
-        if session:
-            normalized.append(session)
+        if not session or session["name"] in seen:
+            continue
+        seen.add(session["name"])
+        normalized.append(session)
     return json.dumps(normalized, ensure_ascii=False) if normalized else ""
 
 

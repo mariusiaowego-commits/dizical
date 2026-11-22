@@ -253,7 +253,7 @@ body（宿主页）
 顶栏最右 `#pkVerWrap > button#pkVer + #pkVerPop`：平时只显示 `v3.48`（10px / opacity .5 / tabular-nums）；悬停或点一下弹出 5 行构建信息（版本 / 分支 / 提交 / 构建时间 / 来源 checkout）。
 - **按设备能力分流**：`hover:hover` 设备走 mouseenter/mouseleave（160ms 延时收起），点击不再 toggle；触屏只认点击 —— 触屏 tap 会合成 mouseenter 再 click，共用一个开关会「先开再关」＝永远打不开。
 - 弹层必须按画布宽度夹取（窄屏顶栏换行时 `right:0` 会跑出屏幕）。
-- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION` `:20169`。
+- 数据来自 `/static/build-info.json`（部署打包时落盘，镜像无 `.git`）；版本常量唯一手改点 `DSH_VERSION`（行号随模板增长漂移，用 `rg -n "DSH_VERSION =" src/kid_app/templates/practice-dsh.html` 定位，当前 `:21016`）。
 
 ---
 
@@ -371,7 +371,7 @@ body（宿主页）
 
 ## 11. 版本与发布
 
-- `DSH_VERSION`（`:20942`）是唯一手改的版本号常量，当前 `v3.54`。
+- `DSH_VERSION`（`:21016`）是唯一手改的版本号常量，当前 `v3.54`。
 - 两处派生值都从 `DSH_VERSION` 自动派生，改版本号只需改模板这一处：
   - `X-Dsh-Build` 响应头 —— `app.py` 的 `dsh_version()` 解析模板常量
   - iframe 的 `?v=` 缓存绕过参数 —— `app.py` 的 `dsh_cache_bust()` 直接透出版本号（`v3.25` → `?v=v3.25`，`quote` 编码）。早期的「只留数字」派生（`v3.24` → `324`）已废弃：`v3.24` / `v3.24-beta` / `v3.2.4` 会撞成同一个 `324`，版本变了缓存不失效。
@@ -436,6 +436,7 @@ body（宿主页）
 - 翻页动画：`navTo()` 统一按钮 / 指示点 / 拖拽，`isAnimating` 门闩防连点；旧卡飞出 + 下一张抬升 240ms。
 
 ### 13.4 T 卡（今日时间轴）
-- 删除内嵌 D 卡 iframe 与 R 迷你卡拼接；改为原生 DOM：头部「今日时间轴 + 日期」、总时长 + 目标进度、按时间倒序的今日每段（时间 / 科目 / 环节 / 时长）、底部「查看记录明细 ↗」。
-- 数据从票夹抽屉真节点反读（`pkRecords` / `.pk-drawer-item` / `pkCollapsedProgressVal`），`applyDayToModules` 后 `refreshTCard` 同步重绘。
+- 删除内嵌 D 卡 iframe 与 R 迷你卡拼接；改为原生 DOM：头部「今日时间轴 + 日期」、总时长 + 今日段数、按时间倒序的今日每段（时间 / 科目 / 环节 / 时长）、底部「查看记录明细 ↗」。
+- 数据从票夹抽屉真节点反读（`pkRecords` / `.pk-drawer-item` / A 卡 iframe 内的 `todayTotal`），`applyDayToModules` 后 `refreshTCard` 同步重绘；总量按秒级口径，`<60s` 显示「N 秒」。
+- 不再展示「目标 N 分」进度条：票卡侧没有可靠的目标节点（`pkCollapsedProgressVal` 已删除），写死 10 分钟属于编数。
 - 卡高锁到票卡高 H（与 A/B/Q 一致），列表内部滚动；窄档 feed 下保持整卡，不再 `display:contents` 拆成 D/R。

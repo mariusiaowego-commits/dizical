@@ -17,10 +17,10 @@ PYTHONDONTWRITEBYTECODE=1 /Users/mt16/dev/dizical/.venv/bin/python -m pytest \
   tests/test_practice_sessions_write_auth.py tests/test_assignments_by_item_api.py \
   tests/test_config_practice_page.py tests/test_assign_draft.py \
   -p no:cacheprovider -q
-→ 110 passed, 6 warnings in 1.17s
+→ 113 passed, 6 warnings in 1.20s
 
 PYTHONDONTWRITEBYTECODE=1 ... -m pytest tests/ -q --ignore=tests/config_ui_fixes
-→ 1209 passed, 5 failed, 8 skipped in 46.86s
+→ 1212 passed, 5 failed, 8 skipped in 46.08s
 ```
 
 5 个失败均为既有环境/数据问题，与本次改动文件无关：
@@ -66,3 +66,25 @@ PYTHONDONTWRITEBYTECODE=1 ... -m pytest tests/ -q --ignore=tests/config_ui_fixes
 
 - failed：无（本次改动路径）。
 - skipped：`/config/practice` 与 `/config/practice-log` 的浏览器点击保存往返未跑（避免污染本地 DB 副本）；等价 API 往返已由 pytest 覆盖。
+
+## 独立只读 audit 后的修复（第二轮）
+
+审计（只读子 agent）报 1 P0 + 5 P1，逐条复现后已修：
+
+| 级别 | 问题 | 修复 | 复测 |
+| --- | --- | --- | --- |
+| P0 | `/practice` 与补录弹窗仍按逗号切 `content_options`，JSON 被切成 15 段伪选项 | `practice.html` 改用 `sessionNamesOf()`（优先 `sessions`）；`app.py` 的 `data-content-options` 只输出名称；`config-practice-log.html` 子会话下拉同改 | Playwright 点 1034：标签 `["八度练习","正常长音练习","吹高音“6”"]`，属性 `八度练习,正常长音练习,吹高音“6”` |
+| P1 | Q 卡分组失败但仍隐藏「速度」行，卡片无速度信息 | `hasSessionBpm` 改为「分组成功且环节带 bpm」才隐藏 | 春耕曲退回编号清单时保留顶部分段/速度信息 |
+| P1 | 按钮/指示点翻页被 CSS `!important` 吃掉飞出动画 | `navTo` 给当前卡补 `.is-dragging` | NEXT-MID 当前卡 `opacity 0.92` + `matrix(0.999834,-0.0182…)` 旋转 |
+| P1 | 「上一张」没有上一张卡可抬起，动画抬错卡 | `navTo` 倒序时临时补渲染 `currentIndex-1` 作为入卡 | PREV-MID 出现 `data-index=0` 入卡（opacity .88），结束 active=0 |
+| P1 | 老师要求页换科目沿用上一科目环节 | 换科目先清空 `entry.sessions` 再带出 | 1034→3 行 / 切 1033→5 行（1033 自己的环节） |
+| P1 | T 卡「今日 N 分」不足 1 分钟显示 0；「目标」节点已删导致写死 10 | 从 A 卡 `#todayTotal` 读秒级总量并按需切换 秒/分；移除编造的目标进度，改显示真实「今日 N 段」 | 3分45秒→`3 分`；45秒→`45 秒`；0→`0 分` |
+
+同批顺手修：
+
+- BPM 解析容忍 `" 72 "`（前后空格）并写入去重；`[` 开头但非 JSON 的历史文本按逗号切分。
+- `sessions` 全为无名项时返回 400（不再静默清空）。
+- `assignments` / `by-item` 的科目回落改用 `active_only=False, include_archived=True`，并按名称兜底。
+- Q 卡 dot 固定 6px，active 不再放大（D4-2 尺寸差 0，实测 `active 6 / inactive 6`）。
+- feed 档翻页直接换内容，不再走 3D 甩出；`?audit=1` 的翻页断言改走瞬时切换（`nextIdx=1`）。
+- 新增 `__cz.refreshTCardNow()` 便于验证 T 卡口径。
