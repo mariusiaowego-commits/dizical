@@ -2256,6 +2256,8 @@ def api_practice_stage(date_str: str):
 def api_items(include_archived: bool = False):
     items = db.get_practice_items(active_only=True, include_archived=include_archived)
     categories = practice_module.get_categories()
+    for item in items:
+        item["sessions"] = practice_module.parse_practice_sessions(item.get("content_options"))
     return JSONResponse({"items": items, "categories": categories})
 
 
@@ -2861,7 +2863,8 @@ def practice_page(request: Request):
             has_req = bool(combined)
             has_req_class = "has-req" if has_req else ""
             req_dot = "<span class='req-dot'></span>" if has_req else ""
-            content_opts = (it.get("content_options") or "").replace("'", "&#39;")
+            # content_options 可能是结构化 JSON：属性里只放纯名称，避免 JSON 片段漏进 DOM
+            content_opts = ",".join(practice_module.session_names(it.get("content_options"))).replace("'", "&#39;")
             items_html += (
                 "<button class='item-btn " + has_req_class + "' data-id='" + str(it["item_id"]) + "' "
                 + "data-req='" + combined.replace("'", "&#39;") + "' "

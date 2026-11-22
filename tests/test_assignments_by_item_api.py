@@ -66,6 +66,40 @@ def test_by_item_id_returns_history(patch_db):
     assert hist[1]["lesson_date"] == "2026-07-26"
 
 
+def test_by_item_sessions_only_on_latest(monkeypatch):
+    """环节回落只给最新一条；历史记录没存 sessions 就保持空，不倒灌今天的配置。"""
+    import json
+    from fastapi.testclient import TestClient
+    from src.kid_app.app import app
+    import src.kid_app.routes.config as cfg
+
+    fake = mock.MagicMock()
+    fake.get_weekly_assignments_in_range.return_value = [
+        _make_assignment("2026-07-26", [
+            {"item": "吸气长音", "item_id": 1034, "metronome": "", "requirements": "旧要求"},
+        ]),
+        _make_assignment("2026-08-08", [
+            {"item": "吸气长音", "item_id": 1034, "metronome": "", "requirements": "新要求"},
+        ]),
+    ]
+    fake.get_practice_items.return_value = [{
+        "item_id": 1034,
+        "name": "吸气长音",
+        "is_archived": 0,
+        "content_options": json.dumps(
+            [{"name": "长音", "bpm": 60, "note": "♩", "requirement": ""}], ensure_ascii=False
+        ),
+    }]
+    monkeypatch.setattr(cfg, "db", fake)
+
+    with TestClient(app) as c:
+        hist = c.get("/config/api/assignments/by-item?item_id=1034&limit=3").json()["history"]
+    assert hist[0]["lesson_date"] == "2026-08-08"
+    assert [s["name"] for s in hist[0]["sessions"]] == ["长音"]
+    assert hist[1]["lesson_date"] == "2026-07-26"
+    assert hist[1]["sessions"] == []
+
+
 def test_by_item_name_catches_null_id(patch_db):
     """按科目名匹配, 能抓到 item_id 为 null 的历史 (兼容场景)."""
     from fastapi.testclient import TestClient

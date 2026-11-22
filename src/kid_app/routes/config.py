@@ -312,6 +312,7 @@ def api_get_items(include_archived: bool = True):
 
     for item in items:
         item['category_name'] = cat_map.get(item.get('category_id'), '')
+        item['sessions'] = practice_module.parse_practice_sessions(item.get('content_options'))
 
     return JSONResponse(jsonable_encoder({"items": items}))
 
@@ -394,43 +395,96 @@ async def api_update_item_content_options(item_id: int, request: Request):
     """更新小科目的练习内容预置选项。
 
     接受:
+    - sessions: [{name, bpm, note, requirement}]（结构化预置练习环节）
     - content_options: "第一分句,第二分句" 或 "第一分句\\n第二分句"
     - content_options: ["第一分句", "第二分句"]
-    落库为逗号分隔字符串；空 = 练习页用全局默认。
+    结构化 sessions 落库为 JSON 字符串；纯文本仍落逗号分隔字符串。
+    空 = 练习页用全局默认。
     """
     try:
         body = json.loads(await request.body())
-        raw = body.get("content_options", "")
+        raw_sessions = body.get("sessions")
 
-        if isinstance(raw, list):
-            raw_parts = [str(x).strip() for x in raw if str(x).strip()]
+        if raw_sessions is not None:
+            if not isinstance(raw_sessions, list):
+                return JSONResponse({"ok": False, "error": "sessions 必须是数组"}, status_code=400)
+            normalized = []
+            for raw_session in raw_sessions:
+                raw_bpm = raw_session.get("bpm") if isinstance(raw_session, dict) else None
+                if raw_bpm not in (None, ""):
+                    try:
+                        bpm_int = int(raw_bpm)
+                    except (TypeError, ValueError):
+                        bpm_int = None
+                    if bpm_int is None or not (40 <= bpm_int <= 200):
+                        name = str(raw_session.get("name") or raw_session.get("label") or "").strip()
+                        return JSONResponse(
+                            {"ok": False, "error": f"环节「{name or '未命名'}」速度需在 40–200 之间"},
+                            status_code=400,
+                        )
+                session = practice_module.parse_practice_sessions([raw_session])
+                if not session:
+                    continue
+                session = session[0]
+                if not session["name"]:
+                    return JSONResponse({"ok": False, "error": "环节名称不能为空"}, status_code=400)
+                if len(session["name"]) > 50:
+                    return JSONResponse(
+                        {"ok": False, "error": f"环节名称「{session['name'][:12]}…」超过 50 字"},
+                        status_code=400,
+                    )
+                if session.get("bpm") is not None and not (40 <= int(session["bpm"]) <= 200):
+                    return JSONResponse(
+                        {"ok": False, "error": f"环节「{session['name']}」速度需在 40–200 之间"},
+                        status_code=400,
+                    )
+                if len(session.get("requirement") or "") > 200:
+                    return JSONResponse(
+                        {"ok": False, "error": f"环节「{session['name']}」要求超过 200 字"},
+                        status_code=400,
+                    )
+                normalized.append(session)
+
+            if len(normalized) > 20:
+                return JSONResponse({"ok": False, "error": "最多 20 个环节"}, status_code=400)
+            if raw_sessions and not normalized:
+                return JSONResponse({"ok": False, "error": "环节名称不能为空"}, status_code=400)
+
+            content_options = practice_module.serialize_practice_sessions(normalized)
+            names = practice_module.session_names(content_options)
         else:
-            text = str(raw or "").replace("，", ",").replace("\r", "")
-            raw_parts = []
-            for line in text.split("\n"):
-                for p in line.split(","):
-                    p = p.strip()
-                    if p:
-                        raw_parts.append(p)
+            raw = body.get("content_options", "")
 
-        # 去重保序 + 单条长度保护
-        seen = set()
-        parts = []
-        for p in raw_parts:
-            if p in seen:
-                continue
-            if len(p) > 50:
-                return JSONResponse(
-                    {"ok": False, "error": f"选项「{p[:12]}…」超过 50 字"},
-                    status_code=400,
-                )
-            seen.add(p)
-            parts.append(p)
+            if isinstance(raw, list):
+                raw_parts = [str(x).strip() for x in raw if str(x).strip()]
+            else:
+                text = str(raw or "").replace("，", ",").replace("\r", "")
+                raw_parts = []
+                for line in text.split("\n"):
+                    for p in line.split(","):
+                        p = p.strip()
+                        if p:
+                            raw_parts.append(p)
 
-        if len(parts) > 20:
-            return JSONResponse({"ok": False, "error": "最多 20 个选项"}, status_code=400)
+            # 去重保序 + 单条长度保护
+            seen = set()
+            parts = []
+            for p in raw_parts:
+                if p in seen:
+                    continue
+                if len(p) > 50:
+                    return JSONResponse(
+                        {"ok": False, "error": f"选项「{p[:12]}…」超过 50 字"},
+                        status_code=400,
+                    )
+                seen.add(p)
+                parts.append(p)
 
-        content_options = ",".join(parts)
+            if len(parts) > 20:
+                return JSONResponse({"ok": False, "error": "最多 20 个选项"}, status_code=400)
+
+            content_options = ",".join(parts)
+            names = parts
 
         items = db.get_practice_items(active_only=False, include_archived=True)
         target = next((i for i in items if i["item_id"] == item_id), None)
@@ -438,7 +492,12 @@ async def api_update_item_content_options(item_id: int, request: Request):
             return JSONResponse({"ok": False, "error": "小科目不存在"}, status_code=404)
 
         db.update_practice_item_content_options(item_id, content_options)
-        return JSONResponse({"ok": True, "content_options": content_options, "options": parts})
+        return JSONResponse({
+            "ok": True,
+            "content_options": content_options,
+            "options": names,
+            "sessions": practice_module.parse_practice_sessions(content_options),
+        })
 
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -980,8 +1039,16 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
     assignments = practice_module.query_assignments(weeks=weeks)
 
     # 建立科目映射表（补齐老记录缺失的 item_id，支持名称与 id 双向匹配）
-    items_meta = db.get_practice_items()
+    items_meta = db.get_practice_items(active_only=False, include_archived=True)
     name_to_id = {it["name"]: it["item_id"] for it in items_meta}
+    sessions_by_id = {
+        it["item_id"]: practice_module.parse_practice_sessions(it.get("content_options"))
+        for it in items_meta
+    }
+    sessions_by_name = {
+        it["name"]: sessions_by_id.get(it["item_id"], [])
+        for it in items_meta
+    }
     target_ids = set()
     target_names = set()
     primary_item_id = None
@@ -1011,6 +1078,7 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
         for it in entry["items"]:
             if it.get("item_id") is None and it.get("item") in name_to_id:
                 it["item_id"] = name_to_id[it.get("item")]
+            it["sessions"] = it.get("sessions") if isinstance(it.get("sessions"), list) else []
 
         if item:
             matched = []
@@ -1059,6 +1127,21 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
         result.append(entry)
     # 最新课在前
     result.sort(key=lambda x: x["lesson_date"], reverse=True)
+    # 环节回落只给「每科最新一条」：历史作业当时没存 sessions 就保持空，
+    # 不把今天配置的环节/速度倒灌进两周前的老师要求卡。
+    seen_items = set()
+    for entry in result:
+        for it in entry["items"]:
+            key = it.get("item_id")
+            if key is None:
+                key = it.get("item")
+            if it.get("sessions"):
+                seen_items.add(key)
+                continue
+            if key in seen_items:
+                continue
+            it["sessions"] = sessions_by_id.get(it.get("item_id")) or sessions_by_name.get(it.get("item"), [])
+            seen_items.add(key)
     return JSONResponse({"assignments": result})
 
 
@@ -1109,6 +1192,12 @@ def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] =
     assignments = db.get_weekly_assignments_in_range(
         _dt.date(2000, 1, 1), _dt.date.today() + _dt.timedelta(days=365)
     )
+    item_rows = db.get_practice_items(active_only=False, include_archived=True)
+    sessions_by_id = {
+        it["item_id"]: practice_module.parse_practice_sessions(it.get("content_options"))
+        for it in item_rows
+    }
+    sessions_by_name = {it["name"]: sessions_by_id.get(it["item_id"], []) for it in item_rows}
     matches = []
     for a in assignments:
         for it in a.get("items", []):
@@ -1125,9 +1214,13 @@ def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] =
                 "metronome": it.get("metronome") or "",
                 "requirements": it.get("requirements") or it.get("requirement") or "",
                 "metronome_segments": it.get("metronome_segments") or [],  # 需求4: 多档速度
+                "sessions": it.get("sessions") if isinstance(it.get("sessions"), list) else [],
             })
             break  # 同一条记录该科目只算一次
     matches.sort(key=lambda x: x["lesson_date"], reverse=True)
+    # 只给最新一条回落科目预置环节；历史记录没存 sessions 就保持空。
+    if matches and not matches[0]["sessions"]:
+        matches[0]["sessions"] = sessions_by_id.get(item_id) or sessions_by_name.get(item, [])
     return JSONResponse({"history": matches[:max(1, limit)]})
 
 
@@ -1168,6 +1261,35 @@ def api_latest_requirements():
                 "lesson_date": ld_str,
             }
     return JSONResponse({"items": result})
+
+
+def _format_assignment_item(it: dict) -> dict:
+    """把前端录入的一条科目要求整理成落库结构。
+
+    sessions 是结构化练习环节（名称 / BPM / 音符 / 环节要求）。同时保留平铺的
+    metronome 与 requirements，老消费者（小程序、旧练习页）不用改也能读。
+    """
+    segments = it.get("metronome_segments") or []
+    sessions = practice_module.parse_practice_sessions(it.get("sessions") or [])
+    metro = it.get("metronome", "") or ""
+    if segments:
+        metro = " / ".join(s.get("tempo", "") for s in segments if s.get("tempo"))
+    requirements = it.get("requirement", it.get("requirements", "")) or ""
+    if sessions and not metro:
+        metro = " / ".join(f"{s['note']}={s['bpm']}" for s in sessions if s.get("bpm"))
+    if sessions and not requirements:
+        requirements = "\n".join(
+            f"{s['name']}：{s['requirement']}" if s.get("requirement") else s["name"]
+            for s in sessions
+        )
+    return {
+        "item": it.get("item", ""),
+        "item_id": it.get("item_id"),
+        "metronome": metro,
+        "requirements": requirements,
+        "metronome_segments": segments or None,
+        "sessions": sessions or None,
+    }
 
 
 @router.post("/api/assignments")
@@ -1260,21 +1382,8 @@ async def api_create_assignment(request: Request):
                 },
             }, status_code=409)
 
-    # 格式化 items (2026-08-09 需求4: 支持 metronome_segments 多档速度)
-    formatted = []
-    for it in items:
-        segments = it.get("metronome_segments") or []
-        metro = it.get("metronome", "") or ""
-        if segments:
-            # 组装 metronome = 各段 tempo 用 " / " 连接 (兼容老消费者读单值)
-            metro = " / ".join(s.get("tempo", "") for s in segments if s.get("tempo"))
-        formatted.append({
-            "item": it.get("item", ""),
-            "item_id": it.get("item_id"),
-            "metronome": metro,
-            "requirements": it.get("requirement", it.get("requirements", "")),
-            "metronome_segments": segments or None,
-        })
+    # 格式化 items（含 metronome_segments 多档速度 + sessions 结构化环节）
+    formatted = [_format_assignment_item(it) for it in items]
 
     save_kwargs = {"notes": notes or None, "images": images}
     if videos is not None:
@@ -1327,19 +1436,7 @@ async def api_update_assignment(lesson_date: str, request: Request):
             if videos is None and existing.get("videos"):
                 videos = existing["videos"]
 
-    formatted = []
-    for it in items:
-        segments = it.get("metronome_segments") or []
-        metro = it.get("metronome", "") or ""
-        if segments:
-            metro = " / ".join(s.get("tempo", "") for s in segments if s.get("tempo"))
-        formatted.append({
-            "item": it.get("item", ""),
-            "item_id": it.get("item_id"),
-            "metronome": metro,
-            "requirements": it.get("requirement", it.get("requirements", "")),
-            "metronome_segments": segments or None,
-        })
+    formatted = [_format_assignment_item(it) for it in items]
 
     # 全量覆盖：先删旧数据再 insert
     with db._get_connection() as conn:

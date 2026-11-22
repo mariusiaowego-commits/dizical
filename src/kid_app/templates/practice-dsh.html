@@ -5846,17 +5846,81 @@
   }
   window.cleanSessionText = cleanSessionText;
 
-  function parseContentOptions(raw) {
-    var list = Array.isArray(raw) ? raw : String(raw == null ? '' : raw).split(/[,，]/);
+  var TEMPO_RE = /[♩♪♬]\s*[=＝]\s*(\d{2,3})/g;
+  var SPEED_RE = /(?:速度|中速|慢速|快速|中快|快板|中板|慢板|行板|急板|广板|柔板|bpm|BPM)\s*[=:：＝]?\s*(\d{2,3})|(\d{2,3})\s*(?:bpm|BPM|拍\/分)|每分钟\s*(\d{2,3})\s*拍/g;
+  var NOTE_RE = /[♩♪♬]/;
+  var ALLOWED_NOTES = { '♩': 1, '♪': 1, '♬': 1 };
+
+  function extractBpm(text) {
+    var str = String(text == null ? '' : text);
+    /* 先认「♪=90」显式速度，避免「80乐段 ♪=90」被名称里的 80 抢走；
+       没有显式速度时只认「速度80 / 80 bpm / 每分钟80拍」这类语境：
+       「中音54」「第48条」「第100拍」是音名/编号/拍数，不能打到节拍器上。
+       与后端 finditer 对齐：越界的第一个值跳过，继续找下一个。
+       不用 lookbehind，老 Safari 会整段脚本语法报错。 */
+    var t = firstBpm(str, TEMPO_RE);
+    return t != null ? t : firstBpm(str, SPEED_RE);
+  }
+  function firstBpm(str, re) {
+    var all = str.match(re) || [];
+    for (var i = 0; i < all.length; i++) {
+      var n = parseInt(String(all[i]).replace(/\D/g, ''), 10);
+      if (n >= 40 && n <= 200) { return n; }
+    }
+    return null;
+  }
+
+  function extractNote(text, fallback) {
+    var m = String(text == null ? '' : text).match(NOTE_RE);
+    return m && ALLOWED_NOTES[m[0]] ? m[0] : (fallback || '♩');
+  }
+
+  function normalizeSession(raw) {
+    var isObj = raw && typeof raw === 'object' && !Array.isArray(raw);
+    var name = cleanSessionText(isObj
+      ? (raw.name || raw.label || raw.text || raw.title)
+      : raw);
+    if (!name) return null;
+    /* 与后端 _normalize_session 同口径：bpm 不是纯数字（如「中速」）就回落到名称解析，
+       不能一边 API 给 88、一边画布当没有速度。 */
+    var bpmRaw = isObj && raw.bpm != null ? String(raw.bpm).trim() : '';
+    var bpm = (bpmRaw && /^\d+$/.test(bpmRaw)) ? parseInt(bpmRaw, 10) : extractBpm(name);
+    if (!(bpm >= 40 && bpm <= 200)) bpm = null;
+    return {
+      name: name,
+      bpm: bpm,
+      note: extractNote(isObj ? (raw.note || raw.tempo || name) : name),
+      requirement: cleanSessionText(isObj
+        ? (raw.requirement || raw.req || raw.description || raw.note_text || '')
+        : '')
+    };
+  }
+
+  function parseStructured(raw) {
+    var data = raw;
+    if (typeof raw === 'string') {
+      var text = raw.trim();
+      if (text.charAt(0) === '[') {
+        try { data = JSON.parse(text); } catch (e) { data = text; }
+      } else {
+        data = text.split(/[,，\n]/);
+      }
+    }
+    if (data && typeof data === 'object' && !Array.isArray(data)) data = [data];
+    if (!Array.isArray(data)) data = [];
     var seen = Object.create(null);
     var out = [];
-    for (var i = 0; i < list.length; i++) {
-      var text = cleanSessionText(list[i]);
-      if (!text || seen[text]) continue;
-      seen[text] = true;
-      out.push(text);
+    for (var i = 0; i < data.length; i++) {
+      var session = normalizeSession(data[i]);
+      if (!session || seen[session.name]) continue;
+      seen[session.name] = true;
+      out.push(session);
     }
     return out;
+  }
+
+  function parseContentOptions(raw) {
+    return parseStructured(raw).map(function (s) { return s.name; });
   }
 
   function iconPlus() {
@@ -5876,6 +5940,7 @@
     var id = 'pss' + (++seq);
     var onChange = typeof opts.onChange === 'function' ? opts.onChange : function () {};
     var options = [];
+    var sessionMap = Object.create(null);
     var usingFallback = false;
     var value = '';
     var open = false;
@@ -5948,7 +6013,8 @@
       onChange(value, {
         source: source,
         fallback: usingFallback,
-        optionCount: options.length
+        optionCount: options.length,
+        session: sessionMap[value] || null
       });
     }
 
@@ -6104,9 +6170,16 @@
     }
 
     function setOptions(raw) {
-      var parsed = parseContentOptions(raw);
+      var parsed = parseStructured(raw);
       usingFallback = parsed.length === 0;
-      options = usingFallback ? FALLBACK.slice() : parsed;
+      var list = usingFallback
+        ? FALLBACK.map(function (name) { return { name: name, bpm: null, note: '♩', requirement: '' }; })
+        : parsed;
+      sessionMap = Object.create(null);
+      options = list.map(function (session) {
+        sessionMap[session.name] = session;
+        return session.name;
+      });
       render();
     }
 
@@ -6200,6 +6273,8 @@
       setOptions: setOptions,
       setValue: setValue,
       getValue: function () { return value; },
+      getSession: function (name) { return sessionMap[name || value] || null; },
+      getSessions: function () { return options.map(function (name) { return sessionMap[name]; }); },
       open: function () { browseAll = true; active = 0; engaged = false; openPanel(); },
       close: closePanel,
       isOpen: function () { return open; },
@@ -6214,6 +6289,7 @@
   window.PracticeSessionSelector = {
     mount: mount,
     parse: parseContentOptions,
+    parseStructured: parseStructured,
     fallback: FALLBACK.slice()
   };
 })();
@@ -6462,6 +6538,7 @@ async function loadLiveItemsData() {
         name: a.name,
         sub: '档案编号 No.' + a.item_id,
         content_options: a.content_options || '',
+        sessions: Array.isArray(a.sessions) ? a.sessions : [],
         category: a.category_name || ITEM_CATEGORIES[a.category_id] || '',
         last_session_at: a.last_session_at || '',
         metro: '♩=' + (a.last_tempo_bpm || 60),
@@ -6505,6 +6582,8 @@ Object.defineProperty(window, '__czCur', { get: function () { return cur; }, con
 Object.defineProperty(window, 'cur', { get: function () { return cur; }, configurable: true });
 let bpm = 60;
 let noteIdx = 0;
+let currentBeatNote = 'quarter';
+try { currentBeatNote = localStorage.getItem('dsh_beat_note_v1') || 'quarter'; } catch (e) {}
 let content = "";
 let cat = "all";
 let sessionUI = null;
@@ -6577,6 +6656,7 @@ function renderSessionPills() {
     btn.addEventListener('click', () => {
       content = tag;
       if (sessionUI) sessionUI.setValue(tag);
+      applySessionTempo(tag, false);
       syncRunMeta();
       syncStartState();
       updatePillSelection();
@@ -7107,15 +7187,104 @@ function renderFolioModal() {
   });
 }
 
+/* 练习 session 与速度/音符联动。
+   真源：practice_items.content_options 里的结构化 session（name/bpm/note/requirement）。
+   目的：选中 session 时自动把 bpm + 音符带进节拍器、练习记录与各卡片，
+   不再回落 ♪=80。没有 session 或 session 没写 bpm 时才保留科目 metro 兜底。 */
+function beatNoteFromSym(sym) {
+  if (sym === '♪') return 'eighth';
+  if (sym === '♬') return 'sixteenth';
+  return 'quarter';
+}
+function noteIndexFromSym(sym) {
+  if (sym === '♪') return 1;
+  if (sym === '♬') return 2;
+  return 0;
+}
+function symFromBeatNote(note) {
+  if (note === 'eighth') return '♪';
+  if (note === 'sixteenth') return '♬';
+  return '♩';
+}
+function activeSessionList() {
+  if (!cur || !window.PracticeSessionSelector) return [];
+  return PracticeSessionSelector.parseStructured(cur.content_options || '');
+}
+function getSessionByName(name) {
+  const list = activeSessionList();
+  const norm = function (v) {
+    const s = String(v == null ? '' : v).trim();
+    return typeof cleanSessionText === 'function' ? cleanSessionText(s) : s;
+  };
+  /* PracticeSessionSelector 解析时会把名称里的引号等修饰字符清洗掉
+     （吹高音“6” → 吹高音6），这里两边都按同一规则比对，
+     否则从历史草稿/旧数据带进来的原始名称查不到 session，速度就停在上一次的值。 */
+  const key = norm(name);
+  if (!key) return null;
+  return list.find(function (s) { return norm(s.name) === key; }) || null;
+}
+function resolveSessionTempo(name) {
+  const session = getSessionByName(name);
+  if (session && session.bpm >= 40 && session.bpm <= 200) {
+    return { bpm: session.bpm, noteIdx: noteIndexFromSym(session.note), beatNote: beatNoteFromSym(session.note) };
+  }
+  const matchBpm = cur ? (String(cur.metro || '').match(/=(\d+)/) || [0, ''])[1] : '';
+  const fallbackBpm = parseInt(matchBpm, 10);
+  return {
+    bpm: (fallbackBpm >= 40 && fallbackBpm <= 200) ? fallbackBpm : bpm,
+    noteIdx: session ? noteIndexFromSym(session.note) : noteIdx,
+    beatNote: session ? beatNoteFromSym(session.note) : currentBeatNote
+  };
+}
+/* 把速度真源推到节拍器（总线/广播）与 A 卡读数。 */
+function pushTempoToFrames() {
+  try {
+    const bus = window.DizicalPracticeBus;
+    if (bus && typeof bus.tempo === 'function') { bus.tempo(bpm, currentBeatNote); }
+  } catch (e) {}
+  try {
+    if (window.bus && typeof window.bus.broadcast === 'function') {
+      window.bus.broadcast({ bpm: bpm, beatNote: currentBeatNote });
+    }
+  } catch (e) {}
+  try { syncDashCover(); } catch (e) {}
+}
+/* 选中 session 后应用它的 bpm/note；只在 session 明确带 bpm 时覆盖当前速度。
+   fromCustom=true（用户手输内容）时不套 session 速度，避免覆盖用户手动调的速度。 */
+function applySessionTempo(name, fromCustom) {
+  if (fromCustom) return false;
+  const session = getSessionByName(name);
+  if (!session) return false;
+  let changed = false;
+  /* 环节没写 bpm 时回落科目 metro；不能把上一个环节的速度留在节拍器上
+     （萨丽哈：第一项 ♩=54，切到「第1句」仍是 54 就是这里漏的）。 */
+  const target = resolveSessionTempo(name);
+  if (target.bpm >= 40 && target.bpm <= 200 && target.bpm !== bpm) {
+    bpm = target.bpm;
+    changed = true;
+  }
+  /* 比符号而不是 noteIdx：手改音符只写 currentBeatNote，noteIdx 会停在旧值。 */
+  if (target.beatNote !== currentBeatNote) {
+    noteIdx = target.noteIdx;
+    currentBeatNote = target.beatNote;
+    try { localStorage.setItem('dsh_beat_note_v1', currentBeatNote); } catch (e) {}
+    changed = true;
+  }
+  if (changed) pushTempoToFrames();
+  return changed;
+}
+
 function selectItem(id, isArchived) {
   const all = ITEMS.focus.concat(ITEMS.other, ITEMS.archived);
   cur = all.find(i => i.id === id) || cur || all[0];
-  const matchBpm = (cur.metro.match(/=(\d+)/) || [0, '80'])[1];
-  bpm = parseInt(matchBpm, 10) || 80;
   if (!content) {
-    const rawSessions = window.PracticeSessionSelector ? PracticeSessionSelector.parse(cur.content_options || '') : [];
-    content = rawSessions.length ? rawSessions[0] : '';
+    const list = activeSessionList();
+    content = list.length ? list[0].name : '';
   }
+  const tempo = resolveSessionTempo(content);
+  bpm = tempo.bpm;
+  noteIdx = tempo.noteIdx;
+  currentBeatNote = tempo.beatNote;
   if (sessionUI) {
     sessionUI.setOptions(cur.content_options || '');
     sessionUI.setValue(content || '');
@@ -7127,10 +7296,7 @@ function selectItem(id, isArchived) {
     loadSubjectRequirements(cur);
   }
   syncDashCover();
-  try {
-    const bus = window.DizicalPracticeBus;
-    if (bus && typeof bus.tempo === 'function') { bus.tempo(bpm, currentBeatNote); }
-  } catch (e) {}
+  pushTempoToFrames();
   window.selectItem = selectItem;
 }
 
@@ -7679,9 +7845,10 @@ function toggleCardOverlay() {
 /* 露出条上的 session 快捷标签：和票夹弹窗里的 session pill 走同一条链路。 */
 function applyExposedSession(tag) {
   if (!cur || !tag) return;
-  content = tag;
+  const session = getSessionByName(tag);
+  content = session ? session.name : tag;
   selectItem(cur.id, false);
-  if (sessionUI) sessionUI.setValue(tag);
+  if (sessionUI) sessionUI.setValue(content);
   syncRunMeta();
   syncStartState();
   syncRunRailCard();
@@ -8701,6 +8868,7 @@ function closeRecordsDrawer() {
       value: content,
       onChange: function(val, meta) {
         content = val;
+        applySessionTempo(val, !!(meta && meta.source === 'custom'));
         syncRunMeta();
         syncStartState();
         updatePillSelection();
@@ -8766,6 +8934,8 @@ function closeRecordsDrawer() {
     tempoConfirmBtn.addEventListener('click', () => {
       bpm = tempoModalState.bpm;
       currentBeatNote = tempoModalState.beatNote;
+      /* 手改音符也要同步 noteIdx，否则下次选环节时门闩拿旧索引比较。 */
+      noteIdx = noteIndexFromSym(currentBeatNote);
       try { localStorage.setItem('dsh_beat_note_v1', currentBeatNote); } catch(e) {}
       syncRunMeta();
       syncDashCover();
@@ -19126,8 +19296,10 @@ function closeRecordsDrawer() {
     max-height: calc(100% - 20px);
     border-radius: 20px;
     background: var(--dash-surface-soft);
-    /* 卡缘用中性墨色描边：浅色下 --dash-tray-inset 只有 8% 黑，手机视口看不出边界 */
-    border: 1px solid var(--dash-ink-a16, rgba(44, 62, 80, 0.16));
+    /* 描边改由 ::before 统一画在圆角内侧：card 本体不再带 border，
+       避免顶部高光叠加在 1px border 上把圆角描边吃掉（dad 261122 截图 4）。 */
+    border: 0;
+    background-clip: padding-box;
     box-shadow: 0 16px 36px var(--dash-ink-a12), 0 2px 8px var(--dash-ink-a04);
     display: flex;
     flex-direction: column;
@@ -19151,11 +19323,14 @@ function closeRecordsDrawer() {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 19px;
-    /* 去掉金色内圈（dad 261103：卡片不要黄色边缘）；只留 1px 顶部高光 */
-    border: 0;
-    box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255, 255, 255, 0.65));
+    border-radius: inherit;
+    /* 全周 1px 描边：圆角闭合，深浅皮肤都能看到边。不再叠顶部白色高光（会把顶边洗白）。 */
+    border: 1px solid rgba(44, 62, 80, 0.22);
     pointer-events: none;
+    z-index: 5;
+  }
+  :root[data-skin="ink"] .deck-card::before {
+    border-color: rgba(222, 215, 205, 0.28);
   }
 
   /* 空态只有纵向 feed 档收成内容高（手机单卡长页）。
@@ -19176,17 +19351,17 @@ function closeRecordsDrawer() {
   html.cz-fill:not(.cz-feed) .req-card-chassis { height: 100%; }
   html.cz-fill:not(.cz-feed) .req-deck-stage {
     flex: 1 1 auto;
-    height: auto;
+    height: 100%;
     min-height: 0;
     align-items: flex-start;
     /* 卡投影要落在舞台外才不会被矩形裁成一条灰块 */
     overflow: visible;
   }
   html.cz-fill:not(.cz-feed) .deck-card {
-    /* 顶边贴齐仪表盘；下缘留 16px 给投影 */
+    /* 顶边贴齐仪表盘，卡高吃满槽位高度，与 D / T / R 卡等高（底栏已收进卡内） */
     top: 0;
-    height: calc(100% - 16px);
-    max-height: calc(100% - 16px);
+    height: 100%;
+    max-height: 100%;
   }
   /* 空态不再上下居中：标题要贴卡顶，和右侧「今日练习记录」卡同一条标题线 */
   html.cz-fill:not(.cz-feed) .deck-card.is-empty { justify-content: flex-start; }
@@ -19468,16 +19643,50 @@ function closeRecordsDrawer() {
     min-width: 0;
     font-size: 16px;
   }
-  /* 最新一周的第一条提权：只加强调，不新增任何标签/文案 */
-  .qc-item.is-hero {
-    border-left: 3px solid var(--dash-coral);
-    padding-left: 10px;
+
+  /* 练习环节分组：环节名是正文的大标题，速度以胶囊跟在标题后，条目回到普通编号清单。 */
+  .qc-session {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
   }
-  .qc-item.is-hero .qc-idx { display: none; }
-  .qc-item.is-hero .req-p {
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.55;
+  .qc-session + .qc-session {
+    padding-top: 12px;
+    border-top: 1px solid var(--dash-ink-a12);
+  }
+  .qc-session-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .qc-session-name {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: var(--dash-text);
+    overflow-wrap: anywhere;
+  }
+  .qc-session-tempo {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--dash-coral-a25);
+    color: var(--dash-vermilion-text);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .01em;
+  }
+  .qc-session-reqs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
   }
   .req-p {
     font-size: 16px;
@@ -19609,7 +19818,7 @@ function closeRecordsDrawer() {
     .card-seg-chip { font-size: 12px; }
     .card-req-body { gap: 9px; }
     .qc-item .req-p { font-size: 16px; }
-    .qc-item.is-hero .req-p { font-size: 17px; }
+    .qc-session-name { font-size: 16px; }
     .ctn-body { font-size: 15px; }
   }
   @container qcard (max-width: 348px) {
@@ -19621,8 +19830,8 @@ function closeRecordsDrawer() {
     .card-seg-chip { font-size: 11.5px; }
     .card-req-body { gap: 8px; }
     .qc-item .req-p { font-size: 15.5px; }
-    .qc-item.is-hero .req-p { font-size: 16.5px; }
-    .qc-item.is-hero { padding-left: 8px; }
+    .qc-session-name { font-size: 15.5px; }
+    .qc-session-tempo { font-size: 11px; padding: 1px 7px; }
     .qc-idx { width: 16px; height: 16px; line-height: 16px; font-size: 9.5px; border-radius: 5px; }
     .ctn-body { font-size: 14.5px; }
     .card-footer-row { font-size: 11px; }
@@ -19632,14 +19841,24 @@ function closeRecordsDrawer() {
   html.cz-vp440 .deck-btn { font-size: 16px; }
   html.cz-vp440 .qc-idx { font-size: 12px; width: 22px; height: 22px; line-height: 22px; }
 
-  /* ══════ 底部控制器与指示点 ══════ */
+  /* ══════ 卡内底部隔离区：指示点 + 上一张/下一张 ══════
+     移进 .deck-card 内部，margin-top:auto 贴卡底，独立浅底 + 顶部分隔线，
+     与正文形成清晰分区；卡高由卡片统一，不再靠卡外 footer 撑高。 */
   .deck-footer-bar {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* 底栏控制点和上/下一张按钮跟 3D 卡左右对齐：
-       卡宽是 --deck-card-w，卡在舞台里居中，两侧留白就是 (容器宽 - 卡宽) / 2。 */
-    padding: 2px max(4px, calc((100% - var(--deck-card-w)) / 2));
+    flex-wrap: wrap;
+    row-gap: 8px;
+    gap: 12px;
+    margin-top: auto;
+    margin-left: -4px;
+    margin-right: -4px;
+    padding: 10px 10px 8px;
+    border-top: 1px solid var(--dash-ink-a12);
+    border-radius: 12px;
+    background: var(--dash-surface-2);
   }
   .deck-dots {
     display: flex;
@@ -19648,8 +19867,8 @@ function closeRecordsDrawer() {
   }
   .deck-dot {
     position: relative;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--dash-text);
     opacity: 0.85;
@@ -19658,16 +19877,17 @@ function closeRecordsDrawer() {
     transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
   }
   .deck-dot.active {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--dash-coral);
     opacity: 1;
-    box-shadow: 0 0 6px var(--dash-coral-glow);
+    box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.18);
   }
   .deck-nav-btns {
     display: flex;
     gap: 8px;
+    margin-left: auto;
   }
   .deck-btn {
     padding: 10px 18px;
@@ -19777,15 +19997,6 @@ function closeRecordsDrawer() {
       <!-- 3D 卡叠 Deck 舞台 -->
       <section class="req-deck-stage" id="deckStage" aria-label="课后要求 3D 卡叠"></section>
 
-      <!-- 底部控制器与导航 -->
-      <footer class="deck-footer-bar">
-        <div class="deck-dots" id="deckDots" aria-label="卡片切换指示点"></div>
-        <div class="deck-nav-btns">
-          <button class="deck-btn" id="prevBtn" onclick="navPrev()">上一张</button>
-          <button class="deck-btn" id="nextBtn" onclick="navNext()">下一张</button>
-        </div>
-      </footer>
-
     </article>
 
     <!-- 精度自检面板 (含 ?audit=1 输出) -->
@@ -19823,6 +20034,8 @@ function closeRecordsDrawer() {
     let currentIndex = 0;
     const stage = document.getElementById('deckStage');
     let isCurrentlyDragging = false;
+    /* 翻页动画门闩：补间期间屏蔽连点 / 拖拽，避免索引与 DOM 打架 */
+    let isAnimating = false;
     let currentFetchSubject = null;
 
     /* 老师填的曲目名/要求/备注都是自由文本，进 innerHTML 前统一转义，否则 < 与 & 会变成标签。 */
@@ -19835,25 +20048,106 @@ function closeRecordsDrawer() {
         .replace(/'/g, '&#39;');
     }
 
-    /* 正文条目：编号清单。最新一周的第一条提权（字号/字重/左色条），不加新文案。 */
-    function formatRequirementItems(item) {
-      const rawText = item.requirements;
-      let lines = [];
-      if (!rawText) {
-        lines = ['常规进度练习。'];
-      } else if (rawText.includes('\n')) {
-        lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
-      } else if (rawText.includes('。')) {
-        lines = rawText.split('。').map(s => s.trim()).filter(Boolean).map(s => s + '。');
-      } else {
-        lines = [rawText.trim()];
-      }
-      const allowHero = item.is_latest && item.id !== 'empty';
+    /* 把老师要求正文拆成行：换行优先，其次按句号，最后整段一行。 */
+    function splitRequirementLines(rawText) {
+      const text = String(rawText == null ? '' : rawText).trim();
+      if (!text) { return ['常规进度练习。']; }
+      if (text.includes('\n')) { return text.split('\n').map(s => s.trim()).filter(Boolean); }
+      if (text.includes('。')) { return text.split('。').map(s => s.trim()).filter(Boolean).map(s => s + '。'); }
+      return [text];
+    }
+
+    function formatRequirementLines(lines) {
       return lines.map((s, i) => {
-        const hero = allowHero && i === 0;
         const num = String(i + 1).padStart(2, '0');
-        return `<div class="qc-item${hero ? ' is-hero' : ''}"><span class="qc-idx">${num}</span><div class="req-p">${escHtml(s)}</div></div>`;
+        return `<div class="qc-item"><span class="qc-idx">${num}</span><div class="req-p">${escHtml(s)}</div></div>`;
       }).join('');
+    }
+
+    function sessionTempoText(session) {
+      if (!session || !session.bpm) { return ''; }
+      return `${session.note || '♩'}=${session.bpm}`;
+    }
+
+    /* 按练习环节（session）分组。大标题归位到环节名，不再把第一条要求拔成标题。
+       1) 有结构化 requirement 的环节：直接分组；
+       2) 只有环节名/bpm：按环节名在老师要求正文里做一次归属，成功才分组；
+       3) 都没有：退回纯编号清单（老数据）。 */
+    function sessionBlocks(item) {
+      const sessions = (Array.isArray(item.sessions) ? item.sessions : []).filter(s => s && s.name);
+      if (!sessions.length) { return null; }
+      const normReq = (v) => String(v == null ? '' : v).replace(/[\s，。；;、,.:：!！?？\-]/g, '');
+      const structured = sessions.filter(s => String(s.requirement || '').trim());
+      if (structured.length) {
+        const blocks = sessions.map((s) => ({
+          name: s.name,
+          tempo: sessionTempoText(s),
+          lines: String(s.requirement || '').trim() ? splitRequirementLines(s.requirement) : []
+        }));
+        /* 环节自带要求时，老师还会另写一段总体要求（口风、分句）。这段不能消失：
+           只去掉与环节要求逐字相同（归一后）的行，宁可重复也不吞。 */
+        const covered = new Set();
+        blocks.forEach(b => b.lines.forEach(l => covered.add(normReq(l))));
+        const rest = splitRequirementLines(item.requirements).filter(l => {
+          const k = normReq(l);
+          return k && k !== normReq('常规进度练习。') &&
+            k !== normReq('按曲目常规进度练习。') && !covered.has(k);
+        });
+        if (rest.length) { blocks.push({ name: '通用要求', tempo: '', lines: rest }); }
+        return blocks;
+      }
+      const lines = splitRequirementLines(item.requirements);
+      /* 环节名常带「♪=110」这类速度后缀，正文里写的是「主题（田园风味）」，
+         比对前把速度与引号去掉，只比核心名称。 */
+      const core = (v) => String(v == null ? '' : v)
+        .replace(/[♩♪♬]\s*=\s*\d+/g, '')
+        .replace(/[“”"'‘’]/g, '')
+        .replace(/\s+/g, '')
+        .trim();
+      const buckets = sessions.map(s => ({ name: s.name, tempo: sessionTempoText(s), lines: [], matched: false }));
+      const used = new Set();
+      /* 环节名互为前缀时（音阶 / 音阶琶音）先试最长的名字，
+         否则「音阶琶音练4遍」会挂到「音阶」下、前者的标题整块消失。 */
+      const keys = buckets.map((b, i) => ({ i: i, key: core(b.name) }))
+        .filter(k => k.key.length >= 2)
+        .sort((a, b) => b.key.length - a.key.length);
+      lines.forEach((line, li) => {
+        const text = core(line);
+        for (let ki = 0; ki < keys.length; ki++) {
+          if (text.indexOf(keys[ki].key) === -1) { continue; }
+          buckets[keys[ki].i].lines.push(line);
+          buckets[keys[ki].i].matched = true;
+          used.add(li);
+          break;
+        }
+      });
+      /* 只命中 1 个环节（多环节时）说明名称体系对不上，硬分组会把其余要求
+         全塞进「通用要求」，不如老实退回编号清单。 */
+      const matchedCount = buckets.filter(b => b.matched).length;
+      if (!matchedCount || (sessions.length > 1 && matchedCount < 2)) { return null; }
+      const out = buckets.filter(b => b.lines.length);
+      const rest = lines.filter((_, li) => !used.has(li));
+      if (rest.length) { out.push({ name: '通用要求', tempo: '', lines: rest }); }
+      return out;
+    }
+
+    function formatSessionBlocks(blocks) {
+      return blocks.map((block, bi) => {
+        const head = '<div class="qc-session-head">' +
+          `<span class="qc-session-name">${escHtml(block.name)}</span>` +
+          (block.tempo ? `<span class="qc-session-tempo">${escHtml(block.tempo)}</span>` : '') +
+          '</div>';
+        const body = block.lines.length
+          ? `<div class="qc-session-reqs">${formatRequirementLines(block.lines)}</div>`
+          : '';
+        return `<div class="qc-session" data-session-index="${bi}">${head}${body}</div>`;
+      }).join('');
+    }
+
+    function formatRequirementItems(item, blocks) {
+      blocks = blocks || sessionBlocks(item);
+      if (blocks && blocks.length) { return formatSessionBlocks(blocks); }
+      return formatRequirementLines(splitRequirementLines(item.requirements));
     }
 
     /* 老师补充说明：单独的信息层，不再混进正文；长文折叠 + 展开全文 */
@@ -19937,8 +20231,36 @@ function closeRecordsDrawer() {
         return `<span class="card-seg-chip">${label ? `<span class="qc-seg-name">${escHtml(label)}</span> ` : ''}${escHtml(tempo)}</span>`;
       }).join('');
 
-      const paragraphsHtml = formatRequirementItems(item);
+      const blocks = sessionBlocks(item);
+      const paragraphsHtml = formatRequirementItems(item, blocks);
       const noteBoxHtml = formatTeacherNote(item) + formatPracticeSummary(item);
+      /* 环节各自带 BPM 时，顶部再放一个全局「速度」会和环节速度打架；
+         这种情况下速度只在各环节标题上出现。分组没成功（退回编号清单）时
+         环节速度不可见，必须保留顶部速度行，否则卡片彻底丢失速度信息。 */
+      const hasSessionBpm = !!(blocks && blocks.length && blocks.some(b => b.tempo));
+      const metroRowHtml = hasSessionBpm ? '' : `
+          <div class="qc-bay-row">
+            <span class="qc-bay-lbl">速度</span>
+            <span class="qc-bay-val">${escHtml(item.metronome || '按曲目要求')}</span>
+          </div>`;
+      const segRowHtml = segHtml ? `<div class="qc-bay-row qc-bay-seg">
+            <span class="qc-bay-lbl">分段</span>
+            <span class="qc-bay-chips">${segHtml}</span>
+          </div>` : '';
+      /* 分段/环节速度已经写清速度时，全局「速度」行只会重复同一串。 */
+      const bayHtml = (segRowHtml || (!hasSessionBpm && metroRowHtml))
+        ? `<div class="qc-bay">${segRowHtml || metroRowHtml}</div>`
+        : '';
+      /* 翻页控制与指示点移入卡内独立底栏：只挂在当前卡上，避免多张卡重复 id。
+         视觉上是一条和正文分隔的隔离区，卡高由外层统一，不再靠卡外 footer 撑。 */
+      const dockHtml = (index === currentIndex) ? `
+        <div class="deck-footer-bar" data-no-drag>
+          <div class="deck-dots" id="deckDots" aria-label="卡片切换指示点"></div>
+          <div class="deck-nav-btns">
+            <button class="deck-btn" id="prevBtn" type="button" onclick="navPrev()">上一张</button>
+            <button class="deck-btn" id="nextBtn" type="button" onclick="navNext()">下一张</button>
+          </div>
+        </div>` : '';
 
       return `
         <div class="card-head"><h1 class="card-head-title">老师要求</h1></div>
@@ -19950,16 +20272,7 @@ function closeRecordsDrawer() {
           <div class="card-date-badge">${escHtml(item.lesson_date || '')}</div>
         </div>
 
-        <div class="qc-bay">
-          <div class="qc-bay-row">
-            <span class="qc-bay-lbl">速度</span>
-            <span class="qc-bay-val">${escHtml(item.metronome || '按曲目要求')}</span>
-          </div>
-          ${segHtml ? `<div class="qc-bay-row qc-bay-seg">
-            <span class="qc-bay-lbl">分段</span>
-            <span class="qc-bay-chips">${segHtml}</span>
-          </div>` : ''}
-        </div>
+        ${bayHtml}
 
         <div class="card-req-body">
           ${paragraphsHtml}
@@ -19971,6 +20284,7 @@ function closeRecordsDrawer() {
           <div class="card-teacher-sig">No.${escHtml(item.item_id || item.target_item_id || '----')}</div>
           <div>${escHtml(item.stage_duration_text || '0秒')}</div>
         </div>
+        ${dockHtml}
       `;
     }
 
@@ -20032,6 +20346,12 @@ function closeRecordsDrawer() {
                 metronome: targetItem.metronome || '按曲目要求',
                 requirements: targetItem.requirements || '按曲目常规进度练习。',
                 metronome_segments: targetItem.metronome_segments || [],
+                /* 环节结构：老师要求里存了就用；只有最新一张（idx 0）才退回科目预置环节。
+                   后端已把历史记录裁成空 sessions，这里若再回落，1034 的 21 张旧卡
+                   会全部显示今天的环节与速度。 */
+                sessions: (Array.isArray(targetItem.sessions) && targetItem.sessions.length)
+                  ? targetItem.sessions
+                  : (idx === 0 && Array.isArray(itemData.sessions) ? itemData.sessions : []),
                 notes: asg.notes || '',
                 total_seconds_per_stage: asg.total_seconds_per_stage || 0,
                 stage_duration_text: asg.stage_duration_text || '0秒'
@@ -20063,6 +20383,7 @@ function closeRecordsDrawer() {
         metronome: itemData.metro || '按曲目要求',
         requirements: reqText || '该科目本周暂无特定课后要求。请按常规进度完成日常基本功练习。',
         metronome_segments: reqText ? [{ part: '重点练习', note: '♩', bpm: parseInt(bpmMatch[0], 10) }] : [],
+        sessions: Array.isArray(itemData.sessions) ? itemData.sessions : [],
         notes: '',
         total_seconds_per_stage: 0,
         stage_duration_text: '0秒'
@@ -20095,7 +20416,8 @@ function closeRecordsDrawer() {
     function bindFeedFlip(card) {
       let sx = 0, sy = 0, tracking = false;
       card.addEventListener('pointerdown', (e) => {
-        if (e.target.closest && e.target.closest('button, a, .card-req-body, .card-teacher-note')) { tracking = false; return; }
+        if (isAnimating) { tracking = false; return; }
+        if (e.target.closest && e.target.closest('button, a, .card-req-body, .card-teacher-note, .deck-footer-bar')) { tracking = false; return; }
         tracking = true; sx = e.clientX; sy = e.clientY;
       });
       card.addEventListener('pointerup', (e) => {
@@ -20107,6 +20429,16 @@ function closeRecordsDrawer() {
         if (dx < 0) { navNext(); } else { navPrev(); }
       });
       card.addEventListener('pointercancel', () => { tracking = false; });
+    }
+
+    function makeDeckCard(i) {
+      const item = ASSIGNMENTS_DATA[i];
+      const card = document.createElement('div');
+      card.className = 'deck-card';
+      if (item.id === 'empty') { card.classList.add('is-empty'); }
+      card.innerHTML = createCardMarkup(item, i);
+      card.dataset.index = i;
+      return card;
     }
 
     function renderDeck() {
@@ -20142,12 +20474,7 @@ function closeRecordsDrawer() {
 
       // 逆序插入 DOM，确保 index 小的在最上面
       for (let i = Math.min(total - 1, currentIndex + visibleCount - 1); i >= currentIndex; i--) {
-        const item = ASSIGNMENTS_DATA[i];
-        const card = document.createElement('div');
-        card.className = 'deck-card';
-        if (item.id === 'empty') { card.classList.add('is-empty'); }
-        card.innerHTML = createCardMarkup(item, i);
-        card.dataset.index = i;
+        const card = makeDeckCard(i);
 
         const stackOffset = i - currentIndex; // 0 是最顶层卡片
         if (stackOffset === 0) { card.classList.add('is-active'); }
@@ -20187,7 +20514,8 @@ function closeRecordsDrawer() {
       let currentX = 0, currentY = 0;
 
       const onPointerDown = (e) => {
-        if (e.target.closest && e.target.closest('.card-req-body, .card-teacher-note')) return;
+        if (isAnimating) return;
+        if (e.target.closest && e.target.closest('.card-req-body, .card-teacher-note, .deck-footer-bar, button, a')) return;
         isDragging = true;
         isCurrentlyDragging = true;
         startX = e.clientX;
@@ -20245,6 +20573,7 @@ function closeRecordsDrawer() {
             });
           }
           if (window.gsap) {
+            isAnimating = true;
             gsap.to(card, {
               x: dir * 550,
               y: currentY * 0.15 + 20,
@@ -20254,6 +20583,7 @@ function closeRecordsDrawer() {
               ease: "power2.in",
               onComplete: () => {
                 currentIndex++;
+                isAnimating = false;
                 renderDeck();
               }
             });
@@ -20316,26 +20646,90 @@ function closeRecordsDrawer() {
           const dot = document.createElement('div');
           dot.className = 'deck-dot' + (idx === currentIndex ? ' active' : '');
           dot.onclick = () => {
-            currentIndex = idx;
-            renderDeck();
+            navTo(idx);
           };
           dotsContainer.appendChild(dot);
         });
       }
     }
 
-    function navPrev() {
-      if (currentIndex > 0) {
-        currentIndex--;
+    /* 统一翻页过渡：按钮点击 / 指示点 / 拖拽松手都走这里，不再出现「按钮瞬切、只有拖拽有动画」。
+       slideDir：目标索引更大 → 顶层卡向左飞（-1），更小 → 向右飞（+1）。 */
+    function navTo(targetIdx) {
+      if (isAnimating || targetIdx === currentIndex) { return; }
+      if (targetIdx < 0 || targetIdx >= ASSIGNMENTS_DATA.length) { return; }
+      /* 自检模式（?audit=1）读 currentIndex 是同步的，动画会把它拖后一拍。 */
+      if (window.__czNavInstant) {
+        currentIndex = targetIdx;
         renderDeck();
+        return;
+      }
+      /* feed 档只有一张长卡，3D 甩出会把整张卡甩没，直接换内容。 */
+      if (isFeedDeck()) {
+        currentIndex = targetIdx;
+        renderDeck();
+        return;
+      }
+      const slideDir = targetIdx > currentIndex ? -1 : 1;
+      const card = stage.querySelector('.deck-card.is-active');
+      let nextCard = stage.querySelector('.deck-card.is-next-card');
+      if (!window.gsap || !card) {
+        currentIndex = targetIdx;
+        renderDeck();
+        return;
+      }
+      /* 往回翻时渲染层里没有上一张卡，临时补一张垫在当前卡后面，
+         否则「上一张」只剩当前卡飞出、下一周的卡抬起来的错动作。 */
+      if (slideDir === 1 && currentIndex > 0) {
+        const prevIdx = currentIndex - 1;
+        let prevCard = stage.querySelector('.deck-card[data-index="' + prevIdx + '"]');
+        if (!prevCard) {
+          prevCard = makeDeckCard(prevIdx);
+          prevCard.classList.add('is-next-card');
+          prevCard.style.transform = 'translate3d(0px, -10px, -28px) scale(0.965)';
+          prevCard.style.opacity = '0.85';
+          stage.appendChild(prevCard);
+        }
+        nextCard = prevCard;
+      }
+      isAnimating = true;
+      stage.classList.add('is-deck-dragging');
+      /* 拖动期 CSS 会隐藏非 .is-dragging 卡；不加这个类，gsap 的位移和旋转
+         会被 !important 的 opacity:0/visibility:hidden 当场吃掉，按钮翻页看起来还是瞬切。 */
+      card.classList.add('is-dragging');
+      const tl = gsap.timeline({
+        onComplete: () => {
+          isAnimating = false;
+          currentIndex = targetIdx;
+          stage.classList.remove('is-deck-dragging');
+          renderDeck();
+        }
+      });
+      tl.to(card, {
+        x: slideDir * 520,
+        y: 14,
+        rotationZ: slideDir * 14,
+        opacity: 0,
+        duration: 0.24,
+        ease: 'power2.in'
+      }, 0);
+      if (nextCard) {
+        tl.to(nextCard, {
+          y: 0,
+          scale: 1,
+          opacity: 1,
+          duration: 0.24,
+          ease: 'power2.out'
+        }, 0.03);
       }
     }
 
+    function navPrev() {
+      navTo(currentIndex - 1);
+    }
+
     function navNext() {
-      if (currentIndex < ASSIGNMENTS_DATA.length - 1) {
-        currentIndex++;
-        renderDeck();
-      }
+      navTo(currentIndex + 1);
     }
 
     window.addEventListener('keydown', (e) => {
@@ -20368,6 +20762,8 @@ function closeRecordsDrawer() {
     function runContractAudit() {
       const chassis = document.getElementById('reqChassis');
       const fails = [];
+      /* 翻页断言同步读 currentIndex；动画版本会晚一拍，自检期改走瞬时切换。 */
+      window.__czNavInstant = true;
 
       // 若处于空态占位，填充测试 stage 数据以完整执行 deck 拖动/多层/尺寸契约自检
       if (ASSIGNMENTS_DATA.length <= 1 && ASSIGNMENTS_DATA[0].id === 'empty') {
@@ -20557,6 +20953,7 @@ function closeRecordsDrawer() {
         verdictEl.textContent = verdict;
         verdictEl.style.color = (verdict === 'ASSERT_OK') ? 'var(--dash-battery)' : 'var(--dash-coral)';
       }
+      window.__czNavInstant = false;
       return out;
     }
 
@@ -20643,7 +21040,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.53';
+  var DSH_VERSION = 'v3.54';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -21132,6 +21529,9 @@ function closeRecordsDrawer() {
     ':root[data-skin="ink"] .cz-mod { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }',
     '.cz-mod[hidden], .cz-mod.is-off { display: none !important; }',
     '.cz-mod > iframe { display: block; border: 0; border-radius: inherit; overflow: hidden !important; background: transparent; width: 100%; height: 100%; filter: none !important; }',
+    /* Q 卡自带 3D 卡圆角与 1px 描边；宿主再用 24px 圆角裁 iframe 会把卡角连描边一起切掉
+       （窄模块卡宽=模块宽时最明显）。这里只给 Q 摘掉宿主圆角裁剪，轮廓由卡自己负责。 */
+    '.cz-mod[data-mod="Q"] > iframe { border-radius: 0 !important; }',
     '.cz-mod-empty { padding: 10px 2px; font-size: 12px; font-weight: 600; color: var(--text-muted); }',
     '/* 261013 等高：切断「iframe 高 → 100vh/stretch/flex:1 → 票卡更高 → scrollHeight → iframe 再高」。',
     '   票卡只留源样式 min-height 地板，高度=内容自然高，不随 iframe、不随右栏模块涨。 */',
@@ -21267,10 +21667,54 @@ window.__CZ_CSS = [
   '.cz-comp { display: flex; flex-direction: column; gap: 12px; flex: 0 0 auto; min-width: 0; }',
   /* T 卡：横排右展档把 D 与记录合成一张。外壳只有一道圆角和一道边，里面两段去掉各自的框。
      纵向 feed（≤1023）里壳 display:contents，D 与 R 仍是两张原卡。 */
-  '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255,255,255,0.65)); }',
-  '.cz-tcard > .cz-mod { width: 100%; min-height: 0; }',
-  '@media (min-width: 1024px) { .cz-tcard > .cz-mod + .cz-mod { box-shadow: inset 0 1px 0 var(--dash-ink-a12, rgba(44,62,80,0.12)); } .cz-tcard .card-records-mini { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; } }',
-  ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }',
+  /* T 卡：今日时间轴。不再内嵌 D 卡 iframe（与 A 重复），也不重复 R 的编辑明细，
+     只回答「今天的时间花在哪」；明细入口仍打开记录抽屉。 */
+  '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: 0 2px 8px rgba(44,62,80,0.04); }',
+  ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }',
+  '.cz-t-head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 18px 18px 4px; }',
+  '.cz-t-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-date { font-size: 12px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-hero { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 18px 12px; }',
+  '.cz-t-num { font-family: var(--font-mono, ui-monospace, monospace); font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--dash-text, #2C3E50); font-variant-numeric: tabular-nums; }',
+  '.cz-t-unit { font-size: 13px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-goal-text { margin-left: auto; flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  /* 今日时间轴：纵轴是时间，横条高度就是真实时长（不再用 28px 地板拉平）。
+     左侧刻度 + 中段时长条 + 右侧标签，窄档切成紧凑列表。 */
+  '.cz-t-rail { position: relative; flex: 1 1 auto; min-height: 0; margin: 2px 16px 12px; overflow: hidden; }',
+  '.cz-t-axis { position: absolute; left: 34px; top: 4%; bottom: 4%; width: 0; border-left: 1px dashed rgba(44,62,80,0.28); }',
+  ':root[data-skin="ink"] .cz-t-axis { border-left-color: rgba(222,215,205,0.24); }',
+  '.cz-t-tick { position: absolute; left: 0; width: 26px; transform: translateY(-50%); text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-bar { position: absolute; left: 46px; width: calc(46% - 46px); min-height: 2px; border-radius: 4px; background: #DCD6CB; box-shadow: inset 0 0 0 1px rgba(44,62,80,0.10); }',
+  '.cz-t-bar::before { content: ""; position: absolute; left: -12px; top: 0; width: 12px; border-top: 1px solid rgba(44,62,80,0.22); }',
+  ':root[data-skin="ink"] .cz-t-bar::before { border-top-color: rgba(222,215,205,0.26); }',
+  ':root[data-skin="ink"] .cz-t-bar { background: #2F3742; box-shadow: inset 0 0 0 1px rgba(222,215,205,0.14); }',
+  '.cz-t-bar.is-long { background: var(--dash-vermilion-wash, #FBE3DC); box-shadow: inset 0 0 0 1px rgba(255,107,107,0.35); }',
+  ':root[data-skin="ink"] .cz-t-bar.is-long { background: rgba(255,87,34,0.16); box-shadow: inset 0 0 0 1px rgba(255,158,122,0.45); }',
+  '.cz-t-label { position: absolute; left: 50%; right: 44px; transform: translateY(-50%); min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--dash-text, #2C3E50); }',
+  '.cz-t-label-sub { min-width: 0; font-size: 11px; font-weight: 500; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-label-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-dur { position: absolute; right: 0; transform: translateY(-50%); width: 40px; text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-dur.is-long { color: var(--dash-vermilion-text, #E64A19); }',
+  '.cz-t-now { position: absolute; left: 34px; right: 0; border-top: 1px dashed rgba(255,107,107,0.55); pointer-events: none; }',
+  '.cz-t-now-dot { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: #FF6B6B; }',
+  '.cz-t-now-text { position: absolute; right: 0; bottom: 2px; font-size: 10.5px; font-weight: 600; color: var(--dash-vermilion-text, #E64A19); font-variant-numeric: tabular-nums; }',
+  '.cz-t-rail-empty { position: absolute; left: 46px; right: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 3px; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-rail-empty-sub { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.72; }',
+  /* 窄档 / 矮卡：不画轴，切成紧凑列表，时间仍是真实 HH:MM。 */
+  '.cz-t-rows { position: absolute; inset: 0; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }',
+  '.cz-t-lrow { flex: 0 0 auto; display: flex; align-items: baseline; gap: 8px; padding: 4px 2px; border-bottom: 1px solid rgba(44,62,80,0.08); }',
+  ':root[data-skin="ink"] .cz-t-lrow { border-bottom-color: rgba(222,215,205,0.12); }',
+  '.cz-t-ltime { flex: 0 0 auto; width: 38px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-lmain { min-width: 0; flex: 1 1 auto; display: flex; align-items: baseline; gap: 6px; }',
+  '.cz-t-lsub { font-size: 12.5px; font-weight: 700; color: var(--dash-text, #2C3E50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-lses { min-width: 0; font-size: 11px; font-weight: 500; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-ldur { flex: 0 0 auto; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-ldur.is-long { color: var(--dash-vermilion-text, #E64A19); }',
+  '.cz-t-foot { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); }',
+  '.cz-t-meta { font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-open { border: 1px solid var(--dash-ink-a16, rgba(44,62,80,0.16)); background: transparent; color: var(--dash-text, #2C3E50); border-radius: 999px; padding: 10px 14px; min-height: 44px; font-size: 13px; font-weight: 700; cursor: pointer; }',
+  '.cz-t-open:focus-visible { outline: 2px solid var(--dash-vermilion, #FF6B6B); outline-offset: 2px; }',
+  '.cz-t-open:hover { background: var(--dash-surface-2, #ECE8E1); }',
   '.cz-node { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; position: relative; }',
   '.cz-node.cz-brow { flex-direction: row; }',
   '@media (max-width: 1023px) { .cz-brow { flex-direction: column !important; } }',
@@ -21425,7 +21869,9 @@ window.__CZ_CSS = [
   /* S22：票夹窄条形态（未计时）在纵向视口也必须压成 52px 横条 */
   '  #practiceStage.stage-bar #pkLeftCol { width: 100% !important; max-width: 100% !important; height: 52px !important; min-height: 52px !important; max-height: 52px !important; flex: 0 0 auto !important; align-self: stretch !important; overflow: visible !important; }',
   '  .cz-mod-col { display: flex !important; flex-direction: column !important; gap: 12px !important; width: 100% !important; }',
-  '  .cz-combo, .cz-astack, .cz-comp, .cz-brow, .cz-tcard { display: contents !important; }',
+  '  .cz-combo, .cz-astack, .cz-comp, .cz-brow { display: contents !important; }',
+  /* T 卡在窄档是一张独立的原生时间轴卡，不再拆成 D/R 两段 */
+  '  .cz-tcard { display: flex !important; width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 300px !important; overflow: visible !important; }',
   '  .cz-mod { width: 100% !important; max-width: 100% !important; }',
   '  .cz-mod { align-self: flex-start !important; flex: 0 0 auto !important; }',
   '  .cz-mod[data-mod="A"] { order: 1; }',
@@ -21434,8 +21880,7 @@ window.__CZ_CSS = [
   '  .cz-mod[data-mod="D"] { order: 4; }',
   '  .cz-mod[data-mod="R"] { order: 5; }',
   '  .cz-mod[data-mod="Q"] { order: 6; }',
-  '  .cz-tcard > .cz-mod[data-mod="D"] { order: 7; }',
-  '  .cz-tcard > .cz-mod[data-mod="R"] { order: 8; }',
+  '  .cz-tcard { order: 7; }',
   '  .cz-mod > iframe { width: 100% !important; }',
   '  .cz-mod { height: auto !important; max-height: none !important; overflow: visible !important; }',
   '  .card-records-mini { height: auto !important; max-height: none !important; overflow: visible !important; width: 100% !important; }',
@@ -21602,28 +22047,280 @@ window.__CZ_CSS = [
       if (overlay.parentElement !== home) { home.appendChild(overlay); }
     }
   }
-  /* T 卡：横排把今日时长(D)和今日记录拼进同一张壳。D、R 的模板一个字不改，
-     只在壳里去掉它们各自的外框。纵向 feed 由 CSS 把壳拆成两张原卡。 */
+  /* T 卡：今日时间轴（原生 DOM）。只回答「今天的时间花在哪」：
+     头部总时长，中部刻度轨按真实开始时间/时长摆放每一段（矮卡自动收窗），底部打开记录明细。
+     不再内嵌 D 卡 iframe（与 A 的今日累计重复），也不重画 R 的编辑明细。 */
   function buildTCard(cd, w) {
     var box = cd.createElement('div');
     box.className = 'cz-node cz-tcard';
     box.dataset.mod = 'T';
     box.dataset.czW = String(w);
     box.style.width = w + 'px';
-    var dWrap = cd.createElement('div');
-    dWrap.className = 'cz-node cz-mod';
-    dWrap.dataset.mod = 'D';
-    dWrap.style.width = '100%';
-    dWrap.appendChild(mkFrame(cd, MOD_BY_KEY['D']));
-    var rWrap = cd.createElement('div');
-    rWrap.className = 'cz-node cz-mod';
-    rWrap.dataset.mod = 'R';
-    rWrap.dataset.mini = '1';
-    rWrap.style.width = '100%';
-    rWrap.appendChild(buildMiniCard(cd, w, 160));
-    box.appendChild(dWrap);
-    box.appendChild(rWrap);
+    box.innerHTML =
+      '<div class="cz-t-head"><span class="cz-t-title">今日时间轴</span><span class="cz-t-date" data-t-date></span></div>' +
+      '<div class="cz-t-hero"><span class="cz-t-num" data-t-num>0</span><span class="cz-t-unit" data-t-unit>分</span>' +
+        '<span class="cz-t-goal-text" data-t-goal>0 段</span></div>' +
+      '<div class="cz-t-rail" data-t-rail></div>' +
+      '<div class="cz-t-foot"><span class="cz-t-meta" data-t-meta></span>' +
+        '<button type="button" class="cz-t-open" data-t-open>查看记录明细</button></div>';
+    box.querySelector('[data-t-open]').addEventListener('click', function () { openRecordsPop(); });
+    refreshTCard(cd, box);
+    /* 首建可能发生在隐藏标签页（轨高 0）：下一帧按真实高度再排一次。 */
+    if (box.querySelector('[data-t-rail]').clientHeight <= 24) {
+      var raf = (cd.defaultView || window).requestAnimationFrame;
+      if (raf) { raf(function () { refreshTCard(cd, box); }); }
+    }
     return box;
+  }
+  function tEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function tClockMin(t) {
+    var m = String(t || '').match(/^(\d{1,2}):(\d{2})/);
+    return m ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : null;
+  }
+  function tDurMin(d) {
+    var s = String(d || '');
+    var h = s.match(/(\d+)\s*(?:小时|时)/);
+    var mi = s.match(/(\d+)\s*分/);
+    var se = s.match(/(\d+)\s*秒/);
+    var total = (h ? parseInt(h[1], 10) * 60 : 0) +
+      (mi ? parseInt(mi[1], 10) : 0) +
+      (se ? parseInt(se[1], 10) / 60 : 0);
+    return total > 0 ? total : 0;
+  }
+  function tDurShort(min) {
+    /* 先按原值判秒：45 秒 = 0.75 分，不能先四舍五入成 1 分。 */
+    if (min < 1) { return Math.max(0, Math.round(min * 60)) + '秒'; }
+    var m = Math.round(min);
+    if (m < 60) { return m + '分'; }
+    var hh = Math.floor(m / 60), rest = m % 60;
+    return hh + '时' + (rest ? rest + '分' : '');
+  }
+  /* 刻度窗口：高卡固定 06:00–22:00（空态也满高）；矮卡按当天真实时段收窗，
+     否则 16 小时压进 130px 时块和刻度都读不出来。上下各留 4% 防首尾标签被裁。 */
+  var T_RAIL_TOP = 4;
+  var T_RAIL_BOT = 96;
+  function tRailWindow(items) {
+    /* 空态才用 06–22 满刻度；有数据就让数据占满轨道，
+       否则 16 小时压进 500px 时 45 分与 8 分只差 20px，时长读不出来。 */
+    if (!items.length) { return { start: 6 * 60, end: 22 * 60 }; }
+    var lo = Infinity, hi = -Infinity;
+    items.forEach(function (it) {
+      lo = Math.min(lo, it.start);
+      hi = Math.max(hi, it.start + Math.max(it.dur, 10));
+    });
+    var HALF = 30, MIN_SPAN = 240;
+    var start = Math.max(0, Math.floor((lo - HALF) / HALF) * HALF);
+    var end = Math.min(24 * 60, Math.ceil((hi + HALF) / HALF) * HALF);
+    /* 最小 4 小时，优先向前留白；22:00 之后的练习不能把 end 顶过 24:00。 */
+    if (end - start < MIN_SPAN) {
+      start = Math.max(0, Math.floor(start - (MIN_SPAN - (end - start)) / 2));
+      end = Math.min(24 * 60, start + MIN_SPAN);
+      start = Math.max(0, end - MIN_SPAN);
+    }
+    return { start: start, end: end };
+  }
+  function tRailPct(min, win) {
+    var v = Math.min(Math.max(min, win.start), win.end);
+    return T_RAIL_TOP + (v - win.start) / (win.end - win.start) * (T_RAIL_BOT - T_RAIL_TOP);
+  }
+  /* 刻度密度跟轨道高度走：每 30px 至少一格，避免标签叠字。 */
+  function tRailStep(win, H) {
+    var spanH = (win.end - win.start) / 60;
+    var slots = Math.floor(H * 0.92 / 30);
+    if (slots < 2) { return Math.max(1, Math.ceil(spanH / 2)); }
+    return Math.max(1, Math.ceil(spanH / slots));
+  }
+  /* 用同样的口径解析「1 小时 25 分」「25分」「45秒」，避免只取到最后一段数字。 */
+  function tSecFromText(txt) {
+    var s = String(txt || '');
+    var h = s.match(/(\d+)\s*(?:小时|时)/);
+    var mi = s.match(/(\d+)\s*分/);
+    var se = s.match(/(\d+)\s*秒/);
+    return (h ? parseInt(h[1], 10) * 3600 : 0) +
+      (mi ? parseInt(mi[1], 10) * 60 : 0) +
+      (se ? parseInt(se[1], 10) : 0);
+  }
+  /* 轴线 + 整点刻度 + 「现在」游标；空态与有数据共用。 */
+  function tRailAxis(win, H) {
+    var step = tRailStep(win, H);
+    var html = ['<div class="cz-t-axis"></div>'];
+    for (var h = Math.ceil(win.start / 60); h * 60 <= win.end; h += step) {
+      html.push('<span class="cz-t-tick" aria-hidden="true" style="top:' +
+        tRailPct(h * 60, win).toFixed(2) + '%">' + (h % 24 < 10 ? '0' : '') + (h % 24) + '</span>');
+    }
+    var cp = cstParts();
+    var nowMin = cp.h * 60 + cp.min;
+    if (nowMin >= win.start && nowMin <= win.end) {
+      html.push('<div class="cz-t-now" aria-hidden="true" style="top:' + tRailPct(nowMin, win).toFixed(2) + '%">' +
+        '<span class="cz-t-now-dot"></span><span class="cz-t-now-text">现在 ' +
+        (cp.h < 10 ? '0' : '') + cp.h + ':' + (cp.min < 10 ? '0' : '') + cp.min + '</span></div>');
+    }
+    return html.join('');
+  }
+  function renderTRail(box, rows) {
+    var rail = box.querySelector('[data-t-rail]');
+    if (!rail) { return; }
+    var H = rail.clientHeight;
+    var W = rail.clientWidth;
+    if (!(H > 24)) { H = 180; }
+    /* 没有 started_at 的记录不参与刻度（真实库有 22 条）：
+       拿 06:00 或上一段末尾顶上等于凭空造时间。列表形态里仍以「—」出现。 */
+    var items = [], untimed = [];
+    rows.forEach(function (r) {
+      var rec = {
+        start: tClockMin(r.time), dur: tDurMin(r.dur),
+        subject: r.subject || '练习', session: r.session, time: r.time
+      };
+      if (rec.start == null) { untimed.push(rec); } else { items.push(rec); }
+    });
+    items.sort(function (a, b) { return a.start - b.start; });
+    var win = tRailWindow(items);
+    var span = win.end - win.start;
+    var compact = H < 200 || W < 240;
+    if (!items.length && !untimed.length) {
+      rail.innerHTML = compact ? tRailEmpty() : (tRailAxis(win, H) + tRailEmpty());
+      return;
+    }
+    /* 窄卡、矮轨，或全部记录都没开始时间：不假装是图表，切紧凑列表。 */
+    if (compact || !items.length) {
+      rail.innerHTML = tRailList(items.concat(untimed));
+      return;
+    }
+    var html = tRailAxis(win, H);
+    /* 块高 = 真实时长 × 每分像素，唯一的地板 2px 只保证细线可见；
+       位置永远只由开始时间决定。地板不能再参与「下推」：抬高的底边会把
+       后面每一段依次往下挤，11 段能累积漂移 38px。 */
+    var usable = (T_RAIL_BOT - T_RAIL_TOP) / 100 * H;
+    items.forEach(function (it) {
+      it.top = tRailPct(it.start, win) / 100 * H;
+      it.height = Math.max(2, Math.max(it.dur, 0) / span * usable);
+    });
+    var longest = -1, longestDur = 0;
+    items.forEach(function (it, i) {
+      if (it.dur > longestDur) { longestDur = it.dur; longest = i; }
+    });
+    var bars = items.map(function (r, i) {
+      var label = [r.subject, r.session].filter(Boolean).join(' · ');
+      var tip = label + ' · ' + (r.time || '时间未知') + ' · ' + (r.dur > 0 ? tDurShort(r.dur) : '时长未知');
+      var isLong = i === longest && longestDur >= 5;
+      var cy = r.top + r.height / 2;
+      var ly = Math.min(Math.max(cy, 9), H - 8);
+      return {
+        r: r, isLong: isLong, cy: cy, ly: ly, tip: tip
+      };
+    });
+    /* 标签防叠：先按块中心放，撞上了往下挪；挪超过 18px 就只留时长，交给 title。 */
+    var lastLabelY = -999;
+    var parts = [];
+    bars.forEach(function (b) {
+      var moved = b.ly - b.cy;
+      if (b.ly - lastLabelY < 15) {
+        b.ly = lastLabelY + 15;
+        moved = b.ly - b.cy;
+      }
+      var showLabel = moved <= 18 && b.ly <= H - 6;
+      if (showLabel) { lastLabelY = b.ly; }
+      var durTxt = b.r.dur > 0 ? tDurShort(b.r.dur) : '—';
+      parts.push('<div class="cz-t-bar' + (b.isLong ? ' is-long' : '') + '" style="top:' +
+        b.r.top.toFixed(1) + 'px;height:' + b.r.height.toFixed(1) + 'px" title="' + tEsc(b.tip) + '"></div>');
+      if (showLabel) {
+        parts.push('<div class="cz-t-label" style="top:' + b.ly.toFixed(1) + 'px">' +
+          '<span class="cz-t-label-main">' + tEsc(b.r.subject) + '</span>' +
+          (b.r.session ? '<span class="cz-t-label-sub">' + tEsc(b.r.session) + '</span>' : '') +
+        '</div>');
+      }
+      parts.push('<span class="cz-t-dur' + (b.isLong ? ' is-long' : '') + '" style="top:' +
+        Math.min(b.ly, H - 8).toFixed(1) + 'px">' + tEsc(durTxt) + '</span>');
+    });
+    rail.innerHTML = html + parts.join('');
+  }
+  function tRailList(items) {
+    var longest = -1, longestDur = 0;
+    items.forEach(function (it, i) {
+      if (it.dur > longestDur) { longestDur = it.dur; longest = i; }
+    });
+    var rows = items.map(function (r, i) {
+      var label = [r.subject, r.session].filter(Boolean).join(' · ');
+      var tip = label + ' · ' + (r.time || '时间未知') + ' · ' + (r.dur > 0 ? tDurShort(r.dur) : '时长未知');
+      return '<div class="cz-t-lrow" title="' + tEsc(tip) + '">' +
+        '<span class="cz-t-ltime">' + (r.time ? tEsc(r.time) : '—') + '</span>' +
+        '<span class="cz-t-lmain"><span class="cz-t-lsub">' + tEsc(r.subject) + '</span>' +
+          (r.session ? '<span class="cz-t-lses">' + tEsc(r.session) + '</span>' : '') + '</span>' +
+        '<span class="cz-t-ldur' + (i === longest && longestDur >= 5 ? ' is-long' : '') + '">' +
+          tEsc(r.dur > 0 ? tDurShort(r.dur) : '—') + '</span></div>';
+    });
+    return '<div class="cz-t-rows">' + rows.join('') + '</div>';
+  }
+  function tRailEmpty() {
+    return '<div class="cz-t-rail-empty">今天还没有练习' +
+      '<span class="cz-t-rail-empty-sub">从常练科目开始</span></div>';
+  }
+  /* 从票夹抽屉的真节点反读今日每段与总量，避免另起一份数据源。 */
+  function refreshTCard(cd, box) {
+    if (!cd || !box) { return; }
+    var pill = cd.getElementById('pkRecords');
+    var pillText = pill ? pill.textContent.replace(/\s+/g, ' ') : '';
+    var mSes = pillText.match(/(\d+)\s*次/);
+    var sessCount = mSes ? parseInt(mSes[1], 10) : 0;
+    /* 今日总量以 todayTotal 的秒级口径为准（<60s 显示「N秒」），
+       pkRecords 只有整分，会把 45 秒显示成 0 分。 */
+    /* todayTotal 挂在 A 卡 iframe 内，不在画布本体。 */
+    var aFrame = cd.querySelector('iframe[data-mod="A"]');
+    var aDoc = null;
+    try { aDoc = aFrame ? aFrame.contentDocument : null; } catch (e) { aDoc = null; }
+    var totalEl = aDoc ? aDoc.getElementById('todayTotal') : cd.getElementById('todayTotal');
+    var totalText = totalEl ? totalEl.textContent : '';
+    /* 票卡胶囊写的是「练习记录 1 小时 25 分 · 4次」，只抓第一段数字会漏掉小时。 */
+    var todaySec = tSecFromText(totalText || pillText);
+    var rows = [].slice.call(cd.querySelectorAll('.pk-drawer-item')).map(function (el) {
+      var t = el.querySelector('.pk-drawer-item-time');
+      var d = el.querySelector('.pk-drawer-item-dur');
+      var s = el.querySelector('.pk-drawer-item-subject');
+      var n = el.querySelector('.pk-drawer-item-session');
+      return {
+        time: t ? t.textContent.trim() : '',
+        dur: d ? d.textContent.trim() : '',
+        subject: s ? s.textContent.trim() : '',
+        session: n ? n.textContent.trim() : ''
+      };
+    });
+    if (!sessCount && rows.length) { sessCount = rows.length; }
+
+    /* 日期跟数据同口径走东八区：设备时区不在 +8 时，卡头日期会和练习记录差一天。 */
+    var todayParts = cstDateStr(0).split('-');
+    var tMon = parseInt(todayParts[1], 10), tDay = parseInt(todayParts[2], 10);
+    var week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][
+      new Date(Date.UTC(parseInt(todayParts[0], 10), tMon - 1, tDay)).getUTCDay()
+    ];
+    var dateEl = box.querySelector('[data-t-date]');
+    if (dateEl) { dateEl.textContent = tMon + '月' + tDay + '日 ' + week; }
+
+    var numEl = box.querySelector('[data-t-num]');
+    var unitEl = box.querySelector('[data-t-unit]');
+    var showSec = todaySec > 0 && todaySec < 60;
+    if (numEl) { numEl.textContent = String(showSec ? todaySec : Math.floor(todaySec / 60)); }
+    if (unitEl) { unitEl.textContent = showSec ? '秒' : '分'; }
+    var goalEl = box.querySelector('[data-t-goal]');
+    /* 不再编「目标 N 分」：票卡没有可靠的目标节点，目标数字会失真。
+       这里只报真实段数，时间分布交给下面的刻度轨。 */
+    if (goalEl) { goalEl.textContent = (sessCount || 0) + ' 段'; }
+    var latestMin = -1, latestTime = '';
+    rows.forEach(function (r) {
+      var m = tClockMin(r.time);
+      if (m != null && m >= latestMin) { latestMin = m; latestTime = r.time; }
+    });
+    var metaEl = box.querySelector('[data-t-meta]');
+    if (metaEl) { metaEl.textContent = latestTime ? ('最近 ' + latestTime) : ''; }
+    /* 抽屉是倒序（最新在上），时间轴按时间正序铺，并把最后一段放在最下。 */
+    rows.sort(function (a, b) {
+      var am = tClockMin(a.time), bm = tClockMin(b.time);
+      return (am == null ? 1e9 : am) - (bm == null ? 1e9 : bm);
+    });
+    renderTRail(box, rows);
   }
   function buildCombo(force) {
     var cd = canvasDoc();
@@ -22288,7 +22985,7 @@ window.__CZ_CSS = [
       '<div class="mini-divider"></div>' +
       '<div class="mini-foot-row">' +
         '<span class="mini-sync-tip">今日练习摘要</span>' +
-        '<button type="button" class="pill-popout-btn" id="openRecordsPopoutBtn">查看记录明细 ↗</button>' +
+        '<button type="button" class="pill-popout-btn" id="openRecordsPopoutBtn">查看记录明细</button>' +
       '</div>';
 
     btn.addEventListener('click', function () { openRecordsPop(); });
@@ -22847,6 +23544,9 @@ window.__CZ_CSS = [
        以前直接读 tb.h 会让 applyComboSizes 抛错，syncAll 中断在第二次 syncCanvasHeight 之前，
        画布高度停在数据加载前的旧值，老师要求卡下半段被裁（dad 261108 反馈）。 */
     var H = (tb && tb.h >= 40) ? tb.h : DESIGN_H;
+    [].slice.call(col.querySelectorAll('.cz-tcard')).forEach(function (tcard) {
+      try { refreshTCard(cd, tcard); } catch (e) {}
+    });
     return { combo: state.combo, H: H, wide: false, natural: true, bands: bands, feed: heights, ticketTop: (tb && tb.top) ? +tb.top.toFixed(1) : null, ticketW: (tb && tb.w) || null };
   }
   /* ── B: 组合尺寸。H = 票卡自然高。不读 scrollHeight，不把模块高回灌 iframe。 ── */
@@ -23128,13 +23828,10 @@ window.__CZ_CSS = [
     }
     var split3 = null;
     [].slice.call(col.querySelectorAll(':scope > .cz-tcard')).forEach(function (tcard) {
-      /* 一张卡，中间不留 12px 缝。上段时长 220，余量给记录。 */
-      var dH = 220;
-      var rH = Math.max(160, H - dH);
-      split3 = { top: dH, bot: rH };
+      /* 原生时间轴单卡：整卡锁到 H；刻度轨按锁定后的真实高度重排块位置。 */
+      split3 = { top: H, bot: 0 };
       lockCol(tcard, H);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="D"]'), dH);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="R"]'), rH);
+      try { refreshTCard(cd, tcard); } catch (e) {}
     });
     mountSlot();
     syncSlotMode();
@@ -24661,12 +25358,8 @@ window.__CZ_CSS = [
     if (!cd) { return; }
     var wide = cd.documentElement.clientWidth >= NARROW;
     [].slice.call(cd.querySelectorAll('.cz-rail .cz-tcard, .cz-mod-col > .cz-tcard')).forEach(function (tcard) {
-      if (!wide) { clearLock(tcard); return; }
-      var dH = 220;
-      var rH = Math.max(180, (H > 40 ? H : DESIGN_H) - dH);
-      lockCol(tcard, dH + rH);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="D"]'), dH);
-      sizeBox(tcard.querySelector(':scope > .cz-mod[data-mod="R"]'), rH);
+      if (!wide) { clearLock(tcard); } else { lockCol(tcard, H > 40 ? H : DESIGN_H); }
+      try { refreshTCard(cd, tcard); } catch (e) {}
     });
   }
   function syncAll() {
@@ -25714,11 +26407,23 @@ window.__CZ_CSS = [
      · 不用 /api/today-stats —— 它的服务端日期可能是 UTC，会串到昨天。
      · ?audit=1 的自检页保留演示数据，契约断言不受真实数据影响。 ── */
   var dayPayload = null;
+  /* 日期与时刻统一按东八区取：记录时间是服务端 CST 字符串，
+     设备时区不是 +8 时，本地钟会和记录差一天/十几小时。 */
+  function cstParts(date) {
+    var fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    var p = {};
+    fmt.formatToParts(date || new Date()).forEach(function (x) {
+      if (x.type !== 'literal') { p[x.type] = x.value; }
+    });
+    return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24, min: +p.minute };
+  }
   function cstDateStr(offsetDays) {
-    var d = new Date();
-    d.setDate(d.getDate() + (offsetDays || 0));
+    var p = cstParts(new Date(Date.now() + (offsetDays || 0) * 86400000));
     var pad = function (n) { return String(n).padStart(2, '0'); };
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    return p.y + '-' + pad(p.m) + '-' + pad(p.d);
   }
   function applyDayToModules() {
     var cd = canvasDoc();
@@ -25761,6 +26466,10 @@ window.__CZ_CSS = [
         var fresh = buildMiniCard(cd, w, h);
         if (old.parentNode) { old.parentNode.replaceChild(fresh, old); }
       } catch (e) {}
+    });
+    /* T 卡（今日时间轴）同样从抽屉真节点反读，抽屉刚重写就同步重绘一次。 */
+    [].slice.call(cd.querySelectorAll('.cz-tcard')).forEach(function (tcard) {
+      try { refreshTCard(cd, tcard); } catch (e) {}
     });
   }
   function reloadDay() {
@@ -26850,7 +27559,7 @@ window.__CZ_CSS = [
   }
   window.__czIsBusyProxy = function () { try { var w = canvasWin(); return !!(w && w.__czIsPracticeBusy && w.__czIsPracticeBusy()); } catch (e) { return false; } };
   window.__czRequestFinishProxy = function (done) { try { var w = canvasWin(); if (w && typeof w.__czRequestFinishFromCardA === 'function') { return w.__czRequestFinishFromCardA({ done: !!done, seconds: 0 }); } } catch (e) {} return false; };
-  window.__cz = { isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, relayout: relayoutAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
+  window.__cz = { refreshTCardNow: function () { var cd = canvasDoc(); var t = cd && cd.querySelector('.cz-tcard'); if (t) { refreshTCard(cd, t); return true; } return false; }, isBusy: window.__czIsBusyProxy, requestFinish: window.__czRequestFinishProxy, abandon: function () { try { var w = canvasWin(); if (w && typeof w.exitRun === 'function') { w.exitRun(); return true; } } catch (e) {} return false; }, clearSelection: function () { var cd = canvasDoc(), w = canvasWin(); if (w && typeof w.clearTicketSelection === 'function') { w.clearTicketSelection(); } }, state: state, applyLayoutMode: applyLayoutMode, measure: measureCombo, runAudit: runAudit, setMods: setMods, setVp: setVp, setSkin: setSkin, canvasDoc: canvasDoc, syncAll: syncAll, relayout: relayoutAll, remeasureNarrow: scheduleNarrowRemeasure, setCanvasStage: setCanvasStage, setCardAMode: setCardAMode, togglePractice: togglePractice, openRecordsPop: openRecordsPop, closeRecordsPop: closeRecordsPop, syncTopBarFromCard: syncTopBarFromCard, cardAMode: cardAMode, canvasRunning: canvasRunning, syncRailBudget: syncRailBudget, bus: bus, setCombo: setCombo, buildCombo: buildCombo, applyComboSizes: applyComboSizes, comboEl: comboEl, syncSlotMode: syncSlotMode, slotMode: slotMode, mountSlot: mountSlot, popEl: popEl, refreshPopSummary: refreshPopSummary, runR2Pass: runR2Pass, openCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.openCardOverlay === 'function') { cd.defaultView.openCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s) { var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); o.style.display = 'flex'; o.style.pointerEvents = 'auto'; var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0.9'; if (b) b.style.opacity = '0'; void p.offsetWidth; p.style.transition = 'transform 320ms cubic-bezier(0.16, 0.84, 0.24, 1), opacity 260ms ease'; if (b) b.style.transition = 'opacity 280ms ease'; p.style.transform = 'translate(0px, 0px) scale(1, 1)'; p.style.opacity = '1'; if (b) b.style.opacity = '1'; o.classList.add('is-open'); setTimeout(function () { p.style.transition = ''; p.style.transformOrigin = ''; }, 350); } else if (o) { o.style.display = 'flex'; void o.offsetWidth; o.classList.add('is-open'); } } }, closeCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.closeCardOverlay === 'function') { cd.defaultView.closeCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); var s = cd.getElementById('czTicketStage'); if (o && s && !o.classList.contains('is-closing')) { o.classList.add('is-closing'); o.style.pointerEvents = 'none'; var p = o.querySelector('.cz-card-popup'); var b = o.querySelector('.cz-card-overlay-backdrop'); var r1 = s.getBoundingClientRect(); var r2 = p.getBoundingClientRect(); var dx = r1.left - r2.left, dy = r1.top - r2.top; var sx = Math.max(0.08, r1.width / (r2.width || 1)), sy = Math.max(0.08, r1.height / (r2.height || 1)); p.style.transformOrigin = 'top left'; p.style.transition = 'transform 260ms cubic-bezier(0.55, 0, 0.86, 0.35), opacity 220ms ease'; if (b) b.style.transition = 'opacity 260ms ease'; p.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ')'; p.style.opacity = '0'; if (b) b.style.opacity = '0'; o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; o.style.pointerEvents = ''; o.classList.remove('is-closing'); p.style.transition = ''; p.style.transform = ''; p.style.transformOrigin = ''; p.style.opacity = ''; if (b) { b.style.transition = ''; b.style.opacity = ''; } }, 280); } else if (o) { o.classList.remove('is-open'); setTimeout(function () { o.style.display = 'none'; }, 250); } } }, toggleCardOverlay: function () { var cd = canvasDoc(); if (cd && cd.defaultView && typeof cd.defaultView.toggleCardOverlay === 'function') { cd.defaultView.toggleCardOverlay(); } else if (cd) { var o = cd.getElementById('czCardOverlay'); if (o && o.classList.contains('is-open')) { window.__cz.closeCardOverlay(); } else { window.__cz.openCardOverlay(); } } }, busApi: function () { var cd = canvasDoc(); return cd && cd.defaultView ? cd.defaultView.DizicalPracticeBus : null; } };
 })();
 </script>
 </body>

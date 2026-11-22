@@ -14,6 +14,131 @@ from .models import LessonStatus
 from .kid_app.duration_fmt import pick_seconds
 
 
+_SESSION_TEMPO_RE = re.compile(r"[♩♪♬]\s*[=＝]\s*(\d{2,3})")
+# 隐式速度只认明确语境（速度80 / 80 bpm / 每分钟80拍 / 速度＝88）：
+# 「中音54」「第48条」「[1001]」「第100拍」是音名/编号/拍数，不能当 BPM，
+# 所以不再接受裸「NN拍」。
+_SESSION_SPEED_RE = re.compile(
+    r"(?:速度|中速|慢速|快速|中快|快板|中板|慢板|行板|急板|广板|柔板|bpm|BPM)\s*[=:：＝]?\s*(\d{2,3})"
+    r"|(\d{2,3})\s*(?:bpm|BPM|拍/分)"
+    r"|每分钟\s*(\d{2,3})\s*拍"
+)
+_SESSION_NOTE_RE = re.compile(r"[♩♪♬]")
+_ALLOWED_SESSION_NOTES = ("♩", "♪", "♬")
+_SESSION_BPM_MIN = 40
+_SESSION_BPM_MAX = 200
+
+
+def _clean_session_text(value: object) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def extract_session_bpm(value: object) -> Optional[int]:
+    """从自由文本里取 40-200 的 BPM；取不到返回 None。
+
+    先认「♪=90」这种显式速度，避免「80乐段 ♪=90」被名称里的 80 抢走；
+    没有显式速度时只认「速度80 / 80 bpm / 每分钟80拍」这类速度语境。
+    老数据里 11 条隐式速度有 10 条是「速度NN」，唯一的裸数字是
+    「低音34；低音54」这种音名，取它会把节拍器打到 ♩=54。
+    """
+    text = str(value or "")
+    for match in _SESSION_TEMPO_RE.finditer(text):
+        bpm = int(match.group(1))
+        if _SESSION_BPM_MIN <= bpm <= _SESSION_BPM_MAX:
+            return bpm
+    for match in _SESSION_SPEED_RE.finditer(text):
+        bpm = int(next(group for group in match.groups() if group))
+        if _SESSION_BPM_MIN <= bpm <= _SESSION_BPM_MAX:
+            return bpm
+    return None
+
+
+def extract_session_note(value: object, default: str = "♩") -> str:
+    match = _SESSION_NOTE_RE.search(str(value or ""))
+    return match.group(0) if match else default
+
+
+def _normalize_session(raw: object) -> Optional[Dict]:
+    if isinstance(raw, dict):
+        name = _clean_session_text(
+            raw.get("name") or raw.get("label") or raw.get("text") or raw.get("title")
+        )
+        requirement = _clean_session_text(
+            raw.get("requirement") or raw.get("req") or raw.get("description") or raw.get("note_text")
+        )
+        bpm_raw = raw.get("bpm")
+        bpm = int(str(bpm_raw).strip()) if str(bpm_raw or "").strip().isdigit() else extract_session_bpm(name)
+        note = extract_session_note(raw.get("note") or raw.get("tempo") or name)
+    else:
+        name = _clean_session_text(raw)
+        requirement = ""
+        bpm = extract_session_bpm(name)
+        note = extract_session_note(name)
+
+    if not name:
+        return None
+    if bpm is not None and not (_SESSION_BPM_MIN <= bpm <= _SESSION_BPM_MAX):
+        bpm = None
+    if note not in _ALLOWED_SESSION_NOTES:
+        note = "♩"
+    return {"name": name, "bpm": bpm, "note": note, "requirement": requirement}
+
+
+def parse_practice_sessions(raw: object) -> List[Dict]:
+    """解析 practice_items.content_options。
+
+    新格式是 JSON 数组（name/bpm/note/requirement）；历史格式是逗号或换行
+    分隔的自由文本。两种都返回统一的 session 对象列表，调用方不需要再判断。
+    """
+    data: object = raw
+    if isinstance(raw, str):
+        text = raw.strip()
+        if text.startswith("["):
+            try:
+                data = json.loads(text)
+            except (TypeError, ValueError):
+                # 以 [ 开头但不是合法 JSON 的历史文本，按逗号/换行切，别整段丢掉
+                data = re.split(r"[,，\n]", text)
+        else:
+            data = re.split(r"[,，\n]", text)
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        data = []
+
+    sessions: List[Dict] = []
+    seen = set()
+    for raw_session in data:
+        session = _normalize_session(raw_session)
+        if not session:
+            continue
+        key = session["name"]
+        if key in seen:
+            continue
+        seen.add(key)
+        sessions.append(session)
+    return sessions
+
+
+def serialize_practice_sessions(sessions: object) -> str:
+    """把结构化 session 列表落库成 JSON 字符串；空列表落空串。"""
+    if not isinstance(sessions, list):
+        sessions = parse_practice_sessions(sessions)
+    normalized = []
+    seen = set()
+    for raw_session in sessions:
+        session = _normalize_session(raw_session)
+        if not session or session["name"] in seen:
+            continue
+        seen.add(session["name"])
+        normalized.append(session)
+    return json.dumps(normalized, ensure_ascii=False) if normalized else ""
+
+
+def session_names(raw: object) -> List[str]:
+    return [session["name"] for session in parse_practice_sessions(raw)]
+
+
 def get_last_attended_lesson_date_next() -> Optional[dt.date]:
     """
     获取最近一次已上课的下一天（作为 WeekStart）

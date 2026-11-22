@@ -2772,18 +2772,29 @@
       updateStartBtnState();
       updateDashboard();
     }
+    /* content_options 已可能是结构化 JSON（[{name,bpm,...}]）：优先用接口给的
+       sessions，其次才按历史逗号/换行文本切分，绝不把 JSON 片段当选项。 */
+    function sessionNamesOf(item) {
+      if (!item) return [];
+      if (Array.isArray(item.sessions) && item.sessions.length) {
+        return item.sessions.map(s => (s && s.name) || '').map(s => String(s).trim()).filter(Boolean);
+      }
+      const raw = String(item.content_options || '').trim();
+      if (!raw || raw.charAt(0) === '[') return [];
+      return raw.split(/[,，\n]/).map(s => s.trim()).filter(Boolean);
+    }
+
     function renderContentTags(itemId, btn) {
       const tagsContainer = document.getElementById('sessionContentTags');
       if (!tagsContainer) return;
       tagsContainer.innerHTML = '';
       let options = [];
-      const raw = (btn && btn.getAttribute('data-content-options')) || '';
-      if (raw) options = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-      if (!options.length && typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS) {
-        const item = ALL_ITEMS.find(i => String(i.item_id) === String(itemId));
-        if (item && item.content_options) {
-          options = String(item.content_options).split(/[,，]/).map(s => s.trim()).filter(Boolean);
-        }
+      options = sessionNamesOf((typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS)
+        ? ALL_ITEMS.find(i => String(i.item_id) === String(itemId))
+        : null);
+      if (!options.length) {
+        const raw = (btn && btn.getAttribute('data-content-options')) || '';
+        options = sessionNamesOf({ content_options: raw });
       }
       if (!options.length) options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
       options.forEach(opt => {
@@ -3575,13 +3586,10 @@
       const tagsContainer = document.getElementById('emContentTags');
       if (!tagsContainer) return;
       tagsContainer.innerHTML = '';
-      let options = [];
-      if (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS) {
-        const item = ALL_ITEMS.find(i => String(i.item_id) === String(itemId));
-        if (item && item.content_options) {
-          options = String(item.content_options).split(/[,，]/).map(s => s.trim()).filter(Boolean);
-        }
-      }
+      const item = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS)
+        ? ALL_ITEMS.find(i => String(i.item_id) === String(itemId))
+        : null;
+      let options = sessionNamesOf(item);
       if (!options.length) options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
       options.forEach(opt => {
         const tag = document.createElement('span');

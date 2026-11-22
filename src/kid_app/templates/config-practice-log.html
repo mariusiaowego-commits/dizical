@@ -595,6 +595,68 @@
       white-space: pre-wrap;
     }
 
+    /* 老师要求 · 结构化练习环节（session）：名称 / BPM / 音符 / 环节要求 */
+    .entry-sessions {
+      background: #fbf8f0;
+      border: 1px dashed #e0d4b0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .entry-sessions-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8B6914;
+    }
+    .entry-sessions-head .hint {
+      font-weight: 400;
+      color: #a09070;
+      font-size: 11px;
+    }
+    .entry-session-rows { display: flex; flex-direction: column; gap: 6px; }
+    .asr-row {
+      display: grid;
+      grid-template-columns: minmax(90px, 1.1fr) 64px 56px minmax(120px, 2fr) 24px;
+      gap: 6px;
+      align-items: center;
+    }
+    .asr-row input, .asr-row select {
+      height: 32px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 0 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background: #fff;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    .asr-row .asr-bpm, .asr-row .asr-note { text-align: center; padding: 0 2px; }
+    .asr-row .asr-del {
+      width: 24px; height: 24px; border-radius: 50%; border: none;
+      background: rgba(255,107,107,0.1); color: #FF6B6B;
+      cursor: pointer; font-size: 16px; line-height: 1;
+    }
+    .entry-session-add {
+      align-self: flex-start;
+      padding: 4px 12px;
+      border: 1px dashed #a8d5ba;
+      background: transparent;
+      color: #2E7D32;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    @media (max-width: 640px) {
+      .asr-row { grid-template-columns: 1fr 56px 48px 24px; }
+      .asr-row .asr-req { grid-column: 1 / -1; }
+    }
+
     /* 子 session 行 */
     .session-sub-rows {
       display: flex;
@@ -1375,13 +1437,16 @@ function collectAssignDraft() {
     entries: assignEntries.map(e => ({
       item_id: e.item_id, item: e.item || '',
       metronome: e.metronome || '', requirement: e.requirement || '',
+      sessions: (e.sessions || []).map(s => ({
+        name: s.name || '', bpm: s.bpm || null, note: s.note || '♩', requirement: s.requirement || '',
+      })),
     })),
   };
 }
 
 function hasAssignDraftContent(d) {
   if (!d) return false;
-  if (d.entries && d.entries.some(e => e.requirement || e.metronome || e.item_id)) return true;
+  if (d.entries && d.entries.some(e => e.requirement || e.metronome || e.item_id || (e.sessions && e.sessions.length))) return true;
   if (d.notes) return true;
   if (d.images && d.images.length) return true;
   if (d.videos && d.videos.length) return true;
@@ -1419,7 +1484,10 @@ function restoreAssignDraft() {
   // 恢复 entries (item_id 对应名字从 practiceItems 查)
   assignEntries = (d.entries || []).map(e => {
     const it = practiceItems.find(p => String(p.item_id) === String(e.item_id));
-    return { item_id: e.item_id, item: it ? it.name : (e.item || ''), metronome: e.metronome || '', requirement: e.requirement || '' };
+    return {
+      item_id: e.item_id, item: it ? it.name : (e.item || ''), metronome: e.metronome || '', requirement: e.requirement || '',
+      sessions: Array.isArray(e.sessions) ? e.sessions : [],
+    };
   });
   // 恢复配图 URL (本地文件不可恢复, 只有已上传的 URL)
   assignImages = (d.images || []).map(u => ({ url: u, name: '' }));
@@ -1666,8 +1734,14 @@ function renderSubRowHtml(parentIdx, subIdx, s, entry) {
   const presets = [s.tempo_bpm, 60, 80, 100, 120].filter((v, i, a) => a.indexOf(v) === i).slice(0, 5);
   const item = practiceItems.find(it => it.item_id == entry.item_id);
   let options = [];
-  if (item && item.content_options) {
-    options = String(item.content_options).split(/[,，]/).map(x => x.trim()).filter(Boolean);
+  if (item && Array.isArray(item.sessions) && item.sessions.length) {
+    options = item.sessions.map(x => (x && x.name) || '').map(x => String(x).trim()).filter(Boolean);
+  } else if (item && item.content_options) {
+    const raw = String(item.content_options).trim();
+    // content_options 已可能是结构化 JSON，不能按逗号切
+    if (raw.charAt(0) !== '[') {
+      options = raw.split(/[,，\n]/).map(x => x.trim()).filter(Boolean);
+    }
   }
   if (!options.length) options = ['长音练习', '吐音练习', '连吐练习', '换气练习'];
   const idsx = parentIdx + '-' + subIdx;
@@ -1904,6 +1978,73 @@ async function loadTodayHistory() {
 // Tab 2: 老师要求
 // ══════════════════════════════════════════════════
 
+function assignEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function assignSessionRowHtml(idx, si, session) {
+  const s = session || {};
+  const note = ['♩', '♪', '♬'].includes(s.note) ? s.note : '♩';
+  const notes = ['♩', '♪', '♬']
+    .map(n => `<option value="${n}"${n === note ? ' selected' : ''}>${n}</option>`)
+    .join('');
+  return `<div class="asr-row" data-idx="${idx}" data-si="${si}">
+    <input class="asr-name" maxlength="50" placeholder="环节名称" value="${assignEsc(s.name)}">
+    <input class="asr-bpm" type="number" min="40" max="200" step="1" placeholder="BPM" value="${s.bpm ? Number(s.bpm) : ''}">
+    <select class="asr-note" aria-label="音符">${notes}</select>
+    <input class="asr-req" maxlength="200" placeholder="该环节要求（可空）" value="${assignEsc(s.requirement)}">
+    <button type="button" class="asr-del" aria-label="删除环节">×</button>
+  </div>`;
+}
+
+/* 环节行的输入全部回写到 assignEntries[idx].sessions[si]。 */
+function bindAssignSessionRows(scope) {
+  (scope || document).querySelectorAll('.asr-row').forEach(row => {
+    const idx = parseInt(row.dataset.idx, 10);
+    const si = parseInt(row.dataset.si, 10);
+    const entry = assignEntries[idx];
+    if (!entry || !Array.isArray(entry.sessions) || !entry.sessions[si]) return;
+    const session = entry.sessions[si];
+    row.querySelector('.asr-name').addEventListener('input', e => {
+      session.name = e.target.value;
+      scheduleAssignDraftSave();
+    });
+    row.querySelector('.asr-bpm').addEventListener('input', e => {
+      const n = parseInt(e.target.value, 10);
+      session.bpm = (n >= 40 && n <= 200) ? n : null;
+      scheduleAssignDraftSave();
+    });
+    row.querySelector('.asr-note').addEventListener('change', e => {
+      session.note = e.target.value;
+      scheduleAssignDraftSave();
+    });
+    row.querySelector('.asr-req').addEventListener('input', e => {
+      session.requirement = e.target.value;
+      scheduleAssignDraftSave();
+    });
+    row.querySelector('.asr-del').addEventListener('click', () => {
+      entry.sessions.splice(si, 1);
+      renderAssignEntries();
+      scheduleAssignDraftSave();
+    });
+  });
+  (scope || document).querySelectorAll('.entry-session-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const entry = assignEntries[idx];
+      if (!entry) return;
+      if (!Array.isArray(entry.sessions)) entry.sessions = [];
+      entry.sessions.push({ name: '', bpm: null, note: '♩', requirement: '' });
+      renderAssignEntries();
+      scheduleAssignDraftSave();
+    });
+  });
+}
+
 function renderAssignEntries() {
   const container = document.getElementById('assignEntries');
   container.innerHTML = '';
@@ -1932,6 +2073,11 @@ function renderAssignEntries() {
         <textarea class="form-textarea" data-idx="${i}" placeholder="每行一条要求，如：
 注意口风不要漏气
 倒序分句练习">${entry.requirement || ''}</textarea>
+      </div>
+      <div class="entry-sessions" data-idx="${i}">
+        <div class="entry-sessions-head">练习环节 <span class="hint">从科目预置环节带出，速度会联动练习助手</span></div>
+        <div class="entry-session-rows" data-idx="${i}">${(entry.sessions || []).map((s, si) => assignSessionRowHtml(i, si, s)).join('')}</div>
+        <button type="button" class="entry-session-add" data-idx="${i}">＋ 加一个环节</button>
       </div>`;
     container.appendChild(row);
   });
@@ -1961,6 +2107,22 @@ function renderAssignEntries() {
       assignEntries[idx].item_id = newId;
       const item = practiceItems.find(it => it.item_id == e.target.value);
       assignEntries[idx].item = item ? item.name : '';
+      /* 换科目必须清掉上一个科目的环节，否则 A 的环节会跟着 B 的 item_id 一起提交。 */
+      if (newId !== oldId) {
+        assignEntries[idx].sessions = [];
+      }
+      /* 选中科目时把该科目的预置练习环节带进「环节要求」，速度随环节走。 */
+      if (item && Array.isArray(item.sessions) && item.sessions.length && !(assignEntries[idx].sessions || []).length) {
+        assignEntries[idx].sessions = item.sessions.map(s => ({
+          name: s.name, bpm: s.bpm, note: s.note || '♩', requirement: s.requirement || ''
+        }));
+        const rowEl = sel.closest('.log-entry-row');
+        const host = rowEl ? rowEl.querySelector('.entry-session-rows') : null;
+        if (host) {
+          host.innerHTML = assignEntries[idx].sessions.map((s, si) => assignSessionRowHtml(idx, si, s)).join('');
+          bindAssignSessionRows(host);
+        }
+      }
       // 预设 (B1, 2026-08-09): 选中科目且内容未编辑时, 预填该科目最近一次非空要求
       // 填 requirements + metronome + 标注来源日期
       if (newId && latestRequirements[newId]) {
@@ -2085,6 +2247,7 @@ function renderAssignEntries() {
       scheduleAssignDraftSave();
     });
   });
+  bindAssignSessionRows(container);
   if (typeof renderAssignVideoList === 'function') renderAssignVideoList();
 }
 
@@ -2108,7 +2271,7 @@ function segmentsBadgeHtml(it) {
 }
 
 document.getElementById('addAssignEntryBtn').addEventListener('click', () => {
-  assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '', segments: [] }); // segments: 需求4 多档速度
+  assignEntries.push({ item_id: null, item: '', metronome: '', requirement: '', segments: [], sessions: [] }); // segments: 需求4 多档速度; sessions: 结构化环节
   renderAssignEntries();
   scheduleAssignDraftSave(); // 需求1: 添加行也存草稿
   // A4 fix: 添加后 focus 新行的第一个输入 + 滚动到视图中央
@@ -2367,7 +2530,9 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
   const stageStart = document.getElementById('assignStageStart').value || null;
   const stageEnd = document.getElementById('assignStageEnd').value || null;
   const stageOrder = document.getElementById('assignStageOrder').value || null;
-  const validEntries = assignEntries.filter(e => e.item_id && e.requirement);
+  const validEntries = assignEntries.filter(e =>
+    e.item_id && (e.requirement || (Array.isArray(e.sessions) && e.sessions.some(s => s && s.name && s.name.trim())))
+  );
 
   if (!validEntries.length) {
     alert('请添加至少一个科目要求');
@@ -2381,6 +2546,13 @@ document.getElementById('submitAssignBtn').addEventListener('click', async () =>
       const segs = (e.segments || []).filter(s => s.tempo && s.tempo.trim());
       const item = { item: e.item, item_id: e.item_id, metronome: e.metronome, requirement: e.requirement };
       if (segs.length) item.metronome_segments = segs.map(s => ({ label: (s.label || '').trim(), tempo: s.tempo.trim() }));
+      const sessions = (e.sessions || []).filter(s => s && s.name && s.name.trim()).map(s => ({
+        name: s.name.trim(),
+        bpm: (s.bpm >= 40 && s.bpm <= 200) ? s.bpm : null,
+        note: ['♩', '♪', '♬'].includes(s.note) ? s.note : '♩',
+        requirement: (s.requirement || '').trim(),
+      }));
+      if (sessions.length) item.sessions = sessions;
       return item;
     }),
     notes,
@@ -2632,6 +2804,7 @@ function startEditAssignment(lessonDate) {
       item_id: it.item_id == null || it.item_id === '' ? null : it.item_id,
       metronome: it.metronome || '',
       requirement: it.requirements || it.requirement || '',
+      sessions: Array.isArray(it.sessions) ? it.sessions : [],
     }));
     const escapeAttr = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     let editVideos = (a.videos || []).map(v => ({
@@ -2787,7 +2960,7 @@ function startEditAssignment(lessonDate) {
     renderEditFormItems();
     // PR-C fix: + 添加科目 按钮 handler
     form.querySelector('.add-edit-item-btn').addEventListener('click', () => {
-      editItems.push({ item: '', item_id: null, metronome: '', requirement: '' });
+      editItems.push({ item: '', item_id: null, metronome: '', requirement: '', sessions: [] });
       renderEditFormItems();
       // A4 模式: 焦点跳到新行第一个输入 + scrollIntoView
       requestAnimationFrame(() => {
@@ -2858,6 +3031,7 @@ function startEditAssignment(lessonDate) {
           item_id: sel ? parseInt(sel.value, 10) || null : it.item_id,
           metronome: metroInput ? metroInput.value : it.metronome,
           requirement: ta ? ta.value : it.requirement,
+          sessions: Array.isArray(it.sessions) ? it.sessions : [],
         };
       }).filter(it => it.item_id);  // 过滤空科目 (用户 + 添加但没选)
       const notes = form.querySelector('#editNotes').value;

@@ -28,6 +28,6 @@ def test_apply_day_pushes_popout_frame_outside_canvas():
     assert "refreshPopSummary()" in seg, "推完数据要刷新底栏汇总"
 
 
-def test_version_is_v353():
+def test_version_is_v354():
     src = _html()
-    assert "var DSH_VERSION = 'v3.53';" in src
+    assert "var DSH_VERSION = 'v3.54';" in src

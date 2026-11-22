@@ -129,6 +129,25 @@ def test_practice_dsh_structure_and_contracts():
     assert "fetch('/api/items')" in html, "必须接入 GET /api/items"
 
 
+def test_practice_dsh_tcard_is_day_rail_not_plain_list():
+    """T 卡 = 今日时间轴：刻度轨 + 按真实时间落块，块高就是真实时长。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert 'data-t-rail' in html, "T 卡必须有刻度轨容器"
+    assert "'<div class=\"cz-t-axis\"></div>'" in html, "刻度轨必须画时间轴虚线"
+    assert "cz-t-tick" in html and "cz-t-bar" in html, "必须有刻度与时长条"
+    assert "tRailWindow" in html and "tClockMin" in html, "块的纵坐标必须由真实开始时间换算"
+    # 诚实块高：高度 = 时长 / 窗口跨度 × 可用高度，只留 2px 可见地板；
+    # 旧实现的 28px 地板会把 45 分和 8 分画成一样高。
+    assert "(it.dur, 0) / span * usable" in html, "块高必须与真实时长成正比"
+    assert "Math.max(2," in html, "只允许 2px 可见地板"
+    # 地板不能参与下推：抬高的底边会把后续段依次往下挤，累积漂移十几分钟。
+    assert "prevBottom" not in html, "块位置不得因可见地板被下推"
+    # 窄卡 / 矮轨不假装是图表：切紧凑列表，但仍然给真实 HH:MM。
+    assert "H < 200 || W < 240" in html and "cz-t-rows" in html, "窄档必须有列表形态"
+    assert "untimed" in html, "没有 started_at 的记录不能顶到 06:00"
+    assert 'data-t-list' not in html, "旧的平铺列表结构必须移除"
+
+
 def test_run_state_keeps_prep_ticket_width():
     html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
     """计时态不能因为票夹收到 50px 就把右栏压进一屏（dad 261103 录屏）。
@@ -204,7 +223,7 @@ def test_stage_duration_reads_mysql_json_string(client, monkeypatch):
     monkeypatch.setattr(
         config_routes.db,
         "get_practice_items",
-        lambda: [{"item_id": 1350, "name": "春耕曲"}],
+        lambda **kwargs: [{"item_id": 1350, "name": "春耕曲"}],
     )
 
     resp = client.get("/config/api/assignments?weeks=24&item=1350")
