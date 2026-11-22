@@ -1078,9 +1078,7 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
         for it in entry["items"]:
             if it.get("item_id") is None and it.get("item") in name_to_id:
                 it["item_id"] = name_to_id[it.get("item")]
-            item_id = it.get("item_id")
-            stored_sessions = it.get("sessions") if isinstance(it.get("sessions"), list) else None
-            it["sessions"] = stored_sessions or sessions_by_id.get(item_id) or sessions_by_name.get(it.get("item"), [])
+            it["sessions"] = it.get("sessions") if isinstance(it.get("sessions"), list) else []
 
         if item:
             matched = []
@@ -1129,6 +1127,21 @@ def api_get_assignments(weeks: int = 8, item: Optional[str] = None):
         result.append(entry)
     # 最新课在前
     result.sort(key=lambda x: x["lesson_date"], reverse=True)
+    # 环节回落只给「每科最新一条」：历史作业当时没存 sessions 就保持空，
+    # 不把今天配置的环节/速度倒灌进两周前的老师要求卡。
+    seen_items = set()
+    for entry in result:
+        for it in entry["items"]:
+            key = it.get("item_id")
+            if key is None:
+                key = it.get("item")
+            if it.get("sessions"):
+                seen_items.add(key)
+                continue
+            if key in seen_items:
+                continue
+            it["sessions"] = sessions_by_id.get(it.get("item_id")) or sessions_by_name.get(it.get("item"), [])
+            seen_items.add(key)
     return JSONResponse({"assignments": result})
 
 
@@ -1201,13 +1214,13 @@ def api_assignments_by_item(item_id: Optional[int] = None, item: Optional[str] =
                 "metronome": it.get("metronome") or "",
                 "requirements": it.get("requirements") or it.get("requirement") or "",
                 "metronome_segments": it.get("metronome_segments") or [],  # 需求4: 多档速度
-                "sessions": (
-                    it.get("sessions") if isinstance(it.get("sessions"), list) and it.get("sessions")
-                    else (sessions_by_id.get(it.get("item_id")) or sessions_by_name.get(it.get("item"), []))
-                ),
+                "sessions": it.get("sessions") if isinstance(it.get("sessions"), list) else [],
             })
             break  # 同一条记录该科目只算一次
     matches.sort(key=lambda x: x["lesson_date"], reverse=True)
+    # 只给最新一条回落科目预置环节；历史记录没存 sessions 就保持空。
+    if matches and not matches[0]["sessions"]:
+        matches[0]["sessions"] = sessions_by_id.get(item_id) or sessions_by_name.get(item, [])
     return JSONResponse({"history": matches[:max(1, limit)]})
 
 

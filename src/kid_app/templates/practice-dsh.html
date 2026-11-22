@@ -5847,23 +5847,25 @@
   window.cleanSessionText = cleanSessionText;
 
   var TEMPO_RE = /[♩♪♬]\s*=\s*(\d{2,3})/;
-  var BPM_RE = /(\d{2,3})/g;
+  var SPEED_RE = /(?:速度|中速|慢速|快速|中快|快板|中板|慢板|行板|急板|广板|柔板|bpm|BPM)\s*[=:：]?\s*(\d{2,3})|(\d{2,3})\s*(?:拍|速)/;
   var NOTE_RE = /[♩♪♬]/;
   var ALLOWED_NOTES = { '♩': 1, '♪': 1, '♬': 1 };
 
   function extractBpm(text) {
     var str = String(text == null ? '' : text);
     /* 先认「♪=90」显式速度，避免「80乐段 ♪=90」被名称里的 80 抢走；
-       没有显式速度时取最后一个合法数字（历史名称习惯把速度放末尾）。 */
+       没有显式速度时只认「速度80 / 80拍 / bpm=80」这类速度语境：
+       「中音54」「第48条」是音名与编号，不能把节拍器打到 ♩=54。
+       不用 lookbehind，老 Safari 会整段脚本语法报错。 */
     var explicit = str.match(TEMPO_RE);
     if (explicit) {
       var t = parseInt(explicit[1], 10);
       if (t >= 40 && t <= 200) return t;
     }
-    var all = str.match(BPM_RE) || [];
-    for (var i = all.length - 1; i >= 0; i--) {
-      var n = parseInt(all[i], 10);
-      if (n >= 40 && n <= 200) return n;
+    var speed = str.match(SPEED_RE);
+    if (speed) {
+      var s = parseInt(speed[1] || speed[2], 10);
+      if (s >= 40 && s <= 200) return s;
     }
     return null;
   }
@@ -5879,9 +5881,10 @@
       ? (raw.name || raw.label || raw.text || raw.title)
       : raw);
     if (!name) return null;
-    var bpm = isObj && raw.bpm != null && String(raw.bpm).trim() !== ''
-      ? parseInt(raw.bpm, 10)
-      : extractBpm(name);
+    /* 与后端 _normalize_session 同口径：bpm 不是纯数字（如「中速」）就回落到名称解析，
+       不能一边 API 给 88、一边画布当没有速度。 */
+    var bpmRaw = isObj && raw.bpm != null ? String(raw.bpm).trim() : '';
+    var bpm = (bpmRaw && /^\d+$/.test(bpmRaw)) ? parseInt(bpmRaw, 10) : extractBpm(name);
     if (!(bpm >= 40 && bpm <= 200)) bpm = null;
     return {
       name: name,
@@ -7253,14 +7256,17 @@ function applySessionTempo(name, fromCustom) {
   const session = getSessionByName(name);
   if (!session) return false;
   let changed = false;
-  if (session.bpm >= 40 && session.bpm <= 200 && session.bpm !== bpm) {
-    bpm = session.bpm;
+  /* 环节没写 bpm 时回落科目 metro；不能把上一个环节的速度留在节拍器上
+     （萨丽哈：第一项 ♩=54，切到「第1句」仍是 54 就是这里漏的）。 */
+  const target = resolveSessionTempo(name);
+  if (target.bpm >= 40 && target.bpm <= 200 && target.bpm !== bpm) {
+    bpm = target.bpm;
     changed = true;
   }
-  const idx = noteIndexFromSym(session.note);
-  if (idx !== noteIdx) {
-    noteIdx = idx;
-    currentBeatNote = beatNoteFromSym(session.note);
+  /* 比符号而不是 noteIdx：手改音符只写 currentBeatNote，noteIdx 会停在旧值。 */
+  if (target.beatNote !== currentBeatNote) {
+    noteIdx = target.noteIdx;
+    currentBeatNote = target.beatNote;
     try { localStorage.setItem('dsh_beat_note_v1', currentBeatNote); } catch (e) {}
     changed = true;
   }
@@ -8928,6 +8934,8 @@ function closeRecordsDrawer() {
     tempoConfirmBtn.addEventListener('click', () => {
       bpm = tempoModalState.bpm;
       currentBeatNote = tempoModalState.beatNote;
+      /* 手改音符也要同步 noteIdx，否则下次选环节时门闩拿旧索引比较。 */
+      noteIdx = noteIndexFromSym(currentBeatNote);
       try { localStorage.setItem('dsh_beat_note_v1', currentBeatNote); } catch(e) {}
       syncRunMeta();
       syncDashCover();
@@ -20068,13 +20076,25 @@ function closeRecordsDrawer() {
     function sessionBlocks(item) {
       const sessions = (Array.isArray(item.sessions) ? item.sessions : []).filter(s => s && s.name);
       if (!sessions.length) { return null; }
+      const normReq = (v) => String(v == null ? '' : v).replace(/[\s，。；;、,.:：!！?？\-]/g, '');
       const structured = sessions.filter(s => String(s.requirement || '').trim());
       if (structured.length) {
-        return sessions.map((s) => ({
+        const blocks = sessions.map((s) => ({
           name: s.name,
           tempo: sessionTempoText(s),
           lines: String(s.requirement || '').trim() ? splitRequirementLines(s.requirement) : []
         }));
+        /* 环节自带要求时，老师还会另写一段总体要求（口风、分句）。这段不能消失：
+           只去掉与环节要求逐字相同（归一后）的行，宁可重复也不吞。 */
+        const covered = new Set();
+        blocks.forEach(b => b.lines.forEach(l => covered.add(normReq(l))));
+        const rest = splitRequirementLines(item.requirements).filter(l => {
+          const k = normReq(l);
+          return k && k !== normReq('常规进度练习。') &&
+            k !== normReq('按曲目常规进度练习。') && !covered.has(k);
+        });
+        if (rest.length) { blocks.push({ name: '通用要求', tempo: '', lines: rest }); }
+        return blocks;
       }
       const lines = splitRequirementLines(item.requirements);
       /* 环节名常带「♪=110」这类速度后缀，正文里写的是「主题（田园风味）」，
@@ -20086,15 +20106,20 @@ function closeRecordsDrawer() {
         .trim();
       const buckets = sessions.map(s => ({ name: s.name, tempo: sessionTempoText(s), lines: [], matched: false }));
       const used = new Set();
-      buckets.forEach((bucket) => {
-        const key = core(bucket.name);
-        if (key.length < 2) { return; }
-        lines.forEach((line, li) => {
-          if (used.has(li) || core(line).indexOf(key) === -1) { return; }
-          bucket.lines.push(line);
-          bucket.matched = true;
+      /* 环节名互为前缀时（音阶 / 音阶琶音）先试最长的名字，
+         否则「音阶琶音练4遍」会挂到「音阶」下、前者的标题整块消失。 */
+      const keys = buckets.map((b, i) => ({ i: i, key: core(b.name) }))
+        .filter(k => k.key.length >= 2)
+        .sort((a, b) => b.key.length - a.key.length);
+      lines.forEach((line, li) => {
+        const text = core(line);
+        for (let ki = 0; ki < keys.length; ki++) {
+          if (text.indexOf(keys[ki].key) === -1) { continue; }
+          buckets[keys[ki].i].lines.push(line);
+          buckets[keys[ki].i].matched = true;
           used.add(li);
-        });
+          break;
+        }
       });
       /* 只命中 1 个环节（多环节时）说明名称体系对不上，硬分组会把其余要求
          全塞进「通用要求」，不如老实退回编号清单。 */
@@ -21645,29 +21670,48 @@ window.__CZ_CSS = [
   '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: 0 2px 8px rgba(44,62,80,0.04); }',
   ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }',
   '.cz-t-head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 18px 18px 4px; }',
-  '.cz-t-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; color: var(--dash-text, #2C3E50); }',
+  '.cz-t-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--dash-text-soft, #7F8C8D); }',
   '.cz-t-date { font-size: 12px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
   '.cz-t-hero { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 18px 12px; }',
-  '.cz-t-num { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--dash-text, #2C3E50); font-variant-numeric: tabular-nums; }',
+  '.cz-t-num { font-family: var(--font-mono, ui-monospace, monospace); font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--dash-text, #2C3E50); font-variant-numeric: tabular-nums; }',
   '.cz-t-unit { font-size: 13px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); }',
   '.cz-t-goal-text { margin-left: auto; flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
-  /* 今日时间轴：06–22 固定刻度轨，块的位置/高度由真实开始时间与时长决定。
-     高度由刻度尺承担，0 条记录也不留死白。 */
+  /* 今日时间轴：纵轴是时间，横条高度就是真实时长（不再用 28px 地板拉平）。
+     左侧刻度 + 中段时长条 + 右侧标签，窄档切成紧凑列表。 */
   '.cz-t-rail { position: relative; flex: 1 1 auto; min-height: 0; margin: 2px 16px 12px; overflow: hidden; }',
-  '.cz-t-axis { position: absolute; left: 34px; top: 4%; bottom: 4%; width: 0; border-left: 1px dashed var(--dash-ink-a16, rgba(44,62,80,0.16)); }',
-  '.cz-t-tick { position: absolute; left: 0; width: 26px; transform: translateY(-50%); text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 10.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
-  '.cz-t-block { position: absolute; left: 46px; right: 2px; min-height: 28px; box-sizing: border-box; border-radius: 10px; background: var(--dash-surface-2, #ECE8E1); padding: 6px 10px; display: flex; align-items: center; gap: 8px; }',
-  ':root[data-skin="ink"] .cz-t-block { background: #2B323B; }',
-  '.cz-t-block-main { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 1px; }',
-  '.cz-t-block.is-dense { padding: 3px 9px; }',
-  '.cz-t-block.is-dense .cz-t-block-main { flex-direction: row; align-items: baseline; gap: 6px; }',
-  '.cz-t-block-subject { min-width: 0; font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--dash-text, #2C3E50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-  '.cz-t-block-session { min-width: 0; font-size: 11px; font-weight: 500; line-height: 1.3; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-  '.cz-t-block-dur { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--dash-vermilion-text, #E64A19); font-variant-numeric: tabular-nums; }',
-  '.cz-t-rail-empty { position: absolute; left: 46px; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 12.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-axis { position: absolute; left: 34px; top: 4%; bottom: 4%; width: 0; border-left: 1px dashed rgba(44,62,80,0.28); }',
+  ':root[data-skin="ink"] .cz-t-axis { border-left-color: rgba(222,215,205,0.24); }',
+  '.cz-t-tick { position: absolute; left: 0; width: 26px; transform: translateY(-50%); text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-bar { position: absolute; left: 46px; width: calc(46% - 46px); min-height: 5px; border-radius: 4px; background: #DCD6CB; box-shadow: inset 0 0 0 1px rgba(44,62,80,0.10); }',
+  '.cz-t-bar::before { content: ""; position: absolute; left: -12px; top: 0; width: 12px; border-top: 1px solid rgba(44,62,80,0.22); }',
+  ':root[data-skin="ink"] .cz-t-bar::before { border-top-color: rgba(222,215,205,0.26); }',
+  ':root[data-skin="ink"] .cz-t-bar { background: #2F3742; box-shadow: inset 0 0 0 1px rgba(222,215,205,0.14); }',
+  '.cz-t-bar.is-long { background: var(--dash-vermilion-wash, #FBE3DC); box-shadow: inset 0 0 0 1px rgba(255,107,107,0.35); }',
+  ':root[data-skin="ink"] .cz-t-bar.is-long { background: rgba(255,87,34,0.16); box-shadow: inset 0 0 0 1px rgba(255,158,122,0.45); }',
+  '.cz-t-label { position: absolute; left: 50%; right: 44px; transform: translateY(-50%); min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--dash-text, #2C3E50); }',
+  '.cz-t-label-sub { min-width: 0; font-size: 11px; font-weight: 500; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-label-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-dur { position: absolute; right: 0; transform: translateY(-50%); width: 40px; text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-dur.is-long { color: var(--dash-vermilion-text, #E64A19); }',
+  '.cz-t-now { position: absolute; left: 34px; right: 0; border-top: 1px dashed rgba(255,107,107,0.55); pointer-events: none; }',
+  '.cz-t-now-dot { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: #FF6B6B; }',
+  '.cz-t-now-text { position: absolute; right: 0; bottom: 2px; font-size: 10.5px; font-weight: 600; color: var(--dash-vermilion-text, #E64A19); font-variant-numeric: tabular-nums; }',
+  '.cz-t-rail-empty { position: absolute; left: 46px; right: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 3px; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); }',
+  '.cz-t-rail-empty-sub { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.72; }',
+  /* 窄档 / 矮卡：不画轴，切成紧凑列表，时间仍是真实 HH:MM。 */
+  '.cz-t-rows { position: absolute; inset: 0; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }',
+  '.cz-t-lrow { flex: 0 0 auto; display: flex; align-items: baseline; gap: 8px; padding: 4px 2px; border-bottom: 1px solid rgba(44,62,80,0.08); }',
+  ':root[data-skin="ink"] .cz-t-lrow { border-bottom-color: rgba(222,215,205,0.12); }',
+  '.cz-t-ltime { flex: 0 0 auto; width: 38px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-lmain { min-width: 0; flex: 1 1 auto; display: flex; align-items: baseline; gap: 6px; }',
+  '.cz-t-lsub { font-size: 12.5px; font-weight: 700; color: var(--dash-text, #2C3E50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-lses { min-width: 0; font-size: 11px; font-weight: 500; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-ldur { flex: 0 0 auto; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-ldur.is-long { color: var(--dash-vermilion-text, #E64A19); }',
   '.cz-t-foot { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); }',
   '.cz-t-meta { font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
-  '.cz-t-open { border: 1px solid var(--dash-ink-a16, rgba(44,62,80,0.16)); background: transparent; color: var(--dash-text, #2C3E50); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }',
+  '.cz-t-open { border: 1px solid var(--dash-ink-a16, rgba(44,62,80,0.16)); background: transparent; color: var(--dash-text, #2C3E50); border-radius: 999px; padding: 10px 14px; min-height: 44px; font-size: 13px; font-weight: 700; cursor: pointer; }',
+  '.cz-t-open:focus-visible { outline: 2px solid var(--dash-vermilion, #FF6B6B); outline-offset: 2px; }',
   '.cz-t-open:hover { background: var(--dash-surface-2, #ECE8E1); }',
   '.cz-node { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; position: relative; }',
   '.cz-node.cz-brow { flex-direction: row; }',
@@ -21834,6 +21878,7 @@ window.__CZ_CSS = [
   '  .cz-mod[data-mod="D"] { order: 4; }',
   '  .cz-mod[data-mod="R"] { order: 5; }',
   '  .cz-mod[data-mod="Q"] { order: 6; }',
+  '  .cz-tcard { order: 7; }',
   '  .cz-mod > iframe { width: 100% !important; }',
   '  .cz-mod { height: auto !important; max-height: none !important; overflow: visible !important; }',
   '  .card-records-mini { height: auto !important; max-height: none !important; overflow: visible !important; width: 100% !important; }',
@@ -22012,12 +22057,17 @@ window.__CZ_CSS = [
     box.innerHTML =
       '<div class="cz-t-head"><span class="cz-t-title">今日时间轴</span><span class="cz-t-date" data-t-date></span></div>' +
       '<div class="cz-t-hero"><span class="cz-t-num" data-t-num>0</span><span class="cz-t-unit" data-t-unit>分</span>' +
-        '<span class="cz-t-goal-text" data-t-goal>今日 0 段</span></div>' +
+        '<span class="cz-t-goal-text" data-t-goal>0 段</span></div>' +
       '<div class="cz-t-rail" data-t-rail></div>' +
-      '<div class="cz-t-foot"><span class="cz-t-meta" data-t-meta>今日 0 段</span>' +
-        '<button type="button" class="cz-t-open" data-t-open>查看记录明细 ↗</button></div>';
+      '<div class="cz-t-foot"><span class="cz-t-meta" data-t-meta></span>' +
+        '<button type="button" class="cz-t-open" data-t-open>查看记录明细</button></div>';
     box.querySelector('[data-t-open]').addEventListener('click', function () { openRecordsPop(); });
     refreshTCard(cd, box);
+    /* 首建可能发生在隐藏标签页（轨高 0）：下一帧按真实高度再排一次。 */
+    if (box.querySelector('[data-t-rail]').clientHeight <= 24) {
+      var raf = (cd.defaultView || window).requestAnimationFrame;
+      if (raf) { raf(function () { refreshTCard(cd, box); }); }
+    }
     return box;
   }
   function tEsc(v) {
@@ -22040,8 +22090,9 @@ window.__CZ_CSS = [
     return total > 0 ? total : 0;
   }
   function tDurShort(min) {
+    /* 先按原值判秒：45 秒 = 0.75 分，不能先四舍五入成 1 分。 */
+    if (min < 1) { return Math.max(0, Math.round(min * 60)) + '秒'; }
     var m = Math.round(min);
-    if (m < 1) { return '<1分'; }
     if (m < 60) { return m + '分'; }
     var hh = Math.floor(m / 60), rest = m % 60;
     return hh + '时' + (rest ? rest + '分' : '');
@@ -22050,27 +22101,34 @@ window.__CZ_CSS = [
      否则 16 小时压进 130px 时块和刻度都读不出来。上下各留 4% 防首尾标签被裁。 */
   var T_RAIL_TOP = 4;
   var T_RAIL_BOT = 96;
-  function tRailWindow(H, items) {
-    var win = { start: 6 * 60, end: 22 * 60 };
-    if (H >= 240 || !items.length) { return win; }
-    var lo = items[0].start, hi = items[0].start + Math.max(items[0].dur, 15);
+  function tRailWindow(items) {
+    /* 空态才用 06–22 满刻度；有数据就让数据占满轨道，
+       否则 16 小时压进 500px 时 45 分与 8 分只差 20px，时长读不出来。 */
+    if (!items.length) { return { start: 6 * 60, end: 22 * 60 }; }
+    var lo = Infinity, hi = -Infinity;
     items.forEach(function (it) {
       lo = Math.min(lo, it.start);
-      hi = Math.max(hi, it.start + Math.max(it.dur, 15));
+      hi = Math.max(hi, it.start + Math.max(it.dur, 10));
     });
-    win.start = Math.max(0, Math.floor((lo - 30) / 60) * 60);
-    win.end = Math.min(24 * 60, Math.ceil((hi + 30) / 60) * 60);
-    if (win.end - win.start < 180) { win.end = win.start + 180; }
-    return win;
+    var HALF = 30, MIN_SPAN = 240;
+    var start = Math.max(0, Math.floor((lo - HALF) / HALF) * HALF);
+    var end = Math.min(24 * 60, Math.ceil((hi + HALF) / HALF) * HALF);
+    /* 最小 4 小时，优先向前留白；22:00 之后的练习不能把 end 顶过 24:00。 */
+    if (end - start < MIN_SPAN) {
+      start = Math.max(0, Math.floor(start - (MIN_SPAN - (end - start)) / 2));
+      end = Math.min(24 * 60, start + MIN_SPAN);
+      start = Math.max(0, end - MIN_SPAN);
+    }
+    return { start: start, end: end };
   }
   function tRailPct(min, win) {
     var v = Math.min(Math.max(min, win.start), win.end);
     return T_RAIL_TOP + (v - win.start) / (win.end - win.start) * (T_RAIL_BOT - T_RAIL_TOP);
   }
-  /* 刻度密度跟轨道高度走：每 26px 至少一格，避免标签叠字。 */
+  /* 刻度密度跟轨道高度走：每 30px 至少一格，避免标签叠字。 */
   function tRailStep(win, H) {
     var spanH = (win.end - win.start) / 60;
-    var slots = Math.floor(H / 26);
+    var slots = Math.floor(H * 0.92 / 30);
     if (slots < 2) { return Math.max(1, Math.ceil(spanH / 2)); }
     return Math.max(1, Math.ceil(spanH / slots));
   }
@@ -22088,6 +22146,7 @@ window.__CZ_CSS = [
     var rail = box.querySelector('[data-t-rail]');
     if (!rail) { return; }
     var H = rail.clientHeight;
+    var W = rail.clientWidth;
     if (!(H > 24)) { H = 180; }
     var items = [];
     var cursor = 6 * 60;
@@ -22099,48 +22158,111 @@ window.__CZ_CSS = [
       cursor = start + (dur || 30);
     });
     items.sort(function (a, b) { return a.start - b.start; });
-    var win = tRailWindow(H, items);
-    var step = tRailStep(win, H);
+    var win = tRailWindow(items);
     var span = win.end - win.start;
+    /* 窄卡或矮轨：不假装是图表，切紧凑列表（时间仍是真实 HH:MM）。 */
+    if (H < 200 || W < 240) {
+      rail.innerHTML = items.length ? tRailList(items) : tRailEmpty();
+      return;
+    }
+    var step = tRailStep(win, H);
     var html = ['<div class="cz-t-axis"></div>'];
-    for (var hh = win.start / 60; hh <= win.end / 60; hh += step) {
-      var lbl = hh % 24;
-      html.push('<span class="cz-t-tick" style="top:' + tRailPct(hh * 60, win).toFixed(2) + '%">' +
-        (lbl < 10 ? '0' : '') + lbl + '</span>');
+    for (var h = Math.ceil(win.start / 60); h * 60 <= win.end; h += step) {
+      html.push('<span class="cz-t-tick" aria-hidden="true" style="top:' +
+        tRailPct(h * 60, win).toFixed(2) + '%">' + (h % 24 < 10 ? '0' : '') + (h % 24) + '</span>');
+    }
+    var nowDate = new Date();
+    var nowMin = nowDate.getHours() * 60 + nowDate.getMinutes();
+    if (nowMin >= win.start && nowMin <= win.end) {
+      html.push('<div class="cz-t-now" aria-hidden="true" style="top:' + tRailPct(nowMin, win).toFixed(2) + '%">' +
+        '<span class="cz-t-now-dot"></span><span class="cz-t-now-text">现在 ' +
+        (Math.floor(nowMin / 60) < 10 ? '0' : '') + Math.floor(nowMin / 60) + ':' +
+        (nowMin % 60 < 10 ? '0' : '') + (nowMin % 60) + '</span></div>');
     }
     if (!items.length) {
-      html.push('<div class="cz-t-rail-empty">今天还没有练习</div>');
+      html.push(tRailEmpty());
       rail.innerHTML = html.join('');
       return;
     }
-    /* 相邻短时段按真实位置会互相压住：按时间顺序下推，保证每条都露出标题；
-       极端拥挤时整体等比压缩，宁可块变矮也不丢段。 */
-    var prevBottom = -1;
+    /* 块高 = 真实时长 × 每分像素，唯一的地板 5px 是为了让 1 分钟的段可见；
+       位置只由开始时间决定，不再下推/等分（那会把刻度语义改掉）。 */
+    var usable = (T_RAIL_BOT - T_RAIL_TOP) / 100 * H;
     items.forEach(function (it) {
       it.top = tRailPct(it.start, win) / 100 * H;
-      it.height = Math.max(28, it.dur / span * (T_RAIL_BOT - T_RAIL_TOP) / 100 * H);
-      if (it.top < prevBottom + 4) { it.top = prevBottom + 4; }
+      it.height = Math.max(5, Math.max(it.dur, 0) / span * usable);
+    });
+    /* 真实时间重叠（理论少见）才下推，且只推位置不改高度。 */
+    var prevBottom = -1;
+    items.forEach(function (it) {
+      if (it.top < prevBottom + 2) { it.top = prevBottom + 2; }
       prevBottom = it.top + it.height;
     });
-    if (prevBottom > H) {
-      var k = H / prevBottom;
-      items.forEach(function (it) {
-        it.top *= k;
-        it.height = Math.max(20, it.height * k);
-      });
+    /* 仍溢出：只等比缩高度（比例不变），位置保持与刻度对齐。 */
+    var maxBottom = 0;
+    items.forEach(function (it) { maxBottom = Math.max(maxBottom, it.top + it.height); });
+    if (maxBottom > H) {
+      var k = H / maxBottom;
+      items.forEach(function (it) { it.height = Math.max(4, it.height * k); });
     }
-    var blocks = items.map(function (r) {
-      var label = [r.subject, r.session, r.time].filter(Boolean).join(' · ');
-      return '<div class="cz-t-block' + (r.height < 44 ? ' is-dense' : '') + '" style="top:' +
-        r.top.toFixed(1) + 'px;height:' + r.height.toFixed(1) + 'px;min-height:' + Math.round(r.height) + 'px" title="' + tEsc(label) + '">' +
-        '<div class="cz-t-block-main">' +
-          '<span class="cz-t-block-subject">' + tEsc(r.subject) + '</span>' +
-          (r.session ? '<span class="cz-t-block-session">' + tEsc(r.session) + '</span>' : '') +
-        '</div>' +
-        '<span class="cz-t-block-dur">' + tEsc(tDurShort(r.dur)) + '</span>' +
-      '</div>';
+    var longest = -1, longestDur = 0;
+    items.forEach(function (it, i) {
+      if (it.dur > longestDur) { longestDur = it.dur; longest = i; }
     });
-    rail.innerHTML = html.concat(blocks).join('');
+    var bars = items.map(function (r, i) {
+      var label = [r.subject, r.session].filter(Boolean).join(' · ');
+      var tip = label + ' · ' + (r.time || '时间未知') + ' · ' + (r.dur > 0 ? tDurShort(r.dur) : '时长未知');
+      var isLong = i === longest && longestDur >= 5;
+      var cy = r.top + r.height / 2;
+      var ly = Math.min(Math.max(cy, 9), H - 8);
+      return {
+        r: r, isLong: isLong, cy: cy, ly: ly, tip: tip
+      };
+    });
+    /* 标签防叠：先按块中心放，撞上了往下挪；挪超过 18px 就只留时长，交给 title。 */
+    var lastLabelY = -999;
+    var parts = [];
+    bars.forEach(function (b) {
+      var moved = b.ly - b.cy;
+      if (b.ly - lastLabelY < 15) {
+        b.ly = lastLabelY + 15;
+        moved = b.ly - b.cy;
+      }
+      var showLabel = moved <= 18 && b.ly <= H - 6;
+      if (showLabel) { lastLabelY = b.ly; }
+      var durTxt = b.r.dur > 0 ? tDurShort(b.r.dur) : '—';
+      parts.push('<div class="cz-t-bar' + (b.isLong ? ' is-long' : '') + '" style="top:' +
+        b.r.top.toFixed(1) + 'px;height:' + b.r.height.toFixed(1) + 'px" title="' + tEsc(b.tip) + '"></div>');
+      if (showLabel) {
+        parts.push('<div class="cz-t-label" style="top:' + b.ly.toFixed(1) + 'px">' +
+          '<span class="cz-t-label-main">' + tEsc(b.r.subject) + '</span>' +
+          (b.r.session ? '<span class="cz-t-label-sub">' + tEsc(b.r.session) + '</span>' : '') +
+        '</div>');
+      }
+      parts.push('<span class="cz-t-dur' + (b.isLong ? ' is-long' : '') + '" style="top:' +
+        Math.min(b.ly, H - 8).toFixed(1) + 'px">' + tEsc(durTxt) + '</span>');
+    });
+    rail.innerHTML = html.concat(parts).join('');
+  }
+  function tRailList(items) {
+    var longest = -1, longestDur = 0;
+    items.forEach(function (it, i) {
+      if (it.dur > longestDur) { longestDur = it.dur; longest = i; }
+    });
+    var rows = items.map(function (r, i) {
+      var label = [r.subject, r.session].filter(Boolean).join(' · ');
+      var tip = label + ' · ' + (r.time || '时间未知') + ' · ' + (r.dur > 0 ? tDurShort(r.dur) : '时长未知');
+      return '<div class="cz-t-lrow" title="' + tEsc(tip) + '">' +
+        '<span class="cz-t-ltime">' + (r.time ? tEsc(r.time) : '—') + '</span>' +
+        '<span class="cz-t-lmain"><span class="cz-t-lsub">' + tEsc(r.subject) + '</span>' +
+          (r.session ? '<span class="cz-t-lses">' + tEsc(r.session) + '</span>' : '') + '</span>' +
+        '<span class="cz-t-ldur' + (i === longest && longestDur >= 5 ? ' is-long' : '') + '">' +
+          tEsc(r.dur > 0 ? tDurShort(r.dur) : '—') + '</span></div>';
+    });
+    return '<div class="cz-t-rows">' + rows.join('') + '</div>';
+  }
+  function tRailEmpty() {
+    return '<div class="cz-t-rail-empty">今天还没有练习' +
+      '<span class="cz-t-rail-empty-sub">从常练科目开始</span></div>';
   }
   /* 从票夹抽屉的真节点反读今日每段与总量，避免另起一份数据源。 */
   function refreshTCard(cd, box) {
@@ -22173,10 +22295,14 @@ window.__CZ_CSS = [
     });
     if (!sessCount && rows.length) { sessCount = rows.length; }
 
-    var now = (cd.defaultView && cd.defaultView.Date) ? new cd.defaultView.Date() : new Date();
-    var week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
+    /* 日期跟数据同口径走东八区：设备时区不在 +8 时，卡头日期会和练习记录差一天。 */
+    var todayParts = cstDateStr(0).split('-');
+    var tMon = parseInt(todayParts[1], 10), tDay = parseInt(todayParts[2], 10);
+    var week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][
+      new Date(Date.UTC(parseInt(todayParts[0], 10), tMon - 1, tDay)).getUTCDay()
+    ];
     var dateEl = box.querySelector('[data-t-date]');
-    if (dateEl) { dateEl.textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + week; }
+    if (dateEl) { dateEl.textContent = tMon + '月' + tDay + '日 ' + week; }
 
     var numEl = box.querySelector('[data-t-num]');
     var unitEl = box.querySelector('[data-t-unit]');
@@ -22186,14 +22312,14 @@ window.__CZ_CSS = [
     var goalEl = box.querySelector('[data-t-goal]');
     /* 不再编「目标 N 分」：票卡没有可靠的目标节点，目标数字会失真。
        这里只报真实段数，时间分布交给下面的刻度轨。 */
-    if (goalEl) { goalEl.textContent = '今日 ' + (sessCount || 0) + ' 段'; }
+    if (goalEl) { goalEl.textContent = (sessCount || 0) + ' 段'; }
     var latestMin = -1, latestTime = '';
     rows.forEach(function (r) {
       var m = tClockMin(r.time);
       if (m != null && m >= latestMin) { latestMin = m; latestTime = r.time; }
     });
     var metaEl = box.querySelector('[data-t-meta]');
-    if (metaEl) { metaEl.textContent = latestTime ? ('最近 ' + latestTime) : '今天还没有记录'; }
+    if (metaEl) { metaEl.textContent = latestTime ? ('最近 ' + latestTime) : ''; }
     /* 抽屉是倒序（最新在上），时间轴按时间正序铺，并把最后一段放在最下。 */
     rows.sort(function (a, b) {
       var am = tClockMin(a.time), bm = tClockMin(b.time);
@@ -22864,7 +22990,7 @@ window.__CZ_CSS = [
       '<div class="mini-divider"></div>' +
       '<div class="mini-foot-row">' +
         '<span class="mini-sync-tip">今日练习摘要</span>' +
-        '<button type="button" class="pill-popout-btn" id="openRecordsPopoutBtn">查看记录明细 ↗</button>' +
+        '<button type="button" class="pill-popout-btn" id="openRecordsPopoutBtn">查看记录明细</button>' +
       '</div>';
 
     btn.addEventListener('click', function () { openRecordsPop(); });

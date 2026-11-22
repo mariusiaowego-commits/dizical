@@ -15,7 +15,12 @@ from .kid_app.duration_fmt import pick_seconds
 
 
 _SESSION_TEMPO_RE = re.compile(r"[♩♪♬]\s*=\s*(\d{2,3})")
-_SESSION_BPM_RE = re.compile(r"(\d{2,3})")
+# 隐式速度只认明确语境（速度80 / 80拍 / bpm=80）：
+# 「中音54」「第48条」「[1001]」是音名/小节号/编号，不能当 BPM。
+_SESSION_SPEED_RE = re.compile(
+    r"(?:速度|中速|慢速|快速|中快|快板|中板|慢板|行板|急板|广板|柔板|bpm|BPM)\s*[=:：]?\s*(\d{2,3})"
+    r"|(\d{2,3})\s*(?:拍|速)"
+)
 _SESSION_NOTE_RE = re.compile(r"[♩♪♬]")
 _ALLOWED_SESSION_NOTES = ("♩", "♪", "♬")
 _SESSION_BPM_MIN = 40
@@ -30,15 +35,17 @@ def extract_session_bpm(value: object) -> Optional[int]:
     """从自由文本里取 40-200 的 BPM；取不到返回 None。
 
     先认「♪=90」这种显式速度，避免「80乐段 ♪=90」被名称里的 80 抢走；
-    没有显式速度时取最后一个合法数字（历史名称习惯把速度放末尾）。
+    没有显式速度时只认「速度80 / 80拍 / bpm=80」这类速度语境。
+    老数据里 11 条隐式速度有 10 条是「速度NN」，唯一的裸数字是
+    「低音34；低音54」这种音名，取它会把节拍器打到 ♩=54。
     """
     text = str(value or "")
     for match in _SESSION_TEMPO_RE.finditer(text):
         bpm = int(match.group(1))
         if _SESSION_BPM_MIN <= bpm <= _SESSION_BPM_MAX:
             return bpm
-    for match in reversed(list(_SESSION_BPM_RE.finditer(text))):
-        bpm = int(match.group(1))
+    for match in _SESSION_SPEED_RE.finditer(text):
+        bpm = int(match.group(1) or match.group(2))
         if _SESSION_BPM_MIN <= bpm <= _SESSION_BPM_MAX:
             return bpm
     return None

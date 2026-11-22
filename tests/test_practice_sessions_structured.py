@@ -150,6 +150,22 @@ def test_content_options_rejects_invalid_session(client, auth_as, sessions, expe
     assert expect in res.json()["error"]
 
 
+@pytest.mark.parametrize("text,expect", [
+    ("速度80", 80),
+    ("速度 90", 90),
+    ("80拍", 80),
+    ("bpm=100", 100),
+    ("中音54", None),
+    ("低音34；低音54", None),
+    ("第48条", None),
+    ("[1001] 长音练习", None),
+    ("长音 45秒", None),
+])
+def test_extract_bpm_ignores_note_names_and_numbers(text, expect):
+    """裸数字只在速度语境里才算 BPM；音名/小节号/编号不能打到节拍器上。"""
+    assert practice_module.extract_session_bpm(text) == expect
+
+
 def test_assignment_sessions_passthrough(client, auth_as):
     test_client, db = client
     item_id = _insert_item(db, "春耕曲环节")
@@ -173,3 +189,30 @@ def test_assignment_sessions_passthrough(client, auth_as):
     assert item["sessions"][1]["bpm"] == 98
     # 老消费者仍能读到聚合后的速度串
     assert item["metronome"] == "♩=60 / ♪=98"
+
+
+def test_history_assignment_does_not_inherit_current_sessions(client, auth_as):
+    """两周前没存 sessions 的作业保持空，不能借用今天配置的环节与速度。"""
+    test_client, db = client
+    item_id = _insert_item(db, "历史环节科目")
+    auth_as("dad")
+    put = test_client.put(
+        f"/config/api/practice/items/{item_id}/content-options",
+        json={"sessions": [{"name": "新环节", "bpm": 72, "note": "♩", "requirement": ""}]},
+    )
+    assert put.status_code == 200, put.text
+    for day in ("2026-11-08", "2026-11-21"):
+        res = test_client.post("/config/api/assignments", json={
+            "lesson_date": day,
+            "items": [{"item": "历史环节科目", "item_id": item_id, "requirement": "老要求"}],
+            "notes": "",
+        })
+        assert res.status_code == 200, res.text
+
+    listed = test_client.get("/config/api/assignments?weeks=52")
+    by_day = {a["lesson_date"]: a for a in listed.json()["assignments"]}
+    old_item = next(i for i in by_day["2026-11-08"]["items"] if i["item_id"] == item_id)
+    new_item = next(i for i in by_day["2026-11-21"]["items"] if i["item_id"] == item_id)
+    assert old_item["sessions"] == []
+    assert [s["name"] for s in new_item["sessions"]] == ["新环节"]
+    assert new_item["sessions"][0]["bpm"] == 72
