@@ -5846,26 +5846,26 @@
   }
   window.cleanSessionText = cleanSessionText;
 
-  var TEMPO_RE = /[♩♪♬]\s*=\s*(\d{2,3})/;
-  var SPEED_RE = /(?:速度|中速|慢速|快速|中快|快板|中板|慢板|行板|急板|广板|柔板|bpm|BPM)\s*[=:：]?\s*(\d{2,3})|(\d{2,3})\s*(?:拍|速)/;
+  var TEMPO_RE = /[♩♪♬]\s*[=＝]\s*(\d{2,3})/g;
+  var SPEED_RE = /(?:速度|中速|慢速|快速|中快|快板|中板|慢板|行板|急板|广板|柔板|bpm|BPM)\s*[=:：＝]?\s*(\d{2,3})|(\d{2,3})\s*(?:bpm|BPM|拍\/分)|每分钟\s*(\d{2,3})\s*拍/g;
   var NOTE_RE = /[♩♪♬]/;
   var ALLOWED_NOTES = { '♩': 1, '♪': 1, '♬': 1 };
 
   function extractBpm(text) {
     var str = String(text == null ? '' : text);
     /* 先认「♪=90」显式速度，避免「80乐段 ♪=90」被名称里的 80 抢走；
-       没有显式速度时只认「速度80 / 80拍 / bpm=80」这类速度语境：
-       「中音54」「第48条」是音名与编号，不能把节拍器打到 ♩=54。
+       没有显式速度时只认「速度80 / 80 bpm / 每分钟80拍」这类语境：
+       「中音54」「第48条」「第100拍」是音名/编号/拍数，不能打到节拍器上。
+       与后端 finditer 对齐：越界的第一个值跳过，继续找下一个。
        不用 lookbehind，老 Safari 会整段脚本语法报错。 */
-    var explicit = str.match(TEMPO_RE);
-    if (explicit) {
-      var t = parseInt(explicit[1], 10);
-      if (t >= 40 && t <= 200) return t;
-    }
-    var speed = str.match(SPEED_RE);
-    if (speed) {
-      var s = parseInt(speed[1] || speed[2], 10);
-      if (s >= 40 && s <= 200) return s;
+    var t = firstBpm(str, TEMPO_RE);
+    return t != null ? t : firstBpm(str, SPEED_RE);
+  }
+  function firstBpm(str, re) {
+    var all = str.match(re) || [];
+    for (var i = 0; i < all.length; i++) {
+      var n = parseInt(String(all[i]).replace(/\D/g, ''), 10);
+      if (n >= 40 && n <= 200) { return n; }
     }
     return null;
   }
@@ -20346,10 +20346,12 @@ function closeRecordsDrawer() {
                 metronome: targetItem.metronome || '按曲目要求',
                 requirements: targetItem.requirements || '按曲目常规进度练习。',
                 metronome_segments: targetItem.metronome_segments || [],
-                /* 环节结构：优先老师要求里带的结构化 sessions，退回科目预置环节 */
-                sessions: Array.isArray(targetItem.sessions) && targetItem.sessions.length
+                /* 环节结构：老师要求里存了就用；只有最新一张（idx 0）才退回科目预置环节。
+                   后端已把历史记录裁成空 sessions，这里若再回落，1034 的 21 张旧卡
+                   会全部显示今天的环节与速度。 */
+                sessions: (Array.isArray(targetItem.sessions) && targetItem.sessions.length)
                   ? targetItem.sessions
-                  : (Array.isArray(itemData.sessions) ? itemData.sessions : []),
+                  : (idx === 0 && Array.isArray(itemData.sessions) ? itemData.sessions : []),
                 notes: asg.notes || '',
                 total_seconds_per_stage: asg.total_seconds_per_stage || 0,
                 stage_duration_text: asg.stage_duration_text || '0秒'
@@ -21682,7 +21684,7 @@ window.__CZ_CSS = [
   '.cz-t-axis { position: absolute; left: 34px; top: 4%; bottom: 4%; width: 0; border-left: 1px dashed rgba(44,62,80,0.28); }',
   ':root[data-skin="ink"] .cz-t-axis { border-left-color: rgba(222,215,205,0.24); }',
   '.cz-t-tick { position: absolute; left: 0; width: 26px; transform: translateY(-50%); text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
-  '.cz-t-bar { position: absolute; left: 46px; width: calc(46% - 46px); min-height: 5px; border-radius: 4px; background: #DCD6CB; box-shadow: inset 0 0 0 1px rgba(44,62,80,0.10); }',
+  '.cz-t-bar { position: absolute; left: 46px; width: calc(46% - 46px); min-height: 2px; border-radius: 4px; background: #DCD6CB; box-shadow: inset 0 0 0 1px rgba(44,62,80,0.10); }',
   '.cz-t-bar::before { content: ""; position: absolute; left: -12px; top: 0; width: 12px; border-top: 1px solid rgba(44,62,80,0.22); }',
   ':root[data-skin="ink"] .cz-t-bar::before { border-top-color: rgba(222,215,205,0.26); }',
   ':root[data-skin="ink"] .cz-t-bar { background: #2F3742; box-shadow: inset 0 0 0 1px rgba(222,215,205,0.14); }',
@@ -22142,68 +22144,61 @@ window.__CZ_CSS = [
       (mi ? parseInt(mi[1], 10) * 60 : 0) +
       (se ? parseInt(se[1], 10) : 0);
   }
-  function renderTRail(box, rows) {
-    var rail = box.querySelector('[data-t-rail]');
-    if (!rail) { return; }
-    var H = rail.clientHeight;
-    var W = rail.clientWidth;
-    if (!(H > 24)) { H = 180; }
-    var items = [];
-    var cursor = 6 * 60;
-    rows.forEach(function (r) {
-      var start = tClockMin(r.time);
-      if (start == null) { start = cursor; }
-      var dur = tDurMin(r.dur);
-      items.push({ start: start, dur: dur, subject: r.subject || '练习', session: r.session, time: r.time });
-      cursor = start + (dur || 30);
-    });
-    items.sort(function (a, b) { return a.start - b.start; });
-    var win = tRailWindow(items);
-    var span = win.end - win.start;
-    /* 窄卡或矮轨：不假装是图表，切紧凑列表（时间仍是真实 HH:MM）。 */
-    if (H < 200 || W < 240) {
-      rail.innerHTML = items.length ? tRailList(items) : tRailEmpty();
-      return;
-    }
+  /* 轴线 + 整点刻度 + 「现在」游标；空态与有数据共用。 */
+  function tRailAxis(win, H) {
     var step = tRailStep(win, H);
     var html = ['<div class="cz-t-axis"></div>'];
     for (var h = Math.ceil(win.start / 60); h * 60 <= win.end; h += step) {
       html.push('<span class="cz-t-tick" aria-hidden="true" style="top:' +
         tRailPct(h * 60, win).toFixed(2) + '%">' + (h % 24 < 10 ? '0' : '') + (h % 24) + '</span>');
     }
-    var nowDate = new Date();
-    var nowMin = nowDate.getHours() * 60 + nowDate.getMinutes();
+    var cp = cstParts();
+    var nowMin = cp.h * 60 + cp.min;
     if (nowMin >= win.start && nowMin <= win.end) {
       html.push('<div class="cz-t-now" aria-hidden="true" style="top:' + tRailPct(nowMin, win).toFixed(2) + '%">' +
         '<span class="cz-t-now-dot"></span><span class="cz-t-now-text">现在 ' +
-        (Math.floor(nowMin / 60) < 10 ? '0' : '') + Math.floor(nowMin / 60) + ':' +
-        (nowMin % 60 < 10 ? '0' : '') + (nowMin % 60) + '</span></div>');
+        (cp.h < 10 ? '0' : '') + cp.h + ':' + (cp.min < 10 ? '0' : '') + cp.min + '</span></div>');
     }
-    if (!items.length) {
-      html.push(tRailEmpty());
-      rail.innerHTML = html.join('');
+    return html.join('');
+  }
+  function renderTRail(box, rows) {
+    var rail = box.querySelector('[data-t-rail]');
+    if (!rail) { return; }
+    var H = rail.clientHeight;
+    var W = rail.clientWidth;
+    if (!(H > 24)) { H = 180; }
+    /* 没有 started_at 的记录不参与刻度（真实库有 22 条）：
+       拿 06:00 或上一段末尾顶上等于凭空造时间。列表形态里仍以「—」出现。 */
+    var items = [], untimed = [];
+    rows.forEach(function (r) {
+      var rec = {
+        start: tClockMin(r.time), dur: tDurMin(r.dur),
+        subject: r.subject || '练习', session: r.session, time: r.time
+      };
+      if (rec.start == null) { untimed.push(rec); } else { items.push(rec); }
+    });
+    items.sort(function (a, b) { return a.start - b.start; });
+    var win = tRailWindow(items);
+    var span = win.end - win.start;
+    var compact = H < 200 || W < 240;
+    if (!items.length && !untimed.length) {
+      rail.innerHTML = compact ? tRailEmpty() : (tRailAxis(win, H) + tRailEmpty());
       return;
     }
-    /* 块高 = 真实时长 × 每分像素，唯一的地板 5px 是为了让 1 分钟的段可见；
-       位置只由开始时间决定，不再下推/等分（那会把刻度语义改掉）。 */
+    /* 窄卡、矮轨，或全部记录都没开始时间：不假装是图表，切紧凑列表。 */
+    if (compact || !items.length) {
+      rail.innerHTML = tRailList(items.concat(untimed));
+      return;
+    }
+    var html = tRailAxis(win, H);
+    /* 块高 = 真实时长 × 每分像素，唯一的地板 2px 只保证细线可见；
+       位置永远只由开始时间决定。地板不能再参与「下推」：抬高的底边会把
+       后面每一段依次往下挤，11 段能累积漂移 38px。 */
     var usable = (T_RAIL_BOT - T_RAIL_TOP) / 100 * H;
     items.forEach(function (it) {
       it.top = tRailPct(it.start, win) / 100 * H;
-      it.height = Math.max(5, Math.max(it.dur, 0) / span * usable);
+      it.height = Math.max(2, Math.max(it.dur, 0) / span * usable);
     });
-    /* 真实时间重叠（理论少见）才下推，且只推位置不改高度。 */
-    var prevBottom = -1;
-    items.forEach(function (it) {
-      if (it.top < prevBottom + 2) { it.top = prevBottom + 2; }
-      prevBottom = it.top + it.height;
-    });
-    /* 仍溢出：只等比缩高度（比例不变），位置保持与刻度对齐。 */
-    var maxBottom = 0;
-    items.forEach(function (it) { maxBottom = Math.max(maxBottom, it.top + it.height); });
-    if (maxBottom > H) {
-      var k = H / maxBottom;
-      items.forEach(function (it) { it.height = Math.max(4, it.height * k); });
-    }
     var longest = -1, longestDur = 0;
     items.forEach(function (it, i) {
       if (it.dur > longestDur) { longestDur = it.dur; longest = i; }
@@ -22241,7 +22236,7 @@ window.__CZ_CSS = [
       parts.push('<span class="cz-t-dur' + (b.isLong ? ' is-long' : '') + '" style="top:' +
         Math.min(b.ly, H - 8).toFixed(1) + 'px">' + tEsc(durTxt) + '</span>');
     });
-    rail.innerHTML = html.concat(parts).join('');
+    rail.innerHTML = html + parts.join('');
   }
   function tRailList(items) {
     var longest = -1, longestDur = 0;
@@ -26412,11 +26407,23 @@ window.__CZ_CSS = [
      · 不用 /api/today-stats —— 它的服务端日期可能是 UTC，会串到昨天。
      · ?audit=1 的自检页保留演示数据，契约断言不受真实数据影响。 ── */
   var dayPayload = null;
+  /* 日期与时刻统一按东八区取：记录时间是服务端 CST 字符串，
+     设备时区不是 +8 时，本地钟会和记录差一天/十几小时。 */
+  function cstParts(date) {
+    var fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    var p = {};
+    fmt.formatToParts(date || new Date()).forEach(function (x) {
+      if (x.type !== 'literal') { p[x.type] = x.value; }
+    });
+    return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24, min: +p.minute };
+  }
   function cstDateStr(offsetDays) {
-    var d = new Date();
-    d.setDate(d.getDate() + (offsetDays || 0));
+    var p = cstParts(new Date(Date.now() + (offsetDays || 0) * 86400000));
     var pad = function (n) { return String(n).padStart(2, '0'); };
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    return p.y + '-' + pad(p.m) + '-' + pad(p.d);
   }
   function applyDayToModules() {
     var cd = canvasDoc();

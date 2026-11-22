@@ -126,11 +126,11 @@ skipped：真实当天多段数据未跑（本地 DB 副本当天无记录，用
 
 audit 结论（pixel，UIUX）：方向保留，但块高被 28px 地板拉平，45 分与 8 分体量比 1.0（真值 5.6），轨只编码了「什么时候」，没编码「花了多久」。本轮按 P0-1/P0-2 改：
 
-- 块高 = `max(5, dur / span × 0.92H)`，位置只由开始时间换算；不再下推/等分/整体缩放。
+- 块高 = `max(2, dur / span × 0.92H)`，位置只由开始时间换算；2px 地板不参与下推。
 - 非空态窗口改为「首段 −30 分 ~ 末段 +30 分」，最小 4 小时；空态才用 06–22。
 - 轨高 < 200 或轨宽 < 240 切 `.cz-t-rows` 紧凑列表。
 - 底按钮 44px；去掉 U+2197；「今日」前缀去重；朱橙只给最长一段；补「现在」游标与空态副句。
-- `test_practice_dsh_tcard_is_day_rail_not_plain_list` 断言同步更新：`cz-t-bar`、`(it.dur, 0) / span * usable`、5px 地板、`H < 200 || W < 240`、`cz-t-rows`。
+- `test_practice_dsh_tcard_is_day_rail_not_plain_list` 断言同步更新：`cz-t-bar`、`(it.dur, 0) / span * usable`、2px 地板、`H < 200 || W < 240`、`cz-t-rows`、`prevBottom` 不存在、`untimed` 存在。
 
 ```
 node --check <13 个 inline script>
@@ -176,3 +176,29 @@ skipped：
 - combo5（1133）里 T 卡仍在视口右侧被裁（卡 `left 922 / right 1282`，视口 1133）；分页圆点可滑到，但「一屏看全」未解决 —— 处置方案（拆两屏 / T 窄形态 / 移出 combo5）待产品拍板。
 - 真实当天多段数据仍未跑（本地 DB 副本当天无记录），几何用注入样本验收。
 - 计时中当前段实时增长未做（本轮不改计时链路）。
+
+## 第五轮（独立只读复检后：2 P1）
+
+独立子 agent 对 `1c9aee8` 只读复检，报 0 P0 / 2 P1 / 4 P2。两条 P1 都是「后端修了、前端抵消」或「注释说只按时间，实际仍在挪」：
+
+| 级别 | 问题 | 修复 | 复测 |
+| --- | --- | --- | --- |
+| P1 | 历史要求卡仍被前端灌入当前 sessions：`updateSubjectAssignment` 对每张卡都回落 `itemData.sessions`，1034 的 21 张旧卡全显示今天的环节 | 回落加 `idx === 0` 门禁，只有最新一张用科目预置 | 后端 `sessions: []` + 前端门禁双层；`/config/api/assignments` 回归测试通过 |
+| P1 | 5px 地板参与下推：短段落被抬高后把后续段依次挤下去，11 段累积漂移 38px；60s 与 264s 都画 5px | 地板降到 2px 且不参与下推；位置只算 `tRailPct(start)` | 11 段 × 1 分：相邻 top 差 1.40–1.50px，末段 = 首段 + 14.4px（窗口 360 分 × 0.92 × 563 / 360 = 1.44px/分），无累积 |
+
+同批修 P2：
+
+- BPM 前后端仍有口径差：显式速度改成「越界跳过继续找」（`♩=240 ♪=90` → 90）；补全角 `＝`、`72 bpm`、`每分钟80拍`；删掉裸 `NN拍`（`第100拍` 不再算 100）。
+- 新增 `test_frontend_and_backend_extract_bpm_agree`：抽出画布里的 `extractBpm` 用 node 跑同一张表，与 `extract_session_bpm` 逐项对比（node 不可用时 skip）。
+- 日期与「现在」游标改走 `cstParts()`（`Intl.DateTimeFormat` + `Asia/Shanghai`），不再依赖设备本地时区。
+- 无 `started_at` 的记录（真实库 22 条）不参与刻度与窗口，列表里以 `—` 排末尾，不再顶到 06:00。
+
+```
+node --check <13 个 inline script> → 全部通过
+pytest <10 个 practice-dsh 目标文件> → 177 passed
+pytest tests/ → 1234 passed, 5 failed, 8 skipped in 42.81s
+```
+
+5 个 failed 与第二/四轮同一批，未新增。
+
+skipped（与第四轮相同）：combo5 里 T 卡出视口待拍板；真实当天多段数据未跑；计时中段实时增长未做。新增 skipped：刻度轨的 DOM 行为断言仍依赖 Playwright 探针，未进 pytest（仓库无 JS 测试运行时）。

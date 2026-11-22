@@ -418,7 +418,7 @@ body（宿主页）
 
 ### 13.1 数据契约（零 schema 变更）
 - 练习环节存在 `practice_items.content_options`：JSON 数组 `[{name, bpm, note, requirement}]`；历史逗号/换行文本仍可解析。BPM 40–200，note ∈ `♩ / ♪ / ♬`。
-- 历史文本解析 BPM 时先认显式 `♩/♪/♬=nn`，没有才取最后一个合法数字：`80乐段 ♪=90` 取 90，不再被名称前缀的 80 抢走（这正是过去「写了 ♪=98 实际录入还是 80」的根因）。
+- 历史文本解析 BPM 时先认显式 `♩/♪/♬=nn`（含全角 `＝`，越界值跳过继续找），没有才认速度语境：`速度80` / `72 bpm` / `每分钟80拍` / `速度＝88`。裸数字与 `NN拍` 一律不算——`中音54`、`第48条`、`[1001]`、`第100拍` 都是音名/编号/拍数，取它会把节拍器打错。`80乐段 ♪=90` 仍取 90，不被名称前缀的 80 抢走。前端与后端同一张表，由 `test_frontend_and_backend_extract_bpm_agree` 用 node 对照锁定。
 - 老师要求在 `weekly_assignments.items[]` 内带可选 `sessions`（同上结构）。保存时同步聚合平铺的 `metronome`（`♩=60 / ♪=98`）与 `requirements`，老消费者不用改。
 - API：`GET /config/api/practice/items`、`GET /api/items`、`GET /config/api/assignments`、`GET /config/api/assignments/by-item` 都补 `sessions`；`PUT /config/api/practice/items/{id}/content-options` 接受 `sessions`（纯文本仍兼容）。
 
@@ -434,15 +434,17 @@ body（宿主页）
 - 底栏（进度点 + 上一张/下一张）移进 `.deck-card` 内，`margin-top:auto` + 独立浅底 + 顶部分隔线；卡高与兄弟卡一致（`html.cz-fill:not(.cz-feed) .deck-card { height:100% }`）。
 - 圆角描边：`border` 由 `.deck-card::before` 统一绘制（1px，深浅皮肤各自取值）；Q 模块 iframe 不再用宿主 24px 圆角裁切（`.cz-mod[data-mod="Q"] > iframe { border-radius:0 }`），否则窄档卡角连描边一起被切。
 - 翻页动画：`navTo()` 统一按钮 / 指示点 / 拖拽，`isAnimating` 门闩防连点；旧卡飞出 + 下一张抬升 240ms。
+- 历史卡不回落：后端只对每科最新一条回落 sessions；画布 `updateSubjectAssignment` 也只在 `idx === 0` 才用科目预置。否则 1034 的 21 张旧卡会全部显示今天的环节与速度。
 
 ### 13.4 T 卡（今日时间轴）
 - 删除内嵌 D 卡 iframe 与 R 迷你卡拼接；改为原生 DOM Day Rail：头部小标签「今日时间轴 + 日期」、44px 总时长 + 段数、中部刻度轨、底部「最近 HH:MM」+「查看记录明细」。
-- **块高就是真实时长**：`height = max(5, dur / (win.end - win.start) × 0.92H)`。实测 20/8/45/12 分 → 13.8 / 5.5 / 31.1 / 8.3px，45 分 vs 8 分 = 5.65:1（真值 5.625）。位置只由开始时间决定，不再下推、等分或整体缩放；只有真实时间重叠才下推 2px，溢出时只等比缩高度不改位置。
+- **块高就是真实时长**：`height = max(2, dur / (win.end - win.start) × 0.92H)`。实测 20/8/45/12 分 → 13.8 / 5.5 / 31.1 / 8.3px，45 分 vs 8 分 = 5.65:1（真值 5.625）。位置只由开始时间决定；2px 地板只保证细线可见，**不参与下推**（抬高的底边会把后续段依次挤下去，11 段可累积漂移 38px）。真实时间重叠时两条叠画，不再移位。
+- 没有 `started_at` 的记录（真实库 22 条）不参与刻度与窗口，列表形态里以 `—` 出现在末尾；不再用 06:00 或上一段末尾顶上。
 - 刻度窗口：非空态取「首段 −30 分 ~ 末段 +30 分」并贴整 30 分，最小 4 小时；空态才用 06:00–22:00。23:00 后的练习把 `start` 往前推，刻度闭合在 00–24，不出现次日 01/02。
 - 刻度：起点对齐整点，步长按 `H × 0.92 / 30px` 计算（`tRailStep`），11px mono；1133×744 实测 08–20 共 13 格、间距 43px。
 - 标签在块右侧「科目 + 环节」；按块中心放，撞标签时下移 ≤18px，超过就隐藏文字交给 `title`；右列时长仅最长一段用朱橙（`is-long`）。
 - 窄档（轨高 < 200 或轨宽 < 240）不画轴，切 `.cz-t-rows` 紧凑列表：`HH:MM + 科目 + 环节 + 时长`，行高 27.8px；440×956 实测 4 行 `scrollHeight = clientHeight = 119`，不内滚。
-- 「现在」游标：当前时刻落在窗口内时画珊瑚虚线 + 6px 点 + 「现在 HH:MM」，空态同样出现，让「今天还没练」有参照物。
+- 「现在」游标：当前时刻落在窗口内时画珊瑚虚线 + 6px 点 + 「现在 HH:MM」，空态同样出现。日期与当前分钟统一走 `cstParts()`（`Intl.DateTimeFormat` + `Asia/Shanghai`），设备不在 +8 也不会与记录时间错一天。
 - 空态：满刻度 + 居中两句「今天还没有练习 / 从常练科目开始」，不重复段数。
 - 对比度：浅色块 `#DCD6CB` on `#FFFDFB` = 1.42:1；深墨块 `#2F3742` on `#232931` = 1.22:1，加 `inset 0 0 0 1px rgba(222,215,205,.14)` 后 1.43:1。最长段浅色 `rgba(255,87,34,.08)`、深墨 `rgba(255,87,34,.16)` + `rgba(255,158,122,.45)` 内描边（skin 规则需单独提权，否则被 `:root[data-skin="ink"] .cz-t-bar` 盖掉）。
 - 触控：底部按钮 `min-height: 44px`；文案去掉 U+2197，iOS Safari 会把它渲染成彩色 emoji。

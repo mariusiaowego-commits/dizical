@@ -153,8 +153,17 @@ def test_content_options_rejects_invalid_session(client, auth_as, sessions, expe
 @pytest.mark.parametrize("text,expect", [
     ("速度80", 80),
     ("速度 90", 90),
-    ("80拍", 80),
+    ("速度＝88", 88),
+    ("80 bpm", 80),
+    ("72BPM", 72),
+    ("每分钟80拍", 80),
+    ("♩＝90", 90),
+    ("♩=240 ♪=90", 90),
+    ("♩=30 ♪=90", 90),
     ("bpm=100", 100),
+    ("80拍", None),
+    ("第100拍", None),
+    ("共120拍", None),
     ("中音54", None),
     ("低音34；低音54", None),
     ("第48条", None),
@@ -162,8 +171,38 @@ def test_content_options_rejects_invalid_session(client, auth_as, sessions, expe
     ("长音 45秒", None),
 ])
 def test_extract_bpm_ignores_note_names_and_numbers(text, expect):
-    """裸数字只在速度语境里才算 BPM；音名/小节号/编号不能打到节拍器上。"""
+    """裸数字只在速度语境里才算 BPM；音名/小节号/编号/拍数不能打到节拍器上。"""
     assert practice_module.extract_session_bpm(text) == expect
+
+
+def _frontend_extract_bpm_block() -> str:
+    from pathlib import Path
+    html = Path(__file__).resolve().parents[1].joinpath(
+        "src/kid_app/templates/practice-dsh.html"
+    ).read_text(encoding="utf-8")
+    start = html.index("  var TEMPO_RE")
+    return html[start:html.index("  function extractNote", start)]
+
+
+def test_frontend_and_backend_extract_bpm_agree():
+    """前后端同一张表：画布不能一边 API 给 90、一边自己算成 null。"""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node 不可用，跳过前后端口径对照")
+    cases = ["速度80", "80拍", "第100拍", "每分钟80拍", "72 bpm", "♩＝90",
+             "♩=240 ♪=90", "♩=30 ♪=90", "80乐段 ♪=90", "中音54", "[1001] 长音练习"]
+    driver = _frontend_extract_bpm_block() + (
+        "\nconst cases = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
+        "\nprocess.stdout.write(JSON.stringify(cases.map(extractBpm)));"
+    )
+    out = subprocess.run(
+        [node, "-e", driver], input=json.dumps(cases), text=True,
+        capture_output=True, check=True, timeout=30,
+    ).stdout
+    assert json.loads(out) == [practice_module.extract_session_bpm(c) for c in cases]
 
 
 def test_assignment_sessions_passthrough(client, auth_as):
