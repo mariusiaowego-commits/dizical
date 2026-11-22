@@ -19053,6 +19053,8 @@ function closeRecordsDrawer() {
     /* 正文分组线与卡底分隔用更淡的一档，别和 8px 内印框（.13）抢"这是印刷框" */
     --qc-rule-soft: rgba(44, 62, 80, 0.07);
     --qc-note: #FFF4E3;
+    --qc-note-shadow-near: rgba(44, 62, 80, 0.10);
+    --qc-note-shadow-far: rgba(44, 62, 80, 0.10);
     --qc-note-label: #9E4A1A;
     --qc-foot: #F5F1E8;
     --qc-stamp: #A04217;
@@ -19172,6 +19174,9 @@ function closeRecordsDrawer() {
     --qc-rule: rgba(222, 215, 205, 0.12);
     --qc-rule-soft: rgba(222, 215, 205, 0.09);
     --qc-note: #313A44;
+    /* 深墨纸面比便签暗，投影必须是纯黑，否则会变成一圈亮边 */
+    --qc-note-shadow-near: rgba(0, 0, 0, 0.35);
+    --qc-note-shadow-far: rgba(0, 0, 0, 0.30);
     --qc-note-label: #FF9E7A;
     /* 与纸面 #262D35 拉开一档，避免读成"纸面糊了一块" */
     --qc-foot: #1B222A;
@@ -19792,7 +19797,7 @@ function closeRecordsDrawer() {
     flex-wrap: wrap;
   }
   .qc-session-name {
-    /* 环节是这张卡的大标题：必须比正文（16/16/15.5）高一头，否则层级只剩字重 */
+    /* 环节是这张卡的大标题：必须比正文（16/16/15）高一头，否则层级只剩字重 */
     font-size: 18px;
     font-weight: 800;
     line-height: 1.35;
@@ -19856,22 +19861,27 @@ function closeRecordsDrawer() {
   .card-teacher-note {
     flex: 0 0 auto;
     /* 夹在卡上的便签纸：直裁边 + 下缘撕口 + 0.4° 轻歪。
-       clip-path 会裁掉自身 box-shadow；filter 的 drop-shadow 认的是裁后 alpha，
-       所以投影挂在 filter 上，撕口边缘也能带出影。 */
-    filter: drop-shadow(0 1px 1px rgba(44, 62, 80, 0.10)) drop-shadow(0 2px 6px rgba(44, 62, 80, 0.10));
-    margin: 10px 2px 0;
+       clip-path 会把它自己的 filter/box-shadow 一起裁掉（实测投影 0 像素），
+       所以投影与旋转上移到 .ctn-wrap，这一层只留裁剪与纸色。 */
+    margin: 0;
     padding: 6px 10px 10px 12px;
     border-radius: 2px;
     border-left: 3px solid var(--qc-stamp-line);
     background: var(--qc-note);
-    transform: rotate(-0.4deg);
-    transform-origin: left top;
     clip-path: polygon(
       0 0, 100% 0, 100% calc(100% - 2px),
       87.5% 100%, 75% calc(100% - 2px), 62.5% 100%,
       50% calc(100% - 2px), 37.5% 100%, 25% calc(100% - 2px),
       12.5% 100%, 0 calc(100% - 2px)
     );
+  }
+  /* 便签的外层：只做定位、旋转与外投影。filter 建包含块，但内部全是常规流，不影响测量。 */
+  .ctn-wrap {
+    flex: 0 0 auto;
+    margin: 10px 2px 0;
+    transform: rotate(-0.4deg);
+    transform-origin: left top;
+    filter: drop-shadow(0 1px 1px var(--qc-note-shadow-near)) drop-shadow(0 2px 6px var(--qc-note-shadow-far));
   }
   .ctn-head {
     display: flex;
@@ -20320,12 +20330,14 @@ function closeRecordsDrawer() {
       const lines = rawNotes.split('\n').map(l => l.trim()).filter(Boolean);
       const body = lines.map(l => `<div class="ctn-line">${escHtml(l)}</div>`).join('');
       return `
-        <div class="card-teacher-note" data-no-drag>
-          <div class="ctn-head">
-            <span class="ctn-label">老师补充说明</span>
-            <button type="button" class="ctn-toggle" aria-expanded="false">展开全文</button>
+        <div class="ctn-wrap" data-no-drag>
+          <div class="card-teacher-note">
+            <div class="ctn-head">
+              <span class="ctn-label">老师补充说明</span>
+              <button type="button" class="ctn-toggle" aria-expanded="false">展开全文</button>
+            </div>
+            <div class="ctn-body is-clamped">${body}</div>
           </div>
-          <div class="ctn-body is-clamped">${body}</div>
         </div>`;
     }
 
@@ -21451,7 +21463,7 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed .deck-card.is-empty { min-height: 132px !important; }',
     'html.cz-fill.cz-feed .deck-card:not(.is-active) { display: none !important; }',
     'html.cz-fill.cz-feed .card-req-body { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; max-height: 760px !important; overflow-y: auto !important; }',
-    'html.cz-fill.cz-feed .card-note-box, html.cz-fill.cz-feed .card-teacher-note { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed .card-note-box, html.cz-fill.cz-feed .ctn-wrap { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
     /* Q 卡专属：feed 档不许有 100% 高度链条，否则 stage-frame 100% × body auto = 0，整卡被裁 */
     'html.cz-fill.cz-feed.cz-qcard, html.cz-fill.cz-feed.cz-qcard body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
     'html.cz-fill.cz-feed.cz-qcard .stage-frame { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; container-type: inline-size !important; }',
@@ -21463,7 +21475,7 @@ function closeRecordsDrawer() {
     /* B 节拍器：feed 档不锁高，卡高由内容决定（旋钮区尺寸见后面窄档那组） */
     'html.cz-fill.cz-feed .metro-card { height: auto !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; }',
     'html.cz-fill .card-top-row, html.cz-fill .card-footer-row, html.cz-fill .qc-bay-row, html.cz-fill .deck-footer-bar { flex-wrap: wrap !important; min-width: 0 !important; max-width: 100% !important; row-gap: 4px !important; }',
-    'html.cz-fill .card-date-badge, html.cz-fill .card-subject-tag, html.cz-fill .qc-bay-val, html.cz-fill .card-seg-chip, html.cz-fill .qc-seg-name, html.cz-fill .req-p, html.cz-fill .card-note-box, html.cz-fill .card-teacher-note, html.cz-fill .ctn-body, html.cz-fill .ctn-line, html.cz-fill .card-teacher-sig { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; white-space: normal !important; }',
+    'html.cz-fill .card-date-badge, html.cz-fill .card-subject-tag, html.cz-fill .qc-bay-val, html.cz-fill .card-seg-chip, html.cz-fill .qc-seg-name, html.cz-fill .req-p, html.cz-fill .card-note-box, html.cz-fill .ctn-wrap, html.cz-fill .ctn-body, html.cz-fill .ctn-line, html.cz-fill .card-teacher-sig { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; white-space: normal !important; }',
     /* Q 卡自带 11.5px/700 等宽日期（卡头是印刷体铭文），别用旧卡的 14px/500 压掉它 */
     'html.cz-fill:not(.cz-qcard) .card-date-badge { font-size: 14px !important; font-weight: 500 !important; }',
     /* 261015b R5：B/D/R/Q 外壳 container-type，内层只用 flex / clamp / cqh。矮盒靠 @container 收敛，元素仍在盒内。 */

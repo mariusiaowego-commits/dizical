@@ -85,7 +85,7 @@ $ pytest tests/ -q --ignore=tests/config_ui_fixes
 | 删掉 iPhone 视口字号覆盖 | PASS | `html.cz-vp440 .req-p` 实算 16px（原 17px），`.deck-btn` 回到 13px |
 | 序号下限 | PASS | 368 档 11px（原 10px，iPad 0.8 缩后约 8px） |
 | 速度章去掉看不见的内框 | PASS | 删 `inset 0 0 0 1px`；`-1.5deg` + `transform-origin: center` |
-| 便签恢复投影 | PASS | 实算 `drop-shadow(rgba(44,62,80,.1) 0 1px 1px) drop-shadow(… 0 2px 6px)` |
+| 便签恢复投影 | PASS（像素采样） | 投影挪到 `.ctn-wrap`：便签底缘下方 8 行由 `(230,231,230)` 渐回纸色 `(254,252,247)`。同元素直接挂 `filter` 会被 `clip-path` 裁成 0 像素（首版即此错，已改） |
 | 深墨登记带与纸面分层 | PASS | `--qc-foot #1B222A`（对纸面 >1.08:1） |
 | 深墨纸厚切面不再读成黑缝 | PASS | `--qc-edge-thick #3A434F`（比纸面亮） |
 | 线语言分层 | PASS | 正文分组线 / 卡底分隔降为 `--qc-rule-soft`（浅 `.07` / 深 `.09`），内印框保持 `.13` |
