@@ -41,7 +41,9 @@ date: 2026-11-22
 
 1. `.qc-shell` 的 `inset` 纸棱会被不透明 `.qc-sheet` 盖死 → 纸厚用 `.qc-shell { padding-bottom: 2px; background: var(--qc-edge-thick) }` 真实露出；顶部受光移到 `.qc-sheet` 的 `inset 0 1px 0`。
 2. 内印线不能写死底边偏移：`cz-fill` 下 `.deck-footer-bar { flex-wrap: wrap !important }`，窄档会折行。内印线挂 `.qc-paper-body::before`，底边天然落在登记带上沿；无底栏时 `:only-child` 四边闭合。
-3. `@container qcard` 查 content-box。`.qc-sheet` 保留 `padding-inline: 18px`，现有 468 / 348 断点数值不变。
+3. `@container qcard` 查 content-box。水平内边距下沉到 `.qc-paper-body`（`padding: 16px 18px 10px`），
+   `.qc-sheet` 自身不留 padding，content-box = 卡宽 − 2px，所以断点由 468 / 348 重标为 480 / 380：
+   556 档不触发、440/408 落中档、368 落紧凑档，与 v3.54 的分档结果一致。
 4. `runContractAudit` D4-2 要求未选 dot 对比度 ≥ 3.0:1（底 `chLum=0.89`）→ 孔底用 `rgba(44,62,80,.56)` / 深墨 `rgba(222,215,205,.55)`，命中垫放 `::before`。
 5. `measureCardContent()` 的 `r.bottom` 不含 `box-shadow` → feed 档 `.deck-card` 加 `margin-bottom: 14px`，否则落影被 iframe 底边切平。
 6. 静态顶卡不写 `transform`，`will-change` 只在拖拽/翻页期挂；否则 GPU 层被 canvas 二次采样发虚。

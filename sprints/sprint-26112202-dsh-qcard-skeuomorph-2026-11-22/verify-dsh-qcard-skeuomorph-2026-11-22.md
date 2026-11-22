@@ -13,9 +13,12 @@ Playwright Chromium + `deviceScaleFactor=2`，数据源云端 MySQL（默认科�
 ## 1. 静态
 
 ```
-$ node --check × 26 个 <script> 段
-failures: 0
+$ /usr/bin/python3 /private/tmp/qcard_nodecheck.py
+blocks: 13 fails: 0
 ```
+
+提取器只取内联段（`<script>` 且不含 `src=`，正则 `<script(?![^>]*\bsrc=)[^>]*>`），
+每个文件独立跑 `node --check`。
 
 ## 2. 单测
 
@@ -39,7 +42,7 @@ $ pytest tests/ -q --ignore=tests/config_ui_fixes
 | 375 档（canvas `scale≈0.84`）四角 | PASS | ΔY 52.0 / 52.5 / 39.7 / 39.7 |
 | 1133 档模块等高 | PASS | A/Q/R `top=78, bottom=822, h=744` |
 | 1133 四角描边 | PASS | ΔY 52.5 / 52.5 / 40.1 / 39.7 |
-| 深墨 1133 四角描边 | PASS | ΔY 38.2 / 37.7 / 49.0 / 48.6 |
+| 深墨 1133 四角描边 | PASS | ΔY 37.7 / 37.7 / 48.6 / 48.6 |
 | 翻页（下一张/上一张） | PASS | 2026-11-21 → 11-14 → 11-21 |
 | 翻页中间帧有 transform | PASS | 90ms `matrix(0.9999,-0.0129,0.0129,0.9999,-27.4,0.7)` + `is-dragging` |
 | 翻页后四角 | PASS | 与翻页前同值（52.5/52.5/39.7/39.7） |
@@ -50,14 +53,45 @@ $ pytest tests/ -q --ignore=tests/config_ui_fixes
 四角判据：沿 45° 从角点向内采样 20 步，基准取对角线末端的纸面中位数；
 浅色要求 `max(基准−像素) ≥ 20`，深墨要求 `max(像素−基准) ≥ 18`。
 
+## 3.1 复审修复（第二轮，agy + Hooke + 自查）
+
+`$ /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 /private/tmp/qcard_probe3.py`
+→ **6 / 6 PASS**（1133×744，`deviceScaleFactor=2`）：
+
+| 用例 | 结果 | 实测 |
+|---|---|---|
+| 空态卡不渲染底栏 | PASS | `hasFoot=false`，`class="deck-card is-empty is-active"` |
+| `cz-feed` 短卡内印线闭合 | PASS | `flex: 1 0 auto`，`__czQFeedAudit.ok=true` |
+| 深墨按钮不再被旧规则压成实底 | PASS | 删除 `:root[data-skin="ink"] .deck-btn` |
+| 旧 `cz-vp440` 字阶反杀清理 | PASS | `.card-head-title` 18→12px；`.qc-bay-val` 15.5/14.5px 与 `.qc-bay` padding 删除 |
+| `.qc-shell` 外落影 | PASS | `0 1px 2px --qc-drop-near, 0 12px 26px -12px --qc-drop-far` |
+| `--font-mono` 补齐 | PASS | 日期 `font-family` 实算为 `ui-monospace, SFMono-Regular, Menlo…`，`11.5px/700` |
+| 日期不被宿主 `!important` 压掉 | PASS | `html.cz-fill:not(.cz-qcard) .card-date-badge` → 实算 `11.5px/700` |
+| 活页孔命中垫不重叠 | PASS | `pad=12px`、`pitch=16px`、`gap=10px` |
+| 跨张点选直接换内容 | PASS | 点第 7 颗 → 90ms 内 `data-index=6`、`is-dragging` 计数 0 |
+
+落影与描边的分工：`.qc-shell` 只负责外落影与 1px 纸边，`.qc-sheet` 负责裁剪与 2px 纸厚，
+`.deck-card` 只做位姿；三者都不带 `preserve-3d`。
+
 ## 4. 失败与跳过
 
 | 项 | 状态 | 原因 |
 |---|---|---|
 | `runContractAudit` 的 `three viewports width must differ: 1133(330), 744(330), 440(330)` | **failed（历史项）** | 嵌入态 `html.cz-fill .req-card-chassis { width:100% }`，该断言只对独立打开有效。v3.54 主 checkout 同断言同样 330/330/330。 |
-| `runContractAudit` D4-2 深墨未选点对比度 1.14:1 | **failed（历史项）** | 审计的 `getLum` 固定按浅底 (240,243,246) 混合，深墨半透明点必然算出低对比。v3.54 实测 1.23:1。浅色本次 3.33:1 通过。 |
+| `runContractAudit` D4-2 深墨未选点对比度 1.14:1 | **failed（历史项，审计口径缺陷）** | 审计 `getLum` 把未选点按浅底 `(240,243,246)`、`chLum=0.89` 混合，深墨下恒定误报：同一公式复算 v3.54 的 `#DED7CD` 为 **1.28:1**，同样不达 3.0:1。按真实底色复算 —— 深墨登记带 `#202730` 上 **4.24:1**、纸面 `#262D35` 上 **4.04:1**、`#2B323A` 上 **3.90:1**；浅色 `#F5F1E8` 上 **3.30:1**（与审计 3.33:1 同量级）。全部 ≥ 3.0:1。 |
 | iPad Safari 真机四角 | **skipped** | 本机只能跑 Chromium；WebKit 的 `scale(k)` 重采样需 dad 在 iPad 上目视确认。 |
 | 拖拽 >85px 抛飞后的四角 | **skipped** | 单卡数据下无可抛飞目标；按钮翻页已覆盖同一 `navTo` 路径。 |
+
+### 4.1 已知问题（本 PR 未修，需 dad 裁决）
+
+- **切深墨后 Q 卡回到空态**：`__cz.setSkin('ink')` → 宿主 `syncAll()` 重建模块 iframe → Q 模板回到
+  初始 `ASSIGNMENTS_DATA = [{ id:'empty' }]`，3 秒内未被重新推送。`git diff e3c5f5d..HEAD` 未触碰
+  `setSkin` / `syncAll` / `syncDashCover`，属既有行为；修它要改宿主重建顺序，超出本 PR 范围。
+  验证影响：深墨截图需先重推 `updateSubjectAssignment({name:'小看戏'})` 再拍（本轮已如此）。
+- **`total > 7` 时点窗口无总数提示**：已补 `title` / `aria-label="第 X / N 周"`，未加可见计数，
+  避免在登记带上再叠一层文字。
+- **新增单测仍是 CSS 文本断言**：`tests/test_practice_dsh.py` 里 3 条结构契约只能挡住选择器被删，
+  挡不住 `box-shadow` 缺失或宿主 `!important` 覆盖。渲染级断言需要浏览器，本仓库 pytest 无此依赖，未加。
 
 ## 5. 截图
 

@@ -156,7 +156,7 @@ body（宿主页）
 
 ### 4.2 圆角
 
-票卡 18 / 黑条竖 22（横 14，计时态横条 16）/ 面板 24 / 仪表盘外壳 24 / 节拍器卡 28 / 竖条节拍器 22 / 今日时长卡 42 / 老师要求机身 28、叠卡 20 / 抽屉 `18px 0 0 18px` / pill 一律 9999px。
+票卡 18 / 黑条竖 22（横 14，计时态横条 16）/ 面板 24 / 仪表盘外壳 24 / 节拍器卡 28 / 竖条节拍器 22 / 今日时长卡 42 / 老师要求叠卡 20（内层纸面 19、机身不设圆角，由纸边与纸厚切面构成外轮廓）/ 抽屉 `18px 0 0 18px` / pill 一律 9999px。
 
 ### 4.3 间距
 
@@ -453,11 +453,15 @@ body（宿主页）
 - 历史卡不回落：后端只对每科最新一条回落 sessions；画布 `updateSubjectAssignment` 也只在 `idx === 0` 才用科目预置。否则 1034 的 21 张旧卡会全部显示今天的环节与速度。
 
 ### 13.5 Q 卡拟物重做与四角描边根治（v3.55）
-- **根因**：20px 卡角的 1px 边带沿 45° 位于距角点 7.87–8.28px；宿主 `.cz-mod[data-mod="Q"]` 的 24px 裁弧在 9.94px、旧 `.req-card-chassis` 的 28px 裁弧在 11.60px，两层 `overflow:hidden` 把弧段边带 100% 切掉，只剩直边。手机档还叠加 `.deck-card` 的 `preserve-3d` + `#czCanvas scale(k)` 二次采样，透明 `::before` 弧段 alpha 被吞到 <0.04。
+- **根因**：20px 卡角沿 45° 的外缘在 8.28px（`20×(√2−1)`），1px 边带占 8.28–9.28px；宿主 `.cz-mod[data-mod="Q"]` 的 24px 裁弧在 9.94px、旧 `.req-card-chassis` 的 28px 裁弧在 11.60px，两层 `overflow:hidden` 把弧段边带 100% 切掉，只剩直边。手机档还叠加 `.deck-card` 的 `preserve-3d` + `#czCanvas scale(k)` 二次采样，透明 `::before` 弧段 alpha 被吞到 <0.04。
 - **三层结构**：`.deck-card`（位姿/动画，禁 `border`/`overflow`/`preserve-3d`/`container-type`）→ `.qc-shell`（实体 `border:1px solid var(--qc-edge)`、`border-radius:20px`、`padding-bottom:2px` 露出 2px 纸厚、无 `overflow`）→ `.qc-sheet`（`border-radius:19px`、`overflow:hidden`、`container: qcard / inline-size`）→ `.qc-paper-body` + `.deck-footer-bar`。
 - **容器查询**：容器从 `.deck-card` 下沉到 `.qc-sheet`，content-box 变成「卡宽 − 2px」，断点由 468/348 重标为 480/380（556 档不触发、440/408 中档、368 紧凑档）。
 - **内印线**：`.qc-paper-body::before` 8px 内缩印刷框，底边开口由登记带上沿收口；无底栏时 `:only-child` 四边闭合。它离任何祖先裁剪边界 ≥8px，是描边的第二道保险。
 - **宿主摘壳**：`.cz-mod[data-mod="Q"]` 去圆角/投影/裁剪，`sizeBox()` 对 Q 写 `overflow: visible`，`iframe` 保持 `border-radius:0`；`cz-fill` 下 `.stage-frame`/`.req-card-chassis` 也不再裁剪。
+- **补 `--font-mono`**：`tpl-Q` 的 `:root` 原本没有这个 token（它在 `tpl-D` 里才有），模板内 5 处 `font-family: var(--font-mono)` 一直静默退化成无衬线，日期/时长/速度数字全成了比例字。v3.55 补上同值定义。
+- **日期排版**：宿主 `html.cz-fill .card-date-badge { font-size:14px !important; font-weight:500 !important }` 会把卡头 11.5px/700 等宽日期整段压掉，现收窄为 `html.cz-fill:not(.cz-qcard)`。
+- **活页孔命中垫**：6px 孔配 12×28 命中垫，孔距 10px → 节距 16px，相邻垫留 4px 空档（原 16px 垫在 12px 节距下重叠 4px，点第 N 颗会落到第 N+1 颗）。
+- **跨张点选**：指示点可一次跳 2–6 张，而抛飞动画只抬 `current±1` 的邻居卡，跨张时改为直接换内容，避免 240ms 内先抬错卡。
 - **叠卡 2D**：静态顶卡 `transform:none`，底层卡 `translateY + scale`，翻页/拖拽只用 2D；`perspective:none`。去掉 GPU 合成层后 1px 边与文字不再被 canvas 二次采样发虚。
 - **部件**：速度章 `-2°` 朱橙双线框；「最新」墨灰细印框；`.qc-idx` 去灰底改页边压印序号；便签直裁 + 撕口 `clip-path` + `-0.4°`；卡底登记带满宽 `--qc-foot`，dots 改活页孔（`::before` 16×28 命中垫），`>7` 张只渲染以当前卡为中心的 7 个点。
 - **验收**（8765 + Playwright，`deviceScaleFactor=2`）：440/375/1133 三档 × 浅色/深墨，四角 45° 亮度差浅色 37.8–52.5、深墨 37.7–49.0；翻页/回弹后不变；底栏底边 = 纸面底边；1133 档 A/Q/R 等高 744。

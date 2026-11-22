@@ -19040,6 +19040,8 @@ function closeRecordsDrawer() {
        边色按 #czCanvas scale(k≈0.80) 下 45° 弧段覆盖率（c≈0.55–0.65）反推：
        纸面 #FEFCF7 与边 #CFC9BE 的 ΔY 需 ≥ 40，缩后仍能过 20。
        新色值登记见 docs/practice-dsh/DESIGN.md §10.2。 */
+    /* 本模板 5 处 font-family: var(--font-mono) 依赖它；缺了会静默退化成无衬线 */
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     --qc-r: 20px;
     --qc-paper: #FEFCF7;
     --qc-paper-hi: #FFFEFB;
@@ -19058,6 +19060,8 @@ function closeRecordsDrawer() {
     --qc-dot: rgba(44, 62, 80, 0.60);
     --qc-dot-on: #2C3E50;
     --qc-btn-line: rgba(44, 62, 80, 0.55);
+    --qc-drop-near: rgba(44, 62, 80, 0.10);
+    --qc-drop-far: rgba(44, 62, 80, 0.28);
 
     /* 响应式排版与卡宽基础变量 */
     --card-width: 600px;
@@ -19172,6 +19176,8 @@ function closeRecordsDrawer() {
     --qc-dot: rgba(222, 215, 205, 0.55);
     --qc-dot-on: #DED7CD;
     --qc-btn-line: rgba(222, 215, 205, 0.46);
+    --qc-drop-near: rgba(0, 0, 0, 0.35);
+    --qc-drop-far: rgba(0, 0, 0, 0.55);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -19369,6 +19375,8 @@ function closeRecordsDrawer() {
     /* 底部 2px 露出真实卡纸切面，不靠被 .qc-sheet 盖住的 inset 阴影 */
     padding-bottom: 2px;
     background: var(--qc-edge-thick);
+    /* 纸卡落影：近处 1px 贴地 + 远处 26px 扩散。深墨改纯黑，避免发灰。 */
+    box-shadow: 0 1px 2px var(--qc-drop-near), 0 12px 26px -12px var(--qc-drop-far);
     display: flex;
     flex-direction: column;
     overflow: visible;
@@ -19434,7 +19442,9 @@ function closeRecordsDrawer() {
     min-height: 0;
   }
   html.cz-feed .qc-paper-body {
-    flex: 0 0 auto;
+    /* feed 短卡时卡高被 min-height 撑到 380：纸面必须跟着长到底栏上沿，
+       否则内印线的左右两条会在半腰悬空截断。 */
+    flex: 1 0 auto;
   }
 
   /* 空态只有纵向 feed 档收成内容高（手机单卡长页）。
@@ -19945,7 +19955,6 @@ function closeRecordsDrawer() {
     .card-subject-tag { font-size: 18px; }
     .card-date-badge { font-size: 12px; }
     .latest-tag { font-size: 11px; }
-    .qc-bay-val { font-size: 15.5px; }
     .card-seg-chip { font-size: 12px; }
     .card-req-body { gap: 9px; }
     .qc-item .req-p { font-size: 16px; }
@@ -19956,8 +19965,6 @@ function closeRecordsDrawer() {
     .card-subject-tag { font-size: 17px; }
     .card-date-badge { font-size: 11.5px; }
     .latest-tag { font-size: 10.5px; }
-    .qc-bay { padding: 7px 10px; }
-    .qc-bay-val { font-size: 14.5px; }
     .card-seg-chip { font-size: 11.5px; }
     .card-req-body { gap: 8px; }
     .qc-item .req-p { font-size: 15.5px; }
@@ -19967,10 +19974,12 @@ function closeRecordsDrawer() {
     .ctn-body { font-size: 14.5px; }
     .card-footer-row { font-size: 11px; }
   }
-  html.cz-vp440 .card-head-title { font-size: 18px; }
+  /* 卡头是类别铭文（11.5px / +0.14em），不是科目标题：440 档只微调到 12px */
+  html.cz-vp440 .card-head-title { font-size: 12px; }
   html.cz-vp440 .req-p { font-size: 17px; }
   html.cz-vp440 .deck-btn { font-size: 16px; }
-  html.cz-vp440 .qc-idx { font-size: 12px; width: 22px; height: 22px; line-height: 22px; }
+  /* 无底压印序号不再需要固定行高盒；只随档加宽字号 */
+  html.cz-vp440 .qc-idx { font-size: 12px; width: 20px; }
 
   /* ══════ 卡内底部隔离区：指示点 + 上一张/下一张 ══════
      移进 .deck-card 内部，margin-top:auto 贴卡底，独立浅底 + 顶部分隔线，
@@ -19996,9 +20005,13 @@ function closeRecordsDrawer() {
   }
   .deck-dots {
     display: flex;
-    gap: 6px;
+    /* 6px 孔 + 10px 间距 = 16px 节距；命中垫 12px 宽后相邻垫仍留 4px 空档 */
+    gap: 10px;
     align-items: center;
   }
+  /* 背景叠卡的静态登记带只是占位：不许截获点击、不许出现按压态 */
+  .deck-card:not(.is-active) .deck-footer-bar,
+  .deck-footer-bar[aria-hidden="true"] { pointer-events: none; }
   .deck-dot {
     position: relative;
     width: 6px;
@@ -20011,13 +20024,13 @@ function closeRecordsDrawer() {
     cursor: pointer;
     transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
   }
-  /* 6px 视觉点配 16×28 命中垫：可点但不改视觉尺寸，也不与相邻点重叠 */
+  /* 6px 视觉点配 12×28 命中垫：可点但不改视觉尺寸；节距 16 > 垫宽 12，相邻垫不重叠 */
   .deck-dot::before {
     content: '';
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 16px;
+    width: 12px;
     height: 28px;
     transform: translate(-50%, -50%);
   }
@@ -20048,10 +20061,6 @@ function closeRecordsDrawer() {
     font-weight: 700;
     color: var(--dash-text);
     cursor: pointer;
-  }
-  :root[data-skin="ink"] .deck-btn {
-    background: var(--dash-surface-2);
-    border-color: var(--dash-ink-a16);
   }
   .deck-btn:active:not(:disabled) {
     transform: translateY(1px);
@@ -20402,14 +20411,14 @@ function closeRecordsDrawer() {
          视觉上是一条和正文分隔的隔离区，卡高由外层统一，不再靠卡外 footer 撑。 */
       /* 卡内登记带只挂当前卡（避免重复 id）；背景叠卡给一条无 id 的静态带，
          翻页抬升时不会出现 56px 底栏 pop-in；空态卡不带底栏。 */
-      const dockHtml = (index === currentIndex) ? `
+      const dockHtml = (item.id === 'empty') ? '' : ((index === currentIndex) ? `
         <div class="deck-footer-bar" data-no-drag>
           <div class="deck-dots" id="deckDots" aria-label="卡片切换指示点"></div>
           <div class="deck-nav-btns">
             <button class="deck-btn" id="prevBtn" type="button" onclick="navPrev()">上一张</button>
             <button class="deck-btn" id="nextBtn" type="button" onclick="navNext()">下一张</button>
           </div>
-        </div>` : (item.id === 'empty' ? '' : `
+        </div>` : `
         <div class="deck-footer-bar" aria-hidden="true">
           <div class="deck-dots"></div>
           <div class="deck-nav-btns">
@@ -20814,6 +20823,8 @@ function closeRecordsDrawer() {
         for (let idx = start; idx < Math.min(total, start + maxDots); idx++) {
           const dot = document.createElement('div');
           dot.className = 'deck-dot' + (idx === currentIndex ? ' active' : '');
+          dot.title = (idx + 1) + ' / ' + total + ' 周';
+          dot.setAttribute('aria-label', '第 ' + (idx + 1) + ' / ' + total + ' 周');
           dot.onclick = () => {
             navTo(idx);
           };
@@ -20835,6 +20846,13 @@ function closeRecordsDrawer() {
       }
       /* feed 档只有一张长卡，3D 甩出会把整张卡甩没，直接换内容。 */
       if (isFeedDeck()) {
+        currentIndex = targetIdx;
+        renderDeck();
+        return;
+      }
+      /* 指示点一次可跳 2–6 张，而抛飞动画只会抬 current±1 的邻居卡：
+         跨张直接换内容，否则 240ms 里看到的是错误的下一张。 */
+      if (Math.abs(targetIdx - currentIndex) > 1) {
         currentIndex = targetIdx;
         renderDeck();
         return;
@@ -21439,7 +21457,8 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed .metro-card { height: auto !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; }',
     'html.cz-fill .card-top-row, html.cz-fill .card-footer-row, html.cz-fill .qc-bay-row, html.cz-fill .deck-footer-bar { flex-wrap: wrap !important; min-width: 0 !important; max-width: 100% !important; row-gap: 4px !important; }',
     'html.cz-fill .card-date-badge, html.cz-fill .card-subject-tag, html.cz-fill .qc-bay-val, html.cz-fill .card-seg-chip, html.cz-fill .qc-seg-name, html.cz-fill .req-p, html.cz-fill .card-note-box, html.cz-fill .card-teacher-note, html.cz-fill .ctn-body, html.cz-fill .ctn-line, html.cz-fill .card-teacher-sig { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important; white-space: normal !important; }',
-    'html.cz-fill .card-date-badge { font-size: 14px !important; font-weight: 500 !important; }',
+    /* Q 卡自带 11.5px/700 等宽日期（卡头是印刷体铭文），别用旧卡的 14px/500 压掉它 */
+    'html.cz-fill:not(.cz-qcard) .card-date-badge { font-size: 14px !important; font-weight: 500 !important; }',
     /* 261015b R5：B/D/R/Q 外壳 container-type，内层只用 flex / clamp / cqh。矮盒靠 @container 收敛，元素仍在盒内。 */
     'html.cz-fill .stage-frame, html.cz-fill .metro-card, html.cz-fill .card-wrap, html.cz-fill .strip, html.cz-fill .console, html.cz-fill .page { container: moduleCard / size !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; height: 100% !important; min-height: 0 !important; max-height: 100% !important; overflow: hidden !important; box-sizing: border-box !important; }',
     /* feed 流靠内容撑高；size containment 会让 page/frame/dash 忽略子内容高度，run 态切视口时塌成 24px。 */
@@ -21705,7 +21724,7 @@ function closeRecordsDrawer() {
     '.cz-mod[hidden], .cz-mod.is-off { display: none !important; }',
     '.cz-mod > iframe { display: block; border: 0; border-radius: inherit; overflow: hidden !important; background: transparent; width: 100%; height: 100%; filter: none !important; }',
     /* Q 卡自带圆角与 1px 描边；宿主 24px 圆角的裁弧在 45° 对角线上位于 9.94px，
-       而 20px 卡角的 1px 边带在 7.87–8.28px —— 整条弧段描边会被切掉，只剩直边。
+       而 20px 卡角的 1px 边带在 8.28–9.28px —— 整条弧段描边会被切掉，只剩直边。
        因此 Q 模块彻底摘壳：无圆角、无投影、不裁剪，轮廓全部由卡内三层负责。 */
     '.cz-mod[data-mod="Q"] { border-radius: 0 !important; box-shadow: none !important; background: transparent !important; overflow: visible !important; }',
     '.cz-mod[data-mod="Q"] > iframe { border-radius: 0 !important; }',
