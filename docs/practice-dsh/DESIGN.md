@@ -138,6 +138,22 @@ body（宿主页）
 
 **不变**：珊瑚 / 朱橙两套皮肤共用；深墨下选中 pill 用珊瑚底 + 页底色字。
 
+**v3.55 Q 卡拟物材质**（`<template id="tpl-Q">` 内定义，不改画布 token）：
+
+| Token | 浅色 | 深墨 | 用途 |
+|---|---|---|---|
+| `--qc-paper` / `--qc-paper-hi` | `#FEFCF7` / `#FFFEFB` | `#262D35` / `#2B323A` | 卡纸面微渐变 |
+| `--qc-edge` | `#CFC9BE` | `#4E5864` | 模切纸边（**唯一外轮廓**） |
+| `--qc-edge-thick` | `#DFDAD1` | `#14181C` | 卡底 2px 纸厚切面 |
+| `--qc-frame-line` | `rgba(44,62,80,.13)` | `rgba(222,215,205,.18)` | 8px 内缩印刷框线 |
+| `--qc-note` / `--qc-note-label` | `#FFF4E3` / `#9E4A1A` | `#313A44` / `#FF9E7A` | 老师便签纸 / 标签 |
+| `--qc-foot` | `#F5F1E8` | `#202730` | 卡底登记带 |
+| `--qc-stamp` / `--qc-stamp-line` | `#A04217` / `rgba(160,66,23,.45)` | `#FF9E7A` / `rgba(255,158,122,.42)` | 印泥速度章 |
+| `--qc-dot` / `--qc-dot-on` | `rgba(44,62,80,.60)` / `#2C3E50` | `rgba(222,215,205,.55)` / `#DED7CD` | 活页孔 / 当前孔 |
+| `--qc-btn-line` | `rgba(44,62,80,.55)` | `rgba(222,215,205,.46)` | 印刷体按钮描边（3.0:1） |
+
+`--qc-edge` 不是随手取色：`#czCanvas` 在 350–393px 宿主宽下会把 440 设计宽整体 `scale(k≈0.79–0.89)`，45° 弧段 1px 边的像素覆盖率只剩 `c≈0.55–0.65`；因此 1× 亮度差必须 ≥40（浅色 50.3、深墨 42.2），才能保证缩后仍 ≥20 / ≥18。`rgba(44,62,80,.60)` 的孔底是 `runContractAudit` D4-2 的下限（0.56 时恰好 3.00:1）。
+
 ### 4.2 圆角
 
 票卡 18 / 黑条竖 22（横 14，计时态横条 16）/ 面板 24 / 仪表盘外壳 24 / 节拍器卡 28 / 竖条节拍器 22 / 今日时长卡 42 / 老师要求机身 28、叠卡 20 / 抽屉 `18px 0 0 18px` / pill 一律 9999px。
@@ -431,10 +447,20 @@ body（宿主页）
 - 按 `sessions` 分组：环节名 + 速度胶囊 + 该环节要求；无结构化 requirement 时按环节名归属正文，归属失败退回纯编号清单。
 - 归属比对会先剥掉环节名里的速度后缀与引号再比核心名；多环节时只命中 1 个视为对不上，直接退回编号清单，不硬塞「通用要求」。
 - 环节自带 BPM 时不再显示全局「速度」行，避免与环节速度打架。
-- 底栏（进度点 + 上一张/下一张）移进 `.deck-card` 内，`margin-top:auto` + 独立浅底 + 顶部分隔线；卡高与兄弟卡一致（`html.cz-fill:not(.cz-feed) .deck-card { height:100% }`）。
-- 圆角描边：`border` 由 `.deck-card::before` 统一绘制（1px，深浅皮肤各自取值）；Q 模块 iframe 不再用宿主 24px 圆角裁切（`.cz-mod[data-mod="Q"] > iframe { border-radius:0 }`），否则窄档卡角连描边一起被切。
+- 底栏（进度点 + 上一张/下一张）移进卡内纸面层底部，`margin-top:auto` + 独立浅底 + 顶部分隔线；卡高与兄弟卡一致（`html.cz-fill:not(.cz-feed) .deck-card { height:100% }`）。v3.55 起底栏改满宽登记带，见 §13.5。
+- 圆角描边（v3.54 做法，**v3.55 已废弃**）：曾用 `.deck-card::before` 画全周 1px。该写法在圆角弧段的边带与父级裁剪弧重合，实测四角无边，被 §13.5 的三层结构替代。
 - 翻页动画：`navTo()` 统一按钮 / 指示点 / 拖拽，`isAnimating` 门闩防连点；旧卡飞出 + 下一张抬升 240ms。
 - 历史卡不回落：后端只对每科最新一条回落 sessions；画布 `updateSubjectAssignment` 也只在 `idx === 0` 才用科目预置。否则 1034 的 21 张旧卡会全部显示今天的环节与速度。
+
+### 13.5 Q 卡拟物重做与四角描边根治（v3.55）
+- **根因**：20px 卡角的 1px 边带沿 45° 位于距角点 7.87–8.28px；宿主 `.cz-mod[data-mod="Q"]` 的 24px 裁弧在 9.94px、旧 `.req-card-chassis` 的 28px 裁弧在 11.60px，两层 `overflow:hidden` 把弧段边带 100% 切掉，只剩直边。手机档还叠加 `.deck-card` 的 `preserve-3d` + `#czCanvas scale(k)` 二次采样，透明 `::before` 弧段 alpha 被吞到 <0.04。
+- **三层结构**：`.deck-card`（位姿/动画，禁 `border`/`overflow`/`preserve-3d`/`container-type`）→ `.qc-shell`（实体 `border:1px solid var(--qc-edge)`、`border-radius:20px`、`padding-bottom:2px` 露出 2px 纸厚、无 `overflow`）→ `.qc-sheet`（`border-radius:19px`、`overflow:hidden`、`container: qcard / inline-size`）→ `.qc-paper-body` + `.deck-footer-bar`。
+- **容器查询**：容器从 `.deck-card` 下沉到 `.qc-sheet`，content-box 变成「卡宽 − 2px」，断点由 468/348 重标为 480/380（556 档不触发、440/408 中档、368 紧凑档）。
+- **内印线**：`.qc-paper-body::before` 8px 内缩印刷框，底边开口由登记带上沿收口；无底栏时 `:only-child` 四边闭合。它离任何祖先裁剪边界 ≥8px，是描边的第二道保险。
+- **宿主摘壳**：`.cz-mod[data-mod="Q"]` 去圆角/投影/裁剪，`sizeBox()` 对 Q 写 `overflow: visible`，`iframe` 保持 `border-radius:0`；`cz-fill` 下 `.stage-frame`/`.req-card-chassis` 也不再裁剪。
+- **叠卡 2D**：静态顶卡 `transform:none`，底层卡 `translateY + scale`，翻页/拖拽只用 2D；`perspective:none`。去掉 GPU 合成层后 1px 边与文字不再被 canvas 二次采样发虚。
+- **部件**：速度章 `-2°` 朱橙双线框；「最新」墨灰细印框；`.qc-idx` 去灰底改页边压印序号；便签直裁 + 撕口 `clip-path` + `-0.4°`；卡底登记带满宽 `--qc-foot`，dots 改活页孔（`::before` 16×28 命中垫），`>7` 张只渲染以当前卡为中心的 7 个点。
+- **验收**（8765 + Playwright，`deviceScaleFactor=2`）：440/375/1133 三档 × 浅色/深墨，四角 45° 亮度差浅色 37.8–52.5、深墨 37.7–49.0；翻页/回弹后不变；底栏底边 = 纸面底边；1133 档 A/Q/R 等高 744。
 
 ### 13.4 T 卡（今日时间轴）
 - 删除内嵌 D 卡 iframe 与 R 迷你卡拼接；改为原生 DOM Day Rail：头部小标签「今日时间轴 + 日期」、44px 总时长 + 段数、中部刻度轨、底部「最近 HH:MM」+「查看记录明细」。

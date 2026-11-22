@@ -505,3 +505,55 @@ def test_asset_cache_version_negative_control(client, monkeypatch, tmp_path):
     html = client.get("/practice-dsh").text
     assert "?v=315" not in html
     assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {"v9.99"}
+
+
+def _q_template_src() -> str:
+    """Q 卡内联模板（tpl-Q）的 HTML/CSS 源，用于静态结构契约断言。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    return src[src.index('<template id="tpl-Q">'):src.index("</template>", src.index('<template id="tpl-Q">'))]
+
+
+def test_qcard_edge_is_painted_by_shell_border_not_pseudo_element():
+    """261122 四角缺边根因：描边曾被挂在与裁剪弧重合的 ::before 上。
+
+    现在外轮廓必须由 .qc-shell 的实体 1px border 承担（不被祖先裁剪），
+    内层 .qc-sheet 只负责内容裁剪，且 ::before 不再画 1px 全周描边。
+    """
+    tpl = _q_template_src()
+    shell = re.search(r"\.qc-shell\s*\{(.*?)\}", tpl, re.S).group(1)
+    sheet = re.search(r"\.qc-sheet\s*\{(.*?)\}", tpl, re.S).group(1)
+
+    assert "border: 1px solid var(--qc-edge);" in shell
+    assert "border-radius: var(--qc-r, 20px);" in shell
+    assert "overflow: hidden" not in shell, "纸壳层不许裁剪，否则 45° 弧段描边会被吃回"
+    assert "border-radius: calc(var(--qc-r, 20px) - 1px);" in sheet
+    assert "overflow: hidden;" in sheet
+    assert "container-name: qcard;" in sheet, "容器查询必须下沉到纸面层"
+
+    deck = re.search(r"\.deck-card\s*\{(.*?)\}", tpl, re.S).group(1)
+    assert "overflow: hidden" not in deck
+    assert "preserve-3d" not in deck
+    assert "backface-visibility" not in deck
+    assert "container-type" not in deck
+    assert ".deck-card::before" not in tpl, "旧的全周 1px 伪元素描边必须删干净"
+
+
+def test_qcard_host_module_is_unclipped():
+    """宿主 .cz-mod[data-mod="Q"] 的 24px 裁弧会把 20px 卡角的描边切掉。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    m = re.search(r"'\.cz-mod\[data-mod=\"Q\"\] \{([^']*)\}'", src)
+    assert m, "缺 Q 模块摘壳规则"
+    rule = m.group(1)
+    assert "border-radius: 0 !important" in rule
+    assert "overflow: visible !important" in rule
+    assert "box-shadow: none !important" in rule
+    assert "'.cz-mod[data-mod=\"Q\"] > iframe { border-radius: 0 !important; }'" in src
+    assert "el.dataset.mod === 'Q'" in src, "sizeBox 必须对 Q 放行 overflow: visible"
+
+
+def test_qcard_feed_stack_uses_2d_transforms():
+    """静态顶卡不写 transform；叠卡只用 2D，避免 GPU 层被 canvas scale(k) 二次采样。"""
+    tpl = _q_template_src()
+    assert "card.style.transform = stackOffset === 0 ? 'none'" in tpl
+    assert "translate3d(" not in tpl, "Q 卡内不许再出现 translate3d()"
+    assert "perspective: none;" in tpl
