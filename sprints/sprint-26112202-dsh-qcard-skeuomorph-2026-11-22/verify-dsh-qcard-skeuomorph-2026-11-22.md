@@ -42,7 +42,7 @@ $ pytest tests/ -q --ignore=tests/config_ui_fixes
 | 375 档（canvas `scale≈0.84`）四角 | PASS | ΔY 52.0 / 52.5 / 39.7 / 39.7 |
 | 1133 档模块等高 | PASS | A/Q/R `top=78, bottom=822, h=744` |
 | 1133 四角描边 | PASS | ΔY 52.5 / 52.5 / 40.1 / 39.7 |
-| 深墨 1133 四角描边 | PASS | ΔY 37.7 / 37.7 / 48.6 / 48.6 |
+| 深墨 1133 四角描边 | PASS | ΔY 37.7 / 37.7 / 52.8 / 53.7（先重推科目再拍，避开切肤重置） |
 | 翻页（下一张/上一张） | PASS | 2026-11-21 → 11-14 → 11-21 |
 | 翻页中间帧有 transform | PASS | 90ms `matrix(0.9999,-0.0129,0.0129,0.9999,-27.4,0.7)` + `is-dragging` |
 | 翻页后四角 | PASS | 与翻页前同值（52.5/52.5/39.7/39.7） |
@@ -70,8 +70,30 @@ $ pytest tests/ -q --ignore=tests/config_ui_fixes
 | 活页孔命中垫不重叠 | PASS | `pad=12px`、`pitch=16px`、`gap=10px` |
 | 跨张点选直接换内容 | PASS | 点第 7 颗 → 90ms 内 `data-index=6`、`is-dragging` 计数 0 |
 
-落影与描边的分工：`.qc-shell` 只负责外落影与 1px 纸边，`.qc-sheet` 负责裁剪与 2px 纸厚，
+落影与描边的分工：`.qc-shell` 负责外落影、1px 纸边与 2px 纸厚切面（`padding-bottom:2px`），`.qc-sheet` 负责裁剪纸面，
 `.deck-card` 只做位姿；三者都不带 `preserve-3d`。
+
+## 3.2 UIUX 审计（pixel）落地项
+
+`$ /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 /private/tmp/qcard_probe5.py`
+（`/private/tmp/qcard_probe6.py` 补环节名与正文的对比）：
+
+| 项 | 结果 | 实测 |
+|---|---|---|
+| 环节名高于正文（三档） | PASS | 1133 档 18 vs 16；440 档 17 vs 16；368 档 16 vs 15 |
+| 日期不再是「越窄越大」 | PASS | 12px（556）/ 11.5px（≤480）/ 11px（≤380） |
+| 删掉 iPhone 视口字号覆盖 | PASS | `html.cz-vp440 .req-p` 实算 16px（原 17px），`.deck-btn` 回到 13px |
+| 序号下限 | PASS | 368 档 11px（原 10px，iPad 0.8 缩后约 8px） |
+| 速度章去掉看不见的内框 | PASS | 删 `inset 0 0 0 1px`；`-1.5deg` + `transform-origin: center` |
+| 便签恢复投影 | PASS | 实算 `drop-shadow(rgba(44,62,80,.1) 0 1px 1px) drop-shadow(… 0 2px 6px)` |
+| 深墨登记带与纸面分层 | PASS | `--qc-foot #1B222A`（对纸面 >1.08:1） |
+| 深墨纸厚切面不再读成黑缝 | PASS | `--qc-edge-thick #3A434F`（比纸面亮） |
+| 线语言分层 | PASS | 正文分组线 / 卡底分隔降为 `--qc-rule-soft`（浅 `.07` / 深 `.09`），内印框保持 `.13` |
+
+**未采纳（需 dad 定或超范围）**：
+
+- 卡底「`No.` 行 + 登记带」合并成一条 56px 带 —— 属结构性改版，本 PR 不动。
+- 「最新」去掉细印框、科目 serif 改 21/20/19、内印线 8→10px、dots 改纯指示 —— 口味/交互决策，留待 dad 看真机。
 
 ## 4. 失败与跳过
 

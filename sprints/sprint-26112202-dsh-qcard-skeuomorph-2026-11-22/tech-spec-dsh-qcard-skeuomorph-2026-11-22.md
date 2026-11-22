@@ -9,7 +9,7 @@ date: 2026-11-22
 
 ## 根因
 
-1. **横排 `cz-expand`**：20px 卡角的 1px 边带沿 45° 位于距角点 7.87–8.28px；宿主 `.cz-mod[data-mod="Q"]` 的 24px 裁弧在 9.94px，`.req-card-chassis` 的 28px 裁弧在 11.60px，两层 `overflow:hidden` 把边带 100% 切除，只剩直边。
+1. **横排 `cz-expand`**：20px 卡角沿 45° 的外缘在 8.28px（20×(√2−1)），1px 边带占 8.28–9.28px；宿主 `.cz-mod[data-mod="Q"]` 的 24px 裁弧在 9.94px，`.req-card-chassis` 的 28px 裁弧在 11.60px，两层 `overflow:hidden` 把边带 100% 切除，只剩直边。
 2. **手机 `cz-feed`**：`.deck-card` 保留 `transform-style: preserve-3d`、`backface-visibility: hidden`，`#czCanvas` 再统一 `scale(k)`（k≈0.79–0.89）。透明 `::before` 1px 描边的外缘与父级圆角抗锯齿重叠，弧段有效 alpha 被二次采样吞到 < 0.04。
 
 ## 结构
@@ -44,7 +44,7 @@ date: 2026-11-22
 3. `@container qcard` 查 content-box。水平内边距下沉到 `.qc-paper-body`（`padding: 16px 18px 10px`），
    `.qc-sheet` 自身不留 padding，content-box = 卡宽 − 2px，所以断点由 468 / 348 重标为 480 / 380：
    556 档不触发、440/408 落中档、368 落紧凑档，与 v3.54 的分档结果一致。
-4. `runContractAudit` D4-2 要求未选 dot 对比度 ≥ 3.0:1（底 `chLum=0.89`）→ 孔底用 `rgba(44,62,80,.56)` / 深墨 `rgba(222,215,205,.55)`，命中垫放 `::before`。
+4. `runContractAudit` D4-2 要求未选 dot 对比度 ≥ 3.0:1（底 `chLum=0.89`）→ 孔底用 `rgba(44,62,80,.60)` / 深墨 `rgba(222,215,205,.55)`，命中垫放 `::before`。
 5. `measureCardContent()` 的 `r.bottom` 不含 `box-shadow` → feed 档 `.deck-card` 加 `margin-bottom: 14px`，否则落影被 iframe 底边切平。
 6. 静态顶卡不写 `transform`，`will-change` 只在拖拽/翻页期挂；否则 GPU 层被 canvas 二次采样发虚。
 

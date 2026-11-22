@@ -19050,6 +19050,8 @@ function closeRecordsDrawer() {
     --qc-edge-hi: rgba(255, 255, 255, 0.72);
     --qc-frame-line: rgba(44, 62, 80, 0.13);
     --qc-rule: rgba(44, 62, 80, 0.10);
+    /* 正文分组线与卡底分隔用更淡的一档，别和 8px 内印框（.13）抢"这是印刷框" */
+    --qc-rule-soft: rgba(44, 62, 80, 0.07);
     --qc-note: #FFF4E3;
     --qc-note-label: #9E4A1A;
     --qc-foot: #F5F1E8;
@@ -19163,13 +19165,16 @@ function closeRecordsDrawer() {
     --qc-paper: #262D35;
     --qc-paper-hi: #2B323A;
     --qc-edge: #4E5864;
-    --qc-edge-thick: #14181C;
+    /* 深墨下纸的切面要比纸面亮（深纸切面受光），用纯黑会读成一条黑缝 */
+    --qc-edge-thick: #3A434F;
     --qc-edge-hi: rgba(255, 255, 255, 0.10);
     --qc-frame-line: rgba(222, 215, 205, 0.18);
     --qc-rule: rgba(222, 215, 205, 0.12);
+    --qc-rule-soft: rgba(222, 215, 205, 0.09);
     --qc-note: #313A44;
     --qc-note-label: #FF9E7A;
-    --qc-foot: #202730;
+    /* 与纸面 #262D35 拉开一档，避免读成"纸面糊了一块" */
+    --qc-foot: #1B222A;
     --qc-stamp: #FF9E7A;
     --qc-stamp-line: rgba(255, 158, 122, 0.42);
     --qc-stamp-wash: rgba(255, 158, 122, 0.06);
@@ -19634,7 +19639,7 @@ function closeRecordsDrawer() {
     white-space: nowrap;
   }
   .card-date-badge {
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 700;
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -19676,8 +19681,8 @@ function closeRecordsDrawer() {
     border: 1.5px solid var(--qc-stamp-line);
     border-radius: 3px 4px 4px 3px;
     background: var(--qc-stamp-wash);
-    transform: rotate(-2deg);
-    transform-origin: left center;
+    transform: rotate(-1.5deg);
+    transform-origin: center;
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-size: 11px;
@@ -19776,7 +19781,7 @@ function closeRecordsDrawer() {
   }
   .qc-session + .qc-session {
     padding-top: 12px;
-    border-top: 1px solid var(--qc-rule);
+    border-top: 1px solid var(--qc-rule-soft);
     box-shadow: inset 0 1px 0 var(--qc-edge-hi);
   }
   .qc-session-head {
@@ -19787,7 +19792,8 @@ function closeRecordsDrawer() {
     flex-wrap: wrap;
   }
   .qc-session-name {
-    font-size: 16px;
+    /* 环节是这张卡的大标题：必须比正文（16/16/15.5）高一头，否则层级只剩字重 */
+    font-size: 18px;
     font-weight: 800;
     line-height: 1.35;
     letter-spacing: -0.01em;
@@ -19796,20 +19802,20 @@ function closeRecordsDrawer() {
   }
   .qc-session-tempo {
     flex: 0 0 auto;
-    /* 橡皮章：印泥色双线框，-2° 轻歪，全卡唯一一处刻意的破格 */
+    /* 橡皮章：印泥色 1.5px 单线框，-1.5° 绕中心轻歪，全卡唯一一处刻意的破格。
+       inset 内框那圈 5% wash 只有 1.02:1，看不见却多一层，不再画。 */
     padding: 1px 7px;
     border: 1.5px solid var(--qc-stamp-line);
     border-radius: 3px 4px 4px 3px;
     background: var(--qc-stamp-wash);
-    box-shadow: inset 0 0 0 1px var(--qc-stamp-wash);
     color: var(--qc-stamp);
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: .01em;
-    transform: rotate(-2deg);
-    transform-origin: left center;
+    transform: rotate(-1.5deg);
+    transform-origin: center;
   }
   .qc-session-reqs {
     display: flex;
@@ -19850,7 +19856,9 @@ function closeRecordsDrawer() {
   .card-teacher-note {
     flex: 0 0 auto;
     /* 夹在卡上的便签纸：直裁边 + 下缘撕口 + 0.4° 轻歪。
-       clip-path 会裁掉自身 box-shadow，所以不用投影，靠色差与撕口立起来。 */
+       clip-path 会裁掉自身 box-shadow；filter 的 drop-shadow 认的是裁后 alpha，
+       所以投影挂在 filter 上，撕口边缘也能带出影。 */
+    filter: drop-shadow(0 1px 1px rgba(44, 62, 80, 0.10)) drop-shadow(0 2px 6px rgba(44, 62, 80, 0.10));
     margin: 10px 2px 0;
     padding: 6px 10px 10px 12px;
     border-radius: 2px;
@@ -19935,7 +19943,8 @@ function closeRecordsDrawer() {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-top: 1px dashed var(--qc-rule);
+    /* 虚线在纸面上像"剪裁示意"，改实线淡灰：与正文分组线同档，低于内印框 */
+    border-top: 1px solid var(--qc-rule-soft);
     padding-top: 8px;
     font-size: 11.5px;
     font-weight: 600;
@@ -19953,33 +19962,31 @@ function closeRecordsDrawer() {
      断点按档位边界重标：556 档不触发、440/408 走中档、368 走紧凑档。 */
   @container qcard (max-width: 480px) {
     .card-subject-tag { font-size: 18px; }
-    .card-date-badge { font-size: 12px; }
+    .card-date-badge { font-size: 11.5px; }
     .latest-tag { font-size: 11px; }
     .card-seg-chip { font-size: 12px; }
     .card-req-body { gap: 9px; }
     .qc-item .req-p { font-size: 16px; }
-    .qc-session-name { font-size: 16px; }
+    .qc-session-name { font-size: 17px; }
     .ctn-body { font-size: 15px; }
   }
   @container qcard (max-width: 380px) {
     .card-subject-tag { font-size: 17px; }
-    .card-date-badge { font-size: 11.5px; }
+    .card-date-badge { font-size: 11px; }
     .latest-tag { font-size: 10.5px; }
     .card-seg-chip { font-size: 11.5px; }
     .card-req-body { gap: 8px; }
-    .qc-item .req-p { font-size: 15.5px; }
-    .qc-session-name { font-size: 15.5px; }
+    .qc-item .req-p { font-size: 15px; }
+    .qc-session-name { font-size: 16px; }
     .qc-session-tempo { font-size: 11px; padding: 1px 7px; }
-    .qc-idx { width: 16px; font-size: 10px; }
+    .qc-idx { width: 16px; font-size: 11px; }
     .ctn-body { font-size: 14.5px; }
     .card-footer-row { font-size: 11px; }
   }
   /* 卡头是类别铭文（11.5px / +0.14em），不是科目标题：440 档只微调到 12px */
   html.cz-vp440 .card-head-title { font-size: 12px; }
-  html.cz-vp440 .req-p { font-size: 17px; }
-  html.cz-vp440 .deck-btn { font-size: 16px; }
-  /* 无底压印序号不再需要固定行高盒；只随档加宽字号 */
-  html.cz-vp440 .qc-idx { font-size: 12px; width: 20px; }
+  /* 正文 / 序号 / 按钮不再按 iPhone 视口单独放大：分档只留 @container qcard 一个口径，
+     否则同一张 366px 宽的卡在 iPhone 上正文 17px、iPad 上 15.5px。 */
 
   /* ══════ 卡内底部隔离区：指示点 + 上一张/下一张 ══════
      移进 .deck-card 内部，margin-top:auto 贴卡底，独立浅底 + 顶部分隔线，
