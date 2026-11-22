@@ -21651,17 +21651,20 @@ window.__CZ_CSS = [
   '.cz-t-num { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--dash-text, #2C3E50); font-variant-numeric: tabular-nums; }',
   '.cz-t-unit { font-size: 13px; font-weight: 700; color: var(--dash-text-soft, #7F8C8D); }',
   '.cz-t-goal-text { margin-left: auto; flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
-  '.cz-t-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 12px 10px; display: flex; flex-direction: column; gap: 2px; overscroll-behavior: contain; }',
-  '.cz-t-row { display: grid; grid-template-columns: 42px 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 10px; }',
-  '.cz-t-row:hover { background: var(--dash-surface-2, #ECE8E1); }',
-  '.cz-t-time { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
-  '.cz-t-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dash-coral, #FF6B6B); }',
-  '.cz-t-body { min-width: 0; }',
-  '.cz-t-subject { font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--dash-text, #2C3E50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-  '.cz-t-session { font-size: 11.5px; font-weight: 500; line-height: 1.35; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-  '.cz-t-dur { font-size: 12px; font-weight: 700; color: var(--dash-vermilion-text, #E64A19); font-variant-numeric: tabular-nums; }',
-  '.cz-t-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 20px 16px; font-size: 13px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); }',
-  '.cz-t-empty small { font-size: 11.5px; font-weight: 500; }',
+  /* 今日时间轴：06–22 固定刻度轨，块的位置/高度由真实开始时间与时长决定。
+     高度由刻度尺承担，0 条记录也不留死白。 */
+  '.cz-t-rail { position: relative; flex: 1 1 auto; min-height: 0; margin: 2px 16px 12px; overflow: hidden; }',
+  '.cz-t-axis { position: absolute; left: 34px; top: 4%; bottom: 4%; width: 0; border-left: 1px dashed var(--dash-ink-a16, rgba(44,62,80,0.16)); }',
+  '.cz-t-tick { position: absolute; left: 0; width: 26px; transform: translateY(-50%); text-align: right; font-family: var(--font-mono, ui-monospace, monospace); font-size: 10.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
+  '.cz-t-block { position: absolute; left: 46px; right: 2px; min-height: 28px; box-sizing: border-box; border-radius: 10px; background: var(--dash-surface-2, #ECE8E1); padding: 6px 10px; display: flex; align-items: center; gap: 8px; }',
+  ':root[data-skin="ink"] .cz-t-block { background: #2B323B; }',
+  '.cz-t-block-main { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 1px; }',
+  '.cz-t-block.is-dense { padding: 3px 9px; }',
+  '.cz-t-block.is-dense .cz-t-block-main { flex-direction: row; align-items: baseline; gap: 6px; }',
+  '.cz-t-block-subject { min-width: 0; font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--dash-text, #2C3E50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-block-session { min-width: 0; font-size: 11px; font-weight: 500; line-height: 1.3; color: var(--dash-text-soft, #7F8C8D); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.cz-t-block-dur { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--dash-vermilion-text, #E64A19); font-variant-numeric: tabular-nums; }',
+  '.cz-t-rail-empty { position: absolute; left: 46px; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 12.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); }',
   '.cz-t-foot { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); }',
   '.cz-t-meta { font-size: 11.5px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
   '.cz-t-open { border: 1px solid var(--dash-ink-a16, rgba(44,62,80,0.16)); background: transparent; color: var(--dash-text, #2C3E50); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }',
@@ -21998,7 +22001,7 @@ window.__CZ_CSS = [
     }
   }
   /* T 卡：今日时间轴（原生 DOM）。只回答「今天的时间花在哪」：
-     头部总时长 + 目标进度，中部按时间倒序列出今日每一段，底部打开记录明细。
+     头部总时长，中部刻度轨按真实开始时间/时长摆放每一段（矮卡自动收窗），底部打开记录明细。
      不再内嵌 D 卡 iframe（与 A 的今日累计重复），也不重画 R 的编辑明细。 */
   function buildTCard(cd, w) {
     var box = cd.createElement('div');
@@ -22010,7 +22013,7 @@ window.__CZ_CSS = [
       '<div class="cz-t-head"><span class="cz-t-title">今日时间轴</span><span class="cz-t-date" data-t-date></span></div>' +
       '<div class="cz-t-hero"><span class="cz-t-num" data-t-num>0</span><span class="cz-t-unit" data-t-unit>分</span>' +
         '<span class="cz-t-goal-text" data-t-goal>今日 0 段</span></div>' +
-      '<div class="cz-t-list" data-t-list></div>' +
+      '<div class="cz-t-rail" data-t-rail></div>' +
       '<div class="cz-t-foot"><span class="cz-t-meta" data-t-meta>今日 0 段</span>' +
         '<button type="button" class="cz-t-open" data-t-open>查看记录明细 ↗</button></div>';
     box.querySelector('[data-t-open]').addEventListener('click', function () { openRecordsPop(); });
@@ -22021,6 +22024,123 @@ window.__CZ_CSS = [
     return String(v == null ? '' : v)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+  function tClockMin(t) {
+    var m = String(t || '').match(/^(\d{1,2}):(\d{2})/);
+    return m ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : null;
+  }
+  function tDurMin(d) {
+    var s = String(d || '');
+    var h = s.match(/(\d+)\s*(?:小时|时)/);
+    var mi = s.match(/(\d+)\s*分/);
+    var se = s.match(/(\d+)\s*秒/);
+    var total = (h ? parseInt(h[1], 10) * 60 : 0) +
+      (mi ? parseInt(mi[1], 10) : 0) +
+      (se ? parseInt(se[1], 10) / 60 : 0);
+    return total > 0 ? total : 0;
+  }
+  function tDurShort(min) {
+    var m = Math.round(min);
+    if (m < 1) { return '<1分'; }
+    if (m < 60) { return m + '分'; }
+    var hh = Math.floor(m / 60), rest = m % 60;
+    return hh + '时' + (rest ? rest + '分' : '');
+  }
+  /* 刻度窗口：高卡固定 06:00–22:00（空态也满高）；矮卡按当天真实时段收窗，
+     否则 16 小时压进 130px 时块和刻度都读不出来。上下各留 4% 防首尾标签被裁。 */
+  var T_RAIL_TOP = 4;
+  var T_RAIL_BOT = 96;
+  function tRailWindow(H, items) {
+    var win = { start: 6 * 60, end: 22 * 60 };
+    if (H >= 240 || !items.length) { return win; }
+    var lo = items[0].start, hi = items[0].start + Math.max(items[0].dur, 15);
+    items.forEach(function (it) {
+      lo = Math.min(lo, it.start);
+      hi = Math.max(hi, it.start + Math.max(it.dur, 15));
+    });
+    win.start = Math.max(0, Math.floor((lo - 30) / 60) * 60);
+    win.end = Math.min(24 * 60, Math.ceil((hi + 30) / 60) * 60);
+    if (win.end - win.start < 180) { win.end = win.start + 180; }
+    return win;
+  }
+  function tRailPct(min, win) {
+    var v = Math.min(Math.max(min, win.start), win.end);
+    return T_RAIL_TOP + (v - win.start) / (win.end - win.start) * (T_RAIL_BOT - T_RAIL_TOP);
+  }
+  /* 刻度密度跟轨道高度走：每 26px 至少一格，避免标签叠字。 */
+  function tRailStep(win, H) {
+    var spanH = (win.end - win.start) / 60;
+    var slots = Math.floor(H / 26);
+    if (slots < 2) { return Math.max(1, Math.ceil(spanH / 2)); }
+    return Math.max(1, Math.ceil(spanH / slots));
+  }
+  /* 用同样的口径解析「1 小时 25 分」「25分」「45秒」，避免只取到最后一段数字。 */
+  function tSecFromText(txt) {
+    var s = String(txt || '');
+    var h = s.match(/(\d+)\s*(?:小时|时)/);
+    var mi = s.match(/(\d+)\s*分/);
+    var se = s.match(/(\d+)\s*秒/);
+    return (h ? parseInt(h[1], 10) * 3600 : 0) +
+      (mi ? parseInt(mi[1], 10) * 60 : 0) +
+      (se ? parseInt(se[1], 10) : 0);
+  }
+  function renderTRail(box, rows) {
+    var rail = box.querySelector('[data-t-rail]');
+    if (!rail) { return; }
+    var H = rail.clientHeight;
+    if (!(H > 24)) { H = 180; }
+    var items = [];
+    var cursor = 6 * 60;
+    rows.forEach(function (r) {
+      var start = tClockMin(r.time);
+      if (start == null) { start = cursor; }
+      var dur = tDurMin(r.dur);
+      items.push({ start: start, dur: dur, subject: r.subject || '练习', session: r.session, time: r.time });
+      cursor = start + (dur || 30);
+    });
+    items.sort(function (a, b) { return a.start - b.start; });
+    var win = tRailWindow(H, items);
+    var step = tRailStep(win, H);
+    var span = win.end - win.start;
+    var html = ['<div class="cz-t-axis"></div>'];
+    for (var hh = win.start / 60; hh <= win.end / 60; hh += step) {
+      var lbl = hh % 24;
+      html.push('<span class="cz-t-tick" style="top:' + tRailPct(hh * 60, win).toFixed(2) + '%">' +
+        (lbl < 10 ? '0' : '') + lbl + '</span>');
+    }
+    if (!items.length) {
+      html.push('<div class="cz-t-rail-empty">今天还没有练习</div>');
+      rail.innerHTML = html.join('');
+      return;
+    }
+    /* 相邻短时段按真实位置会互相压住：按时间顺序下推，保证每条都露出标题；
+       极端拥挤时整体等比压缩，宁可块变矮也不丢段。 */
+    var prevBottom = -1;
+    items.forEach(function (it) {
+      it.top = tRailPct(it.start, win) / 100 * H;
+      it.height = Math.max(28, it.dur / span * (T_RAIL_BOT - T_RAIL_TOP) / 100 * H);
+      if (it.top < prevBottom + 4) { it.top = prevBottom + 4; }
+      prevBottom = it.top + it.height;
+    });
+    if (prevBottom > H) {
+      var k = H / prevBottom;
+      items.forEach(function (it) {
+        it.top *= k;
+        it.height = Math.max(20, it.height * k);
+      });
+    }
+    var blocks = items.map(function (r) {
+      var label = [r.subject, r.session, r.time].filter(Boolean).join(' · ');
+      return '<div class="cz-t-block' + (r.height < 44 ? ' is-dense' : '') + '" style="top:' +
+        r.top.toFixed(1) + 'px;height:' + r.height.toFixed(1) + 'px;min-height:' + Math.round(r.height) + 'px" title="' + tEsc(label) + '">' +
+        '<div class="cz-t-block-main">' +
+          '<span class="cz-t-block-subject">' + tEsc(r.subject) + '</span>' +
+          (r.session ? '<span class="cz-t-block-session">' + tEsc(r.session) + '</span>' : '') +
+        '</div>' +
+        '<span class="cz-t-block-dur">' + tEsc(tDurShort(r.dur)) + '</span>' +
+      '</div>';
+    });
+    rail.innerHTML = html.concat(blocks).join('');
   }
   /* 从票夹抽屉的真节点反读今日每段与总量，避免另起一份数据源。 */
   function refreshTCard(cd, box) {
@@ -22036,16 +22156,9 @@ window.__CZ_CSS = [
     var aDoc = null;
     try { aDoc = aFrame ? aFrame.contentDocument : null; } catch (e) { aDoc = null; }
     var totalEl = aDoc ? aDoc.getElementById('todayTotal') : cd.getElementById('todayTotal');
-    var totalText = totalEl ? totalEl.textContent.replace(/\s+/g, '') : '';
-    var todaySec = 0;
-    if (totalText) {
-      var tmMin = totalText.match(/(\d+)分/);
-      var tmSec = totalText.match(/(\d+)秒/);
-      todaySec = (tmMin ? parseInt(tmMin[1], 10) * 60 : 0) + (tmSec ? parseInt(tmSec[1], 10) : 0);
-    } else {
-      var pm = pillText.match(/(\d+)\s*分/);
-      todaySec = pm ? parseInt(pm[1], 10) * 60 : 0;
-    }
+    var totalText = totalEl ? totalEl.textContent : '';
+    /* 票卡胶囊写的是「练习记录 1 小时 25 分 · 4次」，只抓第一段数字会漏掉小时。 */
+    var todaySec = tSecFromText(totalText || pillText);
     var rows = [].slice.call(cd.querySelectorAll('.pk-drawer-item')).map(function (el) {
       var t = el.querySelector('.pk-drawer-item-time');
       var d = el.querySelector('.pk-drawer-item-dur');
@@ -22072,28 +22185,21 @@ window.__CZ_CSS = [
     if (unitEl) { unitEl.textContent = showSec ? '秒' : '分'; }
     var goalEl = box.querySelector('[data-t-goal]');
     /* 不再编「目标 N 分」：票卡没有可靠的目标节点，目标数字会失真。
-       这里只报真实段数，时间轴细节在下面列表。 */
+       这里只报真实段数，时间分布交给下面的刻度轨。 */
     if (goalEl) { goalEl.textContent = '今日 ' + (sessCount || 0) + ' 段'; }
+    var latestMin = -1, latestTime = '';
+    rows.forEach(function (r) {
+      var m = tClockMin(r.time);
+      if (m != null && m >= latestMin) { latestMin = m; latestTime = r.time; }
+    });
     var metaEl = box.querySelector('[data-t-meta]');
-    if (metaEl) { metaEl.textContent = rows.length && rows[0].time ? ('最近 ' + rows[0].time) : '今天还没有记录'; }
-
-    var listEl = box.querySelector('[data-t-list]');
-    if (!listEl) { return; }
-    if (!rows.length) {
-      listEl.innerHTML = '<div class="cz-t-empty">今天还没有练习<small>在左侧选好科目，开始第一段</small></div>';
-      return;
-    }
-    listEl.innerHTML = rows.map(function (r) {
-      return '<div class="cz-t-row">' +
-        '<span class="cz-t-time">' + tEsc(r.time) + '</span>' +
-        '<span class="cz-t-dot"></span>' +
-        '<div class="cz-t-body">' +
-          '<div class="cz-t-subject">' + tEsc(r.subject || '练习') + '</div>' +
-          (r.session ? '<div class="cz-t-session">' + tEsc(r.session) + '</div>' : '') +
-        '</div>' +
-        '<span class="cz-t-dur">' + tEsc(r.dur) + '</span>' +
-      '</div>';
-    }).join('');
+    if (metaEl) { metaEl.textContent = latestTime ? ('最近 ' + latestTime) : '今天还没有记录'; }
+    /* 抽屉是倒序（最新在上），时间轴按时间正序铺，并把最后一段放在最下。 */
+    rows.sort(function (a, b) {
+      var am = tClockMin(a.time), bm = tClockMin(b.time);
+      return (am == null ? 1e9 : am) - (bm == null ? 1e9 : bm);
+    });
+    renderTRail(box, rows);
   }
   function buildCombo(force) {
     var cd = canvasDoc();
@@ -23317,6 +23423,9 @@ window.__CZ_CSS = [
        以前直接读 tb.h 会让 applyComboSizes 抛错，syncAll 中断在第二次 syncCanvasHeight 之前，
        画布高度停在数据加载前的旧值，老师要求卡下半段被裁（dad 261108 反馈）。 */
     var H = (tb && tb.h >= 40) ? tb.h : DESIGN_H;
+    [].slice.call(col.querySelectorAll('.cz-tcard')).forEach(function (tcard) {
+      try { refreshTCard(cd, tcard); } catch (e) {}
+    });
     return { combo: state.combo, H: H, wide: false, natural: true, bands: bands, feed: heights, ticketTop: (tb && tb.top) ? +tb.top.toFixed(1) : null, ticketW: (tb && tb.w) || null };
   }
   /* ── B: 组合尺寸。H = 票卡自然高。不读 scrollHeight，不把模块高回灌 iframe。 ── */
@@ -23598,9 +23707,10 @@ window.__CZ_CSS = [
     }
     var split3 = null;
     [].slice.call(col.querySelectorAll(':scope > .cz-tcard')).forEach(function (tcard) {
-      /* 原生时间轴单卡：整卡锁到 H，内部列表自己滚，不再切成 D/R 两段。 */
+      /* 原生时间轴单卡：整卡锁到 H；刻度轨按锁定后的真实高度重排块位置。 */
       split3 = { top: H, bot: 0 };
       lockCol(tcard, H);
+      try { refreshTCard(cd, tcard); } catch (e) {}
     });
     mountSlot();
     syncSlotMode();
@@ -25127,8 +25237,8 @@ window.__CZ_CSS = [
     if (!cd) { return; }
     var wide = cd.documentElement.clientWidth >= NARROW;
     [].slice.call(cd.querySelectorAll('.cz-rail .cz-tcard, .cz-mod-col > .cz-tcard')).forEach(function (tcard) {
-      if (!wide) { clearLock(tcard); return; }
-      lockCol(tcard, H > 40 ? H : DESIGN_H);
+      if (!wide) { clearLock(tcard); } else { lockCol(tcard, H > 40 ? H : DESIGN_H); }
+      try { refreshTCard(cd, tcard); } catch (e) {}
     });
   }
   function syncAll() {

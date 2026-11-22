@@ -129,6 +129,16 @@ def test_practice_dsh_structure_and_contracts():
     assert "fetch('/api/items')" in html, "必须接入 GET /api/items"
 
 
+def test_practice_dsh_tcard_is_day_rail_not_plain_list():
+    """T 卡 = 今日时间轴：刻度轨 + 按真实时间落块，不许退回平铺列表。"""
+    html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert 'data-t-rail' in html, "T 卡必须有刻度轨容器"
+    assert "'<div class=\"cz-t-axis\"></div>'" in html, "刻度轨必须画时间轴虚线"
+    assert "cz-t-tick" in html and "cz-t-block" in html, "必须有刻度与时段块"
+    assert "tRailWindow" in html and "tClockMin" in html, "块的纵坐标必须由真实开始时间换算"
+    assert 'data-t-list' not in html, "旧的平铺列表结构必须移除"
+
+
 def test_run_state_keeps_prep_ticket_width():
     html = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
     """计时态不能因为票夹收到 50px 就把右栏压进一屏（dad 261103 录屏）。
