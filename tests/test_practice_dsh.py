@@ -651,9 +651,106 @@ def test_unified_frame_followups_from_agy_review():
     strip_rule = re.search(r"'html\.cz-fill\.cz-feed \.strip \{([^']*)\}'", src).group(1)
     assert "border-radius: var(--cz-card-radius, 24px) !important" in strip_rule
     assert "el.classList.contains('cz-tcard')) ? 'hidden' : 'visible'" in src
-    assert "if (isFeedDeck()) { requestAnimationFrame(pokeFeedReflow); }" in src
+    assert "wrap.classList.add('is-expanded')" in src
+    assert "wrap.style.height = baseH + 'px';" in src
+    assert "const baseH = note.classList.contains('is-open') ? +(wrap.dataset.collapsedH || startH) : startH;" in src
+    assert "const overlay = wrap.classList.contains('is-expanded') || (feed && room >= 180);" in src
+    assert "const open = note.dataset.open !== '1';" in src
+    assert "transitioncancel" not in src
+    assert "note.__noteTimer = setTimeout(settle" in src
+    assert "if (feed && !overlay) { requestAnimationFrame(pokeFeedReflow); }" in src
+    assert "if (w === noteResetW && feed === noteResetFeed) { return; }" in src
     assert "border-radius: calc(var(--qc-r, 24px) - 9px);\n    inset: 8px;" in src
     assert "0 12px 28px rgba(0,0,0,0.30)" not in src
     assert "'.cz-mod > iframe { border-radius: 0 !important; }'" in src
     assert "f.style.setProperty('flex', '0 0 ' + h + 'px', 'important');" in src
     assert "if (shellH > 40) { h = Math.min(hCap, shellH); }" in src
+
+
+def test_teacher_note_toggle_behaviour():
+    """展开/收起的行为契约：浮层锁高、短卡回退可滚、连点方向、丢 transitionend 兜底。"""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node 不可用，跳过补充说明展开行为测试")
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    start = src.index("function toggleTeacherNote(note)")
+    end = src.index("/* 正文可滚动提示", start)
+    fn = src[start:end]
+    driver = (
+        "class CL{constructor(){this.s=new Set();}"
+        "add(...a){a.forEach(x=>this.s.add(x));}"
+        "remove(...a){a.forEach(x=>this.s.delete(x));}"
+        "contains(c){return this.s.has(c);}"
+        "toggle(c,f){const on=f===undefined?!this.s.has(c):!!f;on?this.s.add(c):this.s.delete(c);return on;}}\n"
+        "function el(o){const e={classList:new CL(),style:{},dataset:{},offsetHeight:100,offsetTop:300,"
+        "clientHeight:400,scrollHeight:300,scrollTop:0,__noteTimer:0,listeners:{},attrs:{}};"
+        "e.addEventListener=function(t,f){(this.listeners[t]=this.listeners[t]||[]).push(f);};"
+        "e.removeEventListener=function(t,f){this.listeners[t]=(this.listeners[t]||[]).filter(x=>x!==f);};"
+        "e.fire=function(t,ev){(this.listeners[t]||[]).slice().forEach(f=>f(ev));};"
+        "e.q={};e.querySelector=function(s){return this.q[s]||null;};"
+        "e.setAttribute=function(k,v){this.attrs[k]=v;};"
+        "Object.assign(e,o||{});return e;}\n"
+        "let FEED=true, REDUCED=false, reflow=0;\n"
+        "const toggle=new Function('isFeedDeck','pokeFeedReflow','window','requestAnimationFrame',"
+        + json.dumps(fn + "\nreturn toggleTeacherNote;")
+        + ")(()=>FEED,()=>{reflow++;},"
+        "{matchMedia:()=>({matches:REDUCED})},(f)=>f());\n"
+        "function setup(o){o=o||{};const wrap=el({offsetTop:o.top==null?300:o.top,offsetHeight:100});"
+        "const body=el({scrollHeight:o.scroll==null?400:o.scroll,clientHeight:60,scrollTop:80});"
+        "const btn=el();btn.textContent='展开全文';btn.setAttribute=function(k,v){this.attrs[k]=v;};"
+        "const head=el({offsetHeight:30});const paper=el({clientHeight:o.paperH==null?640:o.paperH});"
+        "const note=el({offsetHeight:100});"
+        "Object.defineProperty(note,'offsetHeight',{get(){"
+        "return this.__h!=null?this.__h:(parseFloat(this.style.height)||100);}});"
+        "note.q={'.ctn-body':body,'.ctn-toggle':btn,'.ctn-head':head};"
+        "note.parentElement=wrap;note.closest=()=>paper;wrap.querySelector=()=>note;"
+        "return {wrap,body,btn,head,paper,note};}\n"
+        "const out={};\n"
+        "FEED=true;REDUCED=false;let a=setup({});toggle(a.note);"
+        "out.open={h:a.note.style.height,wrapH:a.wrap.style.height,expanded:a.wrap.classList.contains('is-expanded'),"
+        "openCls:a.note.classList.contains('is-open'),btn:a.btn.textContent,aria:a.btn.attrs['aria-expanded']};"
+        "a.note.fire('transitionend',{propertyName:'height'});"
+        "out.openSettled={scrollable:a.note.classList.contains('is-scrollable'),timer:a.note.__noteTimer};"
+        "toggle(a.note);out.closing={openFlag:a.note.dataset.open,closing:a.note.classList.contains('is-closing'),btn:a.btn.textContent};"
+        "toggle(a.note);out.reopen={openFlag:a.note.dataset.open,openCls:a.note.classList.contains('is-open'),"
+        "h:a.note.style.height,btn:a.btn.textContent};"
+        "out.listeners=(a.note.listeners['transitionend']||[]).length;"
+        "out.cancelBound=(a.note.listeners['transitioncancel']||[]).length;\n"
+        "let d=setup({top:180});toggle(d.note);d.note.fire('transitionend',{propertyName:'height'});"
+        "toggle(d.note);d.note.__h=190;toggle(d.note);"
+        "out.midReopen={wrapH:d.wrap.style.height,h:d.note.style.height,"
+        "closing:d.note.classList.contains('is-closing'),openCls:d.note.classList.contains('is-open')};\n"
+        "reflow=0;let b=setup({top:20});toggle(b.note);"
+        "out.short={h:b.note.style.height,expanded:b.wrap.classList.contains('is-expanded'),wrapH:b.wrap.style.height||''};"
+        "b.note.fire('transitionend',{propertyName:'height'});"
+        "out.shortSettled={scrollable:b.note.classList.contains('is-scrollable'),reflow};\n"
+        "REDUCED=true;let c=setup({});toggle(c.note);"
+        "out.reduced={scrollable:c.note.classList.contains('is-scrollable'),timer:c.note.__noteTimer,h:c.note.style.height};\n"
+        "process.stdout.write(JSON.stringify(out));"
+    )
+    proc = subprocess.run(
+        [node, "-e", driver], text=True, capture_output=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stderr
+    out = proc.stdout
+    res = json.loads(out)
+    assert res["open"]["h"] == "320px", res
+    assert res["open"]["wrapH"] == "100px", res
+    assert res["open"]["expanded"] and res["open"]["openCls"], res
+    assert res["open"]["btn"] == "收起" and res["open"]["aria"] == "true", res
+    assert res["openSettled"] == {"scrollable": True, "timer": 0}, res
+    assert res["closing"]["openFlag"] == "0" and res["closing"]["closing"], res
+    assert res["reopen"]["openFlag"] == "1" and res["reopen"]["openCls"], res
+    assert res["reopen"]["h"] == "320px", res
+    assert res["listeners"] == 1, res
+    assert res["cancelBound"] == 0, res
+    assert res["midReopen"]["wrapH"] == "100px", res
+    assert res["midReopen"]["h"] == "232px", res
+    assert res["midReopen"]["openCls"] and not res["midReopen"]["closing"], res
+    assert res["short"]["h"] == "260px" and not res["short"]["expanded"], res
+    assert res["short"]["wrapH"] == "", res
+    assert res["shortSettled"]["scrollable"] is True and res["shortSettled"]["reflow"] >= 1, res
+    assert res["reduced"]["scrollable"] is True and res["reduced"]["timer"] == 0, res

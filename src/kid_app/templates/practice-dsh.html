@@ -4745,8 +4745,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     cursor: pointer;
   }
+  .pk-folio-item-head > .pk-row { min-width: 0; flex: 1 1 auto; }
   .pk-folio-item-sessions {
     display: flex;
     flex-wrap: wrap;
@@ -4775,6 +4777,34 @@
     color: #fff;
     border-color: var(--coral, #FF6B6B);
     font-weight: 700;
+  }
+  .pk-folio-title { font-size: 16px; }
+  .pk-folio-item-name { font-size: 14px; line-height: 1.35; }
+  .pk-stub-more-btn {
+    width: 100%;
+    padding: 8px 2px;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  /* 手机档：画布 iframe 按 440 设计宽等比缩到 ~0.89，票夹里的字再被压一档。
+     只抬字号与触控高度，不动弹窗宽度与结构，避免影响横排。 */
+  @media (max-width: 480px) {
+    .pk-folio-box { padding: 18px 16px; gap: 10px; }
+    .pk-folio-title { font-size: 18px; letter-spacing: 0.01em; }
+    .pk-folio-item { padding: 12px; }
+    .pk-folio-item-name { font-size: 16px; }
+    .pk-folio-item .pk-sub { font-size: 13px; }
+    .pk-folio-item .pk-pill.mini { font-size: 12.5px; height: 30px; min-height: 30px; }
+    .pk-folio-box > .pk-row .pk-pill.mini { font-size: 12.5px; height: 32px; min-height: 32px; }
+    .pk-folio-session-pill { font-size: 13.5px; padding: 6px 12px; min-height: 36px; }
+    .pk-stub-more-btn { font-size: 14px; min-height: 44px; }
+    .pk-folio-cats { flex-wrap: wrap; }
   }
 
   /* ══════ C7 + C18 科目累计练习记录模态弹窗 ══════ */
@@ -5554,10 +5584,10 @@
 <div class="pk-folio-modal" id="pkFolioModal" role="dialog" aria-modal="true" aria-label="选择练习曲目票夹">
   <div class="pk-folio-box">
     <div class="pk-row pk-between pk-shrink0">
-      <span class="key" style="font-size:16px">曲目票夹 · 选择练习曲目</span>
+      <span class="key pk-folio-title">曲目票夹 · 选择练习曲目</span>
       <button class="pk-pill mini" id="pkCloseFolioBtn">关闭</button>
     </div>
-    <div class="pk-row pk-shrink0" style="gap:6px">
+    <div class="pk-row pk-shrink0 pk-folio-cats" style="gap:6px">
       <button class="pk-pill mini mark" data-cat="all">全部 (10)</button>
       <button class="pk-pill mini" data-cat="focus">本周重点 (2)</button>
       <button class="pk-pill mini" data-cat="other">日常在用 (8)</button>
@@ -7092,7 +7122,7 @@ function renderFolioModal() {
         '<div class="pk-row" style="gap:10px">' +
           '<div class="pk-hole-punch mini ' + (isFoc ? 'status-focus' : 'status-other') + '"></div>' +
           '<div>' +
-            '<div class="key" style="font-size:14px">' + item.name + '</div>' +
+            '<div class="key pk-folio-item-name">' + item.name + '</div>' +
             '<div class="pk-sub" style="margin-top:2px">' + (item.sub || '') + '</div>' +
           '</div>' +
         '</div>' +
@@ -19885,6 +19915,8 @@ function closeRecordsDrawer() {
   /* 便签的外层：只做定位、旋转与外投影。filter 建包含块，但内部全是常规流，不影响测量。 */
   .ctn-wrap {
     flex: 0 0 auto;
+    position: relative;
+    z-index: 0;
     margin: 10px 2px 0;
     transform: rotate(-0.4deg);
     transform-origin: left top;
@@ -19941,12 +19973,49 @@ function closeRecordsDrawer() {
     -webkit-line-clamp: unset;
     max-height: none;
   }
+  .card-teacher-note {
+    transition: height 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* 展开态统一 flex 列：head 钉在顶部，正文区自己滚；横竖两档走同一套。 */
+  .card-teacher-note.is-open {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .card-teacher-note.is-open .ctn-head { flex: 0 0 auto; }
   .card-teacher-note.is-open .ctn-body {
     display: block;
     -webkit-line-clamp: unset;
-    max-height: 168px;
-    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: hidden;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .card-teacher-note.is-scrollable .ctn-body { overflow-y: auto; }
+  /* 竖排 feed：卡高 auto，展开改为向上覆盖正文的浮层，wrap 高度锁死，iframe 量高不变。
+     便签自带 clip-path，box-shadow 会被裁掉，所以上投影放在 wrap 的 filter 上。 */
+  .ctn-wrap.is-expanded {
+    z-index: 3;
+    filter: drop-shadow(0 -1px 2px var(--qc-note-shadow-near)) drop-shadow(0 2px 6px var(--qc-note-shadow-far));
+  }
+  .ctn-wrap.is-expanded .card-teacher-note {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* 便签是压在纸上的实物，边界保持硬线；clip-path 会裁掉外投影，所以内棕线放 inset。 */
+    box-shadow: inset 0 1px 0 rgba(160, 66, 23, 0.30);
+  }
+  /* 横排：卡高固定，展开走卡内让高（正文区收缩），不盖住无法滚动的正文。 */
+  html:not(.cz-feed) .card-req-body { min-height: 96px; }
+  .card-teacher-note.is-closing {
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-teacher-note { transition: none !important; }
   }
   .ctn-line + .ctn-line {
     margin-top: 2px;
@@ -19998,7 +20067,9 @@ function closeRecordsDrawer() {
   .ctn-section:first-child { margin-top: 0; }
   @media (pointer: coarse) {
     .ctn-toggle { min-height: 44px; }
+    .ctn-head { min-height: 44px; }
   }
+  .card-teacher-note.is-clampable .ctn-head { cursor: pointer; }
 
   /* 卡底 */
   .card-footer-row {
@@ -20491,7 +20562,16 @@ function closeRecordsDrawer() {
         const body = note.querySelector('.ctn-body');
         const btn = note.querySelector('.ctn-toggle');
         if (!body || !btn) { return; }
-        note.classList.remove('is-open', 'is-clampable');
+        const wrap = note.parentElement;
+        note.classList.remove('is-open', 'is-clampable', 'is-closing', 'is-scrollable');
+        note.style.height = '';
+        note.style.maxHeight = '';
+        note.dataset.seq = '';
+        note.dataset.open = '0';
+        if (note.__noteTimer) { clearTimeout(note.__noteTimer); note.__noteTimer = 0; }
+        wrap.classList.remove('is-expanded');
+        wrap.style.height = '';
+        wrap.dataset.collapsedH = '';
         btn.setAttribute('aria-expanded', 'false');
         btn.textContent = '展开全文';
         body.classList.add('is-measuring');
@@ -20499,17 +20579,99 @@ function closeRecordsDrawer() {
         body.classList.remove('is-measuring');
         if (fullH > body.clientHeight + 1) {
           note.classList.add('is-clampable');
-          btn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const open = note.classList.toggle('is-open');
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            btn.textContent = open ? '收起' : '展开全文';
-            /* feed 档卡高按折叠态锁死，展开后内容 +116px 会把底栏顶出 iframe */
-            if (isFeedDeck()) { requestAnimationFrame(pokeFeedReflow); }
+          const toggle = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            toggleTeacherNote(note);
           };
+          btn.onclick = toggle;
+          note.querySelector('.ctn-head').onclick = (e) => { if (!e.target.closest('.ctn-toggle')) toggle(e); };
         }
       });
+      /* 复位监听的初始快照要落在真实布局档位之后：宿主挂 cz-feed 可能晚于模板解析。 */
+      noteResetW = window.innerWidth;
+      noteResetFeed = isFeedDeck();
+    }
+
+    /* 展开：竖排 feed 用向上覆盖正文的浮层（wrap 高度锁死，iframe 量高不变）；
+       横排卡高固定，改为卡内让高，正文区收缩，避免盖住无法滚动的正文。
+       两档都只过渡 height，head 钉住、正文区自己滚；方向读 dataset.open，
+       收起动画中途再点也能按「重新展开」处理。 */
+    function toggleTeacherNote(note) {
+      const wrap = note.parentElement;
+      const body = note.querySelector('.ctn-body');
+      const btn = note.querySelector('.ctn-toggle');
+      const paper = note.closest('.qc-paper-body');
+      const open = note.dataset.open !== '1';
+      const startH = note.offsetHeight;
+      /* 收起动画半途重开时 offsetHeight 是半途值：锁高与可用空间都要按稳定的折叠高算。 */
+      const baseH = note.classList.contains('is-open') ? +(wrap.dataset.collapsedH || startH) : startH;
+      const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      const feed = isFeedDeck();
+      const room = wrap.offsetTop + baseH - 48;
+      const overlay = wrap.classList.contains('is-expanded') || (feed && room >= 180);
+      const inlineH = Math.max(120, Math.min(260, (paper ? paper.clientHeight : 400) - 120));
+      const seq = String((+note.dataset.seq || 0) + 1);
+      note.dataset.seq = seq;
+      note.dataset.open = open ? '1' : '0';
+      if (note.__noteEnd) {
+        note.removeEventListener('transitionend', note.__noteEnd);
+        note.__noteEnd = null;
+      }
+      if (note.__noteTimer) { clearTimeout(note.__noteTimer); note.__noteTimer = 0; }
+      let onEnd = null;
+      let cleanup = () => {};
+      const settle = () => {
+        if (note.dataset.seq !== seq) { return; }
+        cleanup();
+        note.classList.remove('is-closing');
+        if (open) {
+          note.classList.add('is-scrollable');
+        } else {
+          note.classList.remove('is-open', 'is-scrollable');
+          wrap.classList.remove('is-expanded');
+          note.style.height = '';
+          wrap.style.height = '';
+          body.scrollTop = 0;
+        }
+        if (feed && !overlay) { requestAnimationFrame(pokeFeedReflow); }
+      };
+      onEnd = (ev) => { if (!ev || ev.propertyName === 'height') { settle(); } };
+      cleanup = () => {
+        if (note.__noteEnd) {
+          note.removeEventListener('transitionend', note.__noteEnd);
+          note.__noteEnd = null;
+        }
+        if (note.__noteTimer) { clearTimeout(note.__noteTimer); note.__noteTimer = 0; }
+      };
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? '收起' : '展开全文';
+      if (open) {
+        if (!note.classList.contains('is-open')) { wrap.dataset.collapsedH = String(startH); }
+        note.classList.remove('is-closing');
+        note.classList.add('is-open');
+        const headH = note.querySelector('.ctn-head').offsetHeight;
+        const need = headH + body.scrollHeight + 18;
+        const target = overlay
+          ? Math.min(Math.max(startH, need), room, 320)
+          : Math.max(startH, Math.min(need, inlineH));
+        if (overlay) { wrap.classList.add('is-expanded'); wrap.style.height = baseH + 'px'; }
+        note.style.height = startH + 'px';
+        void note.offsetHeight;
+        note.style.height = target + 'px';
+        if (reduced || Math.abs(target - startH) < 1) { settle(); return; }
+      } else {
+        note.classList.remove('is-scrollable');
+        note.classList.add('is-closing');
+        const collapsedH = +(wrap.dataset.collapsedH || startH);
+        note.style.height = startH + 'px';
+        void note.offsetHeight;
+        note.style.height = collapsedH + 'px';
+        if (reduced || Math.abs(startH - collapsedH) < 1) { settle(); return; }
+      }
+      cleanup();
+      note.__noteEnd = onEnd;
+      note.addEventListener('transitionend', onEnd);
+      note.__noteTimer = setTimeout(settle, (open ? 240 : 180) + 120);
     }
 
     /* 正文可滚动提示：只在真的还有内容时挂渐隐，滚到底撤掉 */
@@ -20531,6 +20693,45 @@ function closeRecordsDrawer() {
     window.addEventListener('resize', () => {
       cancelAnimationFrame(overflowRaf);
       overflowRaf = requestAnimationFrame(() => refreshDeckOverflow(stage));
+    });
+
+    /* 视口/横竖屏切换后，锁死的浮层高度已不适用：直接复位到折叠态并重测。
+       只认宽度或布局档位变化——iframe 量高改自身高度也会派发 resize，
+       不加过滤会把刚展开的浮层瞬间弹回折叠态。 */
+    let noteResetRaf = 0;
+    let noteResetW = window.innerWidth;
+    let noteResetFeed = isFeedDeck();
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth;
+      const feed = isFeedDeck();
+      if (w === noteResetW && feed === noteResetFeed) { return; }
+      noteResetW = w;
+      noteResetFeed = feed;
+      cancelAnimationFrame(noteResetRaf);
+      noteResetRaf = requestAnimationFrame(() => {
+        let touched = false;
+        stage.querySelectorAll('.card-teacher-note.is-open, .ctn-wrap.is-expanded').forEach(el => {
+          const note = el.classList.contains('card-teacher-note') ? el : el.querySelector('.card-teacher-note');
+          if (!note) { return; }
+          touched = true;
+          note.dataset.seq = String((+note.dataset.seq || 0) + 1);
+          note.dataset.open = '0';
+          if (note.__noteEnd) {
+            note.removeEventListener('transitionend', note.__noteEnd);
+            note.__noteEnd = null;
+          }
+          if (note.__noteTimer) { clearTimeout(note.__noteTimer); note.__noteTimer = 0; }
+          note.classList.remove('is-open', 'is-closing', 'is-scrollable');
+          note.style.height = '';
+          const wrap = note.parentElement;
+          wrap.classList.remove('is-expanded');
+          wrap.style.height = '';
+          wrap.dataset.collapsedH = '';
+          const btn = note.querySelector('.ctn-toggle');
+          if (btn) { btn.textContent = '展开全文'; btn.setAttribute('aria-expanded', 'false'); }
+        });
+        if (touched && feed) { requestAnimationFrame(pokeFeedReflow); }
+      });
     });
 
     function createCardMarkup(item, index) {
@@ -21381,7 +21582,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.56';
+  var DSH_VERSION = 'v3.57';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -21602,7 +21803,7 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed .deck-card.is-empty { min-height: 132px !important; }',
     'html.cz-fill.cz-feed .deck-card:not(.is-active) { display: none !important; }',
     'html.cz-fill.cz-feed .card-req-body { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; max-height: 760px !important; overflow-y: auto !important; }',
-    'html.cz-fill.cz-feed .card-note-box, html.cz-fill.cz-feed .ctn-wrap { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
+    'html.cz-fill.cz-feed .card-note-box, html.cz-fill.cz-feed .ctn-wrap:not(.is-expanded) { flex: 0 0 auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }',
     /* Q 卡专属：feed 档不许有 100% 高度链条，否则 stage-frame 100% × body auto = 0，整卡被裁 */
     'html.cz-fill.cz-feed.cz-qcard, html.cz-fill.cz-feed.cz-qcard body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
     'html.cz-fill.cz-feed.cz-qcard .stage-frame { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: 0 0 auto !important; container-type: inline-size !important; }',
