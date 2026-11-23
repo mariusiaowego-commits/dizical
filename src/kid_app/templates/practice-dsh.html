@@ -15833,7 +15833,7 @@ function closeRecordsDrawer() {
     padding: 10px 16px;
     gap: 12px;
     box-sizing: border-box;
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
   }
   html.cz-feed .strip .top,
@@ -19436,7 +19436,7 @@ function closeRecordsDrawer() {
   /* 只有一张纸（无底栏）时印刷框四边闭合 */
   .qc-paper-body:only-child::before {
     border-bottom: 1px solid var(--qc-frame-line);
-    border-radius: 11px;
+    border-radius: calc(var(--qc-r, 24px) - 9px);
     inset: 8px;
   }
   /* 横排：纸壳/纸面必须把高度链一路锁通，否则 .card-req-body 拿不到可滚高度，
@@ -19575,6 +19575,8 @@ function closeRecordsDrawer() {
     z-index: 100 !important;
     box-shadow: 0 24px 48px var(--dash-ink-a25), 0 4px 12px var(--dash-ink-a12);
   }
+  /* 嵌入态飞出卡会被 iframe 边界硬切，外投影只留给独立预览 */
+  html.cz-fill .deck-card.is-dragging { box-shadow: none; }
 
   /* D4-1: 拖动期间露出下一张卡 (Peek)，让用户清晰感知下一张卡的存在 */
   .req-deck-stage.is-deck-dragging .deck-card.is-next-card {
@@ -20375,21 +20377,27 @@ function closeRecordsDrawer() {
 
     /* 老师补充说明：单独的信息层，不再混进正文；长文折叠 + 展开全文 */
     /* 原文常是一整段，条目之间只有「- 」；缩进两个空格的是子条目。
-       短标题会被粘在上一条句末（如「练习顺序-」），所以逐段把尾部标题提出来单独成段，
-       否则整段会糊成一条。 */
+       纯换行文本不按条目拆（真实库多数备注就是三行普通说明），保持一行一条。
+       短标题会被粘在上一条句末（如「练习顺序-」），只在后面还有条目时才提出来。 */
     function splitNoteSegments(text) {
       const segs = [];
       const re = /([ \t]{2,}|[ \t])?-\s+/g;
       let last = 0;
       let nextSub = false;
+      let isBullet = false;
+      let sawBullet = false;
       let m;
       while ((m = re.exec(text)) !== null) {
-        segs.push({ text: text.slice(last, m.index).trim(), sub: nextSub });
+        /* 「第3 - 4小节」这类区间不是条目，跳过 */
+        if (/\d/.test(text[m.index - 1] || '') && /\d/.test(text[re.lastIndex] || '')) { continue; }
+        segs.push({ text: text.slice(last, m.index).trim(), sub: nextSub, bullet: isBullet });
+        isBullet = true;
+        sawBullet = true;
         nextSub = (m[1] || '').length >= 2;
         last = re.lastIndex;
       }
-      segs.push({ text: text.slice(last).trim(), sub: nextSub });
-      return segs.filter(s => s.text);
+      segs.push({ text: text.slice(last).trim(), sub: nextSub, bullet: isBullet });
+      return { segs: segs.filter(s => s.text), sawBullet: sawBullet };
     }
 
     /* 句末紧跟的短标题：「。不要这样做」「）练习顺序」「。《春耕曲》每天这样练（不用加时间）」 */
@@ -20409,15 +20417,30 @@ function closeRecordsDrawer() {
     }
 
     function formatNoteBlocks(raw) {
-      const segs = splitNoteSegments(raw);
+      const parsed = splitNoteSegments(raw);
+      const segs = parsed.segs;
+      /* 没有条目标记：按换行原样渲染，别把普通三行说明压成一段加粗正文 */
+      if (!parsed.sawBullet) {
+        return raw.split('\n').map(l => l.trim()).filter(Boolean)
+          .map(l => `<div class="ctn-line">${escHtml(l)}</div>`).join('');
+      }
       const html = [];
       let listOpen = false;
       const closeList = () => { if (listOpen) { html.push('</ul>'); listOpen = false; } };
       const openList = () => { if (!listOpen) { html.push('<ul class="ctn-list">'); listOpen = true; } };
       segs.forEach((seg, idx) => {
-        const { body, heading } = takeTrailingHeading(seg.text);
-        if (idx === 0 && !seg.sub && !heading) {
-          html.push(`<p class="ctn-lead">${escHtml(body)}</p>`);
+        /* 末段没有后续条目，尾标题不拆（避免把正文最后一句变成悬空标题） */
+        const { body, heading } = (idx === segs.length - 1)
+          ? { body: seg.text, heading: '' }
+          : takeTrailingHeading(seg.text);
+        if (idx === 0 && !seg.bullet && !heading) {
+          const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length <= 1) {
+            html.push(`<p class="ctn-lead">${escHtml(body)}</p>`);
+            return;
+          }
+          html.push(`<p class="ctn-lead">${escHtml(lines[0])}</p>`);
+          lines.slice(1).forEach(l => html.push(`<div class="ctn-line">${escHtml(l)}</div>`));
           return;
         }
         if (body) {
@@ -20480,6 +20503,8 @@ function closeRecordsDrawer() {
             const open = note.classList.toggle('is-open');
             btn.setAttribute('aria-expanded', open ? 'true' : 'false');
             btn.textContent = open ? '收起' : '展开全文';
+            /* feed 档卡高按折叠态锁死，展开后内容 +116px 会把底栏顶出 iframe */
+            if (isFeedDeck()) { requestAnimationFrame(pokeFeedReflow); }
           };
         }
       });
@@ -21749,7 +21774,7 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-expand.cz-dcol .timeline-rail-capsule { height: 46px !important; }',
     'html.cz-fill.cz-expand.cz-dcol .footer-status-row { flex-wrap: wrap !important; row-gap: 4px !important; }',
     /* 744/440 节拍器竖条转横条 (88~96px)。宽屏仍在卡片内竖排。 */
-    'html.cz-fill.cz-feed .strip { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; height: 92px !important; min-height: 88px !important; max-height: 96px !important; padding: 10px 16px !important; gap: 12px !important; box-sizing: border-box !important; background: var(--dash-panel) !important; color: var(--dash-panel-text) !important; border-radius: 20px !important; overflow: hidden !important; }',
+    'html.cz-fill.cz-feed .strip { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; height: 92px !important; min-height: 88px !important; max-height: 96px !important; padding: 10px 16px !important; gap: 12px !important; box-sizing: border-box !important; background: var(--dash-panel) !important; color: var(--dash-panel-text) !important; border-radius: var(--cz-card-radius, 24px) !important; overflow: hidden !important; }',
     'html.cz-fill.cz-feed .strip .top, html.cz-fill.cz-feed .strip .mid, html.cz-fill.cz-feed .strip .bot { flex-direction: row !important; align-items: center !important; justify-content: center !important; width: auto !important; height: auto !important; flex: 0 1 auto !important; gap: 8px !important; writing-mode: horizontal-tb !important; }',
     'html.cz-fill.cz-feed #bpmFace { order: 2; font-size: 32px !important; line-height: 1 !important; width: auto !important; height: auto !important; color: var(--dash-panel-text) !important; writing-mode: horizontal-tb !important; }',
     'html.cz-fill.cz-feed #tempoTerm { order: 3; writing-mode: horizontal-tb !important; letter-spacing: 0.04em !important; color: var(--dash-panel-text) !important; }',
@@ -22050,7 +22075,9 @@ window.__CZ_CSS = [
   '.cz-node { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; position: relative; }',
   '.cz-node.cz-brow { flex-direction: row; }',
   '@media (max-width: 1023px) { .cz-brow { flex-direction: column !important; } }',
-    '.cz-node > iframe, .cz-mod > iframe { display: block; border: 0; background: transparent; width: 100%; height: 100%; border-radius: inherit; overflow: hidden !important; filter: none !important; }',
+    '.cz-node > iframe { display: block; border: 0; background: transparent; width: 100%; height: 100%; border-radius: inherit; overflow: hidden !important; filter: none !important; }',
+    /* iframe 不裁弧：宿主只画自己的圆角阴影，卡内 1px 边不许被切 */
+    '.cz-mod > iframe { border-radius: 0 !important; }',
   '/* 拟物读卡器：冷轧钢金属槽口 + 暗腔 + 右侧灯。卡进入槽内，底边在唇后。 */',
   '.cz-mod[data-mod="A"] { display: flex !important; flex-direction: column !important; position: relative !important; z-index: 40 !important; overflow: visible !important; }',
   '.cz-mod[data-mod="A"] > iframe { flex: 1 1 auto !important; min-height: 0 !important; width: 100% !important; border: 0; display: block; }',
@@ -22098,7 +22125,7 @@ window.__CZ_CSS = [
   '#czTicketStage.is-compact .pk-exposed-meta, .pk-card-exposed-bar.is-compact .pk-exposed-meta, .is-compact .pk-exposed-meta { gap: 4px !important; flex-shrink: 0 !important; min-width: 0 !important; }',
   '/* ── 今日练习记录小卡。浅色对齐 D 卡浅银：白瓷底 #FFFDFB + 墨字 #2C3E50。深墨才用深炭 #161A1E。强调色仍是珊瑚/朱，不另造绿。 ── */',
   '.card-records-mini { flex: 0 0 auto; box-sizing: border-box; width: 100%; height: 100%; max-height: 100%; overflow-y: auto; overflow-x: hidden;',
-  '  background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); border-radius: 24px; color: var(--dash-text, #2C3E50);',
+  '  background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--cz-card-border, #CFC9BE); border-radius: var(--cz-card-radius, 24px); color: var(--dash-text, #2C3E50);',
   '  box-shadow: inset 0 1px 0 var(--dash-key-hi, rgba(255,255,255,0.65));',
   '  padding: 14px 16px; cursor: pointer; text-align: left;',
   '  font-family: inherit; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }',
@@ -22151,7 +22178,8 @@ window.__CZ_CSS = [
   '.card-records-mini.is-compact .pill-popout-btn { min-height: 26px; padding: 3px 8px; font-size: 10.5px; }',
   '.pill-popout-btn:hover { border-color: var(--dash-vermilion); }',
   '.pill-popout-btn:focus-visible { outline: 2px solid var(--dash-vermilion); outline-offset: 2px; }',
-  ':root[data-skin="ink"] .card-records-mini { background: #232931 !important; color: #DED7CD !important; border-color: rgba(222,215,205,0.20) !important; box-shadow: inset 0 1px 1px rgba(255,255,255,0.10), 0 12px 28px rgba(0,0,0,0.30) !important; }',
+  /* 外投影由宿主 .cz-mod 统一承担，这张卡只留机身内高光 */
+  ':root[data-skin="ink"] .card-records-mini { background: #232931 !important; color: #DED7CD !important; border-color: var(--cz-card-border, #4E5864) !important; box-shadow: inset 0 1px 1px rgba(255,255,255,0.10) !important; }',
   ':root[data-skin="ink"] .card-records-mini .mini-hero-num, :root[data-skin="ink"] .card-records-mini .mini-hero-unit, :root[data-skin="ink"] .card-records-mini .mini-date, :root[data-skin="ink"] .card-records-mini .mini-dist-name, :root[data-skin="ink"] .card-records-mini .mini-dist-dur, :root[data-skin="ink"] .card-records-mini .mini-recent-sub { color: #DED7CD !important; }',
   ':root[data-skin="ink"] .card-records-mini .mini-sub-row, :root[data-skin="ink"] .card-records-mini .mini-section-label, :root[data-skin="ink"] .card-records-mini .mini-dist-pct, :root[data-skin="ink"] .card-records-mini .mini-recent-time, :root[data-skin="ink"] .card-records-mini .mini-recent-dur, :root[data-skin="ink"] .card-records-mini .mini-recent-detail, :root[data-skin="ink"] .card-records-mini .mini-sync-tip, :root[data-skin="ink"] .card-records-mini .mini-empty-hint { color: #A8A29A !important; }',
   ':root[data-skin="ink"] .card-records-mini .mini-gauge-card, :root[data-skin="ink"] .card-records-mini .mini-recent-card { background: #2C333C !important; border-color: rgba(222,215,205,0.20) !important; }',
@@ -23560,8 +23588,8 @@ window.__CZ_CSS = [
     var px = Math.round(h) + 'px';
     el.style.height = px;
     el.style.maxHeight = px;
-    /* 组合列也不许裁剪：下排 B/S 的底影会落进列底缘 */
-    el.style.overflow = 'visible';
+    /* 组合列不许裁剪（下排 B/S 的底影会落进列底缘）；T 卡自身仍要裁内圆角 */
+    el.style.overflow = (el.classList && el.classList.contains('cz-tcard')) ? 'hidden' : 'visible';
     el.style.boxSizing = 'border-box';
   }
   function clearLock(el) {
@@ -23590,7 +23618,7 @@ window.__CZ_CSS = [
       }
     }
     var flow = { height: 'auto', 'min-height': 'min-content', 'max-height': 'none', overflow: 'visible', flex: '0 0 auto' };
-    ['html', 'body', '.page', '.frame', '.dash', '.stage-frame', '.strip', '.wrap', '.card-wrap', '.console', '.panel', '.panel-main', '.panel-foot', '.mid', '.deck', '.diag-card', '.scroller'].forEach(function (sel) {
+    ['html', 'body', '.page', '.frame', '.dash', '.stage-frame', '.strip', '.metro-card', '.wrap', '.card-wrap', '.console', '.panel', '.panel-main', '.panel-foot', '.mid', '.deck', '.diag-card', '.scroller'].forEach(function (sel) {
       var nodes = sel === 'html' ? [html] : (sel === 'body' ? [d.body] : [].slice.call(d.querySelectorAll(sel)));
       nodes.forEach(function (el) { touch(el, flow); });
     });
@@ -23665,7 +23693,7 @@ window.__CZ_CSS = [
           if (oy === 'auto' || oy === 'scroll' || oy === 'hidden' || oy === 'clip' ||
               ov === 'hidden' || ov === 'clip') {
             var pb = p.getBoundingClientRect().bottom - origin + (parseFloat(pcs.marginBottom) || 0);
-            return Math.min(bottom, pb);
+            bottom = Math.min(bottom, pb);
           }
           p = p.parentElement;
         }
@@ -23749,7 +23777,7 @@ window.__CZ_CSS = [
       n.style.setProperty('max-height', bar + 'px', 'important');
       n.style.setProperty('flex', '0 0 auto', 'important');
       n.style.setProperty('align-self', 'flex-start', 'important');
-      n.style.overflow = 'hidden';
+      n.style.overflow = 'visible';
       n.style.minHeight = '0';
       n.style.width = '100%';
       n.style.maxWidth = '100%';
@@ -23823,6 +23851,17 @@ window.__CZ_CSS = [
       if (next === h) { break; }
       h = next;
     }
+    /* Q 卡的真实卡体就是 .qc-shell（含底栏）。卡内折叠说明/需求正文是滚动区，
+       按 scrollHeight 追高会把宿主撑到 1494px、阴影飘到卡下 700px；以卡壳实测高为准。 */
+    if (n.dataset.mod === 'Q') {
+      var dQ = null;
+      try { dQ = f.contentDocument; } catch (eQ) { dQ = null; }
+      var shellQ = dQ && dQ.querySelector('.deck-card.is-active .qc-shell');
+      if (shellQ) {
+        var shellH = Math.ceil(shellQ.getBoundingClientRect().height);
+        if (shellH > 40) { h = shellH; }
+      }
+    }
     var crown = (n.dataset.mod === 'A') ? n.querySelector(':scope > .cz-astack-crown') : null;
     n.dataset.czInstrument = String(h);
     var crownH = crown ? Math.min(crown.offsetHeight || 0, 480) : 0;
@@ -23835,6 +23874,8 @@ window.__CZ_CSS = [
        底部就多出一块空白或裁掉卡片底。这里把 iframe 钉到最终内容高。 */
     f.style.setProperty('height', h + 'px', 'important');
     f.style.setProperty('min-height', h + 'px', 'important');
+    /* iframe 是 .cz-mod 的 flex 子项：flex-basis 会盖过 height，循环里的旧值必须一起改 */
+    f.style.setProperty('flex', '0 0 ' + h + 'px', 'important');
     f.style.maxHeight = 'none';
     pokeArcFrame(f);
     return (h + crownH);

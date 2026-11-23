@@ -485,6 +485,8 @@ body（宿主页）
 - **Q 卡去双影**：`html.cz-fill .qc-shell { box-shadow: none }`，背景叠卡同样零外影；整叠卡只由宿主承担一道投影，`cz-feed` 下 `.deck-card` 的 14px 底 margin 清零。
 - **量高不能算裁切内容**：`measureCardContent()` 的内容扫描新增 `visibleBottom()`，被祖先 `overflow: hidden/auto/scroll/clip` 藏住的子节点按裁切盒底边截断。此前折叠「补充说明」的隐藏文字把 440 档 Q 卡量成 822px（真实卡体 738.8px），宿主阴影落到卡体下方 83px，形成用户截图里的「圆角下面还有一层影」。修复后宿主 739px ≈ 卡体 738.8px。
 - **补充说明结构化**：`formatNoteBlocks()` 把 `- ` 条目切成 `<ul class="ctn-list">`（2 空格以上缩进 → `li.is-sub`），句末粘连的短标题（≤24 字、不含标点）拆成 `<h4 class="ctn-section">`，首段无标题无缩进 → `<p class="ctn-lead">`；折叠态仍只露 2 行 + 「展开全文」。
+- **解析边界**：没有 `- ` 条目的多行备注按 `\n` 还原成 `.ctn-line`（真实库多数备注是 2–3 行普通说明，不能被压成一段或拆出悬空标题）；尾标题只在后面仍有条目时提取；行首 `- ` 记作 bullet，首条不会退化成 `ctn-lead`；`第3 - 4小节` 这类数字区间不拆。
+- **feed 展开重测**：切换 `is-open` 后调 `pokeFeedReflow()`；Q 卡量高以 `.qc-shell` 实测高为准，同时写 iframe `height` / `min-height` / `flex-basis`——只改 height 会被循环里遗留的 `flex-basis: 1414px` 盖回去。实测折叠 739 / 展开 854（shell 853.3）/ 收起 739。
 - **验收**（8765 + Playwright，`deviceScaleFactor=2`）：
   - Computed style：浅/深墨 × 1133/440 × combo 6/5/4 + 自定义 D 共 8 组，宿主 radius 24px、shadow 等于 token、overflow visible；卡根 `1px solid` 且色值正确；iframe radius 0px。
   - 像素：A/Q/R 四角 45° 亮度差浅色 18.6–53.5（A 底缘为 `#E8E5E0`，按 ≥16 判）、深墨 36.4–47.8；A/Q/R 底影在 `y1+4/+6/+8` 三点完全同为 `ΔY 19.4/16.6/14.1`（浅）、`6.9/5.9/4.9`（深墨）；Q 与 R 底角外三角差 0.0（无第二道影）。

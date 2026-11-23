@@ -237,3 +237,19 @@ pytest <10 个 practice-dsh 目标文件> → 205 passed
 ```
 
 failed：无（本轮改动路径）。skipped：无。
+
+### 第六轮复审修复（agy 只读复审 0 P0 / 4 P1 / 5 P2）
+
+| 级别 | 问题 | 修复 | 复测 |
+| --- | --- | --- | --- |
+| P1 | 无 `- ` 的多行备注被拆成悬空 `<h4>`、丢换行 | 无条目时按 `\n` 渲染 `.ctn-line`；尾标题仅在后面还有条目时提取；行首 `- ` 记为 bullet，不再退化成 lead；`第3 - 4小节` 不拆 | 真实库 2026-10-10 备注 → `ctn-line=3 / h4=0 / li=0`；2026-11-21 → lead=1 / h4=3 / li=11 |
+| P1 | feed 展开说明后底栏被 iframe 裁掉 | 切换 `is-open` 后 `pokeFeedReflow()`；Q 卡量高以 `.qc-shell` 实测高为准，并同步写 iframe `flex-basis`（旧值 1414px 会盖过 height） | 折叠 739 / 展开 854（shell 853.3）/ 收起 739；底栏 bottom 850.3 < 854 |
+| P1 | feed 下 `.strip` 仍 20px 圆角，与 24px 宿主错位 | FILL_CSS 与 `tpl-S` 都改 24px；`sizeFeedCard` 的 S 分支 overflow 改 visible | 440 档 S：宿主 24px / strip 24px / 高 92 |
+| P1 | `lockCol()` 覆盖 T 卡 `overflow: hidden` | 仅 `.cz-tcard` 保留 `hidden` | 1133 combo4：T 卡 inline / computed 均为 `hidden` |
+| P2 | Q 空态内印线 11px 不同心 | 改 `calc(var(--qc-r) - 9px)` | 静态断言 |
+| P2 | `.card-records-mini` 旧描边 + 深墨独立外投影 | 改用 `--cz-card-border`，深墨只留 inset | 静态断言 |
+| P2 | `visibleBottom()` 遇首个裁切祖先即返回、`flow` 漏 `.metro-card` | 继续向上取最小底边；补 `.metro-card` | 行为测试覆盖 |
+| P2 | 嵌入态拖拽卡 48px 大阴影、`.cz-mod > iframe` 残留 inherit | `html.cz-fill .deck-card.is-dragging { box-shadow:none }`；`.cz-mod > iframe` 显式 0 | 静态断言 |
+| P2 | 单测只匹配源码子串 | 新增 node 行为测试（6 组样本，含真实备注） | `207 passed` |
+
+复跑：`node --check` 13 段 0 失败；`pytest <10 个 practice-dsh 文件>` 207 passed；Playwright 8 组外框 PASS；像素四角/底影数值与上表一致。

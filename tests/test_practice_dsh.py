@@ -584,3 +584,71 @@ def test_teacher_note_body_renders_structured_blocks():
     assert "function takeTrailingHeading(text)" in src
     assert "ctn-lead" in src and "ctn-list" in src and "ctn-section" in src
     assert "li${seg.sub ? ' class=\"is-sub\"' : ''}" in src
+
+
+def _frontend_note_parser_block() -> str:
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    start = src.index("    function splitNoteSegments(text)")
+    return src[start:src.index("    function formatTeacherNote", start)]
+
+
+def test_note_parser_keeps_plain_multiline_notes_intact():
+    """真实库多数备注是多行普通说明，没有「- 」条目，不能被拆成悬空标题或丢换行。"""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node 不可用，跳过补充说明解析器行为测试")
+    cases = [
+        "注意：呼吸有速度和力度的区别\n口风：要从镜子里看到吹孔1/3\n下周三首考级曲都要检查",
+        "“▼” 顿音，更短的吐音\n“¯” 保持音连吐\n“>” 重音，更响的吐音",
+        "- 先练基本功\n- 再练第三段",
+        "第3 - 4小节要连着吹",
+        "- 主条\n   - 子条",
+        # 2026-11-21 春耕曲老师要求原文（curl /config/api/assignments 取回）
+        "下周检查吐音基本功今天怎么练- 开吹前先问自己：今天要练什么？最想把哪一段吹好？"
+        "- 先吹基本功。刚吹完时脑子最清楚、力气最足，马上练最想练好的地方。"
+        "- 打五角星的地方，要把最多时间和最好力气留给它们：  - 《小看戏》第一段、第三段（第三段要背下来）"
+        "  - 《春耕曲》第三段（最难，还在加速）练习顺序- 基本功 → 《小看戏》第三段（时间给最多）"
+        "→ 《小看戏》第一段（其他段先不吹）→ 《春耕曲》第三段。- 别等吹了二三十分钟、人累了脑子糊涂了，才去练最难的。"
+        "《春耕曲》每天这样练（不用加时间）- 第三段专心吹 5 分钟。- 再挑另一段吹 2 分钟，每天换着搭。"
+        "不要这样做- 不要每天把所有曲子、每一段都吹一遍。- 认真记练习记录，老师会看记录。",
+    ]
+    driver = (
+        "const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')"
+        ".replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n"
+        + _frontend_note_parser_block()
+        + "\nconst cases = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
+        "\nprocess.stdout.write(JSON.stringify(cases.map(formatNoteBlocks)));"
+    )
+    out = subprocess.run(
+        [node, "-e", driver], input=json.dumps(cases), text=True,
+        capture_output=True, check=True, timeout=30,
+    ).stdout
+    htmls = json.loads(out)
+
+    for idx in (0, 1):
+        assert htmls[idx].count('class="ctn-line"') == 3, htmls[idx]
+        assert "ctn-section" not in htmls[idx] and "ctn-list" not in htmls[idx]
+    assert htmls[2].count("<li") == 2 and "ctn-lead" not in htmls[2]
+    assert htmls[3].count('class="ctn-line"') == 1 and "<li" not in htmls[3]
+    assert 'class="is-sub"' in htmls[4]
+    assert "ctn-lead" in htmls[5]
+    assert '<h4 class="ctn-section">练习顺序</h4>' in htmls[5]
+    assert '<h4 class="ctn-section">《春耕曲》每天这样练（不用加时间）</h4>' in htmls[5]
+    assert '<h4 class="ctn-section">不要这样做</h4>' in htmls[5]
+
+
+def test_unified_frame_followups_from_agy_review():
+    """agy 复审的 4 条 P1/2 条 P2：S 卡圆角、T 卡裁剪、展开重测、空态内印线、mini 卡双影。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    strip_rule = re.search(r"'html\.cz-fill\.cz-feed \.strip \{([^']*)\}'", src).group(1)
+    assert "border-radius: var(--cz-card-radius, 24px) !important" in strip_rule
+    assert "el.classList.contains('cz-tcard')) ? 'hidden' : 'visible'" in src
+    assert "if (isFeedDeck()) { requestAnimationFrame(pokeFeedReflow); }" in src
+    assert "border-radius: calc(var(--qc-r, 24px) - 9px);\n    inset: 8px;" in src
+    assert "0 12px 28px rgba(0,0,0,0.30)" not in src
+    assert "'.cz-mod > iframe { border-radius: 0 !important; }'" in src
+    assert "f.style.setProperty('flex', '0 0 ' + h + 'px', 'important');" in src
+    assert "if (shellH > 40) { h = shellH; }" in src
