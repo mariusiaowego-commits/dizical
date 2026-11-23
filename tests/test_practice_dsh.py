@@ -505,3 +505,155 @@ def test_asset_cache_version_negative_control(client, monkeypatch, tmp_path):
     html = client.get("/practice-dsh").text
     assert "?v=315" not in html
     assert set(re.findall(r"\?v=([A-Za-z0-9._%-]+)", html)) == {"v9.99"}
+
+
+def _q_template_src() -> str:
+    """Q 卡内联模板（tpl-Q）的 HTML/CSS 源，用于静态结构契约断言。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    return src[src.index('<template id="tpl-Q">'):src.index("</template>", src.index('<template id="tpl-Q">'))]
+
+
+def test_qcard_edge_is_painted_by_shell_border_not_pseudo_element():
+    """261122 四角缺边根因：描边曾被挂在与裁剪弧重合的 ::before 上。
+
+    现在外轮廓必须由 .qc-shell 的实体 1px border 承担（不被祖先裁剪），
+    内层 .qc-sheet 只负责内容裁剪，且 ::before 不再画 1px 全周描边。
+    """
+    tpl = _q_template_src()
+    shell = re.search(r"\.qc-shell\s*\{(.*?)\}", tpl, re.S).group(1)
+    sheet = re.search(r"\.qc-sheet\s*\{(.*?)\}", tpl, re.S).group(1)
+
+    assert "border: 1px solid var(--cz-card-border, var(--qc-edge));" in shell
+    assert "border-radius: var(--qc-r, 24px);" in shell
+    assert "overflow: hidden" not in shell, "纸壳层不许裁剪，否则 45° 弧段描边会被吃回"
+    assert "border-radius: calc(var(--qc-r, 24px) - 1px);" in sheet
+    assert "overflow: hidden;" in sheet
+    assert "container-name: qcard;" in sheet, "容器查询必须下沉到纸面层"
+
+    deck = re.search(r"\.deck-card\s*\{(.*?)\}", tpl, re.S).group(1)
+    assert "overflow: hidden" not in deck
+    assert "preserve-3d" not in deck
+    assert "backface-visibility" not in deck
+    assert "container-type" not in deck
+    assert ".deck-card::before" not in tpl, "旧的全周 1px 伪元素描边必须删干净"
+
+
+def test_all_card_hosts_share_one_frame_and_never_clip():
+    """全站卡片统一外框：圆角 + 落影挂宿主 .cz-mod，1px 描边挂卡本体。
+
+    宿主一旦带圆角裁剪，就会把卡内 1px 弧段整条切掉（PR #411 的回归点），
+    所以 iframe 必须 border-radius: 0，模块盒必须 overflow: visible。
+    """
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    m = re.search(r"'\.cz-mod \{([^']*)\}'", src)
+    assert m, "缺宿主 .cz-mod 规则"
+    rule = m.group(1)
+    assert "border-radius: var(--cz-card-radius, 24px)" in rule
+    assert "box-shadow: var(--cz-card-shadow)" in rule
+    assert "overflow: visible !important" in rule
+    assert "'.cz-mod > iframe { display: block; border: 0; border-radius: 0 !important;" in src
+    assert "'.cz-mod[data-mod=\"Q\"] {" not in src, "Q 不再有摘壳特例，统一走 .cz-mod"
+    assert "el.style.overflow = 'visible';" in src, "sizeBox 必须对全部模块放行 overflow: visible"
+
+
+def test_qcard_feed_stack_uses_2d_transforms():
+    """静态顶卡不写 transform；叠卡只用 2D，避免 GPU 层被 canvas scale(k) 二次采样。"""
+    tpl = _q_template_src()
+    assert "card.style.transform = stackOffset === 0 ? 'none'" in tpl
+    assert "translate3d(" not in tpl, "Q 卡内不许再出现 translate3d()"
+    assert "perspective: none;" in tpl
+
+
+def test_card_measure_ignores_content_hidden_by_clipping_ancestor():
+    """折叠说明的隐藏文字不能计入卡高。
+
+    440 档折叠态 .ctn-body 用 overflow:hidden 裁字，子节点 rect 仍会伸出 80+px；
+    按它量高会把宿主撑高，统一外框的落影就飘到卡体下方（用户截图里的第二道影）。
+    """
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "function visibleBottom(el, bottom)" in src
+    assert "visibleBottom(el, r.bottom - origin" in src
+    assert "oy === 'auto' || oy === 'scroll' || oy === 'hidden' || oy === 'clip'" in src
+
+
+def test_teacher_note_body_renders_structured_blocks():
+    """补充说明要按条目/子条目/短标题结构化渲染，不再是一坨纯文本。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "function formatNoteBlocks(raw)" in src
+    assert "function splitNoteSegments(text)" in src
+    assert "function takeTrailingHeading(text)" in src
+    assert "ctn-lead" in src and "ctn-list" in src and "ctn-section" in src
+    assert "li${seg.sub ? ' class=\"is-sub\"' : ''}" in src
+
+
+def _frontend_note_parser_block() -> str:
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    start = src.index("    function splitNoteSegments(text)")
+    return src[start:src.index("    function formatTeacherNote", start)]
+
+
+def test_note_parser_keeps_plain_multiline_notes_intact():
+    """真实库多数备注是多行普通说明，没有「- 」条目，不能被拆成悬空标题或丢换行。"""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node 不可用，跳过补充说明解析器行为测试")
+    cases = [
+        "注意：呼吸有速度和力度的区别\n口风：要从镜子里看到吹孔1/3\n下周三首考级曲都要检查",
+        "“▼” 顿音，更短的吐音\n“¯” 保持音连吐\n“>” 重音，更响的吐音",
+        "- 先练基本功\n- 再练第三段",
+        "第3 - 4小节要连着吹",
+        "- 主条\n   - 子条",
+        # #80 (2026-08-16)：换行分隔的普通条目，句末短句不是标题
+        "- 要贴在对着镜子吹的时候能看见一个细条。垂直于吹孔位置贴\n- 看两张照片，正确的口风吹高音需要用力。",
+        # 2026-11-21 春耕曲老师要求原文（curl /config/api/assignments 取回）
+        "下周检查吐音基本功今天怎么练- 开吹前先问自己：今天要练什么？最想把哪一段吹好？"
+        "- 先吹基本功。刚吹完时脑子最清楚、力气最足，马上练最想练好的地方。"
+        "- 打五角星的地方，要把最多时间和最好力气留给它们：  - 《小看戏》第一段、第三段（第三段要背下来）"
+        "  - 《春耕曲》第三段（最难，还在加速）练习顺序- 基本功 → 《小看戏》第三段（时间给最多）"
+        "→ 《小看戏》第一段（其他段先不吹）→ 《春耕曲》第三段。- 别等吹了二三十分钟、人累了脑子糊涂了，才去练最难的。"
+        "《春耕曲》每天这样练（不用加时间）- 第三段专心吹 5 分钟。- 再挑另一段吹 2 分钟，每天换着搭。"
+        "不要这样做- 不要每天把所有曲子、每一段都吹一遍。- 认真记练习记录，老师会看记录。",
+    ]
+    driver = (
+        "const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')"
+        ".replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n"
+        + _frontend_note_parser_block()
+        + "\nconst cases = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
+        "\nprocess.stdout.write(JSON.stringify(cases.map(formatNoteBlocks)));"
+    )
+    out = subprocess.run(
+        [node, "-e", driver], input=json.dumps(cases), text=True,
+        capture_output=True, check=True, timeout=30,
+    ).stdout
+    htmls = json.loads(out)
+
+    for idx in (0, 1):
+        assert htmls[idx].count('class="ctn-line"') == 3, htmls[idx]
+        assert "ctn-section" not in htmls[idx] and "ctn-list" not in htmls[idx]
+    assert htmls[2].count("<li") == 2 and "ctn-lead" not in htmls[2]
+    assert htmls[3].count('class="ctn-line"') == 1 and "<li" not in htmls[3]
+    assert 'class="is-sub"' in htmls[4]
+    assert "ctn-section" not in htmls[5]
+    assert "ctn-lead" not in htmls[5]
+    assert htmls[5].count("<li") == 2
+    assert "ctn-lead" in htmls[6]
+    assert '<h4 class="ctn-section">练习顺序</h4>' in htmls[6]
+    assert '<h4 class="ctn-section">《春耕曲》每天这样练（不用加时间）</h4>' in htmls[6]
+    assert '<h4 class="ctn-section">不要这样做</h4>' in htmls[6]
+
+
+def test_unified_frame_followups_from_agy_review():
+    """agy 复审的 4 条 P1/2 条 P2：S 卡圆角、T 卡裁剪、展开重测、空态内印线、mini 卡双影。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    strip_rule = re.search(r"'html\.cz-fill\.cz-feed \.strip \{([^']*)\}'", src).group(1)
+    assert "border-radius: var(--cz-card-radius, 24px) !important" in strip_rule
+    assert "el.classList.contains('cz-tcard')) ? 'hidden' : 'visible'" in src
+    assert "if (isFeedDeck()) { requestAnimationFrame(pokeFeedReflow); }" in src
+    assert "border-radius: calc(var(--qc-r, 24px) - 9px);\n    inset: 8px;" in src
+    assert "0 12px 28px rgba(0,0,0,0.30)" not in src
+    assert "'.cz-mod > iframe { border-radius: 0 !important; }'" in src
+    assert "f.style.setProperty('flex', '0 0 ' + h + 'px', 'important');" in src
+    assert "if (shellH > 40) { h = Math.min(hCap, shellH); }" in src

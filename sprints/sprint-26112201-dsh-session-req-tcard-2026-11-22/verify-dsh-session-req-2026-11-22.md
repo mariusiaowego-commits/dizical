@@ -202,3 +202,60 @@ pytest tests/ → 1234 passed, 5 failed, 8 skipped in 42.81s
 5 个 failed 与第二/四轮同一批，未新增。
 
 skipped（与第四轮相同）：combo5 里 T 卡出视口待拍板；真实当天多段数据未跑；计时中段实时增长未做。新增 skipped：刻度轨的 DOM 行为断言仍依赖 Playwright 探针，未进 pytest（仓库无 JS 测试运行时）。
+
+## 第六轮（v3.56：补充说明结构化 + 全站卡片统一外框）
+
+需求：① 老师要求卡里「补充说明」的正文要结构化渲染；② 所有卡片类型统一外框阴影 + 描边（用户截图里圆角矩形下面仍有第二道影）。`agy` 出统一外框方案（`/private/tmp/qcard-frame/spec.md`）。
+
+实现（`src/kid_app/templates/practice-dsh.html`）：
+
+- `splitNoteSegments` / `takeTrailingHeading` / `formatNoteBlocks`：`- ` 条目 → `.ctn-list > li`（2 空格以上缩进 → `li.is-sub`），句末 ≤24 字短标题 → `.ctn-section`，首段 → `.ctn-lead`。
+- `--cz-card-radius / --cz-card-border / --cz-card-shadow` 在 `window.__CZ_TOKENS` 与 `MODULE_SCOPE` 各声明一份；全站 24px。
+- 外阴影只挂宿主 `.cz-mod` 与原生 `.cz-tcard`；1px 描边挂卡根（`.dash` / `.qc-shell` / `.console` / `.metro-card` / `.card-wrap` / `.strip` / `.cz-tcard`）；`.cz-mod > iframe { border-radius: 0 }`。
+- 删除 `[data-mod="Q"]` 摘壳特例；`sizeBox()` / `lockCol()` 对全部模块放行 `overflow: visible`。
+- `.cz-rail` 底 padding 12→18px、`.cz-combo` 0→`2px 4px 18px`，防 `.pk-stage-wrap` 把底部阴影裁平。
+- `html.cz-fill .qc-shell { box-shadow: none }`，叠卡零外影（整叠只留宿主一道影）；`cz-feed` 下 `.deck-card` 底 margin 清零。
+- **测量修根**：`measureCardContent()` 新增 `visibleBottom()`，按祖先裁切盒底边截断。修复前 440 档 Q 宿主 822px vs 卡体 738.8px（折叠说明的隐藏文字被计入），宿主阴影飘到卡体下方 83px——即用户截图里的「圆角下面还有一层影」；修复后 739px ≈ 738.8px。
+
+Playwright 验收（8765 + `deviceScaleFactor=2`，1133×744 / 440）：
+
+| 项 | 实测 |
+| --- | --- |
+| 外框 computed style | 8 组（浅/深墨 × 1133/440 × combo 6/5/4 + 自定义 D）全 PASS：宿主 `border-radius:24px`、`box-shadow` 等于 token、`overflow:visible`；卡根 `1px solid rgb(207,201,190)` / 深墨 `rgb(78,88,100)`；iframe `border-radius:0px` |
+| 等高 | 1133 档 A/Q/R 均 `h=744, top=80`；combo5（A/B/Q/T）四卡均 744；combo4（A/S/T）三卡均 744 |
+| 四角 45° 描边 ΔY | 浅色 A 51.5/51.5/18.7/19.7、Q 52.5/52.5/50.6/50.6、R 53.5×4；深墨（取亮向）A 45.1/36.4/47.7/47.8、Q 37.7/37.7/42.7/42.7、R 46.4×4。A 底缘底色 `#E8E5E0`，按 ≥16 判 |
+| 底影一致性 | A/Q/R 在 `y1+4/+6/+8` 三点完全相同：浅 `ΔY 19.4/16.6/14.1`，深墨 `6.9/5.9/4.9`（跨卡差 0） |
+| Q 叠卡脏影 | Q vs R 左下/右下外三角 `ΔY=0.0`（无第二道影） |
+| 补充说明结构 | 春耕曲：`lead=1`、`sections=[练习顺序, 《春耕曲》每天这样练（不用加时间）, 不要这样做]`、`items=11`、`subs=2`；折叠态 `clientH=52 / scrollH=312`，「展开全文」`display:flex` |
+| 440 竖排 Q 卡 | 宿主 739 ≈ 卡体 738.8（修复前 822 / 738.8） |
+
+自动化：
+
+```
+node --check <13 个 inline script> → blocks: 13 fails: 0
+pytest <10 个 practice-dsh 目标文件> → 205 passed
+```
+
+failed：无（本轮改动路径）。skipped：无。
+
+### 第六轮复审修复（agy 只读复审 0 P0 / 4 P1 / 5 P2）
+
+| 级别 | 问题 | 修复 | 复测 |
+| --- | --- | --- | --- |
+| P1 | 无 `- ` 的多行备注被拆成悬空 `<h4>`、丢换行 | 无条目时按 `\n` 渲染 `.ctn-line`；尾标题仅在后面还有条目时提取；行首 `- ` 记为 bullet，不再退化成 lead；`第3 - 4小节` 不拆 | 真实库 2026-10-10 备注 → `ctn-line=3 / h4=0 / li=0`；2026-11-21 → lead=1 / h4=3 / li=11 |
+| P1 | feed 展开说明后底栏被 iframe 裁掉 | 切换 `is-open` 后 `pokeFeedReflow()`；Q 卡量高以 `.qc-shell` 实测高为准，并同步写 iframe `flex-basis`（旧值 1414px 会盖过 height） | 折叠 739 / 展开 854（shell 853.3）/ 收起 739；底栏 bottom 850.3 < 854 |
+| P1 | feed 下 `.strip` 仍 20px 圆角，与 24px 宿主错位 | FILL_CSS 与 `tpl-S` 都改 24px；`sizeFeedCard` 的 S 分支 overflow 改 visible | 440 档 S：宿主 24px / strip 24px / 高 92 |
+| P1 | `lockCol()` 覆盖 T 卡 `overflow: hidden` | 仅 `.cz-tcard` 保留 `hidden` | 1133 combo4：T 卡 inline / computed 均为 `hidden` |
+| P2 | Q 空态内印线 11px 不同心 | 改 `calc(var(--qc-r) - 9px)` | 静态断言 |
+| P2 | `.card-records-mini` 旧描边 + 深墨独立外投影 | 改用 `--cz-card-border`，深墨只留 inset | 静态断言 |
+| P2 | `visibleBottom()` 遇首个裁切祖先即返回、`flow` 漏 `.metro-card` | 继续向上取最小底边；补 `.metro-card` | 行为测试覆盖 |
+| P2 | 嵌入态拖拽卡 48px 大阴影、`.cz-mod > iframe` 残留 inherit | `html.cz-fill .deck-card.is-dragging { box-shadow:none }`；`.cz-mod > iframe` 显式 0 | 静态断言 |
+| P2 | 单测只匹配源码子串 | 新增 node 行为测试（6 组样本，含真实备注） | `207 passed` |
+
+复跑：`node --check` 13 段 0 失败；`pytest <10 个 practice-dsh 文件>` 207 passed；Playwright 8 组外框 PASS；像素四角/底影数值与上表一致。
+
+### 第二轮复审（APPROVE WITH NITS，2 条 P2 已收）
+
+- **P2-1 历史混合备注误拆标题**：`#80 (2026-08-16)` 的 `- 要贴在…细条。垂直于吹孔位置贴\n- 看两张照片…` 仍把 8 字普通句提成 `<h4>`。修法：`splitNoteSegments` 记录分隔符前是否有换行（`nl`），`nl === true` 时不提取尾标题——用户本来分行写的，句末短句不是标题。
+- **P2-2 `shellH` 未夹 `hCap`**：改为 `h = Math.min(hCap, shellH)`。
+- 新增 node 行为用例（#80 原样）与 `Math.min` 断言；`pytest tests/test_practice_dsh.py` 37 passed；真实 11-21 备注结构不变（lead=1 / sections=3 / items=11 / subs=2），feed 展开仍 739 → 854 → 739。
