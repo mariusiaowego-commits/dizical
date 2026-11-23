@@ -3,7 +3,7 @@ type: sprint
 sprint: "26112201"
 topic: dsh-session-req-tcard
 date: 2026-11-22
-status: 进行中
+status: 已完成
 branch: feat/practice-dsh-session-req-tcard
 base: 0cd6874
 ---
@@ -28,4 +28,4 @@ base: 0cd6874
 
 ## 状态
 
-v3.56（补充说明结构化 + 全站卡片统一外框 + 量高裁切修正）已并入本分支，PR #411，待合并授权。合并前需独立只读 audit 确认 `base == latest main`。
+PR #410 squash merge → `e3c5f5d`（2026-11-23）。v3.56 增量（补充说明结构化 + 全站卡片统一外框 + 量高修正）随后经 PR #411 → `7ee4ab9` 落地，归入 sprint 26112202 收尾。

@@ -3,7 +3,7 @@ type: sprint
 sprint: "26112202"
 topic: dsh-qcard-skeuomorph
 date: 2026-11-22
-status: 进行中
+status: 已完成
 branch: feat/qcard-skeuomorph
 base: e3c5f5d
 ---
@@ -34,6 +34,8 @@ base: e3c5f5d
 
 ## 状态
 
-代码与本地验收完成，PR 待独立 audit 与合并授权。验收明细见 `verify-dsh-qcard-skeuomorph-2026-11-22.md`：
-四角描边浅色 ΔY 37.8–52.5、深墨 37.7–49.0（440/375/1133），翻页后不变；
-5 个 pytest 失败与基线一致。
+**已完成**。PR #411 squash merge → `7ee4ab9`（2026-11-23），tag `sprint-26112202-dsh-qcard-skeuomorph`。
+
+- v3.55：Q 卡三层拟物 + 四角描边根治；四角 ΔY 浅色 37.8–52.5、深墨 37.7–49.0（440/375/1133）。
+- v3.56：补充说明结构化 + 全站卡片统一外框（24px 圆角 / 宿主外投影 / 卡体 1px 描边）+ feed 量高修正；agy 两轮只读复审 `APPROVE WITH NITS` → `APPROVE`。
+- 验收明细见 `verify-dsh-qcard-skeuomorph-2026-11-22.md` §6；复审归档见 `audit-qcard-v356-2026-11-23.md`。
