@@ -606,6 +606,8 @@ def test_note_parser_keeps_plain_multiline_notes_intact():
         "- 先练基本功\n- 再练第三段",
         "第3 - 4小节要连着吹",
         "- 主条\n   - 子条",
+        # #80 (2026-08-16)：换行分隔的普通条目，句末短句不是标题
+        "- 要贴在对着镜子吹的时候能看见一个细条。垂直于吹孔位置贴\n- 看两张照片，正确的口风吹高音需要用力。",
         # 2026-11-21 春耕曲老师要求原文（curl /config/api/assignments 取回）
         "下周检查吐音基本功今天怎么练- 开吹前先问自己：今天要练什么？最想把哪一段吹好？"
         "- 先吹基本功。刚吹完时脑子最清楚、力气最足，马上练最想练好的地方。"
@@ -634,10 +636,13 @@ def test_note_parser_keeps_plain_multiline_notes_intact():
     assert htmls[2].count("<li") == 2 and "ctn-lead" not in htmls[2]
     assert htmls[3].count('class="ctn-line"') == 1 and "<li" not in htmls[3]
     assert 'class="is-sub"' in htmls[4]
-    assert "ctn-lead" in htmls[5]
-    assert '<h4 class="ctn-section">练习顺序</h4>' in htmls[5]
-    assert '<h4 class="ctn-section">《春耕曲》每天这样练（不用加时间）</h4>' in htmls[5]
-    assert '<h4 class="ctn-section">不要这样做</h4>' in htmls[5]
+    assert "ctn-section" not in htmls[5]
+    assert "ctn-lead" not in htmls[5]
+    assert htmls[5].count("<li") == 2
+    assert "ctn-lead" in htmls[6]
+    assert '<h4 class="ctn-section">练习顺序</h4>' in htmls[6]
+    assert '<h4 class="ctn-section">《春耕曲》每天这样练（不用加时间）</h4>' in htmls[6]
+    assert '<h4 class="ctn-section">不要这样做</h4>' in htmls[6]
 
 
 def test_unified_frame_followups_from_agy_review():
@@ -651,4 +656,4 @@ def test_unified_frame_followups_from_agy_review():
     assert "0 12px 28px rgba(0,0,0,0.30)" not in src
     assert "'.cz-mod > iframe { border-radius: 0 !important; }'" in src
     assert "f.style.setProperty('flex', '0 0 ' + h + 'px', 'important');" in src
-    assert "if (shellH > 40) { h = shellH; }" in src
+    assert "if (shellH > 40) { h = Math.min(hCap, shellH); }" in src

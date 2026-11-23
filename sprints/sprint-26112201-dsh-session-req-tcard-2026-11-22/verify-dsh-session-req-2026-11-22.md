@@ -253,3 +253,9 @@ failed：无（本轮改动路径）。skipped：无。
 | P2 | 单测只匹配源码子串 | 新增 node 行为测试（6 组样本，含真实备注） | `207 passed` |
 
 复跑：`node --check` 13 段 0 失败；`pytest <10 个 practice-dsh 文件>` 207 passed；Playwright 8 组外框 PASS；像素四角/底影数值与上表一致。
+
+### 第二轮复审（APPROVE WITH NITS，2 条 P2 已收）
+
+- **P2-1 历史混合备注误拆标题**：`#80 (2026-08-16)` 的 `- 要贴在…细条。垂直于吹孔位置贴\n- 看两张照片…` 仍把 8 字普通句提成 `<h4>`。修法：`splitNoteSegments` 记录分隔符前是否有换行（`nl`），`nl === true` 时不提取尾标题——用户本来分行写的，句末短句不是标题。
+- **P2-2 `shellH` 未夹 `hCap`**：改为 `h = Math.min(hCap, shellH)`。
+- 新增 node 行为用例（#80 原样）与 `Math.min` 断言；`pytest tests/test_practice_dsh.py` 37 passed；真实 11-21 备注结构不变（lead=1 / sections=3 / items=11 / subs=2），feed 展开仍 739 → 854 → 739。

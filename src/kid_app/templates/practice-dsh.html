@@ -20390,13 +20390,15 @@ function closeRecordsDrawer() {
       while ((m = re.exec(text)) !== null) {
         /* 「第3 - 4小节」这类区间不是条目，跳过 */
         if (/\d/.test(text[m.index - 1] || '') && /\d/.test(text[re.lastIndex] || '')) { continue; }
-        segs.push({ text: text.slice(last, m.index).trim(), sub: nextSub, bullet: isBullet });
+        /* 分隔符前有换行 = 用户本来分行写的，句末短句不该再当标题拆出来 */
+        segs.push({ text: text.slice(last, m.index).trim(), sub: nextSub, bullet: isBullet,
+          nl: /\n/.test(text.slice(last, m.index)) });
         isBullet = true;
         sawBullet = true;
         nextSub = (m[1] || '').length >= 2;
         last = re.lastIndex;
       }
-      segs.push({ text: text.slice(last).trim(), sub: nextSub, bullet: isBullet });
+      segs.push({ text: text.slice(last).trim(), sub: nextSub, bullet: isBullet, nl: false });
       return { segs: segs.filter(s => s.text), sawBullet: sawBullet };
     }
 
@@ -20429,8 +20431,8 @@ function closeRecordsDrawer() {
       const closeList = () => { if (listOpen) { html.push('</ul>'); listOpen = false; } };
       const openList = () => { if (!listOpen) { html.push('<ul class="ctn-list">'); listOpen = true; } };
       segs.forEach((seg, idx) => {
-        /* 末段没有后续条目，尾标题不拆（避免把正文最后一句变成悬空标题） */
-        const { body, heading } = (idx === segs.length - 1)
+        /* 末段没有后续条目、或原文本来就换行分段的，尾标题不拆 */
+        const { body, heading } = (idx === segs.length - 1 || seg.nl)
           ? { body: seg.text, heading: '' }
           : takeTrailingHeading(seg.text);
         if (idx === 0 && !seg.bullet && !heading) {
@@ -23859,7 +23861,7 @@ window.__CZ_CSS = [
       var shellQ = dQ && dQ.querySelector('.deck-card.is-active .qc-shell');
       if (shellQ) {
         var shellH = Math.ceil(shellQ.getBoundingClientRect().height);
-        if (shellH > 40) { h = shellH; }
+        if (shellH > 40) { h = Math.min(hCap, shellH); }
       }
     }
     var crown = (n.dataset.mod === 'A') ? n.querySelector(':scope > .cz-astack-crown') : null;
