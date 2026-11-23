@@ -233,7 +233,7 @@ body（宿主页）
 
 ### 5.5 节拍器
 
-- S 竖条 `.strip` 140×468 圆角 22px；feed 档变横条 92px 高 / 圆角 20px。子：`name`、`leds .led` 14px、`nudge` ± 36px、`.bpm` 48/800、`unit`、`go`。
+- S 竖条 `.strip` 140×468 圆角 22px（嵌入画布统一 24px）；feed 档变横条 92px 高 / 圆角 24px。子：`name`、`leds .led` 14px、`nudge` ± 36px、`.bpm` 48/800、`unit`、`go`。
 - B 卡 `.metro-card` 圆角 28px 内边距 `14px 16px 12px`。子：`m-sig-badge`、`led-row .led-bulb` 18px、`m-accent-toggle`、`rotary-knob` **168px**、`dial-outer-ring` 220px、`step-btn` 44px、`bpm-hero-val` 42/900、`primary-toggle-btn`、`timbre-capsule`、`preset-chip`。
 - 长按 ± 必须**加速但能停**：按住自动加速连续加减，松开立即停；长按要抑制浏览器右键菜单（`contextmenu` preventDefault）。
 - 节拍器音色：多音色胶囊（自然生态鼓点 + Nikko 风格），默认音量要响。
