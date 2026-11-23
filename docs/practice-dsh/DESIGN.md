@@ -156,9 +156,19 @@ body（宿主页）
 
 `--qc-edge` 不是随手取色：`#czCanvas` 在 350–393px 宿主宽下会把 440 设计宽整体 `scale(k≈0.79–0.89)`，45° 弧段 1px 边的像素覆盖率只剩 `c≈0.55–0.65`；因此 1× 亮度差必须 ≥40（浅色 50.3、深墨 42.2），才能保证缩后仍 ≥20 / ≥18。`rgba(44,62,80,.60)` 的孔底是 `runContractAudit` D4-2 的下限（0.56 时恰好 3.00:1）。
 
+**v3.56 全站卡片外框 token**（画布 `window.__CZ_TOKENS` 与 `MODULE_SCOPE` 各声明一份，iframe 之间 CSS 变量不跨界）：
+
+| Token | 浅色 | 深墨 | 用途 |
+|---|---|---|---|
+| `--cz-card-radius` | `24px` | `24px` | 七类卡片统一外圆角 |
+| `--cz-card-border` | `#CFC9BE` | `#4E5864` | 卡体 1px 实体外描边 |
+| `--cz-card-shadow` | `0 1px 2px rgba(44,62,80,.10), 0 12px 26px -12px rgba(44,62,80,.28)` | `0 1px 2px rgba(0,0,0,.35), 0 12px 26px -12px rgba(0,0,0,.55)` | 宿主 `.cz-mod` / `.cz-tcard` 唯一外投影 |
+
 ### 4.2 圆角
 
-票卡 18 / 黑条竖 22（横 14，计时态横条 16）/ 面板 24 / 仪表盘外壳 24 / 节拍器卡 28 / 竖条节拍器 22 / 今日时长卡 42 / 老师要求叠卡 20（内层纸面 19、机身不设圆角，由纸边与纸厚切面构成外轮廓）/ 抽屉 `18px 0 0 18px` / pill 一律 9999px。
+票卡 18 / 黑条竖 22（横 14，计时态横条 16）/ 面板 24 / 仪表盘外壳 24 / 节拍器卡 28 / 竖条节拍器 22 / 今日时长卡 42（独立打开）/ 老师要求叠卡 24（内层纸面 23、内印线 15、机身不设圆角，由纸边与纸厚切面构成外轮廓）/ 抽屉 `18px 0 0 18px` / pill 一律 9999px。
+
+**v3.56 起嵌入画布（`html.cz-fill`）内所有卡片统一 24px 外圆角**：`.dash` / `.card-wrap` / `.metro-card` / `.console` / `.strip` / `.qc-shell` / `.cz-tcard` 同走 `var(--cz-card-radius, 24px)`，不再有 20/24/28/42 分裂（独立打开的 `tpl-D` 仍保留 42px 机身角）。
 
 ### 4.3 间距
 
@@ -456,10 +466,10 @@ body（宿主页）
 
 ### 13.5 Q 卡拟物重做与四角描边根治（v3.55）
 - **根因**：20px 卡角沿 45° 的外缘在 8.28px（`20×(√2−1)`），1px 边带占 8.28–9.28px；宿主 `.cz-mod[data-mod="Q"]` 的 24px 裁弧在 9.94px、旧 `.req-card-chassis` 的 28px 裁弧在 11.60px，两层 `overflow:hidden` 把弧段边带 100% 切掉，只剩直边。手机档还叠加 `.deck-card` 的 `preserve-3d` + `#czCanvas scale(k)` 二次采样，透明 `::before` 弧段 alpha 被吞到 <0.04。
-- **三层结构**：`.deck-card`（位姿/动画，禁 `border`/`overflow`/`preserve-3d`/`container-type`）→ `.qc-shell`（实体 `border:1px solid var(--qc-edge)`、`border-radius:20px`、`padding-bottom:2px` 露出 2px 纸厚、无 `overflow`）→ `.qc-sheet`（`border-radius:19px`、`overflow:hidden`、`container: qcard / inline-size`）→ `.qc-paper-body` + `.deck-footer-bar`。
+- **三层结构**：`.deck-card`（位姿/动画，禁 `border`/`overflow`/`preserve-3d`/`container-type`）→ `.qc-shell`（实体 `border:1px solid var(--cz-card-border, var(--qc-edge))`、`border-radius:var(--qc-r)`（v3.56 = 24px）、`padding-bottom:2px` 露出 2px 纸厚、无 `overflow`）→ `.qc-sheet`（`border-radius:calc(var(--qc-r) - 1px)`（23px）、`overflow:hidden`、`container: qcard / inline-size`）→ `.qc-paper-body` + `.deck-footer-bar`。
 - **容器查询**：容器从 `.deck-card` 下沉到 `.qc-sheet`，content-box 变成「卡宽 − 2px」，断点由 468/348 重标为 480/380（556 档不触发、440/408 中档、368 紧凑档）。
 - **内印线**：`.qc-paper-body::before` 8px 内缩印刷框，底边开口由登记带上沿收口；无底栏时 `:only-child` 四边闭合。它离任何祖先裁剪边界 ≥8px，是描边的第二道保险。
-- **宿主摘壳**：`.cz-mod[data-mod="Q"]` 去圆角/投影/裁剪，`sizeBox()` 对 Q 写 `overflow: visible`，`iframe` 保持 `border-radius:0`；`cz-fill` 下 `.stage-frame`/`.req-card-chassis` 也不再裁剪。
+- **宿主摘壳（v3.55）→ 统一宿主（v3.56）**：v3.55 曾把 `.cz-mod[data-mod="Q"]` 的圆角/投影/裁剪全摘掉；v3.56 改为**全部 `.cz-mod` 统一** `border-radius: var(--cz-card-radius); box-shadow: var(--cz-card-shadow); overflow: visible`，所有 `> iframe` 一律 `border-radius: 0`，Q 不再有特例。`sizeBox()` 对全部模块写 `overflow: visible`；`cz-fill` 下 `.stage-frame`/`.req-card-chassis` 依旧不裁剪。
 - **补 `--font-mono`**：`tpl-Q` 的 `:root` 原本没有这个 token（它在 `tpl-D` 里才有），模板内 5 处 `font-family: var(--font-mono)` 一直静默退化成无衬线，日期/时长/速度数字全成了比例字。v3.55 补上同值定义。
 - **日期排版**：宿主 `html.cz-fill .card-date-badge { font-size:14px !important; font-weight:500 !important }` 会把卡头 11.5px/700 等宽日期整段压掉，现收窄为 `html.cz-fill:not(.cz-qcard)`。
 - **活页孔命中垫**：6px 孔配 12×28 命中垫，孔距 10px → 节距 16px，相邻垫留 4px 空档（原 16px 垫在 12px 节距下重叠 4px，点第 N 颗会落到第 N+1 颗）。
@@ -468,6 +478,16 @@ body（宿主页）
 - **部件**：速度章 `-1.5°` 绕中心朱橙单线框（去掉 5% wash 内框）；「最新」墨灰细印框；`.qc-idx` 去灰底改页边压印序号；便签直裁 + 撕口 `clip-path` + `-0.4°`；卡底登记带满宽 `--qc-foot`，dots 改活页孔（`::before` 12×28 命中垫），`>7` 张只渲染以当前卡为中心的 7 个点。
 - **便签投影**：`filter: drop-shadow` 与 `clip-path` 不能挂在同一元素（裁剪会把投影裁成 0 像素），所以旋转、外投影与 `margin` 上移到 `.ctn-wrap`，内层 `.card-teacher-note` 只留撕口裁剪与纸色。深墨投影用纯黑（纸面比便签暗，浅蓝灰会变成亮边）。
 - **验收**（8765 + Playwright，`deviceScaleFactor=2`）：440/375/1133 三档 × 浅色/深墨，四角 45° 亮度差浅色 37.8–52.5、深墨 37.7–49.0；翻页/回弹后不变；底栏底边 = 纸面底边；1133 档 A/Q/R 等高 744。
+
+### 13.6 全站卡片统一外框 + 补充说明结构化（v3.56）
+- **四条规则**：① 外阴影只挂宿主 `.cz-mod`（原生 T 卡挂 `.cz-tcard`）；② 卡体 1px 描边挂卡根（`.dash` / `.qc-shell` / `.console` / `.metro-card` / `.card-wrap` / `.strip` / `.cz-tcard`）；③ 全站 24px（`--cz-card-radius`）；④ 所有宿主 `> iframe { border-radius: 0 }`、`overflow: visible`，永不裁弧。
+- **轨道呼吸带**：`.cz-rail` padding-bottom `12px → 18px`、`.cz-combo` padding `0 → 2px 4px 18px`，避免 `.pk-stage-wrap { overflow-x: auto }` 把 `overflow-y` 强制成 `auto` 后把贴底阴影切平；1133 档 A/Q/R 仍严格 744 等高。
+- **Q 卡去双影**：`html.cz-fill .qc-shell { box-shadow: none }`，背景叠卡同样零外影；整叠卡只由宿主承担一道投影，`cz-feed` 下 `.deck-card` 的 14px 底 margin 清零。
+- **量高不能算裁切内容**：`measureCardContent()` 的内容扫描新增 `visibleBottom()`，被祖先 `overflow: hidden/auto/scroll/clip` 藏住的子节点按裁切盒底边截断。此前折叠「补充说明」的隐藏文字把 440 档 Q 卡量成 822px（真实卡体 738.8px），宿主阴影落到卡体下方 83px，形成用户截图里的「圆角下面还有一层影」。修复后宿主 739px ≈ 卡体 738.8px。
+- **补充说明结构化**：`formatNoteBlocks()` 把 `- ` 条目切成 `<ul class="ctn-list">`（2 空格以上缩进 → `li.is-sub`），句末粘连的短标题（≤24 字、不含标点）拆成 `<h4 class="ctn-section">`，首段无标题无缩进 → `<p class="ctn-lead">`；折叠态仍只露 2 行 + 「展开全文」。
+- **验收**（8765 + Playwright，`deviceScaleFactor=2`）：
+  - Computed style：浅/深墨 × 1133/440 × combo 6/5/4 + 自定义 D 共 8 组，宿主 radius 24px、shadow 等于 token、overflow visible；卡根 `1px solid` 且色值正确；iframe radius 0px。
+  - 像素：A/Q/R 四角 45° 亮度差浅色 18.6–53.5（A 底缘为 `#E8E5E0`，按 ≥16 判）、深墨 36.4–47.8；A/Q/R 底影在 `y1+4/+6/+8` 三点完全同为 `ΔY 19.4/16.6/14.1`（浅）、`6.9/5.9/4.9`（深墨）；Q 与 R 底角外三角差 0.0（无第二道影）。
 
 ### 13.4 T 卡（今日时间轴）
 - 删除内嵌 D 卡 iframe 与 R 迷你卡拼接；改为原生 DOM Day Rail：头部小标签「今日时间轴 + 日期」、44px 总时长 + 段数、中部刻度轨、底部「最近 HH:MM」+「查看记录明细」。

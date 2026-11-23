@@ -19042,7 +19042,8 @@ function closeRecordsDrawer() {
        新色值登记见 docs/practice-dsh/DESIGN.md §10.2。 */
     /* 本模板 5 处 font-family: var(--font-mono) 依赖它；缺了会静默退化成无衬线 */
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    --qc-r: 20px;
+    /* 外框圆角全站统一走 --cz-card-radius（嵌入态由 MODULE_SCOPE 注入，独立打开回落 24px） */
+    --qc-r: var(--cz-card-radius, 24px);
     --qc-paper: #FEFCF7;
     --qc-paper-hi: #FFFEFB;
     --qc-edge: #CFC9BE;
@@ -19380,24 +19381,27 @@ function closeRecordsDrawer() {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    border: 1px solid var(--qc-edge);
-    border-radius: var(--qc-r, 20px);
+    /* 外描边与全站同一 token；独立打开时回落纸边色 */
+    border: 1px solid var(--cz-card-border, var(--qc-edge));
+    border-radius: var(--qc-r, 24px);
     /* 底部 2px 露出真实卡纸切面，不靠被 .qc-sheet 盖住的 inset 阴影 */
     padding-bottom: 2px;
     background: var(--qc-edge-thick);
-    /* 纸卡落影：近处 1px 贴地 + 远处 26px 扩散。深墨改纯黑，避免发灰。 */
+    /* 纸卡落影只给独立预览态；嵌入态由宿主 .cz-mod 统一投影，卡内再画会变成"圆角下多一层黑影" */
     box-shadow: 0 1px 2px var(--qc-drop-near), 0 12px 26px -12px var(--qc-drop-far);
     display: flex;
     flex-direction: column;
     overflow: visible;
   }
+  html.cz-fill .qc-shell { box-shadow: none; }
+  html:not(.cz-fill) .deck-card:not(.is-active) .qc-shell { box-shadow: none; }
   .qc-sheet {
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
     box-sizing: border-box;
     /* 内半径 = 外半径 − 1px 边，内容裁剪与外壳弧段同心 */
-    border-radius: calc(var(--qc-r, 20px) - 1px);
+    border-radius: calc(var(--qc-r, 24px) - 1px);
     background: linear-gradient(180deg, var(--qc-paper-hi), var(--qc-paper));
     box-shadow: inset 0 1px 0 var(--qc-edge-hi);
     display: flex;
@@ -19424,7 +19428,8 @@ function closeRecordsDrawer() {
     inset: 8px 8px 0;
     border: 1px solid var(--qc-frame-line);
     border-bottom: 0;
-    border-radius: 11px 11px 0 0;
+    /* 内印线与纸面同心：外半径 − 1px 边 − 8px 内缩 */
+    border-radius: calc(var(--qc-r, 24px) - 9px) calc(var(--qc-r, 24px) - 9px) 0 0;
     pointer-events: none;
     z-index: 0;
   }
@@ -19944,6 +19949,51 @@ function closeRecordsDrawer() {
   .ctn-line + .ctn-line {
     margin-top: 2px;
   }
+  /* 结构化后的强调句 / 章节 / 条目：用便签自己的棕印色做标记，不引新色 */
+  .ctn-lead {
+    margin: 0 0 4px;
+    font-weight: 700;
+  }
+  .ctn-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ctn-list li {
+    position: relative;
+    padding-left: 12px;
+  }
+  .ctn-list li + li { margin-top: 2px; }
+  .ctn-list li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0.62em;
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    background: var(--qc-note-label);
+    opacity: 0.55;
+  }
+  .ctn-list li.is-sub {
+    margin-left: 14px;
+    color: var(--dash-text-soft);
+  }
+  .ctn-list li.is-sub::before {
+    top: 0.82em;
+    width: 7px;
+    height: 1px;
+    border-radius: 0;
+    opacity: 0.5;
+  }
+  .ctn-section {
+    margin: 8px 0 3px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--qc-note-label);
+  }
+  .ctn-section:first-child { margin-top: 0; }
   @media (pointer: coarse) {
     .ctn-toggle { min-height: 44px; }
   }
@@ -20324,11 +20374,69 @@ function closeRecordsDrawer() {
     }
 
     /* 老师补充说明：单独的信息层，不再混进正文；长文折叠 + 展开全文 */
+    /* 原文常是一整段，条目之间只有「- 」；缩进两个空格的是子条目。
+       短标题会被粘在上一条句末（如「练习顺序-」），所以逐段把尾部标题提出来单独成段，
+       否则整段会糊成一条。 */
+    function splitNoteSegments(text) {
+      const segs = [];
+      const re = /([ \t]{2,}|[ \t])?-\s+/g;
+      let last = 0;
+      let nextSub = false;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        segs.push({ text: text.slice(last, m.index).trim(), sub: nextSub });
+        nextSub = (m[1] || '').length >= 2;
+        last = re.lastIndex;
+      }
+      segs.push({ text: text.slice(last).trim(), sub: nextSub });
+      return segs.filter(s => s.text);
+    }
+
+    /* 句末紧跟的短标题：「。不要这样做」「）练习顺序」「。《春耕曲》每天这样练（不用加时间）」 */
+    function takeTrailingHeading(text) {
+      const bounds = [];
+      const re = /[。：）]/g;
+      let m;
+      while ((m = re.exec(text)) !== null) { bounds.push(m.index); }
+      for (let i = bounds.length - 1; i >= 0; i--) {
+        const body = text.slice(0, bounds[i] + 1).trim();
+        const heading = text.slice(bounds[i] + 1).trim();
+        if (body && heading.length >= 2 && heading.length <= 24 && !/[。，；：！？]/.test(heading)) {
+          return { body, heading };
+        }
+      }
+      return { body: text, heading: '' };
+    }
+
+    function formatNoteBlocks(raw) {
+      const segs = splitNoteSegments(raw);
+      const html = [];
+      let listOpen = false;
+      const closeList = () => { if (listOpen) { html.push('</ul>'); listOpen = false; } };
+      const openList = () => { if (!listOpen) { html.push('<ul class="ctn-list">'); listOpen = true; } };
+      segs.forEach((seg, idx) => {
+        const { body, heading } = takeTrailingHeading(seg.text);
+        if (idx === 0 && !seg.sub && !heading) {
+          html.push(`<p class="ctn-lead">${escHtml(body)}</p>`);
+          return;
+        }
+        if (body) {
+          openList();
+          html.push(`<li${seg.sub ? ' class="is-sub"' : ''}>${escHtml(body)}</li>`);
+        }
+        if (heading) {
+          closeList();
+          html.push(`<h4 class="ctn-section">${escHtml(heading)}</h4>`);
+        }
+      });
+      closeList();
+      return html.join('');
+    }
+
     function formatTeacherNote(item) {
       const rawNotes = (item.notes || item.teacher_note || '').trim();
       if (!rawNotes) { return ''; }
-      const lines = rawNotes.split('\n').map(l => l.trim()).filter(Boolean);
-      const body = lines.map(l => `<div class="ctn-line">${escHtml(l)}</div>`).join('');
+      const body = formatNoteBlocks(rawNotes.replace(/\r/g, '').replace(/\u00a0/g, ' '));
       return `
         <div class="ctn-wrap" data-no-drag>
           <div class="card-teacher-note">
@@ -21246,7 +21354,7 @@ function closeRecordsDrawer() {
   var STORE_KEY = 'canvas01_state';
   /* 练习助手构建版本：发版只改这一处。顶栏角标读它，
      完整分支 / 提交 / 构建时间来自部署时生成的 /static/build-info.json。 */
-  var DSH_VERSION = 'v3.55';
+  var DSH_VERSION = 'v3.56';
   var DSH_BUILD = null;
   var NARROW = 1024;                                    /* 画布/轨的分档断点（agy P0-2） */
 
@@ -21406,6 +21514,9 @@ function closeRecordsDrawer() {
     '.demo-bar, .demo-ver, .audit-out, .probe-panel, #audit, #probePanel, .dbar, .chrome, .control-strip, .eval-panel, .audit-panel, .audit-terminal, #vpSeg, #vpSeg button, #skinSeg, #skinSeg button, #vpPills, #vpPills button, #skinPills, #skinPills button { display: none !important; }',
     'html, body { background: transparent !important; margin: 0 !important; min-height: 0 !important; height: auto !important; display: block !important; overflow: visible !important; }',
     'body { padding: 0 !important; }',
+    /* 统一外框 token（与画布 __CZ_TOKENS 同名同值；iframe 之间 CSS 变量不跨界，必须各写一份） */
+    ':root { --cz-card-radius: 24px; --cz-card-border: #CFC9BE; }',
+    ':root[data-skin="ink"] { --cz-card-border: #4E5864; }',
     '.page, .frame, .console, .scroller, .dash, .stage-frame, .card-wrap, .wrap { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }',
     '.stage-frame { width: 100% !important; max-width: 100% !important; align-items: stretch !important; }',
     'body > * { max-width: 100% !important; }',
@@ -21459,7 +21570,8 @@ function closeRecordsDrawer() {
     'html.cz-fill.cz-feed .req-deck-stage { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; perspective: none !important; display: block !important; }',
     /* 底部 14px 是给 .qc-shell 落影留的安全带：measureCardContent 的 r.bottom 不含
        box-shadow，不留白的话 iframe 会把卡底投影一刀切平。 */
-    'html.cz-fill.cz-feed .deck-card { position: relative !important; left: auto !important; top: auto !important; height: auto !important; min-height: 380px !important; max-height: none !important; transform: none !important; opacity: 1 !important; overflow: visible !important; margin: 0 auto 14px !important; }',
+    /* 落影已上移到宿主 .cz-mod，卡内不再留 14px 安全带（embed 态卡片贴齐模块底边） */
+    'html.cz-fill.cz-feed .deck-card { position: relative !important; left: auto !important; top: auto !important; height: auto !important; min-height: 380px !important; max-height: none !important; transform: none !important; opacity: 1 !important; overflow: visible !important; margin: 0 auto !important; }',
     'html.cz-fill.cz-feed .deck-card.is-empty { min-height: 132px !important; }',
     'html.cz-fill.cz-feed .deck-card:not(.is-active) { display: none !important; }',
     'html.cz-fill.cz-feed .card-req-body { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; max-height: 760px !important; overflow-y: auto !important; }',
@@ -21601,10 +21713,11 @@ function closeRecordsDrawer() {
     'html.cz-land #panelMicLabel, html.cz-land .bat-pct, html.cz-land .stand-txt, html.cz-land .ops-kicker, html.cz-land .stand-badge-tip { font-size: 11px !important; }',
     '/* S8：卡槽在仪表盘顶缘（crown），不再在仪表盘内部留 48px 空带 —— 黑区与外框等距等弧度 */',
     '/* S7：外层卡片投影由宿主 .cz-mod 统一承载（具有完整圆角），iframe 内部仅保留 inset 质感，严禁外阴影与硬直角边框溢出。 */',
-    '.dash { border-radius: 24px !important; border: none !important; box-shadow: inset 0 1px 0 var(--dash-glint), inset 0 -10px 18px var(--dash-shell-inset) !important; }',
-    ':root[data-skin="ink"] .dash { border: none !important; box-shadow: inset 0 1px 0 var(--dash-glint), inset 0 -10px 18px var(--dash-shell-inset) !important; }',
+    '.dash { border-radius: var(--cz-card-radius, 24px) !important; border: 1px solid var(--cz-card-border, #CFC9BE) !important; box-shadow: inset 0 1px 0 var(--dash-glint), inset 0 -10px 18px var(--dash-shell-inset) !important; }',
+    ':root[data-skin="ink"] .dash { border-color: var(--cz-card-border, #4E5864) !important; box-shadow: inset 0 1px 0 var(--dash-glint), inset 0 -10px 18px var(--dash-shell-inset) !important; }',
     '.panel { border: none !important; border-radius: var(--dash-radius) !important; -webkit-mask-clip: border-box !important; mask-clip: border-box !important; }',
-    '.card-wrap, .card-records-mini, .console, .strip { border-radius: 24px !important; }',
+    /* 卡本体的 1px 外描边：全站同一 token；T 卡内嵌的 D 段由 czTpartCss 稍后清零 */
+    '.card-wrap, .card-records-mini, .console, .strip, .metro-card { border-radius: var(--cz-card-radius, 24px) !important; border: 1px solid var(--cz-card-border, #CFC9BE) !important; }',
     /* 窄档弧点画在旋钮外，#mid 的盒要把整圈包住，clientHeight 才等于 scrollHeight */
     'html.cz-fill.cz-feed #mid { padding: 24px 0 !important; box-sizing: border-box !important; overflow: visible !important; }',
     /* 组合 2/3 近方盒：旋钮 72，黑区和旋钮行按内容高，不再被 flex 裁掉 */
@@ -21737,16 +21850,15 @@ function closeRecordsDrawer() {
   '.cz-picker-mods label.is-on { background: rgba(255,107,107,.08); }',
   '@media (max-width: 1023px) { .cz-mod-col { flex-direction: column !important; } }',
     '/* 卡片单行轨：塞不下在轨内自己横滑 */',
-    '.cz-rail { position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 16px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: auto; padding: 56px 2px 12px; margin-top: -56px; }',
-    '.cz-mod { flex: 0 0 auto; margin: 0; padding: 0; border: 0; border-radius: 24px; background: transparent; box-shadow: 0 2px 8px rgba(44, 62, 80, 0.04); }',
-    ':root[data-skin="ink"] .cz-mod { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }',
+    /* 底部 18px 是卡底落影的呼吸带：png 轨道 padding 不占卡高，只把阴影留在可视区 */
+    '.cz-rail { position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 16px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: auto; padding: 56px 4px 18px; margin-top: -56px; }',
+    /* 全站统一外框：圆角 + 落影一律挂在宿主 .cz-mod（iframe 外，永不被模块裁剪），
+       1px 描边挂在各卡本体（见 MODULE_SCOPE 的 --cz-card-border）。 */
+    '.cz-mod { flex: 0 0 auto; margin: 0; padding: 0; border: 0; border-radius: var(--cz-card-radius, 24px); background: transparent; box-shadow: var(--cz-card-shadow); overflow: visible !important; }',
     '.cz-mod[hidden], .cz-mod.is-off { display: none !important; }',
-    '.cz-mod > iframe { display: block; border: 0; border-radius: inherit; overflow: hidden !important; background: transparent; width: 100%; height: 100%; filter: none !important; }',
-    /* Q 卡自带圆角与 1px 描边；宿主 24px 圆角的裁弧在 45° 对角线上位于 9.94px，
-       而 20px 卡角的 1px 边带在 8.28–9.28px —— 整条弧段描边会被切掉，只剩直边。
-       因此 Q 模块彻底摘壳：无圆角、无投影、不裁剪，轮廓全部由卡内三层负责。 */
-    '.cz-mod[data-mod="Q"] { border-radius: 0 !important; box-shadow: none !important; background: transparent !important; overflow: visible !important; }',
-    '.cz-mod[data-mod="Q"] > iframe { border-radius: 0 !important; }',
+    /* iframe 不自带圆角：宿主只负责画自己的圆角阴影，绝不裁切卡内的 1px 弧段。
+       各模块 html/body 已是 transparent（MODULE_SCOPE），方角不会露底。 */
+    '.cz-mod > iframe { display: block; border: 0; border-radius: 0 !important; overflow: hidden !important; background: transparent; width: 100%; height: 100%; filter: none !important; }',
     '.cz-mod-empty { padding: 10px 2px; font-size: 12px; font-weight: 600; color: var(--text-muted); }',
     '/* 261013 等高：切断「iframe 高 → 100vh/stretch/flex:1 → 票卡更高 → scrollHeight → iframe 再高」。',
     '   票卡只留源样式 min-height 地板，高度=内容自然高，不随 iframe、不随右栏模块涨。 */',
@@ -21839,7 +21951,9 @@ window.__CZ_TOKENS = '' +
 '--dash-shell-inset:rgba(44,62,80,0.14);--dash-key-hi:rgba(255,255,255,0.65);--dash-glint:rgba(255,255,255,0.85);' +
 '--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255,87,34,0.08);--dash-vermilion-line:rgba(255,87,34,0.30);' +
 '--dash-vermilion-text:#A04217;--dash-vermilion-glow:rgba(255,87,34,0.35);--dash-panel-text:#FFF8F0;' +
-'--dash-muted:#666666;--dash-panel:#161A1E;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;}' +
+'--dash-muted:#666666;--dash-panel:#161A1E;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;' +
+'--cz-card-radius:24px;--cz-card-border:#CFC9BE;' +
+'--cz-card-shadow:0 1px 2px rgba(44, 62, 80, 0.10), 0 12px 26px -12px rgba(44, 62, 80, 0.28);}' +
 ':root[data-skin="ink"]{--dash-white:#FFFFFF;--dash-surface-soft:#232931;--dash-surface-2:#2C333C;--dash-surface-3:#363E48;' +
 '--dash-ink:#2C3E50;--dash-ink-a12:rgba(222, 215, 205, 0.20);--dash-ink-a16:rgba(222, 215, 205, 0.24);--dash-text:#DED7CD;' +
 '--dash-ink-a04:rgba(222, 215, 205, 0.05);--dash-text-soft:#A8A29A;--dash-shell-hi:#2E343B;--dash-shell-lo:#1E242B;' +
@@ -21847,11 +21961,14 @@ window.__CZ_TOKENS = '' +
 '--dash-shell-inset:rgba(44, 62, 80, 0.45);--dash-key-hi:rgba(255, 255, 255, 0.16);--dash-glint:rgba(255, 255, 255, 0.22);' +
 '--dash-vermilion:#FF5722;--dash-vermilion-wash:rgba(255, 87, 34, 0.08);--dash-vermilion-line:rgba(255, 87, 34, 0.30);' +
 '--dash-vermilion-text:#FF9E7A;--dash-vermilion-glow:rgba(255, 87, 34, 0.35);--dash-panel-text:#DED7CD;' +
-'--dash-muted:#A8A29A;--dash-panel:#14181C;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;}';
+'--dash-muted:#A8A29A;--dash-panel:#14181C;--dash-battery:#7BC96F;--dash-delta-down:#10B981;--dash-coral:#FF6B6B;--dash-gold:#D4AF37;' +
+'--cz-card-radius:24px;--cz-card-border:#4E5864;' +
+'--cz-card-shadow:0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 26px -12px rgba(0, 0, 0, 0.55);}';
 
 window.__CZ_CSS = [
   '/* ── 组合轨道 ── */',
-  '.cz-combo { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: visible; padding: 0 !important; margin-top: 0; scrollbar-width: none; -ms-overflow-style: none; }',
+  /* 底部 18px 给卡底落影留呼吸带；左右 4px 让 16px 间隙下的远影不被轨道横切 */
+  '.cz-combo { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: visible; padding: 2px 4px 18px !important; margin-top: 0; scrollbar-width: none; -ms-overflow-style: none; }',
   '.cz-combo::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }',
   /* 宽屏：分页单位提升到整个舞台（票夹 + 卡片组合），滑动时票夹一起走 */
   '@media (min-width: 1024px) {',
@@ -21884,8 +22001,8 @@ window.__CZ_CSS = [
      纵向 feed（≤1023）里壳 display:contents，D 与 R 仍是两张原卡。 */
   /* T 卡：今日时间轴。不再内嵌 D 卡 iframe（与 A 重复），也不重复 R 的编辑明细，
      只回答「今天的时间花在哪」；明细入口仍打开记录抽屉。 */
-  '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: 24px; overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--dash-ink-a12, rgba(44,62,80,0.12)); box-shadow: 0 2px 8px rgba(44,62,80,0.04); }',
-  ':root[data-skin="ink"] .cz-tcard { background: #232931; border-color: rgba(222,215,205,0.20); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }',
+  '.cz-tcard { display: flex; flex-direction: column; gap: 0; flex: 0 0 auto; min-width: 0; border-radius: var(--cz-card-radius, 24px); overflow: hidden; background: var(--dash-surface-soft, #FFFDFB); border: 1px solid var(--cz-card-border, #CFC9BE); box-shadow: var(--cz-card-shadow); }',
+  ':root[data-skin="ink"] .cz-tcard { background: #232931; }',
   '.cz-t-head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 18px 18px 4px; }',
   '.cz-t-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--dash-text-soft, #7F8C8D); }',
   '.cz-t-date { font-size: 12px; font-weight: 600; color: var(--dash-text-soft, #7F8C8D); font-variant-numeric: tabular-nums; }',
@@ -23398,10 +23515,9 @@ window.__CZ_CSS = [
     el.style.setProperty('height', px, 'important');
     el.style.setProperty('max-height', px, 'important');
     el.style.minHeight = '0';
-    /* 卡槽已嵌在 A 顶边内，18px 不伸出盒子 */
-    /* A 卡（读卡器槽口）与 Q 卡（三层拟物卡）都不许被模块盒裁剪：
-       A 要露出槽口唇线，Q 要保住 20px 卡角的 1px 描边与叠卡落影。 */
-    el.style.overflow = (el.dataset && (el.dataset.mod === 'A' || el.dataset.mod === 'Q')) ? 'visible' : 'hidden';
+    /* 全站卡片的外框与落影由宿主 .cz-mod 画，模块盒一律不许裁剪：
+       A 要露出槽口唇线，Q 要保住卡角 1px 弧段，其余卡不许切掉落影。 */
+    el.style.overflow = 'visible';
     el.style.boxSizing = 'border-box';
     var f = el.querySelector(':scope > iframe');
     if (f) {
@@ -23444,7 +23560,8 @@ window.__CZ_CSS = [
     var px = Math.round(h) + 'px';
     el.style.height = px;
     el.style.maxHeight = px;
-    el.style.overflow = (el.classList && el.classList.contains('cz-astack')) ? 'visible' : 'hidden';
+    /* 组合列也不许裁剪：下排 B/S 的底影会落进列底缘 */
+    el.style.overflow = 'visible';
     el.style.boxSizing = 'border-box';
   }
   function clearLock(el) {
@@ -23536,12 +23653,30 @@ window.__CZ_CSS = [
     var content = 0;
     if (view) {
       var origin = d.body.getBoundingClientRect().top;
+      /* 被祖先裁切盒（折叠说明 / 需求滚动区）藏起来的子元素不能算进卡高：
+         折叠态的 .ctn-body 用 overflow:hidden 裁字，子节点 rect 仍会伸出 80+px，
+         按它量高会把宿主撑高，统一外框的落影就飘到卡体下方。 */
+      function visibleBottom(el, bottom) {
+        var p = el.parentElement;
+        while (p && p !== d.body && p !== html) {
+          var pcs = view.getComputedStyle(p);
+          var oy = pcs ? (pcs.overflowY || '') : '';
+          var ov = pcs ? (pcs.overflow || '') : '';
+          if (oy === 'auto' || oy === 'scroll' || oy === 'hidden' || oy === 'clip' ||
+              ov === 'hidden' || ov === 'clip') {
+            var pb = p.getBoundingClientRect().bottom - origin + (parseFloat(pcs.marginBottom) || 0);
+            return Math.min(bottom, pb);
+          }
+          p = p.parentElement;
+        }
+        return bottom;
+      }
       [].slice.call(d.body.querySelectorAll('*')).forEach(function (el) {
         var cs = view.getComputedStyle(el);
         if (!cs || cs.display === 'none' || cs.position === 'fixed') { return; }
         var r = el.getBoundingClientRect();
         if (r.width < 0.5 && r.height < 0.5) { return; }
-        content = Math.max(content, r.bottom - origin + (parseFloat(cs.marginBottom) || 0));
+        content = Math.max(content, visibleBottom(el, r.bottom - origin + (parseFloat(cs.marginBottom) || 0)));
       });
     }
     /* Q 卡在 feed 档下，html 的 100% 填满会让 html.scrollHeight 锁死在上一轮的高度（例如 680），

@@ -523,10 +523,10 @@ def test_qcard_edge_is_painted_by_shell_border_not_pseudo_element():
     shell = re.search(r"\.qc-shell\s*\{(.*?)\}", tpl, re.S).group(1)
     sheet = re.search(r"\.qc-sheet\s*\{(.*?)\}", tpl, re.S).group(1)
 
-    assert "border: 1px solid var(--qc-edge);" in shell
-    assert "border-radius: var(--qc-r, 20px);" in shell
+    assert "border: 1px solid var(--cz-card-border, var(--qc-edge));" in shell
+    assert "border-radius: var(--qc-r, 24px);" in shell
     assert "overflow: hidden" not in shell, "纸壳层不许裁剪，否则 45° 弧段描边会被吃回"
-    assert "border-radius: calc(var(--qc-r, 20px) - 1px);" in sheet
+    assert "border-radius: calc(var(--qc-r, 24px) - 1px);" in sheet
     assert "overflow: hidden;" in sheet
     assert "container-name: qcard;" in sheet, "容器查询必须下沉到纸面层"
 
@@ -538,17 +538,22 @@ def test_qcard_edge_is_painted_by_shell_border_not_pseudo_element():
     assert ".deck-card::before" not in tpl, "旧的全周 1px 伪元素描边必须删干净"
 
 
-def test_qcard_host_module_is_unclipped():
-    """宿主 .cz-mod[data-mod="Q"] 的 24px 裁弧会把 20px 卡角的描边切掉。"""
+def test_all_card_hosts_share_one_frame_and_never_clip():
+    """全站卡片统一外框：圆角 + 落影挂宿主 .cz-mod，1px 描边挂卡本体。
+
+    宿主一旦带圆角裁剪，就会把卡内 1px 弧段整条切掉（PR #411 的回归点），
+    所以 iframe 必须 border-radius: 0，模块盒必须 overflow: visible。
+    """
     src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
-    m = re.search(r"'\.cz-mod\[data-mod=\"Q\"\] \{([^']*)\}'", src)
-    assert m, "缺 Q 模块摘壳规则"
+    m = re.search(r"'\.cz-mod \{([^']*)\}'", src)
+    assert m, "缺宿主 .cz-mod 规则"
     rule = m.group(1)
-    assert "border-radius: 0 !important" in rule
+    assert "border-radius: var(--cz-card-radius, 24px)" in rule
+    assert "box-shadow: var(--cz-card-shadow)" in rule
     assert "overflow: visible !important" in rule
-    assert "box-shadow: none !important" in rule
-    assert "'.cz-mod[data-mod=\"Q\"] > iframe { border-radius: 0 !important; }'" in src
-    assert "el.dataset.mod === 'Q'" in src, "sizeBox 必须对 Q 放行 overflow: visible"
+    assert "'.cz-mod > iframe { display: block; border: 0; border-radius: 0 !important;" in src
+    assert "'.cz-mod[data-mod=\"Q\"] {" not in src, "Q 不再有摘壳特例，统一走 .cz-mod"
+    assert "el.style.overflow = 'visible';" in src, "sizeBox 必须对全部模块放行 overflow: visible"
 
 
 def test_qcard_feed_stack_uses_2d_transforms():
@@ -557,3 +562,25 @@ def test_qcard_feed_stack_uses_2d_transforms():
     assert "card.style.transform = stackOffset === 0 ? 'none'" in tpl
     assert "translate3d(" not in tpl, "Q 卡内不许再出现 translate3d()"
     assert "perspective: none;" in tpl
+
+
+def test_card_measure_ignores_content_hidden_by_clipping_ancestor():
+    """折叠说明的隐藏文字不能计入卡高。
+
+    440 档折叠态 .ctn-body 用 overflow:hidden 裁字，子节点 rect 仍会伸出 80+px；
+    按它量高会把宿主撑高，统一外框的落影就飘到卡体下方（用户截图里的第二道影）。
+    """
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "function visibleBottom(el, bottom)" in src
+    assert "visibleBottom(el, r.bottom - origin" in src
+    assert "oy === 'auto' || oy === 'scroll' || oy === 'hidden' || oy === 'clip'" in src
+
+
+def test_teacher_note_body_renders_structured_blocks():
+    """补充说明要按条目/子条目/短标题结构化渲染，不再是一坨纯文本。"""
+    src = PRACTICE_DSH_TPL.read_text(encoding="utf-8")
+    assert "function formatNoteBlocks(raw)" in src
+    assert "function splitNoteSegments(text)" in src
+    assert "function takeTrailingHeading(text)" in src
+    assert "ctn-lead" in src and "ctn-list" in src and "ctn-section" in src
+    assert "li${seg.sub ? ' class=\"is-sub\"' : ''}" in src

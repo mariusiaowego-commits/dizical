@@ -202,3 +202,38 @@ pytest tests/ → 1234 passed, 5 failed, 8 skipped in 42.81s
 5 个 failed 与第二/四轮同一批，未新增。
 
 skipped（与第四轮相同）：combo5 里 T 卡出视口待拍板；真实当天多段数据未跑；计时中段实时增长未做。新增 skipped：刻度轨的 DOM 行为断言仍依赖 Playwright 探针，未进 pytest（仓库无 JS 测试运行时）。
+
+## 第六轮（v3.56：补充说明结构化 + 全站卡片统一外框）
+
+需求：① 老师要求卡里「补充说明」的正文要结构化渲染；② 所有卡片类型统一外框阴影 + 描边（用户截图里圆角矩形下面仍有第二道影）。`agy` 出统一外框方案（`/private/tmp/qcard-frame/spec.md`）。
+
+实现（`src/kid_app/templates/practice-dsh.html`）：
+
+- `splitNoteSegments` / `takeTrailingHeading` / `formatNoteBlocks`：`- ` 条目 → `.ctn-list > li`（2 空格以上缩进 → `li.is-sub`），句末 ≤24 字短标题 → `.ctn-section`，首段 → `.ctn-lead`。
+- `--cz-card-radius / --cz-card-border / --cz-card-shadow` 在 `window.__CZ_TOKENS` 与 `MODULE_SCOPE` 各声明一份；全站 24px。
+- 外阴影只挂宿主 `.cz-mod` 与原生 `.cz-tcard`；1px 描边挂卡根（`.dash` / `.qc-shell` / `.console` / `.metro-card` / `.card-wrap` / `.strip` / `.cz-tcard`）；`.cz-mod > iframe { border-radius: 0 }`。
+- 删除 `[data-mod="Q"]` 摘壳特例；`sizeBox()` / `lockCol()` 对全部模块放行 `overflow: visible`。
+- `.cz-rail` 底 padding 12→18px、`.cz-combo` 0→`2px 4px 18px`，防 `.pk-stage-wrap` 把底部阴影裁平。
+- `html.cz-fill .qc-shell { box-shadow: none }`，叠卡零外影（整叠只留宿主一道影）；`cz-feed` 下 `.deck-card` 底 margin 清零。
+- **测量修根**：`measureCardContent()` 新增 `visibleBottom()`，按祖先裁切盒底边截断。修复前 440 档 Q 宿主 822px vs 卡体 738.8px（折叠说明的隐藏文字被计入），宿主阴影飘到卡体下方 83px——即用户截图里的「圆角下面还有一层影」；修复后 739px ≈ 738.8px。
+
+Playwright 验收（8765 + `deviceScaleFactor=2`，1133×744 / 440）：
+
+| 项 | 实测 |
+| --- | --- |
+| 外框 computed style | 8 组（浅/深墨 × 1133/440 × combo 6/5/4 + 自定义 D）全 PASS：宿主 `border-radius:24px`、`box-shadow` 等于 token、`overflow:visible`；卡根 `1px solid rgb(207,201,190)` / 深墨 `rgb(78,88,100)`；iframe `border-radius:0px` |
+| 等高 | 1133 档 A/Q/R 均 `h=744, top=80`；combo5（A/B/Q/T）四卡均 744；combo4（A/S/T）三卡均 744 |
+| 四角 45° 描边 ΔY | 浅色 A 51.5/51.5/18.7/19.7、Q 52.5/52.5/50.6/50.6、R 53.5×4；深墨（取亮向）A 45.1/36.4/47.7/47.8、Q 37.7/37.7/42.7/42.7、R 46.4×4。A 底缘底色 `#E8E5E0`，按 ≥16 判 |
+| 底影一致性 | A/Q/R 在 `y1+4/+6/+8` 三点完全相同：浅 `ΔY 19.4/16.6/14.1`，深墨 `6.9/5.9/4.9`（跨卡差 0） |
+| Q 叠卡脏影 | Q vs R 左下/右下外三角 `ΔY=0.0`（无第二道影） |
+| 补充说明结构 | 春耕曲：`lead=1`、`sections=[练习顺序, 《春耕曲》每天这样练（不用加时间）, 不要这样做]`、`items=11`、`subs=2`；折叠态 `clientH=52 / scrollH=312`，「展开全文」`display:flex` |
+| 440 竖排 Q 卡 | 宿主 739 ≈ 卡体 738.8（修复前 822 / 738.8） |
+
+自动化：
+
+```
+node --check <13 个 inline script> → blocks: 13 fails: 0
+pytest <10 个 practice-dsh 目标文件> → 205 passed
+```
+
+failed：无（本轮改动路径）。skipped：无。
