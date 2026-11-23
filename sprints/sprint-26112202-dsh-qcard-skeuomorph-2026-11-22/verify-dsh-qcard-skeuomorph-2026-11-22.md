@@ -120,3 +120,42 @@ $ pytest tests/ -q --ignore=tests/config_ui_fixes
 - `/private/tmp/v-440-before.png`（440 浅色）
 - `/private/tmp/v-375.png`（375 缩放档）
 - `/private/tmp/v-1133.png` / `/private/tmp/v-1133-ink.png`（横排浅/深）
+
+## 6. v3.56 增量（补充说明结构化 + 全站卡片统一外框）
+
+需求：老师要求卡的「补充说明」结构化渲染；所有卡片类型统一外框阴影 + 描边（用户截图里圆角矩形下方仍有第二道影）。agy 出统一外框方案（`/private/tmp/qcard-frame/spec.md`）。
+
+实现：
+
+- `splitNoteSegments` / `takeTrailingHeading` / `formatNoteBlocks`：`- ` 条目 → `.ctn-list > li`（缩进 → `li.is-sub`），粘连短标题 → `.ctn-section`，首段 → `.ctn-lead`；无条目文本按 `\n` 还原 `.ctn-line`；尾标题只在无换行粘连且后面仍有条目时提取。
+- `--cz-card-radius/border/shadow` 双处声明；全站 24px；外阴影挂宿主 `.cz-mod` / `.cz-tcard`，1px 描边挂卡根；`.cz-mod > iframe { border-radius: 0 }`；删除 Q 摘壳特例；轨道底 padding 18px 留阴影带。
+- `html.cz-fill .qc-shell { box-shadow: none }`；`measureCardContent()` 新增 `visibleBottom()`；feed 下 Q 以 `.qc-shell` 实测高为准并同步 iframe `height`/`min-height`/`flex-basis`。
+
+验收（8765 + Playwright，`deviceScaleFactor=2`）：
+
+| 项 | 实测 |
+| --- | --- |
+| 外框 computed style | 8 组（浅/深墨 × 1133/440 × combo 6/5/4 + 自定义 D）全 PASS：宿主 24px、阴影等于 token、overflow visible；卡根 1px 描边色正确；iframe radius 0 |
+| 等高 | 1133 档 A/Q/R 均 744；combo5 A/B/Q/T 与 combo4 A/S/T 均 744 |
+| 四角 45° ΔY | 浅色 A 51.5/51.5/18.7/19.7、Q 52.5×2/50.6×2、R 53.5×4；深墨（亮向）36.4–47.8 |
+| 底影一致性 | A/Q/R 在 `y1+4/+6/+8` 完全同值：浅 19.4/16.6/14.1，深墨 6.9/5.9/4.9 |
+| Q 叠卡脏影 | Q vs R 底角外三角 ΔY = 0.0 |
+| 补充说明（2026-11-21） | `lead=1 / sections=3 / items=11 / subs=2`；折叠 `clientH=52 / scrollH=312` |
+| 纯文本备注（2026-10-10） | `ctn-line=3 / h4=0 / li=0` |
+| feed 展开/收起 | `739 → 854（shell 853.3）→ 739`；底栏 bottom 850.3 < 854 |
+| S 卡 feed 圆角 | 宿主 24 / strip 24 / 高 92 |
+
+自动化：
+
+```
+node --check <13 inline scripts> → blocks: 13 fails: 0
+pytest <10 个 practice-dsh 文件> → 207 passed
+pytest tests/ --ignore=tests/config_ui_fixes → 1242 passed, 2 failed, 8 skipped
+```
+
+2 failed 与本 sprint 无关：`test_achievements_card_no`（测试库 UNIQUE 冲突）、`test_calc_seasonal_count`（硬编码 stage 17，实际 29）。`tests/config_ui_fixes` 因本机 venv 缺 `bs4` 未参与收集。
+
+skipped：
+
+- **pixel UIUX 审计**：Herdr 仅 `w56:p1`（agy）在线，pixel pane 未启动。
+- **iPad Safari 真机四角**：本机只有 Chromium（与 §4 同）。
